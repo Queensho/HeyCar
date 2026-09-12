@@ -5,171 +5,186 @@ class PublicQrWebScreen extends StatelessWidget {
 
   final String token;
 
-  static const _bg = Color(0xFF07111E);
-  static const _panel = Color(0xFF0D1A2A);
+  static const _bg = Color(0xFF06101B);
+  static const _panel = Color(0xFF0B1A2B);
   static const _orange = Color(0xFFFCA311);
   static const _white = Color(0xFFF7F7F7);
+  static const _muted = Color(0xFFBFC7D1);
 
   @override
   Widget build(BuildContext context) {
     if (token.trim().isEmpty) {
       return const Scaffold(
         backgroundColor: _bg,
-        body: Center(
-          child: Text('Geçersiz HeyCar QR etiketi', style: TextStyle(color: Colors.white)),
-        ),
+        body: Center(child: Text('Geçersiz HeyCar QR etiketi', style: TextStyle(color: Colors.white))),
       );
     }
 
     return Scaffold(
       backgroundColor: _bg,
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 430),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final compact = constraints.maxHeight < 760;
-                return SingleChildScrollView(
-                  padding: EdgeInsets.fromLTRB(20, compact ? 16 : 22, 20, 18),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _header(),
-                      SizedBox(height: compact ? 26 : 38),
-                      _heroCopy(compact),
-                      SizedBox(height: compact ? 24 : 34),
-                      _actionGrid(context, compact),
-                      SizedBox(height: compact ? 14 : 18),
-                      _callButton(context, compact),
-                      SizedBox(height: compact ? 16 : 22),
-                      const _PrivacyFooter(),
-                    ],
-                  ),
-                );
-              },
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset(
+            'assets/Arka.png',
+            fit: BoxFit.cover,
+            alignment: Alignment.topCenter,
+          ),
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                stops: [0, .42, .7, 1],
+                colors: [
+                  Color(0x22030A12),
+                  Color(0x66030A12),
+                  Color(0xE906101B),
+                  Color(0xFF06101B),
+                ],
+              ),
             ),
           ),
-        ),
+          SafeArea(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 390),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final compact = constraints.maxHeight < 760;
+                    return SingleChildScrollView(
+                      padding: EdgeInsets.fromLTRB(20, compact ? 12 : 16, 20, 18),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _header(compact),
+                          SizedBox(height: compact ? 20 : 26),
+                          _heroCopy(compact),
+                          SizedBox(height: compact ? 20 : 26),
+                          _actionGrid(context, compact),
+                          SizedBox(height: compact ? 12 : 14),
+                          _callButton(context, compact),
+                          SizedBox(height: compact ? 14 : 18),
+                          const _PrivacyFooter(),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _header() {
+  Widget _header(bool compact) {
     return Row(
       children: [
-        const Icon(Icons.directions_car_filled_rounded, color: _orange, size: 42),
-        const SizedBox(width: 10),
-        const Text.rich(
-          TextSpan(
+        Icon(Icons.directions_car_filled_rounded, color: _orange, size: compact ? 32 : 36),
+        const SizedBox(width: 9),
+        Text.rich(
+          const TextSpan(
             children: [
               TextSpan(text: 'Hey', style: TextStyle(color: Colors.white)),
               TextSpan(text: 'Car', style: TextStyle(color: _orange)),
             ],
           ),
-          style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900, letterSpacing: -1),
+          style: TextStyle(
+            fontSize: compact ? 23 : 26,
+            fontWeight: FontWeight.w900,
+            letterSpacing: -.7,
+          ),
         ),
         const Spacer(),
         Container(
-          width: 46,
-          height: 46,
-          decoration: const BoxDecoration(color: _panel, shape: BoxShape.circle),
-          child: const Icon(Icons.more_horiz_rounded, color: Colors.white, size: 25),
+          width: compact ? 38 : 42,
+          height: compact ? 38 : 42,
+          decoration: BoxDecoration(color: _panel.withValues(alpha: .9), shape: BoxShape.circle),
+          child: Icon(Icons.more_horiz_rounded, color: Colors.white, size: compact ? 21 : 23),
         ),
       ],
     );
   }
 
   Widget _heroCopy(bool compact) {
-    return Stack(
-      children: [
-        Positioned(
-          right: -20,
-          top: compact ? 0 : 6,
-          child: Opacity(
-            opacity: .22,
-            child: Icon(
-              Icons.directions_car_filled_rounded,
-              size: compact ? 170 : 210,
-              color: Colors.white,
+    return SizedBox(
+      height: compact ? 245 : 275,
+      child: Align(
+        alignment: Alignment.topLeft,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Bana\nulaşmak',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: compact ? 36 : 40,
+                height: .98,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -1.1,
+              ),
             ),
-          ),
+            const SizedBox(height: 2),
+            Text(
+              'çok kolay.',
+              style: TextStyle(
+                color: _orange,
+                fontSize: compact ? 36 : 40,
+                height: .98,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -1.1,
+              ),
+            ),
+            SizedBox(height: compact ? 14 : 17),
+            Text(
+              'Numaram gizli,\nyolun açık.',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: compact ? 19 : 21,
+                height: 1.35,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+          ],
         ),
-        Padding(
-          padding: EdgeInsets.only(right: compact ? 95 : 120),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Bana\nulaşmak\n',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: compact ? 43 : 50,
-                  height: .95,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -1.4,
-                ),
-              ),
-              Text(
-                'çok kolay.',
-                style: TextStyle(
-                  color: _orange,
-                  fontSize: compact ? 43 : 50,
-                  height: .95,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -1.4,
-                ),
-              ),
-              SizedBox(height: compact ? 16 : 20),
-              Text(
-                'Numaram gizli,\nyolun açık.',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: compact ? 24 : 27,
-                  height: 1.35,
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
+      ),
     );
   }
 
   Widget _actionGrid(BuildContext context, bool compact) {
-    final tileHeight = compact ? 160.0 : 182.0;
     return GridView.count(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       crossAxisCount: 2,
-      mainAxisSpacing: 14,
-      crossAxisSpacing: 14,
-      childAspectRatio: 1.0,
+      mainAxisSpacing: compact ? 10 : 12,
+      crossAxisSpacing: compact ? 10 : 12,
+      childAspectRatio: 1.08,
       children: [
         _ActionTile(
-          height: tileHeight,
+          compact: compact,
           background: _orange,
           icon: Icons.phone_rounded,
           title: 'Aracınızı\nçekebilir misiniz?',
           onTap: () => _show(context, 'Aracınızı çekebilir misiniz?'),
         ),
         _ActionTile(
-          height: tileHeight,
+          compact: compact,
           background: _white,
           icon: Icons.lightbulb_rounded,
           title: 'Farlarınız açık',
           onTap: () => _show(context, 'Farlarınız açık'),
         ),
         _ActionTile(
-          height: tileHeight,
+          compact: compact,
           background: _white,
           icon: Icons.warning_rounded,
           title: 'Aracınızda\nhasar var',
           onTap: () => _show(context, 'Aracınızda hasar var'),
         ),
         _ActionTile(
-          height: tileHeight,
+          compact: compact,
           background: _white,
           icon: Icons.chat_bubble_rounded,
           title: 'Diğer mesaj',
@@ -182,26 +197,26 @@ class PublicQrWebScreen extends StatelessWidget {
   Widget _callButton(BuildContext context, bool compact) {
     return SizedBox(
       width: double.infinity,
-      height: compact ? 72 : 82,
+      height: compact ? 58 : 64,
       child: Material(
-        color: _panel,
-        borderRadius: BorderRadius.circular(24),
+        color: _panel.withValues(alpha: .95),
+        borderRadius: BorderRadius.circular(compact ? 18 : 20),
         child: InkWell(
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(compact ? 18 : 20),
           onTap: () => _show(context, 'Gizli arama isteği'),
-          child: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 24),
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: compact ? 18 : 22),
             child: Row(
               children: [
-                Icon(Icons.phone_rounded, color: Colors.white, size: 35),
-                SizedBox(width: 22),
+                Icon(Icons.phone_rounded, color: Colors.white, size: compact ? 27 : 30),
+                SizedBox(width: compact ? 16 : 19),
                 Expanded(
                   child: Text(
                     'Gizli arama',
-                    style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700),
+                    style: TextStyle(color: Colors.white, fontSize: compact ? 16 : 18, fontWeight: FontWeight.w700),
                   ),
                 ),
-                Icon(Icons.chevron_right_rounded, color: Colors.white70, size: 30),
+                Icon(Icons.chevron_right_rounded, color: Colors.white70, size: compact ? 25 : 28),
               ],
             ),
           ),
@@ -213,14 +228,14 @@ class PublicQrWebScreen extends StatelessWidget {
 
 class _ActionTile extends StatelessWidget {
   const _ActionTile({
-    required this.height,
+    required this.compact,
     required this.background,
     required this.icon,
     required this.title,
     required this.onTap,
   });
 
-  final double height;
+  final bool compact;
   final Color background;
   final IconData icon;
   final String title;
@@ -228,33 +243,30 @@ class _ActionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: height,
-      child: Material(
-        color: background,
-        borderRadius: BorderRadius.circular(24),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(24),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 24, 16, 18),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, color: Colors.black, size: 48),
-                const SizedBox(height: 18),
-                Text(
-                  title,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.black,
-                    fontSize: 17,
-                    height: 1.2,
-                    fontWeight: FontWeight.w800,
-                  ),
+    return Material(
+      color: background,
+      borderRadius: BorderRadius.circular(compact ? 18 : 21),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(compact ? 18 : 21),
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(12, compact ? 16 : 19, 12, compact ? 13 : 16),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: Colors.black, size: compact ? 35 : 40),
+              SizedBox(height: compact ? 12 : 15),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: compact ? 14.5 : 15.5,
+                  height: 1.18,
+                  fontWeight: FontWeight.w800,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -270,15 +282,11 @@ class _PrivacyFooter extends StatelessWidget {
     return const Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(Icons.verified_user_rounded, color: Colors.white, size: 28),
-        SizedBox(width: 12),
+        Icon(Icons.verified_user_rounded, color: Colors.white, size: 23),
+        SizedBox(width: 10),
         Text(
           'Kişisel bilgileriniz gizli kalır.',
-          style: TextStyle(
-            color: Color(0xFFBFC7D1),
-            fontSize: 15.5,
-            fontWeight: FontWeight.w500,
-          ),
+          style: TextStyle(color: _muted, fontSize: 13.5, fontWeight: FontWeight.w500),
         ),
       ],
     );
@@ -291,23 +299,13 @@ void _show(BuildContext context, String message) {
     backgroundColor: Colors.transparent,
     builder: (_) => Container(
       padding: const EdgeInsets.fromLTRB(24, 26, 24, 30),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
+      decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const CircleAvatar(
-            radius: 32,
-            backgroundColor: Color(0xFFFFF1D5),
-            child: Icon(Icons.check_rounded, color: Color(0xFFFCA311), size: 38),
-          ),
+          const CircleAvatar(radius: 32, backgroundColor: Color(0xFFFFF1D5), child: Icon(Icons.check_rounded, color: Color(0xFFFCA311), size: 38)),
           const SizedBox(height: 16),
-          const Text(
-            'Araç sahibine bildirildi',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF14213D)),
-          ),
+          const Text('Araç sahibine bildirildi', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF14213D))),
           const SizedBox(height: 8),
           Text(message, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF667085))),
           const SizedBox(height: 20),
@@ -335,10 +333,7 @@ void _showMessageComposer(BuildContext context) {
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: Container(
         padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
+        decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
