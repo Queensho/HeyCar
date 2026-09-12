@@ -351,8 +351,22 @@ class CallPage extends StatelessWidget {
   ])));
 }
 
-Widget _page(List<Widget> Function(double s) builder) => SafeArea(bottom: false, child: LayoutBuilder(builder: (context, constraints) {
-      final w = constraints.maxWidth.clamp(320.0, 500.0);
-      final s = (w / 430).clamp(.82, 1.08);
-      return Center(child: SizedBox(width: w, child: SingleChildScrollView(padding: EdgeInsets.fromLTRB(18 * s, 12 * s, 18 * s, 24), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: builder(s)))));
-    }));
+Widget _page(List<Widget> Function(double s) builder) => SafeArea(
+      bottom: false,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final w = constraints.maxWidth.clamp(320.0, 500.0);
+          final s = (w / 430).clamp(.82, 1.08);
+          return Align(
+            alignment: Alignment.topCenter,
+            child: SizedBox(
+              width: w,
+              child: SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(18 * s, 12 * s, 18 * s, 24),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: builder(s)),
+              ),
+            ),
+          );
+        },
+      ),
+    );
