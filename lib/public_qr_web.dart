@@ -9,7 +9,6 @@ class PublicQrWebScreen extends StatelessWidget {
   static const _panel = Color(0xFF0B1A2B);
   static const _orange = Color(0xFFFCA311);
   static const _white = Color(0xFFF7F7F7);
-  static const _muted = Color(0xFFBFC7D1);
 
   @override
   Widget build(BuildContext context) {
@@ -74,9 +73,20 @@ class PublicQrWebScreen extends StatelessWidget {
     return Row(children: [
       Icon(Icons.directions_car_filled_rounded, color: _orange, size: compact ? 32 : 36),
       const SizedBox(width: 9),
-      Text.rich(const TextSpan(children: [TextSpan(text: 'Hey', style: TextStyle(color: Colors.white)), TextSpan(text: 'Car', style: TextStyle(color: _orange))]), style: TextStyle(fontSize: compact ? 23 : 26, fontWeight: FontWeight.w900, letterSpacing: -.7)),
+      Text.rich(
+        const TextSpan(children: [
+          TextSpan(text: 'Hey', style: TextStyle(color: Colors.white)),
+          TextSpan(text: 'Car', style: TextStyle(color: _orange)),
+        ]),
+        style: TextStyle(fontSize: compact ? 23 : 26, fontWeight: FontWeight.w900, letterSpacing: -.7),
+      ),
       const Spacer(),
-      Container(width: compact ? 38 : 42, height: compact ? 38 : 42, decoration: BoxDecoration(color: _panel.withValues(alpha: .9), shape: BoxShape.circle), child: Icon(Icons.more_horiz_rounded, color: Colors.white, size: compact ? 21 : 23)),
+      Container(
+        width: compact ? 38 : 42,
+        height: compact ? 38 : 42,
+        decoration: BoxDecoration(color: _panel.withValues(alpha: .9), shape: BoxShape.circle),
+        child: Icon(Icons.more_horiz_rounded, color: Colors.white, size: compact ? 21 : 23),
+      ),
     ]);
   }
 
@@ -105,10 +115,10 @@ class PublicQrWebScreen extends StatelessWidget {
       crossAxisSpacing: compact ? 10 : 12,
       childAspectRatio: 1.08,
       children: [
-        _ActionTile(compact: compact, background: _orange, icon: Icons.phone_rounded, title: 'Aracınızı\nçekebilir misiniz?', onTap: () => _show(context, 'Aracınızı çekebilir misiniz?')),
-        _ActionTile(compact: compact, background: _white, icon: Icons.lightbulb_rounded, title: 'Farlarınız açık', onTap: () => _show(context, 'Farlarınız açık')),
-        _ActionTile(compact: compact, background: _white, icon: Icons.warning_rounded, title: 'Aracınızda\nhasar var', onTap: () => _show(context, 'Aracınızda hasar var')),
-        _ActionTile(compact: compact, background: _white, icon: Icons.chat_bubble_rounded, title: 'Diğer mesaj', onTap: () => _openMessageScreen(context)),
+        _ActionTile(compact: compact, background: _orange, icon: Icons.phone_rounded, title: 'Aracınızı\nçekebilir misiniz?', onTap: () => _openMessageScreen(context, initialType: 'Aracınızı çekebilir misiniz?')),
+        _ActionTile(compact: compact, background: _white, icon: Icons.lightbulb_rounded, title: 'Farlarınız açık', onTap: () => _openMessageScreen(context, initialType: 'Farlarınız açık')),
+        _ActionTile(compact: compact, background: _white, icon: Icons.warning_rounded, title: 'Aracınızda\nhasar var', onTap: () => _openMessageScreen(context, initialType: 'Aracınızda hasar var')),
+        _ActionTile(compact: compact, background: _white, icon: Icons.chat_bubble_rounded, title: 'Diğer mesaj', onTap: () => _openMessageScreen(context, initialType: 'Diğer mesaj')),
       ],
     );
   }
@@ -122,7 +132,7 @@ class PublicQrWebScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(compact ? 18 : 20),
         child: InkWell(
           borderRadius: BorderRadius.circular(compact ? 18 : 20),
-          onTap: () => _show(context, 'Gizli arama isteği'),
+          onTap: () {},
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: compact ? 18 : 22),
             child: Row(children: [
@@ -179,12 +189,14 @@ class _PrivacyFooter extends StatelessWidget {
   }
 }
 
-void _openMessageScreen(BuildContext context) {
-  Navigator.push(context, MaterialPageRoute(builder: (_) => const _MessageScreen()));
+void _openMessageScreen(BuildContext context, {required String initialType}) {
+  Navigator.push(context, MaterialPageRoute(builder: (_) => _MessageScreen(initialType: initialType)));
 }
 
 class _MessageScreen extends StatefulWidget {
-  const _MessageScreen();
+  const _MessageScreen({required this.initialType});
+  final String initialType;
+
   @override
   State<_MessageScreen> createState() => _MessageScreenState();
 }
@@ -192,8 +204,28 @@ class _MessageScreen extends StatefulWidget {
 class _MessageScreenState extends State<_MessageScreen> {
   static const bg = Color(0xFF06101B);
   static const orange = Color(0xFFFCA311);
-  final controller = TextEditingController(text: 'Çıkışımı kapatıyor, müsaitseniz aracı çekebilir misiniz?');
-  String selected = 'Aracınızı çekebilir misiniz?';
+  late final TextEditingController controller;
+  late String selected;
+
+  @override
+  void initState() {
+    super.initState();
+    selected = widget.initialType;
+    controller = TextEditingController(text: _defaultText(selected));
+  }
+
+  String _defaultText(String type) {
+    switch (type) {
+      case 'Farlarınız açık':
+        return 'Farlarınız açık görünüyor, bilginize.';
+      case 'Aracınızda hasar var':
+        return 'Aracınızda hasar fark ettim, bilginize.';
+      case 'Diğer mesaj':
+        return '';
+      default:
+        return 'Çıkışımı kapatıyor, müsaitseniz aracı çekebilir misiniz?';
+    }
+  }
 
   @override
   void dispose() {
@@ -256,7 +288,13 @@ class _MessageScreenState extends State<_MessageScreen> {
                                   DropdownMenuItem(value: 'Aracınızda hasar var', child: Text('Aracınızda hasar var')),
                                   DropdownMenuItem(value: 'Diğer mesaj', child: Text('Diğer mesaj')),
                                 ],
-                                onChanged: (v) => setState(() => selected = v ?? selected),
+                                onChanged: (v) {
+                                  if (v == null) return;
+                                  setState(() {
+                                    selected = v;
+                                    controller.text = _defaultText(v);
+                                  });
+                                },
                               ),
                             ),
                           ),
@@ -267,6 +305,7 @@ class _MessageScreenState extends State<_MessageScreen> {
                             maxLines: 5,
                             style: const TextStyle(fontSize: 17, height: 1.35),
                             decoration: InputDecoration(
+                              hintText: 'Araç sahibine mesaj yaz...',
                               filled: true,
                               fillColor: const Color(0xFFF5F6F8),
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
@@ -287,8 +326,10 @@ class _MessageScreenState extends State<_MessageScreen> {
                               onPressed: () {
                                 final text = controller.text.trim();
                                 if (text.isEmpty) return;
-                                Navigator.pop(context);
-                                _show(context, text);
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => _MessageSentScreen(message: text)),
+                                );
                               },
                               icon: const Icon(Icons.send_rounded),
                               label: const Text('Mesaj Gönder', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
@@ -338,22 +379,250 @@ class _AttachBox extends StatelessWidget {
   }
 }
 
-void _show(BuildContext context, String message) {
-  showModalBottomSheet<void>(
-    context: context,
-    backgroundColor: Colors.transparent,
-    builder: (_) => Container(
-      padding: const EdgeInsets.fromLTRB(24, 26, 24, 30),
-      decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        const CircleAvatar(radius: 32, backgroundColor: Color(0xFFFFF1D5), child: Icon(Icons.check_rounded, color: Color(0xFFFCA311), size: 38)),
-        const SizedBox(height: 16),
-        const Text('Araç sahibine bildirildi', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF14213D))),
-        const SizedBox(height: 8),
-        Text(message, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF667085))),
-        const SizedBox(height: 20),
-        SizedBox(width: double.infinity, child: FilledButton(onPressed: () => Navigator.pop(context), style: FilledButton.styleFrom(backgroundColor: const Color(0xFFFCA311), foregroundColor: Colors.black), child: const Text('Tamam', style: TextStyle(fontWeight: FontWeight.w800)))),
+class _MessageSentScreen extends StatefulWidget {
+  const _MessageSentScreen({required this.message});
+  final String message;
+
+  @override
+  State<_MessageSentScreen> createState() => _MessageSentScreenState();
+}
+
+class _MessageSentScreenState extends State<_MessageSentScreen> {
+  bool ownerReplied = false;
+
+  void _openChat() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => _ChatScreen(initialMessage: widget.message)),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (ownerReplied) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _openChat());
+    }
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF06101B),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset('assets/Arka.png', fit: BoxFit.cover, alignment: Alignment.topCenter),
+          const DecoratedBox(decoration: BoxDecoration(color: Color(0xCC06101B))),
+          SafeArea(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 430),
+                child: Column(children: [
+                  Align(
+                    alignment: Alignment.topRight,
+                    child: IconButton(
+                      onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
+                      icon: const Icon(Icons.close_rounded, color: Colors.white, size: 34),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Container(
+                    width: 98,
+                    height: 98,
+                    decoration: const BoxDecoration(color: Color(0xAA1B2430), shape: BoxShape.circle),
+                    child: const Icon(Icons.send_rounded, color: Color(0xFFFCA311), size: 52),
+                  ),
+                  const SizedBox(height: 18),
+                  const Text('Mesajınız gönderildi!', style: TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 12),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 26),
+                    child: Text(
+                      'Araç sahibine bildiriminiz ulaştı.\nCevap verdiğinde bu sayfa otomatik güncellenecektir.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.white70, fontSize: 17, height: 1.45),
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  Expanded(
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+                      decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(30))),
+                      child: SingleChildScrollView(
+                        child: Column(children: [
+                          const _StatusStep(icon: Icons.check_rounded, iconColor: Color(0xFF159A8C), title: 'Mesaj gönderildi', subtitle: 'Şimdi', line: true),
+                          const _StatusStep(icon: Icons.circle, iconColor: Color(0xFFFCA311), title: 'Araç sahibine iletildi', subtitle: 'Bildirim gönderildi', line: true),
+                          _StatusStep(
+                            icon: ownerReplied ? Icons.check_rounded : Icons.circle,
+                            iconColor: ownerReplied ? const Color(0xFF159A8C) : const Color(0xFFDDE2E8),
+                            title: ownerReplied ? 'Araç sahibi cevap verdi' : 'Cevap bekleniyor',
+                            subtitle: ownerReplied ? 'Mesajlaşma açılıyor' : 'Ortalama yanıt süresi: 2 dk',
+                            line: false,
+                          ),
+                          const SizedBox(height: 18),
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(color: const Color(0xFFF5F6F8), borderRadius: BorderRadius.circular(18)),
+                            child: const Row(children: [
+                              Icon(Icons.notifications_active_rounded, color: Color(0xFFFCA311), size: 32),
+                              SizedBox(width: 14),
+                              Expanded(child: Text('Acil bir durum varsa lütfen gizli arama seçeneğini kullanın.', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700, height: 1.35))),
+                            ]),
+                          ),
+                          const SizedBox(height: 14),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 58,
+                            child: OutlinedButton.icon(
+                              onPressed: () => _openMessageScreen(context, initialType: 'Diğer mesaj'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF101828),
+                                backgroundColor: const Color(0xFFF5F6F8),
+                                side: BorderSide.none,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                              ),
+                              icon: const Icon(Icons.chat_bubble_outline_rounded, size: 28),
+                              label: const Text('Yeni mesaj gönder', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          TextButton(
+                            onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
+                            child: const Text('Ana sayfaya dön', style: TextStyle(color: Color(0xFF101828), decoration: TextDecoration.underline, fontSize: 16, fontWeight: FontWeight.w700)),
+                          ),
+                        ]),
+                      ),
+                    ),
+                  ),
+                ]),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusStep extends StatelessWidget {
+  const _StatusStep({required this.icon, required this.iconColor, required this.title, required this.subtitle, required this.line});
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String subtitle;
+  final bool line;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      SizedBox(
+        width: 44,
+        child: Column(children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(color: iconColor, shape: BoxShape.circle),
+            child: Icon(icon, color: Colors.white, size: 20),
+          ),
+          if (line) Container(width: 3, height: 52, color: const Color(0xFFB6C0CC)),
+        ]),
+      ),
+      const SizedBox(width: 8),
+      Expanded(
+        child: Padding(
+          padding: const EdgeInsets.only(top: 2, bottom: 24),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF172033))),
+            const SizedBox(height: 4),
+            Text(subtitle, style: const TextStyle(fontSize: 14.5, color: Color(0xFF7B8492))),
+          ]),
+        ),
+      ),
+    ]);
+  }
+}
+
+class _ChatScreen extends StatefulWidget {
+  const _ChatScreen({required this.initialMessage});
+  final String initialMessage;
+
+  @override
+  State<_ChatScreen> createState() => _ChatScreenState();
+}
+
+class _ChatScreenState extends State<_ChatScreen> {
+  final input = TextEditingController();
+
+  @override
+  void dispose() {
+    input.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F6F8),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF06101B),
+        foregroundColor: Colors.white,
+        title: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('34 ABC 123', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
+          Text('Araç sahibi', style: TextStyle(fontSize: 12, color: Colors.white70)),
+        ]),
+      ),
+      body: Column(children: [
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              Align(
+                alignment: Alignment.centerRight,
+                child: Container(
+                  constraints: const BoxConstraints(maxWidth: 280),
+                  padding: const EdgeInsets.all(13),
+                  decoration: BoxDecoration(color: const Color(0xFFFCA311), borderRadius: BorderRadius.circular(18)),
+                  child: Text(widget.initialMessage, style: const TextStyle(fontSize: 15.5)),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Container(
+                  constraints: const BoxConstraints(maxWidth: 280),
+                  padding: const EdgeInsets.all(13),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18)),
+                  child: const Text('Merhaba, gördüm. Birkaç dakika içinde geliyorum.', style: TextStyle(fontSize: 15.5)),
+                ),
+              ),
+            ],
+          ),
+        ),
+        SafeArea(
+          top: false,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+            color: Colors.white,
+            child: Row(children: [
+              Expanded(
+                child: TextField(
+                  controller: input,
+                  decoration: InputDecoration(
+                    hintText: 'Mesaj yaz...',
+                    filled: true,
+                    fillColor: const Color(0xFFF2F4F7),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(22), borderSide: BorderSide.none),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              CircleAvatar(
+                radius: 23,
+                backgroundColor: const Color(0xFFFCA311),
+                child: IconButton(onPressed: () => input.clear(), icon: const Icon(Icons.send_rounded, color: Colors.black)),
+              ),
+            ]),
+          ),
+        ),
       ]),
-    ),
-  );
+    );
+  }
 }
