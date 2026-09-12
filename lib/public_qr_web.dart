@@ -9,7 +9,6 @@ class PublicQrWebScreen extends StatelessWidget {
   static const _panel = Color(0xFF0D1A2A);
   static const _orange = Color(0xFFFCA311);
   static const _white = Color(0xFFF7F7F7);
-  static const _muted = Color(0xFFBFC7D1);
 
   @override
   Widget build(BuildContext context) {
@@ -30,8 +29,7 @@ class PublicQrWebScreen extends StatelessWidget {
             constraints: const BoxConstraints(maxWidth: 430),
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final h = constraints.maxHeight;
-                final compact = h < 760;
+                final compact = constraints.maxHeight < 760;
                 return SingleChildScrollView(
                   padding: EdgeInsets.fromLTRB(20, compact ? 16 : 22, 20, 18),
                   child: Column(
@@ -276,7 +274,11 @@ class _PrivacyFooter extends StatelessWidget {
         SizedBox(width: 12),
         Text(
           'Kişisel bilgileriniz gizli kalır.',
-          style: TextStyle(color: _muted, fontSize: 15.5, fontWeight: FontWeight.w500),
+          style: TextStyle(
+            color: Color(0xFFBFC7D1),
+            fontSize: 15.5,
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ],
     );
