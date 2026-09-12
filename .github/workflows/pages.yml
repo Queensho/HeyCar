@@ -1,4 +1,4 @@
-name: Deploy Flutter Web to GitHub Pages
+name: Build HeyCar Flutter
 
 on:
   push:
@@ -7,12 +7,6 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: true
 
 jobs:
   build:
@@ -27,98 +21,21 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Generate Flutter platforms
-        run: flutter create . --platforms=web,android --project-name open_app --org com.openapp --no-pub
-
-      - name: Configure Android Firebase
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-
-          app = Path('android/app/build.gradle.kts')
-          s = app.read_text()
-          s = s.replace('com.openapp.open_app', 'com.openapp.open')
-          if 'com.google.gms.google-services' not in s:
-              s = s.replace('id("dev.flutter.flutter-gradle-plugin")', 'id("dev.flutter.flutter-gradle-plugin")\n    id("com.google.gms.google-services")')
-          if 'isCoreLibraryDesugaringEnabled = true' not in s:
-              s = s.replace('compileOptions {', 'compileOptions {\n        isCoreLibraryDesugaringEnabled = true')
-          if 'coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")' not in s:
-              s = s.replace('\nflutter {', '\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")\n}\n\nflutter {')
-          app.write_text(s)
-
-          settings = Path('android/settings.gradle.kts')
-          s = settings.read_text()
-          if 'com.google.gms.google-services' not in s:
-              marker = 'id("org.jetbrains.kotlin.android")'
-              i = s.find(marker)
-              if i >= 0:
-                  e = s.find('\n', i)
-                  s = s[:e+1] + '    id("com.google.gms.google-services") version "4.4.4" apply false\n' + s[e+1:]
-          settings.write_text(s)
-
-          manifest = Path('android/app/src/main/AndroidManifest.xml')
-          s = manifest.read_text()
-          if 'android.permission.POST_NOTIFICATIONS' not in s:
-              s = s.replace('<manifest xmlns:android="http://schemas.android.com/apk/res/android">', '<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />')
-          if 'android.permission.ACCESS_FINE_LOCATION' not in s:
-              s = s.replace('<manifest xmlns:android="http://schemas.android.com/apk/res/android">', '<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />')
-          manifest.write_text(s)
-
-          old_activity = Path('android/app/src/main/kotlin/com/openapp/open_app/MainActivity.kt')
-          new_activity = Path('android/app/src/main/kotlin/com/openapp/open/MainActivity.kt')
-          if old_activity.exists():
-              activity = old_activity.read_text().replace('package com.openapp.open_app', 'package com.openapp.open')
-              new_activity.parent.mkdir(parents=True, exist_ok=True)
-              new_activity.write_text(activity)
-              old_activity.unlink()
-          elif new_activity.exists():
-              new_activity.write_text(new_activity.read_text().replace('package com.openapp.open_app', 'package com.openapp.open'))
-          PY
-
-      - name: Reset pub.dev credentials
-        run: dart pub token remove https://pub.dev || true
+      - name: Generate Android platform
+        run: flutter create . --platforms=android --project-name heycar_app --org com.heycar --no-pub
 
       - name: Get dependencies
-        env:
-          PUB_HOSTED_URL: https://pub.dev
         run: flutter pub get
 
       - name: Analyze app
         run: flutter analyze lib --no-fatal-infos --no-fatal-warnings
 
       - name: Build Android test APK
-        run: flutter build apk --debug --target lib/bootstrap.dart
+        run: flutter build apk --debug --target lib/main.dart
 
       - name: Upload Android test APK
         uses: actions/upload-artifact@v4
         with:
-          name: open-android-test
+          name: heycar-android-test
           path: build/app/outputs/flutter-apk/app-debug.apk
           retention-days: 7
-
-      - name: Build web without service worker cache
-        run: flutter build web --release --target lib/bootstrap.dart --base-href "/Open/" --pwa-strategy=none
-
-      - name: Remove stale service worker artifacts
-        run: |
-          rm -f build/web/flutter_service_worker.js
-          rm -f build/web/version.json
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: build/web
-
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
