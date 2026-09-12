@@ -1,1136 +1,801 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
-void main() => runApp(const OpenApp());
+void main() {
+  runApp(const HeyCarApp());
+}
 
-class OpenApp extends StatelessWidget {
-  const OpenApp({super.key});
-  static const lime = Color(0xFFBFFF00);
-  static const ink = Color(0xFF111111);
-  static const muted = Color(0xFF707070);
-  static const soft = Color(0xFFF6F6F3);
-  static const purple = Color(0xFF7C4DFF);
-  static const coral = Color(0xFFFF6464);
+class HeyCarApp extends StatelessWidget {
+  const HeyCarApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Open',
+      title: 'HeyCar',
       theme: ThemeData(
         useMaterial3: true,
-        scaffoldBackgroundColor: Colors.white,
-        colorScheme: ColorScheme.fromSeed(seedColor: lime),
+        fontFamily: 'sans',
+        scaffoldBackgroundColor: HeyColors.background,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: HeyColors.orange,
+          brightness: Brightness.light,
+          primary: HeyColors.orange,
+          surface: Colors.white,
+        ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: soft,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(22), borderSide: BorderSide.none),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(22), borderSide: BorderSide.none),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(22), borderSide: const BorderSide(color: lime, width: 2)),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 17),
-        ),
-        filledButtonTheme: FilledButtonThemeData(
-          style: FilledButton.styleFrom(
-            backgroundColor: lime,
-            foregroundColor: ink,
-            minimumSize: const Size.fromHeight(58),
-            shape: const StadiumBorder(),
-            textStyle: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+          fillColor: HeyColors.soft,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: HeyColors.line),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: HeyColors.orange, width: 1.5),
           ),
         ),
       ),
-      home: const SplashScreen(),
+      home: const WelcomeScreen(),
     );
   }
 }
 
-class AppIcons {
-  static const splash = 'assets/app_icons/gradient/splash_logo.svg';
-  static const lock = 'assets/app_icons/gradient/icon_lock.svg';
-  static const unlock = 'assets/app_icons/gradient/icon_unlock.svg';
-  static const key = 'assets/app_icons/gradient/icon_key.svg';
-  static const send = 'assets/app_icons/gradient/icon_send.svg';
-  static const question = 'assets/app_icons/line/icon_question.svg';
-  static const phone = 'assets/app_icons/line/icon_phone.svg';
-  static const mail = 'assets/app_icons/line/icon_mail.svg';
-  static const camera = 'assets/app_icons/line/icon_camera.svg';
-  static const profile = 'assets/app_icons/badge/icon_profile.svg';
-  static const navHome = 'assets/app_icons/nav/nav_home.svg';
-  static const navHomeActive = 'assets/app_icons/nav/nav_home_active.svg';
-  static const navKey = 'assets/app_icons/nav/nav_key.svg';
-  static const navKeyActive = 'assets/app_icons/nav/nav_key_active.svg';
-  static const navMessages = 'assets/app_icons/nav/nav_messages.svg';
-  static const navMessagesActive = 'assets/app_icons/nav/nav_messages_active.svg';
-  static const navProfile = 'assets/app_icons/nav/nav_profile.svg';
-  static const navProfileActive = 'assets/app_icons/nav/nav_profile_active.svg';
-}
-
-class AppSvg extends StatelessWidget {
-  const AppSvg(this.path, {super.key, this.size = 64, this.card = false});
-  final String path;
-  final double size;
-  final bool card;
-
-  @override
-  Widget build(BuildContext context) {
-    final svg = SvgPicture.asset(path, width: size, height: size, fit: BoxFit.contain);
-    if (!card) return SizedBox(width: size, height: size, child: svg);
-    return Container(
-      width: size,
-      height: size,
-      padding: EdgeInsets.all(size * .12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(size * .28),
-        boxShadow: [BoxShadow(color: OpenApp.lime.withValues(alpha: .20), blurRadius: 30, spreadRadius: 3, offset: const Offset(0, 8))],
-      ),
-      child: svg,
-    );
-  }
-}
-
-class PageTitle extends StatelessWidget {
-  const PageTitle(this.title, this.subtitle, {super.key});
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: const TextStyle(fontSize: 34, height: 1.05, fontWeight: FontWeight.w900, letterSpacing: -1.1)),
-          const SizedBox(height: 10),
-          Text(subtitle, style: const TextStyle(fontSize: 15.5, height: 1.45, color: OpenApp.muted)),
-        ],
-      );
-}
-
-class StepHeader extends StatelessWidget {
-  const StepHeader({super.key, required this.step, required this.total});
-  final int step;
-  final int total;
-
-  @override
-  Widget build(BuildContext context) => Row(
-        children: [
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(99),
-              child: LinearProgressIndicator(
-                value: step / total,
-                minHeight: 7,
-                backgroundColor: const Color(0xFFEAEAEA),
-                valueColor: const AlwaysStoppedAnimation(OpenApp.lime),
-              ),
-            ),
-          ),
-          const SizedBox(width: 14),
-          Text('$step/$total', style: const TextStyle(fontWeight: FontWeight.w900)),
-        ],
-      );
-}
-
-class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
-  @override
-  State<SplashScreen> createState() => _SplashScreenState();
-}
-
-class _SplashScreenState extends State<SplashScreen> {
-  @override
-  void initState() {
-    super.initState();
-    Future.delayed(const Duration(milliseconds: 900), () {
-      if (mounted) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const WelcomeScreen()));
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) => const Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AppSvg(AppIcons.splash, size: 118, card: true),
-              SizedBox(height: 26),
-              Text('Open', style: TextStyle(fontSize: 44, fontWeight: FontWeight.w900)),
-            ],
-          ),
-        ),
-      );
+class HeyColors {
+  static const navy = Color(0xFF14213D);
+  static const deepNavy = Color(0xFF091426);
+  static const orange = Color(0xFFFCA311);
+  static const softOrange = Color(0xFFFFF2DC);
+  static const background = Color(0xFFF7F8FA);
+  static const soft = Color(0xFFF4F6F8);
+  static const line = Color(0xFFE5E7EB);
+  static const ink = Color(0xFF111827);
+  static const muted = Color(0xFF667085);
+  static const success = Color(0xFF16A36A);
 }
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
-  @override
-  Widget build(BuildContext context) => Scaffold(
-        body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(28),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Spacer(),
-                const AppSvg(AppIcons.splash, size: 90, card: true),
-                const SizedBox(height: 28),
-                const Text('Open', style: TextStyle(fontSize: 52, fontWeight: FontWeight.w900)),
-                const SizedBox(height: 18),
-                const Text('Kaydırma.\nÖnce kilidimi aç.', style: TextStyle(fontSize: 31, height: 1.08, fontWeight: FontWeight.w800)),
-                const Spacer(),
-                FilledButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OnboardingScreen())), child: const Text('Başlayalım')),
-              ],
-            ),
-          ),
-        ),
-      );
-}
-
-class OnboardingScreen extends StatefulWidget {
-  const OnboardingScreen({super.key});
-  @override
-  State<OnboardingScreen> createState() => _OnboardingScreenState();
-}
-
-class _OnboardingScreenState extends State<OnboardingScreen> {
-  final controller = PageController();
-  int page = 0;
-  final pages = const [
-    ('Profil değil,\ninsanı keşfet.', 'Önce soruları cevapla, sonra karar ver.', AppIcons.lock),
-    ('3 kilit soru,\nyüzlerce olasılık.', 'Merak uyandıran sorularla daha anlamlı sohbetler.', AppIcons.question),
-    ('Doğru kişiyle\nanahtarın uyusun.', 'Anahtarını gönder. Kabul edilirse profil açılır.', AppIcons.key),
-    ('Gerçek bağlantılar\nburada başlar.', 'Daha az yüzeysel, daha çok sen.', AppIcons.unlock),
-  ];
-
-  void next() {
-    if (page < pages.length - 1) {
-      controller.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeOutCubic);
-    } else {
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
-    }
-  }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        body: SafeArea(
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: HeyColors.deepNavy,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Align(
-                alignment: Alignment.centerRight,
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 18, top: 4),
-                  child: TextButton(
-                    onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen())),
-                    child: const Text('Atla', style: TextStyle(color: OpenApp.ink, fontWeight: FontWeight.w800)),
+              const _BrandMark(size: 30),
+              const Spacer(),
+              Center(
+                child: Container(
+                  width: 220,
+                  height: 220,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [HeyColors.orange.withOpacity(.22), Colors.transparent],
+                    ),
                   ),
+                  child: const Icon(Icons.directions_car_filled_rounded, color: Colors.white, size: 118),
                 ),
               ),
-              Expanded(
-                child: PageView.builder(
-                  controller: controller,
-                  itemCount: pages.length,
-                  onPageChanged: (value) => setState(() => page = value),
-                  itemBuilder: (_, i) {
-                    final item = pages[i];
-                    return Padding(
-                      padding: const EdgeInsets.fromLTRB(28, 6, 28, 24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(child: Center(child: AppSvg(item.$3, size: 150, card: true))),
-                          Text(item.$1, style: const TextStyle(fontSize: 34, height: 1.05, fontWeight: FontWeight.w900)),
-                          const SizedBox(height: 12),
-                          Text(item.$2, style: const TextStyle(color: OpenApp.muted, fontSize: 16, height: 1.4)),
-                          const SizedBox(height: 20),
-                          FilledButton(onPressed: next, child: const Text('Devam et')),
-                        ],
-                      ),
-                    );
-                  },
+              const Spacer(),
+              const Text(
+                'Aracınla ilgili\nher şeyden haberdar ol.',
+                style: TextStyle(color: Colors.white, fontSize: 34, height: 1.05, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                'QR etiketini aracına bağla. İnsanlar numaranı görmeden sana mesaj gönderebilsin veya gizli arama başlatabilsin.',
+                style: TextStyle(color: Colors.white.withOpacity(.72), fontSize: 16, height: 1.5),
+              ),
+              const SizedBox(height: 26),
+              _PrimaryButton(
+                label: 'Hemen Başla',
+                icon: Icons.arrow_forward_rounded,
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PhoneScreen())),
+              ),
+              const SizedBox(height: 14),
+              Center(
+                child: Text(
+                  'Bu uygulama araç sahibi içindir. QR okutan kişiler web sayfasını kullanır.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white.withOpacity(.55), fontSize: 12.5, height: 1.35),
                 ),
               ),
             ],
           ),
         ),
-      );
+      ),
+    );
+  }
 }
 
-class LoginScreen extends StatelessWidget {
-  const LoginScreen({super.key});
+class PhoneScreen extends StatefulWidget {
+  const PhoneScreen({super.key});
+
   @override
-  Widget build(BuildContext context) => Scaffold(
-        body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(28),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Spacer(),
-                const AppSvg(AppIcons.splash, size: 82, card: true),
-                const SizedBox(height: 26),
-                const Text('Open', style: TextStyle(fontSize: 48, fontWeight: FontWeight.w900)),
-                const SizedBox(height: 12),
-                const Text('Gerçek bağlantılar burada başlar.', style: TextStyle(fontSize: 18, color: OpenApp.muted)),
-                const Spacer(),
-                FilledButton(
-                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PhoneLoginScreen())),
-                  child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [AppSvg(AppIcons.phone, size: 23), SizedBox(width: 10), Text('Telefon ile devam et')]),
-                ),
-                const SizedBox(height: 12),
-                OutlinedButton(
-                  style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(58), shape: const StadiumBorder()),
-                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RegisterScreen())),
-                  child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [AppSvg(AppIcons.mail, size: 23), SizedBox(width: 10), Text('E-posta ile devam et')]),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
+  State<PhoneScreen> createState() => _PhoneScreenState();
 }
 
-class PhoneLoginScreen extends StatefulWidget {
-  const PhoneLoginScreen({super.key});
-  @override
-  State<PhoneLoginScreen> createState() => _PhoneLoginScreenState();
-}
-
-class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
+class _PhoneScreenState extends State<PhoneScreen> {
   final phone = TextEditingController();
-  String? error;
-  void sendCode() {
-    final digits = phone.text.replaceAll(RegExp(r'\D'), '');
-    if (digits.length < 10) {
-      setState(() => error = 'Geçerli bir telefon numarası gir.');
-      return;
-    }
-    Navigator.push(context, MaterialPageRoute(builder: (_) => OtpScreen(phone: phone.text.trim())));
-  }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent),
-        body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(26, 12, 26, 28),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const AppSvg(AppIcons.phone, size: 76, card: true),
-                const SizedBox(height: 26),
-                const PageTitle('Telefon numaranı gir.', 'Sana 6 haneli bir doğrulama kodu göndereceğiz.'),
-                const SizedBox(height: 28),
-                TextField(
-                  controller: phone,
-                  keyboardType: TextInputType.phone,
-                  autofocus: true,
-                  inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9 +]'))],
-                  decoration: InputDecoration(prefixText: '+90  ', labelText: 'Telefon numarası', hintText: '5XX XXX XX XX', errorText: error),
+  Widget build(BuildContext context) {
+    return _OnboardingScaffold(
+      step: 1,
+      title: 'Telefon numaran ile başla',
+      subtitle: 'Numaran yalnızca hesabını doğrulamak ve gizli arama yönlendirmesi için kullanılır.',
+      child: Column(
+        children: [
+          TextField(
+            controller: phone,
+            keyboardType: TextInputType.phone,
+            decoration: const InputDecoration(prefixText: '+90  ', hintText: '5XX XXX XX XX'),
+          ),
+          const Spacer(),
+          _PrimaryButton(
+            label: 'Doğrulama kodu gönder',
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OtpScreen())),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class OtpScreen extends StatelessWidget {
+  const OtpScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return _OnboardingScaffold(
+      step: 2,
+      title: 'Doğrulama kodunu gir',
+      subtitle: 'Telefonuna gönderdiğimiz 6 haneli kodu gir.',
+      child: Column(
+        children: [
+          Row(
+            children: List.generate(
+              6,
+              (i) => Expanded(
+                child: Container(
+                  height: 58,
+                  margin: EdgeInsets.only(right: i == 5 ? 0 : 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: HeyColors.line),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(i < 4 ? ['4', '8', '2', '9'][i] : '•', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
                 ),
-                const SizedBox(height: 12),
-                const Text('Şimdilik test doğrulama kodu: 123456', style: TextStyle(color: OpenApp.muted, fontSize: 13)),
-                const Spacer(),
-                FilledButton(onPressed: sendCode, child: const Text('Onay kodu gönder')),
-              ],
+              ),
             ),
           ),
-        ),
-      );
+          const SizedBox(height: 18),
+          const Text('Kod gelmedi mi?  00:45', style: TextStyle(color: HeyColors.muted)),
+          const Spacer(),
+          _PrimaryButton(
+            label: 'Devam et',
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountScreen())),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-class OtpScreen extends StatefulWidget {
-  const OtpScreen({super.key, required this.phone});
-  final String phone;
+class AccountScreen extends StatelessWidget {
+  const AccountScreen({super.key});
+
   @override
-  State<OtpScreen> createState() => _OtpScreenState();
+  Widget build(BuildContext context) {
+    return _OnboardingScaffold(
+      step: 3,
+      title: 'Hesabını oluştur',
+      subtitle: 'Sadece araç sahibine ait temel bilgileri istiyoruz.',
+      child: Column(
+        children: [
+          const TextField(decoration: InputDecoration(labelText: 'Ad Soyad', prefixIcon: Icon(Icons.person_outline_rounded))),
+          const SizedBox(height: 12),
+          const TextField(decoration: InputDecoration(labelText: 'E-posta (isteğe bağlı)', prefixIcon: Icon(Icons.mail_outline_rounded))),
+          const Spacer(),
+          _PrimaryButton(
+            label: 'Devam et',
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const VehicleScreen())),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-class _OtpScreenState extends State<OtpScreen> {
+class VehicleScreen extends StatefulWidget {
+  const VehicleScreen({super.key});
+
+  @override
+  State<VehicleScreen> createState() => _VehicleScreenState();
+}
+
+class _VehicleScreenState extends State<VehicleScreen> {
+  final plate = TextEditingController(text: '34 ABC 123');
+
+  @override
+  Widget build(BuildContext context) {
+    return _OnboardingScaffold(
+      step: 4,
+      title: 'Aracını ekle',
+      subtitle: 'QR etiketine bağlanacak aracın plakasını gir.',
+      child: Column(
+        children: [
+          TextField(
+            controller: plate,
+            textCapitalization: TextCapitalization.characters,
+            decoration: const InputDecoration(labelText: 'Plaka', prefixIcon: Icon(Icons.directions_car_outlined)),
+          ),
+          const SizedBox(height: 12),
+          const TextField(decoration: InputDecoration(labelText: 'Araç adı (isteğe bağlı)', hintText: 'Örn. BMW 3 Serisi')),
+          const SizedBox(height: 18),
+          const _InfoCard(
+            icon: Icons.shield_outlined,
+            title: 'Plakan herkese açık gösterilmez',
+            text: 'QR web sayfasında istersen plakayı kısmi olarak gösterebilirsin.',
+          ),
+          const Spacer(),
+          _PrimaryButton(
+            label: 'Aracı kaydet',
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ActivateQrScreen())),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class ActivateQrScreen extends StatefulWidget {
+  const ActivateQrScreen({super.key});
+
+  @override
+  State<ActivateQrScreen> createState() => _ActivateQrScreenState();
+}
+
+class _ActivateQrScreenState extends State<ActivateQrScreen> {
   final code = TextEditingController();
-  String? error;
-  void verify() {
-    if (code.text.trim() != '123456') {
-      setState(() => error = 'Kod hatalı. Test kodu: 123456');
-      return;
-    }
-    Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const CreateProfileScreen()), (_) => false);
+
+  @override
+  Widget build(BuildContext context) {
+    return _OnboardingScaffold(
+      step: 5,
+      title: 'QR etiketini aktifleştir',
+      subtitle: 'Kutudan çıkan benzersiz HeyCar QR etiketini hesabına bağla.',
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(color: HeyColors.deepNavy, borderRadius: BorderRadius.circular(24)),
+            child: Column(
+              children: [
+                const Icon(Icons.qr_code_scanner_rounded, color: HeyColors.orange, size: 76),
+                const SizedBox(height: 12),
+                const Text('QR etiketini kameraya göster', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 18)),
+                const SizedBox(height: 6),
+                Text('Kamera entegrasyonu backend aşamasında gerçek QR doğrulamasıyla bağlanacak.', textAlign: TextAlign.center, style: TextStyle(color: Colors.white.withOpacity(.62), height: 1.35)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+          const Row(children: [Expanded(child: Divider()), Padding(padding: EdgeInsets.symmetric(horizontal: 10), child: Text('veya', style: TextStyle(color: HeyColors.muted))), Expanded(child: Divider())]),
+          const SizedBox(height: 18),
+          TextField(controller: code, decoration: const InputDecoration(labelText: 'Aktivasyon kodu', hintText: 'Örn. HC-7XK9-P2')),
+          const Spacer(),
+          _PrimaryButton(
+            label: 'Etiketi hesabıma bağla',
+            icon: Icons.link_rounded,
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StickerGuideScreen())),
+          ),
+        ],
+      ),
+    );
   }
+}
+
+class StickerGuideScreen extends StatelessWidget {
+  const StickerGuideScreen({super.key});
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent),
-        body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(26, 12, 26, 28),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const AppSvg(AppIcons.unlock, size: 76, card: true),
-                const SizedBox(height: 26),
-                PageTitle('Onay kodunu gir.', '+90 ${widget.phone} numarasına gönderilen 6 haneli kodu yaz.'),
-                const SizedBox(height: 28),
-                TextField(
-                  controller: code,
-                  keyboardType: TextInputType.number,
-                  autofocus: true,
-                  maxLength: 6,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: 10),
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(6)],
-                  decoration: InputDecoration(counterText: '', hintText: '••••••', errorText: error),
-                  onSubmitted: (_) => verify(),
-                ),
-                const Spacer(),
-                FilledButton(onPressed: verify, child: const Text('Doğrula ve devam et')),
-              ],
+  Widget build(BuildContext context) {
+    return _OnboardingScaffold(
+      step: 6,
+      title: 'Etiketi aracına yerleştir',
+      subtitle: 'Dışarıdan kolay görünen ve kamerayla rahat okutulan bir cam alanı seç.',
+      child: Column(
+        children: [
+          Container(
+            height: 230,
+            decoration: BoxDecoration(
+              color: HeyColors.deepNavy,
+              borderRadius: BorderRadius.circular(26),
             ),
-          ),
-        ),
-      );
-}
-
-class RegisterScreen extends StatelessWidget {
-  const RegisterScreen({super.key});
-  @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent),
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(26),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Stack(
               children: [
-                const PageTitle('Hesabını aç.', 'E-posta ile kayıt bilgilerini gir, sonra profilini oluştur.'),
-                const SizedBox(height: 24),
-                const TextField(keyboardType: TextInputType.emailAddress, decoration: InputDecoration(labelText: 'E-posta')),
-                const SizedBox(height: 14),
-                const TextField(obscureText: true, decoration: InputDecoration(labelText: 'Şifre')),
-                const SizedBox(height: 24),
-                FilledButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateProfileScreen())), child: const Text('Kayıt ol ve devam et')),
-              ],
-            ),
-          ),
-        ),
-      );
-}
-
-class CreateProfileScreen extends StatefulWidget {
-  const CreateProfileScreen({super.key});
-  @override
-  State<CreateProfileScreen> createState() => _CreateProfileScreenState();
-}
-
-class _CreateProfileScreenState extends State<CreateProfileScreen> {
-  String gender = 'Kadın';
-  @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent),
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(26, 4, 26, 32),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const StepHeader(step: 1, total: 2),
-                const SizedBox(height: 24),
-                const PageTitle('Seni tanıyalım.', 'Profilin kilitli başlayacak. Temel bilgilerini ekle.'),
-                const SizedBox(height: 24),
-                Container(
-                  height: 170,
-                  width: double.infinity,
-                  decoration: BoxDecoration(color: OpenApp.soft, borderRadius: BorderRadius.circular(30)),
-                  child: const Center(child: Column(mainAxisSize: MainAxisSize.min, children: [AppSvg(AppIcons.camera, size: 52), SizedBox(height: 10), Text('Fotoğraf ekle', style: TextStyle(fontWeight: FontWeight.w800))])),
-                ),
-                const SizedBox(height: 16),
-                const TextField(decoration: InputDecoration(labelText: 'Adın')),
-                const SizedBox(height: 14),
-                const TextField(decoration: InputDecoration(labelText: 'Konum')),
-                const SizedBox(height: 18),
-                Wrap(
-                  spacing: 8,
-                  children: ['Kadın', 'Erkek', 'Belirtmek istemiyorum'].map((item) => ChoiceChip(label: Text(item), selected: gender == item, selectedColor: OpenApp.lime, onSelected: (_) => setState(() => gender = item))).toList(),
-                ),
-                const SizedBox(height: 24),
-                FilledButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LockQuestionsScreen())), child: const Text('Kilit sorularına geç')),
-              ],
-            ),
-          ),
-        ),
-      );
-}
-
-class LockQuestionsScreen extends StatefulWidget {
-  const LockQuestionsScreen({super.key});
-  @override
-  State<LockQuestionsScreen> createState() => _LockQuestionsScreenState();
-}
-
-class _LockQuestionsScreenState extends State<LockQuestionsScreen> {
-  final selected = <int>{};
-  final questions = const [
-    'Bir pazar sabahı seni nerede bulurum?',
-    'Seni güldüren küçük şey ne?',
-    'Birine hemen güvenmeni sağlayan şey?',
-    'Hayalindeki plansız gün nasıl geçer?',
-    'Bir şarkı seni hangi ana götürür?',
-    'İlk buluşmada en çok neye dikkat edersin?',
-  ];
-  void toggle(int i) {
-    setState(() {
-      if (selected.contains(i)) {
-        selected.remove(i);
-      } else if (selected.length < 3) {
-        selected.add(i);
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent),
-        body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(26, 4, 26, 28),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const StepHeader(step: 2, total: 2),
-                const SizedBox(height: 24),
-                const PageTitle('3 kilit sorunu seç.', 'Seni keşfetmek isteyen kişi önce bu sorulardan birini cevaplayacak.'),
-                const SizedBox(height: 18),
-                Expanded(
-                  child: ListView.separated(
-                    itemCount: questions.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
-                    itemBuilder: (_, i) {
-                      final active = selected.contains(i);
-                      return InkWell(
-                        onTap: () => toggle(i),
-                        borderRadius: BorderRadius.circular(22),
-                        child: Container(
-                          padding: const EdgeInsets.all(18),
-                          decoration: BoxDecoration(
-                            color: active ? OpenApp.lime.withValues(alpha: .16) : OpenApp.soft,
-                            borderRadius: BorderRadius.circular(22),
-                            border: Border.all(color: active ? OpenApp.lime : Colors.transparent, width: 2),
-                          ),
-                          child: Row(children: [Expanded(child: Text(questions[i], style: const TextStyle(fontWeight: FontWeight.w700))), AppSvg(active ? AppIcons.unlock : AppIcons.lock, size: 28)]),
-                        ),
-                      );
-                    },
+                const Center(child: Icon(Icons.directions_car_filled_rounded, color: Colors.white, size: 128)),
+                Positioned(
+                  right: 48,
+                  top: 52,
+                  child: Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: HeyColors.orange, width: 3)),
+                    child: const Icon(Icons.qr_code_2_rounded, size: 54),
                   ),
                 ),
-                FilledButton(
-                  onPressed: selected.length == 3 ? () => Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const AppShell()), (_) => false) : null,
-                  child: Text(selected.length == 3 ? 'Profili tamamla' : '${selected.length}/3 soru seçildi'),
-                ),
               ],
             ),
           ),
+          const SizedBox(height: 18),
+          const _GuideRow(icon: Icons.cleaning_services_outlined, text: 'Cam yüzeyi temiz ve kuru olsun.'),
+          const _GuideRow(icon: Icons.visibility_outlined, text: 'QR dışarıdan net şekilde görünsün.'),
+          const _GuideRow(icon: Icons.center_focus_strong_rounded, text: 'Kenarları kıvrılmadan düz yapıştır.'),
+          const Spacer(),
+          _PrimaryButton(
+            label: 'Kurulumu tamamla',
+            onTap: () => Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const SuccessScreen()), (_) => false),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class SuccessScreen extends StatelessWidget {
+  const SuccessScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: HeyColors.deepNavy,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 112,
+                height: 112,
+                decoration: const BoxDecoration(color: HeyColors.orange, shape: BoxShape.circle),
+                child: const Icon(Icons.check_rounded, color: Colors.white, size: 70),
+              ),
+              const SizedBox(height: 28),
+              const Text('HeyCar hazır!', style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 10),
+              Text('Artık QR etiketini okutan kişiler uygulama indirmeden web üzerinden sana ulaşabilir.', textAlign: TextAlign.center, style: TextStyle(color: Colors.white.withOpacity(.7), fontSize: 16, height: 1.45)),
+              const SizedBox(height: 28),
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(color: Colors.white.withOpacity(.07), borderRadius: BorderRadius.circular(20)),
+                child: const Column(
+                  children: [
+                    _DarkFeature(icon: Icons.chat_bubble_outline_rounded, text: 'Anonim mesaj gönderebilir'),
+                    _DarkFeature(icon: Icons.phone_in_talk_outlined, text: 'Gizli arama başlatabilir'),
+                    _DarkFeature(icon: Icons.warning_amber_rounded, text: 'Hasar veya far uyarısı gönderebilir'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 30),
+              _PrimaryButton(label: 'Ana sayfaya git', onTap: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const AppShell()))),
+            ],
+          ),
         ),
-      );
+      ),
+    );
+  }
 }
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
+
   @override
   State<AppShell> createState() => _AppShellState();
 }
 
 class _AppShellState extends State<AppShell> {
   int index = 0;
-  final screens = const [DiscoverScreen(), KeysScreen(), MessagesScreen(), MyProfileScreen()];
 
-  @override
-  Widget build(BuildContext context) => Scaffold(
-        body: screens[index],
-        bottomNavigationBar: SafeArea(
-          top: false,
-          child: Container(
-            margin: const EdgeInsets.fromLTRB(18, 4, 18, 10),
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(30),
-              border: Border.all(color: const Color(0xFFF0F0F0)),
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .08), blurRadius: 24, offset: const Offset(0, 10))],
-            ),
-            child: NavigationBar(
-              height: 66,
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              indicatorColor: OpenApp.lime.withValues(alpha: .16),
-              selectedIndex: index,
-              onDestinationSelected: (value) => setState(() => index = value),
-              destinations: [
-                NavigationDestination(icon: AppSvg(index == 0 ? AppIcons.navHomeActive : AppIcons.navHome, size: 24), label: 'Keşfet'),
-                NavigationDestination(icon: AppSvg(index == 1 ? AppIcons.navKeyActive : AppIcons.navKey, size: 24), label: 'Anahtarlar'),
-                NavigationDestination(icon: AppSvg(index == 2 ? AppIcons.navMessagesActive : AppIcons.navMessages, size: 24), label: 'Mesajlar'),
-                NavigationDestination(icon: AppSvg(index == 3 ? AppIcons.navProfileActive : AppIcons.navProfile, size: 24), label: 'Profil'),
-              ],
-            ),
-          ),
-        ),
-      );
-}
-
-class LockedProfile {
-  const LockedProfile({required this.name, required this.age, required this.location, required this.distance, required this.bio, required this.questions, required this.photo, required this.interests});
-  final String name;
-  final int age;
-  final String location;
-  final String distance;
-  final String bio;
-  final List<String> questions;
-  final String photo;
-  final List<String> interests;
-}
-
-class DiscoverScreen extends StatefulWidget {
-  const DiscoverScreen({super.key});
-  @override
-  State<DiscoverScreen> createState() => _DiscoverScreenState();
-}
-
-class _DiscoverScreenState extends State<DiscoverScreen> {
-  final profiles = const [
-    LockedProfile(
-      name: 'Ece',
-      age: 24,
-      location: 'Kadıköy',
-      distance: '2 km',
-      bio: 'Konser, fotoğraf ve spontane şehir kaçamakları.',
-      questions: ['Son anda aldığın en güzel karar neydi?', 'Bir şarkı seni hangi ana götürür?', 'İlk buluşmada en çok neye dikkat edersin?'],
-      photo: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=900&q=85',
-      interests: ['Müzik', 'Seyahat', 'Fotoğrafçılık'],
-    ),
-    LockedProfile(
-      name: 'Deniz',
-      age: 27,
-      location: 'Beşiktaş',
-      distance: '4,1 km',
-      bio: 'Kahve, sahil ve uzun yürüyüşler.',
-      questions: ['Bir pazar sabahı seni nerede bulurum?', 'Seni güldüren küçük şey ne?', 'Plansız bir günün nasıl geçer?'],
-      photo: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=900&q=85',
-      interests: ['Kahve', 'Gezi', 'Müzik'],
-    ),
-    LockedProfile(
-      name: 'Selin',
-      age: 29,
-      location: 'Şişli',
-      distance: '6,8 km',
-      bio: 'İyi yemek, kötü espriler ve spontane planlar.',
-      questions: ['Hafta sonu senin için mükemmel nasıl geçer?', 'Birine hemen güvenmeni sağlayan şey?', 'Seni gerçekten heyecanlandıran şey ne?'],
-      photo: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=900&q=85',
-      interests: ['Yemek', 'Sinema', 'Gezi'],
-    ),
-  ];
-
-  int profileIndex = 0;
-  LockedProfile get profile => profiles[profileIndex];
-  void move(int delta) => setState(() => profileIndex = (profileIndex + delta + profiles.length) % profiles.length);
+  static const pages = [HomeTab(), MessagesTab(), VehiclesTab(), ProfileTab()];
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final cardHeight = (constraints.maxHeight * .57).clamp(390.0, 570.0).toDouble();
-          return SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(22, 16, 22, 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _header(),
-                const SizedBox(height: 28),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(children: [Text('Keşfet', style: TextStyle(fontSize: 34, fontWeight: FontWeight.w900, letterSpacing: -.8)), SizedBox(width: 8), Icon(Icons.auto_awesome_rounded, color: OpenApp.lime, size: 25)]),
-                          SizedBox(height: 6),
-                          Text('Sana uygun insanları keşfet', style: TextStyle(fontSize: 16, color: Color(0xFFAAAAAA), fontWeight: FontWeight.w600)),
-                        ],
-                      ),
-                    ),
-                    _filterButton(),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                SizedBox(height: cardHeight, child: _profileDeck()),
-                const SizedBox(height: 22),
-                _actions(),
-                const SizedBox(height: 14),
-                const Center(child: Text('Anahtarla kilidi aç', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800))),
-                const SizedBox(height: 4),
-                const Center(
-                  child: Text.rich(
-                    TextSpan(children: [TextSpan(text: '3', style: TextStyle(color: OpenApp.lime, fontWeight: FontWeight.w900)), TextSpan(text: ' soruyla birbirinizi daha iyi tanıyın')]),
-                    style: TextStyle(color: OpenApp.muted, fontSize: 13.5, fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
+    return Scaffold(
+      body: IndexedStack(index: index, children: pages),
+      bottomNavigationBar: NavigationBar(
+        height: 72,
+        selectedIndex: index,
+        indicatorColor: HeyColors.softOrange,
+        onDestinationSelected: (value) => setState(() => index = value),
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home_rounded, color: HeyColors.orange), label: 'Ana Sayfa'),
+          NavigationDestination(icon: Icon(Icons.chat_bubble_outline_rounded), selectedIcon: Icon(Icons.chat_bubble_rounded, color: HeyColors.orange), label: 'Mesajlar'),
+          NavigationDestination(icon: Icon(Icons.directions_car_outlined), selectedIcon: Icon(Icons.directions_car_filled_rounded, color: HeyColors.orange), label: 'Araçlarım'),
+          NavigationDestination(icon: Icon(Icons.person_outline_rounded), selectedIcon: Icon(Icons.person_rounded, color: HeyColors.orange), label: 'Profil'),
+        ],
       ),
     );
   }
+}
 
-  Widget _header() => Row(
+class HomeTab extends StatelessWidget {
+  const HomeTab({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return _Page(
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
         children: [
-          Stack(
-            clipBehavior: Clip.none,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                width: 58,
-                height: 58,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(19),
-                  image: const DecorationImage(
-                    image: NetworkImage('https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=240&q=80'),
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
-              const Positioned(right: -1, bottom: -1, child: CircleAvatar(radius: 7, backgroundColor: Colors.white, child: CircleAvatar(radius: 5, backgroundColor: OpenApp.lime))),
+              const _BrandMark(size: 25, dark: true),
+              IconButton(onPressed: () {}, icon: const Icon(Icons.notifications_none_rounded)),
             ],
           ),
-          const SizedBox(width: 14),
-          const Expanded(
+          const SizedBox(height: 24),
+          const Text('Merhaba 👋', style: TextStyle(color: HeyColors.muted, fontSize: 15)),
+          const SizedBox(height: 4),
+          const Text('Aracın güvende, bağlantın aktif.', style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800, height: 1.15)),
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: HeyColors.deepNavy,
+              borderRadius: BorderRadius.circular(26),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Merhaba 👋', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
-                SizedBox(height: 3),
-                Row(children: [Icon(Icons.location_on_rounded, size: 17, color: OpenApp.muted), SizedBox(width: 3), Text('İstanbul, Türkiye', style: TextStyle(color: OpenApp.muted, fontWeight: FontWeight.w700))]),
+                Row(
+                  children: [
+                    Container(width: 56, height: 56, decoration: BoxDecoration(color: Colors.white.withOpacity(.08), borderRadius: BorderRadius.circular(16)), child: const Icon(Icons.directions_car_filled_rounded, color: Colors.white, size: 32)),
+                    const SizedBox(width: 14),
+                    const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('BMW 3 Serisi', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 17)), SizedBox(height: 4), Text('34 ABC 123', style: TextStyle(color: Color(0xFFAAB2C0)))])),
+                    Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7), decoration: BoxDecoration(color: HeyColors.success.withOpacity(.18), borderRadius: BorderRadius.circular(20)), child: const Text('● Aktif', style: TextStyle(color: Color(0xFF63E6B2), fontSize: 12, fontWeight: FontWeight.w700))),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(color: Colors.white.withOpacity(.06), borderRadius: BorderRadius.circular(18)),
+                  child: const Row(children: [Icon(Icons.qr_code_2_rounded, color: HeyColors.orange, size: 42), SizedBox(width: 12), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('QR Etiketim', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)), SizedBox(height: 3), Text('HC-7XK9-P2 • Bağlı', style: TextStyle(color: Color(0xFFAAB2C0), fontSize: 13))])), Icon(Icons.chevron_right_rounded, color: Colors.white54)]),
+                ),
               ],
             ),
           ),
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Container(width: 48, height: 48, decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 16, offset: Offset(0, 7))]), child: const Icon(Icons.notifications_none_rounded, size: 27)),
-              const Positioned(right: 2, top: 1, child: CircleAvatar(radius: 6, backgroundColor: Colors.white, child: CircleAvatar(radius: 4, backgroundColor: OpenApp.lime))),
+          const SizedBox(height: 24),
+          const _SectionTitle('Bugün'),
+          const SizedBox(height: 12),
+          Row(
+            children: const [
+              Expanded(child: _StatCard(value: '3', label: 'Bildirim', icon: Icons.notifications_active_outlined)),
+              SizedBox(width: 12),
+              Expanded(child: _StatCard(value: '1', label: 'Mesaj', icon: Icons.chat_bubble_outline_rounded)),
+              SizedBox(width: 12),
+              Expanded(child: _StatCard(value: '0', label: 'Gizli arama', icon: Icons.phone_in_talk_outlined)),
             ],
           ),
+          const SizedBox(height: 24),
+          const _SectionTitle('Son hareketler'),
+          const SizedBox(height: 10),
+          const _ActivityTile(icon: Icons.lightbulb_outline_rounded, title: 'Farlarınız açık olabilir', subtitle: '14:32 • Web üzerinden bildirildi', color: HeyColors.orange),
+          const _ActivityTile(icon: Icons.local_parking_rounded, title: 'Aracınızı çekebilir misiniz?', subtitle: '12:18 • Bildirim görüldü', color: Color(0xFF377DFF)),
+          const _ActivityTile(icon: Icons.apartment_rounded, title: 'Site yönetiminden bildirim', subtitle: 'Dün • B Blok çıkışı', color: Color(0xFF8B5CF6)),
         ],
-      );
+      ),
+    );
+  }
+}
 
-  Widget _filterButton() => Container(
-        width: 52,
-        height: 52,
-        decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .08), blurRadius: 20, offset: const Offset(0, 9))]),
-        child: const Icon(Icons.tune_rounded, size: 27),
-      );
+class MessagesTab extends StatelessWidget {
+  const MessagesTab({super.key});
 
-  Widget _profileDeck() {
-    final next = profiles[(profileIndex + 1) % profiles.length];
-    final after = profiles[(profileIndex + 2) % profiles.length];
-    return Stack(
-      alignment: Alignment.center,
-      clipBehavior: Clip.none,
-      children: [
-        Positioned(left: 4, right: 48, top: 34, bottom: 22, child: Transform.rotate(angle: -.025, child: _backPhoto(next.photo))),
-        Positioned(left: 48, right: 4, top: 34, bottom: 22, child: Transform.rotate(angle: .025, child: _backPhoto(after.photo))),
-        Positioned.fill(
-          left: 26,
-          right: 26,
-          child: GestureDetector(
-            onHorizontalDragEnd: (details) {
-              final velocity = details.primaryVelocity ?? 0;
-              if (velocity < 0) {
-                move(1);
-              } else if (velocity > 0) {
-                move(-1);
-              }
-            },
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 260),
-              child: _frontCard(profile),
+  @override
+  Widget build(BuildContext context) {
+    return _Page(
+      title: 'Mesajlar',
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+        children: const [
+          _MessageCard(icon: Icons.local_parking_rounded, title: 'Aracınızı çekebilir misiniz?', body: 'Çıkışımı kapatıyor, müsaitseniz aracınızı çekebilir misiniz?', time: '14:32', unread: true),
+          _MessageCard(icon: Icons.lightbulb_outline_rounded, title: 'Farlarınız açık', body: 'Aracınızın farları açık kalmış olabilir.', time: '12:18'),
+          _MessageCard(icon: Icons.apartment_rounded, title: 'Marmara Sitesi Güvenlik', body: 'Aracınız B Blok çıkışını engelliyor.', time: 'Dün'),
+        ],
+      ),
+    );
+  }
+}
+
+class VehiclesTab extends StatelessWidget {
+  const VehiclesTab({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return _Page(
+      title: 'Araçlarım',
+      action: IconButton(onPressed: () {}, icon: const Icon(Icons.add_circle_outline_rounded)),
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), border: Border.all(color: HeyColors.line)),
+            child: Column(
+              children: [
+                const Row(children: [CircleAvatar(radius: 28, backgroundColor: HeyColors.softOrange, child: Icon(Icons.directions_car_filled_rounded, color: HeyColors.orange, size: 30)), SizedBox(width: 14), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('BMW 3 Serisi', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)), SizedBox(height: 4), Text('34 ABC 123', style: TextStyle(color: HeyColors.muted))])), Icon(Icons.more_horiz_rounded)]),
+                const SizedBox(height: 18),
+                const Divider(height: 1),
+                const SizedBox(height: 14),
+                const _SettingRow(icon: Icons.qr_code_2_rounded, title: 'QR etiketim', value: 'Aktif'),
+                const _SettingRow(icon: Icons.notifications_none_rounded, title: 'Bildirim ayarları'),
+                const _SettingRow(icon: Icons.schedule_rounded, title: 'Rahatsız etmeyin saatleri'),
+                const _SettingRow(icon: Icons.group_outlined, title: 'Aile / ikinci sürücü'),
+                const _SettingRow(icon: Icons.web_rounded, title: 'QR web sayfası önizleme'),
+              ],
             ),
           ),
+          const SizedBox(height: 16),
+          const _InfoCard(icon: Icons.language_rounded, title: 'QR okutan kişi uygulama indirmez', text: 'Etiket doğrudan HeyCar web sayfasını açar. Araç sahibinin telefon numarası ziyaretçiye gösterilmez.'),
+        ],
+      ),
+    );
+  }
+}
+
+class ProfileTab extends StatelessWidget {
+  const ProfileTab({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return _Page(
+      title: 'Profil',
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+        children: const [
+          _ProfileHeader(),
+          SizedBox(height: 18),
+          _SettingsCard(children: [
+            _SettingRow(icon: Icons.person_outline_rounded, title: 'Hesap bilgilerim'),
+            _SettingRow(icon: Icons.phone_outlined, title: 'Gizli arama ayarları'),
+            _SettingRow(icon: Icons.shield_outlined, title: 'Gizlilik ve güvenlik'),
+            _SettingRow(icon: Icons.apartment_outlined, title: 'Site / AVM bağlantıları'),
+            _SettingRow(icon: Icons.help_outline_rounded, title: 'Yardım ve destek'),
+          ]),
+        ],
+      ),
+    );
+  }
+}
+
+class _OnboardingScaffold extends StatelessWidget {
+  const _OnboardingScaffold({required this.step, required this.title, required this.subtitle, required this.child});
+
+  final int step;
+  final String title;
+  final String subtitle;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(22, 14, 22, 22),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  IconButton(onPressed: () => Navigator.maybePop(context), icon: const Icon(Icons.arrow_back_rounded)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: LinearProgressIndicator(value: step / 6, minHeight: 5, backgroundColor: HeyColors.line, color: HeyColors.orange),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text('$step/6', style: const TextStyle(color: HeyColors.muted, fontSize: 12)),
+                ],
+              ),
+              const SizedBox(height: 28),
+              Text(title, style: const TextStyle(fontSize: 29, fontWeight: FontWeight.w800, height: 1.1)),
+              const SizedBox(height: 9),
+              Text(subtitle, style: const TextStyle(color: HeyColors.muted, fontSize: 15, height: 1.45)),
+              const SizedBox(height: 28),
+              Expanded(child: child),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+}
+
+class _Page extends StatelessWidget {
+  const _Page({required this.child, this.title, this.action});
+  final Widget child;
+  final String? title;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: title == null ? null : AppBar(title: Text(title!, style: const TextStyle(fontWeight: FontWeight.w800)), centerTitle: false, actions: action == null ? null : [action!]),
+      body: SafeArea(child: child),
+    );
+  }
+}
+
+class _BrandMark extends StatelessWidget {
+  const _BrandMark({required this.size, this.dark = false});
+  final double size;
+  final bool dark;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Icon(Icons.directions_car_filled_rounded, color: dark ? HeyColors.navy : Colors.white, size: size),
+            Positioned(right: -7, top: -7, child: Container(width: size * .65, height: size * .42, decoration: BoxDecoration(color: HeyColors.orange, borderRadius: BorderRadius.circular(8)), child: Row(mainAxisAlignment: MainAxisAlignment.center, children: List.generate(3, (_) => Container(width: 3, height: 3, margin: const EdgeInsets.symmetric(horizontal: 1), decoration: const BoxDecoration(color: HeyColors.deepNavy, shape: BoxShape.circle)))))),
+          ],
+        ),
+        const SizedBox(width: 12),
+        RichText(text: TextSpan(style: TextStyle(fontSize: size, fontWeight: FontWeight.w800), children: [TextSpan(text: 'Hey', style: TextStyle(color: dark ? HeyColors.navy : Colors.white)), const TextSpan(text: 'Car', style: TextStyle(color: HeyColors.orange))])),
       ],
     );
   }
+}
 
-  Widget _backPhoto(String url) => ClipRRect(
-        borderRadius: BorderRadius.circular(44),
-        child: Image.network(url, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Container(color: const Color(0xFFEAEAEA))),
-      );
+class _PrimaryButton extends StatelessWidget {
+  const _PrimaryButton({required this.label, required this.onTap, this.icon});
+  final String label;
+  final VoidCallback onTap;
+  final IconData? icon;
 
-  Widget _frontCard(LockedProfile item) => Container(
-        key: ValueKey(profileIndex),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(48),
-          border: Border.all(color: Colors.white, width: 3),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .18), blurRadius: 30, offset: const Offset(0, 14))],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(46),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Image.network(item.photo, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Container(color: const Color(0xFFEAEAEA), child: const Center(child: AppSvg(AppIcons.profile, size: 110)))),
-              Positioned(top: 22, left: 20, child: _onlineChip()),
-              Positioned(
-                top: 18,
-                right: 18,
-                child: Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, border: Border.all(color: OpenApp.lime, width: 1.5)),
-                  child: const Icon(Icons.auto_awesome_rounded, size: 22, color: OpenApp.ink),
-                ),
-              ),
-              Align(
-                alignment: Alignment.bottomCenter,
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.fromLTRB(24, 80, 24, 22),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.transparent, Colors.black.withValues(alpha: .88)]),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(children: [Flexible(child: Text('${item.name}, ${item.age}', style: const TextStyle(color: Colors.white, fontSize: 31, fontWeight: FontWeight.w900))), const SizedBox(width: 7), const Icon(Icons.verified_rounded, color: OpenApp.lime, size: 23)]),
-                      const SizedBox(height: 8),
-                      Row(children: [const Icon(Icons.location_on_rounded, color: OpenApp.lime, size: 20), const SizedBox(width: 4), Text('${item.distance} uzakta', style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700))]),
-                      const SizedBox(height: 14),
-                      Wrap(spacing: 8, runSpacing: 8, children: item.interests.map(_interestChip).toList()),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-
-  Widget _onlineChip() => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(color: Colors.black.withValues(alpha: .45), borderRadius: BorderRadius.circular(99), border: Border.all(color: Colors.white24)),
-        child: const Row(mainAxisSize: MainAxisSize.min, children: [CircleAvatar(radius: 4, backgroundColor: OpenApp.lime), SizedBox(width: 8), Text('Çevrimiçi', style: TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w800))]),
-      );
-
-  Widget _interestChip(String text) {
-    final icon = text.contains('Müzik') || text.contains('Konser') ? Icons.music_note_rounded : text.contains('Seyahat') || text.contains('Gezi') ? Icons.flight_rounded : text.contains('Fotoğraf') ? Icons.photo_camera_rounded : text.contains('Kahve') ? Icons.local_cafe_rounded : text.contains('Yemek') ? Icons.restaurant_rounded : Icons.local_activity_rounded;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-      decoration: BoxDecoration(color: Colors.black.withValues(alpha: .52), borderRadius: BorderRadius.circular(99), border: Border.all(color: Colors.white12)),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(icon, color: OpenApp.lime, size: 17), const SizedBox(width: 6), Text(text, style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w800))]),
-    );
-  }
-
-  Widget _actions() => Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          _RoundAction(color: Colors.white, icon: Icons.close_rounded, iconColor: OpenApp.ink, onTap: () => move(1)),
-          const SizedBox(width: 26),
-          _RoundAction(color: OpenApp.lime, size: 88, glow: true, onTap: () => _showQuestions(context), child: const AppSvg(AppIcons.key, size: 42)),
-          const SizedBox(width: 26),
-          _RoundAction(color: Colors.white, icon: Icons.favorite_border_rounded, iconColor: OpenApp.ink, onTap: () => move(1)),
-        ],
-      );
-
-  void _showQuestions(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) => Container(
-        padding: const EdgeInsets.fromLTRB(22, 16, 22, 30),
-        decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(34))),
-        child: SafeArea(
-          top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(width: 44, height: 5, decoration: BoxDecoration(color: const Color(0xFFD8D8D8), borderRadius: BorderRadius.circular(10))),
-              const SizedBox(height: 20),
-              Text('${profile.name} için bir kilit sorusu seç', style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w900), textAlign: TextAlign.center),
-              const SizedBox(height: 18),
-              for (final question in profile.questions)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: InkWell(
-                    onTap: () {
-                      Navigator.pop(sheetContext);
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => AnswerScreen(profile: profile, question: question)));
-                    },
-                    borderRadius: BorderRadius.circular(20),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(color: OpenApp.soft, borderRadius: BorderRadius.circular(20)),
-                      child: Row(children: [const AppSvg(AppIcons.question, size: 26), const SizedBox(width: 12), Expanded(child: Text(question, style: const TextStyle(fontWeight: FontWeight.w700))), const Icon(Icons.chevron_right_rounded)]),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 58,
+      child: FilledButton(
+        style: FilledButton.styleFrom(backgroundColor: HeyColors.orange, foregroundColor: HeyColors.deepNavy, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(17))),
+        onPressed: onTap,
+        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)), if (icon != null) ...[const SizedBox(width: 8), Icon(icon, size: 21)]]),
       ),
     );
   }
 }
 
-class _RoundAction extends StatelessWidget {
-  const _RoundAction({required this.color, required this.onTap, this.icon, this.child, this.iconColor = Colors.white, this.size = 72, this.glow = false});
-  final Color color;
-  final VoidCallback onTap;
-  final IconData? icon;
-  final Widget? child;
-  final Color iconColor;
-  final double size;
-  final bool glow;
-
+class _InfoCard extends StatelessWidget {
+  const _InfoCard({required this.icon, required this.title, required this.text});
+  final IconData icon;
+  final String title;
+  final String text;
   @override
   Widget build(BuildContext context) => Container(
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          boxShadow: [BoxShadow(color: glow ? OpenApp.lime.withValues(alpha: .40) : Colors.black.withValues(alpha: .10), blurRadius: glow ? 30 : 16, spreadRadius: glow ? 5 : 0, offset: const Offset(0, 8))],
-        ),
-        child: Material(
-          color: color,
-          shape: const CircleBorder(),
-          child: InkWell(
-            customBorder: const CircleBorder(),
-            onTap: onTap,
-            child: SizedBox(width: size, height: size, child: Center(child: child ?? Icon(icon, size: 38, color: iconColor))),
-          ),
-        ),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(color: HeyColors.softOrange, borderRadius: BorderRadius.circular(18)),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Icon(icon, color: HeyColors.orange), const SizedBox(width: 12), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(fontWeight: FontWeight.w700)), const SizedBox(height: 4), Text(text, style: const TextStyle(color: HeyColors.muted, height: 1.35))]))]),
       );
 }
 
-class AnswerScreen extends StatefulWidget {
-  const AnswerScreen({super.key, required this.profile, required this.question});
-  final LockedProfile profile;
-  final String question;
+class _GuideRow extends StatelessWidget {
+  const _GuideRow({required this.icon, required this.text});
+  final IconData icon;
+  final String text;
   @override
-  State<AnswerScreen> createState() => _AnswerScreenState();
+  Widget build(BuildContext context) => Padding(padding: const EdgeInsets.only(bottom: 12), child: Row(children: [Container(width: 38, height: 38, decoration: BoxDecoration(color: HeyColors.softOrange, borderRadius: BorderRadius.circular(12)), child: Icon(icon, color: HeyColors.orange, size: 20)), const SizedBox(width: 12), Expanded(child: Text(text, style: const TextStyle(fontWeight: FontWeight.w600)))]));
 }
 
-class _AnswerScreenState extends State<AnswerScreen> {
-  final answer = TextEditingController();
+class _DarkFeature extends StatelessWidget {
+  const _DarkFeature({required this.icon, required this.text});
+  final IconData icon;
+  final String text;
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent),
-        body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 26),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const AppSvg(AppIcons.question, size: 70, card: true),
-                const SizedBox(height: 20),
-                Text('${widget.profile.name} için anahtarını oluştur.', style: const TextStyle(fontSize: 30, height: 1.05, fontWeight: FontWeight.w900)),
-                const SizedBox(height: 22),
-                Container(width: double.infinity, padding: const EdgeInsets.all(17), decoration: BoxDecoration(color: OpenApp.soft, borderRadius: BorderRadius.circular(20)), child: Text(widget.question, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800))),
-                const SizedBox(height: 14),
-                TextField(controller: answer, maxLines: 5, maxLength: 250, decoration: const InputDecoration(hintText: 'Cevabını yaz...')),
-                const Spacer(),
-                FilledButton(
-                  onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => KeySentScreen(name: widget.profile.name))),
-                  child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [AppSvg(AppIcons.key, size: 26), SizedBox(width: 10), Text('Anahtarı gönder')]),
-                ),
-              ],
-            ),
-          ),
-        ),
+  Widget build(BuildContext context) => Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Row(children: [Icon(icon, color: HeyColors.orange), const SizedBox(width: 12), Expanded(child: Text(text, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)))]));
+}
+
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.text);
+  final String text;
+  @override
+  Widget build(BuildContext context) => Text(text, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800));
+}
+
+class _StatCard extends StatelessWidget {
+  const _StatCard({required this.value, required this.label, required this.icon});
+  final String value;
+  final String label;
+  final IconData icon;
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: HeyColors.line)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Icon(icon, color: HeyColors.orange, size: 22), const SizedBox(height: 12), Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800)), const SizedBox(height: 2), Text(label, style: const TextStyle(color: HeyColors.muted, fontSize: 11))]),
       );
 }
 
-class KeySentScreen extends StatelessWidget {
-  const KeySentScreen({super.key, required this.name});
-  final String name;
+class _ActivityTile extends StatelessWidget {
+  const _ActivityTile({required this.icon, required this.title, required this.subtitle, required this.color});
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color color;
   @override
-  Widget build(BuildContext context) => Scaffold(
-        body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(28),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const AppSvg(AppIcons.key, size: 150, card: true),
-                const SizedBox(height: 24),
-                const Text('Anahtar gönderildi!', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900)),
-                const SizedBox(height: 12),
-                Text('$name cevabını gördüğünde anahtarını kabul edebilir.', textAlign: TextAlign.center),
-                const SizedBox(height: 30),
-                FilledButton(onPressed: () => Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const AppShell()), (_) => false), child: const Text('Keşfete dön')),
-              ],
-            ),
-          ),
-        ),
+  Widget build(BuildContext context) => Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: HeyColors.line)),
+        child: Row(children: [Container(width: 44, height: 44, decoration: BoxDecoration(color: color.withOpacity(.10), borderRadius: BorderRadius.circular(13)), child: Icon(icon, color: color)), const SizedBox(width: 12), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(fontWeight: FontWeight.w700)), const SizedBox(height: 4), Text(subtitle, style: const TextStyle(color: HeyColors.muted, fontSize: 12.5))])), const Icon(Icons.chevron_right_rounded, color: Colors.black26)]),
       );
 }
 
-class KeysScreen extends StatelessWidget {
-  const KeysScreen({super.key});
+class _MessageCard extends StatelessWidget {
+  const _MessageCard({required this.icon, required this.title, required this.body, required this.time, this.unread = false});
+  final IconData icon;
+  final String title;
+  final String body;
+  final String time;
+  final bool unread;
   @override
-  Widget build(BuildContext context) => SafeArea(
+  Widget build(BuildContext context) => Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: unread ? HeyColors.orange.withOpacity(.35) : HeyColors.line)),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [CircleAvatar(backgroundColor: HeyColors.softOrange, foregroundColor: HeyColors.orange, child: Icon(icon)), const SizedBox(width: 12), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(children: [Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.w800))), Text(time, style: const TextStyle(color: HeyColors.muted, fontSize: 12))]), const SizedBox(height: 7), Text(body, style: const TextStyle(color: HeyColors.muted, height: 1.35)), if (unread) ...[const SizedBox(height: 10), const Text('Yeni bildirim', style: TextStyle(color: HeyColors.orange, fontSize: 12, fontWeight: FontWeight.w800))]]))]),
+      );
+}
+
+class _SettingRow extends StatelessWidget {
+  const _SettingRow({required this.icon, required this.title, this.value});
+  final IconData icon;
+  final String title;
+  final String? value;
+  @override
+  Widget build(BuildContext context) => InkWell(
+        onTap: () {},
         child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const PageTitle('Anahtarlar', 'Sana gelen cevaplar burada.'),
-              const SizedBox(height: 24),
-              for (final item in const [('Ece', '“Kahve, sahil ve uzun bir yürüyüş.”'), ('Selin', '“Bence iyi bir gün plansız başlayandır.”')])
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Container(
-                    decoration: BoxDecoration(color: OpenApp.soft, borderRadius: BorderRadius.circular(22)),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.all(14),
-                      leading: const AppSvg(AppIcons.key, size: 46),
-                      title: Text('${item.$1} sana bir anahtar gönderdi', style: const TextStyle(fontWeight: FontWeight.w800)),
-                      subtitle: Text(item.$2),
-                      trailing: FilledButton(
-                        style: FilledButton.styleFrom(minimumSize: const Size(72, 44), padding: const EdgeInsets.symmetric(horizontal: 18)),
-                        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => MatchScreen(name: item.$1))),
-                        child: const Text('Aç'),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          child: Row(children: [Icon(icon, color: HeyColors.navy), const SizedBox(width: 12), Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.w600))), if (value != null) Text(value!, style: const TextStyle(color: HeyColors.success, fontWeight: FontWeight.w700, fontSize: 12)), const SizedBox(width: 5), const Icon(Icons.chevron_right_rounded, color: Colors.black26)]),
         ),
       );
 }
 
-class MatchScreen extends StatelessWidget {
-  const MatchScreen({super.key, required this.name});
-  final String name;
+class _SettingsCard extends StatelessWidget {
+  const _SettingsCard({required this.children});
+  final List<Widget> children;
   @override
-  Widget build(BuildContext context) => Scaffold(
-        body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(28),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const AppSvg(AppIcons.unlock, size: 160, card: true),
-                const SizedBox(height: 24),
-                const Text('Kilit açıldı.', style: TextStyle(fontSize: 34, fontWeight: FontWeight.w900)),
-                const SizedBox(height: 12),
-                Text('$name ile artık birbirinizi görebilir ve konuşabilirsiniz.', textAlign: TextAlign.center),
-                const SizedBox(height: 28),
-                FilledButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(name: name))), child: const Text('Mesaj gönder')),
-              ],
-            ),
-          ),
-        ),
-      );
+  Widget build(BuildContext context) => Container(padding: const EdgeInsets.symmetric(horizontal: 16), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(22), border: Border.all(color: HeyColors.line)), child: Column(children: children));
 }
 
-class MessagesScreen extends StatelessWidget {
-  const MessagesScreen({super.key});
+class _ProfileHeader extends StatelessWidget {
+  const _ProfileHeader();
   @override
-  Widget build(BuildContext context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const PageTitle('Mesajlar', 'Kilidi açılan bağlantıların.'),
-              const SizedBox(height: 24),
-              for (final name in const ['Ece', 'Selin'])
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Container(
-                    decoration: BoxDecoration(color: OpenApp.soft, borderRadius: BorderRadius.circular(22)),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.all(14),
-                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(name: name))),
-                      leading: const AppSvg(AppIcons.profile, size: 48),
-                      title: Text(name, style: const TextStyle(fontWeight: FontWeight.w800)),
-                      subtitle: const Text('Selam 👋'),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      );
-}
-
-class ChatScreen extends StatefulWidget {
-  const ChatScreen({super.key, required this.name});
-  final String name;
-  @override
-  State<ChatScreen> createState() => _ChatScreenState();
-}
-
-class _ChatScreenState extends State<ChatScreen> {
-  final input = TextEditingController();
-  final messages = <String>[];
-  void send() {
-    final value = input.text.trim();
-    if (value.isEmpty) return;
-    setState(() => messages.add(value));
-    input.clear();
-  }
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: Text(widget.name)),
-        body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                Expanded(
-                  child: ListView(
-                    children: [
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Container(margin: const EdgeInsets.only(bottom: 10), padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: OpenApp.soft, borderRadius: BorderRadius.circular(18)), child: const Text('Selam! Cevabını sevdim 😊')),
-                      ),
-                      ...messages.map((message) => Align(alignment: Alignment.centerRight, child: Container(margin: const EdgeInsets.only(bottom: 10), padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: OpenApp.lime, borderRadius: BorderRadius.circular(18)), child: Text(message)))),
-                    ],
-                  ),
-                ),
-                Row(
-                  children: [
-                    Expanded(child: TextField(controller: input, onSubmitted: (_) => send(), decoration: const InputDecoration(hintText: 'Mesaj yaz...'))),
-                    const SizedBox(width: 10),
-                    SizedBox(width: 54, height: 54, child: FilledButton(onPressed: send, style: FilledButton.styleFrom(padding: EdgeInsets.zero, shape: const CircleBorder()), child: const AppSvg(AppIcons.send, size: 26))),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-}
-
-class MyProfileScreen extends StatelessWidget {
-  const MyProfileScreen({super.key});
-  @override
-  Widget build(BuildContext context) => const SafeArea(
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              PageTitle('Profilin', 'Kilit sorularını ve profilini buradan yönet.'),
-              SizedBox(height: 28),
-              AppSvg(AppIcons.profile, size: 110, card: true),
-              SizedBox(height: 18),
-              Text('Profil hazır', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
-              Text('3 kilit sorusu aktif', style: TextStyle(color: OpenApp.muted)),
-            ],
-          ),
-        ),
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(color: HeyColors.deepNavy, borderRadius: BorderRadius.circular(24)),
+        child: const Row(children: [CircleAvatar(radius: 29, backgroundColor: HeyColors.orange, foregroundColor: HeyColors.deepNavy, child: Icon(Icons.person_rounded, size: 34)), SizedBox(width: 14), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('HeyCar Kullanıcısı', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)), SizedBox(height: 4), Text('+90 5•• ••• •• ••', style: TextStyle(color: Color(0xFFAAB2C0))) ])), Icon(Icons.verified_user_outlined, color: HeyColors.orange)]),
       );
 }
