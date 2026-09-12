@@ -31,7 +31,7 @@ jobs:
         run: flutter analyze lib --no-fatal-infos --no-fatal-warnings
 
       - name: Build Android test APK
-        run: flutter build apk --debug --target lib/main.dart
+        run: flutter build apk --debug --target lib/entry.dart
 
       - name: Upload Android test APK
         uses: actions/upload-artifact@v4
