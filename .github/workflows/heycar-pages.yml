@@ -1,4 +1,4 @@
-name: Deploy HeyCar QR Web
+name: Deploy HeyCar Web
 
 on:
   push:
@@ -37,12 +37,18 @@ jobs:
         run: flutter analyze lib --no-fatal-infos --no-fatal-warnings
 
       - name: Build public QR website
-        run: flutter build web --release --target lib/web_main.dart --base-href "/HeyCar/" --pwa-strategy=none
-
-      - name: Remove stale service worker artifacts
         run: |
-          rm -f build/web/flutter_service_worker.js
-          rm -f build/web/version.json
+          flutter build web --release --target lib/web_main.dart --base-href "/HeyCar/" --pwa-strategy=none
+          rm -f build/web/flutter_service_worker.js build/web/version.json
+          mkdir -p deploy
+          cp -R build/web/. deploy/
+
+      - name: Build vehicle owner web preview
+        run: |
+          flutter build web --release --target lib/main.dart --base-href "/HeyCar/owner/" --pwa-strategy=none
+          rm -f build/web/flutter_service_worker.js build/web/version.json
+          mkdir -p deploy/owner
+          cp -R build/web/. deploy/owner/
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -50,7 +56,7 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: build/web
+          path: deploy
 
   deploy:
     environment:
