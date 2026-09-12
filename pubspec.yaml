@@ -1,5 +1,5 @@
-name: open_app
-description: Open - soru ile profili açmaya dayalı modern flört uygulaması MVP.
+name: heycar_app
+description: HeyCar - QR tabanli anonim arac iletisim uygulamasi.
 publish_to: "none"
 version: 1.0.0+1
 
@@ -10,14 +10,6 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
-  flutter_svg: ^2.0.10+1
-  supabase_flutter: ^2.9.1
-  image_picker: ^1.1.2
-  http: ^1.2.2
-  geolocator: ^14.0.2
-  firebase_core: ^4.1.0
-  firebase_messaging: ^16.0.1
-  flutter_local_notifications: ^19.4.0
 
 dev_dependencies:
   flutter_test:
@@ -26,8 +18,3 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  assets:
-    - assets/app_icons/gradient/
-    - assets/app_icons/line/
-    - assets/app_icons/nav/
-    - assets/app_icons/badge/
