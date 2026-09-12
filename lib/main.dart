@@ -1,45 +1,358 @@
 import 'package:flutter/material.dart';
 
-void main()=>runApp(const App());
-class C{static const bg=Color(0xfff7f9fc),navy=Color(0xff101828),muted=Color(0xff667085),orange=Color(0xfffca311),green=Color(0xff18a45b),red=Color(0xffd92d20),line=Color(0xffe9edf3);}
-class App extends StatelessWidget{const App({super.key});@override Widget build(BuildContext c)=>MaterialApp(debugShowCheckedModeBanner:false,theme:ThemeData(useMaterial3:true,scaffoldBackgroundColor:C.bg,fontFamily:'sans',colorScheme:ColorScheme.fromSeed(seedColor:C.orange)),home:const Shell());}
+void main() => runApp(const HeyCarApp());
 
-class Shell extends StatefulWidget{const Shell({super.key});@override State<Shell> createState()=>_Shell();}
-class _Shell extends State<Shell>{int i=0;@override Widget build(BuildContext c)=>Scaffold(body:IndexedStack(index:i,children:[const Home(),const MessagesPage(),const HistoryPage(),const PlaceholderPage(title:'Ayarlar')]),bottomNavigationBar:Container(height:76,decoration:const BoxDecoration(color:Colors.white,borderRadius:BorderRadius.vertical(top:Radius.circular(28)),boxShadow:[BoxShadow(color:Color(0x14000000),blurRadius:22)]),child:Row(children:[nav(0,Icons.home_rounded,'Ana Sayfa'),nav(1,Icons.chat_bubble_outline,'Mesajlar'),nav(2,Icons.schedule,'Geçmiş'),nav(3,Icons.settings_outlined,'Ayarlar')])));Widget nav(int n,IconData x,String t)=>Expanded(child:InkWell(onTap:()=>setState(()=>i=n),child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[Stack(clipBehavior:Clip.none,children:[Icon(x,size:27,color:i==n?C.orange:C.muted),if(n==1)const Positioned(right:-5,top:-3,child:CircleAvatar(radius:4,backgroundColor:C.orange))]),const SizedBox(height:4),Text(t,style:TextStyle(fontSize:11.5,fontWeight:i==n?FontWeight.w800:FontWeight.w500,color:i==n?C.orange:C.muted))])));}
+class C {
+  static const bg = Color(0xFFF7F9FC);
+  static const navy = Color(0xFF101828);
+  static const muted = Color(0xFF667085);
+  static const orange = Color(0xFFFCA311);
+  static const green = Color(0xFF18A45B);
+  static const red = Color(0xFFD92D20);
+  static const line = Color(0xFFE9EDF3);
+}
 
-Widget commonHeader(double s)=>Row(children:[Icon(Icons.directions_car_filled,color:C.orange,size:35*s),SizedBox(width:10*s),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text.rich(const TextSpan(children:[TextSpan(text:'Hey',style:TextStyle(color:C.navy)),TextSpan(text:'Car',style:TextStyle(color:C.orange))]),style:TextStyle(fontSize:27*s,fontWeight:FontWeight.w900,height:1)),SizedBox(height:4*s),Text('Araç Sahibi',style:TextStyle(fontSize:13*s,color:C.muted))])),roundAction(Icons.notifications_rounded,s,true),SizedBox(width:8*s),roundAction(Icons.person_rounded,s,false)]);
-Widget roundAction(IconData i,double s,bool dot)=>Stack(clipBehavior:Clip.none,children:[Container(width:42*s,height:42*s,decoration:const BoxDecoration(color:Colors.white,shape:BoxShape.circle),child:Icon(i,size:21*s,color:C.navy)),if(dot)Positioned(right:1,top:0,child:CircleAvatar(radius:5*s,backgroundColor:C.orange))]);
+class HeyCarApp extends StatelessWidget {
+  const HeyCarApp({super.key});
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          useMaterial3: true,
+          scaffoldBackgroundColor: C.bg,
+          fontFamily: 'sans',
+          colorScheme: ColorScheme.fromSeed(seedColor: C.orange),
+        ),
+        home: const Shell(),
+      );
+}
 
-class Home extends StatelessWidget{const Home({super.key});@override Widget build(BuildContext context)=>SafeArea(bottom:false,child:LayoutBuilder(builder:(c,k){final w=k.maxWidth.clamp(320.0,500.0);final s=(w/430).clamp(.82,1.08);return Center(child:SizedBox(width:w,child:SingleChildScrollView(padding:EdgeInsets.fromLTRB(18*s,12*s,18*s,22),child:Column(children:[commonHeader(s),SizedBox(height:15*s),_hero(s),SizedBox(height:14*s),_call(context,s),SizedBox(height:13*s),_stats(s),SizedBox(height:15*s),_recent(s)]))));}));
-Widget _hero(double s)=>SizedBox(height:245*s,child:Stack(clipBehavior:Clip.none,children:[Positioned.fill(child:Container(decoration:BoxDecoration(borderRadius:BorderRadius.circular(28*s),gradient:const LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:[Colors.white,Color(0xfff5fbff),Color(0xfffff4e5)])))),Positioned(left:4*s,top:18*s,width:210*s,child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('Merhaba 👋',style:TextStyle(fontSize:31*s,fontWeight:FontWeight.w900,color:C.navy,height:1)),SizedBox(height:12*s),Text('Aracınızla ilgili gelen talepleri\nburadan yönetebilirsiniz.',style:TextStyle(fontSize:15*s,height:1.4,color:C.muted))])),Positioned(right:-48*s,top:18*s,width:315*s,height:205*s,child:Image.asset('assets/Arac.png',fit:BoxFit.contain,alignment:Alignment.centerRight)),Positioned(right:4*s,top:4*s,child:Transform.rotate(angle:-.07,child:Container(padding:EdgeInsets.symmetric(horizontal:11*s,vertical:9*s),decoration:BoxDecoration(color:const Color(0xffffe3bb),borderRadius:BorderRadius.circular(17*s)),child:Text('Aracınız\nher zaman\nbağlantıda!',textAlign:TextAlign.center,style:TextStyle(fontSize:10.5*s,fontWeight:FontWeight.w700,height:1.12))))),Positioned(left:0,bottom:0,child:Container(width:183*s,padding:EdgeInsets.symmetric(horizontal:13*s,vertical:10*s),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(20*s),boxShadow:const [BoxShadow(color:Color(0x10000000),blurRadius:16)]),child:Row(children:[CircleAvatar(radius:10*s,backgroundColor:const Color(0xffdaf8e8),child:CircleAvatar(radius:5*s,backgroundColor:C.green)),SizedBox(width:9*s),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('Aktif',style:TextStyle(fontSize:15*s,fontWeight:FontWeight.w900)),Text('Aracınız gelen taleplere açık.',style:TextStyle(fontSize:10.5*s,height:1.25,color:C.muted))])),Icon(Icons.chevron_right,size:20*s)])))]));
-Widget _call(BuildContext context,double s)=>Container(padding:EdgeInsets.all(15*s),decoration:BoxDecoration(color:const Color(0xfffffcf7),borderRadius:BorderRadius.circular(25*s),border:Border.all(color:const Color(0xffffd79b))),child:Column(children:[Row(crossAxisAlignment:CrossAxisAlignment.start,children:[_pulse(s),SizedBox(width:12*s),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Row(children:[CircleAvatar(radius:4*s,backgroundColor:C.orange),SizedBox(width:7*s),Expanded(child:Text('Gelen arama isteği',style:TextStyle(fontSize:16*s,fontWeight:FontWeight.w900)))]),SizedBox(height:6*s),Text('••••• •••• 4821',style:TextStyle(fontSize:16*s,fontWeight:FontWeight.w800)),SizedBox(height:3*s),Row(children:[Icon(Icons.theater_comedy,size:18*s,color:C.muted),SizedBox(width:5*s),Text('Numara gizli',style:TextStyle(fontSize:13*s,color:C.muted))])])),Text('Az önce',style:TextStyle(fontSize:11*s,color:C.muted))]),SizedBox(height:10*s),Container(width:double.infinity,padding:EdgeInsets.all(12*s),decoration:BoxDecoration(color:const Color(0xfff1f3f6),borderRadius:BorderRadius.circular(15*s)),child:Text('“Çıkışımı kapatıyor, müsaitseniz aracı çekebilir misiniz?”',style:TextStyle(fontSize:13*s,height:1.3))),SizedBox(height:10*s),Row(children:[Expanded(child:_button(Icons.close,'Reddet',const Color(0xffffebea),C.red,s,(){})),SizedBox(width:10*s),Expanded(child:_button(Icons.phone,'Ara ve konuş',C.orange,Colors.white,s,()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const CallPage()))))]) ]));
-Widget _pulse(double s)=>SizedBox(width:82*s,height:82*s,child:Stack(alignment:Alignment.center,children:[CircleAvatar(radius:41*s,backgroundColor:const Color(0x22fca311)),CircleAvatar(radius:32*s,backgroundColor:const Color(0x44fca311)),CircleAvatar(radius:24*s,backgroundColor:C.orange,child:Icon(Icons.phone,color:Colors.white,size:26*s))]));
-Widget _button(IconData i,String t,Color bg,Color fg,double s,VoidCallback f)=>SizedBox(height:49*s,child:FilledButton.icon(onPressed:f,style:FilledButton.styleFrom(backgroundColor:bg,foregroundColor:fg,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(16*s))),icon:Icon(i,size:24*s),label:Text(t,style:TextStyle(fontSize:14*s,fontWeight:FontWeight.w800))));
-Widget _stats(double s){final d=[('5','Yeni mesaj',Icons.chat_bubble_outline,Colors.blue),('2','Arama isteği',Icons.phone,C.orange),('1.2K','Görüntüleme',Icons.visibility,Colors.blue),('Aktif','Araç durumu',Icons.directions_car,C.green)];return Row(children:List.generate(4,(i)=>Expanded(child:Container(margin:EdgeInsets.only(right:i==3?0:7*s),height:91*s,padding:EdgeInsets.all(9*s),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(17*s)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Icon(d[i].$3,color:d[i].$4,size:20*s),const Spacer(),Text(d[i].$1,style:TextStyle(fontSize:16*s,fontWeight:FontWeight.w900,color:i==3?C.green:C.navy)),Text(d[i].$2,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(fontSize:9.5*s,color:C.muted))])))));}
-Widget _recent(double s)=>Container(padding:EdgeInsets.fromLTRB(15*s,13*s,15*s,5*s),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(21*s)),child:Column(children:[Row(children:[Expanded(child:Text('Son mesajlar',style:TextStyle(fontSize:18*s,fontWeight:FontWeight.w900))),Text('Tümünü gör',style:TextStyle(fontSize:11.5*s,color:C.muted)),Icon(Icons.chevron_right,size:18*s)]),_mini(Icons.chat_bubble,'Yeni mesaj','“Aracınızın önünde kaldım, dönüş yapabilir misiniz?”','14:32',s,true),_mini(Icons.phone,'Arama isteği','Numara gizli','12:18',s,false),_mini(Icons.chat_bubble,'Otopark çıkışı','“Teşekkür ederim, sorun çözüldü.”','Dün',s,false)]));
-Widget _mini(IconData i,String t,String b,String tm,double s,bool u)=>Container(padding:EdgeInsets.symmetric(vertical:9*s),decoration:const BoxDecoration(border:Border(bottom:BorderSide(color:C.line))),child:Row(children:[Stack(clipBehavior:Clip.none,children:[CircleAvatar(radius:21*s,backgroundColor:const Color(0xfff1f3f6),child:Icon(i,size:19*s,color:C.muted)),if(u)Positioned(right:-1,top:-1,child:CircleAvatar(radius:4*s,backgroundColor:C.orange))]),SizedBox(width:10*s),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(t,style:TextStyle(fontSize:13.5*s,fontWeight:FontWeight.w900)),Text(b,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(fontSize:11.5*s,color:C.muted))])),Text(tm,style:TextStyle(fontSize:10.5*s,color:C.muted)),Icon(Icons.chevron_right,size:17*s)]));}
+class Shell extends StatefulWidget {
+  const Shell({super.key});
+  @override
+  State<Shell> createState() => _ShellState();
+}
 
-class MessagesPage extends StatefulWidget{const MessagesPage({super.key});@override State<MessagesPage> createState()=>_MessagesPageState();}
-class _MessagesPageState extends State<MessagesPage>{int tab=0;final search=TextEditingController();@override void dispose(){search.dispose();super.dispose();}@override Widget build(BuildContext context)=>SafeArea(bottom:false,child:LayoutBuilder(builder:(c,k){final w=k.maxWidth.clamp(320.0,500.0);final s=(w/430).clamp(.82,1.08);return Center(child:SizedBox(width:w,child:SingleChildScrollView(padding:EdgeInsets.fromLTRB(18*s,12*s,18*s,24),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[commonHeader(s),SizedBox(height:24*s),Text('Mesajlar',style:TextStyle(fontSize:31*s,fontWeight:FontWeight.w900,color:C.navy,height:1)),SizedBox(height:7*s),Text('Aracınızla ilgili tüm mesajlar burada.',style:TextStyle(fontSize:14.5*s,color:C.muted)),SizedBox(height:18*s),_search(s),SizedBox(height:14*s),_tabs(s),SizedBox(height:16*s),..._items(s)]))));}));
-Widget _search(double s)=>Row(children:[Expanded(child:Container(height:52*s,decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(18*s),boxShadow:const [BoxShadow(color:Color(0x09000000),blurRadius:12)]),child:TextField(controller:search,decoration:InputDecoration(prefixIcon:Icon(Icons.search_rounded,size:23*s,color:C.navy),hintText:'Mesajlarda ara...',hintStyle:TextStyle(color:const Color(0xffaab2c0),fontSize:13.5*s),border:InputBorder.none,contentPadding:EdgeInsets.symmetric(vertical:15*s))))),SizedBox(width:9*s),Container(width:52*s,height:52*s,decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(18*s)),child:Icon(Icons.tune_rounded,color:C.navy,size:24*s))]);
-Widget _tabs(double s){final labels=[('Tümü',5,Icons.chat_bubble_rounded),('Yeni',2,Icons.phone_rounded),('Arama İstekleri',0,Icons.phone_in_talk_rounded),('Otopark',0,Icons.local_parking_rounded)];return SizedBox(height:47*s,child:ListView.separated(scrollDirection:Axis.horizontal,itemCount:labels.length,separatorBuilder:(_,__)=>SizedBox(width:8*s),itemBuilder:(c,i){final a=tab==i,d=labels[i];return InkWell(onTap:()=>setState(()=>tab=i),borderRadius:BorderRadius.circular(17*s),child:Container(padding:EdgeInsets.symmetric(horizontal:13*s),decoration:BoxDecoration(color:a?const Color(0xfffff7eb):Colors.white,borderRadius:BorderRadius.circular(17*s),border:Border.all(color:a?const Color(0xffffc874):C.line)),child:Row(children:[Icon(d.$3,size:18*s,color:a?C.orange:C.muted),SizedBox(width:7*s),Text(d.$1,style:TextStyle(fontSize:12*s,fontWeight:FontWeight.w700,color:a?C.orange:C.muted)),if(d.$2>0)...[SizedBox(width:7*s),CircleAvatar(radius:10*s,backgroundColor:a?C.orange:const Color(0xffffb45c),child:Text('${d.$2}',style:TextStyle(color:Colors.white,fontSize:10*s,fontWeight:FontWeight.w800)))]])));}));}
-List<Widget> _items(double s)=>[
-_thread(s,Icons.person_rounded,'Yeni mesaj','“Aracınızın önünde kaldım, dönüş yapabilir misiniz?”','14:32',true,C.orange,const Color(0xffeaf2ff),'Yeni'),
-_thread(s,Icons.phone_rounded,'Arama isteği','Numara gizli','12:18',false,C.orange,const Color(0xfffff1e4),null),
-_thread(s,Icons.local_parking_rounded,'Otopark çıkışı','“Teşekkür ederim, sorun çözüldü.”','Dün',false,const Color(0xff2f6df6),const Color(0xffeaf0ff),null),
-_thread(s,Icons.person_rounded,'Mert Y.','“Aracınız hâlâ müsait mi?”','Dün',true,C.navy,const Color(0xffeef1f5),null),
-_thread(s,Icons.person_rounded,'Zeynep K.','“Çok teşekkürler, iyi akşamlar.”','2 gün önce',false,C.navy,const Color(0xffeef1f5),null),
-_thread(s,Icons.person_rounded,'Emre A.','“Kapıyı biraz açabilir misiniz?”','3 gün önce',false,C.navy,const Color(0xffeef1f5),null),
-_thread(s,Icons.groups_rounded,'Sistem Bildirimi','Aracınızla ilgili yeni bir talep var.','3 gün önce',false,C.muted,const Color(0xffeef1f5),null),
-];
-Widget _thread(double s,IconData icon,String title,String body,String time,bool unread,Color iconColor,Color avatarBg,String? badge)=>Container(margin:EdgeInsets.only(bottom:9*s),padding:EdgeInsets.fromLTRB(12*s,11*s,12*s,11*s),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(20*s),boxShadow:const [BoxShadow(color:Color(0x09000000),blurRadius:14,offset:Offset(0,5))]),child:Row(children:[Stack(clipBehavior:Clip.none,children:[CircleAvatar(radius:26*s,backgroundColor:avatarBg,child:Icon(icon,color:iconColor,size:25*s)),if(unread)Positioned(right:-1,top:-1,child:CircleAvatar(radius:5*s,backgroundColor:C.orange))]),SizedBox(width:12*s),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(title,style:TextStyle(fontSize:15*s,fontWeight:FontWeight.w900,color:C.navy)),SizedBox(height:4*s),Text(body,maxLines:2,overflow:TextOverflow.ellipsis,style:TextStyle(fontSize:12.5*s,height:1.25,color:C.muted))])),SizedBox(width:8*s),Column(crossAxisAlignment:CrossAxisAlignment.end,children:[Text(time,style:TextStyle(fontSize:11.5*s,color:C.muted)),if(badge!=null)...[SizedBox(height:10*s),Container(padding:EdgeInsets.symmetric(horizontal:10*s,vertical:4*s),decoration:BoxDecoration(color:const Color(0xfffff0dd),borderRadius:BorderRadius.circular(12*s)),child:Text(badge,style:TextStyle(fontSize:10.5*s,color:C.orange,fontWeight:FontWeight.w800)))],SizedBox(height:8*s),Icon(Icons.chevron_right_rounded,size:20*s,color:C.navy)])]));}
+class _ShellState extends State<Shell> {
+  int index = 0;
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: IndexedStack(
+        index: index,
+        children: const [HomePage(), MessagesPage(), HistoryPage(), SettingsPage()],
+      ),
+      bottomNavigationBar: Container(
+        height: 76,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          boxShadow: [BoxShadow(color: Color(0x14000000), blurRadius: 22, offset: Offset(0, -6))],
+        ),
+        child: Row(children: [
+          _nav(0, Icons.home_rounded, 'Ana Sayfa'),
+          _nav(1, Icons.chat_bubble_outline_rounded, 'Mesajlar', dot: true),
+          _nav(2, Icons.schedule_rounded, 'Geçmiş'),
+          _nav(3, Icons.settings_outlined, 'Ayarlar'),
+        ]),
+      ),
+    );
+  }
 
-class HistoryPage extends StatefulWidget{const HistoryPage({super.key});@override State<HistoryPage> createState()=>_HistoryPageState();}
-class _HistoryPageState extends State<HistoryPage>{int tab=0;@override Widget build(BuildContext context)=>SafeArea(bottom:false,child:LayoutBuilder(builder:(c,k){final w=k.maxWidth.clamp(320.0,500.0);final s=(w/430).clamp(.82,1.08);return Center(child:SizedBox(width:w,child:SingleChildScrollView(padding:EdgeInsets.fromLTRB(16*s,12*s,16*s,24),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[commonHeader(s),SizedBox(height:22*s),Row(crossAxisAlignment:CrossAxisAlignment.end,children:[Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('Geçmiş',style:TextStyle(fontSize:31*s,fontWeight:FontWeight.w900,color:C.navy,height:1)),SizedBox(height:7*s),Text('Tüm talepleriniz ve arama kayıtları burada.',style:TextStyle(fontSize:14*s,color:C.muted))])),_dateButton(s)]),SizedBox(height:16*s),_historyTabs(s),SizedBox(height:17*s),_sectionTitle('Bugün','4 işlem',s),SizedBox(height:9*s),_historyCard(s,Icons.phone_rounded,'Gelen arama','“Çıkışımı kapatıyor, müsaitseniz aracı çekebilir misiniz?”','14:32','Tamamlandı',C.green,const Color(0xfffff1e4),C.orange),_historyCard(s,Icons.chat_bubble_rounded,'Mesaj','“Aracınızın önünde kaldım, dönüş yapabilir misiniz?”','12:18','Yanıtlandı',const Color(0xff2463eb),const Color(0xffeaf2ff),const Color(0xff3577f0)),_historyCard(s,Icons.local_parking_rounded,'Otopark çıkışı','“Teşekkür ederim, sorun çözüldü.”','10:05','Tamamlandı',C.green,const Color(0xffeee9ff),const Color(0xff635bde)),_historyCard(s,Icons.phone_rounded,'Cevapsız arama','Numara gizli','09:17','Cevapsız',C.red,const Color(0xfffff1e4),C.orange),SizedBox(height:14*s),_sectionTitle('Dün','6 işlem',s),SizedBox(height:9*s),_historyCard(s,Icons.phone_rounded,'Gelen arama','“Kapıyı biraz açabilir misiniz?”','18:24','Tamamlandı',C.green,const Color(0xfffff1e4),C.orange),_historyCard(s,Icons.chat_bubble_rounded,'Mesaj','“Çok teşekkürler, iyi akşamlar.”','16:11','Yanıtlandı',const Color(0xff2463eb),const Color(0xffeaf2ff),const Color(0xff3577f0)),_historyCard(s,Icons.phone_rounded,'Cevapsız arama','Numara gizli','13:50','Cevapsız',C.red,const Color(0xfffff1e4),C.orange),_historyCard(s,Icons.local_parking_rounded,'Otopark çıkışı','Numara gizli','11:03','Tamamlandı',C.green,const Color(0xffeee9ff),const Color(0xff635bde))]))));}));
-Widget _dateButton(double s)=>Container(height:44*s,padding:EdgeInsets.symmetric(horizontal:12*s),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(17*s),boxShadow:const [BoxShadow(color:Color(0x08000000),blurRadius:12)]),child:Row(children:[Icon(Icons.calendar_month_rounded,color:C.muted,size:19*s),SizedBox(width:7*s),Text('Tarih Seç',style:TextStyle(color:C.muted,fontSize:12*s,fontWeight:FontWeight.w600)),SizedBox(width:5*s),Icon(Icons.keyboard_arrow_down_rounded,color:C.navy,size:19*s)]));
-Widget _historyTabs(double s){final d=[('Tümü','48',Icons.history_rounded),('Gelen Aramalar','28',Icons.phone_rounded),('Mesajlar','12',Icons.chat_bubble_rounded),('Otopark','8',Icons.local_parking_rounded)];return SizedBox(height:47*s,child:ListView.separated(scrollDirection:Axis.horizontal,itemCount:d.length,separatorBuilder:(_,__)=>SizedBox(width:8*s),itemBuilder:(c,i){final a=tab==i,x=d[i];return InkWell(onTap:()=>setState(()=>tab=i),borderRadius:BorderRadius.circular(17*s),child:Container(padding:EdgeInsets.symmetric(horizontal:12*s),decoration:BoxDecoration(color:a?C.orange:Colors.white,borderRadius:BorderRadius.circular(17*s),boxShadow:const [BoxShadow(color:Color(0x07000000),blurRadius:10)]),child:Row(children:[Icon(x.$3,size:17*s,color:a?Colors.white:C.muted),SizedBox(width:7*s),Text(x.$1,style:TextStyle(fontSize:11.5*s,fontWeight:FontWeight.w700,color:a?Colors.white:C.muted)),SizedBox(width:6*s),CircleAvatar(radius:10*s,backgroundColor:a?Colors.white.withValues(alpha:.22):const Color(0xffff7f00),child:Text(x.$2,style:TextStyle(color:Colors.white,fontSize:9.5*s,fontWeight:FontWeight.w800)))])));}));}
-Widget _sectionTitle(String t,String count,double s)=>Row(children:[Expanded(child:Text(t,style:TextStyle(fontSize:18*s,fontWeight:FontWeight.w900,color:C.navy))),Text(count,style:TextStyle(fontSize:12.5*s,color:const Color(0xff8fa0c7)))]);
-Widget _historyCard(double s,IconData icon,String title,String body,String time,String status,Color statusColor,Color avatarBg,Color iconColor)=>Container(margin:EdgeInsets.only(bottom:8*s),padding:EdgeInsets.fromLTRB(10*s,10*s,10*s,10*s),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(19*s),boxShadow:const [BoxShadow(color:Color(0x09000000),blurRadius:14,offset:Offset(0,5))]),child:Row(children:[CircleAvatar(radius:25*s,backgroundColor:avatarBg,child:Icon(icon,color:iconColor,size:25*s)),SizedBox(width:11*s),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(title,style:TextStyle(fontSize:14.5*s,fontWeight:FontWeight.w900,color:C.navy)),SizedBox(height:3*s),Text(body,maxLines:2,overflow:TextOverflow.ellipsis,style:TextStyle(fontSize:11.8*s,height:1.22,color:C.muted)),SizedBox(height:5*s),Row(children:[Icon(Icons.theater_comedy_rounded,size:16*s,color:C.muted),SizedBox(width:5*s),Text('Numara gizli',style:TextStyle(fontSize:11.2*s,color:C.muted))])])),SizedBox(width:8*s),Column(crossAxisAlignment:CrossAxisAlignment.end,children:[Text(time,style:TextStyle(fontSize:11*s,color:C.muted)),SizedBox(height:9*s),Container(padding:EdgeInsets.symmetric(horizontal:9*s,vertical:4*s),decoration:BoxDecoration(color:statusColor.withValues(alpha:.10),borderRadius:BorderRadius.circular(12*s)),child:Text(status,style:TextStyle(fontSize:10.2*s,fontWeight:FontWeight.w700,color:statusColor))),SizedBox(height:6*s),Icon(Icons.chevron_right_rounded,color:C.navy,size:19*s)])]));}
+  Widget _nav(int i, IconData icon, String label, {bool dot = false}) {
+    final active = index == i;
+    return Expanded(
+      child: InkWell(
+        onTap: () => setState(() => index = i),
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Stack(clipBehavior: Clip.none, children: [
+            Icon(icon, size: 27, color: active ? C.orange : C.muted),
+            if (dot) const Positioned(right: -5, top: -3, child: CircleAvatar(radius: 4, backgroundColor: C.orange)),
+          ]),
+          const SizedBox(height: 4),
+          Text(label, style: TextStyle(fontSize: 11.5, fontWeight: active ? FontWeight.w800 : FontWeight.w500, color: active ? C.orange : C.muted)),
+        ]),
+      ),
+    );
+  }
+}
 
-class PlaceholderPage extends StatelessWidget{const PlaceholderPage({super.key,required this.title});final String title;@override Widget build(BuildContext c)=>SafeArea(child:Center(child:Text(title,style:const TextStyle(fontSize:28,fontWeight:FontWeight.w800))));}
-class CallPage extends StatelessWidget{const CallPage({super.key});@override Widget build(BuildContext c)=>Scaffold(backgroundColor:const Color(0xff07111f),body:SafeArea(child:Column(children:[const SizedBox(height:30),const Text('Gizli Arama',style:TextStyle(color:Colors.white,fontSize:22,fontWeight:FontWeight.w800)),const Spacer(),const CircleAvatar(radius:80,backgroundColor:C.orange,child:Icon(Icons.directions_car,color:Colors.white,size:70)),const SizedBox(height:30),const Text('Numaranız gizli kalır.',style:TextStyle(color:Colors.white,fontSize:20,fontWeight:FontWeight.w700)),const SizedBox(height:8),const Text('0850 üzerinden güvenli arama gerçekleştiriliyor.',style:TextStyle(color:Colors.white70)),const Spacer(),CircleAvatar(radius:38,backgroundColor:Colors.red,child:IconButton(onPressed:()=>Navigator.pop(c),icon:const Icon(Icons.call_end,color:Colors.white,size:34))),const SizedBox(height:30)])));}
+Widget header(double s) => Row(children: [
+      Icon(Icons.directions_car_filled, color: C.orange, size: 35 * s),
+      SizedBox(width: 10 * s),
+      Expanded(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text.rich(
+            const TextSpan(children: [
+              TextSpan(text: 'Hey', style: TextStyle(color: C.navy)),
+              TextSpan(text: 'Car', style: TextStyle(color: C.orange)),
+            ]),
+            style: TextStyle(fontSize: 27 * s, fontWeight: FontWeight.w900, height: 1),
+          ),
+          SizedBox(height: 4 * s),
+          Text('Araç Sahibi', style: TextStyle(fontSize: 13 * s, color: C.muted)),
+        ]),
+      ),
+      _round(Icons.notifications_rounded, s, true),
+      SizedBox(width: 8 * s),
+      _round(Icons.person_rounded, s, false),
+    ]);
+
+Widget _round(IconData icon, double s, bool dot) => Stack(clipBehavior: Clip.none, children: [
+      Container(width: 42 * s, height: 42 * s, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle), child: Icon(icon, size: 21 * s, color: C.navy)),
+      if (dot) Positioned(right: 1, top: 0, child: CircleAvatar(radius: 5 * s, backgroundColor: C.orange)),
+    ]);
+
+class HomePage extends StatelessWidget {
+  const HomePage({super.key});
+  @override
+  Widget build(BuildContext context) => _page((s) => [
+        header(s),
+        SizedBox(height: 15 * s),
+        SizedBox(
+          height: 245 * s,
+          child: Stack(clipBehavior: Clip.none, children: [
+            Positioned.fill(child: Container(decoration: BoxDecoration(borderRadius: BorderRadius.circular(28 * s), gradient: const LinearGradient(colors: [Colors.white, Color(0xFFF5FBFF), Color(0xFFFFF4E5)])))),
+            Positioned(left: 4 * s, top: 18 * s, width: 210 * s, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Merhaba 👋', style: TextStyle(fontSize: 31 * s, fontWeight: FontWeight.w900, color: C.navy, height: 1)),
+              SizedBox(height: 12 * s),
+              Text('Aracınızla ilgili gelen talepleri\nburadan yönetebilirsiniz.', style: TextStyle(fontSize: 15 * s, height: 1.4, color: C.muted)),
+            ])),
+            Positioned(right: -48 * s, top: 18 * s, width: 315 * s, height: 205 * s, child: Image.asset('assets/Arac.png', fit: BoxFit.contain, alignment: Alignment.centerRight)),
+            Positioned(left: 0, bottom: 0, child: Container(width: 183 * s, padding: EdgeInsets.symmetric(horizontal: 13 * s, vertical: 10 * s), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20 * s), boxShadow: const [BoxShadow(color: Color(0x10000000), blurRadius: 16)]), child: Row(children: [
+              CircleAvatar(radius: 10 * s, backgroundColor: const Color(0xFFDAF8E8), child: CircleAvatar(radius: 5 * s, backgroundColor: C.green)),
+              SizedBox(width: 9 * s),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Aktif', style: TextStyle(fontSize: 15 * s, fontWeight: FontWeight.w900)), Text('Aracınız gelen taleplere açık.', style: TextStyle(fontSize: 10.5 * s, color: C.muted))])),
+            ]))),
+          ]),
+        ),
+        SizedBox(height: 14 * s),
+        _incomingCall(context, s),
+        SizedBox(height: 13 * s),
+        _stats(s),
+        SizedBox(height: 15 * s),
+        _recent(s),
+      ]);
+}
+
+Widget _incomingCall(BuildContext context, double s) => Container(
+      padding: EdgeInsets.all(15 * s),
+      decoration: BoxDecoration(color: const Color(0xFFFFFCF7), borderRadius: BorderRadius.circular(25 * s), border: Border.all(color: const Color(0xFFFFD79B))),
+      child: Column(children: [
+        Row(children: [
+          CircleAvatar(radius: 35 * s, backgroundColor: const Color(0x44FCA311), child: CircleAvatar(radius: 24 * s, backgroundColor: C.orange, child: Icon(Icons.phone, color: Colors.white, size: 26 * s))),
+          SizedBox(width: 12 * s),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Gelen arama isteği', style: TextStyle(fontSize: 16 * s, fontWeight: FontWeight.w900)), SizedBox(height: 5 * s), Text('••••• •••• 4821', style: TextStyle(fontSize: 16 * s, fontWeight: FontWeight.w800)), Text('Numara gizli', style: TextStyle(fontSize: 13 * s, color: C.muted))])),
+          Text('Az önce', style: TextStyle(fontSize: 11 * s, color: C.muted)),
+        ]),
+        SizedBox(height: 10 * s),
+        Container(width: double.infinity, padding: EdgeInsets.all(12 * s), decoration: BoxDecoration(color: const Color(0xFFF1F3F6), borderRadius: BorderRadius.circular(15 * s)), child: Text('“Çıkışımı kapatıyor, müsaitseniz aracı çekebilir misiniz?”', style: TextStyle(fontSize: 13 * s))),
+        SizedBox(height: 10 * s),
+        Row(children: [
+          Expanded(child: FilledButton.icon(onPressed: () {}, style: FilledButton.styleFrom(backgroundColor: const Color(0xFFFFEBEA), foregroundColor: C.red), icon: const Icon(Icons.close), label: const Text('Reddet'))),
+          SizedBox(width: 10 * s),
+          Expanded(child: FilledButton.icon(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CallPage())), style: FilledButton.styleFrom(backgroundColor: C.orange, foregroundColor: Colors.white), icon: const Icon(Icons.phone), label: const Text('Ara ve konuş'))),
+        ]),
+      ]),
+    );
+
+Widget _stats(double s) {
+  final d = [('5', 'Yeni mesaj', Icons.chat_bubble_outline, Colors.blue), ('2', 'Arama isteği', Icons.phone, C.orange), ('1.2K', 'Görüntüleme', Icons.visibility, Colors.blue), ('Aktif', 'Araç durumu', Icons.directions_car, C.green)];
+  return Row(children: List.generate(4, (i) => Expanded(child: Container(margin: EdgeInsets.only(right: i == 3 ? 0 : 7 * s), height: 91 * s, padding: EdgeInsets.all(9 * s), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(17 * s)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Icon(d[i].$3, color: d[i].$4, size: 20 * s), const Spacer(), Text(d[i].$1, style: TextStyle(fontSize: 16 * s, fontWeight: FontWeight.w900, color: i == 3 ? C.green : C.navy)), Text(d[i].$2, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 9.5 * s, color: C.muted))])))));
+}
+
+Widget _recent(double s) => Container(padding: EdgeInsets.all(15 * s), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(21 * s)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Son mesajlar', style: TextStyle(fontSize: 18 * s, fontWeight: FontWeight.w900)), SizedBox(height: 8 * s), Text('Yeni mesaj • 14:32', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13 * s)), Text('“Aracınızın önünde kaldım, dönüş yapabilir misiniz?”', style: TextStyle(fontSize: 12 * s, color: C.muted))]));
+
+class MessagesPage extends StatefulWidget {
+  const MessagesPage({super.key});
+  @override
+  State<MessagesPage> createState() => _MessagesPageState();
+}
+
+class _MessagesPageState extends State<MessagesPage> {
+  int tab = 0;
+  bool unreadOnly = false;
+  final search = TextEditingController();
+
+  final items = const [
+    Msg('Yeni mesaj', '“Aracınızın önünde kaldım, dönüş yapabilir misiniz?”', '14:32', 'message', true),
+    Msg('Arama isteği', 'Numara gizli', '12:18', 'call', false),
+    Msg('Otopark çıkışı', '“Teşekkür ederim, sorun çözüldü.”', 'Dün', 'parking', false),
+    Msg('Mert Y.', '“Aracınız hâlâ müsait mi?”', 'Dün', 'message', true),
+    Msg('Zeynep K.', '“Çok teşekkürler, iyi akşamlar.”', '2 gün önce', 'message', false),
+    Msg('Emre A.', '“Kapıyı biraz açabilir misiniz?”', '3 gün önce', 'message', false),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    search.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    search.dispose();
+    super.dispose();
+  }
+
+  List<Msg> get filtered {
+    var x = items.where((m) {
+      if (tab == 1 && !m.unread) return false;
+      if (tab == 2 && m.type != 'call') return false;
+      if (tab == 3 && m.type != 'parking') return false;
+      if (unreadOnly && !m.unread) return false;
+      final q = search.text.trim().toLowerCase();
+      if (q.isNotEmpty && !('${m.title} ${m.body}'.toLowerCase().contains(q))) return false;
+      return true;
+    }).toList();
+    return x;
+  }
+
+  @override
+  Widget build(BuildContext context) => _page((s) => [
+        header(s),
+        SizedBox(height: 24 * s),
+        Text('Mesajlar', style: TextStyle(fontSize: 31 * s, fontWeight: FontWeight.w900, color: C.navy)),
+        SizedBox(height: 7 * s),
+        Text('Aracınızla ilgili tüm mesajlar burada.', style: TextStyle(fontSize: 14.5 * s, color: C.muted)),
+        SizedBox(height: 18 * s),
+        Row(children: [
+          Expanded(child: Container(height: 52 * s, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18 * s)), child: TextField(controller: search, decoration: InputDecoration(prefixIcon: Icon(Icons.search_rounded, size: 23 * s), hintText: 'Mesajlarda ara...', border: InputBorder.none, contentPadding: EdgeInsets.symmetric(vertical: 15 * s))))),
+          SizedBox(width: 9 * s),
+          InkWell(onTap: _showFilter, borderRadius: BorderRadius.circular(18 * s), child: Container(width: 52 * s, height: 52 * s, decoration: BoxDecoration(color: unreadOnly ? const Color(0xFFFFF4E5) : Colors.white, borderRadius: BorderRadius.circular(18 * s)), child: Icon(Icons.tune_rounded, color: unreadOnly ? C.orange : C.navy, size: 24 * s))),
+        ]),
+        SizedBox(height: 14 * s),
+        _tabs(s),
+        SizedBox(height: 16 * s),
+        if (filtered.isEmpty)
+          Padding(padding: EdgeInsets.only(top: 45 * s), child: Center(child: Text('Mesaj bulunamadı', style: TextStyle(color: C.muted, fontSize: 14 * s))))
+        else
+          ...filtered.map((m) => _thread(context, m, s)),
+      ]);
+
+  Widget _tabs(double s) {
+    final labels = [('Tümü', Icons.chat_bubble_rounded), ('Yeni', Icons.fiber_new_rounded), ('Arama İstekleri', Icons.phone_in_talk_rounded), ('Otopark', Icons.local_parking_rounded)];
+    return SizedBox(height: 47 * s, child: ListView.separated(scrollDirection: Axis.horizontal, itemCount: labels.length, separatorBuilder: (_, __) => SizedBox(width: 8 * s), itemBuilder: (_, i) {
+      final active = tab == i;
+      return InkWell(onTap: () => setState(() => tab = i), borderRadius: BorderRadius.circular(17 * s), child: Container(padding: EdgeInsets.symmetric(horizontal: 13 * s), decoration: BoxDecoration(color: active ? const Color(0xFFFFF7EB) : Colors.white, borderRadius: BorderRadius.circular(17 * s), border: Border.all(color: active ? const Color(0xFFFFC874) : C.line)), child: Row(children: [Icon(labels[i].$2, size: 18 * s, color: active ? C.orange : C.muted), SizedBox(width: 7 * s), Text(labels[i].$1, style: TextStyle(fontSize: 12 * s, fontWeight: FontWeight.w700, color: active ? C.orange : C.muted))])));
+    }));
+  }
+
+  Widget _thread(BuildContext context, Msg m, double s) {
+    final icon = m.type == 'call' ? Icons.phone_rounded : m.type == 'parking' ? Icons.local_parking_rounded : Icons.person_rounded;
+    final iconColor = m.type == 'parking' ? const Color(0xFF2F6DF6) : C.orange;
+    final bg = m.type == 'call' ? const Color(0xFFFFF1E4) : m.type == 'parking' ? const Color(0xFFEAF0FF) : const Color(0xFFEEF1F5);
+    return InkWell(
+      onTap: () {
+        if (m.type == 'call') {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const CallDetailPage()));
+        } else {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => ChatPage(title: m.title, firstMessage: m.body)));
+        }
+      },
+      borderRadius: BorderRadius.circular(20 * s),
+      child: Container(
+        margin: EdgeInsets.only(bottom: 9 * s),
+        padding: EdgeInsets.all(12 * s),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20 * s), boxShadow: const [BoxShadow(color: Color(0x09000000), blurRadius: 14, offset: Offset(0, 5))]),
+        child: Row(children: [
+          Stack(clipBehavior: Clip.none, children: [CircleAvatar(radius: 26 * s, backgroundColor: bg, child: Icon(icon, color: iconColor, size: 25 * s)), if (m.unread) Positioned(right: -1, top: -1, child: CircleAvatar(radius: 5 * s, backgroundColor: C.orange))]),
+          SizedBox(width: 12 * s),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(m.title, style: TextStyle(fontSize: 15 * s, fontWeight: FontWeight.w900, color: C.navy)), SizedBox(height: 4 * s), Text(m.body, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12.5 * s, color: C.muted))])),
+          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [Text(m.time, style: TextStyle(fontSize: 11.5 * s, color: C.muted)), SizedBox(height: 12 * s), Icon(Icons.chevron_right_rounded, size: 20 * s, color: C.navy)]),
+        ]),
+      ),
+    );
+  }
+
+  void _showFilter() {
+    showModalBottomSheet(context: context, showDragHandle: true, builder: (_) => SafeArea(child: Padding(padding: const EdgeInsets.all(20), child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const Text('Mesaj filtresi', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+      const SizedBox(height: 12),
+      SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('Sadece okunmamış'), value: unreadOnly, activeThumbColor: C.orange, onChanged: (v) { Navigator.pop(context); setState(() => unreadOnly = v); }),
+    ]))));
+  }
+}
+
+class Msg {
+  const Msg(this.title, this.body, this.time, this.type, this.unread);
+  final String title, body, time, type;
+  final bool unread;
+}
+
+class ChatPage extends StatefulWidget {
+  const ChatPage({super.key, required this.title, required this.firstMessage});
+  final String title, firstMessage;
+  @override
+  State<ChatPage> createState() => _ChatPageState();
+}
+
+class _ChatPageState extends State<ChatPage> {
+  final input = TextEditingController();
+  final replies = <String>[];
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(title: Text(widget.title, style: const TextStyle(fontWeight: FontWeight.w800))),
+        body: Column(children: [
+          Expanded(child: ListView(padding: const EdgeInsets.all(16), children: [
+            Align(alignment: Alignment.centerLeft, child: _bubble(widget.firstMessage, false)),
+            ...replies.map((e) => Align(alignment: Alignment.centerRight, child: _bubble(e, true))),
+          ])),
+          SafeArea(top: false, child: Container(color: Colors.white, padding: const EdgeInsets.fromLTRB(12, 8, 12, 10), child: Row(children: [
+            Expanded(child: TextField(controller: input, decoration: InputDecoration(hintText: 'Mesaj yaz...', filled: true, fillColor: const Color(0xFFF2F4F7), border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none)))),
+            const SizedBox(width: 8),
+            CircleAvatar(backgroundColor: C.orange, child: IconButton(onPressed: () { final t = input.text.trim(); if (t.isEmpty) return; setState(() { replies.add(t); input.clear(); }); }, icon: const Icon(Icons.send_rounded, color: Colors.white))),
+          ]))),
+        ]),
+      );
+
+  Widget _bubble(String t, bool mine) => Container(margin: const EdgeInsets.only(bottom: 10), constraints: const BoxConstraints(maxWidth: 290), padding: const EdgeInsets.all(13), decoration: BoxDecoration(color: mine ? C.orange : Colors.white, borderRadius: BorderRadius.circular(18)), child: Text(t));
+}
+
+class CallDetailPage extends StatelessWidget {
+  const CallDetailPage({super.key});
+  @override
+  Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text('Arama isteği')), body: Padding(padding: const EdgeInsets.all(20), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    const Text('Numara gizli', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+    const SizedBox(height: 8),
+    const Text('Bu kişi aracınızla ilgili gizli arama isteği gönderdi.', style: TextStyle(color: C.muted)),
+    const SizedBox(height: 24),
+    SizedBox(width: double.infinity, height: 54, child: FilledButton.icon(style: FilledButton.styleFrom(backgroundColor: C.orange), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CallPage())), icon: const Icon(Icons.phone), label: const Text('Ara ve konuş'))),
+  ])));
+}
+
+class HistoryPage extends StatelessWidget {
+  const HistoryPage({super.key});
+  @override
+  Widget build(BuildContext context) => _page((s) => [header(s), SizedBox(height: 24 * s), Text('Geçmiş', style: TextStyle(fontSize: 31 * s, fontWeight: FontWeight.w900)), SizedBox(height: 8 * s), Text('Tüm talepleriniz ve arama kayıtları burada.', style: TextStyle(color: C.muted, fontSize: 14 * s)), SizedBox(height: 20 * s), ...['Gelen arama • 14:32 • Tamamlandı', 'Mesaj • 12:18 • Yanıtlandı', 'Otopark çıkışı • 10:05 • Tamamlandı', 'Cevapsız arama • 09:17'].map((e) => Container(margin: EdgeInsets.only(bottom: 10 * s), padding: EdgeInsets.all(16 * s), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18 * s)), child: Text(e, style: TextStyle(fontSize: 14 * s, fontWeight: FontWeight.w700))))]);
+}
+
+class SettingsPage extends StatelessWidget {
+  const SettingsPage({super.key});
+  @override
+  Widget build(BuildContext context) => _page((s) => [header(s), SizedBox(height: 24 * s), Text('Ayarlar', style: TextStyle(fontSize: 31 * s, fontWeight: FontWeight.w900)), SizedBox(height: 18 * s), ...['Hesap bilgilerim', 'Araçlarım', 'QR etiketim', 'Bildirim ayarları', 'Gizlilik ve güvenlik'].map((e) => Container(margin: EdgeInsets.only(bottom: 10 * s), padding: EdgeInsets.all(16 * s), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18 * s)), child: Row(children: [Expanded(child: Text(e, style: TextStyle(fontSize: 14 * s, fontWeight: FontWeight.w700))), const Icon(Icons.chevron_right)]))) ]);
+}
+
+class CallPage extends StatelessWidget {
+  const CallPage({super.key});
+  @override
+  Widget build(BuildContext context) => Scaffold(backgroundColor: const Color(0xFF07111F), body: SafeArea(child: Column(children: [
+    const SizedBox(height: 30),
+    const Text('Gizli Arama', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)),
+    const Spacer(),
+    const CircleAvatar(radius: 80, backgroundColor: C.orange, child: Icon(Icons.directions_car, color: Colors.white, size: 70)),
+    const SizedBox(height: 30),
+    const Text('Numaranız gizli kalır.', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700)),
+    const SizedBox(height: 8),
+    const Text('0850 üzerinden güvenli arama gerçekleştiriliyor.', style: TextStyle(color: Colors.white70)),
+    const Spacer(),
+    CircleAvatar(radius: 38, backgroundColor: Colors.red, child: IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.call_end, color: Colors.white, size: 34))),
+    const SizedBox(height: 30),
+  ])));
+}
+
+Widget _page(List<Widget> Function(double s) builder) => SafeArea(bottom: false, child: LayoutBuilder(builder: (context, constraints) {
+      final w = constraints.maxWidth.clamp(320.0, 500.0);
+      final s = (w / 430).clamp(.82, 1.08);
+      return Center(child: SizedBox(width: w, child: SingleChildScrollView(padding: EdgeInsets.fromLTRB(18 * s, 12 * s, 18 * s, 24), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: builder(s)))));
+    }));
