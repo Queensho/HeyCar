@@ -2,6 +2,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const registerNotificationRoutes = require('./notification-routes');
 
 function normalizeToken(raw) {
   return String(raw || '').trim().toUpperCase();
@@ -12,6 +13,8 @@ function validHexColor(value) {
 }
 
 module.exports = function registerQrRoutes(app, pool) {
+  registerNotificationRoutes(app, pool);
+
   const uploadDir = path.join(__dirname, 'uploads', 'public-themes');
   fs.mkdirSync(uploadDir, { recursive: true });
   app.use('/uploads/public-themes', express.static(uploadDir, { maxAge: '7d' }));
