@@ -382,7 +382,7 @@ class _PublicHome extends StatelessWidget {
           const SizedBox(height: 10),
           InkWell(
             borderRadius: BorderRadius.circular(18),
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => _HiddenCall(plate: plate))),
+            onTap: () => _startCall(context),
             child: Container(
               height: compact ? 52 : 58,
               padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -409,6 +409,17 @@ class _PublicHome extends StatelessWidget {
   void _compose(BuildContext context, String type) {
     Navigator.push(context, MaterialPageRoute(builder: (_) => _MessageComposer(plate: plate, type: type)));
   }
+
+  Future<void> _startCall(BuildContext context) async {
+    try {
+      await PublicNotificationApi.sendCallRequest();
+      if (!context.mounted) return;
+      Navigator.push(context, MaterialPageRoute(builder: (_) => _HiddenCall(plate: plate)));
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Arama isteği gönderilemedi.')));
+    }
+  }
 }
 
 class _MessageComposer extends StatefulWidget {
@@ -430,6 +441,16 @@ class _MessageComposerState extends State<_MessageComposer> {
                 : '',
   );
   bool sending = false;
+  bool photoAdded = false;
+  bool locationAdded = false;
+  bool photoBusy = false;
+  bool locationBusy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    PublicNotificationApi.clearDraft();
+  }
 
   @override
   void dispose() {
@@ -437,8 +458,40 @@ class _MessageComposerState extends State<_MessageComposer> {
     super.dispose();
   }
 
+  bool get canSend => message.text.trim().isNotEmpty || photoAdded || locationAdded;
+
+  Future<void> _addPhoto() async {
+    if (photoBusy) return;
+    setState(() => photoBusy = true);
+    try {
+      final ok = await PublicNotificationApi.pickAndUploadPhoto();
+      if (!mounted) return;
+      setState(() => photoAdded = ok);
+      if (ok) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Fotoğraf eklendi.')));
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Fotoğraf eklenemedi.')));
+    } finally {
+      if (mounted) setState(() => photoBusy = false);
+    }
+  }
+
+  Future<void> _addLocation() async {
+    if (locationBusy) return;
+    setState(() => locationBusy = true);
+    try {
+      final ok = await PublicNotificationApi.pickLocation();
+      if (!mounted) return;
+      setState(() => locationAdded = ok);
+      if (ok) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Konum eklendi.')));
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Konum izni verilmedi veya konum alınamadı.')));
+    } finally {
+      if (mounted) setState(() => locationBusy = false);
+    }
+  }
+
   Future<void> _send() async {
-    if (sending || message.text.trim().isEmpty) return;
+    if (sending || !canSend) return;
     setState(() => sending = true);
     try {
       await PublicNotificationApi.send(
@@ -500,9 +553,9 @@ class _MessageComposerState extends State<_MessageComposer> {
                     ),
                     const SizedBox(height: 6),
                     Row(children: [
-                      Expanded(child: _miniAction(Icons.camera_alt_rounded, 'Fotoğraf ekle')),
+                      Expanded(child: _miniAction(Icons.camera_alt_rounded, photoAdded ? 'Fotoğraf eklendi' : 'Fotoğraf ekle', onTap: _addPhoto, active: photoAdded, busy: photoBusy)),
                       const SizedBox(width: 10),
-                      Expanded(child: _miniAction(Icons.location_on_rounded, 'Konum ekle')),
+                      Expanded(child: _miniAction(Icons.location_on_rounded, locationAdded ? 'Konum eklendi' : 'Konum ekle', onTap: _addLocation, active: locationAdded, busy: locationBusy)),
                     ]),
                     const SizedBox(height: 12),
                     SizedBox(
@@ -510,7 +563,7 @@ class _MessageComposerState extends State<_MessageComposer> {
                       height: 52,
                       child: FilledButton.icon(
                         style: FilledButton.styleFrom(backgroundColor: _lime, foregroundColor: Colors.black, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-                        onPressed: message.text.trim().isEmpty || sending ? null : _send,
+                        onPressed: !canSend || sending ? null : _send,
                         icon: sending
                             ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.black))
                             : const Icon(Icons.send_rounded),
@@ -572,7 +625,7 @@ class _HiddenCall extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text('00:12', style: TextStyle(color: Colors.white, fontSize: 18)),
+                  const Icon(Icons.notifications_active_rounded, color: _lime, size: 42),
                   const SizedBox(height: 28),
                   Container(
                     width: 170,
@@ -581,15 +634,15 @@ class _HiddenCall extends StatelessWidget {
                     child: const Icon(Icons.directions_car_filled_rounded, color: Colors.white, size: 62),
                   ),
                   const SizedBox(height: 26),
-                  const Text('Numaranız gizli kalır.\n0850 üzerinden güvenli arama gerçekleştiriliyor.', textAlign: TextAlign.center, style: TextStyle(color: _muted, height: 1.45)),
+                  Text('$plate için arama isteği gönderildi.', textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18)),
+                  const SizedBox(height: 8),
+                  const Text('Araç sahibine çağrı bildirimi ulaştı. Telefon numaranız paylaşılmadı.', textAlign: TextAlign.center, style: TextStyle(color: _muted, height: 1.45)),
                   const SizedBox(height: 34),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _callCircle(Icons.mic_off_rounded, 'Sessiz', _panel),
-                      _callCircle(Icons.call_end_rounded, 'Sonlandır', Colors.red),
-                      _callCircle(Icons.volume_up_rounded, 'Hoparlör', _panel),
-                    ],
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(backgroundColor: _lime, foregroundColor: Colors.black),
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.check_rounded),
+                    label: const Text('Tamam', style: TextStyle(fontWeight: FontWeight.w900)),
                   ),
                 ],
               ),
@@ -692,22 +745,31 @@ Widget _vehicleHead(String plate, String sub) => Column(
       ],
     );
 
-Widget _miniAction(IconData icon, String label) => Container(
-      height: 82,
-      decoration: BoxDecoration(color: _panel2, borderRadius: BorderRadius.circular(15), border: Border.all(color: _line)),
-      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Icon(icon, color: _lime, size: 27),
-        const SizedBox(height: 5),
-        Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
-      ]),
-    );
-
-Widget _callCircle(IconData icon, String label, Color color) => Column(
-      children: [
-        CircleAvatar(radius: 31, backgroundColor: color, child: Icon(icon, color: Colors.white, size: 28)),
-        const SizedBox(height: 8),
-        Text(label, style: const TextStyle(color: Colors.white, fontSize: 12)),
-      ],
+Widget _miniAction(
+  IconData icon,
+  String label, {
+  required VoidCallback onTap,
+  bool active = false,
+  bool busy = false,
+}) => Material(
+      color: active ? const Color(0xFF203A22) : _panel2,
+      borderRadius: BorderRadius.circular(15),
+      child: InkWell(
+        onTap: busy ? null : onTap,
+        borderRadius: BorderRadius.circular(15),
+        child: Container(
+          height: 82,
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(15), border: Border.all(color: active ? _lime : _line)),
+          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            if (busy)
+              const SizedBox(width: 25, height: 25, child: CircularProgressIndicator(color: _lime, strokeWidth: 2.5))
+            else
+              Icon(active ? Icons.check_circle_rounded : icon, color: _lime, size: 27),
+            const SizedBox(height: 5),
+            Text(label, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
+          ]),
+        ),
+      ),
     );
 
 class _TimelineRow extends StatelessWidget {
