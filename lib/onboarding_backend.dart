@@ -1,0 +1,60 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
+class OnboardingDraft {
+  static String phone = '';
+  static String displayName = '';
+  static String email = '';
+  static String password = '';
+}
+
+class OnboardingBackend {
+  static const String baseUrl = 'https://heycar-api-185-165-46-213.nip.io';
+
+  static Future<Map<String, dynamic>> registerWithVehicle({
+    required String phone,
+    required String displayName,
+    required String email,
+    required String password,
+    required String plate,
+    required String make,
+    required String model,
+    String color = '',
+  }) async {
+    final response = await http
+        .post(
+          Uri.parse('$baseUrl/api/onboarding/register'),
+          headers: const {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'phone': phone.trim(),
+            'displayName': displayName.trim(),
+            'email': email.trim(),
+            'password': password,
+            'plate': plate.trim().toUpperCase(),
+            'make': make.trim(),
+            'model': model.trim(),
+            'color': color.trim(),
+          }),
+        )
+        .timeout(const Duration(seconds: 15));
+
+    final decoded = response.body.isEmpty
+        ? <String, dynamic>{}
+        : jsonDecode(response.body);
+
+    if (response.statusCode >= 200 &&
+        response.statusCode < 300 &&
+        decoded is Map<String, dynamic>) {
+      return decoded;
+    }
+
+    final code = decoded is Map ? decoded['error']?.toString() ?? '' : '';
+    if (code == 'EMAIL_EXISTS') {
+      throw Exception('Bu e-posta adresi zaten kayıtlı.');
+    }
+    if (code == 'INVALID_INPUT') {
+      throw Exception('Bilgileri kontrol edip tekrar dene.');
+    }
+    throw Exception('Kayıt tamamlanamadı. Tekrar dene.');
+  }
+}
