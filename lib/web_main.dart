@@ -33,10 +33,10 @@ class HeyCarPublicWebApp extends StatelessWidget {
                 children: [
                   PublicQrPersonalizedScreen(token: token),
                   Positioned(
-                    top: 155,
-                    right: -72,
-                    width: 300,
-                    height: 270,
+                    top: -35,
+                    right: -68,
+                    width: 285,
+                    height: 255,
                     child: IgnorePointer(
                       child: Image.asset(
                         'assets/Heycar3d.png',
