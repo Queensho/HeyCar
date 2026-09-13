@@ -1,15 +1,33 @@
+function normalizeTrMobile(raw) {
+  let digits = String(raw || '').replace(/\D/g, '');
+  if (digits.startsWith('90') && digits.length === 12) {
+    digits = digits.slice(2);
+  } else if (digits.startsWith('0') && digits.length === 11) {
+    digits = digits.slice(1);
+  }
+  if (!/^5\d{9}$/.test(digits)) return null;
+  return `+90${digits}`;
+}
+
 module.exports = function registerOnboardingRoutes(app, pool) {
   app.post('/api/onboarding/register', async (req, res) => {
-    const phone = String(req.body.phone || '').trim();
+    const phone = normalizeTrMobile(req.body.phone);
     const displayName = String(req.body.displayName || '').trim();
     const emailRaw = String(req.body.email || '').trim().toLowerCase();
     const email = emailRaw || null;
     const password = String(req.body.password || '');
+    const otpCode = String(req.body.otpCode || '').trim();
     const plate = String(req.body.plate || '').trim().toUpperCase();
     const make = String(req.body.make || '').trim();
     const model = String(req.body.model || '').trim();
     const color = String(req.body.color || '').trim();
 
+    if (!phone) {
+      return res.status(400).json({ error: 'INVALID_PHONE' });
+    }
+    if (otpCode !== '123456') {
+      return res.status(400).json({ error: 'OTP_INVALID' });
+    }
     if (!displayName || password.length < 6 || !plate || !make) {
       return res.status(400).json({ error: 'INVALID_INPUT' });
     }
@@ -17,6 +35,15 @@ module.exports = function registerOnboardingRoutes(app, pool) {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
+
+      const phoneExists = await client.query(
+        'SELECT 1 FROM users WHERE phone = $1 LIMIT 1',
+        [phone]
+      );
+      if (phoneExists.rows.length) {
+        await client.query('ROLLBACK');
+        return res.status(409).json({ error: 'PHONE_EXISTS' });
+      }
 
       if (email) {
         const exists = await client.query(
@@ -33,7 +60,7 @@ module.exports = function registerOnboardingRoutes(app, pool) {
         `INSERT INTO users (email, phone, display_name, password_hash, role, status)
          VALUES ($1, $2, $3, crypt($4, gen_salt('bf', 12)), 'user', 'active')
          RETURNING id, email, phone, display_name, role, status, created_at`,
-        [email, phone || null, displayName, password]
+        [email, phone, displayName, password]
       );
 
       const user = userResult.rows[0];
