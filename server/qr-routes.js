@@ -11,7 +11,7 @@ module.exports = function registerQrRoutes(app, pool) {
     try {
       const result = await pool.query(
         `SELECT q.token, q.status, q.activated_at,
-                v.plate, v.make, v.model, v.color
+                v.id AS vehicle_id, v.plate, v.make, v.model, v.color
          FROM qr_tags q
          LEFT JOIN vehicles v ON v.id = q.vehicle_id
          WHERE q.token = $1
@@ -25,6 +25,7 @@ module.exports = function registerQrRoutes(app, pool) {
         token: row.token,
         status: row.status,
         vehicle: row.plate ? {
+          id: row.vehicle_id,
           plate: row.plate,
           make: row.make,
           model: row.model,
@@ -40,12 +41,13 @@ module.exports = function registerQrRoutes(app, pool) {
 
   app.post('/api/qr/activate', async (req, res) => {
     const token = normalizeToken(req.body.token);
+    const existingVehicleId = String(req.body.vehicleId || '').trim();
     const plate = String(req.body.plate || '').trim().toUpperCase();
     const make = String(req.body.make || '').trim();
     const model = String(req.body.model || '').trim() || null;
     const ownerName = String(req.body.ownerName || '').trim() || 'HeyCar Kullanıcısı';
 
-    if (!token || !plate || !make) {
+    if (!token || (!existingVehicleId && (!plate || !make))) {
       return res.status(400).json({ error: 'REQUIRED_FIELDS_MISSING' });
     }
 
@@ -70,21 +72,38 @@ module.exports = function registerQrRoutes(app, pool) {
         return res.status(409).json({ error: 'QR_ALREADY_BOUND' });
       }
 
-      const ownerResult = await client.query(
-        `INSERT INTO users (display_name, role, status)
-         VALUES ($1, 'user', 'active')
-         RETURNING id, display_name`,
-        [ownerName]
-      );
-      const owner = ownerResult.rows[0];
+      let vehicle;
 
-      const vehicleResult = await client.query(
-        `INSERT INTO vehicles (owner_id, plate, make, model)
-         VALUES ($1, $2, $3, $4)
-         RETURNING id, plate, make, model, color`,
-        [owner.id, plate, make, model]
-      );
-      const vehicle = vehicleResult.rows[0];
+      if (existingVehicleId) {
+        const vehicleResult = await client.query(
+          `SELECT id, owner_id, plate, make, model, color
+           FROM vehicles
+           WHERE id = $1
+           LIMIT 1`,
+          [existingVehicleId]
+        );
+        if (!vehicleResult.rows.length) {
+          await client.query('ROLLBACK');
+          return res.status(404).json({ error: 'VEHICLE_NOT_FOUND' });
+        }
+        vehicle = vehicleResult.rows[0];
+      } else {
+        const ownerResult = await client.query(
+          `INSERT INTO users (display_name, role, status)
+           VALUES ($1, 'user', 'active')
+           RETURNING id, display_name`,
+          [ownerName]
+        );
+        const owner = ownerResult.rows[0];
+
+        const vehicleResult = await client.query(
+          `INSERT INTO vehicles (owner_id, plate, make, model)
+           VALUES ($1, $2, $3, $4)
+           RETURNING id, owner_id, plate, make, model, color`,
+          [owner.id, plate, make, model]
+        );
+        vehicle = vehicleResult.rows[0];
+      }
 
       await client.query(
         `UPDATE qr_tags
