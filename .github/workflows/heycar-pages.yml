@@ -50,6 +50,13 @@ jobs:
           mkdir -p deploy/owner
           cp -R build/web/. deploy/owner/
 
+      - name: Build admin panel
+        run: |
+          flutter build web --release --target lib/admin_main.dart --base-href "/HeyCar/admin/" --pwa-strategy=none
+          rm -f build/web/flutter_service_worker.js build/web/version.json
+          mkdir -p deploy/admin
+          cp -R build/web/. deploy/admin/
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
