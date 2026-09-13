@@ -1,23 +1,699 @@
 import 'package:flutter/material.dart';
 import 'main.dart' as app;
 
-void main()=>runApp(const EntryApp());
-class EntryApp extends StatelessWidget{const EntryApp({super.key});@override Widget build(BuildContext c)=>MaterialApp(debugShowCheckedModeBanner:false,theme:ThemeData(useMaterial3:true,scaffoldBackgroundColor:app.C.bg,colorScheme:ColorScheme.fromSeed(seedColor:app.C.orange),fontFamily:'sans'),home:const Onboarding());}
-class Onboarding extends StatefulWidget{const Onboarding({super.key});@override State<Onboarding> createState()=>_OnboardingState();}
-class _OnboardingState extends State<Onboarding>{int i=0;void n()=>setState(()=>i=(i+1).clamp(0,7));void b()=>setState(()=>i=(i-1).clamp(0,7));void done()=>Navigator.pushReplacement(context,MaterialPageRoute(builder:(_)=>const app.Shell()));@override Widget build(BuildContext c)=>[Welcome(n),Phone(n,b),Otp(n,b),Account(n,b),Vehicle(n,b),QrScan(n,b),QrOk(n,b),Guide(done,b)][i];}
-class Welcome extends StatelessWidget{const Welcome(this.n,{super.key});final VoidCallback n;@override Widget build(BuildContext c)=>Scaffold(backgroundColor:Colors.white,body:SafeArea(child:Stack(children:[Positioned(right:-120,bottom:90,width:500,child:Image.asset('assets/Arac.png')),const Positioned(left:28,top:85,child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Row(children:[Icon(Icons.directions_car_filled,color:app.C.orange,size:52),SizedBox(width:12),Text.rich(TextSpan(children:[TextSpan(text:'Hey',style:TextStyle(color:app.C.navy)),TextSpan(text:'Car',style:TextStyle(color:app.C.orange))]),style:TextStyle(fontSize:42,fontWeight:FontWeight.w900))]),SizedBox(height:18),Text('Daha iyi bir trafik,\ndaha nazik bir toplum.',style:TextStyle(color:app.C.navy,fontSize:21,height:1.35,fontWeight:FontWeight.w600))])),Positioned(left:24,right:24,bottom:28,child:Column(children:[Primary('Hemen Başla',n),const SizedBox(height:14),GestureDetector(onTap:n,child:const Text('Zaten hesabın var mı?  Giriş yap',style:TextStyle(color:app.C.muted)))]))])));}
-class Phone extends StatelessWidget{const Phone(this.n,this.b,{super.key});final VoidCallback n,b;@override Widget build(BuildContext c)=>Frame(1,b,'Telefon numaran ile başla','Numaran yalnızca seni doğrulamak için kullanılır, kimseyle paylaşılmaz.',Column(children:[Row(children:[Container(height:58,padding:const EdgeInsets.symmetric(horizontal:14),decoration:box(),child:const Row(children:[Text('🇹🇷'),SizedBox(width:8),Text('+90',style:TextStyle(fontWeight:FontWeight.w800)),Icon(Icons.keyboard_arrow_down)])),const SizedBox(width:10),const Expanded(child:TextField(keyboardType:TextInputType.phone,decoration:InputDecoration(hintText:'532 123 45 67')))]),const SizedBox(height:18),Primary('Doğrulama kodu gönder',n)]));}
-class Otp extends StatelessWidget{const Otp(this.n,this.b,{super.key});final VoidCallback n,b;@override Widget build(BuildContext c)=>Frame(2,b,'Doğrulama kodunu gir','+90 532 123 45 67 numarasına gönderilen 6 haneli kodu gir.',Column(children:[Row(mainAxisAlignment:MainAxisAlignment.spaceBetween,children:List.generate(6,(x)=>SizedBox(width:48,child:TextField(maxLength:1,textAlign:TextAlign.center,keyboardType:TextInputType.number,decoration:InputDecoration(counterText:'',hintText:'${[4,8,2,9,1,7][x]}'))))),const SizedBox(height:18),const Text('Kod gelmedi mi?  00:45',style:TextStyle(color:app.C.muted)),const SizedBox(height:8),const Text('Tekrar gönder',style:TextStyle(fontWeight:FontWeight.w800,decoration:TextDecoration.underline)),const SizedBox(height:24),Primary('Devam et',n)]));}
-class Account extends StatelessWidget{const Account(this.n,this.b,{super.key});final VoidCallback n,b;@override Widget build(BuildContext c)=>Frame(3,b,'Hesabını oluştur','Sana özel bir profil oluştur.',Column(children:[const TextField(decoration:InputDecoration(prefixIcon:Icon(Icons.person_outline),labelText:'Ad Soyad',hintText:'Tayfun Demir')),const SizedBox(height:14),const TextField(decoration:InputDecoration(prefixIcon:Icon(Icons.mail_outline),labelText:'E-posta (isteğe bağlı)')),const SizedBox(height:14),const TextField(obscureText:true,decoration:InputDecoration(prefixIcon:Icon(Icons.lock_outline),suffixIcon:Icon(Icons.visibility_outlined),labelText:'Şifre oluştur')),const SizedBox(height:24),Primary('Devam et',n)]));}
-class Vehicle extends StatelessWidget{const Vehicle(this.n,this.b,{super.key});final VoidCallback n,b;@override Widget build(BuildContext c)=>Frame(4,b,'Aracını ekle','Bir veya birden fazla araç ekleyebilirsin.',Column(children:[const Tabs('Plaka ile ekle','Ruhsat fotoğrafı ile'),const SizedBox(height:18),Container(height:64,decoration:box(),child:Row(children:[Container(width:52,alignment:Alignment.center,color:const Color(0xff0a3c91),child:const Text('TR',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w900))),const Expanded(child:Center(child:Text('34 ABC 123',style:TextStyle(fontSize:22,fontWeight:FontWeight.w900))))])),const SizedBox(height:16),Container(padding:const EdgeInsets.all(12),decoration:box(),child:Row(children:[SizedBox(width:92,height:56,child:Image.asset('assets/Arac.png')),const SizedBox(width:12),const Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('BMW 3 Serisi',style:TextStyle(fontWeight:FontWeight.w900)),Text('Siyah',style:TextStyle(color:app.C.muted))])),const Icon(Icons.chevron_right)])),const SizedBox(height:24),Primary('Aracı kaydet',n)]));}
-class QrScan extends StatelessWidget{const QrScan(this.n,this.b,{super.key});final VoidCallback n,b;@override Widget build(BuildContext c)=>Frame(5,b,'QR etiketini aktifleştir','Kutudan çıkan QR etiketini okut veya üzerindeki aktivasyon kodunu yaz.',Column(children:[const Tabs('QR okut','Kod ile aktif et'),const SizedBox(height:18),GestureDetector(onTap:n,child:Container(height:390,width:double.infinity,decoration:BoxDecoration(color:const Color(0xff080d13),borderRadius:BorderRadius.circular(24)),child:Stack(alignment:Alignment.center,children:[CustomPaint(size:const Size(190,190),painter:QrPaint()),const Positioned(left:34,top:34,child:Corner()),const Positioned(right:34,top:34,child:RotatedBox(quarterTurns:1,child:Corner())),const Positioned(right:34,bottom:68,child:RotatedBox(quarterTurns:2,child:Corner())),const Positioned(left:34,bottom:68,child:RotatedBox(quarterTurns:3,child:Corner())),const Positioned(bottom:22,child:Text('QR’ı çerçeve içine al',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w700)))]))),const SizedBox(height:14),OutlinedButton.icon(onPressed:(){},icon:const Icon(Icons.lightbulb_outline),label:const Text('Işık aç'))]));}
-class QrOk extends StatelessWidget{const QrOk(this.n,this.b,{super.key});final VoidCallback n,b;@override Widget build(BuildContext c)=>Frame(6,b,'QR bulundu','Bu etiketi hesabına bağlamak istiyor musun?',Column(children:[Container(width:210,height:210,decoration:BoxDecoration(color:app.C.navy,borderRadius:BorderRadius.circular(28)),child:Stack(alignment:Alignment.center,children:[CustomPaint(size:const Size(135,135),painter:QrPaint()),const Positioned(right:12,top:12,child:CircleAvatar(radius:24,backgroundColor:app.C.orange,child:Icon(Icons.check,color:Colors.white))),const Positioned(bottom:12,child:Text('HC-7XK9P2',style:TextStyle(color:Colors.white70,fontWeight:FontWeight.w800)))])),const SizedBox(height:20),Container(padding:const EdgeInsets.all(18),decoration:BoxDecoration(color:const Color(0xfff1f3f6),borderRadius:BorderRadius.circular(18)),child:const Column(children:[Info('Etiket No','HC-7XK9P2'),SizedBox(height:12),Info('Durum','Aktifleştirmeye hazır'),SizedBox(height:12),Info('Ürün','HeyCar QR Etiketi')])),const SizedBox(height:20),Primary('Hesabıma bağla',n)]));}
-class Guide extends StatelessWidget{const Guide(this.done,this.b,{super.key});final VoidCallback done,b;@override Widget build(BuildContext c)=>Frame(7,b,'Etiketi nereye yapıştırmalı?','En iyi görünürlük için arka camın sağ alt köşesine yapıştırmanı öneririz.',Column(children:[Container(height:285,width:double.infinity,decoration:BoxDecoration(color:app.C.navy,borderRadius:BorderRadius.circular(24)),child:Stack(children:[Positioned.fill(child:Opacity(opacity:.82,child:Image.asset('assets/Arac.png',fit:BoxFit.cover))),Positioned(right:28,bottom:34,child:Container(width:120,height:120,padding:const EdgeInsets.all(10),decoration:BoxDecoration(color:app.C.navy,border:Border.all(color:app.C.orange,width:3),borderRadius:BorderRadius.circular(20)),child:CustomPaint(painter:QrPaint()))) ])),const SizedBox(height:18),const Tip(Icons.visibility_outlined,'Dışarıdan kolayca görünür olmalı'),const Tip(Icons.check_circle_outline,'Cam yüzey temiz ve kuru olmalı'),const Tip(Icons.verified_outlined,'Tek sefer yapıştır, uzun ömürlüdür'),const SizedBox(height:20),Primary('Anladım',done)]));}
-class Frame extends StatelessWidget{const Frame(this.step,this.back,this.title,this.sub,this.child,{super.key});final int step;final VoidCallback back;final String title,sub;final Widget child;@override Widget build(BuildContext c)=>Scaffold(body:SafeArea(child:Align(alignment:Alignment.topCenter,child:ConstrainedBox(constraints:const BoxConstraints(maxWidth:500),child:SingleChildScrollView(padding:const EdgeInsets.fromLTRB(22,18,22,26),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Row(children:[IconButton(onPressed:back,icon:const Icon(Icons.arrow_back_ios_new)),const SizedBox(width:8),Expanded(child:ClipRRect(borderRadius:BorderRadius.circular(20),child:LinearProgressIndicator(value:step/7,minHeight:6,backgroundColor:const Color(0xffe7eaf0),color:app.C.orange)))]),const SizedBox(height:28),Text(title,style:const TextStyle(fontSize:30,height:1.05,fontWeight:FontWeight.w900,color:app.C.navy)),const SizedBox(height:10),Text(sub,style:const TextStyle(fontSize:15.5,height:1.45,color:app.C.muted)),const SizedBox(height:24),child])))))));}
-class Primary extends StatelessWidget{const Primary(this.text,this.tap,{super.key});final String text;final VoidCallback tap;@override Widget build(BuildContext c)=>SizedBox(width:double.infinity,height:58,child:FilledButton(onPressed:tap,style:FilledButton.styleFrom(backgroundColor:app.C.orange,foregroundColor:app.C.navy,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(17))),child:Text(text,style:const TextStyle(fontSize:16,fontWeight:FontWeight.w900))));}
-class Tabs extends StatelessWidget{const Tabs(this.a,this.b,{super.key});final String a,b;@override Widget build(BuildContext c)=>Container(height:48,padding:const EdgeInsets.all(4),decoration:BoxDecoration(color:const Color(0xfff0f2f5),borderRadius:BorderRadius.circular(14)),child:Row(children:[Expanded(child:Container(alignment:Alignment.center,decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(11),border:const Border(bottom:BorderSide(color:app.C.orange,width:2))),child:Text(a,style:const TextStyle(fontWeight:FontWeight.w800)))),Expanded(child:Center(child:Text(b,style:const TextStyle(color:app.C.muted))))]));}
-class Info extends StatelessWidget{const Info(this.a,this.b,{super.key});final String a,b;@override Widget build(BuildContext c)=>Row(children:[Expanded(child:Text(a,style:const TextStyle(color:app.C.muted))),Text(b,style:const TextStyle(fontWeight:FontWeight.w800))]);}
-class Tip extends StatelessWidget{const Tip(this.i,this.t,{super.key});final IconData i;final String t;@override Widget build(BuildContext c)=>Padding(padding:const EdgeInsets.only(bottom:14),child:Row(children:[CircleAvatar(radius:17,backgroundColor:const Color(0xfffff0d7),child:Icon(i,color:app.C.orange,size:19)),const SizedBox(width:12),Expanded(child:Text(t,style:const TextStyle(fontWeight:FontWeight.w700))) ]));}
-class Corner extends StatelessWidget{const Corner({super.key});@override Widget build(BuildContext c)=>Container(width:54,height:54,decoration:const BoxDecoration(border:Border(top:BorderSide(color:app.C.orange,width:5),left:BorderSide(color:app.C.orange,width:5)),borderRadius:BorderRadius.only(topLeft:Radius.circular(12))));}
-BoxDecoration box()=>BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(18),border:Border.all(color:app.C.line));
-class QrPaint extends CustomPainter{@override void paint(Canvas c,Size s){final bg=Paint()..color=Colors.white,fg=Paint()..color=Colors.black;c.drawRRect(RRect.fromRectAndRadius(Offset.zero&s,const Radius.circular(10)),bg);const n=21;final z=s.width/n;for(var y=0;y<n;y++)for(var x=0;x<n;x++)if(((x*17+y*31+x*y)%7)<3)c.drawRect(Rect.fromLTWH(x*z,y*z,z*.92,z*.92),fg);}@override bool shouldRepaint(covariant CustomPainter oldDelegate)=>false;}
+void main() => runApp(const EntryApp());
+
+class EntryApp extends StatelessWidget {
+  const EntryApp({super.key});
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          useMaterial3: true,
+          scaffoldBackgroundColor: app.C.bg,
+          colorScheme: ColorScheme.fromSeed(seedColor: app.C.orange),
+          fontFamily: 'sans',
+        ),
+        home: const Onboarding(),
+      );
+}
+
+class Onboarding extends StatefulWidget {
+  const Onboarding({super.key});
+
+  @override
+  State<Onboarding> createState() => _OnboardingState();
+}
+
+class _OnboardingState extends State<Onboarding> {
+  int i = 0;
+
+  void n() => setState(() => i = (i + 1).clamp(0, 7));
+  void b() => setState(() => i = (i - 1).clamp(0, 7));
+  void done() => Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const app.Shell()),
+      );
+
+  @override
+  Widget build(BuildContext context) => [
+        Welcome(n),
+        Phone(n, b),
+        Otp(n, b),
+        Account(n, b),
+        Vehicle(n, b),
+        QrScan(n, b),
+        QrOk(n, b),
+        Guide(done, b),
+      ][i];
+}
+
+class Welcome extends StatelessWidget {
+  const Welcome(this.n, {super.key});
+  final VoidCallback n;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: Stack(
+            children: [
+              Positioned(
+                right: -120,
+                bottom: 90,
+                width: 500,
+                child: Image.asset('assets/Arac.png'),
+              ),
+              const Positioned(
+                left: 28,
+                top: 85,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.directions_car_filled, color: app.C.orange, size: 52),
+                        SizedBox(width: 12),
+                        Text.rich(
+                          TextSpan(
+                            children: [
+                              TextSpan(text: 'Hey', style: TextStyle(color: app.C.navy)),
+                              TextSpan(text: 'Car', style: TextStyle(color: app.C.orange)),
+                            ],
+                          ),
+                          style: TextStyle(fontSize: 42, fontWeight: FontWeight.w900),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 18),
+                    Text(
+                      'Daha iyi bir trafik,\ndaha nazik bir toplum.',
+                      style: TextStyle(
+                        color: app.C.navy,
+                        fontSize: 21,
+                        height: 1.35,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Positioned(
+                left: 24,
+                right: 24,
+                bottom: 28,
+                child: Column(
+                  children: [
+                    Primary('Hemen Başla', n),
+                    const SizedBox(height: 14),
+                    GestureDetector(
+                      onTap: n,
+                      child: const Text(
+                        'Zaten hesabın var mı?  Giriş yap',
+                        style: TextStyle(color: app.C.muted),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+}
+
+class Phone extends StatelessWidget {
+  const Phone(this.n, this.b, {super.key});
+  final VoidCallback n, b;
+
+  @override
+  Widget build(BuildContext context) => Frame(
+        1,
+        b,
+        'Telefon numaran ile başla',
+        'Numaran yalnızca seni doğrulamak için kullanılır, kimseyle paylaşılmaz.',
+        Column(
+          children: [
+            Row(
+              children: [
+                Container(
+                  height: 58,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  decoration: box(),
+                  child: const Row(
+                    children: [
+                      Text('🇹🇷'),
+                      SizedBox(width: 8),
+                      Text('+90', style: TextStyle(fontWeight: FontWeight.w800)),
+                      Icon(Icons.keyboard_arrow_down),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: TextField(
+                    keyboardType: TextInputType.phone,
+                    decoration: InputDecoration(hintText: '532 123 45 67'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            Primary('Doğrulama kodu gönder', n),
+          ],
+        ),
+      );
+}
+
+class Otp extends StatelessWidget {
+  const Otp(this.n, this.b, {super.key});
+  final VoidCallback n, b;
+
+  @override
+  Widget build(BuildContext context) => Frame(
+        2,
+        b,
+        'Doğrulama kodunu gir',
+        '+90 532 123 45 67 numarasına gönderilen 6 haneli kodu gir.',
+        Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: List.generate(
+                6,
+                (x) => SizedBox(
+                  width: 48,
+                  child: TextField(
+                    maxLength: 1,
+                    textAlign: TextAlign.center,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      counterText: '',
+                      hintText: '${[4, 8, 2, 9, 1, 7][x]}',
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            const Text('Kod gelmedi mi?  00:45', style: TextStyle(color: app.C.muted)),
+            const SizedBox(height: 8),
+            const Text(
+              'Tekrar gönder',
+              style: TextStyle(fontWeight: FontWeight.w800, decoration: TextDecoration.underline),
+            ),
+            const SizedBox(height: 24),
+            Primary('Devam et', n),
+          ],
+        ),
+      );
+}
+
+class Account extends StatelessWidget {
+  const Account(this.n, this.b, {super.key});
+  final VoidCallback n, b;
+
+  @override
+  Widget build(BuildContext context) => Frame(
+        3,
+        b,
+        'Hesabını oluştur',
+        'Sana özel bir profil oluştur.',
+        Column(
+          children: [
+            const TextField(
+              decoration: InputDecoration(
+                prefixIcon: Icon(Icons.person_outline),
+                labelText: 'Ad Soyad',
+                hintText: 'Tayfun Demir',
+              ),
+            ),
+            const SizedBox(height: 14),
+            const TextField(
+              decoration: InputDecoration(
+                prefixIcon: Icon(Icons.mail_outline),
+                labelText: 'E-posta (isteğe bağlı)',
+              ),
+            ),
+            const SizedBox(height: 14),
+            const TextField(
+              obscureText: true,
+              decoration: InputDecoration(
+                prefixIcon: Icon(Icons.lock_outline),
+                suffixIcon: Icon(Icons.visibility_outlined),
+                labelText: 'Şifre oluştur',
+              ),
+            ),
+            const SizedBox(height: 24),
+            Primary('Devam et', n),
+          ],
+        ),
+      );
+}
+
+class Vehicle extends StatelessWidget {
+  const Vehicle(this.n, this.b, {super.key});
+  final VoidCallback n, b;
+
+  @override
+  Widget build(BuildContext context) => Frame(
+        4,
+        b,
+        'Aracını ekle',
+        'Bir veya birden fazla araç ekleyebilirsin.',
+        Column(
+          children: [
+            const Tabs('Plaka ile ekle', 'Ruhsat fotoğrafı ile'),
+            const SizedBox(height: 18),
+            Container(
+              height: 64,
+              decoration: box(),
+              child: Row(
+                children: [
+                  Container(
+                    width: 52,
+                    alignment: Alignment.center,
+                    color: const Color(0xff0a3c91),
+                    child: const Text(
+                      'TR',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900),
+                    ),
+                  ),
+                  const Expanded(
+                    child: Center(
+                      child: Text(
+                        '34 ABC 123',
+                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: box(),
+              child: Row(
+                children: [
+                  SizedBox(width: 92, height: 56, child: Image.asset('assets/Arac.png')),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('BMW 3 Serisi', style: TextStyle(fontWeight: FontWeight.w900)),
+                        Text('Siyah', style: TextStyle(color: app.C.muted)),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            Primary('Aracı kaydet', n),
+          ],
+        ),
+      );
+}
+
+class QrScan extends StatelessWidget {
+  const QrScan(this.n, this.b, {super.key});
+  final VoidCallback n, b;
+
+  @override
+  Widget build(BuildContext context) => Frame(
+        5,
+        b,
+        'QR etiketini aktifleştir',
+        'Kutudan çıkan QR etiketini okut veya üzerindeki aktivasyon kodunu yaz.',
+        Column(
+          children: [
+            const Tabs('QR okut', 'Kod ile aktif et'),
+            const SizedBox(height: 18),
+            GestureDetector(
+              onTap: n,
+              child: Container(
+                height: 390,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: const Color(0xff080d13),
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    CustomPaint(size: const Size(190, 190), painter: QrPaint()),
+                    const Positioned(left: 34, top: 34, child: Corner()),
+                    const Positioned(right: 34, top: 34, child: RotatedBox(quarterTurns: 1, child: Corner())),
+                    const Positioned(right: 34, bottom: 68, child: RotatedBox(quarterTurns: 2, child: Corner())),
+                    const Positioned(left: 34, bottom: 68, child: RotatedBox(quarterTurns: 3, child: Corner())),
+                    const Positioned(
+                      bottom: 22,
+                      child: Text(
+                        'QR’ı çerçeve içine al',
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            OutlinedButton.icon(
+              onPressed: () {},
+              icon: const Icon(Icons.lightbulb_outline),
+              label: const Text('Işık aç'),
+            ),
+          ],
+        ),
+      );
+}
+
+class QrOk extends StatelessWidget {
+  const QrOk(this.n, this.b, {super.key});
+  final VoidCallback n, b;
+
+  @override
+  Widget build(BuildContext context) => Frame(
+        6,
+        b,
+        'QR bulundu',
+        'Bu etiketi hesabına bağlamak istiyor musun?',
+        Column(
+          children: [
+            Container(
+              width: 210,
+              height: 210,
+              decoration: BoxDecoration(
+                color: app.C.navy,
+                borderRadius: BorderRadius.circular(28),
+              ),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  CustomPaint(size: const Size(135, 135), painter: QrPaint()),
+                  const Positioned(
+                    right: 12,
+                    top: 12,
+                    child: CircleAvatar(
+                      radius: 24,
+                      backgroundColor: app.C.orange,
+                      child: Icon(Icons.check, color: Colors.white),
+                    ),
+                  ),
+                  const Positioned(
+                    bottom: 12,
+                    child: Text(
+                      'HC-7XK9P2',
+                      style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: const Color(0xfff1f3f6),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: const Column(
+                children: [
+                  Info('Etiket No', 'HC-7XK9P2'),
+                  SizedBox(height: 12),
+                  Info('Durum', 'Aktifleştirmeye hazır'),
+                  SizedBox(height: 12),
+                  Info('Ürün', 'HeyCar QR Etiketi'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            Primary('Hesabıma bağla', n),
+          ],
+        ),
+      );
+}
+
+class Guide extends StatelessWidget {
+  const Guide(this.done, this.b, {super.key});
+  final VoidCallback done, b;
+
+  @override
+  Widget build(BuildContext context) => Frame(
+        7,
+        b,
+        'Etiketi nereye yapıştırmalı?',
+        'En iyi görünürlük için arka camın sağ alt köşesine yapıştırmanı öneririz.',
+        Column(
+          children: [
+            Container(
+              height: 285,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: app.C.navy,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: Opacity(
+                      opacity: .82,
+                      child: Image.asset('assets/Arac.png', fit: BoxFit.cover),
+                    ),
+                  ),
+                  Positioned(
+                    right: 28,
+                    bottom: 34,
+                    child: Container(
+                      width: 120,
+                      height: 120,
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: app.C.navy,
+                        border: Border.all(color: app.C.orange, width: 3),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: CustomPaint(painter: QrPaint()),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+            const Tip(Icons.visibility_outlined, 'Dışarıdan kolayca görünür olmalı'),
+            const Tip(Icons.check_circle_outline, 'Cam yüzey temiz ve kuru olmalı'),
+            const Tip(Icons.verified_outlined, 'Tek sefer yapıştır, uzun ömürlüdür'),
+            const SizedBox(height: 20),
+            Primary('Anladım', done),
+          ],
+        ),
+      );
+}
+
+class Frame extends StatelessWidget {
+  const Frame(this.step, this.back, this.title, this.sub, this.child, {super.key});
+
+  final int step;
+  final VoidCallback back;
+  final String title, sub;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        body: SafeArea(
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 500),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(22, 18, 22, 26),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: back,
+                          icon: const Icon(Icons.arrow_back_ios_new),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(20),
+                            child: LinearProgressIndicator(
+                              value: step / 7,
+                              minHeight: 6,
+                              backgroundColor: const Color(0xffe7eaf0),
+                              color: app.C.orange,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 28),
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 30,
+                        height: 1.05,
+                        fontWeight: FontWeight.w900,
+                        color: app.C.navy,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      sub,
+                      style: const TextStyle(fontSize: 15.5, height: 1.45, color: app.C.muted),
+                    ),
+                    const SizedBox(height: 24),
+                    child,
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+}
+
+class Primary extends StatelessWidget {
+  const Primary(this.text, this.tap, {super.key});
+  final String text;
+  final VoidCallback tap;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        width: double.infinity,
+        height: 58,
+        child: FilledButton(
+          onPressed: tap,
+          style: FilledButton.styleFrom(
+            backgroundColor: app.C.orange,
+            foregroundColor: app.C.navy,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(17)),
+          ),
+          child: Text(text, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
+        ),
+      );
+}
+
+class Tabs extends StatelessWidget {
+  const Tabs(this.a, this.b, {super.key});
+  final String a, b;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        height: 48,
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: const Color(0xfff0f2f5),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Container(
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(11),
+                  border: const Border(bottom: BorderSide(color: app.C.orange, width: 2)),
+                ),
+                child: Text(a, style: const TextStyle(fontWeight: FontWeight.w800)),
+              ),
+            ),
+            Expanded(
+              child: Center(
+                child: Text(b, style: const TextStyle(color: app.C.muted)),
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+class Info extends StatelessWidget {
+  const Info(this.a, this.b, {super.key});
+  final String a, b;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        children: [
+          Expanded(child: Text(a, style: const TextStyle(color: app.C.muted))),
+          Text(b, style: const TextStyle(fontWeight: FontWeight.w800)),
+        ],
+      );
+}
+
+class Tip extends StatelessWidget {
+  const Tip(this.i, this.t, {super.key});
+  final IconData i;
+  final String t;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: 14),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 17,
+              backgroundColor: const Color(0xfffff0d7),
+              child: Icon(i, color: app.C.orange, size: 19),
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: Text(t, style: const TextStyle(fontWeight: FontWeight.w700))),
+          ],
+        ),
+      );
+}
+
+class Corner extends StatelessWidget {
+  const Corner({super.key});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: 54,
+        height: 54,
+        decoration: const BoxDecoration(
+          border: Border(
+            top: BorderSide(color: app.C.orange, width: 5),
+            left: BorderSide(color: app.C.orange, width: 5),
+          ),
+          borderRadius: BorderRadius.only(topLeft: Radius.circular(12)),
+        ),
+      );
+}
+
+BoxDecoration box() => BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: app.C.line),
+    );
+
+class QrPaint extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final bg = Paint()..color = Colors.white;
+    final fg = Paint()..color = Colors.black;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(Offset.zero & size, const Radius.circular(10)),
+      bg,
+    );
+    const n = 21;
+    final z = size.width / n;
+    for (var y = 0; y < n; y++) {
+      for (var x = 0; x < n; x++) {
+        if (((x * 17 + y * 31 + x * y) % 7) < 3) {
+          canvas.drawRect(Rect.fromLTWH(x * z, y * z, z * .92, z * .92), fg);
+        }
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
