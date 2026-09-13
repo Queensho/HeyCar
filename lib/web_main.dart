@@ -26,6 +26,33 @@ class HeyCarPublicWebApp extends StatelessWidget {
             surface: const Color(0xFF101A31),
           ),
         ),
-        home: PublicQrPersonalizedScreen(token: token),
+        home: _PublicRoot(token: token),
       );
+}
+
+class _PublicRoot extends StatelessWidget {
+  const _PublicRoot({required this.token});
+  final String token;
+
+  @override
+  Widget build(BuildContext context) {
+    final showHero = token.trim().isEmpty;
+    return Stack(
+      children: [
+        PublicQrPersonalizedScreen(token: token),
+        if (showHero)
+          Positioned(
+            top: MediaQuery.sizeOf(context).width < 390 ? 104 : 112,
+            right: -12,
+            width: MediaQuery.sizeOf(context).width < 390 ? 150 : 175,
+            child: IgnorePointer(
+              child: Image.asset(
+                'assets/Heycar3d.png',
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
 }
