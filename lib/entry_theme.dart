@@ -4,6 +4,7 @@ import 'entry_vps.dart' as vps;
 import 'entry_vps_phone.dart' as phone;
 import 'main.dart' as app;
 import 'onboarding_backend.dart';
+import 'owner_login.dart';
 import 'public_theme_settings.dart';
 import 'qr_activation.dart';
 
@@ -32,8 +33,17 @@ class ThemeOnboarding extends StatefulWidget {
 
 class _ThemeOnboardingState extends State<ThemeOnboarding> {
   int index = 0;
+  bool loginMode = false;
+
   void next() => setState(() => index = (index + 1).clamp(0, 8));
-  void back() => setState(() => index = (index - 1).clamp(0, 8));
+  void back() => setState(() {
+        if (loginMode) {
+          loginMode = false;
+          index = 0;
+        } else {
+          index = (index - 1).clamp(0, 8);
+        }
+      });
   void done() => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const app.Shell()));
 
   String? _normalizeTrMobile(String input) {
@@ -60,8 +70,21 @@ class _ThemeOnboardingState extends State<ThemeOnboarding> {
 
   @override
   Widget build(BuildContext context) {
+    if (loginMode) {
+      return OwnerLoginScreen(
+        onDone: done,
+        onBack: () => setState(() {
+          loginMode = false;
+          index = 0;
+        }),
+      );
+    }
+
     final screens = <Widget>[
-      old.Welcome(next),
+      OwnerWelcome(
+        onRegister: next,
+        onLogin: () => setState(() => loginMode = true),
+      ),
       vps.PhoneVps(phoneNext, back),
       phone.OtpVps(next, back),
       vps.AccountVps(next, back),
