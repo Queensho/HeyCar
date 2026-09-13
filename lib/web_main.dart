@@ -29,6 +29,23 @@ class HeyCarPublicWebApp extends StatelessWidget {
         ),
         home: token.trim().isEmpty
             ? const PublicQrEntryScreen()
-            : PublicQrPersonalizedScreen(token: token),
+            : Stack(
+                children: [
+                  PublicQrPersonalizedScreen(token: token),
+                  Positioned(
+                    top: 155,
+                    right: -72,
+                    width: 300,
+                    height: 270,
+                    child: IgnorePointer(
+                      child: Image.asset(
+                        'assets/Heycar3d.png',
+                        fit: BoxFit.contain,
+                        alignment: Alignment.bottomRight,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
       );
 }
