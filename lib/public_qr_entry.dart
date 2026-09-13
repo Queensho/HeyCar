@@ -74,19 +74,22 @@ class _PublicQrEntryScreenState extends State<PublicQrEntryScreen> {
                   height: compact ? 244 : 258,
                   width: double.infinity,
                   child: Stack(clipBehavior: Clip.none, children: [
-                    Positioned(left: 0, top: 34, width: compact ? 188 : 205, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Positioned(left: 0, top: 34, width: compact ? 205 : 220, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text('ARAÇ SAHİBİNE ULAŞ', style: TextStyle(color: _muted, fontSize: compact ? 10.5 : 12, letterSpacing: 2.0, fontWeight: FontWeight.w800)),
                       const SizedBox(height: 12),
                       Text('Hızlı ve', style: TextStyle(color: Colors.white, fontSize: compact ? 35 : 40, height: .96, fontWeight: FontWeight.w900)),
                       Text('güvenli.', style: TextStyle(color: _lime, fontSize: compact ? 35 : 40, height: 1, fontWeight: FontWeight.w900)),
                       const SizedBox(height: 10),
-                      Text('QR veya etiket koduyla araç sahibine anonim mesaj bırak.', style: TextStyle(color: _muted, fontSize: compact ? 12.5 : 14, height: 1.42)),
+                      SizedBox(
+                        width: compact ? 190 : 205,
+                        child: Text('QR veya etiket koduyla araç sahibine anonim mesaj bırak.', style: TextStyle(color: _muted, fontSize: compact ? 12.5 : 14, height: 1.42)),
+                      ),
                     ])),
                     Positioned(
-                      right: compact ? -68 : -72,
-                      top: compact ? -18 : -22,
-                      width: compact ? 286 : 318,
-                      height: compact ? 274 : 300,
+                      right: compact ? -96 : -102,
+                      top: compact ? -8 : -12,
+                      width: compact ? 250 : 278,
+                      height: compact ? 255 : 280,
                       child: IgnorePointer(child: Image.asset('assets/Heycar3d.png', fit: BoxFit.contain, alignment: Alignment.bottomRight)),
                     ),
                   ]),
