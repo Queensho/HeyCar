@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'qr_backend.dart';
 
 class OnboardingDraft {
   static String phone = '';
@@ -51,6 +52,13 @@ class OnboardingBackend {
       final vehicle = decoded['vehicle'];
       if (user is Map) OnboardingDraft.userId = user['id']?.toString() ?? '';
       if (vehicle is Map) OnboardingDraft.vehicleId = vehicle['id']?.toString() ?? '';
+
+      QrDraft.vehicleId = OnboardingDraft.vehicleId;
+      QrDraft.plate = plate.trim().toUpperCase();
+      QrDraft.make = make.trim();
+      QrDraft.model = model.trim();
+      QrDraft.ownerName = displayName.trim().isEmpty ? 'HeyCar Kullanıcısı' : displayName.trim();
+
       return decoded;
     }
 
