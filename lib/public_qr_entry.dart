@@ -2,137 +2,14 @@ import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
-const _bg = Color(0xFF07101F);
-const _panel = Color(0xFF101A31);
-const _purple = Color(0xFF7C4DFF);
-const _lime = Color(0xFFB6FF2A);
-const _muted = Color(0xFFAAB3C8);
-const _line = Color(0xFF2B3760);
+const _bg=Color(0xFF07101F),_panel=Color(0xFF101A31),_purple=Color(0xFF7C4DFF),_lime=Color(0xFFB6FF2A),_muted=Color(0xFFAAB3C8),_line=Color(0xFF2B3760);
 
-class PublicQrEntryScreen extends StatefulWidget {
-  const PublicQrEntryScreen({super.key});
-  @override
-  State<PublicQrEntryScreen> createState() => _PublicQrEntryScreenState();
-}
-
-class _PublicQrEntryScreenState extends State<PublicQrEntryScreen> {
-  final code = TextEditingController();
-  bool scanning = false;
-  bool consumed = false;
-
-  @override
-  void dispose() { code.dispose(); super.dispose(); }
-
-  String _normalize(String raw) {
-    final value = raw.trim();
-    if (value.isEmpty) return '';
-    try { final uri = Uri.parse(value); final tag = uri.queryParameters['tag']; if (tag != null && tag.isNotEmpty) return tag.toUpperCase(); } catch (_) {}
-    final match = RegExp(r'HC-[A-Z0-9-]+', caseSensitive: false).firstMatch(value);
-    return (match?.group(0) ?? value).trim().toUpperCase();
-  }
-
-  void _open(String raw) {
-    final token = _normalize(raw);
-    if (token.isEmpty) return;
-    html.window.location.assign(Uri.base.replace(queryParameters: {'tag': token}).toString());
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
-    final compact = width < 390;
-    final h = compact ? 18.0 : 22.0;
-    return Scaffold(
-      backgroundColor: _bg,
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 430),
-            child: SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(h, 12, h, 30),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const _TopBar(),
-                const SizedBox(height: 16),
-                SizedBox(
-                  height: compact ? 250 : 270,
-                  width: double.infinity,
-                  child: Stack(clipBehavior: Clip.none, children: [
-                    Positioned(left: 0, top: 28, width: compact ? 205 : 220, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('ARAÇ SAHİBİNE ULAŞ', style: TextStyle(color: _muted, fontSize: compact ? 11 : 12.5, letterSpacing: 2.1, fontWeight: FontWeight.w800)),
-                      const SizedBox(height: 13),
-                      Text('Hızlı ve', style: TextStyle(color: Colors.white, fontSize: compact ? 38 : 43, height: .96, fontWeight: FontWeight.w900)),
-                      Text('güvenli.', style: TextStyle(color: _lime, fontSize: compact ? 38 : 43, height: 1, fontWeight: FontWeight.w900)),
-                      const SizedBox(height: 11),
-                      Text('QR veya etiket koduyla araç sahibine anonim mesaj bırak.', style: TextStyle(color: _muted, fontSize: compact ? 13 : 14.5, height: 1.4)),
-                    ])),
-                    Positioned(
-                      right: compact ? -70 : -78,
-                      top: compact ? 2 : -2,
-                      width: compact ? 310 : 345,
-                      height: compact ? 285 : 315,
-                      child: IgnorePointer(child: Image.asset('assets/Heycar3d.png', fit: BoxFit.contain, alignment: Alignment.bottomRight)),
-                    ),
-                  ]),
-                ),
-                Transform.translate(
-                  offset: const Offset(0, -12),
-                  child: Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.fromLTRB(compact ? 16 : 20, compact ? 18 : 21, compact ? 16 : 20, compact ? 16 : 20),
-                    decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(28), border: Border.all(color: _line)),
-                    child: Column(children: [
-                      Row(mainAxisAlignment: MainAxisAlignment.center, children: [const Icon(Icons.link_rounded, color: _purple, size: 25), const SizedBox(width: 10), Flexible(child: Text('Araç Etiket Kodunu Gir', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: compact ? 20 : 22, fontWeight: FontWeight.w900)))]),
-                      const SizedBox(height: 8),
-                      Text('QR kodu okutmadan da etiketteki kodu yazarak\ndirekt araca ulaşabilirsin.', textAlign: TextAlign.center, style: TextStyle(color: _muted, fontSize: compact ? 13 : 14.5, height: 1.4)),
-                      const SizedBox(height: 16),
-                      SizedBox(height: compact ? 61 : 66, child: TextField(controller: code, textCapitalization: TextCapitalization.characters, onSubmitted: _open, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18), decoration: InputDecoration(hintText: 'Örn: HC-7XK9P2', hintStyle: const TextStyle(color: Color(0xFF69738D)), prefixIcon: const Icon(Icons.sell_outlined, color: _purple), filled: true, fillColor: const Color(0xFF0E172A), border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: const BorderSide(color: _purple)), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: const BorderSide(color: _purple)), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: const BorderSide(color: _purple, width: 1.6))))),
-                      const SizedBox(height: 13),
-                      SizedBox(width: double.infinity, height: compact ? 55 : 59, child: FilledButton(style: FilledButton.styleFrom(backgroundColor: _lime, foregroundColor: Colors.black, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(17))), onPressed: () => _open(code.text), child: Text('Devam Et  →', style: TextStyle(fontSize: compact ? 17 : 18, fontWeight: FontWeight.w900)))),
-                      const SizedBox(height: 16),
-                      const Row(children: [Expanded(child: Divider(color: _line)), Padding(padding: EdgeInsets.symmetric(horizontal: 14), child: Text('veya', style: TextStyle(color: _muted))), Expanded(child: Divider(color: _line))]),
-                      const SizedBox(height: 13),
-                      InkWell(borderRadius: BorderRadius.circular(18), onTap: () => setState(() { scanning = !scanning; consumed = false; }), child: Container(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15), decoration: BoxDecoration(color: Color(0xFF10192C), borderRadius: BorderRadius.circular(18), border: Border.all(color: _line)), child: Row(children: [Icon(Icons.qr_code_scanner_rounded, color: Colors.white, size: compact ? 31 : 34), const SizedBox(width: 14), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('QR Kodu Okut', style: TextStyle(color: Colors.white, fontSize: compact ? 17 : 18, fontWeight: FontWeight.w900)), const SizedBox(height: 3), Text('Kameranı aç ve etiketi tara', style: TextStyle(color: _muted, fontSize: compact ? 13 : 14))])), const Icon(Icons.chevron_right_rounded, color: Colors.white70)]))),
-                      if (scanning) ...[const SizedBox(height: 12), ClipRRect(borderRadius: BorderRadius.circular(18), child: SizedBox(height: 210, child: MobileScanner(onDetect: (capture) { if (consumed || capture.barcodes.isEmpty) return; final raw = capture.barcodes.first.rawValue; if (raw == null || raw.isEmpty) return; consumed = true; _open(raw); })))],
-                    ]),
-                  ),
-                ),
-                Transform.translate(
-                  offset: const Offset(0, -2),
-                  child: Container(
-                    width: double.infinity,
-                    height: compact ? 132 : 145,
-                    padding: EdgeInsets.only(left: compact ? 15 : 18),
-                    decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(22), border: Border.all(color: _line)),
-                    child: Stack(clipBehavior: Clip.none, children: [
-                      Positioned(left: 0, top: compact ? 34 : 39, width: compact ? 190 : 210, child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [const Icon(Icons.info_outline, color: _purple, size: 22), const SizedBox(width: 10), Expanded(child: Text('Kodu aracın üzerindeki HeyCar\netiketinde bulabilirsin.', style: TextStyle(color: _muted, fontSize: compact ? 13.5 : 15, height: 1.45)))])),
-                      Positioned(
-                        right: compact ? -12 : -14,
-                        top: compact ? 5 : 4,
-                        width: compact ? 190 : 215,
-                        height: compact ? 122 : 138,
-                        child: Transform.rotate(angle: -0.055, child: Image.asset('assets/Qrkod.png', fit: BoxFit.contain, alignment: Alignment.centerRight)),
-                      ),
-                    ]),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                const Center(child: Text('HeyCar  💜  Yollarda daha fazla bağlantı', style: TextStyle(color: _muted, fontSize: 13))),
-              ]),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _TopBar extends StatelessWidget {
-  const _TopBar();
-  @override
-  Widget build(BuildContext context) => Row(children: [
-    const Text.rich(TextSpan(children: [TextSpan(text: 'Hey', style: TextStyle(color: Colors.white)), TextSpan(text: 'Car', style: TextStyle(color: _purple))]), style: TextStyle(fontSize: 31, fontWeight: FontWeight.w900, letterSpacing: -1.4)),
-    const Spacer(),
-    Container(padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8), decoration: BoxDecoration(border: Border.all(color: _line), borderRadius: BorderRadius.circular(18)), child: const Row(children: [Text('TR', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)), SizedBox(width: 4), Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white54, size: 17)])),
-    const SizedBox(width: 12), const Icon(Icons.menu_rounded, color: Colors.white, size: 31),
-  ]);
-}
+class PublicQrEntryScreen extends StatefulWidget{const PublicQrEntryScreen({super.key});@override State<PublicQrEntryScreen> createState()=>_S();}
+class _S extends State<PublicQrEntryScreen>{final code=TextEditingController();bool scanning=false,consumed=false;@override void dispose(){code.dispose();super.dispose();}
+String norm(String raw){final v=raw.trim();if(v.isEmpty)return'';try{final u=Uri.parse(v),t=u.queryParameters['tag'];if(t!=null&&t.isNotEmpty)return t.toUpperCase();}catch(_){}final m=RegExp(r'HC-[A-Z0-9-]+',caseSensitive:false).firstMatch(v);return(m?.group(0)??v).trim().toUpperCase();}
+void openCode(String raw){final t=norm(raw);if(t.isNotEmpty)html.window.location.assign(Uri.base.replace(queryParameters:{'tag':t}).toString());}
+@override Widget build(BuildContext context){final w=MediaQuery.sizeOf(context).width,c=w<390,h=c?18.0:22.0;return Scaffold(backgroundColor:_bg,body:SafeArea(child:Center(child:ConstrainedBox(constraints:const BoxConstraints(maxWidth:430),child:SingleChildScrollView(padding:EdgeInsets.fromLTRB(h,12,h,30),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+const _TopBar(),const SizedBox(height:8),SizedBox(height:c?246:264,width:double.infinity,child:Stack(clipBehavior:Clip.none,children:[Positioned(left:0,top:34,width:c?205:220,child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('ARAÇ SAHİBİNE ULAŞ',style:TextStyle(color:_muted,fontSize:c?11:12.5,letterSpacing:2.1,fontWeight:FontWeight.w800)),const SizedBox(height:13),Text('Hızlı ve',style:TextStyle(color:Colors.white,fontSize:c?38:43,height:.96,fontWeight:FontWeight.w900)),Text('güvenli.',style:TextStyle(color:_lime,fontSize:c?38:43,height:1,fontWeight:FontWeight.w900)),const SizedBox(height:11),Text('QR veya etiket koduyla araç sahibine anonim mesaj bırak.',style:TextStyle(color:_muted,fontSize:c?13:14.5,height:1.4))])),Positioned(right:c?-77:-84,top:c?-23:-28,width:c?318:354,height:c?294:324,child:IgnorePointer(child:Image.asset('assets/Heycar3d.png',fit:BoxFit.contain,alignment:Alignment.bottomRight)))])),
+Transform.translate(offset:const Offset(0,-20),child:Container(width:double.infinity,padding:EdgeInsets.fromLTRB(c?16:20,c?18:21,c?16:20,c?16:20),decoration:BoxDecoration(color:_panel,borderRadius:BorderRadius.circular(28),border:Border.all(color:_line)),child:Column(children:[Row(mainAxisAlignment:MainAxisAlignment.center,children:[const Icon(Icons.link_rounded,color:_purple,size:25),const SizedBox(width:10),Flexible(child:Text('Araç Etiket Kodunu Gir',textAlign:TextAlign.center,style:TextStyle(color:Colors.white,fontSize:c?20:22,fontWeight:FontWeight.w900)))]),const SizedBox(height:8),Text('QR kodu okutmadan da etiketteki kodu yazarak\ndirekt araca ulaşabilirsin.',textAlign:TextAlign.center,style:TextStyle(color:_muted,fontSize:c?13:14.5,height:1.4)),const SizedBox(height:16),SizedBox(height:c?61:66,child:TextField(controller:code,textCapitalization:TextCapitalization.characters,onSubmitted:openCode,style:const TextStyle(color:Colors.white,fontWeight:FontWeight.w800,fontSize:18),decoration:InputDecoration(hintText:'Örn: HC-7XK9P2',hintStyle:const TextStyle(color:Color(0xFF69738D)),prefixIcon:const Icon(Icons.sell_outlined,color:_purple),filled:true,fillColor:const Color(0xFF0E172A),border:OutlineInputBorder(borderRadius:BorderRadius.circular(18),borderSide:const BorderSide(color:_purple)),enabledBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(18),borderSide:const BorderSide(color:_purple)),focusedBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(18),borderSide:const BorderSide(color:_purple,width:1.6))))),const SizedBox(height:13),SizedBox(width:double.infinity,height:c?55:59,child:FilledButton(style:FilledButton.styleFrom(backgroundColor:_lime,foregroundColor:Colors.black,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(17))),onPressed:()=>openCode(code.text),child:Text('Devam Et  →',style:TextStyle(fontSize:c?17:18,fontWeight:FontWeight.w900)))),const SizedBox(height:16),const Row(children:[Expanded(child:Divider(color:_line)),Padding(padding:EdgeInsets.symmetric(horizontal:14),child:Text('veya',style:TextStyle(color:_muted))),Expanded(child:Divider(color:_line))]),const SizedBox(height:13),InkWell(borderRadius:BorderRadius.circular(18),onTap:()=>setState((){scanning=!scanning;consumed=false;}),child:Container(padding:const EdgeInsets.symmetric(horizontal:16,vertical:15),decoration:BoxDecoration(color:const Color(0xFF10192C),borderRadius:BorderRadius.circular(18),border:Border.all(color:_line)),child:Row(children:[Icon(Icons.qr_code_scanner_rounded,color:Colors.white,size:c?31:34),const SizedBox(width:14),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('QR Kodu Okut',style:TextStyle(color:Colors.white,fontSize:c?17:18,fontWeight:FontWeight.w900)),const SizedBox(height:3),Text('Kameranı aç ve etiketi tara',style:TextStyle(color:_muted,fontSize:c?13:14))])),const Icon(Icons.chevron_right_rounded,color:Colors.white70)]))),if(scanning)...[const SizedBox(height:12),ClipRRect(borderRadius:BorderRadius.circular(18),child:SizedBox(height:210,child:MobileScanner(onDetect:(x){if(consumed||x.barcodes.isEmpty)return;final r=x.barcodes.first.rawValue;if(r==null||r.isEmpty)return;consumed=true;openCode(r);})))]]))),
+Transform.translate(offset:const Offset(0,-10),child:Container(width:double.infinity,height:c?116:126,decoration:BoxDecoration(color:_panel,borderRadius:BorderRadius.circular(22),border:Border.all(color:_line)),child:Stack(clipBehavior:Clip.none,children:[Positioned(left:c?15:18,top:c?31:35,width:c?190:208,child:Row(crossAxisAlignment:CrossAxisAlignment.start,children:[const Icon(Icons.info_outline,color:_purple,size:22),const SizedBox(width:10),Expanded(child:Text('Kodu aracın üzerindeki\nHeyCar etiketinde bulabilirsin.',style:TextStyle(color:_muted,fontSize:c?13.5:15,height:1.42)))])),Positioned(right:c?-19:-24,bottom:c?-7:-10,width:c?220:248,height:c?128:142,child:Transform.rotate(angle:-.075,child:Image.asset('assets/Qrkod.png',fit:BoxFit.contain,alignment:Alignment.bottomRight)))]))),const SizedBox(height:8),const Center(child:Text('HeyCar  💜  Yollarda daha fazla bağlantı',style:TextStyle(color:_muted,fontSize:13)))]))))));}}
+class _TopBar extends StatelessWidget{const _TopBar();@override Widget build(BuildContext context)=>Row(children:[const Text.rich(TextSpan(children:[TextSpan(text:'Hey',style:TextStyle(color:Colors.white)),TextSpan(text:'Car',style:TextStyle(color:_purple))]),style:TextStyle(fontSize:31,fontWeight:FontWeight.w900,letterSpacing:-1.4)),const Spacer(),Container(padding:const EdgeInsets.symmetric(horizontal:13,vertical:8),decoration:BoxDecoration(border:Border.all(color:_line),borderRadius:BorderRadius.circular(18)),child:const Row(children:[Text('TR',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w800)),SizedBox(width:4),Icon(Icons.keyboard_arrow_down_rounded,color:Colors.white54,size:17)])),const SizedBox(width:12),const Icon(Icons.menu_rounded,color:Colors.white,size:31)]);}
