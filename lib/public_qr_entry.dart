@@ -56,18 +56,18 @@ class _PublicQrEntryScreenState extends State<PublicQrEntryScreen> {
               padding: EdgeInsets.fromLTRB(hPad, 12, hPad, 24),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 const _TopBar(),
-                SizedBox(height: compact ? 16 : 20),
+                SizedBox(height: compact ? 4 : 8),
                 SizedBox(
                   width: double.infinity,
-                  height: compact ? 285 : 305,
+                  height: compact ? 252 : 270,
                   child: Stack(
                     clipBehavior: Clip.none,
                     children: [
                       Positioned(
-                        right: compact ? -24 : -18,
-                        top: compact ? 0 : -2,
-                        width: compact ? 255 : 285,
-                        height: compact ? 270 : 300,
+                        right: compact ? -38 : -30,
+                        top: compact ? -18 : -20,
+                        width: compact ? 292 : 322,
+                        height: compact ? 300 : 326,
                         child: IgnorePointer(
                           child: Image.asset(
                             'assets/Heycar3d.png',
@@ -79,16 +79,16 @@ class _PublicQrEntryScreenState extends State<PublicQrEntryScreen> {
                       ),
                       Positioned(
                         left: 0,
-                        top: compact ? 38 : 45,
-                        width: compact ? 220 : 242,
+                        top: compact ? 18 : 22,
+                        width: compact ? 228 : 248,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text('ARAÇ SAHİBİNE ULAŞ', style: TextStyle(color: _muted, fontSize: compact ? 11.5 : 13, letterSpacing: 2.3, fontWeight: FontWeight.w800, decoration: TextDecoration.none)),
-                            SizedBox(height: compact ? 12 : 15),
+                            SizedBox(height: compact ? 10 : 13),
                             Text('Hızlı ve', style: TextStyle(color: Colors.white, fontSize: compact ? 36 : 41, height: .95, fontWeight: FontWeight.w900, decoration: TextDecoration.none)),
                             Text('güvenli.', style: TextStyle(color: _lime, fontSize: compact ? 36 : 41, height: 1, fontWeight: FontWeight.w900, decoration: TextDecoration.none)),
-                            SizedBox(height: compact ? 10 : 13),
+                            SizedBox(height: compact ? 8 : 10),
                             Text('QR veya etiket koduyla araç sahibine anonim mesaj bırak.', maxLines: 3, style: TextStyle(color: _muted, fontSize: compact ? 13 : 14.5, height: 1.35, decoration: TextDecoration.none)),
                           ],
                         ),
@@ -96,7 +96,6 @@ class _PublicQrEntryScreenState extends State<PublicQrEntryScreen> {
                     ],
                   ),
                 ),
-                SizedBox(height: compact ? 2 : 6),
                 Container(
                   width: double.infinity,
                   padding: EdgeInsets.all(compact ? 16 : 20),
