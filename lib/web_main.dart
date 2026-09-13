@@ -41,87 +41,90 @@ class _PublicRoot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final showHero = token.trim().isEmpty;
-    final compact = MediaQuery.sizeOf(context).width < 390;
+    final width = MediaQuery.sizeOf(context).width;
+    final compact = width < 390;
 
     return Stack(
       children: [
         PublicQrPersonalizedScreen(token: token),
         if (showHero)
           Positioned(
-            top: compact ? 86 : 96,
+            top: compact ? 84 : 92,
             left: 0,
             right: 0,
-            height: compact ? 285 : 305,
+            height: compact ? 220 : 232,
             child: IgnorePointer(
               child: ColoredBox(
                 color: _bg,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 18),
-                  child: Stack(
-                    clipBehavior: Clip.none,
+                  padding: EdgeInsets.fromLTRB(
+                    compact ? 18 : 20,
+                    compact ? 10 : 12,
+                    8,
+                    8,
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Positioned(
-                        right: compact ? -12 : -6,
-                        top: compact ? 6 : 0,
-                        width: compact ? 178 : 205,
-                        height: compact ? 188 : 215,
+                      Expanded(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'ARAÇ SAHİBİNE ULAŞ',
+                              style: TextStyle(
+                                color: _muted,
+                                fontSize: compact ? 12.5 : 14,
+                                letterSpacing: 2.5,
+                                fontWeight: FontWeight.w800,
+                                decoration: TextDecoration.none,
+                              ),
+                            ),
+                            SizedBox(height: compact ? 10 : 12),
+                            Text(
+                              'Hızlı ve',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: compact ? 36 : 41,
+                                height: .95,
+                                fontWeight: FontWeight.w900,
+                                decoration: TextDecoration.none,
+                              ),
+                            ),
+                            Text(
+                              'güvenli.',
+                              style: TextStyle(
+                                color: _lime,
+                                fontSize: compact ? 36 : 41,
+                                height: 1,
+                                fontWeight: FontWeight.w900,
+                                decoration: TextDecoration.none,
+                              ),
+                            ),
+                            SizedBox(height: compact ? 10 : 12),
+                            Text(
+                              'Park, far, hasar veya diğer durumlarda araç sahibine anonim mesaj bırak.',
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: _muted,
+                                fontSize: compact ? 13.5 : 15,
+                                height: 1.3,
+                                fontWeight: FontWeight.w500,
+                                decoration: TextDecoration.none,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(
+                        width: compact ? 142 : 158,
+                        height: compact ? 180 : 198,
                         child: Image.asset(
                           'assets/Heycar3d.png',
                           fit: BoxFit.contain,
-                          alignment: Alignment.topRight,
-                        ),
-                      ),
-                      Positioned.fill(
-                        child: Align(
-                          alignment: Alignment.topLeft,
-                          child: Padding(
-                            padding: EdgeInsets.only(top: compact ? 14 : 18),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'ARAÇ SAHİBİNE ULAŞ',
-                                  style: TextStyle(
-                                    color: _muted,
-                                    fontSize: compact ? 13 : 15,
-                                    letterSpacing: 3.2,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                                SizedBox(height: compact ? 14 : 18),
-                                Text(
-                                  'Güvenle',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: compact ? 40 : 46,
-                                    height: .92,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                                Text(
-                                  'haber ver.',
-                                  style: TextStyle(
-                                    color: _lime,
-                                    fontSize: compact ? 40 : 46,
-                                    height: 1,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                                SizedBox(height: compact ? 14 : 17),
-                                SizedBox(
-                                  width: compact ? 300 : 330,
-                                  child: Text(
-                                    'Park, far, hasar veya diğer durumlarda araç sahibine anonim şekilde ulaş.',
-                                    style: TextStyle(
-                                      color: _muted,
-                                      fontSize: compact ? 15 : 17,
-                                      height: 1.35,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                          alignment: Alignment.centerRight,
                         ),
                       ),
                     ],
