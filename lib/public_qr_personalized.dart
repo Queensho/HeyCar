@@ -167,7 +167,7 @@ class _CodeEntryState extends State<_CodeEntry> {
                             SizedBox(
                               width: compact ? 290 : 330,
                               child: Text(
-                                'Gördüğün araca kolayca mesaj bırak, tanış, iletişim kur.',
+                                'Araç sahibine güvenli ve anonim şekilde kolayca ulaş.',
                                 style: TextStyle(color: _muted, fontSize: compact ? 15 : 17, height: 1.35),
                               ),
                             ),
