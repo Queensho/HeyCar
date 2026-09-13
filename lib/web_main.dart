@@ -11,20 +11,21 @@ class HeyCarPublicWebApp extends StatelessWidget {
   final String token;
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'HeyCar | Araç sahibine ulaş',
-      theme: ThemeData(
-        useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFF5F7FA),
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFFCA311),
-          primary: const Color(0xFFFCA311),
-          surface: Colors.white,
+  Widget build(BuildContext context) => MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'HeyCar | Araç sahibine ulaş',
+        theme: ThemeData(
+          useMaterial3: true,
+          brightness: Brightness.dark,
+          scaffoldBackgroundColor: const Color(0xFF07101F),
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color(0xFFB6FF2A),
+            brightness: Brightness.dark,
+            primary: const Color(0xFFB6FF2A),
+            secondary: const Color(0xFF7C4DFF),
+            surface: const Color(0xFF101A31),
+          ),
         ),
-      ),
-      home: PublicQrPersonalizedScreen(token: token),
-    );
-  }
+        home: PublicQrPersonalizedScreen(token: token),
+      );
 }
