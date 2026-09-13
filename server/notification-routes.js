@@ -53,7 +53,7 @@ module.exports = function registerNotificationRoutes(app, pool) {
     const token = normalizeToken(req.params.token);
     const type = String(req.body?.type || '').trim();
     const message = String(req.body?.message || '').trim().slice(0, 500);
-    const photoPath = String(req.body?.photoUrl || '').trim().slice(0, 500) || null;
+    const photoPath = String(req.body?.photo_path || req.body?.photoUrl || '').trim().slice(0, 500) || null;
     const latitude = req.body?.latitude == null ? null : Number(req.body.latitude);
     const longitude = req.body?.longitude == null ? null : Number(req.body.longitude);
 
