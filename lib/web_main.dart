@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'public_qr_web.dart';
+import 'public_qr_personalized.dart';
 
 void main() {
   final token = Uri.base.queryParameters['tag'] ?? '';
@@ -8,7 +8,6 @@ void main() {
 
 class HeyCarPublicWebApp extends StatelessWidget {
   const HeyCarPublicWebApp({super.key, required this.token});
-
   final String token;
 
   @override
@@ -25,7 +24,7 @@ class HeyCarPublicWebApp extends StatelessWidget {
           surface: Colors.white,
         ),
       ),
-      home: PublicQrWebScreen(token: token),
+      home: PublicQrPersonalizedScreen(token: token),
     );
   }
 }
