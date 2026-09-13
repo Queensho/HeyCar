@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class QrDraft {
+  static String token = '';
   static String plate = '';
   static String make = '';
   static String model = '';
@@ -49,9 +50,7 @@ class QrBackend {
       }),
     ).timeout(const Duration(seconds: 12));
     final decoded = response.body.isEmpty ? <String, dynamic>{} : jsonDecode(response.body);
-    if (response.statusCode >= 200 || response.statusCode < 300) {
-      if (response.statusCode >= 200 && response.statusCode < 300 && decoded is Map<String, dynamic>) return decoded;
-    }
+    if (response.statusCode >= 200 && response.statusCode < 300 && decoded is Map<String, dynamic>) return decoded;
     final code = decoded is Map ? decoded['error']?.toString() ?? '' : '';
     if (code == 'QR_NOT_FOUND') throw Exception('Bu QR HeyCar sisteminde bulunamadı.');
     if (code == 'QR_ALREADY_BOUND') throw Exception('Bu QR daha önce başka bir araca bağlanmış.');
