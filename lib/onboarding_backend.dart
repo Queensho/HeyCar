@@ -6,6 +6,8 @@ class OnboardingDraft {
   static String displayName = '';
   static String email = '';
   static String password = '';
+  static String userId = '';
+  static String vehicleId = '';
 }
 
 class OnboardingBackend {
@@ -45,6 +47,10 @@ class OnboardingBackend {
     if (response.statusCode >= 200 &&
         response.statusCode < 300 &&
         decoded is Map<String, dynamic>) {
+      final user = decoded['user'];
+      final vehicle = decoded['vehicle'];
+      if (user is Map) OnboardingDraft.userId = user['id']?.toString() ?? '';
+      if (vehicle is Map) OnboardingDraft.vehicleId = vehicle['id']?.toString() ?? '';
       return decoded;
     }
 
