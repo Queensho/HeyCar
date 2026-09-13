@@ -5,6 +5,7 @@ import 'entry_vps_phone.dart' as phone;
 import 'main.dart' as app;
 import 'onboarding_backend.dart';
 import 'public_theme_settings.dart';
+import 'qr_activation.dart';
 
 void main() => runApp(const ThemeOnboardingApp());
 
@@ -66,8 +67,8 @@ class _ThemeOnboardingState extends State<ThemeOnboarding> {
       vps.AccountVps(next, back),
       vps.VehiclePickerVps(next, back),
       PublicThemeSettingsPage(onDone: next, onBack: back),
-      old.QrScan(next, back),
-      old.QrOk(next, back),
+      RealQrScanPage(onFound: next, onBack: back),
+      RealQrConfirmPage(onDone: next, onBack: back),
       old.Guide(done, back),
     ];
     return screens[index];
