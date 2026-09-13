@@ -1,6 +1,7 @@
 import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'public_menu_pages.dart';
 
 const _bg = Color(0xFF07101F);
 const _panel = Color(0xFF101A31);
@@ -38,22 +39,9 @@ class _PublicQrEntryScreenState extends State<PublicQrEntryScreen> {
     html.window.location.assign(Uri.base.replace(queryParameters: {'tag': token}).toString());
   }
 
-  void _showInfo(String title, String body) {
+  void _openPage(Widget page) {
     Navigator.of(context).pop();
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: _panel,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.fromLTRB(22, 18, 22, 28),
-        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Container(width: 42, height: 4, margin: const EdgeInsets.only(bottom: 18), decoration: BoxDecoration(color: _line, borderRadius: BorderRadius.circular(99))),
-          Text(title, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 10),
-          Text(body, style: const TextStyle(color: _muted, fontSize: 15, height: 1.5)),
-        ]),
-      ),
-    );
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
   }
 
   @override
@@ -65,12 +53,13 @@ class _PublicQrEntryScreenState extends State<PublicQrEntryScreen> {
       key: scaffoldKey,
       backgroundColor: _bg,
       endDrawer: _PublicMenu(
-        onAbout: () => _showInfo('HeyCar Nedir?', 'HeyCar, araç sahibinin telefon numarasını paylaşmadan QR veya etiket kodu üzerinden güvenli şekilde iletişim kurulmasını sağlar.'),
-        onHow: () => _showInfo('Nasıl Çalışır?', 'QR kodu okut veya etiket kodunu gir. Ardından araç sahibine uygun bildirimi seç ve anonim şekilde mesaj bırak.'),
-        onCode: () { Navigator.of(context).pop(); FocusScope.of(context).requestFocus(FocusNode()); },
-        onScan: () { Navigator.of(context).pop(); setState(() { scanning = true; consumed = false; }); },
-        onPrivacy: () => _showInfo('Gizlilik & Güvenlik', 'Telefon numaraları public sayfada gösterilmez. İletişim, kişisel bilgileri görünür hale getirmeden gerçekleştirilir.'),
-        onHelp: () => _showInfo('Yardım / SSS', 'QR okunmuyorsa araç üzerindeki HeyCar etiket kodunu elle girebilirsin. Kod genellikle HC- ile başlar.'),
+        onAbout: () => _openPage(const HeyCarAboutPage()),
+        onHow: () => _openPage(const HeyCarHowPage()),
+        onCode: () => _openPage(const HeyCarCodePage()),
+        onScan: () => _openPage(const HeyCarScanPage()),
+        onPrivacy: () => _openPage(const HeyCarPrivacyPage()),
+        onHelp: () => _openPage(const HeyCarHelpPage()),
+        onOwner: () => _openPage(const HeyCarOwnerPage()),
       ),
       body: SafeArea(
         child: Center(
@@ -148,13 +137,14 @@ class _PublicQrEntryScreenState extends State<PublicQrEntryScreen> {
 }
 
 class _PublicMenu extends StatelessWidget {
-  const _PublicMenu({required this.onAbout, required this.onHow, required this.onCode, required this.onScan, required this.onPrivacy, required this.onHelp});
+  const _PublicMenu({required this.onAbout, required this.onHow, required this.onCode, required this.onScan, required this.onPrivacy, required this.onHelp, required this.onOwner});
   final VoidCallback onAbout;
   final VoidCallback onHow;
   final VoidCallback onCode;
   final VoidCallback onScan;
   final VoidCallback onPrivacy;
   final VoidCallback onHelp;
+  final VoidCallback onOwner;
 
   @override
   Widget build(BuildContext context) => Drawer(
@@ -180,15 +170,27 @@ class _PublicMenu extends StatelessWidget {
           _menuItem(Icons.shield_outlined, 'Gizlilik & Güvenlik', onPrivacy),
           _menuItem(Icons.help_outline_rounded, 'Yardım / SSS', onHelp),
           const Spacer(),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(20), border: Border.all(color: _line)),
-            child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Araç sahibi misin?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
-              SizedBox(height: 5),
-              Text('HeyCar hesabından aracını ve etiketini yönet.', style: TextStyle(color: _muted, fontSize: 13, height: 1.35)),
-            ]),
+          Material(
+            color: _panel,
+            borderRadius: BorderRadius.circular(20),
+            child: InkWell(
+              onTap: onOwner,
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), border: Border.all(color: _line)),
+                child: const Row(children: [
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('Araç sahibi misin?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
+                    SizedBox(height: 5),
+                    Text('HeyCar hesabından aracını ve etiketini yönet.', style: TextStyle(color: _muted, fontSize: 13, height: 1.35)),
+                  ])),
+                  SizedBox(width: 10),
+                  Icon(Icons.chevron_right_rounded, color: _lime),
+                ]),
+              ),
+            ),
           ),
         ]),
       ),
