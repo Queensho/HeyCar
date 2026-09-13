@@ -138,13 +138,13 @@ class _CodeEntryState extends State<_CodeEntry> {
                       clipBehavior: Clip.none,
                       children: [
                         Positioned(
-                          right: compact ? -72 : -60,
-                          top: compact ? -10 : -16,
-                          width: compact ? 230 : 270,
-                          height: compact ? 190 : 220,
+                          right: compact ? -24 : -18,
+                          top: compact ? -10 : -14,
+                          width: compact ? 210 : 245,
+                          height: compact ? 175 : 200,
                           child: Opacity(
-                            opacity: .28,
-                            child: Image.asset('assets/Arka2.png', fit: BoxFit.cover),
+                            opacity: .98,
+                            child: Image.asset('assets/Heycar3d.png', fit: BoxFit.contain),
                           ),
                         ),
                         Column(
