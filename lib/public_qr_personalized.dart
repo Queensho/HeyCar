@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'public_theme_backend.dart';
+import 'public_notification_api.dart';
 
 const _bg = Color(0xFF07101F);
 const _panel = Color(0xFF101A31);
@@ -420,13 +421,43 @@ class _MessageComposer extends StatefulWidget {
 
 class _MessageComposerState extends State<_MessageComposer> {
   late final TextEditingController message = TextEditingController(
-    text: widget.type == 'Aracınızı çekebilir misiniz?' ? 'Çıkışımı kapatıyor, müsaitseniz aracı çekebilir misiniz?' : '',
+    text: widget.type == 'Aracınızı çekebilir misiniz?'
+        ? 'Çıkışımı kapatıyor, müsaitseniz aracı çekebilir misiniz?'
+        : widget.type == 'Farlarınız açık'
+            ? 'Farlarınız açık kalmış.'
+            : widget.type == 'Aracınızda hasar var'
+                ? 'Aracınızda hasar olduğunu fark ettim.'
+                : '',
   );
+  bool sending = false;
 
   @override
   void dispose() {
     message.dispose();
     super.dispose();
+  }
+
+  Future<void> _send() async {
+    if (sending || message.text.trim().isEmpty) return;
+    setState(() => sending = true);
+    try {
+      await PublicNotificationApi.send(
+        typeLabel: widget.type,
+        message: message.text,
+      );
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => _SentScreen(plate: widget.plate)),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Mesaj gönderilemedi. Tekrar dene.')),
+      );
+    } finally {
+      if (mounted) setState(() => sending = false);
+    }
   }
 
   @override
@@ -479,11 +510,11 @@ class _MessageComposerState extends State<_MessageComposer> {
                       height: 52,
                       child: FilledButton.icon(
                         style: FilledButton.styleFrom(backgroundColor: _lime, foregroundColor: Colors.black, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-                        onPressed: message.text.trim().isEmpty
-                            ? null
-                            : () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => _SentScreen(plate: widget.plate))),
-                        icon: const Icon(Icons.send_rounded),
-                        label: const Text('Mesaj Gönder', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
+                        onPressed: message.text.trim().isEmpty || sending ? null : _send,
+                        icon: sending
+                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.black))
+                            : const Icon(Icons.send_rounded),
+                        label: Text(sending ? 'Gönderiliyor...' : 'Mesaj Gönder', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
                       ),
                     ),
                   ],
@@ -511,14 +542,12 @@ class _SentScreen extends StatelessWidget {
               const SizedBox(height: 16),
               const Text('Mesajınız gönderildi!', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 25, fontWeight: FontWeight.w900)),
               const SizedBox(height: 8),
-              const Text('Araç sahibine bildiriminiz ulaştı.\nCevap verdiğinde bu sayfa otomatik güncellenecektir.', textAlign: TextAlign.center, style: TextStyle(color: _muted, height: 1.45)),
+              const Text('Araç sahibine bildiriminiz ulaştı.', textAlign: TextAlign.center, style: TextStyle(color: _muted, height: 1.45)),
               const SizedBox(height: 18),
               _glass(child: const Column(children: [
-                _TimelineRow(Icons.check_circle, Colors.green, 'Mesaj gönderildi', '14:32'),
+                _TimelineRow(Icons.check_circle, Colors.green, 'Mesaj gönderildi', 'Şimdi'),
                 SizedBox(height: 16),
-                _TimelineRow(Icons.circle, _lime, 'Araç sahibi bildirimi gördü', '14:33'),
-                SizedBox(height: 16),
-                _TimelineRow(Icons.circle_outlined, _muted, 'Cevap bekleniyor', 'Ortalama yanıt süresi: 2 dk'),
+                _TimelineRow(Icons.circle_outlined, _muted, 'Araç sahibinin görmesi bekleniyor', 'Bildirim araç sahibinin gelen kutusuna kaydedildi'),
               ])),
               const SizedBox(height: 14),
               OutlinedButton.icon(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.chat_bubble_outline), label: const Text('Yeni mesaj gönder')),
