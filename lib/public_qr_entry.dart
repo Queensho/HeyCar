@@ -147,9 +147,35 @@ class _PublicQrEntryScreenState extends State<PublicQrEntryScreen> {
                 ),
                 SizedBox(height: compact ? 12 : 16),
                 Container(
-                  padding: EdgeInsets.all(compact ? 13 : 15),
+                  width: double.infinity,
+                  padding: EdgeInsets.fromLTRB(compact ? 14 : 16, compact ? 14 : 16, compact ? 8 : 10, compact ? 10 : 12),
                   decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(20), border: Border.all(color: _line)),
-                  child: Row(children: [const Icon(Icons.info_outline, color: _purple, size: 21), const SizedBox(width: 10), Expanded(child: Text('Kodu aracın üzerindeki HeyCar etiketinde bulabilirsin.', style: TextStyle(color: _muted, fontSize: compact ? 13 : 15)))]),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.info_outline, color: _purple, size: 21),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Kodu aracın üzerindeki HeyCar etiketinde bulabilirsin.',
+                          style: TextStyle(color: _muted, fontSize: compact ? 13 : 15, height: 1.35),
+                        ),
+                      ),
+                      SizedBox(width: compact ? 6 : 10),
+                      Transform.rotate(
+                        angle: -0.045,
+                        child: SizedBox(
+                          width: compact ? 150 : 170,
+                          height: compact ? 96 : 108,
+                          child: Image.asset(
+                            'assets/Qrkod.png',
+                            fit: BoxFit.contain,
+                            alignment: Alignment.centerRight,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 SizedBox(height: compact ? 14 : 18),
                 const Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.shield_rounded, color: Colors.white70, size: 18), SizedBox(width: 7), Text('Kişisel bilgileriniz gizli kalır.', style: TextStyle(color: _muted, fontSize: 13))]),
