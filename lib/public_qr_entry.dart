@@ -56,31 +56,47 @@ class _PublicQrEntryScreenState extends State<PublicQrEntryScreen> {
               padding: EdgeInsets.fromLTRB(hPad, 12, hPad, 24),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 const _TopBar(),
-                SizedBox(height: compact ? 20 : 26),
+                SizedBox(height: compact ? 16 : 20),
                 SizedBox(
                   width: double.infinity,
-                  height: compact ? 220 : 238,
-                  child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-                    Expanded(
-                      flex: 6,
-                      child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text('ARAÇ SAHİBİNE ULAŞ', style: TextStyle(color: _muted, fontSize: compact ? 11.5 : 13, letterSpacing: 2.3, fontWeight: FontWeight.w800, decoration: TextDecoration.none)),
-                        SizedBox(height: compact ? 12 : 15),
-                        Text('Hızlı ve', style: TextStyle(color: Colors.white, fontSize: compact ? 36 : 41, height: .95, fontWeight: FontWeight.w900, decoration: TextDecoration.none)),
-                        Text('güvenli.', style: TextStyle(color: _lime, fontSize: compact ? 36 : 41, height: 1, fontWeight: FontWeight.w900, decoration: TextDecoration.none)),
-                        SizedBox(height: compact ? 10 : 13),
-                        Text('QR veya etiket koduyla araç sahibine anonim mesaj bırak.', maxLines: 3, style: TextStyle(color: _muted, fontSize: compact ? 13 : 14.5, height: 1.35, decoration: TextDecoration.none)),
-                      ]),
-                    ),
-                    Expanded(
-                      flex: 5,
-                      child: SizedBox.expand(
-                        child: Image.asset('assets/Heycar3d.png', fit: BoxFit.contain, alignment: Alignment.centerRight, gaplessPlayback: true),
+                  height: compact ? 285 : 305,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Positioned(
+                        right: compact ? -24 : -18,
+                        top: compact ? 0 : -2,
+                        width: compact ? 255 : 285,
+                        height: compact ? 270 : 300,
+                        child: IgnorePointer(
+                          child: Image.asset(
+                            'assets/Heycar3d.png',
+                            fit: BoxFit.contain,
+                            alignment: Alignment.centerRight,
+                            gaplessPlayback: true,
+                          ),
+                        ),
                       ),
-                    ),
-                  ]),
+                      Positioned(
+                        left: 0,
+                        top: compact ? 38 : 45,
+                        width: compact ? 220 : 242,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('ARAÇ SAHİBİNE ULAŞ', style: TextStyle(color: _muted, fontSize: compact ? 11.5 : 13, letterSpacing: 2.3, fontWeight: FontWeight.w800, decoration: TextDecoration.none)),
+                            SizedBox(height: compact ? 12 : 15),
+                            Text('Hızlı ve', style: TextStyle(color: Colors.white, fontSize: compact ? 36 : 41, height: .95, fontWeight: FontWeight.w900, decoration: TextDecoration.none)),
+                            Text('güvenli.', style: TextStyle(color: _lime, fontSize: compact ? 36 : 41, height: 1, fontWeight: FontWeight.w900, decoration: TextDecoration.none)),
+                            SizedBox(height: compact ? 10 : 13),
+                            Text('QR veya etiket koduyla araç sahibine anonim mesaj bırak.', maxLines: 3, style: TextStyle(color: _muted, fontSize: compact ? 13 : 14.5, height: 1.35, decoration: TextDecoration.none)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                SizedBox(height: compact ? 8 : 12),
+                SizedBox(height: compact ? 2 : 6),
                 Container(
                   width: double.infinity,
                   padding: EdgeInsets.all(compact ? 16 : 20),
