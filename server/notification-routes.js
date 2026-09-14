@@ -26,8 +26,16 @@ module.exports = function registerNotificationRoutes(app, pool) {
         qr_abuse_protection BOOLEAN NOT NULL DEFAULT TRUE,
         auto_close_old_chats BOOLEAN NOT NULL DEFAULT TRUE,
         security_version INTEGER NOT NULL DEFAULT 1,
+        message_notifications BOOLEAN NOT NULL DEFAULT TRUE,
+        call_notifications BOOLEAN NOT NULL DEFAULT TRUE,
+        damage_notifications BOOLEAN NOT NULL DEFAULT TRUE,
+        system_notifications BOOLEAN NOT NULL DEFAULT TRUE,
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
+      ALTER TABLE owner_privacy_settings ADD COLUMN IF NOT EXISTS message_notifications BOOLEAN NOT NULL DEFAULT TRUE;
+      ALTER TABLE owner_privacy_settings ADD COLUMN IF NOT EXISTS call_notifications BOOLEAN NOT NULL DEFAULT TRUE;
+      ALTER TABLE owner_privacy_settings ADD COLUMN IF NOT EXISTS damage_notifications BOOLEAN NOT NULL DEFAULT TRUE;
+      ALTER TABLE owner_privacy_settings ADD COLUMN IF NOT EXISTS system_notifications BOOLEAN NOT NULL DEFAULT TRUE;
       CREATE TABLE IF NOT EXISTS owner_devices (
         id TEXT PRIMARY KEY,
         owner_id TEXT NOT NULL,
@@ -70,7 +78,7 @@ module.exports = function registerNotificationRoutes(app, pool) {
   async function getPrivacy(ownerId) {
     await ensurePrivacySchema();
     await pool.query(`INSERT INTO owner_privacy_settings(owner_id) VALUES($1) ON CONFLICT(owner_id) DO NOTHING`, [ownerId]);
-    const r = await pool.query(`SELECT suspicious_login_alerts, qr_abuse_protection, auto_close_old_chats, security_version FROM owner_privacy_settings WHERE owner_id=$1`, [ownerId]);
+    const r = await pool.query(`SELECT suspicious_login_alerts, qr_abuse_protection, auto_close_old_chats, security_version, message_notifications, call_notifications, damage_notifications, system_notifications FROM owner_privacy_settings WHERE owner_id=$1`, [ownerId]);
     return r.rows[0];
   }
 
@@ -132,6 +140,34 @@ module.exports = function registerNotificationRoutes(app, pool) {
         await pool.query(`UPDATE qr_conversations c SET status='closed', closed_at=NOW() FROM vehicles v WHERE c.vehicle_id=v.id AND v.owner_id=$1 AND c.status='active' AND c.updated_at < NOW() - INTERVAL '30 days'`, [ownerId]);
       }
       return res.json({ ok: true });
+    } catch (e) { console.error(e); return res.status(500).json({ error: 'SERVER_ERROR' }); }
+  });
+
+  app.get('/api/owner/notification-settings', async (req, res) => {
+    const ownerId = String(req.headers['x-owner-id'] || '').trim();
+    if (!ownerId) return res.status(401).json({ error: 'OWNER_REQUIRED' });
+    try {
+      const s = await getPrivacy(ownerId);
+      return res.json({ ok: true, settings: {
+        messages: s.message_notifications,
+        calls: s.call_notifications,
+        damage: s.damage_notifications,
+        system: s.system_notifications,
+      }});
+    } catch (e) { console.error(e); return res.status(500).json({ error: 'SERVER_ERROR' }); }
+  });
+
+  app.put('/api/owner/notification-settings', async (req, res) => {
+    const ownerId = String(req.headers['x-owner-id'] || '').trim();
+    if (!ownerId) return res.status(401).json({ error: 'OWNER_REQUIRED' });
+    try {
+      const current = await getPrivacy(ownerId);
+      const messages = req.body?.messages == null ? current.message_notifications : Boolean(req.body.messages);
+      const calls = req.body?.calls == null ? current.call_notifications : Boolean(req.body.calls);
+      const damage = req.body?.damage == null ? current.damage_notifications : Boolean(req.body.damage);
+      const system = req.body?.system == null ? current.system_notifications : Boolean(req.body.system);
+      await pool.query(`UPDATE owner_privacy_settings SET message_notifications=$2, call_notifications=$3, damage_notifications=$4, system_notifications=$5, updated_at=NOW() WHERE owner_id=$1`, [ownerId, messages, calls, damage, system]);
+      return res.json({ ok: true, settings: { messages, calls, damage, system } });
     } catch (e) { console.error(e); return res.status(500).json({ error: 'SERVER_ERROR' }); }
   });
 
@@ -256,7 +292,7 @@ module.exports = function registerNotificationRoutes(app, pool) {
     try {
       const p = await getPrivacy(ownerId);
       if (p.auto_close_old_chats) await pool.query(`UPDATE qr_conversations c SET status='closed', closed_at=NOW() FROM vehicles v WHERE c.vehicle_id=v.id AND v.owner_id=$1 AND c.status='active' AND c.updated_at < NOW() - INTERVAL '30 days'`, [ownerId]);
-      const result = await pool.query(`SELECT n.id, n.vehicle_id, n.qr_token, n.type, n.message, n.photo_path, n.latitude, n.longitude, n.status, n.created_at, n.read_at, n.resolved_at, v.plate, v.make, v.model, v.color FROM vehicle_notifications n JOIN vehicles v ON v.id=n.vehicle_id WHERE v.owner_id=$1 ORDER BY n.created_at DESC LIMIT 100`, [ownerId]);
+      const result = await pool.query(`SELECT n.id, n.vehicle_id, n.qr_token, n.type, n.message, n.photo_path, n.latitude, n.longitude, n.status, n.created_at, n.read_at, n.resolved_at, v.plate, v.make, v.model, v.color FROM vehicle_notifications n JOIN vehicles v ON v.id=n.vehicle_id WHERE v.owner_id=$1 AND ((n.type='message' AND $2) OR (n.type='call_request' AND $3) OR (n.type='damage' AND $4) OR (n.type IN ('move_vehicle','lights_on') AND $5)) ORDER BY n.created_at DESC LIMIT 100`, [ownerId, p.message_notifications, p.call_notifications, p.damage_notifications, p.system_notifications]);
       return res.json({ ok: true, notifications: result.rows });
     } catch (e) { console.error(e); return res.status(500).json({ error: 'SERVER_ERROR' }); }
   });
