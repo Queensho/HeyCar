@@ -60,17 +60,55 @@ class OwnerPrivacySettingsPage extends StatefulWidget {
 }
 
 class _OwnerPrivacySettingsPageState extends State<OwnerPrivacySettingsPage> {
-  bool anonymous = true;
-  bool hidePhone = true;
-  bool locationConsent = false;
+  bool suspiciousLoginAlerts = true;
+  bool qrAbuseProtection = true;
+  bool autoCloseOldChats = true;
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
 
   @override
   Widget build(BuildContext context) => _SettingsScaffold(
         title: 'Gizlilik ve güvenlik',
         child: Column(children: [
-          _SwitchTile(title: 'Anonim iletişim', subtitle: 'QR okutan kişilere kimlik bilgilerini gösterme', value: anonymous, onChanged: (v) => setState(() => anonymous = v)),
-          _SwitchTile(title: 'Telefon numaramı gizle', subtitle: 'Arama ve mesajlarda numaran görünmez', value: hidePhone, onChanged: (v) => setState(() => hidePhone = v)),
-          _SwitchTile(title: 'Konum paylaşım izni', subtitle: 'Konum yalnızca açık onayla paylaşılır', value: locationConsent, onChanged: (v) => setState(() => locationConsent = v)),
+          _SwitchTile(
+            title: 'Şüpheli giriş uyarıları',
+            subtitle: 'Yeni cihaz veya olağandışı girişte seni uyar',
+            value: suspiciousLoginAlerts,
+            onChanged: (v) => setState(() => suspiciousLoginAlerts = v),
+          ),
+          _SwitchTile(
+            title: 'QR kötüye kullanım koruması',
+            subtitle: 'Aynı kişiden gelen aşırı istekleri otomatik sınırla',
+            value: qrAbuseProtection,
+            onChanged: (v) => setState(() => qrAbuseProtection = v),
+          ),
+          _SwitchTile(
+            title: 'Eski sohbetleri otomatik kapat',
+            subtitle: 'Uzun süre kullanılmayan QR sohbetlerini arşivle',
+            value: autoCloseOldChats,
+            onChanged: (v) => setState(() => autoCloseOldChats = v),
+          ),
+          const SizedBox(height: 4),
+          _ActionTile(
+            icon: Icons.devices_outlined,
+            title: 'Açık oturumlar',
+            subtitle: 'Hesabının açık olduğu cihazları görüntüle',
+            onTap: () => _showMessage('Açık oturumlar ekranı hazırlanıyor.'),
+          ),
+          _ActionTile(
+            icon: Icons.block_rounded,
+            title: 'Engellenen kişiler',
+            subtitle: 'Engellediğin QR ziyaretçilerini yönet',
+            onTap: () => _showMessage('Engellenen kişiler ekranı hazırlanıyor.'),
+          ),
+          _ActionTile(
+            icon: Icons.lock_reset_rounded,
+            title: 'Güvenlik kodunu yenile',
+            subtitle: 'Hesap güvenlik anahtarını yenileyerek eski oturumları kapat',
+            onTap: () => _showMessage('Güvenlik kodu yenileme işlemi hazırlanıyor.'),
+          ),
           const SizedBox(height: 8),
           Container(
             width: double.infinity,
@@ -79,7 +117,7 @@ class _OwnerPrivacySettingsPageState extends State<OwnerPrivacySettingsPage> {
             child: const Row(children: [
               Icon(Icons.shield_outlined, color: _purple),
               SizedBox(width: 12),
-              Expanded(child: Text('Telefon numaran ve kişisel bilgilerin public QR ekranında gösterilmez.', style: TextStyle(color: _muted, height: 1.35))),
+              Expanded(child: Text('Telefon numaran ve kişisel bilgilerin HeyCar public QR ekranında hiçbir zaman gösterilmez.', style: TextStyle(color: _muted, height: 1.35))),
             ]),
           ),
         ]),
@@ -161,5 +199,39 @@ class _SwitchTile extends StatelessWidget {
           ])),
           Switch(value: value, onChanged: onChanged, activeThumbColor: Colors.white, activeTrackColor: _purple),
         ]),
+      );
+}
+
+class _ActionTile extends StatelessWidget {
+  const _ActionTile({required this.icon, required this.title, required this.subtitle, required this.onTap});
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(18), border: Border.all(color: _line)),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(18),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 14),
+              child: Row(children: [
+                Icon(icon, color: _purple, size: 25),
+                const SizedBox(width: 13),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(title, style: const TextStyle(color: Colors.white, fontSize: 15.5, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 4),
+                  Text(subtitle, style: const TextStyle(color: _muted, fontSize: 12.5, height: 1.25)),
+                ])),
+                const Icon(Icons.chevron_right_rounded, color: Colors.white54),
+              ]),
+            ),
+          ),
+        ),
       );
 }
