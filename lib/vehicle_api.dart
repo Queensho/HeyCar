@@ -13,6 +13,60 @@ class VehicleApi {
     'Suzuki','SWM','Tesla','Togg','Toyota','Volkswagen','Volvo','Diğer'
   ];
 
+  static const Map<String, String> _logoSlugs = {
+    'Alfa Romeo': 'alfaromeo',
+    'Audi': 'audi',
+    'BMW': 'bmw',
+    'BYD': 'byd',
+    'Chery': 'chery',
+    'Chevrolet': 'chevrolet',
+    'Chrysler': 'chrysler',
+    'Citroen': 'citroen',
+    'Cupra': 'cupra',
+    'Dacia': 'dacia',
+    'Daihatsu': 'daihatsu',
+    'Dodge': 'dodge',
+    'DS Automobiles': 'dsautomobiles',
+    'Fiat': 'fiat',
+    'Ford': 'ford',
+    'Honda': 'honda',
+    'Hyundai': 'hyundai',
+    'Isuzu': 'isuzu',
+    'Jaguar': 'jaguar',
+    'Jeep': 'jeep',
+    'Kia': 'kia',
+    'Lada': 'lada',
+    'Land Rover': 'landrover',
+    'Lexus': 'lexus',
+    'Maserati': 'maserati',
+    'Mazda': 'mazda',
+    'Mercedes-Benz': 'mercedes',
+    'MG': 'mg',
+    'Mini': 'mini',
+    'Mitsubishi': 'mitsubishi',
+    'Nissan': 'nissan',
+    'Opel': 'opel',
+    'Peugeot': 'peugeot',
+    'Porsche': 'porsche',
+    'Renault': 'renault',
+    'Saab': 'saab',
+    'Seat': 'seat',
+    'Skoda': 'skoda',
+    'Smart': 'smart',
+    'Subaru': 'subaru',
+    'Suzuki': 'suzuki',
+    'Tesla': 'tesla',
+    'Toyota': 'toyota',
+    'Volkswagen': 'volkswagen',
+    'Volvo': 'volvo',
+  };
+
+  static String? brandLogoUrl(String make) {
+    final slug = _logoSlugs[make.trim()];
+    if (slug == null) return null;
+    return 'https://cdn.simpleicons.org/$slug/FFFFFF';
+  }
+
   static const Map<String, List<String>> _fallbackModels = {
     'Alfa Romeo': ['145','146','147','156','159','Giulietta','MiTo','Giulia','Stelvio','Tonale','Junior'],
     'Audi': ['A1','A3','A4','A5','A6','A7','A8','TT','Q2','Q3','Q4 e-tron','Q5','Q6 e-tron','Q7','Q8','e-tron','e-tron GT'],
