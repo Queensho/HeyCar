@@ -76,4 +76,26 @@ class AnonymousCallApi {
     }
     return Map<String, dynamic>.from(data['call'] as Map);
   }
+
+  static Future<Map<String, dynamic>> ownerSignal(
+    String callId, {
+    String? action,
+    Map<String, dynamic>? answer,
+    Map<String, dynamic>? candidate,
+  }) async {
+    final response = await http.patch(
+      Uri.parse('${PublicThemeBackend.baseUrl}/api/owner/calls/${Uri.encodeComponent(callId)}'),
+      headers: {'Content-Type': 'application/json', 'x-owner-id': OnboardingDraft.userId.trim()},
+      body: jsonEncode({
+        if (action != null) 'action': action,
+        if (answer != null) 'answer': answer,
+        if (candidate != null) 'candidate': candidate,
+      }),
+    );
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(data['error']?.toString() ?? 'CALL_UPDATE_FAILED');
+    }
+    return Map<String, dynamic>.from(data['call'] as Map);
+  }
 }
