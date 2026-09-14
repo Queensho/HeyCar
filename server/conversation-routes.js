@@ -92,6 +92,27 @@ module.exports = function registerConversationRoutes(app, pool) {
     }
   });
 
+  app.get('/api/owner/notifications/:notificationId/conversation', async (req, res) => {
+    const ownerId = String(req.headers['x-owner-id'] || '').trim();
+    const notificationId = String(req.params.notificationId || '').trim();
+    if (!ownerId) return res.status(401).json({ error: 'OWNER_REQUIRED' });
+    try {
+      const c = await pool.query(
+        `SELECT c.id
+           FROM qr_conversations c
+           JOIN vehicles v ON v.id = c.vehicle_id
+          WHERE c.notification_id = $1 AND v.owner_id = $2
+          LIMIT 1`,
+        [notificationId, ownerId]
+      );
+      if (!c.rows.length) return res.status(404).json({ error: 'NOT_FOUND' });
+      return res.json({ ok: true, conversationId: c.rows[0].id });
+    } catch (e) {
+      console.error(e);
+      return res.status(500).json({ error: 'SERVER_ERROR' });
+    }
+  });
+
   app.get('/api/owner/conversations/:id', async (req, res) => {
     const ownerId = String(req.headers['x-owner-id'] || '').trim();
     const id = String(req.params.id || '').trim();
