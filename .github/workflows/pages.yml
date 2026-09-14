@@ -24,6 +24,9 @@ jobs:
       - name: Apply Cepqar frontend branding
         run: python3 tool/brand_frontend.py
 
+      - name: Apply Android back navigation
+        run: python3 tool/back_navigation_patch.py
+
       - name: Generate Android platform
         run: flutter create . --platforms=android --project-name heycar_app --org com.heycar --no-pub
 
