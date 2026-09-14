@@ -21,10 +21,13 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Apply Cepqar frontend branding
+        run: python3 tool/brand_frontend.py
+
       - name: Generate Android platform
         run: flutter create . --platforms=android --project-name heycar_app --org com.heycar --no-pub
 
-      - name: Add Android call permissions
+      - name: Add Android call permissions and app label
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -34,6 +37,7 @@ jobs:
           permissions = '''    <uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />\n    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />\n    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />\n'''
           if 'android.permission.RECORD_AUDIO' not in text:
               text = text.replace(marker, permissions + '\n    ' + marker, 1)
+          text = text.replace('android:label="heycar_app"', 'android:label="Cepqar"')
           p.write_text(text)
           PY
 
