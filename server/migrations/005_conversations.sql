@@ -3,13 +3,16 @@ CREATE TABLE IF NOT EXISTS qr_conversations (
   vehicle_id UUID NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
   qr_token TEXT NOT NULL REFERENCES qr_tags(token) ON DELETE CASCADE,
   notification_id UUID UNIQUE REFERENCES vehicle_notifications(id) ON DELETE SET NULL,
-  guest_token TEXT NOT NULL UNIQUE,
+  guest_token TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_qr_conversations_vehicle_updated
   ON qr_conversations(vehicle_id, updated_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_qr_conversations_guest_token
+  ON qr_conversations(guest_token);
 
 CREATE TABLE IF NOT EXISTS qr_conversation_messages (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -21,3 +24,6 @@ CREATE TABLE IF NOT EXISTS qr_conversation_messages (
 
 CREATE INDEX IF NOT EXISTS idx_qr_conversation_messages_conversation_created
   ON qr_conversation_messages(conversation_id, created_at ASC);
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.qr_conversations TO heycar_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.qr_conversation_messages TO heycar_user;
