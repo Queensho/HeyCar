@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'entry.dart' as old;
 import 'owner_login.dart';
+import 'owner_password_login.dart';
 import 'owner_dashboard_live.dart';
 import 'owner_vehicle_setup.dart';
 import 'public_theme_settings.dart';
@@ -112,7 +113,7 @@ class _ThemeOwnerEntryState extends State<ThemeOwnerEntry> {
     }
 
     if (loginMode) {
-      return OwnerLoginScreen(onDone: done, onBack: resetToWelcome);
+      return PasswordOwnerLoginScreen(onDone: done, onBack: resetToWelcome);
     }
     if (registerMode) {
       return OwnerRegisterScreen(
