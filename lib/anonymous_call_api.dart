@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'onboarding_backend.dart';
 import 'public_theme_backend.dart';
 
 class AnonymousCallApi {
@@ -49,5 +50,18 @@ class AnonymousCallApi {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception('CALL_SIGNAL_FAILED');
     }
+  }
+
+  static Future<Map<String, dynamic>?> incoming() async {
+    final ownerId = OnboardingDraft.userId.trim();
+    if (ownerId.isEmpty) return null;
+    final response = await http.get(
+      Uri.parse('${PublicThemeBackend.baseUrl}/api/owner/calls/incoming'),
+      headers: {'x-owner-id': ownerId},
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) return null;
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    final call = data['call'];
+    return call is Map ? Map<String, dynamic>.from(call) : null;
   }
 }
