@@ -196,21 +196,45 @@ module.exports = function registerQrRoutes(app, pool) {
 
   app.post('/api/qr/activate', async (req, res) => {
     const token = normalizeToken(req.body.token);
-    const existingVehicleId = String(req.body.vehicleId || '').trim();
-    const plate = String(req.body.plate || '').trim().toUpperCase();
-    const make = String(req.body.make || '').trim();
-    const model = String(req.body.model || '').trim() || null;
-    const ownerName = String(req.body.ownerName || '').trim() || 'HeyCar Kullanıcısı';
+    const ownerId = String(req.body.ownerId || req.headers['x-owner-id'] || '').trim();
+    const vehicleId = String(req.body.vehicleId || '').trim();
 
-    if (!token || (!existingVehicleId && (!plate || !make))) {
+    if (!token || !vehicleId) {
       return res.status(400).json({ error: 'REQUIRED_FIELDS_MISSING' });
+    }
+    if (!ownerId) {
+      return res.status(401).json({ error: 'OWNER_REQUIRED' });
     }
 
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
+
+      const vehicleResult = await client.query(
+        `SELECT v.id, v.owner_id, v.plate, v.make, v.model, v.color, u.status AS owner_status
+         FROM vehicles v
+         JOIN users u ON u.id = v.owner_id
+         WHERE v.id = $1
+         LIMIT 1
+         FOR UPDATE OF v`,
+        [vehicleId]
+      );
+      if (!vehicleResult.rows.length) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ error: 'VEHICLE_NOT_FOUND' });
+      }
+      const vehicle = vehicleResult.rows[0];
+      if (String(vehicle.owner_id) !== ownerId) {
+        await client.query('ROLLBACK');
+        return res.status(403).json({ error: 'FORBIDDEN' });
+      }
+      if (vehicle.owner_status !== 'active') {
+        await client.query('ROLLBACK');
+        return res.status(403).json({ error: 'FORBIDDEN' });
+      }
+
       const qrResult = await client.query(
-        'SELECT id, status, vehicle_id FROM qr_tags WHERE token = $1 FOR UPDATE',
+        'SELECT id, token, status, vehicle_id FROM qr_tags WHERE token = $1 FOR UPDATE',
         [token]
       );
       if (!qrResult.rows.length) {
@@ -227,37 +251,15 @@ module.exports = function registerQrRoutes(app, pool) {
         return res.status(409).json({ error: 'QR_ALREADY_BOUND' });
       }
 
-      let vehicle;
-
-      if (existingVehicleId) {
-        const vehicleResult = await client.query(
-          `SELECT id, owner_id, plate, make, model, color
-           FROM vehicles
-           WHERE id = $1
-           LIMIT 1`,
-          [existingVehicleId]
-        );
-        if (!vehicleResult.rows.length) {
-          await client.query('ROLLBACK');
-          return res.status(404).json({ error: 'VEHICLE_NOT_FOUND' });
-        }
-        vehicle = vehicleResult.rows[0];
-      } else {
-        const ownerResult = await client.query(
-          `INSERT INTO users (display_name, role, status)
-           VALUES ($1, 'user', 'active')
-           RETURNING id, display_name`,
-          [ownerName]
-        );
-        const owner = ownerResult.rows[0];
-
-        const vehicleResult = await client.query(
-          `INSERT INTO vehicles (owner_id, plate, make, model)
-           VALUES ($1, $2, $3, $4)
-           RETURNING id, owner_id, plate, make, model, color`,
-          [owner.id, plate, make, model]
-        );
-        vehicle = vehicleResult.rows[0];
+      const existingForVehicle = await client.query(
+        `SELECT token FROM qr_tags
+         WHERE vehicle_id = $1 AND status = 'active'
+         LIMIT 1`,
+        [vehicleId]
+      );
+      if (existingForVehicle.rows.length) {
+        await client.query('ROLLBACK');
+        return res.status(409).json({ error: 'VEHICLE_ALREADY_HAS_QR' });
       }
 
       await client.query(
@@ -268,7 +270,19 @@ module.exports = function registerQrRoutes(app, pool) {
       );
 
       await client.query('COMMIT');
-      return res.json({ ok: true, token, status: 'active', vehicle });
+      return res.json({
+        ok: true,
+        token,
+        status: 'active',
+        vehicle: {
+          id: vehicle.id,
+          owner_id: vehicle.owner_id,
+          plate: vehicle.plate,
+          make: vehicle.make,
+          model: vehicle.model,
+          color: vehicle.color,
+        },
+      });
     } catch (e) {
       await client.query('ROLLBACK');
       console.error(e);
