@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:html' as html;
+import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'public_theme_backend.dart';
@@ -13,6 +14,25 @@ class PublicNotificationApi {
 
   static String currentToken() =>
       (Uri.base.queryParameters['tag'] ?? '').trim().toUpperCase();
+
+  static String _guestStorageKey() => 'heycar_guest_${currentToken()}';
+  static String _conversationStorageKey() => 'heycar_conversation_${currentToken()}';
+
+  static String guestToken() {
+    final existing = html.window.localStorage[_guestStorageKey()];
+    if (existing != null && existing.isNotEmpty) return existing;
+    final random = Random.secure();
+    final token = List.generate(32, (_) => random.nextInt(16).toRadixString(16)).join();
+    html.window.localStorage[_guestStorageKey()] = token;
+    return token;
+  }
+
+  static String? savedConversationId() =>
+      html.window.localStorage[_conversationStorageKey()];
+
+  static void saveConversationId(String id) {
+    if (id.isNotEmpty) html.window.localStorage[_conversationStorageKey()] = id;
+  }
 
   static String backendTypeFor(String label) {
     switch (label) {
@@ -68,7 +88,7 @@ class PublicNotificationApi {
     longitude = null;
   }
 
-  static Future<void> send({
+  static Future<String> send({
     required String typeLabel,
     required String message,
   }) async {
@@ -77,9 +97,7 @@ class PublicNotificationApi {
 
     final response = await http
         .post(
-          Uri.parse(
-            '${PublicThemeBackend.baseUrl}/api/qr/${Uri.encodeComponent(token)}/notifications',
-          ),
+          Uri.parse('${PublicThemeBackend.baseUrl}/api/qr/${Uri.encodeComponent(token)}/notifications'),
           headers: const {'Content-Type': 'application/json'},
           body: jsonEncode({
             'type': backendTypeFor(typeLabel),
@@ -94,7 +112,57 @@ class PublicNotificationApi {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception('NOTIFICATION_SEND_FAILED_${response.statusCode}');
     }
+    final notificationData = jsonDecode(response.body) as Map<String, dynamic>;
+    final notification = notificationData['notification'];
+    final notificationId = notification is Map ? notification['id']?.toString() ?? '' : '';
+    if (notificationId.isEmpty) throw Exception('NOTIFICATION_ID_MISSING');
+
+    final c = await http
+        .post(
+          Uri.parse('${PublicThemeBackend.baseUrl}/api/qr/${Uri.encodeComponent(token)}/conversations'),
+          headers: const {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'notificationId': notificationId,
+            'guestToken': guestToken(),
+            'message': message.trim(),
+          }),
+        )
+        .timeout(const Duration(seconds: 15));
+    if (c.statusCode < 200 || c.statusCode >= 300) {
+      throw Exception('CONVERSATION_CREATE_FAILED_${c.statusCode}');
+    }
+    final conversationData = jsonDecode(c.body) as Map<String, dynamic>;
+    final conversation = conversationData['conversation'];
+    final conversationId = conversation is Map ? conversation['id']?.toString() ?? '' : '';
+    if (conversationId.isEmpty) throw Exception('CONVERSATION_ID_MISSING');
+    saveConversationId(conversationId);
     clearDraft();
+    return conversationId;
+  }
+
+  static Future<List<Map<String, dynamic>>> fetchConversation(String conversationId) async {
+    final token = currentToken();
+    final r = await http.get(
+      Uri.parse('${PublicThemeBackend.baseUrl}/api/qr/${Uri.encodeComponent(token)}/conversations/${Uri.encodeComponent(conversationId)}'),
+      headers: {'x-guest-token': guestToken()},
+    ).timeout(const Duration(seconds: 15));
+    if (r.statusCode < 200 || r.statusCode >= 300) throw Exception('CHAT_LOAD_FAILED');
+    final data = jsonDecode(r.body) as Map<String, dynamic>;
+    final list = data['messages'];
+    if (list is! List) return [];
+    return list.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+  }
+
+  static Future<void> sendChatMessage(String conversationId, String message) async {
+    final token = currentToken();
+    final text = message.trim();
+    if (text.isEmpty) return;
+    final r = await http.post(
+      Uri.parse('${PublicThemeBackend.baseUrl}/api/qr/${Uri.encodeComponent(token)}/conversations/${Uri.encodeComponent(conversationId)}/messages'),
+      headers: {'Content-Type': 'application/json', 'x-guest-token': guestToken()},
+      body: jsonEncode({'message': text}),
+    ).timeout(const Duration(seconds: 15));
+    if (r.statusCode < 200 || r.statusCode >= 300) throw Exception('CHAT_SEND_FAILED');
   }
 
   static Future<void> sendCallRequest() async {
