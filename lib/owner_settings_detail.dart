@@ -40,29 +40,89 @@ class OwnerNotificationSettingsPage extends StatefulWidget {
 
 class _OwnerNotificationSettingsPageState extends State<OwnerNotificationSettingsPage> {
   bool messages = true, calls = true, damage = true, system = true;
+  bool loading = true;
+  String? error;
+
   @override
-  void initState() { super.initState(); _load(); }
+  void initState() {
+    super.initState();
+    _load();
+  }
+
   Future<void> _load() async {
-    final p = await SharedPreferences.getInstance();
-    if (!mounted) return;
+    final ownerId = OnboardingDraft.userId.trim();
+    if (ownerId.isEmpty) {
+      if (mounted) setState(() { loading = false; error = 'Araç sahibi oturumu bulunamadı.'; });
+      return;
+    }
+    try {
+      final r = await http.get(
+        Uri.parse('$_baseUrl/api/owner/notification-settings'),
+        headers: _ownerHeaders,
+      ).timeout(const Duration(seconds: 15));
+      if (r.statusCode < 200 || r.statusCode >= 300) throw Exception();
+      final data = jsonDecode(r.body) as Map<String, dynamic>;
+      final s = Map<String, dynamic>.from(data['settings'] as Map);
+      if (!mounted) return;
+      setState(() {
+        messages = s['messages'] != false;
+        calls = s['calls'] != false;
+        damage = s['damage'] != false;
+        system = s['system'] != false;
+        loading = false;
+        error = null;
+      });
+    } catch (_) {
+      if (mounted) setState(() { loading = false; error = 'Bildirim ayarları alınamadı.'; });
+    }
+  }
+
+  Future<void> _save() async {
+    try {
+      final r = await http.put(
+        Uri.parse('$_baseUrl/api/owner/notification-settings'),
+        headers: {..._ownerHeaders, 'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'messages': messages,
+          'calls': calls,
+          'damage': damage,
+          'system': system,
+        }),
+      ).timeout(const Duration(seconds: 15));
+      if (r.statusCode < 200 || r.statusCode >= 300) throw Exception();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('notify_messages', messages);
+      await prefs.setBool('notify_calls', calls);
+      await prefs.setBool('notify_damage', damage);
+      await prefs.setBool('notify_system', system);
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bildirim ayarı sunucuya kaydedilemedi.')));
+    }
+  }
+
+  void _change(String key, bool value) {
     setState(() {
-      messages = p.getBool('notify_messages') ?? true;
-      calls = p.getBool('notify_calls') ?? true;
-      damage = p.getBool('notify_damage') ?? true;
-      system = p.getBool('notify_system') ?? true;
+      if (key == 'messages') messages = value;
+      if (key == 'calls') calls = value;
+      if (key == 'damage') damage = value;
+      if (key == 'system') system = value;
     });
+    _save();
   }
-  Future<void> _set(String key, bool value) async {
-    final p = await SharedPreferences.getInstance();
-    await p.setBool(key, value);
-  }
+
   @override
-  Widget build(BuildContext context) => _SettingsScaffold(title: 'Bildirim ayarları', child: Column(children: [
-    _SwitchTile(title: 'Mesaj bildirimleri', subtitle: 'QR üzerinden gelen mesajları bildir', value: messages, onChanged: (v) { setState(() => messages = v); _set('notify_messages', v); }),
-    _SwitchTile(title: 'Arama talepleri', subtitle: 'Gizli arama taleplerini bildir', value: calls, onChanged: (v) { setState(() => calls = v); _set('notify_calls', v); }),
-    _SwitchTile(title: 'Hasar bildirimleri', subtitle: 'Araç hasarı bildirimlerini öne çıkar', value: damage, onChanged: (v) { setState(() => damage = v); _set('notify_damage', v); }),
-    _SwitchTile(title: 'Sistem bildirimleri', subtitle: 'HeyCar servis ve güvenlik bildirimleri', value: system, onChanged: (v) { setState(() => system = v); _set('notify_system', v); }),
-  ]));
+  Widget build(BuildContext context) => _SettingsScaffold(
+    title: 'Bildirim ayarları',
+    child: loading
+        ? const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator(color: _purple)))
+        : Column(children: [
+            if (error != null) Padding(padding: const EdgeInsets.only(bottom: 10), child: Text(error!, style: const TextStyle(color: Colors.orangeAccent))),
+            _SwitchTile(title: 'Mesaj bildirimleri', subtitle: 'QR üzerinden gelen mesajları bildir', value: messages, onChanged: (v) => _change('messages', v)),
+            _SwitchTile(title: 'Arama talepleri', subtitle: 'Gizli arama taleplerini bildir', value: calls, onChanged: (v) => _change('calls', v)),
+            _SwitchTile(title: 'Hasar bildirimleri', subtitle: 'Araç hasarı bildirimlerini öne çıkar', value: damage, onChanged: (v) => _change('damage', v)),
+            _SwitchTile(title: 'Sistem bildirimleri', subtitle: 'HeyCar servis ve güvenlik bildirimleri', value: system, onChanged: (v) => _change('system', v)),
+          ]),
+  );
 }
 
 class OwnerPrivacySettingsPage extends StatefulWidget {
