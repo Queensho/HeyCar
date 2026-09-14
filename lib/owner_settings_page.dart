@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'owner_qr_dialog.dart';
+import 'owner_settings_detail.dart';
 
 const _bg = Color(0xFF07111F);
 const _panel = Color(0xFF111A31);
@@ -12,10 +13,15 @@ const _blue = Color(0xFF4AB8FF);
 const _muted = Color(0xFFA7B0C7);
 
 class OwnerSettingsPage extends StatelessWidget {
-  const OwnerSettingsPage({super.key, this.onOpenVehicles, this.onOpenQr});
+  const OwnerSettingsPage({super.key, this.onOpenVehicles, this.onOpenQr, this.onOpenNotifications});
 
   final VoidCallback? onOpenVehicles;
   final VoidCallback? onOpenQr;
+  final VoidCallback? onOpenNotifications;
+
+  void _push(BuildContext context, Widget page) {
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -56,13 +62,20 @@ class OwnerSettingsPage extends StatelessWidget {
                     left: 20,
                     right: 18,
                     top: top + 14,
-                    child: const Row(
+                    child: Row(
                       children: [
-                        _Brand(),
-                        Spacer(),
-                        _RoundIcon(icon: Icons.notifications_none_rounded, badge: true),
-                        SizedBox(width: 10),
-                        _RoundIcon(icon: Icons.person_rounded),
+                        const _Brand(),
+                        const Spacer(),
+                        _RoundIcon(
+                          icon: Icons.notifications_none_rounded,
+                          badge: true,
+                          onTap: onOpenNotifications ?? () => _push(context, const OwnerNotificationSettingsPage()),
+                        ),
+                        const SizedBox(width: 10),
+                        _RoundIcon(
+                          icon: Icons.person_rounded,
+                          onTap: () => _push(context, const OwnerAccountSettingsPage()),
+                        ),
                       ],
                     ),
                   ),
@@ -86,15 +99,45 @@ class OwnerSettingsPage extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(14, 0, 14, 22),
               child: Column(
                 children: [
-                  _SettingsTile(icon: Icons.person_outline_rounded, iconColor: _purple, title: 'Hesap bilgilerim', subtitle: 'Profil, iletişim ve hesap ayarlarınız', onTap: () {}),
+                  _SettingsTile(
+                    icon: Icons.person_outline_rounded,
+                    iconColor: _purple,
+                    title: 'Hesap bilgilerim',
+                    subtitle: 'Profil, iletişim ve hesap ayarlarınız',
+                    onTap: () => _push(context, const OwnerAccountSettingsPage()),
+                  ),
                   const SizedBox(height: 8),
-                  _SettingsTile(icon: Icons.directions_car_filled_rounded, iconColor: _orange, title: 'Araçlarım', subtitle: 'Kayıtlı araçlarınızı yönetin', onTap: onOpenVehicles ?? () {}),
+                  _SettingsTile(
+                    icon: Icons.directions_car_filled_rounded,
+                    iconColor: _orange,
+                    title: 'Araçlarım',
+                    subtitle: 'Kayıtlı araçlarınızı yönetin',
+                    onTap: onOpenVehicles ?? () => _push(context, const OwnerVehicleSummaryPage()),
+                  ),
                   const SizedBox(height: 8),
-                  _SettingsTile(icon: Icons.qr_code_2_rounded, iconColor: _lime, title: 'QR etiketim', subtitle: 'Araç QR kodunuzu görüntüleyin ve paylaşın', onTap: () => showOwnerQrDialog(context)),
+                  _SettingsTile(
+                    icon: Icons.qr_code_2_rounded,
+                    iconColor: _lime,
+                    title: 'QR etiketim',
+                    subtitle: 'Araç QR kodunuzu görüntüleyin ve paylaşın',
+                    onTap: () => showOwnerQrDialog(context),
+                  ),
                   const SizedBox(height: 8),
-                  _SettingsTile(icon: Icons.notifications_none_rounded, iconColor: _pink, title: 'Bildirim ayarları', subtitle: 'Mesaj, arama ve sistem bildirimleri', onTap: () {}),
+                  _SettingsTile(
+                    icon: Icons.notifications_none_rounded,
+                    iconColor: _pink,
+                    title: 'Bildirim ayarları',
+                    subtitle: 'Mesaj, arama ve sistem bildirimleri',
+                    onTap: () => _push(context, const OwnerNotificationSettingsPage()),
+                  ),
                   const SizedBox(height: 8),
-                  _SettingsTile(icon: Icons.shield_outlined, iconColor: _blue, title: 'Gizlilik ve güvenlik', subtitle: 'Verileriniz ve güvenlik ayarları', onTap: () {}),
+                  _SettingsTile(
+                    icon: Icons.shield_outlined,
+                    iconColor: _blue,
+                    title: 'Gizlilik ve güvenlik',
+                    subtitle: 'Verileriniz ve güvenlik ayarları',
+                    onTap: () => _push(context, const OwnerPrivacySettingsPage()),
+                  ),
                   const SizedBox(height: 14),
                   _QrPromo(onTap: () => showOwnerQrDialog(context)),
                 ],
@@ -124,14 +167,23 @@ class _Brand extends StatelessWidget {
 }
 
 class _RoundIcon extends StatelessWidget {
-  const _RoundIcon({required this.icon, this.badge = false});
+  const _RoundIcon({required this.icon, required this.onTap, this.badge = false});
   final IconData icon;
+  final VoidCallback onTap;
   final bool badge;
   @override
   Widget build(BuildContext context) => Stack(
         clipBehavior: Clip.none,
         children: [
-          Container(width: 46, height: 46, decoration: const BoxDecoration(color: Color(0xFF10172B), shape: BoxShape.circle), child: Icon(icon, color: Colors.white, size: 23)),
+          Material(
+            color: const Color(0xFF10172B),
+            shape: const CircleBorder(),
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: onTap,
+              child: SizedBox(width: 46, height: 46, child: Icon(icon, color: Colors.white, size: 23)),
+            ),
+          ),
           if (badge)
             Positioned(top: -3, right: -1, child: Container(width: 20, height: 20, alignment: Alignment.center, decoration: const BoxDecoration(color: Color(0xFFFF405D), shape: BoxShape.circle), child: const Text('3', style: TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w900)))),
         ],
