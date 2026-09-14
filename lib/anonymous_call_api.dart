@@ -64,4 +64,16 @@ class AnonymousCallApi {
     final call = data['call'];
     return call is Map ? Map<String, dynamic>.from(call) : null;
   }
+
+  static Future<Map<String, dynamic>> ownerStatus(String callId) async {
+    final response = await http.get(
+      Uri.parse('${PublicThemeBackend.baseUrl}/api/owner/calls/${Uri.encodeComponent(callId)}'),
+      headers: {'x-owner-id': OnboardingDraft.userId.trim()},
+    );
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(data['error']?.toString() ?? 'CALL_STATUS_FAILED');
+    }
+    return Map<String, dynamic>.from(data['call'] as Map);
+  }
 }
