@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'entry.dart' as old;
 import 'entry_vps.dart' as vps;
-import 'entry_vps_phone.dart' as phone;
-import 'main.dart' as app;
-import 'onboarding_backend.dart';
 import 'owner_login.dart';
 import 'owner_dashboard_live.dart';
 import 'public_theme_settings.dart';
@@ -15,10 +12,16 @@ class ThemeOwnerApp extends StatelessWidget {
   const ThemeOwnerApp({super.key});
   @override
   Widget build(BuildContext context) => MaterialApp(
-    debugShowCheckedModeBanner: false,
-    theme: ThemeData(useMaterial3: true, scaffoldBackgroundColor: app.C.bg, colorScheme: ColorScheme.fromSeed(seedColor: app.C.orange), fontFamily: 'sans'),
-    home: const ThemeOwnerEntry(),
-  );
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          useMaterial3: true,
+          brightness: Brightness.dark,
+          scaffoldBackgroundColor: const Color(0xFF06111F),
+          colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF8B5CFF), brightness: Brightness.dark),
+          fontFamily: 'sans',
+        ),
+        home: const ThemeOwnerEntry(),
+      );
 }
 
 class ThemeOwnerEntry extends StatefulWidget {
@@ -30,44 +33,39 @@ class ThemeOwnerEntry extends StatefulWidget {
 class _ThemeOwnerEntryState extends State<ThemeOwnerEntry> {
   int index = 0;
   bool loginMode = false;
+  bool registerMode = false;
 
-  void next() => setState(() => index = (index + 1).clamp(0, 8));
-  void back() => setState(() {
-    if (loginMode) { loginMode = false; index = 0; }
-    else { index = (index - 1).clamp(0, 8); }
-  });
+  void next() => setState(() => index = (index + 1).clamp(0, 5));
+  void back() => setState(() => index = (index - 1).clamp(0, 5));
   void done() => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const OwnerDashboardLive()));
 
-  String? normalizeMobile(String input) {
-    var digits = input.replaceAll(RegExp(r'\D'), '');
-    if (digits.startsWith('90') && digits.length == 12) digits = digits.substring(2);
-    else if (digits.startsWith('0') && digits.length == 11) digits = digits.substring(1);
-    if (!RegExp(r'^5\d{9}$').hasMatch(digits)) return null;
-    return '+90$digits';
-  }
-
-  void phoneNext() {
-    final normalized = normalizeMobile(OnboardingDraft.phone);
-    if (normalized == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Geçerli bir Türkiye cep telefonu numarası gir.')));
-      return;
-    }
-    OnboardingDraft.phone = normalized;
-    OnboardingDraft.otpCode = '';
-    next();
-  }
+  void resetToWelcome() => setState(() {
+        loginMode = false;
+        registerMode = false;
+        index = 0;
+      });
 
   @override
   Widget build(BuildContext context) {
     if (loginMode) {
-      return OwnerLoginScreen(onDone: done, onBack: () => setState(() { loginMode = false; index = 0; }));
+      return OwnerLoginScreen(onDone: done, onBack: resetToWelcome);
     }
+    if (registerMode) {
+      return OwnerRegisterScreen(
+        onBack: resetToWelcome,
+        onContinue: () => setState(() {
+          registerMode = false;
+          index = 1;
+        }),
+      );
+    }
+
     final screens = <Widget>[
-      OwnerWelcome(onRegister: next, onLogin: () => setState(() => loginMode = true)),
-      vps.PhoneVps(phoneNext, back),
-      phone.OtpVps(next, back),
-      vps.AccountVps(next, back),
-      vps.VehiclePickerVps(next, back),
+      OwnerWelcome(
+        onRegister: () => setState(() => registerMode = true),
+        onLogin: () => setState(() => loginMode = true),
+      ),
+      vps.VehiclePickerVps(next, resetToWelcome),
       PublicThemeSettingsPage(onDone: next, onBack: back),
       RealQrScanPage(onFound: next, onBack: back),
       RealQrConfirmPage(onDone: next, onBack: back),
