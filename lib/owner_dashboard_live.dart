@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'main.dart' as app;
 import 'onboarding_backend.dart';
 import 'qr_backend.dart';
+import 'vehicle_api.dart';
 import 'owner_notifications_page.dart';
 
 const _bg = Color(0xFF07111F);
@@ -63,11 +64,35 @@ class _OwnerHome extends StatelessWidget {
 
   String get name => OnboardingDraft.displayName.trim().isEmpty ? 'Araç Sahibi' : OnboardingDraft.displayName.trim().split(' ').first;
   String get plate => QrDraft.plate.trim().isEmpty ? '34 ABC 123' : QrDraft.plate.trim();
+  String get make => QrDraft.make.trim().isEmpty ? 'Volkswagen' : QrDraft.make.trim();
   String get carName {
-    final make = QrDraft.make.trim();
     final model = QrDraft.model.trim();
-    if ('$make$model'.isEmpty) return 'Volkswagen Golf';
+    if (model.isEmpty) return make;
     return '$make $model'.trim();
+  }
+
+  Widget _brandLogo() {
+    final url = VehicleApi.brandLogoUrl(make);
+    if (url == null) {
+      return Container(
+        width: 66,
+        height: 54,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(color: const Color(0xFF0A1428), borderRadius: BorderRadius.circular(15)),
+        child: const Icon(Icons.directions_car_filled_rounded, color: _purple, size: 31),
+      );
+    }
+    return Container(
+      width: 66,
+      height: 54,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(color: const Color(0xFF0A1428), borderRadius: BorderRadius.circular(15), border: Border.all(color: _line)),
+      child: Image.network(
+        url,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => const Icon(Icons.directions_car_filled_rounded, color: _purple, size: 31),
+      ),
+    );
   }
 
   @override
@@ -113,8 +138,8 @@ class _OwnerHome extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           _Card(child: Row(children: [
-            SizedBox(width: 105, height: 54, child: Image.asset('assets/Arac.png', fit: BoxFit.contain, alignment: Alignment.centerLeft)),
-            const SizedBox(width: 8),
+            _brandLogo(),
+            const SizedBox(width: 14),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(plate, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)), const SizedBox(height: 2), Text(carName, style: const TextStyle(color: _muted, fontSize: 13))])),
             const Icon(Icons.chevron_right_rounded, color: Colors.white70, size: 28),
           ])),
