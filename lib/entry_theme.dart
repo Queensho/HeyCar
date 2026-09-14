@@ -5,6 +5,7 @@ import 'entry_vps_phone.dart' as phone;
 import 'main.dart' as app;
 import 'onboarding_backend.dart';
 import 'owner_login.dart';
+import 'owner_welcome_overlay.dart';
 import 'qr_activation.dart';
 
 void main() => runApp(const ThemeOnboardingApp());
@@ -80,7 +81,7 @@ class _ThemeOnboardingState extends State<ThemeOnboarding> {
     }
 
     final screens = <Widget>[
-      OwnerWelcome(
+      OwnerWelcomeOverlay(
         onRegister: next,
         onLogin: () => setState(() => loginMode = true),
       ),
