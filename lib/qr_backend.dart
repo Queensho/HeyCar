@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'onboarding_backend.dart';
 
 class QrDraft {
   static String token = '';
@@ -37,12 +38,18 @@ class QrBackend {
     String? ownerName,
     String? vehicleId,
   }) async {
+    final ownerId = OnboardingDraft.userId.trim();
+    final resolvedVehicleId = (vehicleId ?? QrDraft.vehicleId).trim();
+    if (ownerId.isEmpty) throw Exception('Oturum bilgisi bulunamadı. Tekrar giriş yap.');
+    if (resolvedVehicleId.isEmpty) throw Exception('Kayıtlı araç bulunamadı.');
+
     final response = await http.post(
       Uri.parse('$baseUrl/api/qr/activate'),
       headers: const {'Content-Type': 'application/json'},
       body: jsonEncode({
         'token': normalizeToken(token),
-        'vehicleId': (vehicleId ?? QrDraft.vehicleId).trim(),
+        'ownerId': ownerId,
+        'vehicleId': resolvedVehicleId,
         'plate': plate.trim().toUpperCase(),
         'make': make.trim(),
         'model': model?.trim(),
@@ -56,6 +63,8 @@ class QrBackend {
     if (code == 'QR_ALREADY_BOUND') throw Exception('Bu QR daha önce başka bir araca bağlanmış.');
     if (code == 'QR_DISABLED') throw Exception('Bu QR etiketi devre dışı.');
     if (code == 'VEHICLE_NOT_FOUND') throw Exception('Kayıtlı araç bulunamadı.');
+    if (code == 'OWNER_REQUIRED') throw Exception('Oturum bilgisi bulunamadı. Tekrar giriş yap.');
+    if (code == 'FORBIDDEN') throw Exception('Bu araç bu hesaba ait değil.');
     throw Exception('QR bağlanamadı.');
   }
 
