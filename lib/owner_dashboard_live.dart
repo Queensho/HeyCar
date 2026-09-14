@@ -64,41 +64,62 @@ class _OwnerDashboardLiveState extends State<OwnerDashboardLive> {
 
   @override
   Widget build(BuildContext context) {
-    final screens = <Widget>[
-      _OwnerHome(
-        onOpenNotifications: () => setState(() => current = 1),
-        onOpenVehicles: () => setState(() => current = 2),
-        onOpenQr: _openQr,
-      ),
-      const OwnerNotificationsPage(),
-      const OwnerVehiclesPage(),
-      OwnerSettingsPage(
-        onOpenVehicles: () => setState(() => current = 2),
-        onOpenQr: _openQr,
-      ),
-    ];
-    const labels = ['Ana Sayfa', 'Bildirimler', 'Araçlarım', 'Ayarlar'];
-    const icons = [Icons.home_rounded, Icons.notifications_none_rounded, Icons.directions_car_outlined, Icons.settings_outlined];
-    return Scaffold(
-      backgroundColor: _bg,
-      body: IndexedStack(index: current, children: screens),
-      bottomNavigationBar: Container(
-        height: 82,
-        decoration: const BoxDecoration(color: Color(0xFF0B1426), border: Border(top: BorderSide(color: _line))),
-        child: SafeArea(top: false, child: Row(children: List.generate(4, (i) {
-          final active = current == i;
-          return Expanded(child: InkWell(onTap: () => setState(() => current = i), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Stack(clipBehavior: Clip.none, children: [Icon(icons[i], color: active ? _purple : const Color(0xFF8F9AB7), size: 28), if (i == 1) Positioned(right: -8, top: -7, child: Container(width: 20, height: 20, alignment: Alignment.center, decoration: const BoxDecoration(color: Color(0xFFFF4D63), shape: BoxShape.circle), child: const Text('3', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900))))]),
-            const SizedBox(height: 5), Text(labels[i], style: TextStyle(color: active ? _purple : const Color(0xFF8F9AB7), fontSize: 11.5, fontWeight: active ? FontWeight.w800 : FontWeight.w500)),
-          ])));
-        }))),
-      ),
+    return ValueListenableBuilder<int>(
+      valueListenable: ownerUnreadNotificationCount,
+      builder: (context, unreadCount, _) {
+        final screens = <Widget>[
+          _OwnerHome(
+            unreadCount: unreadCount,
+            onOpenNotifications: () => setState(() => current = 1),
+            onOpenVehicles: () => setState(() => current = 2),
+            onOpenQr: _openQr,
+          ),
+          const OwnerNotificationsPage(),
+          const OwnerVehiclesPage(),
+          OwnerSettingsPage(
+            onOpenVehicles: () => setState(() => current = 2),
+            onOpenQr: _openQr,
+          ),
+        ];
+        const labels = ['Ana Sayfa', 'Bildirimler', 'Araçlarım', 'Ayarlar'];
+        const icons = [Icons.home_rounded, Icons.notifications_none_rounded, Icons.directions_car_outlined, Icons.settings_outlined];
+        return Scaffold(
+          backgroundColor: _bg,
+          body: IndexedStack(index: current, children: screens),
+          bottomNavigationBar: Container(
+            height: 82,
+            decoration: const BoxDecoration(color: Color(0xFF0B1426), border: Border(top: BorderSide(color: _line))),
+            child: SafeArea(top: false, child: Row(children: List.generate(4, (i) {
+              final active = current == i;
+              return Expanded(child: InkWell(onTap: () => setState(() => current = i), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Stack(clipBehavior: Clip.none, children: [
+                  Icon(icons[i], color: active ? _purple : const Color(0xFF8F9AB7), size: 28),
+                  if (i == 1 && unreadCount > 0)
+                    Positioned(
+                      right: -8,
+                      top: -7,
+                      child: Container(
+                        constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+                        padding: const EdgeInsets.symmetric(horizontal: 5),
+                        alignment: Alignment.center,
+                        decoration: const BoxDecoration(color: Color(0xFFFF4D63), shape: BoxShape.circle),
+                        child: Text(unreadCount > 99 ? '99+' : '$unreadCount', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900)),
+                      ),
+                    ),
+                ]),
+                const SizedBox(height: 5), Text(labels[i], style: TextStyle(color: active ? _purple : const Color(0xFF8F9AB7), fontSize: 11.5, fontWeight: active ? FontWeight.w800 : FontWeight.w500)),
+              ])));
+            }))),
+          ),
+        );
+      },
     );
   }
 }
 
 class _OwnerHome extends StatelessWidget {
-  const _OwnerHome({required this.onOpenNotifications, required this.onOpenVehicles, required this.onOpenQr});
+  const _OwnerHome({required this.unreadCount, required this.onOpenNotifications, required this.onOpenVehicles, required this.onOpenQr});
+  final int unreadCount;
   final VoidCallback onOpenNotifications;
   final VoidCallback onOpenVehicles;
   final VoidCallback onOpenQr;
@@ -148,7 +169,7 @@ class _OwnerHome extends StatelessWidget {
         InkWell(onTap: onOpenVehicles, borderRadius: BorderRadius.circular(20), child: _Card(child: Row(children: [_brandLogo(), const SizedBox(width: 14), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(plate, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)), const SizedBox(height: 2), Text(carName, style: const TextStyle(color: _muted, fontSize: 13))])), const Icon(Icons.chevron_right_rounded, color: Colors.white70, size: 28)]))),
         const SizedBox(height: 12),
         Row(children: [
-          Expanded(child: _Stat(icon: Icons.notifications_active_rounded, value: '3', label: 'Yeni\nBildirim', color: const Color(0xFFFF4D63), onTap: onOpenNotifications)),
+          Expanded(child: _Stat(icon: Icons.notifications_active_rounded, value: '$unreadCount', label: 'Yeni\nBildirim', color: const Color(0xFFFF4D63), onTap: onOpenNotifications)),
           const SizedBox(width: 8),
           Expanded(child: _Stat(icon: Icons.chat_bubble_outline_rounded, value: '12', label: 'Toplam\nMesaj', color: _purple, onTap: onOpenNotifications)),
           const SizedBox(width: 8),
