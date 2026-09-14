@@ -56,19 +56,31 @@ class _OwnerHome extends StatelessWidget {
     return SizedBox(width: 66, height: 54, child: Padding(padding: const EdgeInsets.all(7), child: Image.network(url, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Icon(Icons.directions_car_filled_rounded, color: _purple, size: 31))));
   }
 
+  Widget _logo() => const Text.rich(
+        TextSpan(children: [TextSpan(text: 'Hey', style: TextStyle(color: Colors.white)), TextSpan(text: 'Car', style: TextStyle(color: _purple))]),
+        style: TextStyle(fontSize: 34, fontWeight: FontWeight.w900, letterSpacing: -1.6),
+      );
+
+  Widget _profile() => Row(mainAxisSize: MainAxisSize.min, children: [
+        const CircleAvatar(radius: 21, backgroundColor: _panel, child: Icon(Icons.person_rounded, color: Colors.white70, size: 23)),
+        const SizedBox(width: 10),
+        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15)),
+          const Text('Araç Sahibi', style: TextStyle(color: _muted, fontSize: 12)),
+        ]),
+        const SizedBox(width: 4),
+        const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white70),
+      ]);
+
   @override
   Widget build(BuildContext context) {
     final h = MediaQuery.sizeOf(context).height;
     final compact = h < 760;
-    return SafeArea(bottom: false, child: ListView(padding: EdgeInsets.zero, children: [
-      Padding(padding: const EdgeInsets.fromLTRB(22, 18, 22, 0), child: Row(children: [
-        const Text.rich(TextSpan(children: [TextSpan(text: 'Hey', style: TextStyle(color: Colors.white)), TextSpan(text: 'Car', style: TextStyle(color: _purple))]), style: TextStyle(fontSize: 34, fontWeight: FontWeight.w900, letterSpacing: -1.6)),
-        const Spacer(), const CircleAvatar(radius: 21, backgroundColor: _panel, child: Icon(Icons.person_rounded, color: Colors.white70, size: 23)), const SizedBox(width: 10),
-        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15)), const Text('Araç Sahibi', style: TextStyle(color: _muted, fontSize: 12))]), const SizedBox(width: 4), const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white70),
-      ])),
-      SizedBox(height: compact ? 8 : 12),
-      SizedBox(height: compact ? 430 : 485, child: Stack(clipBehavior: Clip.none, children: [
+    final topInset = MediaQuery.paddingOf(context).top;
+    return ListView(padding: EdgeInsets.zero, children: [
+      SizedBox(height: compact ? 500 : 555, child: Stack(clipBehavior: Clip.none, children: [
         Positioned.fill(child: Image.asset('assets/Aracsahibi.png', fit: BoxFit.cover, alignment: Alignment.topCenter)),
+        Positioned(left: 22, right: 22, top: topInset + 14, child: Row(children: [_logo(), const Spacer(), _profile()])),
         Positioned(left: 16, bottom: compact ? 18 : 24, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('Merhaba', style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900, height: .95)),
           Text(name, style: const TextStyle(color: _purple, fontSize: 43, fontWeight: FontWeight.w900, height: 1)), const SizedBox(height: 10),
@@ -84,7 +96,7 @@ class _OwnerHome extends StatelessWidget {
         const SizedBox(height: 14), const Row(children: [Expanded(child: _Shortcut(icon: Icons.qr_code_scanner_rounded, title: 'QR Kodumu Gör', sub: 'İndir / Paylaş')), SizedBox(width: 12), Expanded(child: _Shortcut(icon: Icons.directions_car_filled_rounded, title: 'Araç Bilgilerim', sub: 'Düzenle'))]),
         const SizedBox(height: 14), const _Card(child: Row(children: [Icon(Icons.info_outline_rounded, color: _purple), SizedBox(width: 10), Expanded(child: Text('HeyCar etiketin her zaman yanında, yollarda daha güvende.', style: TextStyle(color: _muted, height: 1.35)))])),
       ])),
-    ]));
+    ]);
   }
 }
 
