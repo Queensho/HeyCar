@@ -69,8 +69,8 @@ class _OwnerVehicleSetupPageState extends State<OwnerVehicleSetupPage> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Plaka, marka ve modeli tamamla.')));
       return;
     }
-    if (OnboardingDraft.otpCode.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Telefon doğrulaması tamamlanmadı.')));
+    if (OnboardingDraft.phone.trim().isEmpty || OnboardingDraft.displayName.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Hesap bilgilerini tamamlamalısın.')));
       return;
     }
     setState(() => saving = true);
