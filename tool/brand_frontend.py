@@ -33,6 +33,10 @@ for path in Path('lib').rglob('*.dart'):
     text = text.replace('assets/Qrkod.png', 'assets/CepqarQr.png')
 
     if path.as_posix() == 'lib/owner_dashboard_live.dart':
+        text = text.replace(
+            "import 'owner_vehicles_page.dart';",
+            "import 'owner_vehicles_page.dart';\nimport 'owner_dashboard_stats.dart';",
+        )
         text = re.sub(
             r"Widget _logo\(\) => const Text\.rich\(.*?\n\s*\);",
             "Widget _logo() => Image.asset('assets/Logoqr.png', height: 48, fit: BoxFit.contain);",
@@ -41,6 +45,16 @@ for path in Path('lib').rglob('*.dart'):
         )
         text = text.replace("Image.asset('assets/Logoqr.jpg', height: 48, fit: BoxFit.contain)",
                             "Image.asset('assets/Logoqr.png', height: 48, fit: BoxFit.contain)")
+        old_stats = """Row(children: [
+          Expanded(child: _Stat(icon: Icons.notifications_active_rounded, value: '$unreadCount', label: 'Yeni\\nBildirim', color: const Color(0xFFFF4D63), onTap: onOpenNotifications)),
+          const SizedBox(width: 8),
+          Expanded(child: _Stat(icon: Icons.chat_bubble_outline_rounded, value: '12', label: 'Toplam\\nMesaj', color: _purple, onTap: onOpenNotifications)),
+          const SizedBox(width: 8),
+          Expanded(child: _Stat(icon: Icons.location_on_outlined, value: '5', label: 'Konum\\nPaylaşımı', color: const Color(0xFF42A5FF), onTap: onOpenNotifications)),
+          const SizedBox(width: 8),
+          Expanded(child: _Stat(icon: Icons.phone_in_talk_outlined, value: '2', label: 'Arama\\nTalebi', color: _purple, onTap: onOpenNotifications)),
+        ]),"""
+        text = text.replace(old_stats, "OwnerDashboardStatsRow(onTap: onOpenNotifications),")
 
     if path.as_posix() == 'lib/owner_settings_page.dart':
         text = re.sub(
