@@ -16,11 +16,13 @@ class PublicCallPage extends StatefulWidget {
   State<PublicCallPage> createState() => _PublicCallPageState();
 }
 
-class _PublicCallPageState extends State<PublicCallPage> {
+class _PublicCallPageState extends State<PublicCallPage>
+    with SingleTickerProviderStateMixin {
   RTCPeerConnection? peer;
   MediaStream? localStream;
   final remoteRenderer = RTCVideoRenderer();
   Timer? poller;
+  late final AnimationController pulseController;
   String? callId;
   String? visitorToken;
   String status = 'preparing';
@@ -32,6 +34,10 @@ class _PublicCallPageState extends State<PublicCallPage> {
   @override
   void initState() {
     super.initState();
+    pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1900),
+    )..repeat();
     _start();
   }
 
@@ -133,6 +139,7 @@ class _PublicCallPageState extends State<PublicCallPage> {
   @override
   void dispose() {
     poller?.cancel();
+    pulseController.dispose();
     for (final track in localStream?.getTracks() ?? <MediaStreamTrack>[]) {
       track.stop();
     }
@@ -162,20 +169,52 @@ class _PublicCallPageState extends State<PublicCallPage> {
         backgroundColor: _callBg,
         body: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(22, 34, 22, 28),
+            padding: const EdgeInsets.fromLTRB(22, 28, 22, 26),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const Text('HeyCar', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900)),
-                const Spacer(),
-                Container(width: 116, height: 116, decoration: const BoxDecoration(color: Color(0xFF1B2850), shape: BoxShape.circle), child: const Icon(Icons.directions_car_filled_rounded, color: _callPurple, size: 58)),
-                const SizedBox(height: 24),
-                Text(widget.plate, style: const TextStyle(color: Colors.white, fontSize: 25, fontWeight: FontWeight.w900)),
-                const SizedBox(height: 8),
-                Text(title, textAlign: TextAlign.center, style: const TextStyle(color: _callMuted, fontSize: 17, fontWeight: FontWeight.w700)),
-                if (error != null) ...[const SizedBox(height: 10), Text(error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.redAccent))],
-                const SizedBox(height: 20),
-                const Text('Telefon numaraları karşı tarafa gösterilmez.', style: TextStyle(color: _callMuted, fontSize: 13)),
-                const Spacer(),
+                const SizedBox(
+                  width: double.infinity,
+                  child: Text(
+                    'HeyCar',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900),
+                  ),
+                ),
+                const Spacer(flex: 2),
+                SizedBox(
+                  width: double.infinity,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      _PulsingCar(controller: pulseController, active: !connected),
+                      const SizedBox(height: 28),
+                      Text(
+                        widget.plate,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.white, fontSize: 25, fontWeight: FontWeight.w900),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        title,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: _callMuted, fontSize: 17, fontWeight: FontWeight.w700),
+                      ),
+                      if (error != null) ...[
+                        const SizedBox(height: 10),
+                        Text(error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.redAccent)),
+                      ],
+                      const SizedBox(height: 24),
+                      const Text(
+                        'Telefon numaraları karşı tarafa gösterilmez.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: _callMuted, fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ),
+                const Spacer(flex: 3),
                 if (connected)
                   Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                     _CircleAction(icon: muted ? Icons.mic_off_rounded : Icons.mic_rounded, label: muted ? 'Sesi aç' : 'Sessiz', onTap: _toggleMute),
@@ -188,6 +227,67 @@ class _PublicCallPageState extends State<PublicCallPage> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _PulsingCar extends StatelessWidget {
+  const _PulsingCar({required this.controller, required this.active});
+
+  final AnimationController controller;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 190,
+      height: 190,
+      child: AnimatedBuilder(
+        animation: controller,
+        builder: (context, child) {
+          Widget ring(double phase, double maxScale, double maxOpacity) {
+            final t = active ? (controller.value + phase) % 1.0 : 0.0;
+            final scale = active ? 0.82 + (maxScale - 0.82) * t : 0.82;
+            final opacity = active ? maxOpacity * (1 - t) : 0.0;
+            return Transform.scale(
+              scale: scale,
+              child: Opacity(
+                opacity: opacity.clamp(0.0, 1.0),
+                child: Container(
+                  width: 150,
+                  height: 150,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: _callPurple, width: 2),
+                  ),
+                ),
+              ),
+            );
+          }
+
+          return Stack(
+            alignment: Alignment.center,
+            children: [
+              ring(0.00, 1.28, .42),
+              ring(.34, 1.28, .32),
+              ring(.67, 1.28, .24),
+              Container(
+                width: 116,
+                height: 116,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF1B2850),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.directions_car_filled_rounded,
+                  color: _callPurple,
+                  size: 58,
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
