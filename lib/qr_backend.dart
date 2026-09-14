@@ -69,6 +69,38 @@ class QrBackend {
     throw Exception('QR bağlanamadı.');
   }
 
+  static Future<Map<String, dynamic>> createCorrectionRequest({
+    required String requestType,
+    String message = '',
+    String contactEmail = '',
+  }) async {
+    final ownerId = OnboardingDraft.userId.trim();
+    if (ownerId.isEmpty) throw Exception('Oturum bilgisi bulunamadı. Tekrar giriş yap.');
+
+    final response = await http
+        .post(
+          Uri.parse('$baseUrl/api/owner/correction-requests'),
+          headers: const {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'ownerId': ownerId,
+            'vehicleId': QrDraft.vehicleId.trim().isEmpty ? OnboardingDraft.vehicleId.trim() : QrDraft.vehicleId.trim(),
+            'qrToken': normalizeToken(QrDraft.token),
+            'requestType': requestType,
+            'message': message.trim(),
+            'contactEmail': contactEmail.trim(),
+          }),
+        )
+        .timeout(const Duration(seconds: 12));
+
+    final decoded = response.body.isEmpty ? <String, dynamic>{} : jsonDecode(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300 && decoded is Map<String, dynamic>) return decoded;
+    final code = decoded is Map ? decoded['error']?.toString() ?? '' : '';
+    if (code == 'FORBIDDEN') throw Exception('Bu araç bu hesaba ait değil.');
+    if (code == 'OWNER_REQUIRED') throw Exception('Oturum bilgisi bulunamadı. Tekrar giriş yap.');
+    if (code == 'INVALID_REQUEST_TYPE') throw Exception('Geçersiz talep türü.');
+    throw Exception('Düzeltme talebi oluşturulamadı. Tekrar dene.');
+  }
+
   static Future<Map<String, dynamic>> lookup(String token) async {
     final normalized = normalizeToken(token);
     final response = await http.get(Uri.parse('$baseUrl/api/qr/${Uri.encodeComponent(normalized)}')).timeout(const Duration(seconds: 10));
