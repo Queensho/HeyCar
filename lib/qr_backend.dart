@@ -60,7 +60,8 @@ class QrBackend {
     if (response.statusCode >= 200 && response.statusCode < 300 && decoded is Map<String, dynamic>) return decoded;
     final code = decoded is Map ? decoded['error']?.toString() ?? '' : '';
     if (code == 'QR_NOT_FOUND') throw Exception('Bu QR HeyCar sisteminde bulunamadı.');
-    if (code == 'QR_ALREADY_BOUND') throw Exception('Bu QR daha önce başka bir araca bağlanmış.');
+    if (code == 'QR_ALREADY_BOUND') throw Exception('Bu QR başka bir araca zaten bağlı. Değişiklik için düzeltme talebi oluştur.');
+    if (code == 'VEHICLE_ALREADY_HAS_QR') throw Exception('Bu araca zaten aktif bir QR bağlı. QR değişikliği için düzeltme talebi oluştur.');
     if (code == 'QR_DISABLED') throw Exception('Bu QR etiketi devre dışı.');
     if (code == 'VEHICLE_NOT_FOUND') throw Exception('Kayıtlı araç bulunamadı.');
     if (code == 'OWNER_REQUIRED') throw Exception('Oturum bilgisi bulunamadı. Tekrar giriş yap.');
