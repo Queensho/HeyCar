@@ -73,38 +73,28 @@ class OwnerWelcome extends StatelessWidget {
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
     final compact = size.height < 760;
+    final topInset = MediaQuery.paddingOf(context).top;
     return Scaffold(
       backgroundColor: _authBg,
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 480),
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(22, compact ? 14 : 20, 22, 18),
-              child: Column(
-                children: [
-                  const _HeyCarLogo(fontSize: 42),
-                  SizedBox(height: compact ? 8 : 12),
-                  const Text('İyi insanlar\nher yerde', textAlign: TextAlign.center, style: TextStyle(color: _authMuted, fontSize: 19, height: 1.25, fontWeight: FontWeight.w500)),
-                  SizedBox(height: compact ? 8 : 14),
-                  Expanded(
-                    child: Stack(
-                      children: [
-                        Positioned.fill(
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(30),
-                              gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF08162D), Color(0xFF07101E)]),
-                            ),
-                          ),
-                        ),
-                        Positioned.fill(
-                          child: Image.asset('assets/Aracsahibi.png', fit: BoxFit.contain, alignment: Alignment.center),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(height: compact ? 10 : 16),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              SizedBox(
+                height: compact ? 390 : 440,
+                child: Stack(
+                  children: [
+                    Positioned.fill(child: Image.asset('assets/Aracsahibi.png', fit: BoxFit.cover, alignment: Alignment.topCenter)),
+                    Positioned(left: 22, right: 22, top: topInset + 16, child: const Center(child: _HeyCarLogo(fontSize: 42))),
+                    Positioned(left: 0, right: 0, top: topInset + 76, child: const Text('İyi insanlar\nher yerde', textAlign: TextAlign.center, style: TextStyle(color: _authMuted, fontSize: 19, height: 1.25, fontWeight: FontWeight.w500))),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.fromLTRB(22, compact ? 16 : 22, 22, 18),
+                child: Column(children: [
                   Align(
                     alignment: Alignment.centerLeft,
                     child: Text.rich(
@@ -127,9 +117,9 @@ class OwnerWelcome extends StatelessWidget {
                     Expanded(child: _Feature(icon: Icons.shield_outlined, label: 'Gizlilik\nve Güvenlik')),
                     Expanded(child: _Feature(icon: Icons.location_on_outlined, label: 'Her Yerde\nUlaşılabilir')),
                   ]),
-                ],
+                ]),
               ),
-            ),
+            ],
           ),
         ),
       ),
@@ -185,23 +175,26 @@ class _OwnerLoginScreenState extends State<OwnerLoginScreen> {
         child: Column(children: [
           const _MiniHero(),
           const SizedBox(height: 14),
-          _DarkCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const _FieldLabel(icon: Icons.phone_rounded, text: 'Telefon Numarası'),
-            const SizedBox(height: 8),
-            _PhoneField(controller: phone),
-            const SizedBox(height: 14),
-            if (!codeSent)
-              _PrimaryAuthButton(text: 'Doğrulama Kodu Gönder', onPressed: sendCode)
-            else ...[
-              const _FieldLabel(icon: Icons.lock_outline_rounded, text: 'Doğrulama Kodu'),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: _DarkCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const _FieldLabel(icon: Icons.phone_rounded, text: 'Telefon Numarası'),
               const SizedBox(height: 8),
-              _DarkTextField(controller: otp, hint: '6 haneli kod', keyboardType: TextInputType.number),
+              _PhoneField(controller: phone),
               const SizedBox(height: 14),
-              _PrimaryAuthButton(text: busy ? 'Giriş yapılıyor...' : 'Giriş Yap', onPressed: busy ? null : login),
-              const SizedBox(height: 6),
-              Center(child: TextButton(onPressed: sendCode, child: const Text('Kodu tekrar gönder', style: TextStyle(color: _authPurple)))),
-            ],
-          ])),
+              if (!codeSent)
+                _PrimaryAuthButton(text: 'Doğrulama Kodu Gönder', onPressed: sendCode)
+              else ...[
+                const _FieldLabel(icon: Icons.lock_outline_rounded, text: 'Doğrulama Kodu'),
+                const SizedBox(height: 8),
+                _DarkTextField(controller: otp, hint: '6 haneli kod', keyboardType: TextInputType.number),
+                const SizedBox(height: 14),
+                _PrimaryAuthButton(text: busy ? 'Giriş yapılıyor...' : 'Giriş Yap', onPressed: busy ? null : login),
+                const SizedBox(height: 6),
+                Center(child: TextButton(onPressed: sendCode, child: const Text('Kodu tekrar gönder', style: TextStyle(color: _authPurple)))),
+              ],
+            ])),
+          ),
         ]),
       );
 }
@@ -254,34 +247,37 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
         child: Column(children: [
           const _MiniHero(),
           const SizedBox(height: 12),
-          _DarkCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const _FieldLabel(icon: Icons.phone_rounded, text: 'Telefon Numarası'),
-            const SizedBox(height: 7),
-            _PhoneField(controller: phone),
-            const SizedBox(height: 14),
-            const _FieldLabel(icon: Icons.mail_outline_rounded, text: 'E-posta ile Kayıt Ol'),
-            const SizedBox(height: 7),
-            _DarkTextField(controller: email, hint: 'E-posta adresin', keyboardType: TextInputType.emailAddress),
-            const SizedBox(height: 14),
-            const _FieldLabel(icon: Icons.lock_outline_rounded, text: 'Şifre'),
-            const SizedBox(height: 7),
-            _DarkTextField(controller: password, hint: 'Şifre oluştur', obscure: obscure, suffix: IconButton(onPressed: () => setState(() => obscure = !obscure), icon: Icon(obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined, color: _authMuted))),
-            const SizedBox(height: 14),
-            const _FieldLabel(icon: Icons.person_outline_rounded, text: 'Ad Soyad'),
-            const SizedBox(height: 7),
-            _DarkTextField(controller: name, hint: 'Adını gir'),
-            const SizedBox(height: 14),
-            InkWell(
-              onTap: () => setState(() => accepted = !accepted),
-              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Container(width: 24, height: 24, decoration: BoxDecoration(borderRadius: BorderRadius.circular(7), border: Border.all(color: _authPurple, width: 1.8), color: accepted ? _authPurple : Colors.transparent), child: accepted ? const Icon(Icons.check_rounded, size: 17, color: Colors.white) : null),
-                const SizedBox(width: 10),
-                const Expanded(child: Text('Kullanım koşullarını ve gizlilik politikasını kabul ediyorum.', style: TextStyle(color: _authMuted, fontSize: 12.5, height: 1.35))),
-              ]),
-            ),
-            const SizedBox(height: 16),
-            _PrimaryAuthButton(text: 'Kayıt Ol', onPressed: submit),
-          ])),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: _DarkCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const _FieldLabel(icon: Icons.phone_rounded, text: 'Telefon Numarası'),
+              const SizedBox(height: 7),
+              _PhoneField(controller: phone),
+              const SizedBox(height: 14),
+              const _FieldLabel(icon: Icons.mail_outline_rounded, text: 'E-posta ile Kayıt Ol'),
+              const SizedBox(height: 7),
+              _DarkTextField(controller: email, hint: 'E-posta adresin', keyboardType: TextInputType.emailAddress),
+              const SizedBox(height: 14),
+              const _FieldLabel(icon: Icons.lock_outline_rounded, text: 'Şifre'),
+              const SizedBox(height: 7),
+              _DarkTextField(controller: password, hint: 'Şifre oluştur', obscure: obscure, suffix: IconButton(onPressed: () => setState(() => obscure = !obscure), icon: Icon(obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined, color: _authMuted))),
+              const SizedBox(height: 14),
+              const _FieldLabel(icon: Icons.person_outline_rounded, text: 'Ad Soyad'),
+              const SizedBox(height: 7),
+              _DarkTextField(controller: name, hint: 'Adını gir'),
+              const SizedBox(height: 14),
+              InkWell(
+                onTap: () => setState(() => accepted = !accepted),
+                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Container(width: 24, height: 24, decoration: BoxDecoration(borderRadius: BorderRadius.circular(7), border: Border.all(color: _authPurple, width: 1.8), color: accepted ? _authPurple : Colors.transparent), child: accepted ? const Icon(Icons.check_rounded, size: 17, color: Colors.white) : null),
+                  const SizedBox(width: 10),
+                  const Expanded(child: Text('Kullanım koşullarını ve gizlilik politikasını kabul ediyorum.', style: TextStyle(color: _authMuted, fontSize: 12.5, height: 1.35))),
+                ]),
+              ),
+              const SizedBox(height: 16),
+              _PrimaryAuthButton(text: 'Kayıt Ol', onPressed: submit),
+            ])),
+          ),
         ]),
       );
 }
@@ -292,39 +288,43 @@ class _AuthScaffold extends StatelessWidget {
   final VoidCallback onBack;
   final Widget child;
   @override
-  Widget build(BuildContext context) => Scaffold(
-        backgroundColor: _authBg,
-        body: SafeArea(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 480),
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 10, 20, 28),
-                children: [
-                  Row(children: [
-                    IconButton(onPressed: onBack, icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 24)),
-                    Expanded(child: Column(children: [Text(title, style: const TextStyle(color: Colors.white, fontSize: 27, fontWeight: FontWeight.w900)), const SizedBox(height: 2), Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(color: _authMuted, fontSize: 13))])),
-                    const SizedBox(width: 48),
-                  ]),
-                  const SizedBox(height: 10),
-                  child,
-                ],
-              ),
+  Widget build(BuildContext context) {
+    final topInset = MediaQuery.paddingOf(context).top;
+    return Scaffold(
+      backgroundColor: _authBg,
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: Stack(children: [
+            ListView(padding: const EdgeInsets.only(bottom: 28), children: [child]),
+            Positioned(
+              left: 14,
+              right: 14,
+              top: topInset + 12,
+              child: Row(children: [
+                IconButton(onPressed: onBack, icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 24)),
+                Expanded(child: Column(children: [
+                  Text(title, style: const TextStyle(color: Colors.white, fontSize: 27, fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 2),
+                  Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(color: _authMuted, fontSize: 13)),
+                ])),
+                const SizedBox(width: 48),
+              ]),
             ),
-          ),
+          ]),
         ),
-      );
+      ),
+    );
+  }
 }
 
 class _MiniHero extends StatelessWidget {
   const _MiniHero();
   @override
-  Widget build(BuildContext context) => Container(
-        height: 220,
+  Widget build(BuildContext context) => SizedBox(
+        height: 320,
         width: double.infinity,
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(borderRadius: BorderRadius.circular(28), gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF0B1730), Color(0xFF11183A)])),
-        child: Image.asset('assets/Aracsahibi.png', fit: BoxFit.contain, alignment: Alignment.bottomCenter),
+        child: Image.asset('assets/Aracsahibi.png', fit: BoxFit.cover, alignment: Alignment.topCenter),
       );
 }
 
