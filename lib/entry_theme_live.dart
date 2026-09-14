@@ -4,6 +4,7 @@ import 'owner_login.dart';
 import 'owner_welcome_overlay.dart';
 import 'owner_password_login.dart';
 import 'owner_dashboard_live.dart';
+import 'owner_call_watcher.dart';
 import 'owner_vehicle_setup.dart';
 import 'owner_guide_page.dart';
 import 'qr_activation.dart';
@@ -40,6 +41,8 @@ class _ThemeOwnerEntryState extends State<ThemeOwnerEntry> {
   bool registerMode = false;
   bool restoring = true;
   bool hasSession = false;
+
+  Widget ownerHome() => const OwnerCallWatcher(child: OwnerDashboardLive());
 
   @override
   void initState() {
@@ -90,7 +93,7 @@ class _ThemeOwnerEntryState extends State<ThemeOwnerEntry> {
   Future<void> done() async {
     await _saveSession();
     if (!mounted) return;
-    Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const OwnerDashboardLive()));
+    Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => ownerHome()));
   }
 
   void resetToWelcome() => setState(() {
@@ -109,7 +112,7 @@ class _ThemeOwnerEntryState extends State<ThemeOwnerEntry> {
     }
 
     if (hasSession) {
-      return const OwnerDashboardLive();
+      return ownerHome();
     }
 
     if (loginMode) {
