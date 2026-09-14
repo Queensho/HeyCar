@@ -113,6 +113,14 @@ class """,
             flags=re.S,
         )
 
+    if path.as_posix() == 'lib/public_menu_pages.dart':
+        text = re.sub(
+            r"const Text\.rich\(TextSpan\(children: \[TextSpan\(text: 'Hey'.*?fontWeight: FontWeight\.w900\)\),",
+            "Image.asset('assets/Logoqr.png', height: 32, fit: BoxFit.contain),",
+            text,
+            flags=re.S,
+        )
+
     path.write_text(text, encoding='utf-8')
 
 print('Cepqar frontend branding applied; technical HeyCar infrastructure preserved.')
