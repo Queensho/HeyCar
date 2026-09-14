@@ -17,4 +17,37 @@ class AnonymousCallApi {
     }
     return Map<String, dynamic>.from(data['call'] as Map);
   }
+
+  static Future<Map<String, dynamic>> publicStatus(String callId, String visitorToken) async {
+    final response = await http.get(
+      Uri.parse('${PublicThemeBackend.baseUrl}/api/public/calls/${Uri.encodeComponent(callId)}'),
+      headers: {'x-visitor-token': visitorToken},
+    );
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(data['error']?.toString() ?? 'CALL_STATUS_FAILED');
+    }
+    return Map<String, dynamic>.from(data['call'] as Map);
+  }
+
+  static Future<void> publicSignal(
+    String callId,
+    String visitorToken, {
+    Map<String, dynamic>? offer,
+    Map<String, dynamic>? candidate,
+    String? action,
+  }) async {
+    final response = await http.patch(
+      Uri.parse('${PublicThemeBackend.baseUrl}/api/public/calls/${Uri.encodeComponent(callId)}'),
+      headers: {'Content-Type': 'application/json', 'x-visitor-token': visitorToken},
+      body: jsonEncode({
+        if (offer != null) 'offer': offer,
+        if (candidate != null) 'candidate': candidate,
+        if (action != null) 'action': action,
+      }),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('CALL_SIGNAL_FAILED');
+    }
+  }
 }
