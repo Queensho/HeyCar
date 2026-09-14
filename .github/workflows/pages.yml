@@ -24,6 +24,19 @@ jobs:
       - name: Generate Android platform
         run: flutter create . --platforms=android --project-name heycar_app --org com.heycar --no-pub
 
+      - name: Add Android call permissions
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('android/app/src/main/AndroidManifest.xml')
+          text = p.read_text()
+          marker = '<application'
+          permissions = '''    <uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />\n    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />\n    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />\n'''
+          if 'android.permission.RECORD_AUDIO' not in text:
+              text = text.replace(marker, permissions + '\n    ' + marker, 1)
+          p.write_text(text)
+          PY
+
       - name: Get dependencies
         run: flutter pub get
 
