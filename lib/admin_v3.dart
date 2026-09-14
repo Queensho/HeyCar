@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
+import 'admin_requests_page.dart';
 
 const _navy = Color(0xFF14213D);
 const _orange = Color(0xFFFCA311);
@@ -103,7 +104,7 @@ class _AdminHomeState extends State<AdminHome> {
   bool loading=true;
   String? error;
   List<Map<String,dynamic>> users=[],vehicles=[],qr=[],themes=[];
-  final tabs=const [('Genel Bakış',Icons.dashboard_rounded),('Kullanıcılar',Icons.people_alt_rounded),('Araçlar',Icons.directions_car_filled_rounded),('QR Yönetimi',Icons.qr_code_2_rounded),('Moderasyon',Icons.shield_rounded)];
+  final tabs=const [('Genel Bakış',Icons.dashboard_rounded),('Kullanıcılar',Icons.people_alt_rounded),('Araçlar',Icons.directions_car_filled_rounded),('QR Yönetimi',Icons.qr_code_2_rounded),('Moderasyon',Icons.shield_rounded),('Düzeltme Talepleri',Icons.support_agent_rounded)];
   Map<String,String> get headers=>{'Authorization':'Bearer ${widget.token}','Content-Type':'application/json'};
 
   @override void initState(){super.initState();load();}
@@ -144,7 +145,7 @@ class _AdminHomeState extends State<AdminHome> {
   );}
   Widget side()=>Container(width:240,color:_navy,padding:const EdgeInsets.fromLTRB(18,26,18,18),child:Column(children:[const Align(alignment:Alignment.centerLeft,child:Text('HeyCar Admin',style:TextStyle(color:Colors.white,fontSize:24,fontWeight:FontWeight.w900))),const SizedBox(height:24),...List.generate(tabs.length,(i)=>ListTile(shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(14)),tileColor:tab==i?const Color(0x22FCA311):Colors.transparent,leading:Icon(tabs[i].$2,color:tab==i?_orange:Colors.white70),title:Text(tabs[i].$1,style:TextStyle(color:tab==i?Colors.white:Colors.white70)),onTap:()=>setState(()=>tab=i))),const Spacer(),TextButton.icon(onPressed:widget.onLogout,icon:const Icon(Icons.logout,color:Colors.white70),label:const Text('Çıkış',style:TextStyle(color:Colors.white70)))]));
   Widget top(bool wide)=>Container(height:70,color:Colors.white,padding:const EdgeInsets.symmetric(horizontal:22),child:Row(children:[Text(wide?tabs[tab].$1:'HeyCar Admin',style:const TextStyle(fontSize:21,fontWeight:FontWeight.w900)),const Spacer(),IconButton(onPressed:load,icon:const Icon(Icons.refresh)),if(!wide)IconButton(onPressed:widget.onLogout,icon:const Icon(Icons.logout))]));
-  Widget page(){switch(tab){case 1:return UsersPage(rows:users,open:openUser);case 2:return VehiclesPage(rows:vehicles,open:openVehicle);case 3:return QrPage(rows:qr,create:createQr,action:qrAction);case 4:return ModerationPage(rows:themes,removeBackground:removeBg,resetTheme:resetTheme);default:return Dashboard(users:users,vehicles:vehicles,qr:qr,themes:themes);}}
+  Widget page(){switch(tab){case 1:return UsersPage(rows:users,open:openUser);case 2:return VehiclesPage(rows:vehicles,open:openVehicle);case 3:return QrPage(rows:qr,create:createQr,action:qrAction);case 4:return ModerationPage(rows:themes,removeBackground:removeBg,resetTheme:resetTheme);case 5:return AdminCorrectionRequestsPage(token:widget.token);default:return Dashboard(users:users,vehicles:vehicles,qr:qr,themes:themes);}}
 }
 
 class Dashboard extends StatelessWidget{
