@@ -13,6 +13,8 @@ const _line = Color(0xFF27355D);
 const _purple = Color(0xFF8B5CFF);
 const _muted = Color(0xFFA7B0C7);
 
+final ValueNotifier<int> ownerUnreadNotificationCount = ValueNotifier<int>(0);
+
 class OwnerNotificationsPage extends StatefulWidget {
   const OwnerNotificationsPage({super.key});
   @override
@@ -40,9 +42,15 @@ class _OwnerNotificationsPageState extends State<OwnerNotificationsPage> {
     super.dispose();
   }
 
+  void _syncUnreadCount(List<Map<String, dynamic>> list) {
+    ownerUnreadNotificationCount.value =
+        list.where((e) => e['status']?.toString() == 'new').length;
+  }
+
   Future<void> _load({bool silent = false}) async {
     final ownerId = OnboardingDraft.userId.trim();
     if (ownerId.isEmpty) {
+      ownerUnreadNotificationCount.value = 0;
       if (mounted) setState(() { loading = false; error = 'Araç sahibi oturumu bulunamadı.'; });
       return;
     }
@@ -52,6 +60,7 @@ class _OwnerNotificationsPageState extends State<OwnerNotificationsPage> {
       final data = r.body.isEmpty ? <String, dynamic>{} : jsonDecode(r.body);
       if (r.statusCode >= 200 && r.statusCode < 300 && data is Map && data['notifications'] is List) {
         final next = (data['notifications'] as List).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+        _syncUnreadCount(next);
         if (mounted) setState(() { items = next; loading = false; error = null; });
       } else {
         throw Exception();
