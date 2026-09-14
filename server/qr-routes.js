@@ -4,6 +4,7 @@ const path = require('path');
 const crypto = require('crypto');
 const registerNotificationRoutes = require('./notification-routes');
 const { registerOwnerCorrectionRoutes } = require('./correction-routes');
+const registerCallRoutes = require('./call-routes');
 
 function normalizeToken(raw) {
   return String(raw || '').trim().toUpperCase();
@@ -16,6 +17,7 @@ function validHexColor(value) {
 module.exports = function registerQrRoutes(app, pool) {
   registerNotificationRoutes(app, pool);
   registerOwnerCorrectionRoutes(app, pool);
+  registerCallRoutes(app, pool);
 
   const uploadDir = path.join(__dirname, 'uploads', 'public-themes');
   fs.mkdirSync(uploadDir, { recursive: true });
