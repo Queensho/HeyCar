@@ -103,6 +103,23 @@ module.exports = function registerCallRoutes(app, pool) {
     }
   });
 
+  app.get('/api/owner/calls/:callId', async (req, res) => {
+    try {
+      const ownerId = String(req.headers['x-owner-id'] || '').trim();
+      if (!ownerId) return res.status(401).json({ error: 'OWNER_REQUIRED' });
+      const result = await pool.query(
+        `SELECT id,status,offer,caller_candidates,created_at,expires_at,answered_at,ended_at
+         FROM anonymous_calls WHERE id=$1 AND owner_id=$2 LIMIT 1`,
+        [req.params.callId, ownerId]
+      );
+      if (!result.rows.length) return res.status(404).json({ error: 'CALL_NOT_FOUND' });
+      return res.json({ ok: true, call: result.rows[0] });
+    } catch (e) {
+      console.error('owner call status', e);
+      return res.status(500).json({ error: 'SERVER_ERROR' });
+    }
+  });
+
   app.patch('/api/owner/calls/:callId', async (req, res) => {
     try {
       const ownerId = String(req.headers['x-owner-id'] || '').trim();
