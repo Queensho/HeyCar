@@ -27,6 +27,9 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Apply Cepqar frontend branding
+        run: python3 tool/brand_frontend.py
+
       - name: Generate web platform
         run: flutter create . --platforms=web --project-name heycar_app --org com.heycar --no-pub
 
