@@ -47,7 +47,13 @@ class OwnerWelcomeOverlay extends StatelessWidget {
                       left: 20,
                       right: 20,
                       top: topInset + 14,
-                      child: const Center(child: _Logo()),
+                      child: Center(
+                        child: Image.asset(
+                          'assets/Logoqr.png',
+                          height: 54,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
                     ),
                     Positioned(
                       left: 0,
@@ -154,27 +160,6 @@ class OwnerWelcomeOverlay extends StatelessWidget {
       ),
     );
   }
-}
-
-class _Logo extends StatelessWidget {
-  const _Logo();
-  @override
-  Widget build(BuildContext context) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text.rich(
-            const TextSpan(children: [
-              TextSpan(text: 'Hey', style: TextStyle(color: Colors.white)),
-              TextSpan(text: 'Car', style: TextStyle(color: _purple)),
-            ]),
-            style: const TextStyle(fontSize: 42, fontWeight: FontWeight.w900, letterSpacing: -2),
-          ),
-          Transform.translate(
-            offset: const Offset(18, -4),
-            child: Container(width: 42, height: 7, decoration: BoxDecoration(color: Color(0xFF7CFF57), borderRadius: BorderRadius.circular(20))),
-          ),
-        ],
-      );
 }
 
 class _FeatureChip extends StatelessWidget {
