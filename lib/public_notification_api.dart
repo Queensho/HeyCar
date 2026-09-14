@@ -65,9 +65,7 @@ class PublicNotificationApi {
           body: bytes,
         )
         .timeout(const Duration(seconds: 20));
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception('PHOTO_UPLOAD_FAILED_${response.statusCode}');
-    }
+    if (response.statusCode < 200 || response.statusCode >= 300) throw Exception('PHOTO_UPLOAD_FAILED_${response.statusCode}');
     final data = jsonDecode(response.body) as Map<String, dynamic>;
     photoUrl = data['photoUrl']?.toString();
     return photoUrl != null && photoUrl!.isNotEmpty;
@@ -88,55 +86,51 @@ class PublicNotificationApi {
     longitude = null;
   }
 
-  static Future<String> send({
-    required String typeLabel,
-    required String message,
-  }) async {
+  static Future<String> send({required String typeLabel, required String message}) async {
     final token = currentToken();
     if (token.isEmpty) throw Exception('QR_TOKEN_MISSING');
 
-    final response = await http
-        .post(
-          Uri.parse('${PublicThemeBackend.baseUrl}/api/qr/${Uri.encodeComponent(token)}/notifications'),
-          headers: const {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'type': backendTypeFor(typeLabel),
-            'message': message.trim(),
-            if (photoUrl != null) 'photoUrl': photoUrl,
-            if (latitude != null) 'latitude': latitude,
-            if (longitude != null) 'longitude': longitude,
-          }),
-        )
-        .timeout(const Duration(seconds: 15));
+    final response = await http.post(
+      Uri.parse('${PublicThemeBackend.baseUrl}/api/qr/${Uri.encodeComponent(token)}/notifications'),
+      headers: const {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'type': backendTypeFor(typeLabel),
+        'message': message.trim(),
+        if (photoUrl != null) 'photoUrl': photoUrl,
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
+      }),
+    ).timeout(const Duration(seconds: 15));
 
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception('NOTIFICATION_SEND_FAILED_${response.statusCode}');
-    }
+    if (response.statusCode < 200 || response.statusCode >= 300) throw Exception('NOTIFICATION_SEND_FAILED_${response.statusCode}');
     final notificationData = jsonDecode(response.body) as Map<String, dynamic>;
     final notification = notificationData['notification'];
     final notificationId = notification is Map ? notification['id']?.toString() ?? '' : '';
     if (notificationId.isEmpty) throw Exception('NOTIFICATION_ID_MISSING');
 
-    final c = await http
-        .post(
-          Uri.parse('${PublicThemeBackend.baseUrl}/api/qr/${Uri.encodeComponent(token)}/conversations'),
-          headers: const {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'notificationId': notificationId,
-            'guestToken': guestToken(),
-            'message': message.trim(),
-          }),
-        )
-        .timeout(const Duration(seconds: 15));
-    if (c.statusCode < 200 || c.statusCode >= 300) {
-      throw Exception('CONVERSATION_CREATE_FAILED_${c.statusCode}');
-    }
+    final c = await http.post(
+      Uri.parse('${PublicThemeBackend.baseUrl}/api/qr/${Uri.encodeComponent(token)}/conversations'),
+      headers: const {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'notificationId': notificationId,
+        'guestToken': guestToken(),
+        'message': message.trim(),
+      }),
+    ).timeout(const Duration(seconds: 15));
+    if (c.statusCode < 200 || c.statusCode >= 300) throw Exception('CONVERSATION_CREATE_FAILED_${c.statusCode}');
     final conversationData = jsonDecode(c.body) as Map<String, dynamic>;
     final conversation = conversationData['conversation'];
     final conversationId = conversation is Map ? conversation['id']?.toString() ?? '' : '';
     if (conversationId.isEmpty) throw Exception('CONVERSATION_ID_MISSING');
     saveConversationId(conversationId);
     clearDraft();
+
+    final next = Uri.base.replace(queryParameters: {
+      ...Uri.base.queryParameters,
+      'tag': token,
+      'chat': conversationId,
+    });
+    html.window.location.href = next.toString();
     return conversationId;
   }
 
@@ -168,18 +162,11 @@ class PublicNotificationApi {
   static Future<void> sendCallRequest() async {
     final token = currentToken();
     if (token.isEmpty) throw Exception('QR_TOKEN_MISSING');
-    final response = await http
-        .post(
-          Uri.parse('${PublicThemeBackend.baseUrl}/api/qr/${Uri.encodeComponent(token)}/notifications'),
-          headers: const {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'type': 'call_request',
-            'message': 'Gizli arama isteği gönderildi.',
-          }),
-        )
-        .timeout(const Duration(seconds: 15));
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception('CALL_REQUEST_FAILED_${response.statusCode}');
-    }
+    final response = await http.post(
+      Uri.parse('${PublicThemeBackend.baseUrl}/api/qr/${Uri.encodeComponent(token)}/notifications'),
+      headers: const {'Content-Type': 'application/json'},
+      body: jsonEncode({'type': 'call_request', 'message': 'Gizli arama isteği gönderildi.'}),
+    ).timeout(const Duration(seconds: 15));
+    if (response.statusCode < 200 || response.statusCode >= 300) throw Exception('CALL_REQUEST_FAILED_${response.statusCode}');
   }
 }
