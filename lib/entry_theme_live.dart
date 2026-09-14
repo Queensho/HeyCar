@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'entry.dart' as old;
-import 'entry_vps.dart' as vps;
 import 'owner_login.dart';
 import 'owner_dashboard_live.dart';
+import 'owner_vehicle_setup.dart';
 import 'public_theme_settings.dart';
 import 'qr_activation.dart';
 import 'onboarding_backend.dart';
@@ -129,7 +129,7 @@ class _ThemeOwnerEntryState extends State<ThemeOwnerEntry> {
         onRegister: () => setState(() => registerMode = true),
         onLogin: () => setState(() => loginMode = true),
       ),
-      vps.VehiclePickerVps(next, resetToWelcome),
+      OwnerVehicleSetupPage(onDone: next, onBack: resetToWelcome),
       PublicThemeSettingsPage(onDone: next, onBack: back),
       RealQrScanPage(onFound: next, onBack: back),
       RealQrConfirmPage(onDone: next, onBack: back),
