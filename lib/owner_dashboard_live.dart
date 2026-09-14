@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'main.dart' as app;
 import 'onboarding_backend.dart';
 import 'qr_backend.dart';
 import 'vehicle_api.dart';
 import 'owner_notifications_page.dart';
 import 'owner_settings_page.dart';
+import 'owner_vehicles_page.dart';
 
 const _bg = Color(0xFF07111F);
 const _panel = Color(0xFF101A30);
@@ -71,7 +71,7 @@ class _OwnerDashboardLiveState extends State<OwnerDashboardLive> {
         onOpenQr: _openQr,
       ),
       const OwnerNotificationsPage(),
-      const app.VehiclesSettingsPage(),
+      const OwnerVehiclesPage(),
       OwnerSettingsPage(
         onOpenVehicles: () => setState(() => current = 2),
         onOpenQr: _openQr,
