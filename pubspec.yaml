@@ -1,5 +1,5 @@
 name: heycar_app
-description: HeyCar - QR tabanli anonim arac iletisim uygulamasi.
+description: Cepqar - QR tabanli anonim arac iletisim uygulamasi.
 publish_to: "none"
 version: 1.0.0+1
 
@@ -30,5 +30,6 @@ flutter:
     - assets/Arac.png
     - assets/Aracsahibi.png
     - assets/Heycar3d.png
+    - assets/Logoqr.png
     - assets/Qrkod.png
     - assets/Yerles.png
