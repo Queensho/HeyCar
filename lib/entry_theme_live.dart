@@ -6,7 +6,6 @@ import 'owner_welcome_overlay.dart';
 import 'owner_password_login.dart';
 import 'owner_dashboard_live.dart';
 import 'owner_vehicle_setup.dart';
-import 'public_theme_settings.dart';
 import 'qr_activation.dart';
 import 'onboarding_backend.dart';
 import 'qr_backend.dart';
@@ -85,8 +84,8 @@ class _ThemeOwnerEntryState extends State<ThemeOwnerEntry> {
     await prefs.setString('owner_qr_token', QrDraft.token);
   }
 
-  void next() => setState(() => index = (index + 1).clamp(0, 5));
-  void back() => setState(() => index = (index - 1).clamp(0, 5));
+  void next() => setState(() => index = (index + 1).clamp(0, 4));
+  void back() => setState(() => index = (index - 1).clamp(0, 4));
 
   Future<void> done() async {
     await _saveSession();
@@ -132,7 +131,6 @@ class _ThemeOwnerEntryState extends State<ThemeOwnerEntry> {
         onLogin: () => setState(() => loginMode = true),
       ),
       OwnerVehicleSetupPage(onDone: next, onBack: resetToWelcome),
-      PublicThemeSettingsPage(onDone: next, onBack: back),
       RealQrScanPage(onFound: next, onBack: back),
       RealQrConfirmPage(onDone: next, onBack: back),
       old.Guide(done, back),
