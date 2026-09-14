@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const { registerAdminCorrectionRoutes } = require('./correction-routes');
 
 function normalizeToken(raw) {
   return String(raw || '').trim().toUpperCase();
@@ -11,6 +12,7 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
     ? adminGuard
     : (_req, res) => res.status(500).json({ error: 'ADMIN_GUARD_NOT_CONFIGURED' });
   const uploadDir = path.join(__dirname, 'uploads', 'public-themes');
+  registerAdminCorrectionRoutes(app, pool, guard);
 
   app.get('/api/admin/manage/users/:userId', guard, async (req, res) => {
     try {
