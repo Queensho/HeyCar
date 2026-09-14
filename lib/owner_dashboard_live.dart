@@ -5,6 +5,7 @@ import 'vehicle_api.dart';
 import 'owner_notifications_page.dart';
 import 'owner_settings_page.dart';
 import 'owner_vehicles_page.dart';
+import 'owner_dashboard_stats.dart';
 
 const _bg = Color(0xFF07111F);
 const _panel = Color(0xFF101A30);
@@ -69,7 +70,6 @@ class _OwnerDashboardLiveState extends State<OwnerDashboardLive> {
       builder: (context, unreadCount, _) {
         final screens = <Widget>[
           _OwnerHome(
-            unreadCount: unreadCount,
             onOpenNotifications: () => setState(() => current = 1),
             onOpenVehicles: () => setState(() => current = 2),
             onOpenQr: _openQr,
@@ -107,7 +107,8 @@ class _OwnerDashboardLiveState extends State<OwnerDashboardLive> {
                       ),
                     ),
                 ]),
-                const SizedBox(height: 5), Text(labels[i], style: TextStyle(color: active ? _purple : const Color(0xFF8F9AB7), fontSize: 11.5, fontWeight: active ? FontWeight.w800 : FontWeight.w500)),
+                const SizedBox(height: 5),
+                Text(labels[i], style: TextStyle(color: active ? _purple : const Color(0xFF8F9AB7), fontSize: 11.5, fontWeight: active ? FontWeight.w800 : FontWeight.w500)),
               ])));
             }))),
           ),
@@ -118,18 +119,22 @@ class _OwnerDashboardLiveState extends State<OwnerDashboardLive> {
 }
 
 class _OwnerHome extends StatelessWidget {
-  const _OwnerHome({required this.unreadCount, required this.onOpenNotifications, required this.onOpenVehicles, required this.onOpenQr});
-  final int unreadCount;
+  const _OwnerHome({required this.onOpenNotifications, required this.onOpenVehicles, required this.onOpenQr});
   final VoidCallback onOpenNotifications;
   final VoidCallback onOpenVehicles;
   final VoidCallback onOpenQr;
+
   String get name => OnboardingDraft.displayName.trim().isEmpty ? 'Araç Sahibi' : OnboardingDraft.displayName.trim().split(' ').first;
-  String get plate => QrDraft.plate.trim().isEmpty ? '34 ABC 123' : QrDraft.plate.trim();
-  String get make => QrDraft.make.trim().isEmpty ? 'Volkswagen' : QrDraft.make.trim();
-  String get carName { final model = QrDraft.model.trim(); return model.isEmpty ? make : '$make $model'.trim(); }
+  String get plate => QrDraft.plate.trim().isEmpty ? 'Araç eklenmedi' : QrDraft.plate.trim();
+  String get make => QrDraft.make.trim();
+  String get carName {
+    final model = QrDraft.model.trim();
+    if (make.isEmpty && model.isEmpty) return 'Araç bilgilerini ekle';
+    return '$make $model'.trim();
+  }
 
   Widget _brandLogo() {
-    final url = VehicleApi.brandLogoUrl(make);
+    final url = make.isEmpty ? null : VehicleApi.brandLogoUrl(make);
     if (url == null) return const SizedBox(width: 66, height: 54, child: Icon(Icons.directions_car_filled_rounded, color: _purple, size: 31));
     return SizedBox(width: 66, height: 54, child: Padding(padding: const EdgeInsets.all(7), child: Image.network(url, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Icon(Icons.directions_car_filled_rounded, color: _purple, size: 31))));
   }
@@ -161,22 +166,15 @@ class _OwnerHome extends StatelessWidget {
         Positioned(left: 22, right: 22, top: topInset + 14, child: Row(children: [_logo(), const Spacer(), _profile()])),
         Positioned(left: 16, bottom: compact ? 18 : 24, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('Merhaba', style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900, height: .95)),
-          Text(name, style: const TextStyle(color: _purple, fontSize: 43, fontWeight: FontWeight.w900, height: 1)), const SizedBox(height: 10),
+          Text(name, style: const TextStyle(color: _purple, fontSize: 43, fontWeight: FontWeight.w900, height: 1)),
+          const SizedBox(height: 10),
           const SizedBox(width: 175, child: Text('Aracınla ilgili\ntüm bildirimler\nburada.', style: TextStyle(color: Colors.white70, fontSize: 17, height: 1.25, fontWeight: FontWeight.w700))),
         ])),
       ])),
       Padding(padding: const EdgeInsets.fromLTRB(10, 14, 10, 26), child: Column(children: [
         InkWell(onTap: onOpenVehicles, borderRadius: BorderRadius.circular(20), child: _Card(child: Row(children: [_brandLogo(), const SizedBox(width: 14), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(plate, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)), const SizedBox(height: 2), Text(carName, style: const TextStyle(color: _muted, fontSize: 13))])), const Icon(Icons.chevron_right_rounded, color: Colors.white70, size: 28)]))),
         const SizedBox(height: 12),
-        Row(children: [
-          Expanded(child: _Stat(icon: Icons.notifications_active_rounded, value: '$unreadCount', label: 'Yeni\nBildirim', color: const Color(0xFFFF4D63), onTap: onOpenNotifications)),
-          const SizedBox(width: 8),
-          Expanded(child: _Stat(icon: Icons.chat_bubble_outline_rounded, value: '12', label: 'Toplam\nMesaj', color: _purple, onTap: onOpenNotifications)),
-          const SizedBox(width: 8),
-          Expanded(child: _Stat(icon: Icons.location_on_outlined, value: '5', label: 'Konum\nPaylaşımı', color: const Color(0xFF42A5FF), onTap: onOpenNotifications)),
-          const SizedBox(width: 8),
-          Expanded(child: _Stat(icon: Icons.phone_in_talk_outlined, value: '2', label: 'Arama\nTalebi', color: _purple, onTap: onOpenNotifications)),
-        ]),
+        OwnerDashboardStatsRow(onTap: onOpenNotifications),
         const SizedBox(height: 14),
         SizedBox(height: 58, width: double.infinity, child: FilledButton.icon(onPressed: onOpenNotifications, style: FilledButton.styleFrom(backgroundColor: _purple, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))), icon: const Icon(Icons.notifications_rounded), label: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [Text('Bildirimleri Gör', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900)), SizedBox(width: 8), Icon(Icons.chevron_right_rounded)]))),
         const SizedBox(height: 14),
@@ -185,12 +183,25 @@ class _OwnerHome extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(child: _Shortcut(icon: Icons.directions_car_filled_rounded, title: 'Araç Bilgilerim', sub: 'Düzenle', onTap: onOpenVehicles)),
         ]),
-        const SizedBox(height: 14), const _Card(child: Row(children: [Icon(Icons.info_outline_rounded, color: _purple), SizedBox(width: 10), Expanded(child: Text('HeyCar etiketin her zaman yanında, yollarda daha güvende.', style: TextStyle(color: _muted, height: 1.35)))])),
+        const SizedBox(height: 14),
+        const _Card(child: Row(children: [Icon(Icons.info_outline_rounded, color: _purple), SizedBox(width: 10), Expanded(child: Text('HeyCar etiketin her zaman yanında, yollarda daha güvende.', style: TextStyle(color: _muted, height: 1.35)))])),
       ])),
     ]);
   }
 }
 
-class _Card extends StatelessWidget { const _Card({required this.child}); final Widget child; @override Widget build(BuildContext context) => Container(padding: const EdgeInsets.all(15), decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(20), border: Border.all(color: _line)), child: child); }
-class _Stat extends StatelessWidget { const _Stat({required this.icon, required this.value, required this.label, required this.color, required this.onTap}); final IconData icon; final String value, label; final Color color; final VoidCallback onTap; @override Widget build(BuildContext context) => InkWell(onTap: onTap, borderRadius: BorderRadius.circular(18), child: Container(height: 120, padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6), decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(18), border: Border.all(color: _line)), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(icon, color: color, size: 25), const SizedBox(height: 6), Text(value, style: const TextStyle(color: Colors.white, fontSize: 23, fontWeight: FontWeight.w900)), const SizedBox(height: 2), Text(label, maxLines: 2, overflow: TextOverflow.visible, textAlign: TextAlign.center, style: const TextStyle(color: _muted, fontSize: 11.5, height: 1.15))]))); }
-class _Shortcut extends StatelessWidget { const _Shortcut({required this.icon, required this.title, required this.sub, required this.onTap}); final IconData icon; final String title, sub; final VoidCallback onTap; @override Widget build(BuildContext context) => InkWell(onTap: onTap, borderRadius: BorderRadius.circular(20), child: Container(height: 116, padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(20), border: Border.all(color: _line)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [Icon(icon, color: _purple, size: 30), const SizedBox(height: 10), Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 14)), const SizedBox(height: 4), Text(sub, style: const TextStyle(color: _muted, fontSize: 12))]))); }
+class _Card extends StatelessWidget {
+  const _Card({required this.child});
+  final Widget child;
+  @override
+  Widget build(BuildContext context) => Container(padding: const EdgeInsets.all(15), decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(20), border: Border.all(color: _line)), child: child);
+}
+
+class _Shortcut extends StatelessWidget {
+  const _Shortcut({required this.icon, required this.title, required this.sub, required this.onTap});
+  final IconData icon;
+  final String title, sub;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => InkWell(onTap: onTap, borderRadius: BorderRadius.circular(20), child: Container(height: 116, padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(20), border: Border.all(color: _line)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [Icon(icon, color: _purple, size: 30), const SizedBox(height: 10), Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 14)), const SizedBox(height: 4), Text(sub, style: const TextStyle(color: _muted, fontSize: 12))])));
+}
