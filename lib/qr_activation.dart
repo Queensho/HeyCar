@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'qr_backend.dart';
+import 'correction_request_page.dart';
 
 const _bg = Color(0xFF07111F);
 const _panel = Color(0xFF101A2F);
@@ -542,6 +543,9 @@ class _RealQrConfirmPageState extends State<RealQrConfirmPage> {
     }
   }
 
+  bool get canCreateCorrectionRequest =>
+      error != null && (error!.contains('düzeltme talebi') || error!.contains('zaten bağlı'));
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -625,6 +629,30 @@ class _RealQrConfirmPageState extends State<RealQrConfirmPage> {
             if (error != null) ...[
               const SizedBox(height: 14),
               Text(error!, style: const TextStyle(color: Color(0xFFFF8AA0), fontWeight: FontWeight.w700)),
+              if (canCreateCorrectionRequest) ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 52,
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: const BorderSide(color: _purple),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                    ),
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CorrectionRequestPage(
+                          initialType: 'qr_change',
+                          initialMessage: error ?? '',
+                        ),
+                      ),
+                    ),
+                    icon: const Icon(Icons.support_agent_rounded),
+                    label: const Text('Düzeltme talebi oluştur', style: TextStyle(fontWeight: FontWeight.w900)),
+                  ),
+                ),
+              ],
             ],
             const SizedBox(height: 22),
             SizedBox(
