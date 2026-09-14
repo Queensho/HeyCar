@@ -41,6 +41,17 @@ jobs:
           p.write_text(text)
           PY
 
+      - name: Apply Cepqar Android launcher icon
+        run: |
+          set -e
+          ICON="assets/app_icons/cepqar_icon.png"
+          test -f "$ICON"
+          for dir in android/app/src/main/res/mipmap-mdpi android/app/src/main/res/mipmap-hdpi android/app/src/main/res/mipmap-xhdpi android/app/src/main/res/mipmap-xxhdpi android/app/src/main/res/mipmap-xxxhdpi; do
+            mkdir -p "$dir"
+            cp "$ICON" "$dir/ic_launcher.png"
+            cp "$ICON" "$dir/ic_launcher_round.png"
+          done
+
       - name: Get dependencies
         run: flutter pub get
 
