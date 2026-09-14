@@ -91,17 +91,25 @@ class _OwnerHome extends StatelessWidget {
           SizedBox(height: compact ? 12 : 18),
           SizedBox(
             height: compact ? 320 : 365,
-            child: Stack(clipBehavior: Clip.none, children: [
-              Positioned.fill(child: Container(decoration: BoxDecoration(borderRadius: BorderRadius.circular(28), gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF0B1730), Color(0xFF0B1120), Color(0xFF191442)])))),
-              Positioned(right: -58, bottom: 6, width: 320, height: 210, child: Image.asset('assets/Arac.png', fit: BoxFit.contain, alignment: Alignment.bottomRight)),
-              Positioned(right: -32, top: 26, width: 250, height: 285, child: Image.asset('assets/Heycar3d.png', fit: BoxFit.contain, alignment: Alignment.topRight)),
-              Positioned(left: 18, bottom: 24, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('Merhaba', style: TextStyle(color: Colors.white, fontSize: 31, fontWeight: FontWeight.w900, height: .95)),
-                Text(name, style: const TextStyle(color: _purple, fontSize: 39, fontWeight: FontWeight.w900, height: 1)),
-                const SizedBox(height: 8),
-                const SizedBox(width: 150, child: Text('Aracınla ilgili tüm bildirimler burada.', style: TextStyle(color: Colors.white70, fontSize: 15, height: 1.35, fontWeight: FontWeight.w600))),
-              ])),
-            ]),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(28),
+              child: Stack(children: [
+                Positioned.fill(child: Container(decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF0B1730), Color(0xFF0B1120), Color(0xFF191442)])))),
+                Positioned(
+                  right: compact ? -10 : -12,
+                  top: compact ? 2 : 0,
+                  width: compact ? 310 : 350,
+                  height: compact ? 300 : 340,
+                  child: Image.asset('assets/Aracsahibi.png', fit: BoxFit.contain, alignment: Alignment.topRight),
+                ),
+                Positioned(left: 18, bottom: compact ? 20 : 24, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Text('Merhaba', style: TextStyle(color: Colors.white, fontSize: 31, fontWeight: FontWeight.w900, height: .95)),
+                  Text(name, style: const TextStyle(color: _purple, fontSize: 39, fontWeight: FontWeight.w900, height: 1)),
+                  const SizedBox(height: 8),
+                  const SizedBox(width: 150, child: Text('Aracınla ilgili tüm bildirimler burada.', style: TextStyle(color: Colors.white70, fontSize: 15, height: 1.35, fontWeight: FontWeight.w600))),
+                ])),
+              ]),
+            ),
           ),
           const SizedBox(height: 14),
           _Card(child: Row(children: [
