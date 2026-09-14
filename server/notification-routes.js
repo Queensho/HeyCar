@@ -2,6 +2,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const registerConversationRoutes = require('./conversation-routes');
 
 function normalizeToken(raw) {
   return String(raw || '').trim().toUpperCase();
@@ -10,6 +11,7 @@ function normalizeToken(raw) {
 const allowedTypes = new Set(['move_vehicle', 'lights_on', 'damage', 'message', 'call_request']);
 
 module.exports = function registerNotificationRoutes(app, pool) {
+  registerConversationRoutes(app, pool);
   const uploadDir = path.join(__dirname, 'uploads', 'notification-photos');
   fs.mkdirSync(uploadDir, { recursive: true });
   app.use('/uploads/notification-photos', express.static(uploadDir, { maxAge: '7d' }));
