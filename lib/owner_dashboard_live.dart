@@ -4,6 +4,7 @@ import 'onboarding_backend.dart';
 import 'qr_backend.dart';
 import 'vehicle_api.dart';
 import 'owner_notifications_page.dart';
+import 'owner_settings_page.dart';
 
 const _bg = Color(0xFF07111F);
 const _panel = Color(0xFF101A30);
@@ -71,7 +72,10 @@ class _OwnerDashboardLiveState extends State<OwnerDashboardLive> {
       ),
       const OwnerNotificationsPage(),
       const app.VehiclesSettingsPage(),
-      const app.SettingsPage(),
+      OwnerSettingsPage(
+        onOpenVehicles: () => setState(() => current = 2),
+        onOpenQr: _openQr,
+      ),
     ];
     const labels = ['Ana Sayfa', 'Bildirimler', 'Araçlarım', 'Ayarlar'];
     const icons = [Icons.home_rounded, Icons.notifications_none_rounded, Icons.directions_car_outlined, Icons.settings_outlined];
