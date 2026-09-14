@@ -168,5 +168,12 @@ class PublicNotificationApi {
       body: jsonEncode({'type': 'call_request', 'message': 'Gizli arama isteği gönderildi.'}),
     ).timeout(const Duration(seconds: 15));
     if (response.statusCode < 200 || response.statusCode >= 300) throw Exception('CALL_REQUEST_FAILED_${response.statusCode}');
+
+    final next = Uri.base.replace(queryParameters: {
+      ...Uri.base.queryParameters,
+      'tag': token,
+      'call': '1',
+    });
+    html.window.location.href = next.toString();
   }
 }
