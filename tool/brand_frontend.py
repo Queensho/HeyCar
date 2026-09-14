@@ -27,6 +27,11 @@ for path in Path('lib').rglob('*.dart'):
     text = path.read_text(encoding='utf-8')
     text = string_re.sub(replace_literal, text)
 
+    # Swap only the asset file names. All existing width/height/fit/position
+    # values remain untouched, so the visual sizes stay exactly the same.
+    text = text.replace('assets/Heycar3d.png', 'assets/Cepqar3d.png')
+    text = text.replace('assets/Qrkod.png', 'assets/CepqarQr.png')
+
     if path.as_posix() == 'lib/owner_dashboard_live.dart':
         text = re.sub(
             r"Widget _logo\(\) => const Text\.rich\(.*?\n\s*\);",
