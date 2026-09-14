@@ -5,7 +5,6 @@ import 'entry_vps_phone.dart' as phone;
 import 'main.dart' as app;
 import 'onboarding_backend.dart';
 import 'owner_login.dart';
-import 'public_theme_settings.dart';
 import 'qr_activation.dart';
 
 void main() => runApp(const ThemeOnboardingApp());
@@ -35,13 +34,13 @@ class _ThemeOnboardingState extends State<ThemeOnboarding> {
   int index = 0;
   bool loginMode = false;
 
-  void next() => setState(() => index = (index + 1).clamp(0, 8));
+  void next() => setState(() => index = (index + 1).clamp(0, 7));
   void back() => setState(() {
         if (loginMode) {
           loginMode = false;
           index = 0;
         } else {
-          index = (index - 1).clamp(0, 8);
+          index = (index - 1).clamp(0, 7);
         }
       });
   void done() => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const app.Shell()));
@@ -89,7 +88,6 @@ class _ThemeOnboardingState extends State<ThemeOnboarding> {
       phone.OtpVps(next, back),
       vps.AccountVps(next, back),
       vps.VehiclePickerVps(next, back),
-      PublicThemeSettingsPage(onDone: next, onBack: back),
       RealQrScanPage(onFound: next, onBack: back),
       RealQrConfirmPage(onDone: next, onBack: back),
       old.Guide(done, back),
