@@ -9,22 +9,25 @@ function normalizeTrMobile(raw) {
 module.exports = function registerOwnerAuthRoutes(app, pool) {
   app.post('/api/owner/login-phone', async (req, res) => {
     const phone = normalizeTrMobile(req.body.phone);
-    const otpCode = String(req.body.otpCode || '').trim();
+    const password = String(req.body.password || '');
 
     if (!phone) return res.status(400).json({ error: 'INVALID_PHONE' });
-    if (otpCode !== '123456') return res.status(400).json({ error: 'OTP_INVALID' });
+    if (password.length < 6) return res.status(400).json({ error: 'PASSWORD_INVALID' });
 
     try {
       const userResult = await pool.query(
         `SELECT id, email, phone, display_name, role, status, created_at
          FROM users
          WHERE phone = $1
+           AND password_hash = crypt($2, password_hash)
          LIMIT 1`,
-        [phone]
+        [phone, password]
       );
 
       if (!userResult.rows.length) {
-        return res.status(404).json({ error: 'USER_NOT_FOUND' });
+        const exists = await pool.query('SELECT 1 FROM users WHERE phone = $1 LIMIT 1', [phone]);
+        if (!exists.rows.length) return res.status(404).json({ error: 'USER_NOT_FOUND' });
+        return res.status(401).json({ error: 'PASSWORD_INVALID' });
       }
 
       const user = userResult.rows[0];
@@ -48,7 +51,7 @@ module.exports = function registerOwnerAuthRoutes(app, pool) {
         vehicles: vehiclesResult.rows,
       });
     } catch (error) {
-      console.error('owner phone login error', error);
+      console.error('owner phone/password login error', error);
       return res.status(500).json({ error: 'SERVER_ERROR' });
     }
   });
