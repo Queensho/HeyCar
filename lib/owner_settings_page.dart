@@ -3,13 +3,470 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'owner_qr_dialog.dart';
 import 'owner_settings_detail.dart';
 
-const _bg=Color(0xFF07111F),_panel=Color(0xFF111A31),_line=Color(0xFF29345A),_purple=Color(0xFF8B5CFF),_orange=Color(0xFFFFA51F),_lime=Color(0xFF79FF45),_pink=Color(0xFFFF4D78),_blue=Color(0xFF4AB8FF),_muted=Color(0xFFA7B0C7);
-class OwnerSettingsPage extends StatelessWidget{
- const OwnerSettingsPage({super.key,this.onOpenVehicles,this.onOpenQr,this.onOpenNotifications}); final VoidCallback? onOpenVehicles,onOpenQr,onOpenNotifications;
- void _push(BuildContext c,Widget p)=>Navigator.of(c).push(MaterialPageRoute(builder:(_)=>p));
- Future<void> _logout(BuildContext context)async{final ok=await showDialog<bool>(context:context,builder:(c)=>AlertDialog(backgroundColor:_panel,title:const Text('Çıkış yapılsın mı?',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w900)),content:const Text('HeyCar hesabından çıkış yapacaksın.',style:TextStyle(color:_muted)),actions:[TextButton(onPressed:()=>Navigator.pop(c,false),child:const Text('Vazgeç')),FilledButton(style:FilledButton.styleFrom(backgroundColor:const Color(0xFFFF4D63)),onPressed:()=>Navigator.pop(c,true),child:const Text('Çıkış Yap'))]));if(ok!=true)return;final prefs=await SharedPreferences.getInstance();await prefs.remove('owner_logged_in');await prefs.remove('owner_user_id');await prefs.remove('owner_phone');await prefs.remove('owner_display_name');await prefs.remove('owner_email');await prefs.remove('owner_vehicle_id');await prefs.remove('owner_plate');await prefs.remove('owner_make');await prefs.remove('owner_model');await prefs.remove('owner_qr_token');if(context.mounted)Navigator.of(context).pushNamedAndRemoveUntil('/',(r)=>false);}
- @override Widget build(BuildContext context){final compact=MediaQuery.sizeOf(context).height<820,top=MediaQuery.paddingOf(context).top,heroHeight=compact?292.0:320.0;return Scaffold(backgroundColor:_bg,body:SingleChildScrollView(child:Column(children:[SizedBox(height:heroHeight,child:Stack(fit:StackFit.expand,children:[const DecoratedBox(decoration:BoxDecoration(gradient:LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:[Color(0xFF080F20),Color(0xFF121530)]))),Positioned(right:-36,top:top+24,width:compact?270:298,height:compact?270:298,child:Image.asset('assets/Heycar3d.png',fit:BoxFit.contain,alignment:Alignment.bottomRight)),Positioned(left:20,right:18,top:top+14,child:Row(children:[const _Brand(),const Spacer(),_RoundIcon(icon:Icons.notifications_none_rounded,badge:true,onTap:onOpenNotifications??()=>_push(context,const OwnerNotificationSettingsPage())),const SizedBox(width:10),_RoundIcon(icon:Icons.person_rounded,onTap:()=>_push(context,const OwnerAccountSettingsPage()))])),const Positioned(left:20,bottom:22,right:165,child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('Ayarlar',style:TextStyle(color:Colors.white,fontSize:34,height:1,fontWeight:FontWeight.w900,letterSpacing:-1.1)),SizedBox(height:8),Text('Hesabınızı ve HeyCar\ntercihlerinizi yönetin.',style:TextStyle(color:_muted,fontSize:14.5,height:1.32,fontWeight:FontWeight.w500))]))])),Padding(padding:const EdgeInsets.fromLTRB(14,0,14,22),child:Column(children:[_SettingsTile(icon:Icons.person_outline_rounded,iconColor:_purple,title:'Hesap bilgilerim',subtitle:'Profil, iletişim ve hesap ayarlarınız',onTap:()=>_push(context,const OwnerAccountSettingsPage())),const SizedBox(height:8),_SettingsTile(icon:Icons.directions_car_filled_rounded,iconColor:_orange,title:'Araçlarım',subtitle:'Kayıtlı araçlarınızı yönetin',onTap:onOpenVehicles??()=>_push(context,const OwnerVehicleSummaryPage())),const SizedBox(height:8),_SettingsTile(icon:Icons.qr_code_2_rounded,iconColor:_lime,title:'QR etiketim',subtitle:'Araç QR kodunuzu görüntüleyin ve paylaşın',onTap:()=>showOwnerQrDialog(context)),const SizedBox(height:8),_SettingsTile(icon:Icons.notifications_none_rounded,iconColor:_pink,title:'Bildirim ayarları',subtitle:'Mesaj, arama ve sistem bildirimleri',onTap:()=>_push(context,const OwnerNotificationSettingsPage())),const SizedBox(height:8),_SettingsTile(icon:Icons.shield_outlined,iconColor:_blue,title:'Gizlilik ve güvenlik',subtitle:'Verileriniz ve güvenlik ayarları',onTap:()=>_push(context,const OwnerPrivacySettingsPage())),const SizedBox(height:14),_QrPromo(onTap:()=>showOwnerQrDialog(context)),const SizedBox(height:14),_SettingsTile(icon:Icons.logout_rounded,iconColor:const Color(0xFFFF4D63),title:'Çıkış Yap',subtitle:'HeyCar hesabından güvenli şekilde çıkış yap',onTap:()=>_logout(context))]))]))]));}}
-class _Brand extends StatelessWidget{const _Brand();@override Widget build(BuildContext context)=>const Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text.rich(TextSpan(children:[TextSpan(text:'Hey',style:TextStyle(color:Colors.white)),TextSpan(text:'Car',style:TextStyle(color:_orange))]),style:TextStyle(fontSize:29,fontWeight:FontWeight.w900,letterSpacing:-1.4,height:1)),SizedBox(height:5),Text('Araç Sahibi',style:TextStyle(color:_muted,fontSize:12.5))]);}
-class _RoundIcon extends StatelessWidget{const _RoundIcon({required this.icon,required this.onTap,this.badge=false});final IconData icon;final VoidCallback onTap;final bool badge;@override Widget build(BuildContext context)=>Stack(clipBehavior:Clip.none,children:[Material(color:const Color(0xFF10172B),shape:const CircleBorder(),child:InkWell(customBorder:const CircleBorder(),onTap:onTap,child:SizedBox(width:46,height:46,child:Icon(icon,color:Colors.white,size:23)))),if(badge)Positioned(top:-3,right:-1,child:Container(width:20,height:20,alignment:Alignment.center,decoration:const BoxDecoration(color:Color(0xFFFF405D),shape:BoxShape.circle),child:const Text('3',style:TextStyle(color:Colors.white,fontSize:10.5,fontWeight:FontWeight.w900))))]);}
-class _SettingsTile extends StatelessWidget{const _SettingsTile({required this.icon,required this.iconColor,required this.title,required this.subtitle,required this.onTap});final IconData icon;final Color iconColor;final String title,subtitle;final VoidCallback onTap;@override Widget build(BuildContext context)=>Material(color:_panel,borderRadius:BorderRadius.circular(20),child:InkWell(onTap:onTap,borderRadius:BorderRadius.circular(20),child:Container(height:84,padding:const EdgeInsets.symmetric(horizontal:15,vertical:10),decoration:BoxDecoration(borderRadius:BorderRadius.circular(20),border:Border.all(color:_line)),child:Row(children:[Container(width:50,height:50,decoration:BoxDecoration(color:iconColor.withValues(alpha:.18),borderRadius:BorderRadius.circular(16),border:Border.all(color:iconColor.withValues(alpha:.42))),child:Icon(icon,color:iconColor,size:26)),const SizedBox(width:14),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisAlignment:MainAxisAlignment.center,children:[Text(title,style:const TextStyle(color:Colors.white,fontSize:15.5,fontWeight:FontWeight.w900)),const SizedBox(height:4),Text(subtitle,maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_muted,fontSize:12,height:1.2))])),const SizedBox(width:6),const Icon(Icons.chevron_right_rounded,color:Colors.white70,size:26)]))));}
-class _QrPromo extends StatelessWidget{const _QrPromo({required this.onTap});final VoidCallback onTap;@override Widget build(BuildContext context)=>Container(width:double.infinity,height:126,padding:const EdgeInsets.all(14),decoration:BoxDecoration(borderRadius:BorderRadius.circular(22),gradient:const LinearGradient(colors:[Color(0xFF26178A),Color(0xFF7036F2)]),border:Border.all(color:const Color(0xFF704CFF))),child:Row(children:[Transform.rotate(angle:-.10,child:Container(width:72,height:88,decoration:BoxDecoration(color:const Color(0xFF171935),borderRadius:BorderRadius.circular(17),border:Border.all(color:const Color(0xFFAA85FF))),child:const Icon(Icons.qr_code_2_rounded,color:Colors.white,size:52))),const SizedBox(width:12),const Expanded(child:Column(mainAxisAlignment:MainAxisAlignment.center,crossAxisAlignment:CrossAxisAlignment.start,children:[Text('Aracınıza özel\nQR kodunuzu paylaşın',style:TextStyle(color:Colors.white,fontSize:15.5,height:1.15,fontWeight:FontWeight.w900)),SizedBox(height:7),Text('Daha kolay iletişim, daha rahat park.',maxLines:2,style:TextStyle(color:Color(0xFFD2C8F6),fontSize:11.5,height:1.2))])),const SizedBox(width:6),FilledButton(style:FilledButton.styleFrom(backgroundColor:const Color(0xFFC19BFF),foregroundColor:const Color(0xFF1A1038),minimumSize:const Size(82,44),padding:const EdgeInsets.symmetric(horizontal:10),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(18))),onPressed:onTap,child:const Row(mainAxisSize:MainAxisSize.min,children:[Text('QR’ımı Gör',style:TextStyle(fontWeight:FontWeight.w900,fontSize:11.5)),SizedBox(width:2),Icon(Icons.chevron_right_rounded,size:18)]))]));}
+const _bg = Color(0xFF07111F);
+const _panel = Color(0xFF111A31);
+const _line = Color(0xFF29345A);
+const _purple = Color(0xFF8B5CFF);
+const _orange = Color(0xFFFFA51F);
+const _lime = Color(0xFF79FF45);
+const _pink = Color(0xFFFF4D78);
+const _blue = Color(0xFF4AB8FF);
+const _muted = Color(0xFFA7B0C7);
+
+class OwnerSettingsPage extends StatelessWidget {
+  const OwnerSettingsPage({
+    super.key,
+    this.onOpenVehicles,
+    this.onOpenQr,
+    this.onOpenNotifications,
+  });
+
+  final VoidCallback? onOpenVehicles;
+  final VoidCallback? onOpenQr;
+  final VoidCallback? onOpenNotifications;
+
+  void _push(BuildContext context, Widget page) {
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
+  }
+
+  Future<void> _logout(BuildContext context) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: _panel,
+        title: const Text(
+          'Çıkış yapılsın mı?',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900),
+        ),
+        content: const Text(
+          'HeyCar hesabından çıkış yapacaksın.',
+          style: TextStyle(color: _muted),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Vazgeç'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFFF4D63)),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Çıkış Yap'),
+          ),
+        ],
+      ),
+    );
+
+    if (ok != true) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    for (final key in [
+      'owner_logged_in',
+      'owner_user_id',
+      'owner_phone',
+      'owner_display_name',
+      'owner_email',
+      'owner_vehicle_id',
+      'owner_plate',
+      'owner_make',
+      'owner_model',
+      'owner_qr_token',
+    ]) {
+      await prefs.remove(key);
+    }
+
+    if (context.mounted) {
+      Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final compact = MediaQuery.sizeOf(context).height < 820;
+    final top = MediaQuery.paddingOf(context).top;
+    final heroHeight = compact ? 292.0 : 320.0;
+
+    return Scaffold(
+      backgroundColor: _bg,
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            SizedBox(
+              height: heroHeight,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  const DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFF080F20), Color(0xFF121530)],
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    right: -36,
+                    top: top + 24,
+                    width: compact ? 270 : 298,
+                    height: compact ? 270 : 298,
+                    child: Image.asset(
+                      'assets/Heycar3d.png',
+                      fit: BoxFit.contain,
+                      alignment: Alignment.bottomRight,
+                    ),
+                  ),
+                  Positioned(
+                    left: 20,
+                    right: 18,
+                    top: top + 14,
+                    child: Row(
+                      children: [
+                        const _Brand(),
+                        const Spacer(),
+                        _RoundIcon(
+                          icon: Icons.notifications_none_rounded,
+                          badge: true,
+                          onTap: onOpenNotifications ??
+                              () => _push(context, const OwnerNotificationSettingsPage()),
+                        ),
+                        const SizedBox(width: 10),
+                        _RoundIcon(
+                          icon: Icons.person_rounded,
+                          onTap: () => _push(context, const OwnerAccountSettingsPage()),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Positioned(
+                    left: 20,
+                    bottom: 22,
+                    right: 165,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Ayarlar',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 34,
+                            height: 1,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -1.1,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'Hesabınızı ve HeyCar\ntercihlerinizi yönetin.',
+                          style: TextStyle(
+                            color: _muted,
+                            fontSize: 14.5,
+                            height: 1.32,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 22),
+              child: Column(
+                children: [
+                  _SettingsTile(
+                    icon: Icons.person_outline_rounded,
+                    iconColor: _purple,
+                    title: 'Hesap bilgilerim',
+                    subtitle: 'Profil, iletişim ve hesap ayarlarınız',
+                    onTap: () => _push(context, const OwnerAccountSettingsPage()),
+                  ),
+                  const SizedBox(height: 8),
+                  _SettingsTile(
+                    icon: Icons.directions_car_filled_rounded,
+                    iconColor: _orange,
+                    title: 'Araçlarım',
+                    subtitle: 'Kayıtlı araçlarınızı yönetin',
+                    onTap: onOpenVehicles ??
+                        () => _push(context, const OwnerVehicleSummaryPage()),
+                  ),
+                  const SizedBox(height: 8),
+                  _SettingsTile(
+                    icon: Icons.qr_code_2_rounded,
+                    iconColor: _lime,
+                    title: 'QR etiketim',
+                    subtitle: 'Araç QR kodunuzu görüntüleyin ve paylaşın',
+                    onTap: onOpenQr ?? () => showOwnerQrDialog(context),
+                  ),
+                  const SizedBox(height: 8),
+                  _SettingsTile(
+                    icon: Icons.notifications_none_rounded,
+                    iconColor: _pink,
+                    title: 'Bildirim ayarları',
+                    subtitle: 'Mesaj, arama ve sistem bildirimleri',
+                    onTap: () => _push(context, const OwnerNotificationSettingsPage()),
+                  ),
+                  const SizedBox(height: 8),
+                  _SettingsTile(
+                    icon: Icons.shield_outlined,
+                    iconColor: _blue,
+                    title: 'Gizlilik ve güvenlik',
+                    subtitle: 'Verileriniz ve güvenlik ayarları',
+                    onTap: () => _push(context, const OwnerPrivacySettingsPage()),
+                  ),
+                  const SizedBox(height: 14),
+                  _QrPromo(onTap: onOpenQr ?? () => showOwnerQrDialog(context)),
+                  const SizedBox(height: 14),
+                  _SettingsTile(
+                    icon: Icons.logout_rounded,
+                    iconColor: const Color(0xFFFF4D63),
+                    title: 'Çıkış Yap',
+                    subtitle: 'HeyCar hesabından güvenli şekilde çıkış yap',
+                    onTap: () => _logout(context),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Brand extends StatelessWidget {
+  const _Brand();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(text: 'Hey', style: TextStyle(color: Colors.white)),
+              TextSpan(text: 'Car', style: TextStyle(color: _orange)),
+            ],
+          ),
+          style: TextStyle(
+            fontSize: 29,
+            fontWeight: FontWeight.w900,
+            letterSpacing: -1.4,
+            height: 1,
+          ),
+        ),
+        SizedBox(height: 5),
+        Text('Araç Sahibi', style: TextStyle(color: _muted, fontSize: 12.5)),
+      ],
+    );
+  }
+}
+
+class _RoundIcon extends StatelessWidget {
+  const _RoundIcon({required this.icon, required this.onTap, this.badge = false});
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool badge;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Material(
+          color: const Color(0xFF10172B),
+          shape: const CircleBorder(),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: onTap,
+            child: SizedBox(
+              width: 46,
+              height: 46,
+              child: Icon(icon, color: Colors.white, size: 23),
+            ),
+          ),
+        ),
+        if (badge)
+          Positioned(
+            top: -3,
+            right: -1,
+            child: Container(
+              width: 20,
+              height: 20,
+              alignment: Alignment.center,
+              decoration: const BoxDecoration(
+                color: Color(0xFFFF405D),
+                shape: BoxShape.circle,
+              ),
+              child: const Text(
+                '3',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _SettingsTile extends StatelessWidget {
+  const _SettingsTile({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: _panel,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          height: 84,
+          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: _line),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: .18),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: iconColor.withValues(alpha: .42)),
+                ),
+                child: Icon(icon, color: iconColor, size: 26),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: _muted, fontSize: 12, height: 1.2),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 6),
+              const Icon(Icons.chevron_right_rounded, color: Colors.white70, size: 26),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QrPromo extends StatelessWidget {
+  const _QrPromo({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      height: 126,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF26178A), Color(0xFF7036F2)],
+        ),
+        border: Border.all(color: const Color(0xFF704CFF)),
+      ),
+      child: Row(
+        children: [
+          Transform.rotate(
+            angle: -.10,
+            child: Container(
+              width: 72,
+              height: 88,
+              decoration: BoxDecoration(
+                color: const Color(0xFF171935),
+                borderRadius: BorderRadius.circular(17),
+                border: Border.all(color: const Color(0xFFAA85FF)),
+              ),
+              child: const Icon(Icons.qr_code_2_rounded, color: Colors.white, size: 52),
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Aracınıza özel\nQR kodunuzu paylaşın',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15.5,
+                    height: 1.15,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                SizedBox(height: 7),
+                Text(
+                  'Daha kolay iletişim, daha rahat park.',
+                  maxLines: 2,
+                  style: TextStyle(color: Color(0xFFD2C8F6), fontSize: 11.5, height: 1.2),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 6),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFC19BFF),
+              foregroundColor: const Color(0xFF1A1038),
+              minimumSize: const Size(82, 44),
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+            ),
+            onPressed: onTap,
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('QR’ımı Gör', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11.5)),
+                SizedBox(width: 2),
+                Icon(Icons.chevron_right_rounded, size: 18),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
