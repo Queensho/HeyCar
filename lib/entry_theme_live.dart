@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'entry.dart' as old;
 import 'owner_login.dart';
 import 'owner_welcome_overlay.dart';
 import 'owner_password_login.dart';
 import 'owner_dashboard_live.dart';
 import 'owner_vehicle_setup.dart';
+import 'owner_guide_page.dart';
 import 'qr_activation.dart';
 import 'onboarding_backend.dart';
 import 'qr_backend.dart';
@@ -133,7 +133,7 @@ class _ThemeOwnerEntryState extends State<ThemeOwnerEntry> {
       OwnerVehicleSetupPage(onDone: next, onBack: resetToWelcome),
       RealQrScanPage(onFound: next, onBack: back),
       RealQrConfirmPage(onDone: next, onBack: back),
-      old.Guide(done, back),
+      OwnerGuidePage(onDone: done, onBack: back),
     ];
     return screens[index];
   }
