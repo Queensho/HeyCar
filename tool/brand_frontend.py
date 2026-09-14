@@ -58,10 +58,57 @@ class _RoundIcon""",
             text,
             flags=re.S,
         )
-        # Old illustration has HeyCar baked into the artwork; remove it from the branded UI.
         text = re.sub(
             r"\s*Positioned\(\n\s*right: -36,.*?\n\s*\),\n\s*Positioned\(\n\s*left: 20,",
             "\n                  Positioned(\n                    left: 20,",
+            text,
+            flags=re.S,
+        )
+
+    if path.as_posix() == 'lib/public_qr_entry.dart':
+        text = re.sub(
+            r"class _TopBar extends StatelessWidget\{.*\Z",
+            """class _TopBar extends StatelessWidget{
+  const _TopBar({required this.onMenu});
+  final VoidCallback onMenu;
+  @override
+  Widget build(BuildContext context){
+    final compact=MediaQuery.sizeOf(context).width<390;
+    return Row(children:[
+      Image.asset('assets/Logoqr.png',height:compact?38:42,fit:BoxFit.contain),
+      const Spacer(),
+      Container(padding:EdgeInsets.symmetric(horizontal:compact?11:12,vertical:compact?7:8),decoration:BoxDecoration(border:Border.all(color:_line),borderRadius:BorderRadius.circular(18)),child:Text('TR ⌄',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w800,fontSize:compact?14:15))),
+      const SizedBox(width:8),
+      IconButton(onPressed:onMenu,padding:EdgeInsets.zero,constraints:const BoxConstraints(minWidth:38,minHeight:38),icon:Icon(Icons.menu_rounded,color:Colors.white,size:compact?29:31))
+    ]);
+  }
+}
+""",
+            text,
+            flags=re.S,
+        )
+        text = re.sub(
+            r"Row\(children:\[const Text\.rich\(TextSpan\(children:\[TextSpan\(text:'Hey'.*?const Spacer\(\),IconButton",
+            "Row(children:[Image.asset('assets/Logoqr.png',height:40,fit:BoxFit.contain),const Spacer(),IconButton",
+            text,
+            flags=re.S,
+        )
+
+    if path.as_posix() == 'lib/public_qr_personalized.dart':
+        text = re.sub(
+            r"class _TopBar extends StatelessWidget \{.*?\n\}\n\nclass ",
+            """class _TopBar extends StatelessWidget {
+  const _TopBar();
+  @override
+  Widget build(BuildContext context) => Row(
+        children: [
+          Image.asset('assets/Logoqr.png', height: 42, fit: BoxFit.contain),
+          const Spacer(),
+        ],
+      );
+}
+
+class """,
             text,
             flags=re.S,
         )
