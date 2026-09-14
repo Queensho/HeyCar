@@ -34,7 +34,6 @@ class OnboardingBackend {
             'displayName': displayName.trim(),
             'email': email.trim(),
             'password': password,
-            'otpCode': OnboardingDraft.otpCode,
             'plate': plate.trim().toUpperCase(),
             'make': make.trim(),
             'model': model.trim(),
@@ -65,21 +64,10 @@ class OnboardingBackend {
     }
 
     final code = decoded is Map ? decoded['error']?.toString() ?? '' : '';
-    if (code == 'EMAIL_EXISTS') {
-      throw Exception('Bu e-posta adresi zaten kayıtlı.');
-    }
-    if (code == 'PHONE_EXISTS') {
-      throw Exception('Bu telefon numarası zaten kayıtlı.');
-    }
-    if (code == 'INVALID_PHONE') {
-      throw Exception('Geçerli bir cep telefonu numarası gir.');
-    }
-    if (code == 'OTP_INVALID') {
-      throw Exception('Telefon doğrulaması tamamlanmadı.');
-    }
-    if (code == 'INVALID_INPUT') {
-      throw Exception('Bilgileri kontrol edip tekrar dene.');
-    }
+    if (code == 'EMAIL_EXISTS') throw Exception('Bu e-posta adresi zaten kayıtlı.');
+    if (code == 'PHONE_EXISTS') throw Exception('Bu telefon numarası zaten kayıtlı.');
+    if (code == 'INVALID_PHONE') throw Exception('Geçerli bir cep telefonu numarası gir.');
+    if (code == 'INVALID_INPUT') throw Exception('Bilgileri kontrol edip tekrar dene.');
     throw Exception('Kayıt tamamlanamadı. Tekrar dene.');
   }
 }
