@@ -16,7 +16,6 @@ module.exports = function registerOnboardingRoutes(app, pool) {
     const emailRaw = String(req.body.email || '').trim().toLowerCase();
     const email = emailRaw || null;
     const password = String(req.body.password || '');
-    const otpCode = String(req.body.otpCode || '').trim();
     const plate = String(req.body.plate || '').trim().toUpperCase();
     const make = String(req.body.make || '').trim();
     const model = String(req.body.model || '').trim();
@@ -24,9 +23,6 @@ module.exports = function registerOnboardingRoutes(app, pool) {
 
     if (!phone) {
       return res.status(400).json({ error: 'INVALID_PHONE' });
-    }
-    if (otpCode !== '123456') {
-      return res.status(400).json({ error: 'OTP_INVALID' });
     }
     if (!displayName || password.length < 6 || !plate || !make) {
       return res.status(400).json({ error: 'INVALID_INPUT' });
