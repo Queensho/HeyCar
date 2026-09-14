@@ -18,31 +18,58 @@ class GuestChatPage extends StatefulWidget {
 
 class _GuestChatPageState extends State<GuestChatPage> {
   final input = TextEditingController();
+  final scroll = ScrollController();
   List<Map<String, dynamic>> messages = [];
   bool loading = true;
   bool sending = false;
+  String? error;
   Timer? timer;
 
   @override
   void initState() {
     super.initState();
     _load();
-    timer = Timer.periodic(const Duration(seconds: 5), (_) => _load(silent: true));
+    timer = Timer.periodic(const Duration(seconds: 3), (_) => _load(silent: true));
   }
 
   @override
   void dispose() {
     timer?.cancel();
     input.dispose();
+    scroll.dispose();
     super.dispose();
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !scroll.hasClients) return;
+      scroll.animateTo(
+        scroll.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+      );
+    });
   }
 
   Future<void> _load({bool silent = false}) async {
     try {
       final data = await PublicNotificationApi.fetchConversation(widget.conversationId);
-      if (mounted) setState(() { messages = data; loading = false; });
+      if (!mounted) return;
+      final changed = data.length != messages.length ||
+          (data.isNotEmpty && messages.isNotEmpty && data.last['id']?.toString() != messages.last['id']?.toString());
+      setState(() {
+        messages = data;
+        loading = false;
+        error = null;
+      });
+      if (changed) _scrollToBottom();
     } catch (_) {
-      if (!silent && mounted) setState(() => loading = false);
+      if (!silent && mounted) {
+        setState(() {
+          loading = false;
+          error = 'Sohbet yüklenemedi. Bağlantını kontrol edip tekrar dene.';
+        });
+      }
     }
   }
 
@@ -54,6 +81,13 @@ class _GuestChatPageState extends State<GuestChatPage> {
       await PublicNotificationApi.sendChatMessage(widget.conversationId, text);
       input.clear();
       await _load();
+      _scrollToBottom();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Mesaj gönderilemedi. Tekrar dene.')),
+        );
+      }
     } finally {
       if (mounted) setState(() => sending = false);
     }
@@ -86,32 +120,46 @@ class _GuestChatPageState extends State<GuestChatPage> {
           Expanded(
             child: loading
                 ? const Center(child: CircularProgressIndicator(color: _lime))
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: messages.length,
-                    itemBuilder: (_, i) {
-                      final m = messages[i];
-                      final mine = m['sender']?.toString() == 'guest';
-                      return Align(
-                        alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
-                        child: Container(
-                          constraints: const BoxConstraints(maxWidth: 300),
-                          margin: const EdgeInsets.only(bottom: 9),
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-                          decoration: BoxDecoration(
-                            color: mine ? _purple : _panel,
-                            borderRadius: BorderRadius.only(
-                              topLeft: const Radius.circular(18),
-                              topRight: const Radius.circular(18),
-                              bottomLeft: Radius.circular(mine ? 18 : 4),
-                              bottomRight: Radius.circular(mine ? 4 : 18),
-                            ),
-                          ),
-                          child: Text(m['message']?.toString() ?? '', style: const TextStyle(color: Colors.white, height: 1.3)),
+                : error != null
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Column(mainAxisSize: MainAxisSize.min, children: [
+                            const Icon(Icons.wifi_off_rounded, color: _muted, size: 38),
+                            const SizedBox(height: 10),
+                            Text(error!, textAlign: TextAlign.center, style: const TextStyle(color: _muted)),
+                            const SizedBox(height: 12),
+                            FilledButton(onPressed: _load, style: FilledButton.styleFrom(backgroundColor: _lime, foregroundColor: Colors.black), child: const Text('Tekrar dene')),
+                          ]),
                         ),
-                      );
-                    },
-                  ),
+                      )
+                    : ListView.builder(
+                        controller: scroll,
+                        padding: const EdgeInsets.all(16),
+                        itemCount: messages.length,
+                        itemBuilder: (_, i) {
+                          final m = messages[i];
+                          final mine = m['sender']?.toString() == 'guest';
+                          return Align(
+                            alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
+                            child: Container(
+                              constraints: const BoxConstraints(maxWidth: 300),
+                              margin: const EdgeInsets.only(bottom: 9),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                              decoration: BoxDecoration(
+                                color: mine ? _purple : _panel,
+                                borderRadius: BorderRadius.only(
+                                  topLeft: const Radius.circular(18),
+                                  topRight: const Radius.circular(18),
+                                  bottomLeft: Radius.circular(mine ? 18 : 4),
+                                  bottomRight: Radius.circular(mine ? 4 : 18),
+                                ),
+                              ),
+                              child: Text(m['message']?.toString() ?? '', style: const TextStyle(color: Colors.white, height: 1.3)),
+                            ),
+                          );
+                        },
+                      ),
           ),
           SafeArea(
             top: false,
@@ -122,6 +170,7 @@ class _GuestChatPageState extends State<GuestChatPage> {
                 Expanded(
                   child: TextField(
                     controller: input,
+                    enabled: error == null,
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
                       hintText: 'Mesaj yaz...',
@@ -135,7 +184,7 @@ class _GuestChatPageState extends State<GuestChatPage> {
                 ),
                 const SizedBox(width: 8),
                 IconButton.filled(
-                  onPressed: sending ? null : _send,
+                  onPressed: sending || error != null ? null : _send,
                   style: IconButton.styleFrom(backgroundColor: _lime, foregroundColor: Colors.black),
                   icon: sending
                       ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2))
