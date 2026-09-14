@@ -30,14 +30,16 @@ for path in Path('lib').rglob('*.dart'):
     text = string_re.sub(replace_literal, text)
 
     # The main owner dashboard previously drew the old name as two TextSpans.
-    # Use the uploaded Cepqar logo asset instead, without touching QR/API URLs.
+    # Use the uploaded Cepqar PNG logo asset instead, without touching QR/API URLs.
     if path.as_posix() == 'lib/owner_dashboard_live.dart':
         text = re.sub(
             r"Widget _logo\(\) => const Text\.rich\(.*?\n\s*\);",
-            "Widget _logo() => Image.asset('assets/Logoqr.jpg', height: 48, fit: BoxFit.contain);",
+            "Widget _logo() => Image.asset('assets/Logoqr.png', height: 48, fit: BoxFit.contain);",
             text,
             flags=re.S,
         )
+        text = text.replace("Image.asset('assets/Logoqr.jpg', height: 48, fit: BoxFit.contain)",
+                            "Image.asset('assets/Logoqr.png', height: 48, fit: BoxFit.contain)")
         text = text.replace('HeyCar etiketin her zaman yanında, yollarda daha güvende.',
                             'Cepqar etiketin her zaman yanında, yollarda daha güvende.')
 
