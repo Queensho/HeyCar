@@ -4,8 +4,6 @@ import re
 BRAND_FROM = 'HeyCar'
 BRAND_TO = 'Cepqar'
 
-# Only change user-facing string literals. Technical URLs, repo paths and API
-# identifiers remain untouched so the current infrastructure keeps working.
 string_re = re.compile(r"('(?:\\.|[^'\\])*'|\"(?:\\.|[^\"\\])*\")")
 
 
@@ -29,8 +27,6 @@ for path in Path('lib').rglob('*.dart'):
     text = path.read_text(encoding='utf-8')
     text = string_re.sub(replace_literal, text)
 
-    # The main owner dashboard previously drew the old name as two TextSpans.
-    # Use the uploaded Cepqar PNG logo asset instead, without touching QR/API URLs.
     if path.as_posix() == 'lib/owner_dashboard_live.dart':
         text = re.sub(
             r"Widget _logo\(\) => const Text\.rich\(.*?\n\s*\);",
@@ -40,8 +36,35 @@ for path in Path('lib').rglob('*.dart'):
         )
         text = text.replace("Image.asset('assets/Logoqr.jpg', height: 48, fit: BoxFit.contain)",
                             "Image.asset('assets/Logoqr.png', height: 48, fit: BoxFit.contain)")
-        text = text.replace('HeyCar etiketin her zaman yanında, yollarda daha güvende.',
-                            'Cepqar etiketin her zaman yanında, yollarda daha güvende.')
+
+    if path.as_posix() == 'lib/owner_settings_page.dart':
+        text = re.sub(
+            r"class _Brand extends StatelessWidget \{.*?\n\}\n\nclass _RoundIcon",
+            """class _Brand extends StatelessWidget {
+  const _Brand();
+
+  @override
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Image.asset('assets/Logoqr.png', height: 38, fit: BoxFit.contain),
+          const SizedBox(height: 5),
+          const Text('Araç Sahibi', style: TextStyle(color: _muted, fontSize: 12.5)),
+        ],
+      );
+}
+
+class _RoundIcon""",
+            text,
+            flags=re.S,
+        )
+        # Old illustration has HeyCar baked into the artwork; remove it from the branded UI.
+        text = re.sub(
+            r"\s*Positioned\(\n\s*right: -36,.*?\n\s*\),\n\s*Positioned\(\n\s*left: 20,",
+            "\n                  Positioned(\n                    left: 20,",
+            text,
+            flags=re.S,
+        )
 
     path.write_text(text, encoding='utf-8')
 
