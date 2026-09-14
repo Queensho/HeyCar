@@ -21,8 +21,10 @@ class OwnerChatPage extends StatefulWidget {
 class _OwnerChatPageState extends State<OwnerChatPage> {
   static const baseUrl = 'https://heycar-api-185-165-46-213.nip.io';
   final input = TextEditingController();
+  final scroll = ScrollController();
   List<Map<String, dynamic>> messages = [];
   String? conversationId;
+  String? error;
   bool loading = true;
   bool sending = false;
   Timer? timer;
@@ -37,23 +39,43 @@ class _OwnerChatPageState extends State<OwnerChatPage> {
   void dispose() {
     timer?.cancel();
     input.dispose();
+    scroll.dispose();
     super.dispose();
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !scroll.hasClients) return;
+      scroll.animateTo(
+        scroll.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+      );
+    });
   }
 
   Future<void> _resolve() async {
     final ownerId = OnboardingDraft.userId.trim();
+    if (ownerId.isEmpty) {
+      if (mounted) setState(() { loading = false; error = 'Araç sahibi oturumu bulunamadı.'; });
+      return;
+    }
+    if (mounted) setState(() { loading = true; error = null; });
     try {
       final r = await http.get(
         Uri.parse('$baseUrl/api/owner/notifications/${Uri.encodeComponent(widget.notificationId)}/conversation'),
         headers: {'x-owner-id': ownerId},
       ).timeout(const Duration(seconds: 15));
-      if (r.statusCode < 200 || r.statusCode >= 300) throw Exception();
+      if (r.statusCode < 200 || r.statusCode >= 300) throw Exception('resolve_${r.statusCode}');
       final data = jsonDecode(r.body) as Map<String, dynamic>;
-      conversationId = data['conversationId']?.toString();
+      final id = data['conversationId']?.toString() ?? '';
+      if (id.isEmpty) throw Exception('conversation_missing');
+      conversationId = id;
       await _load();
-      timer = Timer.periodic(const Duration(seconds: 5), (_) => _load(silent: true));
+      timer?.cancel();
+      timer = Timer.periodic(const Duration(seconds: 3), (_) => _load(silent: true));
     } catch (_) {
-      if (mounted) setState(() => loading = false);
+      if (mounted) setState(() { loading = false; error = 'Sohbet açılamadı. Tekrar dene.'; });
     }
   }
 
@@ -65,16 +87,22 @@ class _OwnerChatPageState extends State<OwnerChatPage> {
         Uri.parse('$baseUrl/api/owner/conversations/${Uri.encodeComponent(id)}'),
         headers: {'x-owner-id': OnboardingDraft.userId.trim()},
       ).timeout(const Duration(seconds: 15));
+      if (r.statusCode < 200 || r.statusCode >= 300) throw Exception('load_${r.statusCode}');
       final data = jsonDecode(r.body) as Map<String, dynamic>;
       final list = data['messages'];
-      if (r.statusCode >= 200 && r.statusCode < 300 && list is List && mounted) {
-        setState(() {
-          messages = list.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
-          loading = false;
-        });
-      }
+      if (list is! List) throw Exception('messages_missing');
+      final next = list.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+      if (!mounted) return;
+      final changed = next.length != messages.length ||
+          (next.isNotEmpty && messages.isNotEmpty && next.last['id']?.toString() != messages.last['id']?.toString());
+      setState(() {
+        messages = next;
+        loading = false;
+        error = null;
+      });
+      if (changed) _scrollToBottom();
     } catch (_) {
-      if (!silent && mounted) setState(() => loading = false);
+      if (!silent && mounted) setState(() { loading = false; error = 'Mesajlar yüklenemedi. Tekrar dene.'; });
     }
   }
 
@@ -89,9 +117,15 @@ class _OwnerChatPageState extends State<OwnerChatPage> {
         headers: {'Content-Type': 'application/json', 'x-owner-id': OnboardingDraft.userId.trim()},
         body: jsonEncode({'message': text}),
       ).timeout(const Duration(seconds: 15));
-      if (r.statusCode >= 200 && r.statusCode < 300) {
-        input.clear();
-        await _load();
+      if (r.statusCode < 200 || r.statusCode >= 300) throw Exception('send_${r.statusCode}');
+      input.clear();
+      await _load();
+      _scrollToBottom();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Mesaj gönderilemedi. Tekrar dene.')),
+        );
       }
     } finally {
       if (mounted) setState(() => sending = false);
@@ -111,11 +145,23 @@ class _OwnerChatPageState extends State<OwnerChatPage> {
         ),
         body: loading
             ? const Center(child: CircularProgressIndicator(color: _purple))
-            : conversationId == null
-                ? const Center(child: Text('Bu bildirim için sohbet bulunamadı.', style: TextStyle(color: _muted)))
+            : error != null
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(mainAxisSize: MainAxisSize.min, children: [
+                        const Icon(Icons.chat_bubble_outline_rounded, color: _muted, size: 42),
+                        const SizedBox(height: 10),
+                        Text(error!, textAlign: TextAlign.center, style: const TextStyle(color: _muted)),
+                        const SizedBox(height: 12),
+                        FilledButton(onPressed: _resolve, style: FilledButton.styleFrom(backgroundColor: _purple), child: const Text('Tekrar dene')),
+                      ]),
+                    ),
+                  )
                 : Column(children: [
                     Expanded(
                       child: ListView.builder(
+                        controller: scroll,
                         padding: const EdgeInsets.all(16),
                         itemCount: messages.length,
                         itemBuilder: (_, i) {
