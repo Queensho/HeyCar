@@ -5,7 +5,6 @@ const _panel = Color(0xFF101A30);
 const _line = Color(0xFF2B3A67);
 const _purple = Color(0xFF8B5CFF);
 const _purple2 = Color(0xFF6D3EFF);
-const _lime = Color(0xFF7CFF57);
 const _muted = Color(0xFFAAB4CF);
 
 class OwnerGuidePage extends StatelessWidget {
@@ -68,54 +67,10 @@ class OwnerGuidePage extends StatelessWidget {
                     borderRadius: BorderRadius.circular(28),
                     border: Border.all(color: _line),
                   ),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      Image.asset('assets/Arac.png', fit: BoxFit.cover, alignment: Alignment.center),
-                      Container(
-                        decoration: const BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [Color(0x1106111F), Color(0x3306111F), Color(0xBB06111F)],
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        right: 22,
-                        bottom: 24,
-                        child: Container(
-                          width: 116,
-                          height: 116,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(22),
-                            border: Border.all(color: _purple, width: 5),
-                            boxShadow: const [BoxShadow(color: Color(0x668B5CFF), blurRadius: 22, spreadRadius: 2)],
-                          ),
-                          child: const Center(
-                            child: Icon(Icons.qr_code_2_rounded, size: 82, color: Color(0xFF111111)),
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        left: 18,
-                        bottom: 18,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xDD0E1930),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: _line),
-                          ),
-                          child: const Row(children: [
-                            Icon(Icons.visibility_rounded, size: 18, color: _lime),
-                            SizedBox(width: 7),
-                            Text('Dışarıdan rahat görünür', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12.5)),
-                          ]),
-                        ),
-                      ),
-                    ],
+                  child: Image.asset(
+                    'assets/Yerles.png',
+                    fit: BoxFit.cover,
+                    alignment: Alignment.center,
                   ),
                 ),
                 const SizedBox(height: 18),
