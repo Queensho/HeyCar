@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'entry.dart' as old;
 import 'owner_login.dart';
+import 'owner_welcome_overlay.dart';
 import 'owner_password_login.dart';
 import 'owner_dashboard_live.dart';
 import 'owner_vehicle_setup.dart';
@@ -126,7 +127,7 @@ class _ThemeOwnerEntryState extends State<ThemeOwnerEntry> {
     }
 
     final screens = <Widget>[
-      OwnerWelcome(
+      OwnerWelcomeOverlay(
         onRegister: () => setState(() => registerMode = true),
         onLogin: () => setState(() => loginMode = true),
       ),
