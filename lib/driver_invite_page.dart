@@ -306,14 +306,14 @@ class _Header extends StatelessWidget {
   const _Header({required this.driverName});
   @override
   Widget build(BuildContext context) => SizedBox(
-    height:104,
+    height:112,
     child:Stack(children:[
-      Positioned(left:0,top:12,right:132,child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      Positioned(left:0,top:12,right:150,child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
         Text('Merhaba $driverName',maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:26,fontWeight:FontWeight.w900,height:1.05)),
         const SizedBox(height:9),
         const Text('Yetkili olduğun araç bildirimleri burada görünür.',maxLines:2,style:TextStyle(color:_muted,fontSize:13,height:1.32)),
       ])),
-      Positioned(right:2,top:4,width:148,height:96,child:Image.asset('assets/Ekheader.png',fit:BoxFit.contain,alignment:Alignment.centerRight,errorBuilder:(_,__,___)=>const SizedBox.shrink())),
+      Positioned(right:-6,top:-3,width:178,height:114,child:Image.asset('assets/Cepqar3d.png',fit:BoxFit.contain,alignment:Alignment.centerRight,errorBuilder:(_,__,___)=>const SizedBox.shrink())),
     ]),
   );
 }
