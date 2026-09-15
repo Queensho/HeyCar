@@ -36,6 +36,8 @@ for path in Path('lib').rglob('*.dart'):
 class _RoundIcon""", text, flags=re.S)
 
     if path.as_posix() == 'lib/driver_invite_page.dart':
+        if "import 'driver_chat_page.dart';" not in text:
+            text = text.replace("import 'vehicle_api.dart';", "import 'vehicle_api.dart';\nimport 'driver_chat_page.dart';")
         text = text.replace(
             "child: Container(\n                  minHeight: 108,",
             "child: Container(\n                  constraints: const BoxConstraints(minHeight: 108),",
@@ -56,6 +58,19 @@ class _RoundIcon""", text, flags=re.S)
         text = text.replace("padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3)", "padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2)", 1)
         text = text.replace("fontSize: 10,", "fontSize: 9.5,", 1)
         text = text.replace("const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white70, size: 24)", "const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white70, size: 22)")
+        text = text.replace(
+            "      _DriverNotificationsPage(\n        items: notifications,\n        loading: loading,\n        onRefresh: () => load(),\n      ),",
+            "      _DriverNotificationsPage(\n        userId: widget.userId,\n        items: notifications,\n        loading: loading,\n        onRefresh: () => load(),\n      ),",
+        )
+        text = text.replace(
+            "  const _DriverNotificationsPage({required this.items, required this.loading, required this.onRefresh});\n\n  final List<Map<String, dynamic>> items;",
+            "  const _DriverNotificationsPage({required this.userId, required this.items, required this.loading, required this.onRefresh});\n\n  final String userId;\n  final List<Map<String, dynamic>> items;",
+        )
+        text = text.replace(
+            "            Text(_time(n['created_at']), style: const TextStyle(color: _purpleSoft)),",
+            "            Text(_time(n['created_at']), style: const TextStyle(color: _purpleSoft)),\n            if (type != 'call_request') ...[\n              const SizedBox(height: 18),\n              SizedBox(\n                width: double.infinity,\n                child: FilledButton.icon(\n                  onPressed: () {\n                    Navigator.pop(context);\n                    Navigator.push(\n                      context,\n                      MaterialPageRoute(\n                        builder: (_) => DriverChatPage(\n                          userId: widget.userId,\n                          notificationId: n['id']?.toString() ?? '',\n                          plate: n['plate']?.toString() ?? '',\n                        ),\n                      ),\n                    );\n                  },\n                  style: FilledButton.styleFrom(backgroundColor: _purple),\n                  icon: const Icon(Icons.chat_bubble_outline_rounded),\n                  label: const Text('Anonim Sohbeti Aç', style: TextStyle(fontWeight: FontWeight.w900)),\n                ),\n              ),\n            ],",
+            1,
+        )
         text = re.sub(
             r"class _DriverBrand extends StatelessWidget \{.*?\n\}\n\nclass _RoundIcon",
             """class _DriverBrand extends StatelessWidget {
