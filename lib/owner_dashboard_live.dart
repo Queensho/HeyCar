@@ -6,6 +6,7 @@ import 'owner_notifications_page.dart';
 import 'owner_settings_page.dart';
 import 'owner_vehicles_page.dart';
 import 'owner_dashboard_stats.dart';
+import 'parking_location_card.dart';
 
 const _bg = Color(0xFF07111F);
 const _panel = Color(0xFF101A30);
@@ -63,6 +64,35 @@ class _OwnerDashboardLiveState extends State<OwnerDashboardLive> {
     );
   }
 
+  void _openParking() {
+    final vehicleId = QrDraft.vehicleId.trim().isNotEmpty
+        ? QrDraft.vehicleId.trim()
+        : OnboardingDraft.vehicleId.trim();
+    if (vehicleId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Önce bir araç ekleyin.')),
+      );
+      return;
+    }
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: _bg,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (context) => SafeArea(
+        top: false,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(18, 12, 18, 18 + MediaQuery.of(context).viewInsets.bottom),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(width: 42, height: 4, decoration: BoxDecoration(color: _line, borderRadius: BorderRadius.circular(8))),
+            const SizedBox(height: 16),
+            ParkingLocationCard(vehicleId: vehicleId),
+          ]),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<int>(
@@ -73,6 +103,7 @@ class _OwnerDashboardLiveState extends State<OwnerDashboardLive> {
             onOpenNotifications: () => setState(() => current = 1),
             onOpenVehicles: () => setState(() => current = 2),
             onOpenQr: _openQr,
+            onOpenParking: _openParking,
           ),
           const OwnerNotificationsPage(),
           const OwnerVehiclesPage(),
@@ -95,17 +126,7 @@ class _OwnerDashboardLiveState extends State<OwnerDashboardLive> {
                 Stack(clipBehavior: Clip.none, children: [
                   Icon(icons[i], color: active ? _purple : const Color(0xFF8F9AB7), size: 28),
                   if (i == 1 && unreadCount > 0)
-                    Positioned(
-                      right: -8,
-                      top: -7,
-                      child: Container(
-                        constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
-                        padding: const EdgeInsets.symmetric(horizontal: 5),
-                        alignment: Alignment.center,
-                        decoration: const BoxDecoration(color: Color(0xFFFF4D63), shape: BoxShape.circle),
-                        child: Text(unreadCount > 99 ? '99+' : '$unreadCount', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900)),
-                      ),
-                    ),
+                    Positioned(right: -8, top: -7, child: Container(constraints: const BoxConstraints(minWidth: 20, minHeight: 20), padding: const EdgeInsets.symmetric(horizontal: 5), alignment: Alignment.center, decoration: const BoxDecoration(color: Color(0xFFFF4D63), shape: BoxShape.circle), child: Text(unreadCount > 99 ? '99+' : '$unreadCount', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900)))),
                 ]),
                 const SizedBox(height: 5),
                 Text(labels[i], style: TextStyle(color: active ? _purple : const Color(0xFF8F9AB7), fontSize: 11.5, fontWeight: active ? FontWeight.w800 : FontWeight.w500)),
@@ -119,19 +140,16 @@ class _OwnerDashboardLiveState extends State<OwnerDashboardLive> {
 }
 
 class _OwnerHome extends StatelessWidget {
-  const _OwnerHome({required this.onOpenNotifications, required this.onOpenVehicles, required this.onOpenQr});
+  const _OwnerHome({required this.onOpenNotifications, required this.onOpenVehicles, required this.onOpenQr, required this.onOpenParking});
   final VoidCallback onOpenNotifications;
   final VoidCallback onOpenVehicles;
   final VoidCallback onOpenQr;
+  final VoidCallback onOpenParking;
 
   String get name => OnboardingDraft.displayName.trim().isEmpty ? 'Araç Sahibi' : OnboardingDraft.displayName.trim().split(' ').first;
   String get plate => QrDraft.plate.trim().isEmpty ? 'Araç eklenmedi' : QrDraft.plate.trim();
   String get make => QrDraft.make.trim();
-  String get carName {
-    final model = QrDraft.model.trim();
-    if (make.isEmpty && model.isEmpty) return 'Araç bilgilerini ekle';
-    return '$make $model'.trim();
-  }
+  String get carName { final model = QrDraft.model.trim(); if (make.isEmpty && model.isEmpty) return 'Araç bilgilerini ekle'; return '$make $model'.trim(); }
 
   Widget _brandLogo() {
     final url = make.isEmpty ? null : VehicleApi.brandLogoUrl(make);
@@ -139,21 +157,30 @@ class _OwnerHome extends StatelessWidget {
     return SizedBox(width: 66, height: 54, child: Padding(padding: const EdgeInsets.all(7), child: Image.network(url, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Icon(Icons.directions_car_filled_rounded, color: _purple, size: 31))));
   }
 
-  Widget _logo() => const Text.rich(
-        TextSpan(children: [TextSpan(text: 'Hey', style: TextStyle(color: Colors.white)), TextSpan(text: 'Car', style: TextStyle(color: _purple))]),
-        style: TextStyle(fontSize: 34, fontWeight: FontWeight.w900, letterSpacing: -1.6),
-      );
+  Widget _logo() => const Text.rich(TextSpan(children: [TextSpan(text: 'Hey', style: TextStyle(color: Colors.white)), TextSpan(text: 'Car', style: TextStyle(color: _purple))]), style: TextStyle(fontSize: 34, fontWeight: FontWeight.w900, letterSpacing: -1.6));
+
+  Widget _parkingButton() => InkWell(
+    onTap: onOpenParking,
+    borderRadius: BorderRadius.circular(16),
+    child: Container(
+      width: 62,
+      height: 62,
+      decoration: BoxDecoration(color: const Color(0xB8171238), borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFF5931A8))),
+      child: const Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Icon(Icons.local_parking_rounded, color: _purple, size: 27),
+        SizedBox(height: 1),
+        Text('Park', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
+      ]),
+    ),
+  );
 
   Widget _profile() => Row(mainAxisSize: MainAxisSize.min, children: [
-        const CircleAvatar(radius: 21, backgroundColor: _panel, child: Icon(Icons.person_rounded, color: Colors.white70, size: 23)),
-        const SizedBox(width: 10),
-        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15)),
-          const Text('Araç Sahibi', style: TextStyle(color: _muted, fontSize: 12)),
-        ]),
-        const SizedBox(width: 4),
-        const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white70),
-      ]);
+    const CircleAvatar(radius: 21, backgroundColor: _panel, child: Icon(Icons.person_rounded, color: Colors.white70, size: 23)),
+    const SizedBox(width: 10),
+    Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15)), const Text('Araç Sahibi', style: TextStyle(color: _muted, fontSize: 12))]),
+    const SizedBox(width: 4),
+    const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white70),
+  ]);
 
   @override
   Widget build(BuildContext context) {
@@ -163,7 +190,7 @@ class _OwnerHome extends StatelessWidget {
     return ListView(padding: EdgeInsets.zero, children: [
       SizedBox(height: compact ? 500 : 555, child: Stack(clipBehavior: Clip.none, children: [
         Positioned.fill(child: Image.asset('assets/Aracsahibi.png', fit: BoxFit.cover, alignment: Alignment.topCenter)),
-        Positioned(left: 22, right: 22, top: topInset + 14, child: Row(children: [_logo(), const Spacer(), _profile()])),
+        Positioned(left: 22, right: 22, top: topInset + 14, child: Row(children: [_logo(), const Spacer(), _parkingButton(), const SizedBox(width: 10), _profile()])),
         Positioned(left: 16, bottom: compact ? 18 : 24, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('Merhaba', style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900, height: .95)),
           Text(name, style: const TextStyle(color: _purple, fontSize: 43, fontWeight: FontWeight.w900, height: 1)),
@@ -178,11 +205,7 @@ class _OwnerHome extends StatelessWidget {
         const SizedBox(height: 14),
         SizedBox(height: 58, width: double.infinity, child: FilledButton.icon(onPressed: onOpenNotifications, style: FilledButton.styleFrom(backgroundColor: _purple, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))), icon: const Icon(Icons.notifications_rounded), label: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [Text('Bildirimleri Gör', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900)), SizedBox(width: 8), Icon(Icons.chevron_right_rounded)]))),
         const SizedBox(height: 14),
-        Row(children: [
-          Expanded(child: _Shortcut(icon: Icons.qr_code_scanner_rounded, title: 'QR Kodumu Gör', sub: 'İndir / Paylaş', onTap: onOpenQr)),
-          const SizedBox(width: 12),
-          Expanded(child: _Shortcut(icon: Icons.directions_car_filled_rounded, title: 'Araç Bilgilerim', sub: 'Düzenle', onTap: onOpenVehicles)),
-        ]),
+        Row(children: [Expanded(child: _Shortcut(icon: Icons.qr_code_scanner_rounded, title: 'QR Kodumu Gör', sub: 'İndir / Paylaş', onTap: onOpenQr)), const SizedBox(width: 12), Expanded(child: _Shortcut(icon: Icons.directions_car_filled_rounded, title: 'Araç Bilgilerim', sub: 'Düzenle', onTap: onOpenVehicles))]),
         const SizedBox(height: 14),
         const _Card(child: Row(children: [Icon(Icons.info_outline_rounded, color: _purple), SizedBox(width: 10), Expanded(child: Text('HeyCar etiketin her zaman yanında, yollarda daha güvende.', style: TextStyle(color: _muted, height: 1.35)))])),
       ])),
@@ -190,18 +213,5 @@ class _OwnerHome extends StatelessWidget {
   }
 }
 
-class _Card extends StatelessWidget {
-  const _Card({required this.child});
-  final Widget child;
-  @override
-  Widget build(BuildContext context) => Container(padding: const EdgeInsets.all(15), decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(20), border: Border.all(color: _line)), child: child);
-}
-
-class _Shortcut extends StatelessWidget {
-  const _Shortcut({required this.icon, required this.title, required this.sub, required this.onTap});
-  final IconData icon;
-  final String title, sub;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) => InkWell(onTap: onTap, borderRadius: BorderRadius.circular(20), child: Container(height: 116, padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(20), border: Border.all(color: _line)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [Icon(icon, color: _purple, size: 30), const SizedBox(height: 10), Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 14)), const SizedBox(height: 4), Text(sub, style: const TextStyle(color: _muted, fontSize: 12))])));
-}
+class _Card extends StatelessWidget { const _Card({required this.child}); final Widget child; @override Widget build(BuildContext context) => Container(padding: const EdgeInsets.all(15), decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(20), border: Border.all(color: _line)), child: child); }
+class _Shortcut extends StatelessWidget { const _Shortcut({required this.icon, required this.title, required this.sub, required this.onTap}); final IconData icon; final String title, sub; final VoidCallback onTap; @override Widget build(BuildContext context) => InkWell(onTap: onTap, borderRadius: BorderRadius.circular(20), child: Container(height: 116, padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(20), border: Border.all(color: _line)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [Icon(icon, color: _purple, size: 30), const SizedBox(height: 10), Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 14)), const SizedBox(height: 4), Text(sub, style: const TextStyle(color: _muted, fontSize: 12))]))); }
