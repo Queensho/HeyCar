@@ -56,6 +56,26 @@ class _RoundIcon""", text, flags=re.S)
         text = text.replace("padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3)", "padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2)", 1)
         text = text.replace("fontSize: 10,", "fontSize: 9.5,", 1)
         text = text.replace("const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white70, size: 24)", "const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white70, size: 22)")
+        text = re.sub(
+            r"class _DriverBrand extends StatelessWidget \{.*?\n\}\n\nclass _RoundIcon",
+            """class _DriverBrand extends StatelessWidget {
+  const _DriverBrand();
+
+  @override
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Image.asset('assets/Logoqr.png', height: 38, fit: BoxFit.contain),
+          const SizedBox(height: 5),
+          const Text('Sürücü', style: TextStyle(color: _muted, fontSize: 12.5)),
+        ],
+      );
+}
+
+class _RoundIcon""",
+            text,
+            flags=re.S,
+        )
 
     if path.as_posix() == 'lib/public_qr_entry.dart':
         text = re.sub(r"class _TopBar extends StatelessWidget\{.*\Z", """class _TopBar extends StatelessWidget{const _TopBar({required this.onMenu});final VoidCallback onMenu;@override Widget build(BuildContext context){final compact=MediaQuery.sizeOf(context).width<390;return Row(children:[Image.asset('assets/Logoqr.png',height:compact?38:42,fit:BoxFit.contain),const Spacer(),Container(padding:EdgeInsets.symmetric(horizontal:compact?11:12,vertical:compact?7:8),decoration:BoxDecoration(border:Border.all(color:_line),borderRadius:BorderRadius.circular(18)),child:Text('TR ⌄',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w800,fontSize:compact?14:15))),const SizedBox(width:8),IconButton(onPressed:onMenu,padding:EdgeInsets.zero,constraints:const BoxConstraints(minWidth:38,minHeight:38),icon:Icon(Icons.menu_rounded,color:Colors.white,size:compact?29:31))]);}}
