@@ -30,6 +30,9 @@ jobs:
       - name: Apply Cepqar frontend branding
         run: python3 tool/brand_frontend.py
 
+      - name: Apply owner light theme
+        run: python3 tool/owner_light_theme_patch.py
+
       - name: Match owner header to driver
         run: python3 tool/owner_header_size_patch.py
 
