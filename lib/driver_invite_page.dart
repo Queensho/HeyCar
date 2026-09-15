@@ -373,7 +373,7 @@ class _MiniChip extends StatelessWidget {
 
 class _CountBadge extends StatelessWidget {
   final int count; const _CountBadge({required this.count});
-  @override Widget build(BuildContext context)=>Container(minWidth:28,height:28,alignment:Alignment.center,padding:const EdgeInsets.symmetric(horizontal:7),decoration:BoxDecoration(color:_purple.withOpacity(.42),borderRadius:BorderRadius.circular(99),border:Border.all(color:_purple.withOpacity(.7))),child:Text('$count',style:const TextStyle(fontWeight:FontWeight.w900,fontSize:12)));
+  @override Widget build(BuildContext context)=>Container(constraints:const BoxConstraints(minWidth:28),height:28,alignment:Alignment.center,padding:const EdgeInsets.symmetric(horizontal:7),decoration:BoxDecoration(color:_purple.withOpacity(.42),borderRadius:BorderRadius.circular(99),border:Border.all(color:_purple.withOpacity(.7))),child:Text('$count',style:const TextStyle(fontWeight:FontWeight.w900,fontSize:12)));
 }
 
 class _EmptyVehicleCard extends StatelessWidget {
