@@ -40,6 +40,22 @@ class _RoundIcon""", text, flags=re.S)
             "child: Container(\n                  minHeight: 108,",
             "child: Container(\n                  constraints: const BoxConstraints(minHeight: 108),",
         )
+        text = text.replace(
+            "        width: 158,\n        height: 55,",
+            "        width: 142,\n        height: 52,",
+        )
+        text = text.replace(
+            "                      _brand(),\n                      const Spacer(),\n                      Flexible(child: _profile()),",
+            "                      _brand(),\n                      const SizedBox(width: 8),\n                      Expanded(\n                        child: Align(\n                          alignment: Alignment.topRight,\n                          child: SizedBox(\n                            width: 168,\n                            child: FittedBox(\n                              fit: BoxFit.scaleDown,\n                              alignment: Alignment.centerRight,\n                              child: _profile(),\n                            ),\n                          ),\n                        ),\n                      ),",
+        )
+        text = text.replace("          radius: 24,", "          radius: 22,")
+        text = text.replace("        const SizedBox(width: 10),", "        const SizedBox(width: 8),", 1)
+        text = text.replace("                fontSize: 17,", "                fontSize: 16,", 1)
+        text = text.replace("const Text('Sürücü', style: TextStyle(color: _muted, fontSize: 13))", "const Text('Sürücü', style: TextStyle(color: _muted, fontSize: 12))")
+        text = text.replace("const SizedBox(width: 7),", "const SizedBox(width: 5),", 1)
+        text = text.replace("padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3)", "padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2)", 1)
+        text = text.replace("fontSize: 10,", "fontSize: 9.5,", 1)
+        text = text.replace("const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white70, size: 24)", "const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white70, size: 22)")
 
     if path.as_posix() == 'lib/public_qr_entry.dart':
         text = re.sub(r"class _TopBar extends StatelessWidget\{.*\Z", """class _TopBar extends StatelessWidget{const _TopBar({required this.onMenu});final VoidCallback onMenu;@override Widget build(BuildContext context){final compact=MediaQuery.sizeOf(context).width<390;return Row(children:[Image.asset('assets/Logoqr.png',height:compact?38:42,fit:BoxFit.contain),const Spacer(),Container(padding:EdgeInsets.symmetric(horizontal:compact?11:12,vertical:compact?7:8),decoration:BoxDecoration(border:Border.all(color:_line),borderRadius:BorderRadius.circular(18)),child:Text('TR ⌄',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w800,fontSize:compact?14:15))),const SizedBox(width:8),IconButton(onPressed:onMenu,padding:EdgeInsets.zero,constraints:const BoxConstraints(minWidth:38,minHeight:38),icon:Icon(Icons.menu_rounded,color:Colors.white,size:compact?29:31))]);}}
