@@ -227,43 +227,44 @@ class _DriverHomePageState extends State<DriverHomePage> {
         elevation: 0,
         backgroundColor: const Color(0xFF0A1020),
         surfaceTintColor: Colors.transparent,
+        toolbarHeight: 62,
         leading: Navigator.canPop(context) ? IconButton(onPressed: () => Navigator.maybePop(context), icon: const Icon(Icons.arrow_back_rounded, size: 26)) : null,
         titleSpacing: 4,
         title: Row(mainAxisSize: MainAxisSize.min, children: [
-          const Text('Cepqar', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
-          const Padding(padding: EdgeInsets.symmetric(horizontal:6), child: Text('•', style: TextStyle(color:_purple, fontSize:18))),
-          const Text('Sürücü', style: TextStyle(fontSize:20, fontWeight:FontWeight.w800, color:_purpleSoft)),
-          const SizedBox(width:8),
+          const Text('Cepqar', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900)),
+          const Padding(padding: EdgeInsets.symmetric(horizontal:5), child: Text('•', style: TextStyle(color:_purple, fontSize:17))),
+          const Text('Sürücü', style: TextStyle(fontSize:19, fontWeight:FontWeight.w800, color:_purpleSoft)),
+          const SizedBox(width:7),
           _HeaderStatus(active: active),
         ]),
-        actions: [IconButton(onPressed: load, icon: const Icon(Icons.refresh_rounded, size: 27)), const SizedBox(width:4)],
+        actions: [IconButton(onPressed: load, icon: const Icon(Icons.refresh_rounded, size: 26)), const SizedBox(width:2)],
       ),
       body: loading ? const Center(child:CircularProgressIndicator(color:_purple)) : RefreshIndicator(
         color:_purple,
         onRefresh:load,
         child:ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16,18,16,24),
+          padding: const EdgeInsets.fromLTRB(18,14,18,22),
           children:[
             _Header(driverName:_firstName()),
-            const SizedBox(height:22),
+            const SizedBox(height:20),
             const _SectionTitle('Yetkili olduğun araçlar'),
-            const SizedBox(height:10),
+            const SizedBox(height:9),
             if (vehicles.isEmpty) const _EmptyVehicleCard() else for (final v in vehicles) ...[
               _VehicleCard(title:_vehicleTitle(v), active:v['active']==true),
-              const SizedBox(height:10),
+              const SizedBox(height:9),
             ],
-            const SizedBox(height:18),
+            const SizedBox(height:15),
             Row(children:[
               const Expanded(child:_SectionTitle('Bana gelen bildirimler')),
               _CountBadge(count:notifications.length),
             ]),
-            const SizedBox(height:12),
+            const SizedBox(height:10),
             if (notifications.isEmpty) const _EmptyNotificationCard() else for(final n in notifications) ...[
               _NotificationCard(icon:_notificationIcon(n), title:_notificationTitle(n), message:(n['message']??'Araç için yeni bir QR bildirimi geldi.').toString(), time:_relativeTime(n), unread:_isUnread(n), onTap:()=>_showNotification(n)),
-              const SizedBox(height:10),
+              const SizedBox(height:9),
             ],
-            const SizedBox(height:6),
+            const SizedBox(height:4),
             const _InfoCard(),
           ],
         ),
@@ -293,9 +294,9 @@ class _HeaderStatus extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = active ? const Color(0xFF55E6A5) : const Color(0xFFFF8191);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal:7,vertical:3),
+      padding: const EdgeInsets.symmetric(horizontal:6,vertical:2.5),
       decoration:BoxDecoration(color:c.withOpacity(.10),borderRadius:BorderRadius.circular(99),border:Border.all(color:c.withOpacity(.65))),
-      child:Row(mainAxisSize:MainAxisSize.min,children:[Container(width:6,height:6,decoration:BoxDecoration(color:c,shape:BoxShape.circle)),const SizedBox(width:4),Text(active?'Aktif':'Pasif',style:TextStyle(color:c,fontSize:10,fontWeight:FontWeight.w800))]),
+      child:Row(mainAxisSize:MainAxisSize.min,children:[Container(width:5.5,height:5.5,decoration:BoxDecoration(color:c,shape:BoxShape.circle)),const SizedBox(width:4),Text(active?'Aktif':'Pasif',style:TextStyle(color:c,fontSize:9.5,fontWeight:FontWeight.w800))]),
     );
   }
 }
@@ -305,14 +306,14 @@ class _Header extends StatelessWidget {
   const _Header({required this.driverName});
   @override
   Widget build(BuildContext context) => SizedBox(
-    height:112,
+    height:104,
     child:Stack(children:[
-      Positioned(left:0,top:13,right:150,child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-        Text('Merhaba $driverName',maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:27,fontWeight:FontWeight.w900,height:1.05)),
-        const SizedBox(height:10),
-        const Text('Yetkili olduğun araç bildirimleri burada görünür.',style:TextStyle(color:_muted,fontSize:13.5,height:1.35)),
+      Positioned(left:0,top:12,right:132,child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        Text('Merhaba $driverName',maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:26,fontWeight:FontWeight.w900,height:1.05)),
+        const SizedBox(height:9),
+        const Text('Yetkili olduğun araç bildirimleri burada görünür.',maxLines:2,style:TextStyle(color:_muted,fontSize:13,height:1.32)),
       ])),
-      Positioned(right:-2,top:0,width:174,height:112,child:Image.asset('assets/Ekheader.png',fit:BoxFit.contain,alignment:Alignment.centerRight,errorBuilder:(_,__,___)=>const SizedBox.shrink())),
+      Positioned(right:2,top:4,width:148,height:96,child:Image.asset('assets/Ekheader.png',fit:BoxFit.contain,alignment:Alignment.centerRight,errorBuilder:(_,__,___)=>const SizedBox.shrink())),
     ]),
   );
 }
@@ -320,24 +321,24 @@ class _Header extends StatelessWidget {
 class _SectionTitle extends StatelessWidget {
   final String text;
   const _SectionTitle(this.text);
-  @override Widget build(BuildContext context)=>Text(text,style:const TextStyle(fontSize:20,fontWeight:FontWeight.w900));
+  @override Widget build(BuildContext context)=>Text(text,style:const TextStyle(fontSize:19,fontWeight:FontWeight.w900));
 }
 
 class _VehicleCard extends StatelessWidget {
   final String title; final bool active;
   const _VehicleCard({required this.title,required this.active});
   @override Widget build(BuildContext context)=>Container(
-    constraints:const BoxConstraints(minHeight:108),padding:const EdgeInsets.symmetric(horizontal:14,vertical:14),
-    decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(20),border:Border.all(color:_border)),
+    constraints:const BoxConstraints(minHeight:100),padding:const EdgeInsets.symmetric(horizontal:13,vertical:12),
+    decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(18),border:Border.all(color:_border)),
     child:Row(children:[
-      Container(width:58,height:58,decoration:BoxDecoration(shape:BoxShape.circle,gradient:const LinearGradient(colors:[Color(0xFF7F55E9),Color(0xFF432278)]),border:Border.all(color:_purple.withOpacity(.6))),child:const Icon(Icons.directions_car_filled_rounded,size:29)),
-      const SizedBox(width:13),
+      Container(width:54,height:54,decoration:BoxDecoration(shape:BoxShape.circle,gradient:const LinearGradient(colors:[Color(0xFF7F55E9),Color(0xFF432278)]),border:Border.all(color:_purple.withOpacity(.6))),child:const Icon(Icons.directions_car_filled_rounded,size:27)),
+      const SizedBox(width:12),
       Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisAlignment:MainAxisAlignment.center,children:[
-        Text(title,style:const TextStyle(fontSize:17,fontWeight:FontWeight.w900)),const SizedBox(height:5),
-        Text(active?'Araç sahibi seni şu an aktif sürücü olarak seçti.':'Yetkili sürücüsün. Aktif sürücüyü araç sahibi belirler.',style:const TextStyle(color:_muted,fontSize:12.5,height:1.32)),
+        Text(title,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:16.5,fontWeight:FontWeight.w900)),const SizedBox(height:4),
+        Text(active?'Yetkili sürücüsün. Aktif sürücü olarak seçildin.':'Yetkili sürücüsün. Aktif sürücüyü araç sahibi belirler.',maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_muted,fontSize:12,height:1.28)),
       ])),
       const SizedBox(width:7),
-      Container(padding:const EdgeInsets.symmetric(horizontal:9,vertical:6),decoration:BoxDecoration(color:_purple.withOpacity(.12),borderRadius:BorderRadius.circular(99),border:Border.all(color:_purple.withOpacity(.7))),child:Text(active?'Aktif':'Yetkili Sürücü',style:const TextStyle(color:_purpleSoft,fontSize:10.5,fontWeight:FontWeight.w800))),
+      Container(padding:const EdgeInsets.symmetric(horizontal:8,vertical:5.5),decoration:BoxDecoration(color:_purple.withOpacity(.12),borderRadius:BorderRadius.circular(99),border:Border.all(color:_purple.withOpacity(.7))),child:Text(active?'Aktif':'Yetkili Sürücü',style:const TextStyle(color:_purpleSoft,fontSize:10,fontWeight:FontWeight.w800))),
     ]),
   );
 }
@@ -347,18 +348,18 @@ class _NotificationCard extends StatelessWidget {
   const _NotificationCard({required this.icon,required this.title,required this.message,required this.time,required this.unread,required this.onTap});
   @override Widget build(BuildContext context){
     final accent=unread?const Color(0xFFE568FF):const Color(0xFF748CFF);
-    return InkWell(onTap:onTap,borderRadius:BorderRadius.circular(20),child:Container(
-      constraints:const BoxConstraints(minHeight:112),padding:const EdgeInsets.all(14),
-      decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(20),border:Border.all(color:accent.withOpacity(.36))),
+    return InkWell(onTap:onTap,borderRadius:BorderRadius.circular(18),child:Container(
+      constraints:const BoxConstraints(minHeight:104),padding:const EdgeInsets.symmetric(horizontal:13,vertical:12),
+      decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(18),border:Border.all(color:accent.withOpacity(.36))),
       child:Row(children:[
-        Container(width:54,height:54,decoration:BoxDecoration(shape:BoxShape.circle,color:accent.withOpacity(.18),border:Border.all(color:accent.withOpacity(.45))),child:Icon(icon,color:accent,size:28)),
-        const SizedBox(width:13),
+        Container(width:50,height:50,decoration:BoxDecoration(shape:BoxShape.circle,color:accent.withOpacity(.18),border:Border.all(color:accent.withOpacity(.45))),child:Icon(icon,color:accent,size:26)),
+        const SizedBox(width:12),
         Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisAlignment:MainAxisAlignment.center,children:[
-          Text(title,style:const TextStyle(fontSize:16.5,fontWeight:FontWeight.w900)),const SizedBox(height:4),
-          Text(message,maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_muted,fontSize:12.5,height:1.3)),const SizedBox(height:8),
-          Wrap(spacing:7,children:[_MiniChip(text:unread?'Yeni':'Okundu',color:accent),_MiniChip(text:time,color:_muted)]),
+          Text(title,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:16,fontWeight:FontWeight.w900)),const SizedBox(height:4),
+          Text(message,maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_muted,fontSize:12,height:1.28)),const SizedBox(height:7),
+          Wrap(spacing:6,children:[_MiniChip(text:unread?'Yeni':'Okundu',color:accent),_MiniChip(text:time,color:_muted)]),
         ])),
-        Icon(Icons.chevron_right_rounded,color:accent,size:28),
+        Icon(Icons.chevron_right_rounded,color:accent,size:27),
       ]),
     ));
   }
@@ -367,33 +368,33 @@ class _NotificationCard extends StatelessWidget {
 class _MiniChip extends StatelessWidget {
   final String text; final Color color;
   const _MiniChip({required this.text,required this.color});
-  @override Widget build(BuildContext context)=>Container(padding:const EdgeInsets.symmetric(horizontal:8,vertical:5),decoration:BoxDecoration(color:color.withOpacity(.10),borderRadius:BorderRadius.circular(99),border:Border.all(color:color.withOpacity(.25))),child:Text(text,style:TextStyle(color:color,fontSize:10.5,fontWeight:FontWeight.w700)));
+  @override Widget build(BuildContext context)=>Container(padding:const EdgeInsets.symmetric(horizontal:7.5,vertical:4.5),decoration:BoxDecoration(color:color.withOpacity(.10),borderRadius:BorderRadius.circular(99),border:Border.all(color:color.withOpacity(.25))),child:Text(text,style:TextStyle(color:color,fontSize:10,fontWeight:FontWeight.w700)));
 }
 
 class _CountBadge extends StatelessWidget {
   final int count; const _CountBadge({required this.count});
-  @override Widget build(BuildContext context)=>Container(minWidth:30,height:30,alignment:Alignment.center,padding:const EdgeInsets.symmetric(horizontal:8),decoration:BoxDecoration(color:_purple.withOpacity(.42),borderRadius:BorderRadius.circular(99),border:Border.all(color:_purple.withOpacity(.7))),child:Text('$count',style:const TextStyle(fontWeight:FontWeight.w900)));
+  @override Widget build(BuildContext context)=>Container(minWidth:28,height:28,alignment:Alignment.center,padding:const EdgeInsets.symmetric(horizontal:7),decoration:BoxDecoration(color:_purple.withOpacity(.42),borderRadius:BorderRadius.circular(99),border:Border.all(color:_purple.withOpacity(.7))),child:Text('$count',style:const TextStyle(fontWeight:FontWeight.w900,fontSize:12)));
 }
 
 class _EmptyVehicleCard extends StatelessWidget {
   const _EmptyVehicleCard();
-  @override Widget build(BuildContext context)=>Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(20),border:Border.all(color:_border)),child:const Text('Henüz yetkili olduğun bir araç bulunmuyor.',style:TextStyle(color:_muted)));
+  @override Widget build(BuildContext context)=>Container(padding:const EdgeInsets.all(15),decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(18),border:Border.all(color:_border)),child:const Text('Henüz yetkili olduğun bir araç bulunmuyor.',style:TextStyle(color:_muted,fontSize:12.5)));
 }
 
 class _EmptyNotificationCard extends StatelessWidget {
   const _EmptyNotificationCard();
-  @override Widget build(BuildContext context)=>Container(padding:const EdgeInsets.all(18),decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(20),border:Border.all(color:_border)),child:const Column(children:[Icon(Icons.notifications_none_rounded,color:_purpleSoft,size:30),SizedBox(height:9),Text('Henüz bildirim yok',style:TextStyle(fontWeight:FontWeight.w900)),SizedBox(height:5),Text('Aktif sürücü olduğunda QR bildirimleri burada görünür.',textAlign:TextAlign.center,style:TextStyle(color:_muted,fontSize:12.5))]));
+  @override Widget build(BuildContext context)=>Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(18),border:Border.all(color:_border)),child:const Column(children:[Icon(Icons.notifications_none_rounded,color:_purpleSoft,size:28),SizedBox(height:8),Text('Henüz bildirim yok',style:TextStyle(fontWeight:FontWeight.w900,fontSize:15.5)),SizedBox(height:4),Text('Aktif sürücü olduğunda QR bildirimleri burada görünür.',textAlign:TextAlign.center,style:TextStyle(color:_muted,fontSize:12))]));
 }
 
 class _InfoCard extends StatelessWidget {
   const _InfoCard();
-  @override Widget build(BuildContext context)=>Container(padding:const EdgeInsets.all(14),decoration:BoxDecoration(color:const Color(0xFF101930),borderRadius:BorderRadius.circular(18),border:Border.all(color:_border)),child:const Row(children:[Icon(Icons.info_outline_rounded,color:_purpleSoft,size:25),SizedBox(width:12),Expanded(child:Text('Aktif sürücü seçildiğinde yeni QR bildirimleri burada listelenir.',style:TextStyle(color:_purpleSoft,fontSize:12.5,height:1.3)))]));
+  @override Widget build(BuildContext context)=>Container(padding:const EdgeInsets.symmetric(horizontal:13,vertical:12),decoration:BoxDecoration(color:const Color(0xFF101930),borderRadius:BorderRadius.circular(17),border:Border.all(color:_border)),child:const Row(children:[Icon(Icons.info_outline_rounded,color:_purpleSoft,size:24),SizedBox(width:11),Expanded(child:Text('Aktif sürücü seçildiğinde yeni QR bildirimleri burada listelenir.',style:TextStyle(color:_purpleSoft,fontSize:12,height:1.28)))]));
 }
 
 class _DriverBottomNav extends StatelessWidget {
   final int index; final ValueChanged<int> onTap;
   const _DriverBottomNav({required this.index,required this.onTap});
-  @override Widget build(BuildContext context)=>Container(decoration:const BoxDecoration(color:Color(0xFF08111F),border:Border(top:BorderSide(color:Color(0xFF1C2848)))),child:SafeArea(top:false,child:NavigationBar(height:68,backgroundColor:Colors.transparent,indicatorColor:_purple.withOpacity(.18),selectedIndex:index,onDestinationSelected:onTap,destinations:const[
+  @override Widget build(BuildContext context)=>Container(decoration:const BoxDecoration(color:Color(0xFF08111F),border:Border(top:BorderSide(color:Color(0xFF1C2848)))),child:SafeArea(top:false,child:NavigationBar(height:66,backgroundColor:Colors.transparent,indicatorColor:_purple.withOpacity(.18),selectedIndex:index,onDestinationSelected:onTap,destinations:const[
     NavigationDestination(icon:Icon(Icons.home_outlined),selectedIcon:Icon(Icons.home_rounded,color:_purple),label:'Ana Sayfa'),
     NavigationDestination(icon:Icon(Icons.notifications_none_rounded),selectedIcon:Icon(Icons.notifications_rounded,color:_purple),label:'Bildirimler'),
     NavigationDestination(icon:Icon(Icons.directions_car_outlined),selectedIcon:Icon(Icons.directions_car_rounded,color:_purple),label:'Araçlar'),
