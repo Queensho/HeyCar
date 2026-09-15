@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'onboarding_backend.dart';
 import 'qr_backend.dart';
 import 'vehicle_api.dart';
@@ -9,265 +10,38 @@ import 'owner_settings_page.dart';
 import 'owner_vehicles_page.dart';
 import 'owner_dashboard_stats.dart';
 import 'parking_location_card.dart';
+import 'owner_shortcuts.dart';
 
-const _bg = Color(0xFF07111F);
-const _panel = Color(0xFF101A30);
-const _line = Color(0xFF27355D);
-const _purple = Color(0xFF8B5CFF);
-const _muted = Color(0xFFA7B0C7);
+const _bg=Color(0xFF07111F),_panel=Color(0xFF101A30),_line=Color(0xFF27355D),_purple=Color(0xFF8B5CFF),_muted=Color(0xFFA7B0C7);
 
-class OwnerDashboardLive extends StatefulWidget {
-  const OwnerDashboardLive({super.key});
-  @override
-  State<OwnerDashboardLive> createState() => _OwnerDashboardLiveState();
+class OwnerDashboardLive extends StatefulWidget{const OwnerDashboardLive({super.key});@override State<OwnerDashboardLive> createState()=>_OwnerDashboardLiveState();}
+class _OwnerDashboardLiveState extends State<OwnerDashboardLive>{
+ int current=0;bool parkingSaved=false;
+ String get _vehicleId=>QrDraft.vehicleId.trim().isNotEmpty?QrDraft.vehicleId.trim():OnboardingDraft.vehicleId.trim();String get _ownerId=>OnboardingDraft.userId.trim();
+ @override void initState(){super.initState();_loadParkingState();}
+ Future<void> _loadParkingState()async{final v=_vehicleId,o=_ownerId;if(v.isEmpty||o.isEmpty){if(mounted&&parkingSaved)setState(()=>parkingSaved=false);return;}try{final r=await http.get(Uri.parse('${QrBackend.baseUrl}/api/vehicles/$v/parking'),headers:{'x-owner-id':o});if(r.statusCode<200||r.statusCode>=300)return;final d=jsonDecode(r.body);final saved=d is Map&&d['parking'] is Map;if(mounted&&parkingSaved!=saved)setState(()=>parkingSaved=saved);}catch(_){}}
+ void _openQr(){final token=QrDraft.token.trim(),url=QrDraft.token.trim().isEmpty?'':'https://queensho.github.io/HeyCar/?tag=${Uri.encodeComponent(QrDraft.token.trim())}';showModalBottomSheet(context:context,backgroundColor:_panel,isScrollControlled:true,shape:const RoundedRectangleBorder(borderRadius:BorderRadius.vertical(top:Radius.circular(28))),builder:(context)=>SafeArea(top:false,child:Padding(padding:const EdgeInsets.fromLTRB(22,22,22,28),child:Column(mainAxisSize:MainAxisSize.min,children:[Container(width:44,height:4,decoration:BoxDecoration(color:_line,borderRadius:BorderRadius.circular(8))),const SizedBox(height:18),const Text('QR Kodum',style:TextStyle(color:Colors.white,fontSize:24,fontWeight:FontWeight.w900)),const SizedBox(height:6),Text(token.isEmpty?'Henüz aktif bir QR etiketi yok.':token,style:const TextStyle(color:_muted,fontSize:14)),const SizedBox(height:18),if(url.isNotEmpty)Container(width:230,height:230,padding:const EdgeInsets.all(14),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(24)),child:Image.network('https://quickchart.io/qr?text=${Uri.encodeComponent(url)}&size=420',fit:BoxFit.contain,errorBuilder:(_,__,___)=>const Icon(Icons.qr_code_2_rounded,size:160,color:Colors.black))),if(url.isNotEmpty)...[const SizedBox(height:16),SelectableText(url,textAlign:TextAlign.center,style:const TextStyle(color:_muted,fontSize:12.5))]]))));}
+ Future<void> _openParking()async{final v=_vehicleId;if(v.isEmpty){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Önce bir araç ekleyin.')));return;}await showModalBottomSheet(context:context,backgroundColor:_bg,isScrollControlled:true,shape:const RoundedRectangleBorder(borderRadius:BorderRadius.vertical(top:Radius.circular(28))),builder:(context)=>SafeArea(top:false,child:Padding(padding:EdgeInsets.fromLTRB(18,12,18,18+MediaQuery.of(context).viewInsets.bottom),child:Column(mainAxisSize:MainAxisSize.min,children:[Container(width:42,height:4,decoration:BoxDecoration(color:_line,borderRadius:BorderRadius.circular(8))),const SizedBox(height:16),ParkingLocationCard(vehicleId:v)]))));await _loadParkingState();}
+ void _shortcutAction(String action){switch(action){case'qr':_openQr();break;case'parking':_openParking();break;case'notifications':setState(()=>current=1);break;case'vehicles':setState(()=>current=2);break;case'settings':setState(()=>current=3);break;}}
+ @override Widget build(BuildContext context)=>ValueListenableBuilder<int>(valueListenable:ownerUnreadNotificationCount,builder:(context,unread,_){final screens=<Widget>[_OwnerHome(onOpenNotifications:()=>setState(()=>current=1),onOpenVehicles:()=>setState(()=>current=2),onOpenQr:_openQr,onOpenParking:_openParking,onShortcut:_shortcutAction,parkingSaved:parkingSaved),const OwnerNotificationsPage(),const OwnerVehiclesPage(),OwnerSettingsPage(onOpenVehicles:()=>setState(()=>current=2),onOpenQr:_openQr)];const labels=['Ana Sayfa','Bildirimler','Araçlarım','Ayarlar'],icons=[Icons.home_rounded,Icons.notifications_none_rounded,Icons.directions_car_outlined,Icons.settings_outlined];return Scaffold(backgroundColor:_bg,body:IndexedStack(index:current,children:screens),bottomNavigationBar:Container(height:82,decoration:const BoxDecoration(color:Color(0xFF0B1426),border:Border(top:BorderSide(color:_line))),child:SafeArea(top:false,child:Row(children:List.generate(4,(i){final active=current==i;return Expanded(child:InkWell(onTap:()=>setState(()=>current=i),child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[Stack(clipBehavior:Clip.none,children:[Icon(icons[i],color:active?_purple:const Color(0xFF8F9AB7),size:28),if(i==1&&unread>0)Positioned(right:-8,top:-7,child:Container(constraints:const BoxConstraints(minWidth:20,minHeight:20),padding:const EdgeInsets.symmetric(horizontal:5),alignment:Alignment.center,decoration:const BoxDecoration(color:Color(0xFFFF4D63),shape:BoxShape.circle),child:Text(unread>99?'99+':'$unread',style:const TextStyle(color:Colors.white,fontSize:11,fontWeight:FontWeight.w900))))]),const SizedBox(height:5),Text(labels[i],style:TextStyle(color:active?_purple:const Color(0xFF8F9AB7),fontSize:11.5,fontWeight:active?FontWeight.w800:FontWeight.w500))])));}))))) ;});
 }
 
-class _OwnerDashboardLiveState extends State<OwnerDashboardLive> {
-  int current = 0;
-  bool parkingSaved = false;
-
-  String get _vehicleId => QrDraft.vehicleId.trim().isNotEmpty ? QrDraft.vehicleId.trim() : OnboardingDraft.vehicleId.trim();
-  String get _ownerId => OnboardingDraft.userId.trim();
-
-  @override
-  void initState() {
-    super.initState();
-    _loadParkingState();
-  }
-
-  Future<void> _loadParkingState() async {
-    final vehicleId = _vehicleId;
-    final ownerId = _ownerId;
-    if (vehicleId.isEmpty || ownerId.isEmpty) {
-      if (mounted && parkingSaved) setState(() => parkingSaved = false);
-      return;
-    }
-    try {
-      final response = await http.get(
-        Uri.parse('${QrBackend.baseUrl}/api/vehicles/$vehicleId/parking'),
-        headers: {'x-owner-id': ownerId},
-      );
-      if (response.statusCode < 200 || response.statusCode >= 300) return;
-      final data = jsonDecode(response.body);
-      final saved = data is Map && data['parking'] is Map;
-      if (mounted && parkingSaved != saved) setState(() => parkingSaved = saved);
-    } catch (_) {}
-  }
-
-  void _openQr() {
-    final token = QrDraft.token.trim();
-    final publicUrl = token.isEmpty ? '' : 'https://queensho.github.io/HeyCar/?tag=${Uri.encodeComponent(token)}';
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: _panel,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
-      builder: (context) => SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(22, 22, 22, 28),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Container(width: 44, height: 4, decoration: BoxDecoration(color: _line, borderRadius: BorderRadius.circular(8))),
-            const SizedBox(height: 18),
-            const Text('QR Kodum', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900)),
-            const SizedBox(height: 6),
-            Text(token.isEmpty ? 'Henüz aktif bir QR etiketi yok.' : token, style: const TextStyle(color: _muted, fontSize: 14)),
-            const SizedBox(height: 18),
-            if (publicUrl.isNotEmpty)
-              Container(
-                width: 230,
-                height: 230,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
-                child: Image.network(
-                  'https://quickchart.io/qr?text=${Uri.encodeComponent(publicUrl)}&size=420',
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => const Icon(Icons.qr_code_2_rounded, size: 160, color: Colors.black),
-                ),
-              ),
-            if (publicUrl.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              SelectableText(publicUrl, textAlign: TextAlign.center, style: const TextStyle(color: _muted, fontSize: 12.5)),
-            ],
-          ]),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _openParking() async {
-    final vehicleId = _vehicleId;
-    if (vehicleId.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Önce bir araç ekleyin.')));
-      return;
-    }
-    await showModalBottomSheet(
-      context: context,
-      backgroundColor: _bg,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
-      builder: (context) => SafeArea(
-        top: false,
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(18, 12, 18, 18 + MediaQuery.of(context).viewInsets.bottom),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Container(width: 42, height: 4, decoration: BoxDecoration(color: _line, borderRadius: BorderRadius.circular(8))),
-            const SizedBox(height: 16),
-            ParkingLocationCard(vehicleId: vehicleId),
-          ]),
-        ),
-      ),
-    );
-    await _loadParkingState();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder<int>(
-      valueListenable: ownerUnreadNotificationCount,
-      builder: (context, unreadCount, _) {
-        final screens = <Widget>[
-          _OwnerHome(
-            onOpenNotifications: () => setState(() => current = 1),
-            onOpenVehicles: () => setState(() => current = 2),
-            onOpenQr: _openQr,
-            onOpenParking: _openParking,
-            parkingSaved: parkingSaved,
-          ),
-          const OwnerNotificationsPage(),
-          const OwnerVehiclesPage(),
-          OwnerSettingsPage(onOpenVehicles: () => setState(() => current = 2), onOpenQr: _openQr),
-        ];
-        const labels = ['Ana Sayfa', 'Bildirimler', 'Araçlarım', 'Ayarlar'];
-        const icons = [Icons.home_rounded, Icons.notifications_none_rounded, Icons.directions_car_outlined, Icons.settings_outlined];
-        return Scaffold(
-          backgroundColor: _bg,
-          body: IndexedStack(index: current, children: screens),
-          bottomNavigationBar: Container(
-            height: 82,
-            decoration: const BoxDecoration(color: Color(0xFF0B1426), border: Border(top: BorderSide(color: _line))),
-            child: SafeArea(top: false, child: Row(children: List.generate(4, (i) {
-              final active = current == i;
-              return Expanded(child: InkWell(onTap: () => setState(() => current = i), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Stack(clipBehavior: Clip.none, children: [
-                  Icon(icons[i], color: active ? _purple : const Color(0xFF8F9AB7), size: 28),
-                  if (i == 1 && unreadCount > 0) Positioned(right: -8, top: -7, child: Container(constraints: const BoxConstraints(minWidth: 20, minHeight: 20), padding: const EdgeInsets.symmetric(horizontal: 5), alignment: Alignment.center, decoration: const BoxDecoration(color: Color(0xFFFF4D63), shape: BoxShape.circle), child: Text(unreadCount > 99 ? '99+' : '$unreadCount', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900)))),
-                ]),
-                const SizedBox(height: 5),
-                Text(labels[i], style: TextStyle(color: active ? _purple : const Color(0xFF8F9AB7), fontSize: 11.5, fontWeight: active ? FontWeight.w800 : FontWeight.w500)),
-              ])));
-            }))),
-          ),
-        );
-      },
-    );
-  }
+class _OwnerHome extends StatefulWidget{const _OwnerHome({required this.onOpenNotifications,required this.onOpenVehicles,required this.onOpenQr,required this.onOpenParking,required this.onShortcut,required this.parkingSaved});final VoidCallback onOpenNotifications,onOpenVehicles,onOpenQr,onOpenParking;final ValueChanged<String> onShortcut;final bool parkingSaved;@override State<_OwnerHome> createState()=>_OwnerHomeState();}
+class _OwnerHomeState extends State<_OwnerHome>{
+ List<String> ids=[...defaultOwnerShortcutIds];bool editing=false;
+ String get _prefsKey=>'owner_shortcuts_${OnboardingDraft.userId.trim().isEmpty?'local':OnboardingDraft.userId.trim()}';
+ String get name=>OnboardingDraft.displayName.trim().isEmpty?'Araç Sahibi':OnboardingDraft.displayName.trim().split(' ').first;String get plate=>QrDraft.plate.trim().isEmpty?'Araç eklenmedi':QrDraft.plate.trim();String get make=>QrDraft.make.trim();String get carName{final m=QrDraft.model.trim();return make.isEmpty&&m.isEmpty?'Araç bilgilerini ekle':'$make $m'.trim();}
+ @override void initState(){super.initState();_loadShortcuts();}
+ Future<void> _loadShortcuts()async{final p=await SharedPreferences.getInstance(),saved=p.getStringList(_prefsKey);if(!mounted)return;final valid=(saved??defaultOwnerShortcutIds).where((id)=>ownerShortcutCatalog.any((x)=>x.id==id)).take(maxOwnerShortcuts).toList();setState(()=>ids=valid.isEmpty?[...defaultOwnerShortcutIds]:valid);}
+ Future<void> _save()async{final p=await SharedPreferences.getInstance();await p.setStringList(_prefsKey,ids);}
+ OwnerShortcutDefinition? _def(String id){for(final x in ownerShortcutCatalog){if(x.id==id)return x;}return null;}
+ void _remove(String id){setState(()=>ids.remove(id));_save();}
+ Future<void> _add()async{final available=ownerShortcutCatalog.where((x)=>!ids.contains(x.id)).toList();if(available.isEmpty)return;final selected=await showModalBottomSheet<String>(context:context,backgroundColor:_panel,shape:const RoundedRectangleBorder(borderRadius:BorderRadius.vertical(top:Radius.circular(26))),builder:(c)=>SafeArea(top:false,child:Padding(padding:const EdgeInsets.fromLTRB(16,12,16,22),child:Column(mainAxisSize:MainAxisSize.min,children:[Container(width:42,height:4,decoration:BoxDecoration(color:_line,borderRadius:BorderRadius.circular(8))),const SizedBox(height:15),Row(children:[const Expanded(child:Text('Kısayol Ekle',style:TextStyle(color:Colors.white,fontSize:20,fontWeight:FontWeight.w900))),Text('${ids.length}/$maxOwnerShortcuts',style:const TextStyle(color:_muted))]),const SizedBox(height:8),...available.map((x)=>ListTile(onTap:()=>Navigator.pop(c,x.id),leading:Icon(x.icon,color:_purple),title:Text(x.title,style:const TextStyle(color:Colors.white,fontWeight:FontWeight.w800)),subtitle:Text(x.subtitle,style:const TextStyle(color:_muted)),trailing:const Icon(Icons.add_circle_outline_rounded,color:_purple)))]))));if(selected!=null&&ids.length<maxOwnerShortcuts){setState(()=>ids.add(selected));await _save();}}
+ void _reorder(int oldIndex,int newIndex){if(newIndex>oldIndex)newIndex--;setState((){final id=ids.removeAt(oldIndex);ids.insert(newIndex,id);});_save();}
+ Widget _brandLogo(){final u=make.isEmpty?null:VehicleApi.brandLogoUrl(make);return SizedBox(width:66,height:54,child:u==null?const Icon(Icons.directions_car_filled_rounded,color:_purple,size:31):Padding(padding:const EdgeInsets.all(7),child:Image.network(u,fit:BoxFit.contain,errorBuilder:(_,__,___)=>const Icon(Icons.directions_car_filled_rounded,color:_purple,size:31))));}
+ Widget _logo()=>Image.asset('assets/Logoqr.png',height:40,fit:BoxFit.contain);
+ Widget _parkingButton(){final c=widget.parkingSaved?const Color(0xFFFF4D63):_purple;return InkWell(onTap:widget.onOpenParking,borderRadius:BorderRadius.circular(13),child:Container(width:50,height:55,decoration:BoxDecoration(color:widget.parkingSaved?const Color(0x992D101B):const Color(0x99171238),borderRadius:BorderRadius.circular(13),border:Border.all(color:widget.parkingSaved?const Color(0xFFB92F43):const Color(0xFF5931A8))),child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[SizedBox(width:27,height:29,child:Stack(alignment:Alignment.topCenter,children:[Icon(Icons.location_on_rounded,color:c,size:29),const Positioned(top:4,child:Text('P',style:TextStyle(color:Colors.white,fontSize:10,fontWeight:FontWeight.w900)))])),Text('Park',style:TextStyle(color:widget.parkingSaved?c:Colors.white,fontSize:10,fontWeight:FontWeight.w800,height:1))])));}
+ @override Widget build(BuildContext context){final h=MediaQuery.sizeOf(context).height,compact=h<760,top=MediaQuery.paddingOf(context).top;final defs=ids.map(_def).whereType<OwnerShortcutDefinition>().toList();return ListView(padding:EdgeInsets.zero,children:[SizedBox(height:compact?500:555,child:Stack(clipBehavior:Clip.none,children:[Positioned.fill(child:Image.asset('assets/Aracsahibi.png',fit:BoxFit.cover,alignment:Alignment.topCenter)),Positioned(left:22,right:16,top:top+14,child:Row(children:[_logo(),const Spacer(),_parkingButton(),const SizedBox(width:8),InkWell(onTap:widget.onOpenNotifications,child:const SizedBox(width:40,height:48,child:Stack(alignment:Alignment.center,children:[Icon(Icons.notifications_none_rounded,color:Colors.white,size:29),Positioned(right:4,top:6,child:CircleAvatar(radius:4.5,backgroundColor:Color(0xFFFF4D63)))]))),const SizedBox(width:5),const Row(mainAxisSize:MainAxisSize.min,children:[CircleAvatar(radius:20,backgroundColor:_panel,child:Icon(Icons.person_rounded,color:Colors.white70,size:22)),SizedBox(width:3),Icon(Icons.keyboard_arrow_down_rounded,color:Colors.white70,size:20)])])),Positioned(left:16,bottom:compact?18:24,child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('Merhaba',style:TextStyle(color:Colors.white,fontSize:32,fontWeight:FontWeight.w900,height:.95)),Text(name,style:const TextStyle(color:_purple,fontSize:43,fontWeight:FontWeight.w900,height:1)),const SizedBox(height:10),const SizedBox(width:175,child:Text('Aracınla ilgili\ntüm bildirimler\nburada.',style:TextStyle(color:Colors.white70,fontSize:17,height:1.25,fontWeight:FontWeight.w700)))]))])),Padding(padding:const EdgeInsets.fromLTRB(10,14,10,26),child:Column(children:[InkWell(onTap:widget.onOpenVehicles,borderRadius:BorderRadius.circular(20),child:_Card(child:Row(children:[_brandLogo(),const SizedBox(width:14),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(plate,style:const TextStyle(color:Colors.white,fontSize:18,fontWeight:FontWeight.w900)),const SizedBox(height:2),Text(carName,style:const TextStyle(color:_muted,fontSize:13))])),const Icon(Icons.chevron_right_rounded,color:Colors.white70,size:28)]))),const SizedBox(height:12),OwnerDashboardStatsRow(onTap:widget.onOpenNotifications),const SizedBox(height:14),SizedBox(height:58,width:double.infinity,child:FilledButton.icon(onPressed:widget.onOpenNotifications,style:FilledButton.styleFrom(backgroundColor:_purple,foregroundColor:Colors.white,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(20))),icon:const Icon(Icons.notifications_rounded),label:const Row(mainAxisAlignment:MainAxisAlignment.center,children:[Text('Bildirimleri Gör',style:TextStyle(fontSize:16,fontWeight:FontWeight.w900)),SizedBox(width:8),Icon(Icons.chevron_right_rounded)]))),const SizedBox(height:14),Row(children:[const Expanded(child:Text('Kısayollar',style:TextStyle(color:Colors.white,fontSize:16,fontWeight:FontWeight.w900))),TextButton.icon(onPressed:()=>setState(()=>editing=!editing),icon:Icon(editing?Icons.check_rounded:Icons.tune_rounded,size:18),label:Text(editing?'Bitti':'Düzenle'))]),if(defs.isNotEmpty)ReorderableListView.builder(shrinkWrap:true,physics:const NeverScrollableScrollPhysics(),buildDefaultDragHandles:false,itemCount:defs.length,onReorder:_reorder,itemBuilder:(context,i){final d=defs[i];return Padding(key:ValueKey(d.id),padding:const EdgeInsets.only(bottom:10),child:_Shortcut(icon:d.icon,title:d.title,sub:d.subtitle,onTap:editing?null:()=>widget.onShortcut(d.action),editing:editing,onRemove:()=>_remove(d.id),drag:editing?ReorderableDragStartListener(index:i,child:const Icon(Icons.drag_indicator_rounded,color:_muted)):null));}),if(editing&&ids.length<maxOwnerShortcuts)OutlinedButton.icon(onPressed:_add,style:OutlinedButton.styleFrom(foregroundColor:_purple,side:const BorderSide(color:_purple),minimumSize:const Size(double.infinity,50),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(16))),icon:const Icon(Icons.add_rounded),label:Text('Kısayol Ekle • ${maxOwnerShortcuts-ids.length} boş yer')),const SizedBox(height:14),const _Card(child:Row(children:[Icon(Icons.info_outline_rounded,color:_purple),SizedBox(width:10),Expanded(child:Text('Cepqar etiketin her zaman yanında, yollarda daha güvende.',style:TextStyle(color:_muted,height:1.35)))]))]))]);}
 }
-
-class _OwnerHome extends StatelessWidget {
-  const _OwnerHome({required this.onOpenNotifications, required this.onOpenVehicles, required this.onOpenQr, required this.onOpenParking, required this.parkingSaved});
-  final VoidCallback onOpenNotifications;
-  final VoidCallback onOpenVehicles;
-  final VoidCallback onOpenQr;
-  final VoidCallback onOpenParking;
-  final bool parkingSaved;
-
-  String get name => OnboardingDraft.displayName.trim().isEmpty ? 'Araç Sahibi' : OnboardingDraft.displayName.trim().split(' ').first;
-  String get plate => QrDraft.plate.trim().isEmpty ? 'Araç eklenmedi' : QrDraft.plate.trim();
-  String get make => QrDraft.make.trim();
-  String get carName { final model = QrDraft.model.trim(); if (make.isEmpty && model.isEmpty) return 'Araç bilgilerini ekle'; return '$make $model'.trim(); }
-
-  Widget _brandLogo() {
-    final url = make.isEmpty ? null : VehicleApi.brandLogoUrl(make);
-    if (url == null) return const SizedBox(width: 66, height: 54, child: Icon(Icons.directions_car_filled_rounded, color: _purple, size: 31));
-    return SizedBox(width: 66, height: 54, child: Padding(padding: const EdgeInsets.all(7), child: Image.network(url, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Icon(Icons.directions_car_filled_rounded, color: _purple, size: 31))));
-  }
-
-  Widget _logo() => Image.asset('assets/Logoqr.png', height: 40, fit: BoxFit.contain);
-
-  Widget _parkingButton() {
-    final parkColor = parkingSaved ? const Color(0xFFFF4D63) : _purple;
-    final borderColor = parkingSaved ? const Color(0xFFB92F43) : const Color(0xFF5931A8);
-    final bgColor = parkingSaved ? const Color(0x992D101B) : const Color(0x99171238);
-    return InkWell(
-      onTap: onOpenParking,
-      borderRadius: BorderRadius.circular(13),
-      child: Container(
-        width: 50,
-        height: 55,
-        decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(13), border: Border.all(color: borderColor, width: 1)),
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          SizedBox(
-            width: 27,
-            height: 29,
-            child: Stack(alignment: Alignment.topCenter, children: [
-              Icon(Icons.location_on_rounded, color: parkColor, size: 29),
-              const Positioned(top: 4, child: Text('P', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900))),
-            ]),
-          ),
-          Text('Park', style: TextStyle(color: parkingSaved ? parkColor : Colors.white, fontSize: 10, fontWeight: FontWeight.w800, height: 1)),
-        ]),
-      ),
-    );
-  }
-
-  Widget _notificationButton() => InkWell(
-    onTap: onOpenNotifications,
-    borderRadius: BorderRadius.circular(24),
-    child: const SizedBox(
-      width: 40,
-      height: 48,
-      child: Stack(clipBehavior: Clip.none, alignment: Alignment.center, children: [
-        Icon(Icons.notifications_none_rounded, color: Colors.white, size: 29),
-        Positioned(right: 4, top: 6, child: CircleAvatar(radius: 4.5, backgroundColor: Color(0xFFFF4D63))),
-      ]),
-    ),
-  );
-
-  Widget _profile() => const Row(mainAxisSize: MainAxisSize.min, children: [
-    CircleAvatar(radius: 20, backgroundColor: _panel, child: Icon(Icons.person_rounded, color: Colors.white70, size: 22)),
-    SizedBox(width: 3),
-    Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white70, size: 20),
-  ]);
-
-  @override
-  Widget build(BuildContext context) {
-    final h = MediaQuery.sizeOf(context).height;
-    final compact = h < 760;
-    final topInset = MediaQuery.paddingOf(context).top;
-    return ListView(padding: EdgeInsets.zero, children: [
-      SizedBox(height: compact ? 500 : 555, child: Stack(clipBehavior: Clip.none, children: [
-        Positioned.fill(child: Image.asset('assets/Aracsahibi.png', fit: BoxFit.cover, alignment: Alignment.topCenter)),
-        Positioned(left: 22, right: 16, top: topInset + 14, child: Row(children: [
-          _logo(),
-          const Spacer(),
-          _parkingButton(),
-          const SizedBox(width: 8),
-          _notificationButton(),
-          const SizedBox(width: 5),
-          _profile(),
-        ])),
-        Positioned(left: 16, bottom: compact ? 18 : 24, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Merhaba', style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900, height: .95)),
-          Text(name, style: const TextStyle(color: _purple, fontSize: 43, fontWeight: FontWeight.w900, height: 1)),
-          const SizedBox(height: 10),
-          const SizedBox(width: 175, child: Text('Aracınla ilgili\ntüm bildirimler\nburada.', style: TextStyle(color: Colors.white70, fontSize: 17, height: 1.25, fontWeight: FontWeight.w700))),
-        ])),
-      ])),
-      Padding(padding: const EdgeInsets.fromLTRB(10, 14, 10, 26), child: Column(children: [
-        InkWell(onTap: onOpenVehicles, borderRadius: BorderRadius.circular(20), child: _Card(child: Row(children: [_brandLogo(), const SizedBox(width: 14), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(plate, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)), const SizedBox(height: 2), Text(carName, style: const TextStyle(color: _muted, fontSize: 13))])), const Icon(Icons.chevron_right_rounded, color: Colors.white70, size: 28)]))),
-        const SizedBox(height: 12),
-        OwnerDashboardStatsRow(onTap: onOpenNotifications),
-        const SizedBox(height: 14),
-        SizedBox(height: 58, width: double.infinity, child: FilledButton.icon(onPressed: onOpenNotifications, style: FilledButton.styleFrom(backgroundColor: _purple, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))), icon: const Icon(Icons.notifications_rounded), label: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [Text('Bildirimleri Gör', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900)), SizedBox(width: 8), Icon(Icons.chevron_right_rounded)]))),
-        const SizedBox(height: 14),
-        Row(children: [Expanded(child: _Shortcut(icon: Icons.qr_code_scanner_rounded, title: 'QR Kodumu Gör', sub: 'İndir / Paylaş', onTap: onOpenQr)), const SizedBox(width: 12), Expanded(child: _Shortcut(icon: Icons.directions_car_filled_rounded, title: 'Araç Bilgilerim', sub: 'Düzenle', onTap: onOpenVehicles))]),
-        const SizedBox(height: 14),
-        const _Card(child: Row(children: [Icon(Icons.info_outline_rounded, color: _purple), SizedBox(width: 10), Expanded(child: Text('HeyCar etiketin her zaman yanında, yollarda daha güvende.', style: TextStyle(color: _muted, height: 1.35)))])),
-      ])),
-    ]);
-  }
-}
-
-class _Card extends StatelessWidget { const _Card({required this.child}); final Widget child; @override Widget build(BuildContext context) => Container(padding: const EdgeInsets.all(15), decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(20), border: Border.all(color: _line)), child: child); }
-class _Shortcut extends StatelessWidget { const _Shortcut({required this.icon, required this.title, required this.sub, required this.onTap}); final IconData icon; final String title, sub; final VoidCallback onTap; @override Widget build(BuildContext context) => InkWell(onTap: onTap, borderRadius: BorderRadius.circular(20), child: Container(height: 116, padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(20), border: Border.all(color: _line)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [Icon(icon, color: _purple, size: 30), const SizedBox(height: 10), Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 14)), const SizedBox(height: 4), Text(sub, style: const TextStyle(color: _muted, fontSize: 12))]))); }
+class _Card extends StatelessWidget{const _Card({required this.child});final Widget child;@override Widget build(BuildContext context)=>Container(padding:const EdgeInsets.all(15),decoration:BoxDecoration(color:_panel,borderRadius:BorderRadius.circular(20),border:Border.all(color:_line)),child:child);}
+class _Shortcut extends StatelessWidget{const _Shortcut({required this.icon,required this.title,required this.sub,required this.onTap,required this.editing,required this.onRemove,this.drag});final IconData icon;final String title,sub;final VoidCallback? onTap,onRemove;final bool editing;final Widget? drag;@override Widget build(BuildContext context)=>InkWell(onTap:onTap,borderRadius:BorderRadius.circular(18),child:Container(height:76,padding:const EdgeInsets.symmetric(horizontal:14),decoration:BoxDecoration(color:_panel,borderRadius:BorderRadius.circular(18),border:Border.all(color:_line)),child:Row(children:[Icon(icon,color:_purple,size:28),const SizedBox(width:12),Expanded(child:Column(mainAxisAlignment:MainAxisAlignment.center,crossAxisAlignment:CrossAxisAlignment.start,children:[Text(title,style:const TextStyle(color:Colors.white,fontWeight:FontWeight.w900,fontSize:14)),const SizedBox(height:3),Text(sub,style:const TextStyle(color:_muted,fontSize:11.5))])),if(editing)...[IconButton(onPressed:onRemove,icon:const Icon(Icons.remove_circle_rounded,color:Color(0xFFFF4D63))),if(drag!=null)drag!]else const Icon(Icons.chevron_right_rounded,color:_muted)])));}
