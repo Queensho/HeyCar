@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'onboarding_backend.dart';
 import 'qr_backend.dart';
 import 'vehicle_api.dart';
@@ -22,6 +24,35 @@ class OwnerDashboardLive extends StatefulWidget {
 
 class _OwnerDashboardLiveState extends State<OwnerDashboardLive> {
   int current = 0;
+  bool parkingSaved = false;
+
+  String get _vehicleId => QrDraft.vehicleId.trim().isNotEmpty ? QrDraft.vehicleId.trim() : OnboardingDraft.vehicleId.trim();
+  String get _ownerId => OnboardingDraft.userId.trim();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadParkingState();
+  }
+
+  Future<void> _loadParkingState() async {
+    final vehicleId = _vehicleId;
+    final ownerId = _ownerId;
+    if (vehicleId.isEmpty || ownerId.isEmpty) {
+      if (mounted && parkingSaved) setState(() => parkingSaved = false);
+      return;
+    }
+    try {
+      final response = await http.get(
+        Uri.parse('${QrBackend.baseUrl}/api/vehicles/$vehicleId/parking'),
+        headers: {'x-owner-id': ownerId},
+      );
+      if (response.statusCode < 200 || response.statusCode >= 300) return;
+      final data = jsonDecode(response.body);
+      final saved = data is Map && data['parking'] is Map;
+      if (mounted && parkingSaved != saved) setState(() => parkingSaved = saved);
+    } catch (_) {}
+  }
 
   void _openQr() {
     final token = QrDraft.token.trim();
@@ -64,13 +95,13 @@ class _OwnerDashboardLiveState extends State<OwnerDashboardLive> {
     );
   }
 
-  void _openParking() {
-    final vehicleId = QrDraft.vehicleId.trim().isNotEmpty ? QrDraft.vehicleId.trim() : OnboardingDraft.vehicleId.trim();
+  Future<void> _openParking() async {
+    final vehicleId = _vehicleId;
     if (vehicleId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Önce bir araç ekleyin.')));
       return;
     }
-    showModalBottomSheet(
+    await showModalBottomSheet(
       context: context,
       backgroundColor: _bg,
       isScrollControlled: true,
@@ -87,6 +118,7 @@ class _OwnerDashboardLiveState extends State<OwnerDashboardLive> {
         ),
       ),
     );
+    await _loadParkingState();
   }
 
   @override
@@ -100,6 +132,7 @@ class _OwnerDashboardLiveState extends State<OwnerDashboardLive> {
             onOpenVehicles: () => setState(() => current = 2),
             onOpenQr: _openQr,
             onOpenParking: _openParking,
+            parkingSaved: parkingSaved,
           ),
           const OwnerNotificationsPage(),
           const OwnerVehiclesPage(),
@@ -132,11 +165,12 @@ class _OwnerDashboardLiveState extends State<OwnerDashboardLive> {
 }
 
 class _OwnerHome extends StatelessWidget {
-  const _OwnerHome({required this.onOpenNotifications, required this.onOpenVehicles, required this.onOpenQr, required this.onOpenParking});
+  const _OwnerHome({required this.onOpenNotifications, required this.onOpenVehicles, required this.onOpenQr, required this.onOpenParking, required this.parkingSaved});
   final VoidCallback onOpenNotifications;
   final VoidCallback onOpenVehicles;
   final VoidCallback onOpenQr;
   final VoidCallback onOpenParking;
+  final bool parkingSaved;
 
   String get name => OnboardingDraft.displayName.trim().isEmpty ? 'Araç Sahibi' : OnboardingDraft.displayName.trim().split(' ').first;
   String get plate => QrDraft.plate.trim().isEmpty ? 'Araç eklenmedi' : QrDraft.plate.trim();
@@ -151,26 +185,31 @@ class _OwnerHome extends StatelessWidget {
 
   Widget _logo() => Image.asset('assets/Logoqr.png', height: 40, fit: BoxFit.contain);
 
-  Widget _parkingButton() => InkWell(
-    onTap: onOpenParking,
-    borderRadius: BorderRadius.circular(13),
-    child: Container(
-      width: 50,
-      height: 55,
-      decoration: BoxDecoration(color: const Color(0x99171238), borderRadius: BorderRadius.circular(13), border: Border.all(color: const Color(0xFF5931A8), width: 1)),
-      child: const Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        SizedBox(
-          width: 27,
-          height: 29,
-          child: Stack(alignment: Alignment.topCenter, children: [
-            Icon(Icons.location_on_rounded, color: _purple, size: 29),
-            Positioned(top: 4, child: Text('P', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900))),
-          ]),
-        ),
-        Text('Park', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800, height: 1)),
-      ]),
-    ),
-  );
+  Widget _parkingButton() {
+    final parkColor = parkingSaved ? const Color(0xFFFF4D63) : _purple;
+    final borderColor = parkingSaved ? const Color(0xFFB92F43) : const Color(0xFF5931A8);
+    final bgColor = parkingSaved ? const Color(0x992D101B) : const Color(0x99171238);
+    return InkWell(
+      onTap: onOpenParking,
+      borderRadius: BorderRadius.circular(13),
+      child: Container(
+        width: 50,
+        height: 55,
+        decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(13), border: Border.all(color: borderColor, width: 1)),
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          SizedBox(
+            width: 27,
+            height: 29,
+            child: Stack(alignment: Alignment.topCenter, children: [
+              Icon(Icons.location_on_rounded, color: parkColor, size: 29),
+              const Positioned(top: 4, child: Text('P', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900))),
+            ]),
+          ),
+          Text('Park', style: TextStyle(color: parkingSaved ? parkColor : Colors.white, fontSize: 10, fontWeight: FontWeight.w800, height: 1)),
+        ]),
+      ),
+    );
+  }
 
   Widget _notificationButton() => InkWell(
     onTap: onOpenNotifications,
