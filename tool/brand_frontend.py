@@ -38,6 +38,8 @@ class _RoundIcon""", text, flags=re.S)
     if path.as_posix() == 'lib/driver_invite_page.dart':
         if "import 'driver_chat_page.dart';" not in text:
             text = text.replace("import 'vehicle_api.dart';", "import 'vehicle_api.dart';\nimport 'driver_chat_page.dart';")
+        if "import 'driver_account_page.dart';" not in text:
+            text = text.replace("import 'driver_chat_page.dart';", "import 'driver_chat_page.dart';\nimport 'driver_account_page.dart';")
         text = text.replace(
             "child: Container(\n                  minHeight: 108,",
             "child: Container(\n                  constraints: const BoxConstraints(minHeight: 108),",
@@ -63,13 +65,34 @@ class _RoundIcon""", text, flags=re.S)
             "      _DriverNotificationsPage(\n        userId: widget.userId,\n        items: notifications,\n        loading: loading,\n        onRefresh: () => load(),\n      ),",
         )
         text = text.replace(
+            "      _DriverSettingsPage(\n        driverName: driverName,",
+            "      _DriverSettingsPage(\n        userId: widget.userId,\n        driverName: driverName,",
+        )
+        text = text.replace(
             "  const _DriverNotificationsPage({required this.items, required this.loading, required this.onRefresh});\n\n  final List<Map<String, dynamic>> items;",
             "  const _DriverNotificationsPage({required this.userId, required this.items, required this.loading, required this.onRefresh});\n\n  final String userId;\n  final List<Map<String, dynamic>> items;",
+        )
+        text = text.replace(
+            "  const _DriverSettingsPage({\n    required this.driverName,",
+            "  const _DriverSettingsPage({\n    required this.userId,\n    required this.driverName,",
+        )
+        text = text.replace(
+            "  final String driverName;\n  final VoidCallback onOpenVehicles;",
+            "  final String userId;\n  final String driverName;\n  final VoidCallback onOpenVehicles;",
+            1,
         )
         text = text.replace(
             "            Text(_time(n['created_at']), style: const TextStyle(color: _purpleSoft)),",
             "            Text(_time(n['created_at']), style: const TextStyle(color: _purpleSoft)),\n            if (type != 'call_request') ...[\n              const SizedBox(height: 18),\n              SizedBox(\n                width: double.infinity,\n                child: FilledButton.icon(\n                  onPressed: () {\n                    Navigator.pop(context);\n                    Navigator.push(\n                      context,\n                      MaterialPageRoute(\n                        builder: (_) => DriverChatPage(\n                          userId: widget.userId,\n                          notificationId: n['id']?.toString() ?? '',\n                          plate: n['plate']?.toString() ?? '',\n                        ),\n                      ),\n                    );\n                  },\n                  style: FilledButton.styleFrom(backgroundColor: _purple),\n                  icon: const Icon(Icons.chat_bubble_outline_rounded),\n                  label: const Text('Anonim Sohbeti Aç', style: TextStyle(fontWeight: FontWeight.w900)),\n                ),\n              ),\n            ],",
             1,
+        )
+        text = text.replace(
+            "onTap: () => _showInfo(context, 'Hesap bilgilerim', driverName.trim().isEmpty ? 'Sürücü hesabı' : driverName.trim()),",
+            "onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DriverAccountPage(userId: userId))),",
+        )
+        text = text.replace(
+            "onTap: () => _showInfo(context, 'Hesap bilgilerim', driverName.trim().isEmpty ? 'Sürücü hesabı' : driverName.trim()),",
+            "onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DriverAccountPage(userId: userId))),",
         )
         text = re.sub(
             r"class _DriverBrand extends StatelessWidget \{.*?\n\}\n\nclass _RoundIcon",
