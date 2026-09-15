@@ -306,15 +306,38 @@ class _Header extends StatelessWidget {
   const _Header({required this.driverName});
   @override
   Widget build(BuildContext context) => SizedBox(
-    height:112,
-    child:Stack(children:[
-      Positioned(left:0,top:12,right:150,child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-        Text('Merhaba $driverName',maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:26,fontWeight:FontWeight.w900,height:1.05)),
-        const SizedBox(height:9),
-        const Text('Yetkili olduğun araç bildirimleri burada görünür.',maxLines:2,style:TextStyle(color:_muted,fontSize:13,height:1.32)),
-      ])),
-      Positioned(right:-6,top:-3,width:178,height:114,child:Image.asset('assets/Cepqar3d.png',fit:BoxFit.contain,alignment:Alignment.centerRight,errorBuilder:(_,__,___)=>const SizedBox.shrink())),
-    ]),
+    height:132,
+    child:ClipRect(
+      child:Stack(children:[
+        Positioned(
+          left:0,
+          top:24,
+          right:174,
+          child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+            Text('Merhaba $driverName',maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:27,fontWeight:FontWeight.w900,height:1.02)),
+            const SizedBox(height:10),
+            const Text('Yetkili olduğun araç bildirimleri burada görünür.',maxLines:2,style:TextStyle(color:_muted,fontSize:13,height:1.35)),
+          ]),
+        ),
+        Positioned(
+          right:-42,
+          top:-18,
+          width:258,
+          height:168,
+          child:Transform.scale(
+            scale:1.42,
+            alignment:Alignment.centerRight,
+            child:Image.asset(
+              'assets/Cepqar3d.png',
+              fit:BoxFit.contain,
+              alignment:Alignment.centerRight,
+              filterQuality:FilterQuality.high,
+              errorBuilder:(_,__,___)=>const SizedBox.shrink(),
+            ),
+          ),
+        ),
+      ]),
+    ),
   );
 }
 
