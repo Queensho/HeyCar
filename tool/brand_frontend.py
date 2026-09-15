@@ -21,7 +21,15 @@ for path in Path('lib').rglob('*.dart'):
             text = text.replace("import 'owner_vehicles_page.dart';", "import 'owner_vehicles_page.dart';\nimport 'owner_dashboard_stats.dart';")
         if "import 'owner_dnd_card.dart';" not in text:
             text = text.replace("import 'owner_dashboard_stats.dart';", "import 'owner_dashboard_stats.dart';\nimport 'owner_dnd_card.dart';")
-        text = re.sub(r"Widget _logo\(\) => const Text\.rich\(.*?\n\s*\);", "Widget _logo() => Image.asset('assets/Logoqr.png', height: 48, fit: BoxFit.contain);", text, flags=re.S)
+        # Replace only the _logo declaration. Do not use a multiline wildcard here;
+        # it could consume following header helpers such as _parkingButton.
+        text = re.sub(
+            r"^[ \t]*Widget _logo\(\)[^\n]*$",
+            "  Widget _logo() => Image.asset('assets/Logoqr.png', height: 48, fit: BoxFit.contain);",
+            text,
+            count=1,
+            flags=re.M,
+        )
         text = text.replace("Image.asset('assets/Logoqr.jpg', height: 48, fit: BoxFit.contain)", "Image.asset('assets/Logoqr.png', height: 48, fit: BoxFit.contain)")
         marker = "        const SizedBox(height: 12),\n        OwnerDashboardStatsRow(onTap: onOpenNotifications),"
         if 'OwnerDndCard()' not in text:
