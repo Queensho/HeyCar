@@ -11,6 +11,44 @@ const _purple = Color(0xFF8B5CFF);
 const _muted = Color(0xFFA7B0C7);
 const _api = 'https://heycar-api-185-165-46-213.nip.io';
 
+class DriverAccountPage extends StatefulWidget {
+  const DriverAccountPage({super.key, required this.userId});
+  final String userId;
+
+  @override
+  State<DriverAccountPage> createState() => _DriverAccountPageState();
+}
+
+class _DriverAccountPageState extends State<DriverAccountPage> {
+  bool opened = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (opened) return;
+    opened = true;
+    final navigator = Navigator.of(context);
+    final popupContext = navigator.context;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      navigator.pop();
+      await Future<void>.delayed(const Duration(milliseconds: 40));
+      if (!popupContext.mounted) return;
+      await showDialog<void>(
+        context: popupContext,
+        barrierColor: Colors.black.withValues(alpha: .68),
+        builder: (_) => DriverAccountDialog(userId: widget.userId),
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => const Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SizedBox.expand(),
+      );
+}
+
 class DriverAccountDialog extends StatefulWidget {
   const DriverAccountDialog({super.key, required this.userId});
   final String userId;
@@ -184,10 +222,7 @@ class _DriverAccountDialogState extends State<DriverAccountDialog> {
         insetPadding: const EdgeInsets.symmetric(horizontal: 22, vertical: 28),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28), side: const BorderSide(color: _line)),
         child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxWidth: 390,
-            maxHeight: MediaQuery.sizeOf(context).height * .78,
-          ),
+          constraints: BoxConstraints(maxWidth: 390, maxHeight: MediaQuery.sizeOf(context).height * .78),
           child: loading
               ? const SizedBox(height: 260, child: Center(child: CircularProgressIndicator(color: _purple)))
               : error != null
@@ -216,19 +251,9 @@ class _DriverAccountDialogState extends State<DriverAccountDialog> {
                             IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close_rounded, color: Colors.white70)),
                           ]),
                           const SizedBox(height: 8),
-                          const Center(
-                            child: CircleAvatar(
-                              radius: 38,
-                              backgroundColor: _panel2,
-                              child: Icon(Icons.person_rounded, color: _purple, size: 38),
-                            ),
-                          ),
+                          const Center(child: CircleAvatar(radius: 38, backgroundColor: _panel2, child: Icon(Icons.person_rounded, color: _purple, size: 38))),
                           const SizedBox(height: 20),
-                          TextField(
-                            controller: name,
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
-                            decoration: _input('Ad Soyad', Icons.person_outline_rounded),
-                          ),
+                          TextField(controller: name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700), decoration: _input('Ad Soyad', Icons.person_outline_rounded)),
                           const SizedBox(height: 10),
                           _ReadOnlyRow(icon: Icons.phone_outlined, label: 'Telefon', value: phone.isEmpty ? 'Telefon bilgisi yok' : phone),
                           const SizedBox(height: 10),
@@ -246,18 +271,9 @@ class _DriverAccountDialogState extends State<DriverAccountDialog> {
                             ),
                           ),
                           const SizedBox(height: 10),
-                          _ActionRow(
-                            icon: Icons.lock_outline_rounded,
-                            title: 'Şifreyi değiştir',
-                            subtitle: 'Mevcut şifreni doğrulayarak güncelle',
-                            onTap: _changePassword,
-                          ),
+                          _ActionRow(icon: Icons.lock_outline_rounded, title: 'Şifreyi değiştir', subtitle: 'Mevcut şifreni doğrulayarak güncelle', onTap: _changePassword),
                           const SizedBox(height: 10),
-                          const _ReadOnlyRow(
-                            icon: Icons.shield_outlined,
-                            label: 'Sürücü yetkileri',
-                            value: 'Araç sahibi tarafından yönetilir',
-                          ),
+                          const _ReadOnlyRow(icon: Icons.shield_outlined, label: 'Sürücü yetkileri', value: 'Araç sahibi tarafından yönetilir'),
                         ],
                       ),
                     ),
