@@ -5,20 +5,21 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 const _bg = Color(0xFF07111F);
 const _panel = Color(0xFF111A31);
+const _panel2 = Color(0xFF0D1728);
 const _line = Color(0xFF29345A);
 const _purple = Color(0xFF8B5CFF);
 const _muted = Color(0xFFA7B0C7);
 const _api = 'https://heycar-api-185-165-46-213.nip.io';
 
-class DriverAccountPage extends StatefulWidget {
-  const DriverAccountPage({super.key, required this.userId});
+class DriverAccountDialog extends StatefulWidget {
+  const DriverAccountDialog({super.key, required this.userId});
   final String userId;
 
   @override
-  State<DriverAccountPage> createState() => _DriverAccountPageState();
+  State<DriverAccountDialog> createState() => _DriverAccountDialogState();
 }
 
-class _DriverAccountPageState extends State<DriverAccountPage> {
+class _DriverAccountDialogState extends State<DriverAccountDialog> {
   final name = TextEditingController();
   String phone = '';
   String status = '';
@@ -93,129 +94,150 @@ class _DriverAccountPageState extends State<DriverAccountPage> {
     String? dialogError;
     bool busy = false;
 
-    await showModalBottomSheet<void>(
+    await showDialog<void>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: _panel,
-      showDragHandle: true,
-      builder: (sheetContext) => StatefulBuilder(
-        builder: (context, setSheetState) => Padding(
-          padding: EdgeInsets.fromLTRB(20, 4, 20, MediaQuery.viewInsetsOf(context).bottom + 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text('Şifreyi değiştir', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900)),
-              const SizedBox(height: 6),
-              const Text('Hesabını korumak için mevcut şifreni doğrula.', style: TextStyle(color: _muted)),
-              const SizedBox(height: 18),
-              _PasswordField(controller: current, label: 'Mevcut şifre'),
-              const SizedBox(height: 10),
-              _PasswordField(controller: next, label: 'Yeni şifre'),
-              const SizedBox(height: 10),
-              _PasswordField(controller: confirm, label: 'Yeni şifre tekrar'),
-              if (dialogError != null) ...[
-                const SizedBox(height: 10),
-                Text(dialogError!, style: const TextStyle(color: Colors.redAccent)),
-              ],
-              const SizedBox(height: 16),
-              SizedBox(
-                height: 52,
-                child: FilledButton(
-                  style: FilledButton.styleFrom(backgroundColor: _purple),
-                  onPressed: busy
-                      ? null
-                      : () async {
-                          if (next.text.length < 6) {
-                            setSheetState(() => dialogError = 'Yeni şifre en az 6 karakter olmalı.');
-                            return;
-                          }
-                          if (next.text != confirm.text) {
-                            setSheetState(() => dialogError = 'Yeni şifreler aynı değil.');
-                            return;
-                          }
-                          setSheetState(() { busy = true; dialogError = null; });
-                          try {
-                            final r = await http
-                                .put(
-                                  Uri.parse('$_api/api/driver/account/password'),
-                                  headers: {...headers, 'Content-Type': 'application/json'},
-                                  body: jsonEncode({'currentPassword': current.text, 'newPassword': next.text}),
-                                )
-                                .timeout(const Duration(seconds: 15));
-                            if (r.statusCode == 401) {
-                              setSheetState(() { busy = false; dialogError = 'Mevcut şifre yanlış.'; });
-                              return;
-                            }
-                            if (r.statusCode < 200 || r.statusCode >= 300) throw Exception('password_${r.statusCode}');
-                            if (sheetContext.mounted) Navigator.pop(sheetContext);
-                            if (mounted) ScaffoldMessenger.of(this.context).showSnackBar(const SnackBar(content: Text('Şifre güncellendi.')));
-                          } catch (_) {
-                            setSheetState(() { busy = false; dialogError = 'Şifre değiştirilemedi.'; });
-                          }
-                        },
-                  child: Text(busy ? 'Güncelleniyor...' : 'Şifreyi Güncelle', style: const TextStyle(fontWeight: FontWeight.w900)),
-                ),
+      barrierColor: Colors.black.withValues(alpha: .72),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => Dialog(
+          backgroundColor: _panel,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26), side: const BorderSide(color: _line)),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 380),
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.viewInsetsOf(context).bottom + 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(children: [
+                    const Expanded(child: Text('Şifreyi değiştir', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900))),
+                    IconButton(onPressed: () => Navigator.pop(dialogContext), icon: const Icon(Icons.close_rounded, color: Colors.white70)),
+                  ]),
+                  const SizedBox(height: 4),
+                  const Text('Hesabını korumak için mevcut şifreni doğrula.', style: TextStyle(color: _muted)),
+                  const SizedBox(height: 18),
+                  _PasswordField(controller: current, label: 'Mevcut şifre'),
+                  const SizedBox(height: 10),
+                  _PasswordField(controller: next, label: 'Yeni şifre'),
+                  const SizedBox(height: 10),
+                  _PasswordField(controller: confirm, label: 'Yeni şifre tekrar'),
+                  if (dialogError != null) ...[
+                    const SizedBox(height: 10),
+                    Text(dialogError!, style: const TextStyle(color: Colors.redAccent)),
+                  ],
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    height: 50,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(backgroundColor: _purple),
+                      onPressed: busy
+                          ? null
+                          : () async {
+                              if (next.text.length < 6) {
+                                setDialogState(() => dialogError = 'Yeni şifre en az 6 karakter olmalı.');
+                                return;
+                              }
+                              if (next.text != confirm.text) {
+                                setDialogState(() => dialogError = 'Yeni şifreler aynı değil.');
+                                return;
+                              }
+                              setDialogState(() { busy = true; dialogError = null; });
+                              try {
+                                final r = await http
+                                    .put(
+                                      Uri.parse('$_api/api/driver/account/password'),
+                                      headers: {...headers, 'Content-Type': 'application/json'},
+                                      body: jsonEncode({'currentPassword': current.text, 'newPassword': next.text}),
+                                    )
+                                    .timeout(const Duration(seconds: 15));
+                                if (r.statusCode == 401) {
+                                  setDialogState(() { busy = false; dialogError = 'Mevcut şifre yanlış.'; });
+                                  return;
+                                }
+                                if (r.statusCode < 200 || r.statusCode >= 300) throw Exception('password_${r.statusCode}');
+                                if (dialogContext.mounted) Navigator.pop(dialogContext);
+                                if (mounted) ScaffoldMessenger.of(this.context).showSnackBar(const SnackBar(content: Text('Şifre güncellendi.')));
+                              } catch (_) {
+                                setDialogState(() { busy = false; dialogError = 'Şifre değiştirilemedi.'; });
+                              }
+                            },
+                      child: Text(busy ? 'Güncelleniyor...' : 'Şifreyi Güncelle', style: const TextStyle(fontWeight: FontWeight.w900)),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
     );
+
     current.dispose();
     next.dispose();
     confirm.dispose();
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        backgroundColor: _bg,
-        appBar: AppBar(
-          backgroundColor: _bg,
-          foregroundColor: Colors.white,
-          title: const Text('Hesap bilgilerim', style: TextStyle(fontWeight: FontWeight.w900)),
-        ),
-        body: loading
-            ? const Center(child: CircularProgressIndicator(color: _purple))
-            : error != null
-                ? Center(
-                    child: Padding(
+  Widget build(BuildContext context) => Dialog(
+        backgroundColor: _panel,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 22, vertical: 28),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28), side: const BorderSide(color: _line)),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: 390,
+            maxHeight: MediaQuery.sizeOf(context).height * .78,
+          ),
+          child: loading
+              ? const SizedBox(height: 260, child: Center(child: CircularProgressIndicator(color: _purple)))
+              : error != null
+                  ? Padding(
                       padding: const EdgeInsets.all(24),
                       child: Column(mainAxisSize: MainAxisSize.min, children: [
+                        Row(children: [
+                          const Expanded(child: Text('Hesap bilgilerim', style: TextStyle(color: Colors.white, fontSize: 23, fontWeight: FontWeight.w900))),
+                          IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close_rounded, color: Colors.white70)),
+                        ]),
+                        const SizedBox(height: 28),
                         const Icon(Icons.person_off_outlined, color: _muted, size: 46),
                         const SizedBox(height: 12),
-                        Text(error!, style: const TextStyle(color: _muted)),
+                        Text(error!, textAlign: TextAlign.center, style: const TextStyle(color: _muted)),
                         const SizedBox(height: 14),
                         FilledButton(onPressed: _load, style: FilledButton.styleFrom(backgroundColor: _purple), child: const Text('Tekrar dene')),
                       ]),
-                    ),
-                  )
-                : ListView(
-                    padding: const EdgeInsets.fromLTRB(18, 20, 18, 32),
-                    children: [
-                      const CircleAvatar(
-                        radius: 42,
-                        backgroundColor: _panel,
-                        child: Icon(Icons.person_rounded, color: _purple, size: 42),
-                      ),
-                      const SizedBox(height: 22),
-                      _Section(
-                        title: 'Profil',
+                    )
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(20, 18, 20, 22),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
+                          Row(children: [
+                            const Expanded(child: Text('Hesap bilgilerim', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900))),
+                            IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close_rounded, color: Colors.white70)),
+                          ]),
+                          const SizedBox(height: 8),
+                          const Center(
+                            child: CircleAvatar(
+                              radius: 38,
+                              backgroundColor: _panel2,
+                              child: Icon(Icons.person_rounded, color: _purple, size: 38),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
                           TextField(
                             controller: name,
                             style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
                             decoration: _input('Ad Soyad', Icons.person_outline_rounded),
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 10),
                           _ReadOnlyRow(icon: Icons.phone_outlined, label: 'Telefon', value: phone.isEmpty ? 'Telefon bilgisi yok' : phone),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 10),
                           const _ReadOnlyRow(icon: Icons.badge_outlined, label: 'Hesap türü', value: 'Sürücü'),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 10),
                           _ReadOnlyRow(icon: Icons.verified_user_outlined, label: 'Hesap durumu', value: status == 'active' ? 'Aktif' : (status.isEmpty ? 'Bilinmiyor' : status)),
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 16),
                           SizedBox(
-                            height: 50,
+                            height: 48,
                             child: FilledButton.icon(
                               onPressed: saving ? null : _saveName,
                               style: FilledButton.styleFrom(backgroundColor: _purple),
@@ -223,19 +245,14 @@ class _DriverAccountPageState extends State<DriverAccountPage> {
                               label: Text(saving ? 'Kaydediliyor...' : 'Bilgileri Kaydet', style: const TextStyle(fontWeight: FontWeight.w900)),
                             ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-                      _Section(
-                        title: 'Güvenlik',
-                        children: [
+                          const SizedBox(height: 10),
                           _ActionRow(
                             icon: Icons.lock_outline_rounded,
-                            title: 'Şifre',
-                            subtitle: 'Mevcut şifreni doğrulayarak değiştir',
+                            title: 'Şifreyi değiştir',
+                            subtitle: 'Mevcut şifreni doğrulayarak güncelle',
                             onTap: _changePassword,
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 10),
                           const _ReadOnlyRow(
                             icon: Icons.shield_outlined,
                             label: 'Sürücü yetkileri',
@@ -243,8 +260,8 @@ class _DriverAccountPageState extends State<DriverAccountPage> {
                           ),
                         ],
                       ),
-                    ],
-                  ),
+                    ),
+        ),
       );
 }
 
@@ -253,43 +270,29 @@ InputDecoration _input(String label, IconData icon) => InputDecoration(
       labelStyle: const TextStyle(color: _muted),
       prefixIcon: Icon(icon, color: _purple),
       filled: true,
-      fillColor: _panel,
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: const BorderSide(color: _line)),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: const BorderSide(color: _purple, width: 1.4)),
+      fillColor: _panel2,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: _line)),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: _purple, width: 1.4)),
     );
-
-class _Section extends StatelessWidget {
-  const _Section({required this.title, required this.children});
-  final String title;
-  final List<Widget> children;
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(22), border: Border.all(color: _line)),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Text(title, style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 14),
-          ...children,
-        ]),
-      );
-}
 
 class _ReadOnlyRow extends StatelessWidget {
   const _ReadOnlyRow({required this.icon, required this.label, required this.value});
   final IconData icon;
   final String label;
   final String value;
+
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-        decoration: BoxDecoration(color: _bg.withValues(alpha: .42), borderRadius: BorderRadius.circular(16), border: Border.all(color: _line)),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(color: _panel2, borderRadius: BorderRadius.circular(16), border: Border.all(color: _line)),
         child: Row(children: [
-          Icon(icon, color: _purple, size: 22),
-          const SizedBox(width: 12),
+          Icon(icon, color: _purple, size: 21),
+          const SizedBox(width: 11),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(label, style: const TextStyle(color: _muted, fontSize: 11.5)),
             const SizedBox(height: 3),
-            Text(value, style: const TextStyle(color: Colors.white, fontSize: 14.5, fontWeight: FontWeight.w800)),
+            Text(value, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w800)),
           ])),
         ]),
       );
@@ -301,23 +304,24 @@ class _ActionRow extends StatelessWidget {
   final String title;
   final String subtitle;
   final VoidCallback onTap;
+
   @override
   Widget build(BuildContext context) => Material(
-        color: _bg.withValues(alpha: .42),
+        color: _panel2,
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(16),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), border: Border.all(color: _line)),
             child: Row(children: [
-              const Icon(Icons.lock_outline_rounded, color: _purple, size: 22),
-              const SizedBox(width: 12),
+              Icon(icon, color: _purple, size: 21),
+              const SizedBox(width: 11),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(title, style: const TextStyle(color: Colors.white, fontSize: 14.5, fontWeight: FontWeight.w900)),
+                Text(title, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w900)),
                 const SizedBox(height: 3),
-                Text(subtitle, style: const TextStyle(color: _muted, fontSize: 12.5)),
+                Text(subtitle, style: const TextStyle(color: _muted, fontSize: 12)),
               ])),
               const Icon(Icons.chevron_right_rounded, color: Colors.white54),
             ]),
@@ -330,6 +334,7 @@ class _PasswordField extends StatelessWidget {
   const _PasswordField({required this.controller, required this.label});
   final TextEditingController controller;
   final String label;
+
   @override
   Widget build(BuildContext context) => TextField(
         controller: controller,
