@@ -65,13 +65,9 @@ class _OwnerDashboardLiveState extends State<OwnerDashboardLive> {
   }
 
   void _openParking() {
-    final vehicleId = QrDraft.vehicleId.trim().isNotEmpty
-        ? QrDraft.vehicleId.trim()
-        : OnboardingDraft.vehicleId.trim();
+    final vehicleId = QrDraft.vehicleId.trim().isNotEmpty ? QrDraft.vehicleId.trim() : OnboardingDraft.vehicleId.trim();
     if (vehicleId.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Önce bir araç ekleyin.')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Önce bir araç ekleyin.')));
       return;
     }
     showModalBottomSheet(
@@ -107,10 +103,7 @@ class _OwnerDashboardLiveState extends State<OwnerDashboardLive> {
           ),
           const OwnerNotificationsPage(),
           const OwnerVehiclesPage(),
-          OwnerSettingsPage(
-            onOpenVehicles: () => setState(() => current = 2),
-            onOpenQr: _openQr,
-          ),
+          OwnerSettingsPage(onOpenVehicles: () => setState(() => current = 2), onOpenQr: _openQr),
         ];
         const labels = ['Ana Sayfa', 'Bildirimler', 'Araçlarım', 'Ayarlar'];
         const icons = [Icons.home_rounded, Icons.notifications_none_rounded, Icons.directions_car_outlined, Icons.settings_outlined];
@@ -125,8 +118,7 @@ class _OwnerDashboardLiveState extends State<OwnerDashboardLive> {
               return Expanded(child: InkWell(onTap: () => setState(() => current = i), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                 Stack(clipBehavior: Clip.none, children: [
                   Icon(icons[i], color: active ? _purple : const Color(0xFF8F9AB7), size: 28),
-                  if (i == 1 && unreadCount > 0)
-                    Positioned(right: -8, top: -7, child: Container(constraints: const BoxConstraints(minWidth: 20, minHeight: 20), padding: const EdgeInsets.symmetric(horizontal: 5), alignment: Alignment.center, decoration: const BoxDecoration(color: Color(0xFFFF4D63), shape: BoxShape.circle), child: Text(unreadCount > 99 ? '99+' : '$unreadCount', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900)))),
+                  if (i == 1 && unreadCount > 0) Positioned(right: -8, top: -7, child: Container(constraints: const BoxConstraints(minWidth: 20, minHeight: 20), padding: const EdgeInsets.symmetric(horizontal: 5), alignment: Alignment.center, decoration: const BoxDecoration(color: Color(0xFFFF4D63), shape: BoxShape.circle), child: Text(unreadCount > 99 ? '99+' : '$unreadCount', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900)))),
                 ]),
                 const SizedBox(height: 5),
                 Text(labels[i], style: TextStyle(color: active ? _purple : const Color(0xFF8F9AB7), fontSize: 11.5, fontWeight: active ? FontWeight.w800 : FontWeight.w500)),
@@ -157,29 +149,46 @@ class _OwnerHome extends StatelessWidget {
     return SizedBox(width: 66, height: 54, child: Padding(padding: const EdgeInsets.all(7), child: Image.network(url, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Icon(Icons.directions_car_filled_rounded, color: _purple, size: 31))));
   }
 
-  Widget _logo() => const Text.rich(TextSpan(children: [TextSpan(text: 'Hey', style: TextStyle(color: Colors.white)), TextSpan(text: 'Car', style: TextStyle(color: _purple))]), style: TextStyle(fontSize: 34, fontWeight: FontWeight.w900, letterSpacing: -1.6));
+  Widget _logo() => Image.asset('assets/Logoqr.png', height: 40, fit: BoxFit.contain);
 
   Widget _parkingButton() => InkWell(
     onTap: onOpenParking,
-    borderRadius: BorderRadius.circular(16),
+    borderRadius: BorderRadius.circular(13),
     child: Container(
-      width: 62,
-      height: 62,
-      decoration: BoxDecoration(color: const Color(0xB8171238), borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFF5931A8))),
+      width: 50,
+      height: 55,
+      decoration: BoxDecoration(color: const Color(0x99171238), borderRadius: BorderRadius.circular(13), border: Border.all(color: const Color(0xFF5931A8), width: 1)),
       child: const Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Icon(Icons.local_parking_rounded, color: _purple, size: 27),
-        SizedBox(height: 1),
-        Text('Park', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
+        SizedBox(
+          width: 27,
+          height: 29,
+          child: Stack(alignment: Alignment.topCenter, children: [
+            Icon(Icons.location_on_rounded, color: _purple, size: 29),
+            Positioned(top: 4, child: Text('P', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900))),
+          ]),
+        ),
+        Text('Park', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800, height: 1)),
       ]),
     ),
   );
 
-  Widget _profile() => Row(mainAxisSize: MainAxisSize.min, children: [
-    const CircleAvatar(radius: 21, backgroundColor: _panel, child: Icon(Icons.person_rounded, color: Colors.white70, size: 23)),
-    const SizedBox(width: 10),
-    Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15)), const Text('Araç Sahibi', style: TextStyle(color: _muted, fontSize: 12))]),
-    const SizedBox(width: 4),
-    const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white70),
+  Widget _notificationButton() => InkWell(
+    onTap: onOpenNotifications,
+    borderRadius: BorderRadius.circular(24),
+    child: const SizedBox(
+      width: 40,
+      height: 48,
+      child: Stack(clipBehavior: Clip.none, alignment: Alignment.center, children: [
+        Icon(Icons.notifications_none_rounded, color: Colors.white, size: 29),
+        Positioned(right: 4, top: 6, child: CircleAvatar(radius: 4.5, backgroundColor: Color(0xFFFF4D63))),
+      ]),
+    ),
+  );
+
+  Widget _profile() => const Row(mainAxisSize: MainAxisSize.min, children: [
+    CircleAvatar(radius: 20, backgroundColor: _panel, child: Icon(Icons.person_rounded, color: Colors.white70, size: 22)),
+    SizedBox(width: 3),
+    Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white70, size: 20),
   ]);
 
   @override
@@ -190,7 +199,15 @@ class _OwnerHome extends StatelessWidget {
     return ListView(padding: EdgeInsets.zero, children: [
       SizedBox(height: compact ? 500 : 555, child: Stack(clipBehavior: Clip.none, children: [
         Positioned.fill(child: Image.asset('assets/Aracsahibi.png', fit: BoxFit.cover, alignment: Alignment.topCenter)),
-        Positioned(left: 22, right: 22, top: topInset + 14, child: Row(children: [_logo(), const Spacer(), _parkingButton(), const SizedBox(width: 10), _profile()])),
+        Positioned(left: 22, right: 16, top: topInset + 14, child: Row(children: [
+          _logo(),
+          const Spacer(),
+          _parkingButton(),
+          const SizedBox(width: 8),
+          _notificationButton(),
+          const SizedBox(width: 5),
+          _profile(),
+        ])),
         Positioned(left: 16, bottom: compact ? 18 : 24, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('Merhaba', style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900, height: .95)),
           Text(name, style: const TextStyle(color: _purple, fontSize: 43, fontWeight: FontWeight.w900, height: 1)),
