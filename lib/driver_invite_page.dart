@@ -54,6 +54,12 @@ class _DriverCodeEntryPageState extends State<DriverCodeEntryPage> {
   }
 
   @override
+  void dispose() {
+    code.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) => Scaffold(
         backgroundColor: _bg,
         appBar: AppBar(backgroundColor: const Color(0xFF0A1020), title: const Text('Davet Kodu')),
@@ -170,6 +176,14 @@ class _DriverInvitePageState extends State<DriverInvitePage> {
     } finally {
       if (mounted) setState(() => busy = false);
     }
+  }
+
+  @override
+  void dispose() {
+    phone.dispose();
+    name.dispose();
+    pass.dispose();
+    super.dispose();
   }
 
   @override
@@ -305,26 +319,25 @@ class _DriverHomePageState extends State<DriverHomePage> {
         vehicles: vehicles,
         notifications: notifications,
         loading: loading,
-        onRefresh: load,
+        onRefresh: () => load(),
         onOpenNotifications: () => setState(() => current = 1),
         onOpenVehicles: () => setState(() => current = 2),
       ),
       _DriverNotificationsPage(
         items: notifications,
         loading: loading,
-        onRefresh: load,
+        onRefresh: () => load(),
       ),
       _DriverVehiclesPage(
         vehicles: vehicles,
         loading: loading,
-        onRefresh: load,
+        onRefresh: () => load(),
       ),
       _DriverSettingsPage(
         driverName: driverName,
-        active: hasActiveVehicle,
         onOpenVehicles: () => setState(() => current = 2),
         onOpenNotifications: () => setState(() => current = 1),
-        onRefresh: load,
+        onRefresh: () => load(),
       ),
     ];
 
@@ -349,7 +362,7 @@ class _DriverHomePageState extends State<DriverHomePage> {
           top: false,
           child: Row(
             children: List.generate(4, (i) {
-              final active = current == i;
+              final selected = current == i;
               return Expanded(
                 child: InkWell(
                   onTap: () => setState(() => current = i),
@@ -361,7 +374,7 @@ class _DriverHomePageState extends State<DriverHomePage> {
                         children: [
                           Icon(
                             icons[i],
-                            color: active ? _purple : const Color(0xFF8F9AB7),
+                            color: selected ? _purple : const Color(0xFF8F9AB7),
                             size: 28,
                           ),
                           if (i == 1 && unreadCount > 0)
@@ -392,9 +405,9 @@ class _DriverHomePageState extends State<DriverHomePage> {
                       Text(
                         labels[i],
                         style: TextStyle(
-                          color: active ? _purple : const Color(0xFF8F9AB7),
+                          color: selected ? _purple : const Color(0xFF8F9AB7),
                           fontSize: 11.5,
-                          fontWeight: active ? FontWeight.w800 : FontWeight.w500,
+                          fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
                         ),
                       ),
                     ],
@@ -426,7 +439,7 @@ class _DriverHome extends StatelessWidget {
   final List<Map<String, dynamic>> vehicles;
   final List<Map<String, dynamic>> notifications;
   final bool loading;
-  final Future<void> Function({bool silent}) onRefresh;
+  final Future<void> Function() onRefresh;
   final VoidCallback onOpenNotifications;
   final VoidCallback onOpenVehicles;
 
@@ -438,8 +451,7 @@ class _DriverHome extends StatelessWidget {
   Map<String, dynamic>? get firstVehicle => vehicles.isEmpty ? null : vehicles.first;
 
   String get plate {
-    final v = firstVehicle;
-    final p = v?['plate']?.toString().trim() ?? '';
+    final p = firstVehicle?['plate']?.toString().trim() ?? '';
     return p.isEmpty ? 'Araç bulunamadı' : p;
   }
 
@@ -488,17 +500,23 @@ class _DriverHome extends StatelessWidget {
     );
   }
 
-  Widget _brand() => const Text.rich(
-        TextSpan(
-          children: [
-            TextSpan(text: 'Cep', style: TextStyle(color: Colors.white)),
-            TextSpan(text: 'qar', style: TextStyle(color: _purple)),
-          ],
-        ),
-        style: TextStyle(
-          fontSize: 34,
-          fontWeight: FontWeight.w900,
-          letterSpacing: -1.6,
+  Widget _brand() => SizedBox(
+        width: 158,
+        height: 55,
+        child: Image.asset(
+          'assets/Logoqr.png',
+          fit: BoxFit.contain,
+          alignment: Alignment.centerLeft,
+          errorBuilder: (_, __, ___) => const Align(
+            alignment: Alignment.centerLeft,
+            child: Text.rich(
+              TextSpan(children: [
+                TextSpan(text: 'Cep', style: TextStyle(color: Colors.white)),
+                TextSpan(text: 'qar', style: TextStyle(color: _purple)),
+              ]),
+              style: TextStyle(fontSize: 34, fontWeight: FontWeight.w900, letterSpacing: -1.6),
+            ),
+          ),
         ),
       );
 
@@ -508,9 +526,9 @@ class _DriverHome extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         const CircleAvatar(
-          radius: 21,
-          backgroundColor: _panel,
-          child: Icon(Icons.person_rounded, color: Colors.white70, size: 23),
+          radius: 24,
+          backgroundColor: Color(0xFF111B31),
+          child: Icon(Icons.person_rounded, color: Colors.white70, size: 25),
         ),
         const SizedBox(width: 10),
         Column(
@@ -518,18 +536,22 @@ class _DriverHome extends StatelessWidget {
           children: [
             Text(
               firstName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w900,
-                fontSize: 15,
+                fontSize: 17,
               ),
             ),
+            const SizedBox(height: 3),
             Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('Sürücü', style: TextStyle(color: _muted, fontSize: 12)),
-                const SizedBox(width: 6),
+                const Text('Sürücü', style: TextStyle(color: _muted, fontSize: 13)),
+                const SizedBox(width: 7),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                   decoration: BoxDecoration(
                     color: statusColor.withValues(alpha: .12),
                     borderRadius: BorderRadius.circular(99),
@@ -539,8 +561,8 @@ class _DriverHome extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
-                        width: 5,
-                        height: 5,
+                        width: 6,
+                        height: 6,
                         decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle),
                       ),
                       const SizedBox(width: 4),
@@ -548,7 +570,7 @@ class _DriverHome extends StatelessWidget {
                         active ? 'Aktif' : 'Pasif',
                         style: TextStyle(
                           color: statusColor,
-                          fontSize: 9.5,
+                          fontSize: 10,
                           fontWeight: FontWeight.w900,
                         ),
                       ),
@@ -559,6 +581,8 @@ class _DriverHome extends StatelessWidget {
             ),
           ],
         ),
+        const SizedBox(width: 2),
+        const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white70, size: 24),
       ],
     );
   }
@@ -568,58 +592,61 @@ class _DriverHome extends StatelessWidget {
     final h = MediaQuery.sizeOf(context).height;
     final compact = h < 760;
     final topInset = MediaQuery.paddingOf(context).top;
+    final heroHeight = compact ? 500.0 : 555.0;
 
     return RefreshIndicator(
       color: _purple,
-      onRefresh: () => onRefresh(),
+      onRefresh: onRefresh,
       child: ListView(
         padding: EdgeInsets.zero,
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
           SizedBox(
-            height: compact ? 500 : 555,
+            height: heroHeight,
             child: Stack(
-              clipBehavior: Clip.none,
+              fit: StackFit.expand,
               children: [
-                const Positioned.fill(
-                  child: DecoratedBox(
+                Image.asset(
+                  'assets/Aracsahibi.png',
+                  fit: BoxFit.cover,
+                  alignment: Alignment.topCenter,
+                  filterQuality: FilterQuality.high,
+                  errorBuilder: (_, __, ___) => const DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Color(0xFF080F20), Color(0xFF11182D)],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Color(0xFF111B5D), Color(0xFF07111F)],
                       ),
                     ),
                   ),
                 ),
-                Positioned(
-                  right: -36,
-                  top: topInset + 50,
-                  width: compact ? 330 : 365,
-                  height: compact ? 330 : 365,
-                  child: Image.asset(
-                    'assets/Cepqar3d.png',
-                    fit: BoxFit.contain,
-                    alignment: Alignment.centerRight,
-                    filterQuality: FilterQuality.high,
-                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      stops: [0.0, .54, 1.0],
+                      colors: [Color(0x16000000), Color(0x08000000), Color(0xA807111F)],
+                    ),
                   ),
                 ),
                 Positioned(
-                  left: 22,
-                  right: 22,
+                  left: 20,
+                  right: 18,
                   top: topInset + 14,
                   child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _brand(),
                       const Spacer(),
-                      _profile(),
+                      Flexible(child: _profile()),
                     ],
                   ),
                 ),
                 Positioned(
-                  left: 16,
-                  bottom: compact ? 18 : 24,
+                  left: 26,
+                  bottom: compact ? 24 : 28,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -630,6 +657,7 @@ class _DriverHome extends StatelessWidget {
                           fontSize: 32,
                           fontWeight: FontWeight.w900,
                           height: .95,
+                          letterSpacing: -.8,
                         ),
                       ),
                       Text(
@@ -639,17 +667,18 @@ class _DriverHome extends StatelessWidget {
                           fontSize: 43,
                           fontWeight: FontWeight.w900,
                           height: 1,
+                          letterSpacing: -1.2,
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 12),
                       const SizedBox(
-                        width: 175,
+                        width: 190,
                         child: Text(
                           'Aracınla ilgili\ntüm bildirimler\nburada.',
                           style: TextStyle(
                             color: Colors.white70,
                             fontSize: 17,
-                            height: 1.25,
+                            height: 1.28,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -660,44 +689,54 @@ class _DriverHome extends StatelessWidget {
               ],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(10, 14, 10, 26),
-            child: Column(
-              children: [
-                InkWell(
-                  onTap: onOpenVehicles,
-                  borderRadius: BorderRadius.circular(20),
-                  child: _Card(
-                    child: Row(
-                      children: [
-                        _brandLogo(),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                plate,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w900,
-                                ),
+          Transform.translate(
+            offset: const Offset(0, -12),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(10, 0, 10, 14),
+              child: InkWell(
+                onTap: onOpenVehicles,
+                borderRadius: BorderRadius.circular(26),
+                child: Container(
+                  minHeight: 108,
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 17),
+                  decoration: BoxDecoration(
+                    color: _panel,
+                    borderRadius: BorderRadius.circular(26),
+                    border: Border.all(color: _line),
+                  ),
+                  child: Row(
+                    children: [
+                      _brandLogo(),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              plate,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 19,
+                                fontWeight: FontWeight.w900,
                               ),
-                              const SizedBox(height: 2),
-                              Text(
-                                carName,
-                                style: const TextStyle(color: _muted, fontSize: 13),
-                              ),
-                            ],
-                          ),
+                            ),
+                            const SizedBox(height: 5),
+                            Text(carName, style: const TextStyle(color: _muted, fontSize: 14)),
+                          ],
                         ),
-                        const Icon(Icons.chevron_right_rounded, color: Colors.white70, size: 28),
-                      ],
-                    ),
+                      ),
+                      const Icon(Icons.chevron_right_rounded, color: Colors.white70, size: 29),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 12),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 0, 10, 26),
+            child: Column(
+              children: [
                 _DriverStatsRow(
                   unread: unread,
                   messages: notifications.length,
@@ -720,10 +759,7 @@ class _DriverHome extends StatelessWidget {
                     label: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(
-                          'Bildirimleri Gör',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
-                        ),
+                        Text('Bildirimleri Gör', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
                         SizedBox(width: 8),
                         Icon(Icons.chevron_right_rounded),
                       ],
@@ -798,57 +834,19 @@ class _DriverStatsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(
         children: [
-          Expanded(
-            child: _LiveStat(
-              icon: Icons.notifications_active_rounded,
-              value: unread,
-              label: 'Yeni\nBildirim',
-              color: const Color(0xFFFF4D63),
-              onTap: onTap,
-            ),
-          ),
+          Expanded(child: _LiveStat(icon: Icons.notifications_active_rounded, value: unread, label: 'Yeni\nBildirim', color: const Color(0xFFFF4D63), onTap: onTap)),
           const SizedBox(width: 8),
-          Expanded(
-            child: _LiveStat(
-              icon: Icons.chat_bubble_outline_rounded,
-              value: messages,
-              label: 'Toplam\nMesaj',
-              color: _purple,
-              onTap: onTap,
-            ),
-          ),
+          Expanded(child: _LiveStat(icon: Icons.chat_bubble_outline_rounded, value: messages, label: 'Toplam\nMesaj', color: _purple, onTap: onTap)),
           const SizedBox(width: 8),
-          Expanded(
-            child: _LiveStat(
-              icon: Icons.location_on_outlined,
-              value: locations,
-              label: 'Konum\nPaylaşımı',
-              color: const Color(0xFF42A5FF),
-              onTap: onTap,
-            ),
-          ),
+          Expanded(child: _LiveStat(icon: Icons.location_on_outlined, value: locations, label: 'Konum\nPaylaşımı', color: const Color(0xFF42A5FF), onTap: onTap)),
           const SizedBox(width: 8),
-          Expanded(
-            child: _LiveStat(
-              icon: Icons.phone_in_talk_outlined,
-              value: calls,
-              label: 'Arama\nTalebi',
-              color: _purple,
-              onTap: onTap,
-            ),
-          ),
+          Expanded(child: _LiveStat(icon: Icons.phone_in_talk_outlined, value: calls, label: 'Arama\nTalebi', color: _purple, onTap: onTap)),
         ],
       );
 }
 
 class _LiveStat extends StatelessWidget {
-  const _LiveStat({
-    required this.icon,
-    required this.value,
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
+  const _LiveStat({required this.icon, required this.value, required this.label, required this.color, required this.onTap});
 
   final IconData icon;
   final int value;
@@ -863,47 +861,24 @@ class _LiveStat extends StatelessWidget {
         child: Container(
           height: 120,
           padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
-          decoration: BoxDecoration(
-            color: _panel,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: _line),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: color, size: 25),
-              const SizedBox(height: 6),
-              Text(
-                '$value',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 23,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                label,
-                maxLines: 2,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: _muted, fontSize: 11.5, height: 1.15),
-              ),
-            ],
-          ),
+          decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(18), border: Border.all(color: _line)),
+          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Icon(icon, color: color, size: 25),
+            const SizedBox(height: 6),
+            Text('$value', style: const TextStyle(color: Colors.white, fontSize: 23, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 2),
+            Text(label, maxLines: 2, textAlign: TextAlign.center, style: const TextStyle(color: _muted, fontSize: 11.5, height: 1.15)),
+          ]),
         ),
       );
 }
 
 class _DriverNotificationsPage extends StatefulWidget {
-  const _DriverNotificationsPage({
-    required this.items,
-    required this.loading,
-    required this.onRefresh,
-  });
+  const _DriverNotificationsPage({required this.items, required this.loading, required this.onRefresh});
 
   final List<Map<String, dynamic>> items;
   final bool loading;
-  final Future<void> Function({bool silent}) onRefresh;
+  final Future<void> Function() onRefresh;
 
   @override
   State<_DriverNotificationsPage> createState() => _DriverNotificationsPageState();
@@ -919,12 +894,8 @@ class _DriverNotificationsPageState extends State<_DriverNotificationsPage> {
         return s == null || s.isEmpty || s == 'new' || s == 'unread';
       }).toList();
     }
-    if (tab == 2) {
-      return widget.items.where((e) => e['status']?.toString().toLowerCase() == 'read').toList();
-    }
-    if (tab == 3) {
-      return widget.items.where((e) => e['status']?.toString().toLowerCase() == 'resolved').toList();
-    }
+    if (tab == 2) return widget.items.where((e) => e['status']?.toString().toLowerCase() == 'read').toList();
+    if (tab == 3) return widget.items.where((e) => e['status']?.toString().toLowerCase() == 'resolved').toList();
     return widget.items;
   }
 
@@ -935,46 +906,31 @@ class _DriverNotificationsPageState extends State<_DriverNotificationsPage> {
 
   String _title(String type) {
     switch (type) {
-      case 'move_vehicle':
-        return 'Araç Çekme Talebi';
-      case 'lights_on':
-        return 'Far Uyarısı';
-      case 'damage':
-        return 'Hasar Bildirimi';
-      case 'call_request':
-        return 'Gizli Arama Talebi';
-      default:
-        return 'Mesaj';
+      case 'move_vehicle': return 'Araç Çekme Talebi';
+      case 'lights_on': return 'Far Uyarısı';
+      case 'damage': return 'Hasar Bildirimi';
+      case 'call_request': return 'Gizli Arama Talebi';
+      default: return 'Mesaj';
     }
   }
 
   IconData _icon(String type) {
     switch (type) {
-      case 'lights_on':
-        return Icons.lightbulb_rounded;
-      case 'damage':
-        return Icons.warning_amber_rounded;
-      case 'call_request':
-        return Icons.phone_rounded;
-      case 'move_vehicle':
-        return Icons.directions_car_filled_rounded;
-      default:
-        return Icons.chat_bubble_rounded;
+      case 'lights_on': return Icons.lightbulb_rounded;
+      case 'damage': return Icons.warning_amber_rounded;
+      case 'call_request': return Icons.phone_rounded;
+      case 'move_vehicle': return Icons.directions_car_filled_rounded;
+      default: return Icons.chat_bubble_rounded;
     }
   }
 
   Color _typeColor(String type) {
     switch (type) {
-      case 'damage':
-        return const Color(0xFFFF4D63);
-      case 'lights_on':
-        return const Color(0xFFFF9E2C);
-      case 'move_vehicle':
-        return const Color(0xFF25B765);
-      case 'call_request':
-        return _purple;
-      default:
-        return const Color(0xFF2E7DF6);
+      case 'damage': return const Color(0xFFFF4D63);
+      case 'lights_on': return const Color(0xFFFF9E2C);
+      case 'move_vehicle': return const Color(0xFF25B765);
+      case 'call_request': return _purple;
+      default: return const Color(0xFF2E7DF6);
     }
   }
 
@@ -997,148 +953,71 @@ class _DriverNotificationsPageState extends State<_DriverNotificationsPage> {
       builder: (_) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(22, 4, 22, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                _title(type),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                (n['message'] ?? 'Bildirim detayı bulunamadı.').toString(),
-                style: const TextStyle(color: _muted, fontSize: 16, height: 1.4),
-              ),
-              const SizedBox(height: 14),
-              Text(_time(n['created_at']), style: const TextStyle(color: _purpleSoft)),
-            ],
-          ),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(_title(type), style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 10),
+            Text((n['message'] ?? 'Bildirim detayı bulunamadı.').toString(), style: const TextStyle(color: _muted, fontSize: 16, height: 1.4)),
+            const SizedBox(height: 14),
+            Text(_time(n['created_at']), style: const TextStyle(color: _purpleSoft)),
+          ]),
         ),
       ),
     );
   }
 
   @override
-  Widget build(BuildContext context) {
-    return ColoredBox(
-      color: _bg,
-      child: SafeArea(
-        bottom: false,
-        child: RefreshIndicator(
-          color: _purple,
-          onRefresh: () => widget.onRefresh(),
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(18, 18, 18, 30),
-            children: [
-              Row(
-                children: [
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Bildirimler',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 28,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        SizedBox(height: 2),
-                        Text(
-                          'Araçla ilgili bildirimler ve anonim mesajlar',
-                          style: TextStyle(color: _muted, fontSize: 13.5),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => widget.onRefresh(),
-                    icon: const Icon(Icons.refresh_rounded, color: Colors.white),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 18),
-              SizedBox(
-                height: 48,
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _NotificationTab(
-                        'Tümü',
-                        tab == 0,
-                        badge: unread > 0 ? unread : null,
-                        onTap: () => setState(() => tab = 0),
-                      ),
-                    ),
+  Widget build(BuildContext context) => ColoredBox(
+        color: _bg,
+        child: SafeArea(
+          bottom: false,
+          child: RefreshIndicator(
+            color: _purple,
+            onRefresh: widget.onRefresh,
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(18, 18, 18, 30),
+              children: [
+                Row(children: [
+                  const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('Bildirimler', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900)),
+                    SizedBox(height: 2),
+                    Text('Araçla ilgili bildirimler ve anonim mesajlar', style: TextStyle(color: _muted, fontSize: 13.5)),
+                  ])),
+                  IconButton(onPressed: widget.onRefresh, icon: const Icon(Icons.refresh_rounded, color: Colors.white)),
+                ]),
+                const SizedBox(height: 18),
+                SizedBox(
+                  height: 48,
+                  child: Row(children: [
+                    Expanded(child: _NotificationTab('Tümü', tab == 0, badge: unread > 0 ? unread : null, onTap: () => setState(() => tab = 0))),
                     const SizedBox(width: 8),
-                    Expanded(
-                      child: _NotificationTab(
-                        'Yeni',
-                        tab == 1,
-                        badge: unread > 0 ? unread : null,
-                        onTap: () => setState(() => tab = 1),
-                      ),
-                    ),
+                    Expanded(child: _NotificationTab('Yeni', tab == 1, badge: unread > 0 ? unread : null, onTap: () => setState(() => tab = 1))),
                     const SizedBox(width: 8),
-                    Expanded(
-                      child: _NotificationTab(
-                        'Okundu',
-                        tab == 2,
-                        onTap: () => setState(() => tab = 2),
-                      ),
-                    ),
+                    Expanded(child: _NotificationTab('Okundu', tab == 2, onTap: () => setState(() => tab = 2))),
                     const SizedBox(width: 8),
-                    Expanded(
-                      child: _NotificationTab(
-                        'Çözüldü',
-                        tab == 3,
-                        onTap: () => setState(() => tab = 3),
-                      ),
-                    ),
-                  ],
+                    Expanded(child: _NotificationTab('Çözüldü', tab == 3, onTap: () => setState(() => tab = 3))),
+                  ]),
                 ),
-              ),
-              const SizedBox(height: 18),
-              if (widget.loading)
-                const Padding(
-                  padding: EdgeInsets.all(44),
-                  child: Center(child: CircularProgressIndicator(color: _purple)),
-                )
-              else if (filtered.isEmpty)
-                _stateBox(Icons.notifications_none_rounded, 'Bu bölümde bildirim yok.')
-              else
-                ...filtered.map(_notificationCard),
-            ],
+                const SizedBox(height: 18),
+                if (widget.loading)
+                  const Padding(padding: EdgeInsets.all(44), child: Center(child: CircularProgressIndicator(color: _purple)))
+                else if (filtered.isEmpty)
+                  _stateBox(Icons.notifications_none_rounded, 'Bu bölümde bildirim yok.')
+                else
+                  ...filtered.map(_notificationCard),
+              ],
+            ),
           ),
         ),
-      ),
-    );
-  }
+      );
 
   Widget _stateBox(IconData icon, String text) => Container(
         padding: const EdgeInsets.symmetric(vertical: 42, horizontal: 20),
-        decoration: BoxDecoration(
-          color: _panel,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: _line),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, size: 42, color: _muted),
-            const SizedBox(height: 10),
-            Text(
-              text,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: _muted, fontWeight: FontWeight.w700),
-            ),
-          ],
-        ),
+        decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(22), border: Border.all(color: _line)),
+        child: Column(children: [
+          Icon(icon, size: 42, color: _muted),
+          const SizedBox(height: 10),
+          Text(text, textAlign: TextAlign.center, style: const TextStyle(color: _muted, fontWeight: FontWeight.w700)),
+        ]),
       );
 
   Widget _notificationCard(Map<String, dynamic> n) {
@@ -1155,70 +1034,36 @@ class _DriverNotificationsPageState extends State<_DriverNotificationsPage> {
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: _panel,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: _line),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 70,
-              height: 70,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: .16),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(_icon(type), color: color, size: 32),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          _title(type),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 15.5,
-                          ),
-                        ),
-                      ),
-                      Text(
-                        _time(n['created_at']),
-                        style: const TextStyle(color: _muted, fontSize: 11.5),
-                      ),
-                      if (fresh) ...[
-                        const SizedBox(width: 7),
-                        const CircleAvatar(radius: 5, backgroundColor: Color(0xFFFF4D63)),
-                      ],
-                    ],
-                  ),
-                  if (message.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      message,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.white, fontSize: 14.5, height: 1.3),
-                    ),
-                  ],
-                  if (plate.isNotEmpty) ...[
-                    const SizedBox(height: 7),
-                    Text(plate, style: const TextStyle(color: _muted, fontSize: 12.5)),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(width: 4),
-            const Icon(Icons.chevron_right_rounded, color: Colors.white54),
-          ],
-        ),
+        decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(20), border: Border.all(color: _line)),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Container(
+            width: 70,
+            height: 70,
+            decoration: BoxDecoration(color: color.withValues(alpha: .16), borderRadius: BorderRadius.circular(14)),
+            child: Icon(_icon(type), color: color, size: 32),
+          ),
+          const SizedBox(width: 12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Expanded(child: Text(_title(type), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15.5))),
+              Text(_time(n['created_at']), style: const TextStyle(color: _muted, fontSize: 11.5)),
+              if (fresh) ...[
+                const SizedBox(width: 7),
+                const CircleAvatar(radius: 5, backgroundColor: Color(0xFFFF4D63)),
+              ],
+            ]),
+            if (message.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(message, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 14.5, height: 1.3)),
+            ],
+            if (plate.isNotEmpty) ...[
+              const SizedBox(height: 7),
+              Text(plate, style: const TextStyle(color: _muted, fontSize: 12.5)),
+            ],
+          ])),
+          const SizedBox(width: 4),
+          const Icon(Icons.chevron_right_rounded, color: Colors.white54),
+        ]),
       ),
     );
   }
@@ -1244,56 +1089,29 @@ class _NotificationTab extends StatelessWidget {
             borderRadius: BorderRadius.circular(18),
             border: Border.all(color: active ? const Color(0xFFB18AFF) : _line),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Flexible(
-                child: Text(
-                  label,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: active ? Colors.white : _muted,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 12.5,
-                  ),
-                ),
+          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Flexible(child: Text(label, overflow: TextOverflow.ellipsis, style: TextStyle(color: active ? Colors.white : _muted, fontWeight: FontWeight.w800, fontSize: 12.5))),
+            if (badge != null) ...[
+              const SizedBox(width: 5),
+              Container(
+                width: 21,
+                height: 21,
+                alignment: Alignment.center,
+                decoration: const BoxDecoration(color: Color(0xFFFF4D63), shape: BoxShape.circle),
+                child: Text('$badge', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 10.5)),
               ),
-              if (badge != null) ...[
-                const SizedBox(width: 5),
-                Container(
-                  width: 21,
-                  height: 21,
-                  alignment: Alignment.center,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFFF4D63),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Text(
-                    '$badge',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 10.5,
-                    ),
-                  ),
-                ),
-              ],
             ],
-          ),
+          ]),
         ),
       );
 }
 
 class _DriverVehiclesPage extends StatelessWidget {
-  const _DriverVehiclesPage({
-    required this.vehicles,
-    required this.loading,
-    required this.onRefresh,
-  });
+  const _DriverVehiclesPage({required this.vehicles, required this.loading, required this.onRefresh});
 
   final List<Map<String, dynamic>> vehicles;
   final bool loading;
-  final Future<void> Function({bool silent}) onRefresh;
+  final Future<void> Function() onRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -1302,45 +1120,22 @@ class _DriverVehiclesPage extends StatelessWidget {
       backgroundColor: _bg,
       body: RefreshIndicator(
         color: _purple,
-        onRefresh: () => onRefresh(),
+        onRefresh: onRefresh,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.fromLTRB(14, top + 14, 14, 26),
           children: [
-            Row(
-              children: [
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Araçlarım',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 28,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        'Yetkili olduğun araçları görüntüle.',
-                        style: TextStyle(color: _muted, fontSize: 13),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => onRefresh(),
-                  icon: const Icon(Icons.refresh_rounded, color: Colors.white),
-                ),
-              ],
-            ),
+            Row(children: [
+              const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Araçlarım', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900)),
+                SizedBox(height: 4),
+                Text('Yetkili olduğun araçları görüntüle.', style: TextStyle(color: _muted, fontSize: 13)),
+              ])),
+              IconButton(onPressed: onRefresh, icon: const Icon(Icons.refresh_rounded, color: Colors.white)),
+            ]),
             const SizedBox(height: 18),
             if (loading)
-              const Padding(
-                padding: EdgeInsets.all(44),
-                child: Center(child: CircularProgressIndicator(color: _purple)),
-              )
+              const Padding(padding: EdgeInsets.all(44), child: Center(child: CircularProgressIndicator(color: _purple)))
             else if (vehicles.isEmpty)
               const _EmptyDriverVehicles()
             else
@@ -1351,23 +1146,12 @@ class _DriverVehiclesPage extends StatelessWidget {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(15),
-              decoration: BoxDecoration(
-                color: _panel,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: _line),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.info_outline_rounded, color: _purple),
-                  SizedBox(width: 11),
-                  Expanded(
-                    child: Text(
-                      'Araç ekleme, düzenleme, silme ve sürücü daveti yalnızca araç sahibine açıktır.',
-                      style: TextStyle(color: _muted, fontSize: 12.5, height: 1.35),
-                    ),
-                  ),
-                ],
-              ),
+              decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(20), border: Border.all(color: _line)),
+              child: const Row(children: [
+                Icon(Icons.info_outline_rounded, color: _purple),
+                SizedBox(width: 11),
+                Expanded(child: Text('Araç ekleme, düzenleme, silme ve sürücü daveti yalnızca araç sahibine açıktır.', style: TextStyle(color: _muted, fontSize: 12.5, height: 1.35))),
+              ]),
             ),
           ],
         ),
@@ -1378,7 +1162,6 @@ class _DriverVehiclesPage extends StatelessWidget {
 
 class _ReadOnlyVehicleCard extends StatelessWidget {
   const _ReadOnlyVehicleCard({required this.vehicle});
-
   final Map<String, dynamic> vehicle;
 
   @override
@@ -1387,85 +1170,41 @@ class _ReadOnlyVehicleCard extends StatelessWidget {
     final make = vehicle['make']?.toString() ?? '';
     final model = vehicle['model']?.toString() ?? '';
     final title = '$make $model'.trim();
-    final active = vehicle['active'] == true;
     final logo = make.isEmpty ? null : VehicleApi.brandLogoUrl(make);
 
     return Container(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: _panel,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: _purple),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 78,
-                height: 68,
-                padding: const EdgeInsets.all(12),
-                child: logo == null
-                    ? const Icon(Icons.directions_car_filled_rounded, color: _purple, size: 34)
-                    : Image.network(
-                        logo,
-                        fit: BoxFit.contain,
-                        errorBuilder: (_, __, ___) =>
-                            const Icon(Icons.directions_car_filled_rounded, color: _purple, size: 34),
-                      ),
-              ),
-              const SizedBox(width: 13),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title.isEmpty ? 'Araç' : title,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      plate,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              _StatusPill(active: active),
-            ],
-          ),
-          const SizedBox(height: 12),
+      decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(22), border: Border.all(color: _purple)),
+      child: Column(children: [
+        Row(children: [
           Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFF0D1728),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: _line),
-            ),
-            child: const Row(
-              children: [
-                Icon(Icons.visibility_outlined, color: _purpleSoft, size: 20),
-                SizedBox(width: 9),
-                Expanded(
-                  child: Text(
-                    'Görüntüleme yetkin var. Araç üzerinde değişiklik yapamazsın.',
-                    style: TextStyle(color: _muted, fontSize: 12.5),
-                  ),
-                ),
-              ],
-            ),
+            width: 78,
+            height: 68,
+            padding: const EdgeInsets.all(12),
+            child: logo == null
+                ? const Icon(Icons.directions_car_filled_rounded, color: _purple, size: 34)
+                : Image.network(logo, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Icon(Icons.directions_car_filled_rounded, color: _purple, size: 34)),
           ),
-        ],
-      ),
+          const SizedBox(width: 13),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title.isEmpty ? 'Araç' : title, style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 8),
+            Text(plate, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w900)),
+          ])),
+          const Icon(Icons.visibility_outlined, color: _purpleSoft, size: 23),
+        ]),
+        const SizedBox(height: 12),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(color: _panel2, borderRadius: BorderRadius.circular(14), border: Border.all(color: _line)),
+          child: const Row(children: [
+            Icon(Icons.lock_outline_rounded, color: _purpleSoft, size: 20),
+            SizedBox(width: 9),
+            Expanded(child: Text('Sadece görüntüleme yetkin var. Değişiklikleri araç sahibi yapar.', style: TextStyle(color: _muted, fontSize: 12.5))),
+          ]),
+        ),
+      ]),
     );
   }
 }
@@ -1477,80 +1216,37 @@ class _EmptyDriverVehicles extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         margin: const EdgeInsets.only(bottom: 14),
         padding: const EdgeInsets.symmetric(vertical: 42, horizontal: 20),
-        decoration: BoxDecoration(
-          color: _panel,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: _line),
-        ),
-        child: const Column(
-          children: [
-            Icon(Icons.directions_car_outlined, color: _muted, size: 42),
-            SizedBox(height: 10),
-            Text(
-              'Henüz yetkili olduğun bir araç bulunmuyor.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: _muted, fontWeight: FontWeight.w700),
-            ),
-          ],
-        ),
+        decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(22), border: Border.all(color: _line)),
+        child: const Column(children: [
+          Icon(Icons.directions_car_outlined, color: _muted, size: 42),
+          SizedBox(height: 10),
+          Text('Henüz yetkili olduğun bir araç bulunmuyor.', textAlign: TextAlign.center, style: TextStyle(color: _muted, fontWeight: FontWeight.w700)),
+        ]),
       );
-}
-
-class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.active});
-  final bool active;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = active ? const Color(0xFF55E6A5) : const Color(0xFFFF8191);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-      decoration: BoxDecoration(
-        color: c.withValues(alpha: .10),
-        borderRadius: BorderRadius.circular(99),
-        border: Border.all(color: c.withValues(alpha: .65)),
-      ),
-      child: Text(
-        active ? 'Aktif' : 'Pasif',
-        style: TextStyle(color: c, fontSize: 10.5, fontWeight: FontWeight.w900),
-      ),
-    );
-  }
 }
 
 class _DriverSettingsPage extends StatelessWidget {
   const _DriverSettingsPage({
     required this.driverName,
-    required this.active,
     required this.onOpenVehicles,
     required this.onOpenNotifications,
     required this.onRefresh,
   });
 
   final String driverName;
-  final bool active;
   final VoidCallback onOpenVehicles;
   final VoidCallback onOpenNotifications;
-  final Future<void> Function({bool silent}) onRefresh;
+  final Future<void> Function() onRefresh;
 
   Future<void> _logout(BuildContext context) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         backgroundColor: _panel,
-        title: const Text(
-          'Çıkış yapılsın mı?',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900),
-        ),
-        content: const Text(
-          'Cepqar sürücü hesabından çıkış yapacaksın.',
-          style: TextStyle(color: _muted),
-        ),
+        title: const Text('Çıkış yapılsın mı?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900)),
+        content: const Text('Cepqar sürücü hesabından çıkış yapacaksın.', style: TextStyle(color: _muted)),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Vazgeç'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Vazgeç')),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: const Color(0xFFFF4D63)),
             onPressed: () => Navigator.pop(dialogContext, true),
@@ -1559,21 +1255,13 @@ class _DriverSettingsPage extends StatelessWidget {
         ],
       ),
     );
-
     if (ok != true) return;
 
     final prefs = await SharedPreferences.getInstance();
-    for (final key in [
-      'driver_logged_in',
-      'driver_user_id',
-      'driver_name',
-    ]) {
+    for (final key in ['driver_logged_in', 'driver_user_id', 'driver_name']) {
       await prefs.remove(key);
     }
-
-    if (context.mounted) {
-      Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
-    }
+    if (context.mounted) Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
   }
 
   void _showInfo(BuildContext context, String title, String message) {
@@ -1584,22 +1272,11 @@ class _DriverSettingsPage extends StatelessWidget {
       builder: (_) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(22, 4, 22, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 21,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(message, style: const TextStyle(color: _muted, fontSize: 14.5, height: 1.4)),
-            ],
-          ),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title, style: const TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 10),
+            Text(message, style: const TextStyle(color: _muted, fontSize: 14.5, height: 1.4)),
+          ]),
         ),
       ),
     );
@@ -1610,177 +1287,82 @@ class _DriverSettingsPage extends StatelessWidget {
     final compact = MediaQuery.sizeOf(context).height < 820;
     final top = MediaQuery.paddingOf(context).top;
     final heroHeight = compact ? 292.0 : 320.0;
-    final statusColor = active ? const Color(0xFF55E6A5) : const Color(0xFFFF8191);
 
     return Scaffold(
       backgroundColor: _bg,
       body: SingleChildScrollView(
-        child: Column(
-          children: [
-            SizedBox(
-              height: heroHeight,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  const DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Color(0xFF080F20), Color(0xFF121530)],
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    right: -36,
-                    top: top + 24,
-                    width: compact ? 270 : 298,
-                    height: compact ? 270 : 298,
-                    child: Image.asset(
-                      'assets/Cepqar3d.png',
-                      fit: BoxFit.contain,
-                      alignment: Alignment.bottomRight,
-                      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                    ),
-                  ),
-                  Positioned(
-                    left: 20,
-                    right: 18,
-                    top: top + 14,
-                    child: Row(
-                      children: [
-                        const _DriverBrand(),
-                        const Spacer(),
-                        _RoundIcon(
-                          icon: Icons.notifications_none_rounded,
-                          onTap: onOpenNotifications,
-                        ),
-                        const SizedBox(width: 10),
-                        _RoundIcon(
-                          icon: Icons.person_rounded,
-                          onTap: () => _showInfo(
-                            context,
-                            'Hesap bilgilerim',
-                            driverName.trim().isEmpty ? 'Sürücü hesabı' : driverName.trim(),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Positioned(
-                    left: 20,
-                    bottom: 22,
-                    right: 165,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Ayarlar',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 34,
-                            height: 1,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -1.1,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Hesabınızı ve Cepqar\ntercihlerinizi yönetin.',
-                          style: TextStyle(
-                            color: _muted,
-                            fontSize: 14.5,
-                            height: 1.32,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: statusColor.withValues(alpha: .10),
-                            borderRadius: BorderRadius.circular(99),
-                            border: Border.all(color: statusColor.withValues(alpha: .65)),
-                          ),
-                          child: Text(
-                            active ? 'Sürücü Aktif' : 'Sürücü Pasif',
-                            style: TextStyle(
-                              color: statusColor,
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+        child: Column(children: [
+          SizedBox(
+            height: heroHeight,
+            child: Stack(fit: StackFit.expand, children: [
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF080F20), Color(0xFF121530)]),
+                ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 22),
-              child: Column(
-                children: [
-                  _SettingsTile(
-                    icon: Icons.person_outline_rounded,
-                    iconColor: _purple,
-                    title: 'Hesap bilgilerim',
-                    subtitle: 'Profil ve sürücü hesabı bilgilerin',
-                    onTap: () => _showInfo(
-                      context,
-                      'Hesap bilgilerim',
-                      driverName.trim().isEmpty ? 'Sürücü hesabı' : driverName.trim(),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  _SettingsTile(
-                    icon: Icons.directions_car_filled_rounded,
-                    iconColor: _orange,
-                    title: 'Araçlarım',
-                    subtitle: 'Yetkili olduğun araçları görüntüle',
-                    onTap: onOpenVehicles,
-                  ),
-                  const SizedBox(height: 8),
-                  _SettingsTile(
-                    icon: Icons.notifications_none_rounded,
-                    iconColor: _pink,
-                    title: 'Bildirimler',
-                    subtitle: 'Sana yönlenen araç bildirimlerini görüntüle',
-                    onTap: onOpenNotifications,
-                  ),
-                  const SizedBox(height: 8),
-                  _SettingsTile(
-                    icon: Icons.shield_outlined,
-                    iconColor: _blue,
-                    title: 'Gizlilik ve güvenlik',
-                    subtitle: 'Sürücü yetkilerin araç sahibi tarafından yönetilir',
-                    onTap: () => _showInfo(
-                      context,
-                      'Gizlilik ve güvenlik',
-                      'Araç ekleme, düzenleme, silme, aktif sürücü seçme ve yeni sürücü davet etme yetkileri yalnızca araç sahibindedir.',
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  _SettingsTile(
-                    icon: Icons.refresh_rounded,
-                    iconColor: const Color(0xFF55E6A5),
-                    title: 'Verileri yenile',
-                    subtitle: 'Araç ve bildirim bilgilerini güncelle',
-                    onTap: () => onRefresh(),
-                  ),
-                  const SizedBox(height: 14),
-                  _SettingsTile(
-                    icon: Icons.logout_rounded,
-                    iconColor: const Color(0xFFFF4D63),
-                    title: 'Çıkış Yap',
-                    subtitle: 'Cepqar sürücü hesabından güvenli şekilde çıkış yap',
-                    onTap: () => _logout(context),
-                  ),
-                ],
+              Positioned(
+                right: -36,
+                top: top + 24,
+                width: compact ? 270 : 298,
+                height: compact ? 270 : 298,
+                child: Image.asset('assets/Cepqar3d.png', fit: BoxFit.contain, alignment: Alignment.bottomRight, errorBuilder: (_, __, ___) => const SizedBox.shrink()),
               ),
-            ),
-          ],
-        ),
+              Positioned(
+                left: 20,
+                right: 18,
+                top: top + 14,
+                child: Row(children: [
+                  const _DriverBrand(),
+                  const Spacer(),
+                  _RoundIcon(icon: Icons.notifications_none_rounded, onTap: onOpenNotifications),
+                  const SizedBox(width: 10),
+                  _RoundIcon(
+                    icon: Icons.person_rounded,
+                    onTap: () => _showInfo(context, 'Hesap bilgilerim', driverName.trim().isEmpty ? 'Sürücü hesabı' : driverName.trim()),
+                  ),
+                ]),
+              ),
+              const Positioned(
+                left: 20,
+                bottom: 22,
+                right: 165,
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('Ayarlar', style: TextStyle(color: Colors.white, fontSize: 34, height: 1, fontWeight: FontWeight.w900, letterSpacing: -1.1)),
+                  SizedBox(height: 8),
+                  Text('Hesabınızı ve Cepqar\ntercihlerinizi yönetin.', style: TextStyle(color: _muted, fontSize: 14.5, height: 1.32, fontWeight: FontWeight.w500)),
+                ]),
+              ),
+            ]),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 22),
+            child: Column(children: [
+              _SettingsTile(
+                icon: Icons.person_outline_rounded,
+                iconColor: _purple,
+                title: 'Hesap bilgilerim',
+                subtitle: 'Profil ve sürücü hesabı bilgilerin',
+                onTap: () => _showInfo(context, 'Hesap bilgilerim', driverName.trim().isEmpty ? 'Sürücü hesabı' : driverName.trim()),
+              ),
+              const SizedBox(height: 8),
+              _SettingsTile(icon: Icons.directions_car_filled_rounded, iconColor: _orange, title: 'Araçlarım', subtitle: 'Yetkili olduğun araçları görüntüle', onTap: onOpenVehicles),
+              const SizedBox(height: 8),
+              _SettingsTile(icon: Icons.notifications_none_rounded, iconColor: _pink, title: 'Bildirimler', subtitle: 'Sana yönlenen araç bildirimlerini görüntüle', onTap: onOpenNotifications),
+              const SizedBox(height: 8),
+              _SettingsTile(
+                icon: Icons.shield_outlined,
+                iconColor: _blue,
+                title: 'Gizlilik ve güvenlik',
+                subtitle: 'Sürücü yetkilerin araç sahibi tarafından yönetilir',
+                onTap: () => _showInfo(context, 'Gizlilik ve güvenlik', 'Araç ekleme, düzenleme, silme, aktif sürücü seçme ve yeni sürücü davet etme yetkileri yalnızca araç sahibindedir.'),
+              ),
+              const SizedBox(height: 8),
+              _SettingsTile(icon: Icons.refresh_rounded, iconColor: const Color(0xFF55E6A5), title: 'Verileri yenile', subtitle: 'Araç ve bildirim bilgilerini güncelle', onTap: onRefresh),
+              const SizedBox(height: 14),
+              _SettingsTile(icon: Icons.logout_rounded, iconColor: const Color(0xFFFF4D63), title: 'Çıkış Yap', subtitle: 'Cepqar sürücü hesabından güvenli şekilde çıkış yap', onTap: () => _logout(context)),
+            ]),
+          ),
+        ]),
       ),
     );
   }
@@ -1790,34 +1372,24 @@ class _DriverBrand extends StatelessWidget {
   const _DriverBrand();
 
   @override
-  Widget build(BuildContext context) {
-    return const Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text.rich(
-          TextSpan(
-            children: [
+  Widget build(BuildContext context) => const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text.rich(
+            TextSpan(children: [
               TextSpan(text: 'Cep', style: TextStyle(color: Colors.white)),
               TextSpan(text: 'qar', style: TextStyle(color: _purple)),
-            ],
+            ]),
+            style: TextStyle(fontSize: 29, fontWeight: FontWeight.w900, letterSpacing: -1.4, height: 1),
           ),
-          style: TextStyle(
-            fontSize: 29,
-            fontWeight: FontWeight.w900,
-            letterSpacing: -1.4,
-            height: 1,
-          ),
-        ),
-        SizedBox(height: 5),
-        Text('Sürücü', style: TextStyle(color: _muted, fontSize: 12.5)),
-      ],
-    );
-  }
+          SizedBox(height: 5),
+          Text('Sürücü', style: TextStyle(color: _muted, fontSize: 12.5)),
+        ],
+      );
 }
 
 class _RoundIcon extends StatelessWidget {
   const _RoundIcon({required this.icon, required this.onTap});
-
   final IconData icon;
   final VoidCallback onTap;
 
@@ -1828,24 +1400,13 @@ class _RoundIcon extends StatelessWidget {
         child: InkWell(
           customBorder: const CircleBorder(),
           onTap: onTap,
-          child: SizedBox(
-            width: 46,
-            height: 46,
-            child: Icon(icon, color: Colors.white, size: 23),
-          ),
+          child: SizedBox(width: 46, height: 46, child: Icon(icon, color: Colors.white, size: 23)),
         ),
       );
 }
 
 class _SettingsTile extends StatelessWidget {
-  const _SettingsTile({
-    required this.icon,
-    required this.iconColor,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
-
+  const _SettingsTile({required this.icon, required this.iconColor, required this.title, required this.subtitle, required this.onTap});
   final IconData icon;
   final Color iconColor;
   final String title;
@@ -1862,50 +1423,23 @@ class _SettingsTile extends StatelessWidget {
           child: Container(
             height: 84,
             padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: _line),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: iconColor.withValues(alpha: .18),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: iconColor.withValues(alpha: .42)),
-                  ),
-                  child: Icon(icon, color: iconColor, size: 26),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 15.5,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        subtitle,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: _muted, fontSize: 12, height: 1.2),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 6),
-                const Icon(Icons.chevron_right_rounded, color: Colors.white70, size: 26),
-              ],
-            ),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), border: Border.all(color: _line)),
+            child: Row(children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(color: iconColor.withValues(alpha: .18), borderRadius: BorderRadius.circular(16), border: Border.all(color: iconColor.withValues(alpha: .42))),
+                child: Icon(icon, color: iconColor, size: 26),
+              ),
+              const SizedBox(width: 14),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
+                Text(title, style: const TextStyle(color: Colors.white, fontSize: 15.5, fontWeight: FontWeight.w900)),
+                const SizedBox(height: 4),
+                Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _muted, fontSize: 12, height: 1.2)),
+              ])),
+              const SizedBox(width: 6),
+              const Icon(Icons.chevron_right_rounded, color: Colors.white70, size: 26),
+            ]),
           ),
         ),
       );
@@ -1913,29 +1447,18 @@ class _SettingsTile extends StatelessWidget {
 
 class _Card extends StatelessWidget {
   const _Card({required this.child});
-
   final Widget child;
 
   @override
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.all(15),
-        decoration: BoxDecoration(
-          color: _panel,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: _line),
-        ),
+        decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(20), border: Border.all(color: _line)),
         child: child,
       );
 }
 
 class _Shortcut extends StatelessWidget {
-  const _Shortcut({
-    required this.icon,
-    required this.title,
-    required this.sub,
-    required this.onTap,
-  });
-
+  const _Shortcut({required this.icon, required this.title, required this.sub, required this.onTap});
   final IconData icon;
   final String title;
   final String sub;
@@ -1948,29 +1471,14 @@ class _Shortcut extends StatelessWidget {
         child: Container(
           height: 116,
           padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: _panel,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: _line),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: _purple, size: 30),
-              const SizedBox(height: 10),
-              Text(
-                title,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 14,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(sub, style: const TextStyle(color: _muted, fontSize: 12)),
-            ],
-          ),
+          decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(20), border: Border.all(color: _line)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
+            Icon(icon, color: _purple, size: 30),
+            const SizedBox(height: 10),
+            Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 14)),
+            const SizedBox(height: 4),
+            Text(sub, style: const TextStyle(color: _muted, fontSize: 12)),
+          ]),
         ),
       );
 }
