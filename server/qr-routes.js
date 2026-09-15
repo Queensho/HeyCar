@@ -9,11 +9,12 @@ const registerActiveDriverRoutes = require('./active-driver-routes');
 const registerDriverRoutes = require('./driver-routes');
 const registerDndRoutes = require('./dnd-routes');
 const registerMaintenanceRoutes = require('./maintenance-routes');
+const registerMaintenanceShareRoutes = require('./maintenance-share-routes');
 const registerVehicleReminderRoutes = require('./vehicle-reminder-routes');
 function normalizeToken(raw){return String(raw||'').trim().toUpperCase();}
 function validHexColor(value){return /^#[0-9A-Fa-f]{6}$/.test(String(value||''));}
 module.exports=function registerQrRoutes(app,pool){
- registerNotificationRoutes(app,pool);registerOwnerCorrectionRoutes(app,pool);registerCallRoutes(app,pool);registerActiveDriverRoutes(app,pool);registerDriverRoutes(app,pool);registerDndRoutes(app,pool);registerMaintenanceRoutes(app,pool);registerVehicleReminderRoutes(app,pool);
+ registerNotificationRoutes(app,pool);registerOwnerCorrectionRoutes(app,pool);registerCallRoutes(app,pool);registerActiveDriverRoutes(app,pool);registerDriverRoutes(app,pool);registerDndRoutes(app,pool);registerMaintenanceRoutes(app,pool);registerMaintenanceShareRoutes(app,pool);registerVehicleReminderRoutes(app,pool);
  const uploadDir=path.join(__dirname,'uploads','public-themes');fs.mkdirSync(uploadDir,{recursive:true});app.use('/uploads/public-themes',express.static(uploadDir,{maxAge:'7d'}));
  async function ownerCanEdit(vehicleId,ownerId){if(!vehicleId||!ownerId)return false;const c=await pool.query('SELECT 1 FROM vehicles WHERE id=$1 AND owner_id=$2 LIMIT 1',[vehicleId,ownerId]);return c.rows.length>0;}
  app.get('/api/qr/:token',async(req,res)=>{const token=normalizeToken(req.params.token);if(!token)return res.status(400).json({error:'TOKEN_REQUIRED'});try{const r=await pool.query(`SELECT q.token,q.status,q.activated_at,v.id AS vehicle_id,v.plate,v.make,v.model,v.color,t.preset,t.accent_color,t.background_path,t.public_message,t.overlay_strength FROM qr_tags q LEFT JOIN vehicles v ON v.id=q.vehicle_id LEFT JOIN vehicle_public_themes t ON t.vehicle_id=v.id WHERE q.token=$1 LIMIT 1`,[token]);if(!r.rows.length)return res.status(404).json({error:'QR_NOT_FOUND'});const x=r.rows[0];res.json({ok:true,token:x.token,status:x.status,vehicle:x.plate?{id:x.vehicle_id,plate:x.plate,make:x.make,model:x.model,color:x.color}:null,theme:{preset:x.preset||'classic',accentColor:x.accent_color||'#FCA311',backgroundUrl:x.background_path||null,publicMessage:x.public_message||'Numaram gizli, yolun açık.',overlayStrength:Number(x.overlay_strength??.72)},activatedAt:x.activated_at});}catch(e){console.error(e);res.status(500).json({error:'SERVER_ERROR'});}});
