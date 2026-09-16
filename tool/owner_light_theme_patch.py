@@ -44,16 +44,12 @@ for filename, replacements in TARGETS.items():
     for old, new in replacements.items():
         text = text.replace(old, new)
 
-    # Keep white70 valid before converting plain white foregrounds.
     text = text.replace('Colors.white70', 'CepqarTheme.muted')
     text = text.replace('Colors.white', 'CepqarTheme.text')
     text = text.replace('foregroundColor: CepqarTheme.text', 'foregroundColor: Colors.white')
     text = text.replace('foregroundColor:CepqarTheme.text', 'foregroundColor:Colors.white')
-
-    # Runtime theme getters cannot be nested under const widget expressions.
     text = re.sub(r'\bconst\s+(?=[A-Z][A-Za-z0-9_]*(?:<[^>]+>)?\s*\()', '', text)
 
-    # Restore public const constructors used from other screens.
     constructors = {
         'lib/owner_notifications_page.dart': ('OwnerNotificationsPage',),
         'lib/owner_settings_page.dart': ('OwnerSettingsPage',),
@@ -61,11 +57,11 @@ for filename, replacements in TARGETS.items():
         'lib/owner_chat_page.dart': ('OwnerChatPage',),
     }[filename]
     for cls in constructors:
-        text = re.sub(rf'(?m)^(\s*){cls}(\s*\(\{{)', rf'\1const {cls}\2', text)
+        # Works for both multiline and minified `class X{X({super.key})}` forms.
+        text = re.sub(rf'(?<!const )\b{cls}(\s*\(\{{)', rf'const {cls}\1', text, count=1)
 
     p.write_text(text, encoding='utf-8')
 
-# Hero copy must remain white on both photographic header assets.
 p = Path('lib/owner_dashboard_live.dart')
 text = p.read_text(encoding='utf-8')
 text = text.replace("color:light?CepqarTheme.lightText:Colors.white,fontSize:32", "color:Colors.white,fontSize:32")
