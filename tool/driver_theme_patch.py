@@ -20,13 +20,12 @@ s = s.replace("const Color(0xFF10172B)", "(CepqarTheme.isLight ? const Color(0xF
 s = s.replace("const Color(0xFF080F20)", "(CepqarTheme.isLight ? const Color(0xFFF8F6FC) : const Color(0xFF080F20))")
 s = s.replace("const Color(0xFF121530)", "(CepqarTheme.isLight ? const Color(0xFFEDE8F7) : const Color(0xFF121530))")
 
-# Runtime palette values cannot be inside const widget expressions. Removing const
-# from invocations is safe, then restore const on public widget constructors so
-# callers in entry_theme_live.dart remain valid.
 s = re.sub(r'\bconst\s+(?=[A-Z][A-Za-z0-9_]*(?:<[^>]+>)?\s*\()', '', s)
 s = s.replace('const <Widget>[', '<Widget>[').replace('const [', '[')
-for cls in ('DriverCodeEntryPage', 'DriverRegisterPage', 'DriverHomePage'):
-    s = re.sub(rf'(?m)^(\s*){cls}(\s*\(\{{)', rf'\1const {cls}\2', s)
+
+# Restore every public immutable constructor that is referenced from const call sites.
+for cls in ('DriverCodeEntryPage', 'DriverRegisterPage', 'DriverHomePage', 'DriverInvitePage'):
+    s = re.sub(rf'(?<!const )\b{cls}(\s*\(\{{)', rf'const {cls}\1', s, count=1)
 
 needle = "  @override\n  Widget build(BuildContext context) {\n    final screens = <Widget>["
 replacement = "  @override\n  Widget build(BuildContext context) => ValueListenableBuilder<ThemeMode>(\n    valueListenable: CepqarTheme.mode,\n    builder: (context, _, __) {\n    final screens = <Widget>["
