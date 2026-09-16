@@ -53,12 +53,13 @@ for filename, replacements in TARGETS.items():
     for old, new in replacements.items():
         text = text.replace(old, new)
 
-    # Text/background contrast follows the selected theme. Purple action buttons
-    # keep white foreground explicitly below.
+    # Replace suffixed white constants first; otherwise Colors.white54 would
+    # accidentally become the invalid CepqarTheme.text54 getter.
     text = text.replace('Colors.white70', 'CepqarTheme.muted')
+    text = text.replace('Colors.white60', 'CepqarTheme.muted')
+    text = text.replace('Colors.white54', 'CepqarTheme.muted')
+    text = text.replace('Colors.white38', 'CepqarTheme.muted')
     text = text.replace('Colors.white', 'CepqarTheme.text')
-    text = text.replace('foregroundColor: CepqarTheme.text', 'foregroundColor: CepqarTheme.text')
-    text = text.replace('foregroundColor:CepqarTheme.text', 'foregroundColor:CepqarTheme.text')
     text = re.sub(r'\bconst\s+(?=[A-Z][A-Za-z0-9_]*(?:<[^>]+>)?\s*\()', '', text)
 
     constructors = {
@@ -72,9 +73,17 @@ for filename, replacements in TARGETS.items():
     for cls in constructors:
         text = re.sub(rf'(?<!const )\b{cls}(\s*\(\{{)', rf'const {cls}\1', text, count=1)
 
-    # Filled purple controls must stay white in both themes.
-    text = text.replace('FilledButton.styleFrom(backgroundColor:_purple', 'FilledButton.styleFrom(backgroundColor:_purple,foregroundColor:Colors.white')
-    text = text.replace('FilledButton.styleFrom(backgroundColor: _purple', 'FilledButton.styleFrom(backgroundColor: _purple, foregroundColor: Colors.white')
+    # Purple filled controls stay white, without ever adding a duplicate named arg.
+    text = re.sub(
+        r'FilledButton\.styleFrom\(backgroundColor:\s*_purple,\s*foregroundColor:\s*CepqarTheme\.text',
+        'FilledButton.styleFrom(backgroundColor:_purple,foregroundColor:Colors.white',
+        text,
+    )
+    text = re.sub(
+        r'FilledButton\.styleFrom\(backgroundColor:\s*_purple(?!\s*,\s*foregroundColor)',
+        'FilledButton.styleFrom(backgroundColor:_purple,foregroundColor:Colors.white',
+        text,
+    )
     p.write_text(text, encoding='utf-8')
 
 p = Path('lib/owner_dashboard_live.dart')
