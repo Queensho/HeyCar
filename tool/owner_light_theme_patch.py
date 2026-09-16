@@ -21,6 +21,12 @@ TARGETS = {
         "Color(0xFF121530)": "CepqarTheme.panel",
         "Color(0xFF10172B)": "CepqarTheme.panel",
     },
+    'lib/owner_settings_detail.dart': {
+        "const _bg = Color(0xFF07111F);": "Color get _bg => CepqarTheme.bg;",
+        "const _panel = Color(0xFF111A31);": "Color get _panel => CepqarTheme.panel;",
+        "const _line = Color(0xFF29345A);": "Color get _line => CepqarTheme.line;",
+        "const _muted = Color(0xFFA7B0C7);": "Color get _muted => CepqarTheme.muted;",
+    },
     'lib/owner_vehicles_page.dart': {
         "const _bg=Color(0xFF07111F),_panel=Color(0xFF101A30),_line=Color(0xFF27355D),_purple=Color(0xFF8B5CFF),_muted=Color(0xFFA7B0C7),_gold=Color(0xFFFFC857);": "Color get _bg=>CepqarTheme.bg; Color get _panel=>CepqarTheme.panel; Color get _line=>CepqarTheme.line; const _purple=Color(0xFF8B5CFF); Color get _muted=>CepqarTheme.muted; const _gold=Color(0xFFFFC857);",
     },
@@ -30,6 +36,9 @@ TARGETS = {
         "const _muted = Color(0xFFA7B0C7);": "Color get _muted => CepqarTheme.muted;",
         "const Color(0xFF0B1426)": "CepqarTheme.panel",
         "Color(0xFF0B1426)": "CepqarTheme.panel",
+    },
+    'lib/maintenance_page.dart': {
+        "const _bg=Color(0xFF07111F),_panel=Color(0xFF101A30),_line=Color(0xFF27355D),_purple=Color(0xFF8B5CFF),_muted=Color(0xFFA7B0C7),_lime=Color(0xFF79FF45);": "Color get _bg=>CepqarTheme.bg; Color get _panel=>CepqarTheme.panel; Color get _line=>CepqarTheme.line; const _purple=Color(0xFF8B5CFF); Color get _muted=>CepqarTheme.muted; const _lime=Color(0xFF79FF45);",
     },
 }
 
@@ -44,22 +53,28 @@ for filename, replacements in TARGETS.items():
     for old, new in replacements.items():
         text = text.replace(old, new)
 
+    # Text/background contrast follows the selected theme. Purple action buttons
+    # keep white foreground explicitly below.
     text = text.replace('Colors.white70', 'CepqarTheme.muted')
     text = text.replace('Colors.white', 'CepqarTheme.text')
-    text = text.replace('foregroundColor: CepqarTheme.text', 'foregroundColor: Colors.white')
-    text = text.replace('foregroundColor:CepqarTheme.text', 'foregroundColor:Colors.white')
+    text = text.replace('foregroundColor: CepqarTheme.text', 'foregroundColor: CepqarTheme.text')
+    text = text.replace('foregroundColor:CepqarTheme.text', 'foregroundColor:CepqarTheme.text')
     text = re.sub(r'\bconst\s+(?=[A-Z][A-Za-z0-9_]*(?:<[^>]+>)?\s*\()', '', text)
 
     constructors = {
         'lib/owner_notifications_page.dart': ('OwnerNotificationsPage',),
         'lib/owner_settings_page.dart': ('OwnerSettingsPage',),
+        'lib/owner_settings_detail.dart': ('OwnerAccountSettingsPage','OwnerNotificationSettingsPage','OwnerPrivacySettingsPage','OwnerActiveSessionsPage','OwnerBlockedVisitorsPage'),
         'lib/owner_vehicles_page.dart': ('OwnerVehiclesPage',),
         'lib/owner_chat_page.dart': ('OwnerChatPage',),
+        'lib/maintenance_page.dart': ('MaintenancePage','MaintenanceAddPage'),
     }[filename]
     for cls in constructors:
-        # Works for both multiline and minified `class X{X({super.key})}` forms.
         text = re.sub(rf'(?<!const )\b{cls}(\s*\(\{{)', rf'const {cls}\1', text, count=1)
 
+    # Filled purple controls must stay white in both themes.
+    text = text.replace('FilledButton.styleFrom(backgroundColor:_purple', 'FilledButton.styleFrom(backgroundColor:_purple,foregroundColor:Colors.white')
+    text = text.replace('FilledButton.styleFrom(backgroundColor: _purple', 'FilledButton.styleFrom(backgroundColor: _purple, foregroundColor: Colors.white')
     p.write_text(text, encoding='utf-8')
 
 p = Path('lib/owner_dashboard_live.dart')
@@ -68,4 +83,4 @@ text = text.replace("color:light?CepqarTheme.lightText:Colors.white,fontSize:32"
 text = text.replace("color:light?CepqarTheme.lightMuted:Colors.white70,fontSize:17", "color:Colors.white70,fontSize:17")
 p.write_text(text, encoding='utf-8')
 
-print('Owner light theme patch applied safely.')
+print('Owner light theme patch applied to settings, security, chat and maintenance screens.')
