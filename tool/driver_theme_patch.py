@@ -23,6 +23,17 @@ s = s.replace("const Color(0xFF080F20)", "(CepqarTheme.isLight ? const Color(0xF
 s = s.replace("const Color(0xFF121530)", "(CepqarTheme.isLight ? const Color(0xFFEDE8F7) : const Color(0xFF121530))")
 s = s.replace("const Color(0xFF111B31)", "(CepqarTheme.isLight ? const Color(0xFFF1EDF8) : const Color(0xFF111B31))")
 
+# Explicitly theme the settings header and bottom navigation; these must never
+# remain dark while the rest of the driver UI is light.
+s = s.replace(
+    "decoration: const BoxDecoration(\n          color: Color(0xFF0B1426),\n          border: Border(top: BorderSide(color: _line)),\n        ),",
+    "decoration: BoxDecoration(\n          color: CepqarTheme.isLight ? Colors.white : const Color(0xFF0B1426),\n          border: Border(top: BorderSide(color: _line)),\n        ),"
+)
+s = s.replace(
+    "gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF080F20), Color(0xFF121530)]),",
+    "gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: CepqarTheme.isLight ? const [Color(0xFFF8F6FC), Color(0xFFEDE8F7)] : const [Color(0xFF080F20), Color(0xFF121530)]),"
+)
+
 # Driver hero follows the owner hero: separate light/dark artwork.
 s = s.replace("'assets/Aracsahibi.png',\n                  fit: BoxFit.cover,", "CepqarTheme.isLight ? 'assets/Aracsahibig.png' : 'assets/Aracsahibi.png',\n                  key: ValueKey(CepqarTheme.isLight),\n                  fit: BoxFit.cover,")
 s = s.replace("const DecoratedBox(\n                  decoration: BoxDecoration(\n                    gradient: LinearGradient(\n                      begin: Alignment.topCenter,\n                      end: Alignment.bottomCenter,\n                      stops: [0.0, .54, 1.0],\n                      colors: [Color(0x16000000), Color(0x08000000), Color(0xA807111F)],\n                    ),\n                  ),\n                ),", "if (!CepqarTheme.isLight) const DecoratedBox(\n                  decoration: BoxDecoration(\n                    gradient: LinearGradient(\n                      begin: Alignment.topCenter,\n                      end: Alignment.bottomCenter,\n                      stops: [0.0, .54, 1.0],\n                      colors: [Color(0x16000000), Color(0x08000000), Color(0xA807111F)],\n                    ),\n                  ),\n                ),")
@@ -82,4 +93,32 @@ if needle in s:
     s = s.replace(marker, repl, 1)
 
 p.write_text(s, encoding='utf-8')
-print('Driver theme enabled with compact header theme button beside profile arrow.')
+
+# Account dialog is a separate file and previously kept its fixed dark palette.
+a = Path('lib/driver_account_page.dart')
+t = a.read_text(encoding='utf-8')
+if "import 'cepqar_theme.dart';" not in t:
+    t = t.replace("import 'package:shared_preferences/shared_preferences.dart';", "import 'package:shared_preferences/shared_preferences.dart';\nimport 'cepqar_theme.dart';")
+t = t.replace("const _bg = Color(0xFF07111F);", "Color get _bg => CepqarTheme.bg;")
+t = t.replace("const _panel = Color(0xFF111A31);", "Color get _panel => CepqarTheme.panel;")
+t = t.replace("const _panel2 = Color(0xFF0D1728);", "Color get _panel2 => CepqarTheme.isLight ? const Color(0xFFF5F2FA) : const Color(0xFF0D1728);")
+t = t.replace("const _line = Color(0xFF29345A);", "Color get _line => CepqarTheme.line;")
+t = t.replace("const _muted = Color(0xFFA7B0C7);", "Color get _muted => CepqarTheme.muted;")
+t = t.replace('Colors.white70', 'CepqarTheme.muted')
+t = re.sub(r'color:\s*Colors\.white(?=\s*[,\)])', 'color: CepqarTheme.text', t)
+t = re.sub(r'FilledButton\.styleFrom\(backgroundColor:\s*_purple(?!\s*,\s*foregroundColor)', 'FilledButton.styleFrom(backgroundColor:_purple,foregroundColor:Colors.white', t)
+# The dialog itself listens to the same notifier so an open popup changes live.
+old = "  Widget build(BuildContext context) => Dialog(\n        backgroundColor: _panel,"
+new = "  Widget build(BuildContext context) => ValueListenableBuilder<ThemeMode>(\n        valueListenable: CepqarTheme.mode,\n        builder: (context, _, __) => Dialog(\n        backgroundColor: _panel,"
+if old in t:
+    t = t.replace(old, new, 1)
+    close = "        ),\n      );\n}\n\nInputDecoration _input"
+    t = t.replace(close, "        ),\n      ),\n      );\n}\n\nInputDecoration _input", 1)
+# Dynamic colors cannot remain under const constructor calls.
+t = re.sub(r'\bconst\s+(?=[_A-Z][A-Za-z0-9_]*(?:<[^>]+>)?\s*\()', '', t)
+t = t.replace('const <Widget>[', '<Widget>[').replace('const [', '[')
+for cls in ('DriverAccountPage', 'DriverAccountDialog'):
+    t = re.sub(rf'(?<!const )\b{cls}(\s*\(\{{)', rf'const {cls}\1', t, count=1)
+a.write_text(t, encoding='utf-8')
+
+print('Driver theme enabled for settings header, bottom bar and account dialogs.')
