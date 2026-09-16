@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 p = Path('lib/public_qr_personalized.dart')
 s = p.read_text(encoding='utf-8')
@@ -15,8 +16,6 @@ start = s.find("class _PublicHome extends StatelessWidget {")
 end = s.find("class _MessageComposer extends StatefulWidget {", start)
 if start >= 0 and end > start:
     head, home, tail = s[:start], s[start:end], s[end:]
-
-    # Keep the existing hero/layout; place the compact switch beside the logo.
     home = home.replace(
         "          const _TopBar(),",
         "          Stack(\n"
@@ -39,7 +38,6 @@ if start >= 0 and end > start:
     )
     s = head + home + tail
 
-# Post-scan message, waiting and hidden-call screens use dynamic palette values.
 post = s.find("class _MessageComposer extends StatefulWidget {")
 if post >= 0:
     head, flow = s[:post], s[post:]
@@ -71,17 +69,10 @@ if post >= 0:
         "OutlinedButton.icon(style: OutlinedButton.styleFrom(foregroundColor: _lime, side: BorderSide(color: CepqarTheme.isLight ? const Color(0xFF73806A) : CepqarTheme.muted)), onPressed: () => Navigator.pop(context), icon: const Icon(Icons.chat_bubble_outline), label: const Text('Yeni mesaj gönder'))",
     )
 
-    # Dynamic theme expressions must never remain below a const parent.
-    flow = flow.replace("const TextStyle(color: CepqarTheme.text", "TextStyle(color: CepqarTheme.text")
-    flow = flow.replace("const TextStyle(color: CepqarTheme.muted", "TextStyle(color: CepqarTheme.muted")
-    flow = flow.replace("const Icon(Icons.expand_more, color: CepqarTheme.muted)", "Icon(Icons.expand_more, color: CepqarTheme.muted)")
-    flow = flow.replace("const Icon(Icons.chevron_right, color: CepqarTheme.muted)", "Icon(Icons.chevron_right, color: CepqarTheme.muted)")
-    flow = flow.replace("const CircleAvatar(radius: 34, backgroundColor: CepqarTheme.panel", "CircleAvatar(radius: 34, backgroundColor: CepqarTheme.panel")
-    flow = flow.replace("child: const Icon(Icons.directions_car_filled_rounded, color: CepqarTheme.text", "child: Icon(Icons.directions_car_filled_rounded, color: CepqarTheme.text")
+    # Any widget containing a runtime CepqarTheme getter cannot remain const.
+    # Do this only in the post-scan visitor flow, never in QR scanner/entry code.
+    flow = re.sub(r'const\s+(TextStyle|Text|Icon|CircleAvatar|_TimelineRow)\(([^;\n]*CepqarTheme\.(?:text|muted|panel|line|bg|isLight)[^;\n]*)\)', r'\1(\2)', flow)
     flow = flow.replace("_glass(child: const Column(children: [", "_glass(child: Column(children: [")
-
-    # Cover remaining const parents introduced by the original screen source.
-    # These replacements are deliberately limited to the post-scan flow.
     flow = flow.replace("const Text(\n", "Text(\n")
     flow = flow.replace("const Row(\n", "Row(\n")
     flow = flow.replace("const Column(\n", "Column(\n")
@@ -89,7 +80,15 @@ if post >= 0:
     flow = flow.replace("const InputDecoration(\n", "InputDecoration(\n")
     flow = flow.replace("const BoxDecoration(\n", "BoxDecoration(\n")
 
-    # One safe rebuild point covers every visitor route without changing route navigation.
+    # Explicit single-line cases produced by the original compact source.
+    flow = flow.replace("const Text('Mesajınız gönderildi!'", "Text('Mesajınız gönderildi!'")
+    flow = flow.replace("const Text('Araç sahibine bildiriminiz ulaştı.'", "Text('Araç sahibine bildiriminiz ulaştı.'")
+    flow = flow.replace("const Text('Araç sahibine çağrı bildirimi ulaştı. Telefon numaranız paylaşılmadı.'", "Text('Araç sahibine çağrı bildirimi ulaştı. Telefon numaranız paylaşılmadı.'")
+    flow = flow.replace("style: const TextStyle(color: CepqarTheme.text", "style: TextStyle(color: CepqarTheme.text")
+    flow = flow.replace("style: const TextStyle(color: CepqarTheme.muted", "style: TextStyle(color: CepqarTheme.muted")
+    flow = flow.replace("child: const Icon(Icons.directions_car_filled_rounded, color: CepqarTheme.text", "child: Icon(Icons.directions_car_filled_rounded, color: CepqarTheme.text")
+    flow = flow.replace("const _TimelineRow(Icons.circle_outlined, CepqarTheme.muted", "_TimelineRow(Icons.circle_outlined, CepqarTheme.muted")
+
     old_shell = "  Widget build(BuildContext context) => Scaffold(\n        backgroundColor: CepqarTheme.bg,"
     new_shell = (
         "  Widget build(BuildContext context) => ValueListenableBuilder<ThemeMode>(\n"
