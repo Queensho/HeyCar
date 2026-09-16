@@ -11,6 +11,7 @@ class PublicNotificationApi {
   static String? photoUrl;
   static double? latitude;
   static double? longitude;
+  static Timer? _replyWatch;
 
   static String currentToken() =>
       (Uri.base.queryParameters['tag'] ?? '').trim().toUpperCase();
@@ -125,13 +126,43 @@ class PublicNotificationApi {
     saveConversationId(conversationId);
     clearDraft();
 
-    final next = Uri.base.replace(queryParameters: {
-      ...Uri.base.queryParameters,
-      'tag': token,
-      'chat': conversationId,
-    });
-    html.window.location.href = next.toString();
+    // Mesaj gönderildikten sonra bekleme ekranında kal. Araç sahibi gerçekten
+    // cevap verdiğinde anonim sohbet ekranına otomatik geç.
+    _watchForOwnerReply(conversationId, token);
     return conversationId;
+  }
+
+  static void _watchForOwnerReply(String conversationId, String token) {
+    _replyWatch?.cancel();
+    var busy = false;
+    var failures = 0;
+
+    Future<void> check() async {
+      if (busy) return;
+      busy = true;
+      try {
+        final messages = await fetchConversation(conversationId);
+        failures = 0;
+        final ownerReplied = messages.any((m) => m['sender']?.toString() == 'owner');
+        if (ownerReplied) {
+          _replyWatch?.cancel();
+          final next = Uri.base.replace(queryParameters: {
+            ...Uri.base.queryParameters,
+            'tag': token,
+            'chat': conversationId,
+          });
+          html.window.location.href = next.toString();
+        }
+      } catch (_) {
+        failures++;
+        if (failures >= 10) _replyWatch?.cancel();
+      } finally {
+        busy = false;
+      }
+    }
+
+    check();
+    _replyWatch = Timer.periodic(const Duration(seconds: 3), (_) => check());
   }
 
   static Future<List<Map<String, dynamic>>> fetchConversation(String conversationId) async {
