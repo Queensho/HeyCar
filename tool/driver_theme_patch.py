@@ -20,10 +20,14 @@ s = s.replace("const Color(0xFF10172B)", "(CepqarTheme.isLight ? const Color(0xF
 s = s.replace("const Color(0xFF080F20)", "(CepqarTheme.isLight ? const Color(0xFFF8F6FC) : const Color(0xFF080F20))")
 s = s.replace("const Color(0xFF121530)", "(CepqarTheme.isLight ? const Color(0xFFEDE8F7) : const Color(0xFF121530))")
 
-s = re.sub(r'\bconst\s+(?=[A-Z][A-Za-z0-9_]*(?:<[^>]+>)?\s*\()', '', s)
+# Theme colors are runtime values. Remove const from both public and private
+# widget invocations (_DriverStatsRow/_LiveStat included), otherwise a private
+# const parent can still contain a runtime CepqarTheme value.
+s = re.sub(r'\bconst\s+(?=[_A-Z][A-Za-z0-9_]*(?:<[^>]+>)?\s*\()', '', s)
 s = s.replace('const <Widget>[', '<Widget>[').replace('const [', '[')
 
-# Restore every public immutable constructor that is referenced from const call sites.
+# Restore only the public immutable constructors referenced by const call sites
+# outside this file.
 for cls in ('DriverCodeEntryPage', 'DriverRegisterPage', 'DriverHomePage', 'DriverInvitePage'):
     s = re.sub(rf'(?<!const )\b{cls}(\s*\(\{{)', rf'const {cls}\1', s, count=1)
 
