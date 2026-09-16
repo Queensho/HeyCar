@@ -20,12 +20,13 @@ s = s.replace("const Color(0xFF10172B)", "(CepqarTheme.isLight ? const Color(0xF
 s = s.replace("const Color(0xFF080F20)", "(CepqarTheme.isLight ? const Color(0xFFF8F6FC) : const Color(0xFF080F20))")
 s = s.replace("const Color(0xFF121530)", "(CepqarTheme.isLight ? const Color(0xFFEDE8F7) : const Color(0xFF121530))")
 
-# Any widget/decorative constructor containing a runtime palette value must not
-# be const. Strip const from constructor invocations only; declarations stay intact.
+# Runtime palette values cannot be inside const widget expressions. Removing const
+# from invocations is safe, then restore const on public widget constructors so
+# callers in entry_theme_live.dart remain valid.
 s = re.sub(r'\bconst\s+(?=[A-Z][A-Za-z0-9_]*(?:<[^>]+>)?\s*\()', '', s)
-# Runtime theme expressions may also sit inside const collection literals.
-s = s.replace('const <Widget>[', '<Widget>[')
-s = s.replace('const [', '[')
+s = s.replace('const <Widget>[', '<Widget>[').replace('const [', '[')
+for cls in ('DriverCodeEntryPage', 'DriverRegisterPage', 'DriverHomePage'):
+    s = re.sub(rf'(?m)^(\s*){cls}(\s*\(\{{)', rf'\1const {cls}\2', s)
 
 needle = "  @override\n  Widget build(BuildContext context) {\n    final screens = <Widget>["
 replacement = "  @override\n  Widget build(BuildContext context) => ValueListenableBuilder<ThemeMode>(\n    valueListenable: CepqarTheme.mode,\n    builder: (context, _, __) {\n    final screens = <Widget>["
