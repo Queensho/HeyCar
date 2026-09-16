@@ -36,6 +36,9 @@ jobs:
       - name: Apply maintenance light theme
         run: python3 tool/maintenance_light_theme_patch.py
 
+      - name: Apply public visitor light dark theme
+        run: python3 tool/public_visitor_theme_patch.py
+
       - name: Apply driver light dark theme
         run: python3 tool/driver_theme_patch.py
 
