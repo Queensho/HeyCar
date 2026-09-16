@@ -38,6 +38,17 @@ s = s.replace(
 s = s.replace("'assets/Aracsahibi.png',\n                  fit: BoxFit.cover,", "CepqarTheme.isLight ? 'assets/Aracsahibig.png' : 'assets/Aracsahibi.png',\n                  key: ValueKey(CepqarTheme.isLight),\n                  fit: BoxFit.cover,")
 s = s.replace("const DecoratedBox(\n                  decoration: BoxDecoration(\n                    gradient: LinearGradient(\n                      begin: Alignment.topCenter,\n                      end: Alignment.bottomCenter,\n                      stops: [0.0, .54, 1.0],\n                      colors: [Color(0x16000000), Color(0x08000000), Color(0xA807111F)],\n                    ),\n                  ),\n                ),", "if (!CepqarTheme.isLight) const DecoratedBox(\n                  decoration: BoxDecoration(\n                    gradient: LinearGradient(\n                      begin: Alignment.topCenter,\n                      end: Alignment.bottomCenter,\n                      stops: [0.0, .54, 1.0],\n                      colors: [Color(0x16000000), Color(0x08000000), Color(0xA807111F)],\n                    ),\n                  ),\n                ),")
 
+# Driver SETTINGS only: Aylogo in light theme; dark theme keeps Cepqar3d.
+settings_at = s.find('class _DriverSettingsPage extends StatelessWidget')
+if settings_at >= 0:
+    before, settings = s[:settings_at], s[settings_at:]
+    settings = settings.replace(
+        "Image.asset('assets/Cepqar3d.png', fit: BoxFit.contain, alignment: Alignment.bottomRight, errorBuilder:",
+        "Image.asset(CepqarTheme.isLight ? 'assets/Aylogo.png' : 'assets/Cepqar3d.png', key: ValueKey(CepqarTheme.isLight), fit: BoxFit.contain, alignment: Alignment.bottomRight, errorBuilder:",
+        1,
+    )
+    s = before + settings
+
 # Normal driver text/cards follow the shared light/dark text palette.
 s = s.replace('Colors.white70', 'CepqarTheme.muted')
 s = re.sub(r'color:\s*Colors\.white(?=\s*[,\)])', 'color: CepqarTheme.text', s)
@@ -121,4 +132,4 @@ for cls in ('DriverAccountPage', 'DriverAccountDialog'):
     t = re.sub(rf'(?<!const )\b{cls}(\s*\(\{{)', rf'const {cls}\1', t, count=1)
 a.write_text(t, encoding='utf-8')
 
-print('Driver theme enabled for settings header, bottom bar and account dialogs.')
+print('Driver theme enabled; Aylogo is used only on driver Settings in light mode.')
