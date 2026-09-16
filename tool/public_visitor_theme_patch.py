@@ -17,21 +17,12 @@ if start >= 0 and end > start:
     home = home.replace("    );\n  }\n\n  void _compose", "    );\n        },\n      );\n\n  void _compose", 1)
     home = home.replace("    return _Shell(\n      background: bgUrl,", "    return _Shell(\n      background: bgUrl,\n      forceDark: true,", 1)
     home = home.replace("          const _TopBar(),", "          Stack(children: [\n            const _TopBar(),\n            const Positioned(right: 0, top: 0, child: CepqarThemeSwitch()),\n          ]),", 1)
-
-    # Light mode: keep the hero dark/readable, but make the action area genuinely light.
-    home = home.replace("color: strong ? _lime : _panel,", "color: strong ? _lime : (CepqarTheme.isLight ? Colors.white : _panel),")
-    home = home.replace("Icon(icon, color: strong ? Colors.black : Colors.white, size: 32)", "Icon(icon, color: strong ? Colors.black : (CepqarTheme.isLight ? _purple : Colors.white), size: 32)")
-    home = home.replace("color: strong ? Colors.black : Colors.white, fontWeight: FontWeight.w900", "color: strong ? Colors.black : (CepqarTheme.isLight ? const Color(0xFF111827) : Colors.white), fontWeight: FontWeight.w900")
     home = home.replace(
         "decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(18), border: Border.all(color: _line)),\n              child: const Row(children: [\n                Icon(Icons.phone_rounded, color: Colors.white),\n                SizedBox(width: 16),\n                Expanded(child: Text('Gizli arama', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 17))),\n                Icon(Icons.chevron_right, color: Colors.white70),\n              ]),",
-        "decoration: BoxDecoration(color: CepqarTheme.isLight ? Colors.white : _panel, borderRadius: BorderRadius.circular(18), border: Border.all(color: CepqarTheme.isLight ? const Color(0xFFE3DDEE) : _line)),\n              child: Row(children: [\n                Icon(Icons.phone_rounded, color: CepqarTheme.isLight ? _purple : Colors.white),\n                const SizedBox(width: 16),\n                Expanded(child: Text('Gizli arama', style: TextStyle(color: CepqarTheme.isLight ? const Color(0xFF111827) : Colors.white, fontWeight: FontWeight.w800, fontSize: 17))),\n                Icon(Icons.chevron_right, color: CepqarTheme.isLight ? _purple : Colors.white70),\n              ]),",
-        1,
-    )
+        "decoration: BoxDecoration(color: CepqarTheme.isLight ? Colors.white : _panel, borderRadius: BorderRadius.circular(18), border: Border.all(color: CepqarTheme.isLight ? const Color(0xFFE4DDF0) : _line), boxShadow: CepqarTheme.isLight ? const [BoxShadow(color: Color(0x12000000), blurRadius: 14, offset: Offset(0, 5))] : const []),\n              child: Row(children: [\n                Icon(Icons.phone_rounded, color: CepqarTheme.isLight ? _purple : Colors.white),\n                const SizedBox(width: 16),\n                Expanded(child: Text('Gizli arama', style: TextStyle(color: CepqarTheme.isLight ? const Color(0xFF111827) : Colors.white, fontWeight: FontWeight.w800, fontSize: 17))),\n                Icon(Icons.chevron_right, color: CepqarTheme.isLight ? _purple : Colors.white70),\n              ]),", 1)
     home = home.replace(
         "const Row(mainAxisAlignment: MainAxisAlignment.center, children: [\n            Icon(Icons.shield_rounded, color: Colors.white70, size: 20),\n            SizedBox(width: 8),\n            Text('Kişisel bilgileriniz gizli kalır.', style: TextStyle(color: _muted)),\n          ]),",
-        "Row(mainAxisAlignment: MainAxisAlignment.center, children: [\n            Icon(Icons.shield_rounded, color: CepqarTheme.isLight ? _purple : Colors.white70, size: 20),\n            const SizedBox(width: 8),\n            Text('Kişisel bilgileriniz gizli kalır.', style: TextStyle(color: CepqarTheme.isLight ? const Color(0xFF6B7280) : _muted)),\n          ]),",
-        1,
-    )
+        "Row(mainAxisAlignment: MainAxisAlignment.center, children: [\n            Icon(Icons.shield_rounded, color: CepqarTheme.isLight ? _purple : Colors.white70, size: 20),\n            const SizedBox(width: 8),\n            Text('Kişisel bilgileriniz gizli kalır.', style: TextStyle(color: CepqarTheme.isLight ? const Color(0xFF6B7280) : _muted)),\n          ]),", 1)
     s = head + home + tail
 
 post = s.find("class _MessageComposer extends StatefulWidget {")
@@ -46,8 +37,14 @@ if post >= 0:
     flow = flow.replace("color: _muted", "color: CepqarTheme.muted")
     flow = flow.replace("color: Colors.white", "color: CepqarTheme.text")
     flow = flow.replace("foregroundColor: Colors.white", "foregroundColor: CepqarTheme.text")
-
     flow = flow.replace("fillColor: _panel2,", "fillColor: CepqarTheme.isLight ? Colors.white : _panel2,")
+
+    # Action cards live after _MessageComposer in the source, so theme them here.
+    flow = flow.replace("color: strong ? _lime : _panel,", "color: strong ? _lime : (CepqarTheme.isLight ? Colors.white : _panel),")
+    flow = flow.replace("Icon(icon, color: strong ? Colors.black : Colors.white, size: 32)", "Icon(icon, color: strong ? Colors.black : (CepqarTheme.isLight ? _purple : Colors.white), size: 32)")
+    flow = flow.replace("color: strong ? Colors.black : Colors.white, fontWeight: FontWeight.w900", "color: strong ? Colors.black : (CepqarTheme.isLight ? const Color(0xFF111827) : Colors.white), fontWeight: FontWeight.w900")
+    flow = flow.replace("child: Padding(\n            padding: const EdgeInsets.all(13),", "child: Container(\n            decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), boxShadow: !strong && CepqarTheme.isLight ? const [BoxShadow(color: Color(0x10000000), blurRadius: 14, offset: Offset(0, 5))] : const []),\n            padding: const EdgeInsets.all(13),", 1)
+
     flow = flow.replace("style: const TextStyle(color: Colors.white, fontSize: 16)", "style: TextStyle(color: CepqarTheme.text, fontSize: 16)")
     flow = flow.replace("hintStyle: const TextStyle(color: _muted)", "hintStyle: TextStyle(color: CepqarTheme.muted)")
     flow = flow.replace("Expanded(child: Text(widget.type, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)))", "Expanded(child: Text(widget.type, style: TextStyle(color: CepqarTheme.text, fontWeight: FontWeight.w800)))")
@@ -59,26 +56,21 @@ if post >= 0:
     flow = flow.replace("Text(plate, style: const TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.w900))", "Text(plate, style: TextStyle(color: CepqarTheme.text, fontSize: 21, fontWeight: FontWeight.w900))")
     flow = flow.replace("Text(sub, textAlign: TextAlign.center, style: const TextStyle(color: _muted))", "Text(sub, textAlign: TextAlign.center, style: TextStyle(color: CepqarTheme.muted))")
 
-    # _Shell: in light mode use a dark hero at the top and an opaque light action surface below.
     flow = flow.replace("  const _Shell({required this.child, this.background});\n  final Widget child;\n  final String? background;", "  const _Shell({required this.child, this.background, this.forceDark = false});\n  final Widget child;\n  final String? background;\n  final bool forceDark;")
-    flow = flow.replace("backgroundColor: CepqarTheme.bg,\n        body: Stack(", "backgroundColor: CepqarTheme.bg,\n        body: Stack(")
     flow = flow.replace(
         "            const ColoredBox(color: Color(0xC907101F)),",
-        "            if (forceDark && CepqarTheme.isLight)\n"
-        "              const DecoratedBox(\n"
-        "                decoration: BoxDecoration(\n"
-        "                  gradient: LinearGradient(\n"
-        "                    begin: Alignment.topCenter,\n"
-        "                    end: Alignment.bottomCenter,\n"
-        "                    colors: [Color(0xD907101F), Color(0xD907101F), Color(0xFFF8F7FB), Color(0xFFF8F7FB)],\n"
-        "                    stops: [0.0, 0.34, 0.47, 1.0],\n"
-        "                  ),\n"
+        "            if (forceDark && CepqarTheme.isLight) ...[\n"
+        "              const ColoredBox(color: Color(0xFFF8F7FB)),\n"
+        "              const Align(\n"
+        "                alignment: Alignment.topCenter,\n"
+        "                child: FractionallySizedBox(\n"
+        "                  heightFactor: .39,\n"
+        "                  widthFactor: 1,\n"
+        "                  child: ColoredBox(color: Color(0xE907101F)),\n"
         "                ),\n"
-        "              )\n"
-        "            else\n"
-        "              const ColoredBox(color: Color(0xC907101F)),",
-        1,
-    )
+        "              ),\n"
+        "            ] else\n"
+        "              const ColoredBox(color: Color(0xC907101F)),", 1)
     flow = flow.replace("const CircleAvatar(radius: 39, backgroundColor: Color(0xFF1B263F), child: Icon(Icons.send_rounded, color: _lime, size: 40))", "CircleAvatar(radius: 39, backgroundColor: CepqarTheme.isLight ? const Color(0xFFEDE8F7) : const Color(0xFF1B263F), child: const Icon(Icons.send_rounded, color: _lime, size: 40))")
     flow = flow.replace("OutlinedButton.icon(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.chat_bubble_outline), label: const Text('Yeni mesaj gönder'))", "OutlinedButton.icon(style: OutlinedButton.styleFrom(foregroundColor: _purple, side: BorderSide(color: CepqarTheme.line)), onPressed: () => Navigator.pop(context), icon: const Icon(Icons.chat_bubble_outline), label: const Text('Yeni mesaj gönder'))")
 
@@ -99,4 +91,4 @@ if post >= 0:
     s = head + flow
 
 p.write_text(s, encoding='utf-8')
-print('Public visitor light theme: dark readable hero, light action surface, white cards and purple accents.')
+print('Public visitor light theme polished: dark hero, white cards, purple accents.')
