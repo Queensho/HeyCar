@@ -16,7 +16,7 @@ end = s.find("class _MessageComposer extends StatefulWidget {", start)
 if start >= 0 and end > start:
     head, home, tail = s[:start], s[start:end], s[end:]
 
-    # Keep the existing hero/layout; place the same compact theme switch in its top area.
+    # Keep the existing hero/layout; place the compact switch beside the logo.
     home = home.replace(
         "          const _TopBar(),",
         "          Stack(\n"
@@ -28,7 +28,6 @@ if start >= 0 and end > start:
         "          ),",
         1,
     )
-    # Remove an older duplicate switch if branding inserted one below the hero.
     home = home.replace(
         "          SizedBox(height: compact ? 12 : 16),\n"
         "          const Align(alignment: Alignment.centerRight, child: CepqarThemeSwitch()),\n"
@@ -72,7 +71,7 @@ if post >= 0:
         "OutlinedButton.icon(style: OutlinedButton.styleFrom(foregroundColor: _lime, side: BorderSide(color: CepqarTheme.isLight ? const Color(0xFF73806A) : CepqarTheme.muted)), onPressed: () => Navigator.pop(context), icon: const Icon(Icons.chat_bubble_outline), label: const Text('Yeni mesaj gönder'))",
     )
 
-    # Runtime theme colors cannot live in const widgets/styles.
+    # Dynamic theme expressions must never remain below a const parent.
     flow = flow.replace("const TextStyle(color: CepqarTheme.text", "TextStyle(color: CepqarTheme.text")
     flow = flow.replace("const TextStyle(color: CepqarTheme.muted", "TextStyle(color: CepqarTheme.muted")
     flow = flow.replace("const Icon(Icons.expand_more, color: CepqarTheme.muted)", "Icon(Icons.expand_more, color: CepqarTheme.muted)")
@@ -81,7 +80,16 @@ if post >= 0:
     flow = flow.replace("child: const Icon(Icons.directions_car_filled_rounded, color: CepqarTheme.text", "child: Icon(Icons.directions_car_filled_rounded, color: CepqarTheme.text")
     flow = flow.replace("_glass(child: const Column(children: [", "_glass(child: Column(children: [")
 
-    # One safe rebuild point covers every visitor route and avoids changing route parentheses.
+    # Cover remaining const parents introduced by the original screen source.
+    # These replacements are deliberately limited to the post-scan flow.
+    flow = flow.replace("const Text(\n", "Text(\n")
+    flow = flow.replace("const Row(\n", "Row(\n")
+    flow = flow.replace("const Column(\n", "Column(\n")
+    flow = flow.replace("const ListTile(\n", "ListTile(\n")
+    flow = flow.replace("const InputDecoration(\n", "InputDecoration(\n")
+    flow = flow.replace("const BoxDecoration(\n", "BoxDecoration(\n")
+
+    # One safe rebuild point covers every visitor route without changing route navigation.
     old_shell = "  Widget build(BuildContext context) => Scaffold(\n        backgroundColor: CepqarTheme.bg,"
     new_shell = (
         "  Widget build(BuildContext context) => ValueListenableBuilder<ThemeMode>(\n"
