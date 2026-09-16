@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 TARGETS = {
     'lib/owner_notifications_page.dart': {
@@ -32,31 +33,26 @@ for filename, replacements in TARGETS.items():
     p = Path(filename)
     text = p.read_text(encoding='utf-8')
     if "import 'cepqar_theme.dart';" not in text:
-        # Insert after the last package import / local import block safely near the top.
         lines = text.splitlines()
-        insert_at = 0
-        for i, line in enumerate(lines):
-            if line.startswith('import '):
-                insert_at = i + 1
+        insert_at = max((i + 1 for i, line in enumerate(lines) if line.startswith('import ')), default=0)
         lines.insert(insert_at, "import 'cepqar_theme.dart';")
         text = '\n'.join(lines) + ('\n' if text.endswith('\n') else '')
     for old, new in replacements.items():
         text = text.replace(old, new)
 
-    # These owner pages were originally hard-coded dark. Their const widgets cannot
-    # reference dynamic theme getters, so make the widget expressions runtime values.
-    text = text.replace('const ', '')
+    # Theme getters are runtime values. Remove const only from constructor
+    # invocations, never from variable declarations (the previous patch removed
+    # declaration keywords and broke Dart parsing).
+    text = re.sub(r'\bconst\s+(?=[A-Z][A-Za-z0-9_]*(?:<[^>]+>)?\s*\()', '', text)
     text = text.replace('Colors.white', 'CepqarTheme.text')
-    # Purple/red action buttons must keep white foreground in both themes.
     text = text.replace('foregroundColor: CepqarTheme.text', 'foregroundColor: Colors.white')
     text = text.replace('foregroundColor:CepqarTheme.text', 'foregroundColor:Colors.white')
     p.write_text(text, encoding='utf-8')
 
-# Hero copy stays white over both photographic header assets.
 p = Path('lib/owner_dashboard_live.dart')
 text = p.read_text(encoding='utf-8')
 text = text.replace("color:light?CepqarTheme.lightText:Colors.white,fontSize:32", "color:Colors.white,fontSize:32")
 text = text.replace("color:light?CepqarTheme.lightMuted:Colors.white70,fontSize:17", "color:Colors.white70,fontSize:17")
 p.write_text(text, encoding='utf-8')
 
-print('Owner light theme patch applied.')
+print('Owner light theme patch applied safely.')
