@@ -14,6 +14,9 @@ TARGETS = {
         "const _panel = Color(0xFF111A31);": "Color get _panel => CepqarTheme.panel;",
         "const _line = Color(0xFF29345A);": "Color get _line => CepqarTheme.line;",
         "const _muted = Color(0xFFA7B0C7);": "Color get _muted => CepqarTheme.muted;",
+        "const Color(0xFF080F20)": "CepqarTheme.bg",
+        "const Color(0xFF121530)": "CepqarTheme.panel",
+        "const Color(0xFF10172B)": "CepqarTheme.panel",
         "Color(0xFF080F20)": "CepqarTheme.bg",
         "Color(0xFF121530)": "CepqarTheme.panel",
         "Color(0xFF10172B)": "CepqarTheme.panel",
@@ -25,6 +28,7 @@ TARGETS = {
         "const _bg = Color(0xFF07111F);": "Color get _bg => CepqarTheme.bg;",
         "const _panel = Color(0xFF101A30);": "Color get _panel => CepqarTheme.panel;",
         "const _muted = Color(0xFFA7B0C7);": "Color get _muted => CepqarTheme.muted;",
+        "const Color(0xFF0B1426)": "CepqarTheme.panel",
         "Color(0xFF0B1426)": "CepqarTheme.panel",
     },
 }
@@ -40,15 +44,28 @@ for filename, replacements in TARGETS.items():
     for old, new in replacements.items():
         text = text.replace(old, new)
 
-    # Theme getters are runtime values. Remove const only from constructor
-    # invocations, never from variable declarations (the previous patch removed
-    # declaration keywords and broke Dart parsing).
-    text = re.sub(r'\bconst\s+(?=[A-Z][A-Za-z0-9_]*(?:<[^>]+>)?\s*\()', '', text)
+    # Keep white70 valid before converting plain white foregrounds.
+    text = text.replace('Colors.white70', 'CepqarTheme.muted')
     text = text.replace('Colors.white', 'CepqarTheme.text')
     text = text.replace('foregroundColor: CepqarTheme.text', 'foregroundColor: Colors.white')
     text = text.replace('foregroundColor:CepqarTheme.text', 'foregroundColor:Colors.white')
+
+    # Runtime theme getters cannot be nested under const widget expressions.
+    text = re.sub(r'\bconst\s+(?=[A-Z][A-Za-z0-9_]*(?:<[^>]+>)?\s*\()', '', text)
+
+    # Restore public const constructors used from other screens.
+    constructors = {
+        'lib/owner_notifications_page.dart': ('OwnerNotificationsPage',),
+        'lib/owner_settings_page.dart': ('OwnerSettingsPage',),
+        'lib/owner_vehicles_page.dart': ('OwnerVehiclesPage',),
+        'lib/owner_chat_page.dart': ('OwnerChatPage',),
+    }[filename]
+    for cls in constructors:
+        text = re.sub(rf'(?m)^(\s*){cls}(\s*\(\{{)', rf'\1const {cls}\2', text)
+
     p.write_text(text, encoding='utf-8')
 
+# Hero copy must remain white on both photographic header assets.
 p = Path('lib/owner_dashboard_live.dart')
 text = p.read_text(encoding='utf-8')
 text = text.replace("color:light?CepqarTheme.lightText:Colors.white,fontSize:32", "color:Colors.white,fontSize:32")
