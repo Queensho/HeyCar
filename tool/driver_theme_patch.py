@@ -23,16 +23,9 @@ s = s.replace("const Color(0xFF080F20)", "(CepqarTheme.isLight ? const Color(0xF
 s = s.replace("const Color(0xFF121530)", "(CepqarTheme.isLight ? const Color(0xFFEDE8F7) : const Color(0xFF121530))")
 s = s.replace("const Color(0xFF111B31)", "(CepqarTheme.isLight ? const Color(0xFFF1EDF8) : const Color(0xFF111B31))")
 
-# Driver hero follows the owner hero: separate light/dark artwork and switch.
+# Driver hero follows the owner hero: separate light/dark artwork.
 s = s.replace("'assets/Aracsahibi.png',\n                  fit: BoxFit.cover,", "CepqarTheme.isLight ? 'assets/Aracsahibig.png' : 'assets/Aracsahibi.png',\n                  key: ValueKey(CepqarTheme.isLight),\n                  fit: BoxFit.cover,")
-# Remove the dark fade overlay in light mode so the light artwork stays light.
 s = s.replace("const DecoratedBox(\n                  decoration: BoxDecoration(\n                    gradient: LinearGradient(\n                      begin: Alignment.topCenter,\n                      end: Alignment.bottomCenter,\n                      stops: [0.0, .54, 1.0],\n                      colors: [Color(0x16000000), Color(0x08000000), Color(0xA807111F)],\n                    ),\n                  ),\n                ),", "if (!CepqarTheme.isLight) const DecoratedBox(\n                  decoration: BoxDecoration(\n                    gradient: LinearGradient(\n                      begin: Alignment.topCenter,\n                      end: Alignment.bottomCenter,\n                      stops: [0.0, .54, 1.0],\n                      colors: [Color(0x16000000), Color(0x08000000), Color(0xA807111F)],\n                    ),\n                  ),\n                ),")
-
-# Put the same theme switch used by the owner in the driver header.
-profile_old = "Flexible(child: _profile()),"
-profile_new = "Flexible(child: _profile()),\n                      const SizedBox(width: 10),\n                      const CepqarThemeSwitch(),"
-if profile_new not in s:
-    s = s.replace(profile_old, profile_new, 1)
 
 # Normal driver text/cards follow the shared light/dark text palette.
 s = s.replace('Colors.white70', 'CepqarTheme.muted')
@@ -43,6 +36,33 @@ s = s.replace("color: _purple,\n                          fontSize: 43,", "color
 s = s.replace("color: CepqarTheme.muted,\n                            fontSize: 17,", "color: Colors.white70,\n                            fontSize: 17,")
 # Purple filled buttons must keep white labels/icons in both themes.
 s = re.sub(r'FilledButton\.styleFrom\(backgroundColor:\s*_purple(?!\s*,\s*foregroundColor)', 'FilledButton.styleFrom(backgroundColor:_purple,foregroundColor:Colors.white', s)
+
+# Compact theme control lives inside the existing profile row, immediately before
+# the dropdown arrow. This preserves avatar, name, Sürücü and Aktif/Pasif layout.
+arrow = "const Icon(Icons.keyboard_arrow_down_rounded, color: CepqarTheme.muted, size: 22)"
+theme_control = """GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: CepqarTheme.toggle,
+          child: Container(
+            width: 34,
+            height: 34,
+            margin: const EdgeInsets.only(left: 4, right: 2),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: .18),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white.withValues(alpha: .20)),
+            ),
+            alignment: Alignment.center,
+            child: Icon(
+              CepqarTheme.isLight ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              color: CepqarTheme.isLight ? const Color(0xFFFFC247) : Colors.white,
+              size: 19,
+            ),
+          ),
+        ),
+        const Icon(Icons.keyboard_arrow_down_rounded, color: CepqarTheme.muted, size: 22)"""
+if theme_control not in s:
+    s = s.replace(arrow, theme_control, 1)
 
 # Runtime theme values cannot live under const widget invocations.
 s = re.sub(r'\bconst\s+(?=[_A-Z][A-Za-z0-9_]*(?:<[^>]+>)?\s*\()', '', s)
@@ -62,4 +82,4 @@ if needle in s:
     s = s.replace(marker, repl, 1)
 
 p.write_text(s, encoding='utf-8')
-print('Driver now uses the same Cepqar light/dark theme behavior as owner screens.')
+print('Driver theme enabled with compact header theme button beside profile arrow.')
