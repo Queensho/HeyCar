@@ -39,6 +39,9 @@ jobs:
       - name: Apply public visitor light dark theme
         run: python3 tool/public_visitor_theme_patch.py
 
+      - name: Apply call ringback
+        run: python3 tool/call_ringback_patch.py
+
       - name: Apply driver light dark theme
         run: python3 tool/driver_theme_patch.py
 
