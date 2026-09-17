@@ -71,9 +71,11 @@ jobs:
           p=Path('android/app/src/main/AndroidManifest.xml'); text=p.read_text(); marker='<application'
           permissions='''    <uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />\n    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />\n    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />\n    <uses-permission android:name="android.permission.WAKE_LOCK" />\n    <uses-permission android:name="android.permission.VIBRATE" />\n'''
           if 'android.permission.RECORD_AUDIO' not in text:text=text.replace(marker,permissions+'\n    '+marker,1)
-          elif 'android.permission.POST_NOTIFICATIONS' not in text:text=text.replace(marker,'''    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />\n    <uses-permission android:name="android.permission.WAKE_LOCK" />\n    <uses-permission android:name="android.permission.VIBRATE" />\n\n    '''+marker,1)
           text=text.replace('android:label="app"','android:label="Cepqar"')
-          text=text.replace('android:name=".MainActivity"', 'android:name=".MainActivity"\n            android:showWhenLocked="true"\n            android:turnScreenOn="true"')
+          text=text.replace('android:name=".MainActivity"', 'android:name=".MainActivity"\n            android:showWhenLocked="true"\n            android:turnScreenOn="true"\n            android:launchMode="singleTop"')
+          # System-rendered Firebase notifications also use the Cepqar status icon.
+          if 'com.google.firebase.messaging.default_notification_icon' not in text:
+            text=text.replace('</application>','''        <meta-data\n            android:name="com.google.firebase.messaging.default_notification_icon"\n            android:resource="@drawable/ic_stat_cepqar" />\n    </application>''')
           p.write_text(text)
           PY
       - name: Apply Cepqar Android icons
