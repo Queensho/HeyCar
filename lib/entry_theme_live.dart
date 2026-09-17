@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'owner_login.dart';
@@ -7,6 +8,8 @@ import 'owner_dashboard_live.dart';
 import 'owner_call_watcher.dart';
 import 'owner_vehicle_setup.dart';
 import 'owner_guide_page.dart';
+import 'owner_notifications_page.dart';
+import 'owner_chat_page.dart';
 import 'qr_activation.dart';
 import 'onboarding_backend.dart';
 import 'qr_backend.dart';
@@ -14,24 +17,13 @@ import 'driver_invite_page.dart';
 import 'cepqar_theme.dart';
 import 'push_notifications.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await CepqarTheme.load();
-  runApp(const ThemeOwnerApp());
-  // Firebase/push hiçbir zaman uygulamanın ilk ekranını bloke etmemeli.
-  Future<void>(() async {
-    try {
-      await PushNotifications.init();
-    } catch (e) {
-      debugPrint('Push init failed: $e');
-    }
-  });
-}
-
-class ThemeOwnerApp extends StatelessWidget{const ThemeOwnerApp({super.key});@override Widget build(BuildContext context)=>ValueListenableBuilder<ThemeMode>(valueListenable:CepqarTheme.mode,builder:(_,mode,__)=>(MaterialApp(debugShowCheckedModeBanner:false,themeMode:mode,theme:ThemeData(useMaterial3:true,brightness:Brightness.light,scaffoldBackgroundColor:CepqarTheme.lightBg,colorScheme:ColorScheme.fromSeed(seedColor:CepqarTheme.purple,brightness:Brightness.light,surface:CepqarTheme.lightPanel),cardColor:CepqarTheme.lightPanel,dividerColor:CepqarTheme.lightLine,fontFamily:'sans'),darkTheme:ThemeData(useMaterial3:true,brightness:Brightness.dark,scaffoldBackgroundColor:CepqarTheme.darkBg,colorScheme:ColorScheme.fromSeed(seedColor:CepqarTheme.purple,brightness:Brightness.dark,surface:CepqarTheme.darkPanel),cardColor:CepqarTheme.darkPanel,dividerColor:CepqarTheme.darkLine,fontFamily:'sans'),home:const ThemeOwnerEntry())));}
+final GlobalKey<NavigatorState> cepqarNavigatorKey=GlobalKey<NavigatorState>();
+void main() async {WidgetsFlutterBinding.ensureInitialized();await CepqarTheme.load();runApp(const ThemeOwnerApp());Future<void>(() async{try{await PushNotifications.init();}catch(e){debugPrint('Push init failed: $e');}});}
+class ThemeOwnerApp extends StatelessWidget{const ThemeOwnerApp({super.key});@override Widget build(BuildContext context)=>ValueListenableBuilder<ThemeMode>(valueListenable:CepqarTheme.mode,builder:(_,mode,__)=>(MaterialApp(navigatorKey:cepqarNavigatorKey,debugShowCheckedModeBanner:false,themeMode:mode,theme:ThemeData(useMaterial3:true,brightness:Brightness.light,scaffoldBackgroundColor:CepqarTheme.lightBg,colorScheme:ColorScheme.fromSeed(seedColor:CepqarTheme.purple,brightness:Brightness.light,surface:CepqarTheme.lightPanel),cardColor:CepqarTheme.lightPanel,dividerColor:CepqarTheme.lightLine,fontFamily:'sans'),darkTheme:ThemeData(useMaterial3:true,brightness:Brightness.dark,scaffoldBackgroundColor:CepqarTheme.darkBg,colorScheme:ColorScheme.fromSeed(seedColor:CepqarTheme.purple,brightness:Brightness.dark,surface:CepqarTheme.darkPanel),cardColor:CepqarTheme.darkPanel,dividerColor:CepqarTheme.darkLine,fontFamily:'sans'),home:const ThemeOwnerEntry())));}
 class ThemeOwnerEntry extends StatefulWidget{const ThemeOwnerEntry({super.key});@override State<ThemeOwnerEntry> createState()=>_ThemeOwnerEntryState();}
 class _ThemeOwnerEntryState extends State<ThemeOwnerEntry>{int index=0;bool loginMode=false,registerMode=false,restoring=true,hasSession=false;String driverId='';Widget ownerHome()=>const OwnerCallWatcher(child:OwnerDashboardLive());@override void initState(){super.initState();_restoreSession();}
-Future<void> _restoreSession()async{try{final prefs=await SharedPreferences.getInstance();final driverLogged=prefs.getBool('driver_logged_in')??false;driverId=driverLogged?(prefs.getString('driver_user_id')??''):'';final loggedIn=prefs.getBool('owner_logged_in')??false;if(loggedIn){OnboardingDraft.userId=prefs.getString('owner_user_id')??'';OnboardingDraft.phone=prefs.getString('owner_phone')??'';OnboardingDraft.displayName=prefs.getString('owner_display_name')??'';OnboardingDraft.email=prefs.getString('owner_email')??'';OnboardingDraft.vehicleId=prefs.getString('owner_vehicle_id')??'';QrDraft.vehicleId=OnboardingDraft.vehicleId;QrDraft.plate=prefs.getString('owner_plate')??'';QrDraft.make=prefs.getString('owner_make')??'';QrDraft.model=prefs.getString('owner_model')??'';QrDraft.token=prefs.getString('owner_qr_token')??'';QrDraft.ownerName=OnboardingDraft.displayName.isEmpty?'Cepqar Kullanıcısı':OnboardingDraft.displayName;_registerPushLater();}if(mounted)setState((){hasSession=loggedIn;restoring=false;});}catch(e){debugPrint('Session restore failed: $e');if(mounted)setState((){hasSession=false;restoring=false;});}}
+Future<void> _restoreSession()async{try{final prefs=await SharedPreferences.getInstance();final driverLogged=prefs.getBool('driver_logged_in')??false;driverId=driverLogged?(prefs.getString('driver_user_id')??''):'';final loggedIn=prefs.getBool('owner_logged_in')??false;if(loggedIn){OnboardingDraft.userId=prefs.getString('owner_user_id')??'';OnboardingDraft.phone=prefs.getString('owner_phone')??'';OnboardingDraft.displayName=prefs.getString('owner_display_name')??'';OnboardingDraft.email=prefs.getString('owner_email')??'';OnboardingDraft.vehicleId=prefs.getString('owner_vehicle_id')??'';QrDraft.vehicleId=OnboardingDraft.vehicleId;QrDraft.plate=prefs.getString('owner_plate')??'';QrDraft.make=prefs.getString('owner_make')??'';QrDraft.model=prefs.getString('owner_model')??'';QrDraft.token=prefs.getString('owner_qr_token')??'';QrDraft.ownerName=OnboardingDraft.displayName.isEmpty?'Cepqar Kullanıcısı':OnboardingDraft.displayName;_registerPushLater();}if(mounted)setState((){hasSession=loggedIn;restoring=false;});if(loggedIn)Future.delayed(const Duration(milliseconds:500),_openPendingPush);}catch(e){debugPrint('Session restore failed: $e');if(mounted)setState((){hasSession=false;restoring=false;});}}
+Future<void> _openPendingPush()async{final prefs=await SharedPreferences.getInstance();final raw=prefs.getString('pending_push_navigation');if(raw==null||raw.isEmpty)return;await prefs.remove('pending_push_navigation');Map<String,dynamic> d={};try{d=Map<String,dynamic>.from(jsonDecode(raw));}catch(_){return;}final nav=cepqarNavigatorKey.currentState;if(nav==null)return;final type='${d['type']??''}',notificationId='${d['notificationId']??''}',vehicleId='${d['vehicleId']??''}',plate='${d['plate']??QrDraft.plate}';if(type=='message'&&notificationId.isNotEmpty){nav.push(MaterialPageRoute(builder:(_)=>OwnerChatPage(notificationId:notificationId,plate:plate)));}else if(type!='incoming_call'&&type!='call_request'){nav.push(MaterialPageRoute(builder:(_)=>OwnerNotificationsPage(vehicleId:vehicleId,plate:plate)));}}
 void _registerPushLater(){Future<void>(() async{try{await PushNotifications.registerToken();}catch(e){debugPrint('Push registration failed: $e');}});}
 Future<void> _saveSession()async{final p=await SharedPreferences.getInstance();await p.setBool('owner_logged_in',true);await p.setString('owner_user_id',OnboardingDraft.userId);await p.setString('owner_phone',OnboardingDraft.phone);await p.setString('owner_display_name',OnboardingDraft.displayName);await p.setString('owner_email',OnboardingDraft.email);await p.setString('owner_vehicle_id',OnboardingDraft.vehicleId);await p.setString('owner_plate',QrDraft.plate);await p.setString('owner_make',QrDraft.make);await p.setString('owner_model',QrDraft.model);await p.setString('owner_qr_token',QrDraft.token);_registerPushLater();}
 void next()=>setState(()=>index=(index+1).clamp(0,4));void back()=>setState(()=>index=(index-1).clamp(0,4));Future<void> done()async{await _saveSession();if(mounted)Navigator.pushReplacement(context,MaterialPageRoute(builder:(_)=>ownerHome()));}void resetToWelcome()=>setState((){loginMode=false;registerMode=false;index=0;});
