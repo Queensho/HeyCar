@@ -52,6 +52,18 @@ class PushNotifications{
     _bootstrapped=true;
   }
 
+  static Future<void> prepareCallPermissions()async{
+    await bootstrap();
+    await ensureChannels();
+    await FirebaseMessaging.instance.requestPermission(alert:true,badge:true,sound:true);
+    if(Platform.isAndroid){
+      try{
+        final allowed=await FlutterCallkitIncoming.canUseFullScreenIntent();
+        if(!allowed)await FlutterCallkitIncoming.requestFullIntentPermission();
+      }catch(_){}
+    }
+  }
+
   static Future<void> init()async{
     await bootstrap();
     await ensureChannels();
