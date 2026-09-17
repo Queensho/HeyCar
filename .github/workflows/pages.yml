@@ -72,7 +72,6 @@ jobs:
           permissions='''    <uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />\n    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />\n    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />\n    <uses-permission android:name="android.permission.WAKE_LOCK" />\n    <uses-permission android:name="android.permission.VIBRATE" />\n'''
           if 'android.permission.RECORD_AUDIO' not in text:text=text.replace(marker,permissions+'\n    '+marker,1)
           text=text.replace('android:label="app"','android:label="Cepqar"')
-          # Flutter already generates launchMode="singleTop". Do not add it again.
           text=text.replace('android:name=".MainActivity"', 'android:name=".MainActivity"\n            android:showWhenLocked="true"\n            android:turnScreenOn="true"')
           if 'com.google.firebase.messaging.default_notification_icon' not in text:
             text=text.replace('</application>','''        <meta-data\n            android:name="com.google.firebase.messaging.default_notification_icon"\n            android:resource="@drawable/ic_stat_cepqar" />\n    </application>''')
@@ -89,6 +88,31 @@ jobs:
             <path android:fillColor="#FFFFFFFF" android:pathData="M5,4h14a3,3 0,0 1,3 3v8a3,3 0,0 1,-3 3h-6l-4,3v-3H5a3,3 0,0 1,-3 -3V7a3,3 0,0 1,3 -3zM7,9h10v2H7zM7,13h7v2H7z"/>
           </vector>
           EOF
+      - name: Generate Cepqar incoming call ringtone
+        run: |
+          mkdir -p android/app/src/main/res/raw
+          python3 - <<'PY'
+          import math, struct, wave
+          from pathlib import Path
+          rate=16000
+          duration=40.0
+          out=Path('android/app/src/main/res/raw/cepqar_call.wav')
+          with wave.open(str(out),'wb') as w:
+              w.setnchannels(1); w.setsampwidth(2); w.setframerate(rate)
+              frames=[]
+              for i in range(int(rate*duration)):
+                  t=i/rate
+                  phase=t%3.0
+                  if phase<1.55:
+                      pulse=1.0 if (phase%0.72)<0.48 else 0.28
+                      env=min(1.0,phase/0.05)*min(1.0,max(0.0,(1.55-phase)/0.08))
+                      s=(0.58*math.sin(2*math.pi*523.25*t)+0.30*math.sin(2*math.pi*659.25*t)+0.12*math.sin(2*math.pi*783.99*t))*pulse*env
+                  else:
+                      s=0.0
+                  frames.append(struct.pack('<h',int(max(-1,min(1,s))*14500)))
+              w.writeframes(b''.join(frames))
+          print('Cepqar ringtone generated:',out,out.stat().st_size)
+          PY
       - name: Get dependencies
         run: flutter pub get
       - name: Analyze app
