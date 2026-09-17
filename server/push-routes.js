@@ -16,8 +16,8 @@ async function accessToken(){
   const b64=o=>Buffer.from(JSON.stringify(o)).toString('base64url');
   const unsigned=`${b64({alg:'RS256',typ:'JWT'})}.${b64({iss:sa.client_email,scope:'https://www.googleapis.com/auth/firebase.messaging',aud:'https://oauth2.googleapis.com/token',iat:now,exp:now+3600})}`;
   const sig=crypto.sign('RSA-SHA256',Buffer.from(unsigned),sa.private_key).toString('base64url');
-  const r=await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams({grant_type:'urn:ietf:params:oauth2:grant-type:jwt-bearer',assertion:`${unsigned}.${sig}`})});
-  if(!r.ok) throw new Error(`FCM_AUTH_${r.status}`);
+  const r=await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams({grant_type:'urn:ietf:params:oauth:grant-type:jwt-bearer',assertion:`${unsigned}.${sig}`})});
+  if(!r.ok){const detail=await r.text();throw new Error(`FCM_AUTH_${r.status}: ${detail}`);}
   return (await r.json()).access_token;
 }
 
@@ -36,8 +36,6 @@ module.exports=function registerPushRoutes(app,pool){
     for(const row of rows){
       const call=data.type==='incoming_call';
       const fcmData=Object.fromEntries(Object.entries({...data,title,body}).map(([k,v])=>[k,String(v??'')]));
-      // Gelen arama DATA-ONLY olmalı. Böylece Android bildirimi kendisi çizmek yerine
-      // Flutter background handler full-screen call notification oluşturur.
       const message={token:row.fcm_token,data:fcmData,android:{priority:'HIGH'}};
       if(!call){
         message.android.notification={channel_id:'heycar_notifications',sound:'default',visibility:'PUBLIC',notification_priority:'PRIORITY_HIGH'};
