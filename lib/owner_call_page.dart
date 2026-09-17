@@ -23,6 +23,7 @@ class _OwnerCallPageState extends State<OwnerCallPage> {
   bool connected = false;
   bool busy = false;
   bool muted = false;
+  bool closing = false;
   String? error;
   final Set<String> callerCandidateKeys = <String>{};
 
@@ -33,6 +34,21 @@ class _OwnerCallPageState extends State<OwnerCallPage> {
   void initState() {
     super.initState();
     remoteRenderer.initialize();
+    // Ringing calls must also be watched. Previously polling started only
+    // after accept, so a caller cancelling left the accept/reject screen open.
+    poller = Timer.periodic(const Duration(milliseconds: 700), (_) => _poll());
+    Future.microtask(_poll);
+  }
+
+  Future<void> _closeFromRemote() async {
+    if (closing) return;
+    closing = true;
+    poller?.cancel();
+    for (final track in localStream?.getTracks() ?? <MediaStreamTrack>[]) {
+      track.stop();
+    }
+    await peer?.close();
+    if (mounted) Navigator.of(context).pop();
   }
 
   Future<void> _reject() async {
@@ -47,6 +63,11 @@ class _OwnerCallPageState extends State<OwnerCallPage> {
     setState(() { busy = true; error = null; });
     try {
       final latest = await AnonymousCallApi.ownerStatus(callId);
+      final currentStatus = latest['status']?.toString() ?? '';
+      if (const {'ended','cancelled','missed','rejected'}.contains(currentStatus)) {
+        await _closeFromRemote();
+        return;
+      }
       final offer = latest['offer'];
       if (offer is! Map || offer['sdp'] == null || offer['type'] == null) {
         throw Exception('Arama bağlantısı henüz hazır değil.');
@@ -78,9 +99,8 @@ class _OwnerCallPageState extends State<OwnerCallPage> {
       await peer!.setLocalDescription(answer);
       await AnonymousCallApi.ownerSignal(callId, action: 'accept', answer: {'sdp': answer.sdp, 'type': answer.type});
       if (mounted) setState(() { connected = true; busy = false; });
-      poller = Timer.periodic(const Duration(milliseconds: 1200), (_) => _poll());
     } catch (e) {
-      if (mounted) setState(() { error = e.toString().replaceFirst('Exception: ', ''); busy = false; });
+      if (mounted && !closing) setState(() { error = e.toString().replaceFirst('Exception: ', ''); busy = false; });
     }
   }
 
@@ -98,14 +118,15 @@ class _OwnerCallPageState extends State<OwnerCallPage> {
   }
 
   Future<void> _poll() async {
+    if (closing || callId.isEmpty) return;
     try {
       final latest = await AnonymousCallApi.ownerStatus(callId);
-      await _addCallerCandidates(latest['caller_candidates']);
       final status = latest['status']?.toString() ?? '';
       if (const {'ended','cancelled','missed','rejected'}.contains(status)) {
-        poller?.cancel();
-        if (mounted) Navigator.pop(context);
+        await _closeFromRemote();
+        return;
       }
+      if (connected) await _addCallerCandidates(latest['caller_candidates']);
     } catch (_) {}
   }
 
@@ -126,9 +147,7 @@ class _OwnerCallPageState extends State<OwnerCallPage> {
   @override
   void dispose() {
     poller?.cancel();
-    for (final track in localStream?.getTracks() ?? <MediaStreamTrack>[]) {
-      track.stop();
-    }
+    for (final track in localStream?.getTracks() ?? <MediaStreamTrack>[]) { track.stop(); }
     peer?.close();
     remoteRenderer.dispose();
     super.dispose();
@@ -145,11 +164,11 @@ class _OwnerCallPageState extends State<OwnerCallPage> {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(22, 34, 22, 28),
             child: Column(children: [
-              const Text('HeyCar', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900)),
+              const Text('Cepqar', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900)),
               const Spacer(),
               Container(width: 120, height: 120, decoration: const BoxDecoration(color: Color(0xFF1B2850), shape: BoxShape.circle), child: const Icon(Icons.phone_in_talk_rounded, color: _ownerCallPurple, size: 58)),
               const SizedBox(height: 24),
-              Text(connected ? 'Anonim görüşme' : 'HeyCar araması', style: const TextStyle(color: Colors.white, fontSize: 27, fontWeight: FontWeight.w900)),
+              Text(connected ? 'Anonim görüşme' : 'Cepqar araması', style: const TextStyle(color: Colors.white, fontSize: 27, fontWeight: FontWeight.w900)),
               const SizedBox(height: 8),
               Text('$plate aracınız için ${connected ? 'bağlandı' : 'gelen arama'}', textAlign: TextAlign.center, style: const TextStyle(color: _ownerCallMuted, fontSize: 16, fontWeight: FontWeight.w700)),
               const SizedBox(height: 12),
@@ -177,12 +196,7 @@ class _OwnerCallPageState extends State<OwnerCallPage> {
 
 class _OwnerCallAction extends StatelessWidget {
   const _OwnerCallAction({required this.icon, required this.label, this.onTap, this.danger = false, this.accept = false});
-  final IconData icon;
-  final String label;
-  final VoidCallback? onTap;
-  final bool danger;
-  final bool accept;
-
+  final IconData icon; final String label; final VoidCallback? onTap; final bool danger; final bool accept;
   @override
   Widget build(BuildContext context) => Column(children: [
     InkWell(onTap: onTap, customBorder: const CircleBorder(), child: Container(width: 72, height: 72, decoration: BoxDecoration(color: danger ? const Color(0xFFE53935) : accept ? const Color(0xFF24B15A) : const Color(0xFF1B2850), shape: BoxShape.circle), child: Icon(icon, color: Colors.white, size: 32))),
