@@ -74,12 +74,12 @@ for filename, replacements in TARGETS.items():
     text = re.sub(r'FilledButton\.styleFrom\(backgroundColor:\s*_purple,\s*foregroundColor:\s*CepqarTheme\.text','FilledButton.styleFrom(backgroundColor:_purple,foregroundColor:Colors.white',text)
     text = re.sub(r'FilledButton\.styleFrom\(backgroundColor:\s*_purple(?!\s*,\s*foregroundColor)','FilledButton.styleFrom(backgroundColor:_purple,foregroundColor:Colors.white',text)
 
-    # Owner Settings only: use the uploaded Aylogo artwork in LIGHT theme.
-    # Dark theme and every other owner screen keep the existing Cepqar3d artwork.
+    # Settings: the 3D hero stays visible in BOTH themes.
+    # Only the brand logo changes in light mode so its white lettering does not disappear.
     if filename == 'lib/owner_settings_page.dart':
         text = text.replace(
-            "'assets/Cepqar3d.png',\n                      fit: BoxFit.contain,",
-            "CepqarTheme.isLight ? 'assets/Aylogo.png' : 'assets/Cepqar3d.png',\n                      key: ValueKey(CepqarTheme.isLight),\n                      fit: BoxFit.contain,",
+            "Image.asset('assets/Logoqr.png', height: 38, fit: BoxFit.contain)",
+            "Image.asset(CepqarTheme.isLight ? 'assets/Aylogo.png' : 'assets/Logoqr.png', key: ValueKey(CepqarTheme.isLight), height: 38, fit: BoxFit.contain)",
             1,
         )
 
@@ -121,4 +121,4 @@ text = text.replace("color:light?CepqarTheme.lightText:Colors.white,fontSize:32"
 text = text.replace("color:light?CepqarTheme.lightMuted:Colors.white70,fontSize:17", "color:Colors.white70,fontSize:17")
 p.write_text(text, encoding='utf-8')
 
-print('Owner light theme, Aylogo settings hero, premium driver card, QR promo and compact parking card applied.')
+print('Owner light theme, settings hero/logo, premium driver card, QR promo and compact parking card applied.')
