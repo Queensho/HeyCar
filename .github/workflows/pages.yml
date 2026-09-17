@@ -33,6 +33,8 @@ jobs:
         run: python3 tool/owner_header_size_patch.py
       - name: Apply Android back navigation
         run: python3 tool/back_navigation_patch.py
+      - name: Apply runtime Android fixes
+        run: python3 tool/fix_runtime_android.py
       - name: Generate Android platform
         run: flutter create . --platforms=android --project-name app --org com.cepqar --no-pub
       - name: Restore Firebase Android config
@@ -71,15 +73,20 @@ jobs:
           if 'android.permission.RECORD_AUDIO' not in text:text=text.replace(marker,permissions+'\n    '+marker,1)
           elif 'android.permission.POST_NOTIFICATIONS' not in text:text=text.replace(marker,'''    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />\n    <uses-permission android:name="android.permission.WAKE_LOCK" />\n    <uses-permission android:name="android.permission.VIBRATE" />\n\n    '''+marker,1)
           text=text.replace('android:label="app"','android:label="Cepqar"')
-          # Allow the notification full-screen intent to wake and display the Flutter call UI over lock screen.
           text=text.replace('android:name=".MainActivity"', 'android:name=".MainActivity"\n            android:showWhenLocked="true"\n            android:turnScreenOn="true"')
           p.write_text(text)
           PY
-      - name: Apply Cepqar Android launcher icon
+      - name: Apply Cepqar Android icons
         run: |
           set -e
           ICON="assets/app_icons/cepqar_icon.png"; test -f "$ICON"
           for dir in android/app/src/main/res/mipmap-mdpi android/app/src/main/res/mipmap-hdpi android/app/src/main/res/mipmap-xhdpi android/app/src/main/res/mipmap-xxhdpi android/app/src/main/res/mipmap-xxxhdpi; do mkdir -p "$dir"; cp "$ICON" "$dir/ic_launcher.png"; cp "$ICON" "$dir/ic_launcher_round.png"; done
+          mkdir -p android/app/src/main/res/drawable
+          cat > android/app/src/main/res/drawable/ic_stat_cepqar.xml <<'EOF'
+          <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+            <path android:fillColor="#FFFFFFFF" android:pathData="M5,4h14a3,3 0,0 1,3 3v8a3,3 0,0 1,-3 3h-6l-4,3v-3H5a3,3 0,0 1,-3 -3V7a3,3 0,0 1,3 -3zM7,9h10v2H7zM7,13h7v2H7z"/>
+          </vector>
+          EOF
       - name: Get dependencies
         run: flutter pub get
       - name: Analyze app
