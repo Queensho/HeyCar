@@ -70,10 +70,18 @@ module.exports = function registerCallRoutes(app, pool) {
       const candidate = req.body && req.body.candidate ? JSON.stringify(req.body.candidate) : null;
       const cancel = req.body && req.body.action === 'cancel';
       const result = await pool.query(
-        `UPDATE anonymous_calls SET offer=COALESCE($3::jsonb,offer), caller_candidates=CASE WHEN $4::jsonb IS NULL THEN caller_candidates ELSE caller_candidates || jsonb_build_array($4::jsonb) END, status=CASE WHEN $5 THEN 'cancelled' ELSE status END, ended_at=CASE WHEN $5 THEN NOW() ELSE ended_at END WHERE id=$1 AND visitor_token::text=$2 RETURNING id,status`,
+        `UPDATE anonymous_calls SET offer=COALESCE($3::jsonb,offer), caller_candidates=CASE WHEN $4::jsonb IS NULL THEN caller_candidates ELSE caller_candidates || jsonb_build_array($4::jsonb) END, status=CASE WHEN $5 THEN 'cancelled' ELSE status END, ended_at=CASE WHEN $5 THEN NOW() ELSE ended_at END WHERE id=$1 AND visitor_token::text=$2 RETURNING id,status,owner_id`,
         [req.params.callId, visitorToken, offer, candidate, cancel]
       );
       if (!result.rows.length) return res.status(404).json({ error: 'CALL_NOT_FOUND' });
+      if (cancel && app.locals.heycarPush) {
+        app.locals.heycarPush.send(
+          String(result.rows[0].owner_id),
+          { type: 'incoming_call_cancelled', callId: String(result.rows[0].id) },
+          'Arama sona erdi',
+          'Arayan kişi aramayı kapattı'
+        ).catch(err => console.error('incoming call cancel push', err));
+      }
       return res.json({ ok: true, call: result.rows[0] });
     } catch (e) { console.error('call public update', e); return res.status(500).json({ error: 'SERVER_ERROR' }); }
   });
