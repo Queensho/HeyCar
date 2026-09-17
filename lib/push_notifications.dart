@@ -7,7 +7,9 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-const _apiBase='http://185.165.46.213:8090';
+// Android cihazlar VPS'in dahili 8090 portuna doğrudan erişmemeli.
+// Uygulamanın diğer owner API'leriyle aynı HTTPS production endpoint'ini kullan.
+const _apiBase='https://heycar-api-185-165-46-213.nip.io';
 const _generalChannel='heycar_notifications';
 const _callChannel='heycar_incoming_calls';
 final FlutterLocalNotificationsPlugin _local=FlutterLocalNotificationsPlugin();
@@ -16,7 +18,9 @@ final FlutterLocalNotificationsPlugin _local=FlutterLocalNotificationsPlugin();
 Future<void> heyCarFirebaseBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
   await PushNotifications.ensureChannels();
-  await PushNotifications.show(message);
+  // notification payload'ı Android tarafından arka planda zaten gösterilir.
+  // Data-only mesajlarda yerel bildirimi biz gösteririz.
+  if(message.notification==null) await PushNotifications.show(message);
 }
 
 class PushNotifications {
@@ -61,13 +65,13 @@ class PushNotifications {
     try{
       final response=await http.post(Uri.parse('$_apiBase/api/owner/push-token'),headers:{'content-type':'application/json','x-owner-id':ownerId},body:jsonEncode({
         'token':token,'deviceId':deviceId,'platform':Platform.operatingSystem
-      }));
+      })).timeout(const Duration(seconds:15));
       if(response.statusCode<200 || response.statusCode>=300){
         throw HttpException('Push token registration failed: ${response.statusCode} ${response.body}');
       }
+      await prefs.setBool('push_token_registered',true);
     }catch(e){
-      // Push kaydi gecici olarak basarisiz olsa bile uygulamanin acilmasini engelleme.
-      // Bir sonraki uygulama acilisinda veya FCM token yenilenince tekrar denenir.
+      await prefs.setBool('push_token_registered',false);
       stderr.writeln('Push token registration: $e');
     }
   }
