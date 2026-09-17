@@ -60,7 +60,7 @@ jobs:
                           when (call.method) {
                               "openAutoStart" -> openAutoStart()
                               "openMiuiPermissions" -> openMiuiPermissions()
-                              "openBatterySettings" -> startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                              "openBatterySettings" -> openBatterySettings()
                               "openAppDetails" -> openAppDetails()
                               else -> { result.notImplemented(); return@setMethodCallHandler }
                           }
@@ -101,6 +101,22 @@ jobs:
                       } catch (e: Exception) { last = e }
                   }
                   throw last ?: IllegalStateException("MIUI permission screen unavailable")
+              }
+
+              private fun openBatterySettings() {
+                  try {
+                      startActivity(Intent().apply {
+                          component = ComponentName(
+                              "com.miui.powerkeeper",
+                              "com.miui.powerkeeper.ui.HiddenAppsConfigActivity"
+                          )
+                          putExtra("package_name", packageName)
+                          putExtra("package_label", "Cepqar")
+                          addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                      })
+                  } catch (e: Exception) {
+                      startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                  }
               }
 
               private fun openAppDetails() {
