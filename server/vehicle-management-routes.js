@@ -8,7 +8,17 @@ module.exports = function registerVehicleManagementRoutes(app, pool) {
       const user = await pool.query(`SELECT COALESCE(premium,false) AS premium FROM users WHERE id::text=$1 LIMIT 1`, [owner]);
       if (!user.rows.length) return res.status(404).json({ error: 'OWNER_NOT_FOUND' });
       const premium = user.rows[0].premium === true;
-      const vehicles = await pool.query(`SELECT id,plate,make,model,color,created_at FROM vehicles WHERE owner_id::text=$1 ORDER BY created_at ASC`, [owner]);
+      const vehicles = await pool.query(`
+        SELECT v.id,v.plate,v.make,v.model,v.color,v.created_at,
+               q.token AS qr_token,q.status AS qr_status
+          FROM vehicles v
+          LEFT JOIN LATERAL (
+            SELECT token,status FROM qr_tags
+             WHERE vehicle_id=v.id AND status='active'
+             ORDER BY activated_at DESC NULLS LAST LIMIT 1
+          ) q ON TRUE
+         WHERE v.owner_id::text=$1
+         ORDER BY v.created_at ASC`, [owner]);
       return res.json({ ok:true, premium, limit: premium ? 3 : 1, vehicles: vehicles.rows });
     } catch (e) {
       console.error('owner vehicles list error', e);
