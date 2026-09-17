@@ -43,7 +43,7 @@ jobs:
         run: python3 tool/back_navigation_patch.py
 
       - name: Generate Android platform
-        run: flutter create . --platforms=android --project-name heycar_app --org com.heycar --no-pub
+        run: flutter create . --platforms=android --project-name app --org com.cepqar --no-pub
 
       - name: Add Android call and notification permissions
         run: |
@@ -59,7 +59,7 @@ jobs:
               extra = '''    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />\n    <uses-permission android:name="android.permission.WAKE_LOCK" />\n    <uses-permission android:name="android.permission.VIBRATE" />\n'''
               if 'android.permission.POST_NOTIFICATIONS' not in text:
                   text = text.replace(marker, extra + '\n    ' + marker, 1)
-          text = text.replace('android:label="heycar_app"', 'android:label="Cepqar"')
+          text = text.replace('android:label="app"', 'android:label="Cepqar"')
           p.write_text(text)
           PY
 
