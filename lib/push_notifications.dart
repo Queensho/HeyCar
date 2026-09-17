@@ -112,9 +112,10 @@ class PushNotifications{
       if(event is CallEventActionCallAccept){
         await _rememberNavigation({...data,'callId':callId,'type':'incoming_call'});
         final prefs=await SharedPreferences.getInstance();
-        await prefs.setString('pending_push_navigation',jsonEncode({...data,'callId':callId,'type':'incoming_call'}));
+        await prefs.setString('pending_incoming_call_auto_accept',callId);
+        await prefs.remove('pending_push_navigation');
         final callback=onNavigationRequested;
-        if(callback!=null)await callback({...data,'callId':callId,'type':'incoming_call'});
+        if(callback!=null)await callback({...data,'callId':callId,'type':'incoming_call','autoAccept':'1'});
       }else if(event is CallEventActionCallDecline){
         await _callAction(callId,'reject');
       }
