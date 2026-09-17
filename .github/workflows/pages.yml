@@ -45,6 +45,17 @@ jobs:
       - name: Generate Android platform
         run: flutter create . --platforms=android --project-name app --org com.cepqar --no-pub
 
+      - name: Enable Firebase Google Services plugin
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('android/app/build.gradle.kts')
+          text=p.read_text()
+          if 'com.google.gms.google-services' not in text:
+              text=text.replace('plugins {','plugins {\n    id("com.google.gms.google-services") version "4.4.4"',1)
+          p.write_text(text)
+          PY
+
       - name: Add Android call and notification permissions
         run: |
           python3 - <<'PY'
