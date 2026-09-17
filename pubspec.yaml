@@ -19,6 +19,9 @@ dependencies:
   flutter_webrtc: ^1.6.2
   audioplayers: ^6.1.0
   geolocator: ^13.0.2
+  firebase_core: ^4.1.0
+  firebase_messaging: ^16.0.1
+  flutter_local_notifications: ^19.4.1
 
 dev_dependencies:
   flutter_test:
