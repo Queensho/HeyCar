@@ -94,7 +94,6 @@ class PushNotifications{
       if(event is CallEventActionCallAccept){params=event.callKitParams;}
       else if(event is CallEventActionCallDecline){params=event.callKitParams;}
       else if(event is CallEventActionCallEnded){params=event.callKitParams;}
-      else if(event is CallEventActionCallTimeout){params=event.callKitParams;}
       if(params==null)return;
       final data=Map<String,dynamic>.from(params.extra??const <String,dynamic>{});
       final callId=(data['callId']??params.id).toString();
