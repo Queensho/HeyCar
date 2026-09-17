@@ -41,9 +41,12 @@ class _OwnerCallWatcherState extends State<OwnerCallWatcher> with WidgetsBinding
       final id = call['id']?.toString() ?? '';
       if (id.isEmpty || id == activeCallId) return;
       if (pendingId.isNotEmpty && pendingId != id && !force) return;
+      final autoAcceptId = prefs.getString('pending_incoming_call_auto_accept') ?? '';
+      final autoAccept = autoAcceptId == id;
       await prefs.remove('pending_incoming_call_id');
+      if (autoAccept) await prefs.remove('pending_incoming_call_auto_accept');
       activeCallId = id;
-      await Navigator.of(context).push(MaterialPageRoute(fullscreenDialog: true, builder: (_) => OwnerCallPage(call: call)));
+      await Navigator.of(context).push(MaterialPageRoute(fullscreenDialog: true, builder: (_) => OwnerCallPage(call: call, autoAccept: autoAccept)));
       if (mounted) activeCallId = null;
     } catch (_) {
       // Next wake/poll retries.
