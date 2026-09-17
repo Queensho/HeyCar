@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -13,85 +14,125 @@ class CallPermissionSetupPage extends StatefulWidget {
 
 class _CallPermissionSetupPageState extends State<CallPermissionSetupPage> with WidgetsBindingObserver {
   static const _channel=MethodChannel('com.cepqar.app/system_settings');
-  final List<bool> _confirmed=List<bool>.filled(4,false);
-  bool _busy=false;
+  int _step=0;
+  bool _started=false;
+  bool _opening=false;
+  bool _leftApp=false;
 
   @override void initState(){super.initState();WidgetsBinding.instance.addObserver(this);}
   @override void dispose(){WidgetsBinding.instance.removeObserver(this);super.dispose();}
 
-  Future<void> _open(int index)async{
-    if(_busy)return;
-    setState(()=>_busy=true);
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state){
+    if(!_started)return;
+    if(state==AppLifecycleState.paused||state==AppLifecycleState.inactive){_leftApp=true;return;}
+    if(state==AppLifecycleState.resumed&&_leftApp&&!_opening){
+      _leftApp=false;
+      Future.delayed(const Duration(milliseconds:650),_next);
+    }
+  }
+
+  Future<void> _start()async{
+    if(_opening)return;
+    setState((){_started=true;_step=0;});
+    await _openCurrent();
+  }
+
+  Future<void> _next()async{
+    if(!mounted||_opening)return;
+    if(_step>=3){await _finish();return;}
+    setState(()=>_step++);
+    await _openCurrent();
+  }
+
+  Future<void> _openCurrent()async{
+    if(_opening)return;
+    _opening=true;
     try{
-      if(index==0){
+      if(_step==0){
         await PushNotifications.prepareCallPermissions();
+        if(mounted){
+          Future.delayed(const Duration(milliseconds:500),(){
+            if(mounted&&!_leftApp&&_step==0){_opening=false;_next();}
+          });
+          return;
+        }
       }else if(Platform.isAndroid){
-        final method=switch(index){1=>'openAutoStart',2=>'openMiuiPermissions',3=>'openBatterySettings',_=>'openAppDetails'};
+        final method=switch(_step){
+          1=>'openAutoStart',
+          2=>'openMiuiPermissions',
+          3=>'openBatterySettings',
+          _=>'openAppDetails'
+        };
         await _channel.invokeMethod(method);
+      }else{
+        await _finish();
       }
     }catch(_){
       try{await _channel.invokeMethod('openAppDetails');}catch(_){}
     }finally{
-      if(mounted)setState(()=>_busy=false);
+      if(_step!=0)_opening=false;
     }
   }
 
   Future<void> _finish()async{
-    if(!_confirmed.every((v)=>v))return;
     final p=await SharedPreferences.getInstance();
     await p.setBool('call_permission_setup_done',true);
     if(mounted)widget.onDone();
   }
 
-  Widget _item(int i,IconData icon,String title,String text,String button){
-    final done=_confirmed[i];
-    return Card(
-      margin:const EdgeInsets.only(bottom:12),
-      child:Padding(
-        padding:const EdgeInsets.all(16),
-        child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-          Row(children:[
-            Container(width:42,height:42,decoration:BoxDecoration(color:CepqarTheme.purple.withValues(alpha:.12),borderRadius:BorderRadius.circular(12)),child:Icon(icon,color:CepqarTheme.purple)),
-            const SizedBox(width:12),
-            Expanded(child:Text(title,style:const TextStyle(fontSize:17,fontWeight:FontWeight.w800))),
-            Icon(done?Icons.check_circle:Icons.radio_button_unchecked,color:done?Colors.green:CepqarTheme.purple),
-          ]),
-          const SizedBox(height:8),
-          Text(text,style:TextStyle(height:1.35,color:Theme.of(context).colorScheme.onSurfaceVariant)),
-          const SizedBox(height:12),
-          SizedBox(width:double.infinity,child:OutlinedButton(onPressed:()=>_open(i),child:Text(button))),
-          CheckboxListTile(
-            contentPadding:EdgeInsets.zero,
-            controlAffinity:ListTileControlAffinity.leading,
-            value:done,
-            onChanged:(v)=>setState(()=>_confirmed[i]=v??false),
-            title:const Text('Açtım',style:TextStyle(fontWeight:FontWeight.w700)),
-          ),
-        ]),
-      ),
-    );
-  }
+  String get _status=>switch(_step){
+    0=>'Bildirim ve tam ekran arama iznini verin.',
+    1=>'Cepqar için otomatik başlatmayı etkinleştirip geri dönün.',
+    2=>'“Kilit ekranında göster” ve “Arka planda açılır pencere” seçeneklerini açıp geri dönün.',
+    3=>'Pil kullanımında “Kısıtlama yok” seçeneğini seçip geri dönün.',
+    _=>''
+  };
 
   @override Widget build(BuildContext context){
-    final all=_confirmed.every((v)=>v);
     return Scaffold(
-      appBar:AppBar(title:const Text('Arama izinleri'),automaticallyImplyLeading:false),
-      body:SafeArea(child:ListView(padding:const EdgeInsets.fromLTRB(20,12,20,24),children:[
-        const Text('Cepqar aramalarını kaçırmayın',style:TextStyle(fontSize:24,fontWeight:FontWeight.w900)),
-        const SizedBox(height:8),
-        const Text('Telefon kilitliyken veya Cepqar kapalıyken gelen gizli aramanın tam ekranda açılması için aşağıdaki ayarlar gereklidir. Tüm adımlar tamamlanmadan kurulum bitmez.'),
-        const SizedBox(height:18),
-        _item(0,Icons.notifications_active_outlined,'Bildirim ve tam ekran arama','Bildirimlere izin verin ve Android tam ekran arama iznini açın.','İzinleri aç'),
-        _item(1,Icons.restart_alt,'Otomatik başlatma','HyperOS/MIUI, Cepqar kapalıyken arama alabilmek için otomatik başlatma izni isteyebilir. Cepqar’ı etkinleştirin.','Otomatik başlatmayı aç'),
-        _item(2,Icons.lock_open_outlined,'Kilit ekranı ve arka plan','Cepqar için “Kilit ekranında göster” ve “Arka planda açılır pencere göster” izinlerini açın.','Diğer izinleri aç'),
-        _item(3,Icons.battery_saver_outlined,'Pil kısıtlaması','Cepqar pil ayarında “Kısıtlama yok” seçeneğini kullanın.','Pil ayarını aç'),
-        const SizedBox(height:4),
-        FilledButton(
-          onPressed:all?_finish:null,
-          style:FilledButton.styleFrom(minimumSize:const Size.fromHeight(54),backgroundColor:CepqarTheme.purple),
-          child:Text(all?'Kurulumu tamamla':'Önce tüm adımları tamamlayın',style:const TextStyle(fontWeight:FontWeight.w800)),
+      body:SafeArea(
+        child:Padding(
+          padding:const EdgeInsets.fromLTRB(24,28,24,24),
+          child:Column(children:[
+            const Spacer(),
+            Container(
+              width:92,height:92,
+              decoration:BoxDecoration(color:CepqarTheme.purple.withValues(alpha:.12),shape:BoxShape.circle),
+              child:const Icon(Icons.phone_in_talk_rounded,size:44,color:CepqarTheme.purple),
+            ),
+            const SizedBox(height:26),
+            const Text('Cepqar aramalarını kaçırmayın',textAlign:TextAlign.center,style:TextStyle(fontSize:25,fontWeight:FontWeight.w900)),
+            const SizedBox(height:10),
+            Text(
+              _started?_status:'Telefon kilitliyken veya Cepqar kapalıyken de gelen aramaları gösterebilmek için birkaç ayarı hazırlayacağız.',
+              textAlign:TextAlign.center,
+              style:TextStyle(fontSize:15,height:1.45,color:Theme.of(context).colorScheme.onSurfaceVariant),
+            ),
+            const SizedBox(height:28),
+            if(_started)...[
+              Row(mainAxisAlignment:MainAxisAlignment.center,children:List.generate(4,(i)=>AnimatedContainer(
+                duration:const Duration(milliseconds:200),
+                margin:const EdgeInsets.symmetric(horizontal:4),
+                width:i==_step?28:9,height:9,
+                decoration:BoxDecoration(color:i<=_step?CepqarTheme.purple:Theme.of(context).dividerColor,borderRadius:BorderRadius.circular(20)),
+              ))),
+              const SizedBox(height:12),
+              Text('\${_step+1} / 4',style:const TextStyle(fontWeight:FontWeight.w800)),
+            ],
+            const Spacer(),
+            if(!_started)
+              SizedBox(width:double.infinity,child:FilledButton.icon(
+                onPressed:_start,
+                icon:const Icon(Icons.tune_rounded),
+                label:const Text('Arama izinlerini ayarla',style:TextStyle(fontWeight:FontWeight.w800)),
+                style:FilledButton.styleFrom(minimumSize:const Size.fromHeight(56),backgroundColor:CepqarTheme.purple),
+              ))
+            else
+              const Text('Ayarı yaptıktan sonra Cepqar’a geri dönün.\nSıradaki adım otomatik açılacak.',textAlign:TextAlign.center,style:TextStyle(fontSize:13,fontWeight:FontWeight.w600)),
+          ]),
         ),
-      ])),
+      ),
     );
   }
 }
