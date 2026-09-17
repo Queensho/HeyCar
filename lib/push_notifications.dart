@@ -39,7 +39,7 @@ class PushNotifications {
     await _local.initialize(const InitializationSettings(android:android));
     final p=_local.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
     await p?.createNotificationChannel(const AndroidNotificationChannel(
-      _generalChannel,'HeyCar Bildirimleri',description:'Mesaj, araç ve sistem bildirimleri',importance:Importance.high));
+      _generalChannel,'Cepqar Bildirimleri',description:'Mesaj, araç ve sistem bildirimleri',importance:Importance.high));
     await p?.createNotificationChannel(const AndroidNotificationChannel(
       _callChannel,'Gelen Aramalar',description:'QR üzerinden gelen arama istekleri',importance:Importance.max,
       playSound:true,enableVibration:true));
@@ -49,25 +49,37 @@ class PushNotifications {
 
   static Future<void> registerToken() async {
     final prefs=await SharedPreferences.getInstance();
-    final ownerId=prefs.getString('owner_id') ?? prefs.getString('ownerId');
+    final ownerId=prefs.getString('owner_user_id') ?? prefs.getString('owner_id') ?? prefs.getString('ownerId');
     if(ownerId==null || ownerId.isEmpty) return;
     final token=await FirebaseMessaging.instance.getToken();
     if(token==null || token.isEmpty) return;
-    final deviceId=prefs.getString('push_device_id') ?? '${Platform.operatingSystem}-${DateTime.now().millisecondsSinceEpoch}';
-    await prefs.setString('push_device_id',deviceId);
-    await http.post(Uri.parse('$_apiBase/api/owner/push-token'),headers:{'content-type':'application/json','x-owner-id':ownerId},body:jsonEncode({
-      'token':token,'deviceId':deviceId,'platform':Platform.operatingSystem
-    }));
+    var deviceId=prefs.getString('push_device_id');
+    if(deviceId==null || deviceId.isEmpty){
+      deviceId='${Platform.operatingSystem}-${DateTime.now().microsecondsSinceEpoch}';
+      await prefs.setString('push_device_id',deviceId);
+    }
+    try{
+      final response=await http.post(Uri.parse('$_apiBase/api/owner/push-token'),headers:{'content-type':'application/json','x-owner-id':ownerId},body:jsonEncode({
+        'token':token,'deviceId':deviceId,'platform':Platform.operatingSystem
+      }));
+      if(response.statusCode<200 || response.statusCode>=300){
+        throw HttpException('Push token registration failed: ${response.statusCode} ${response.body}');
+      }
+    }catch(e){
+      // Push kaydi gecici olarak basarisiz olsa bile uygulamanin acilmasini engelleme.
+      // Bir sonraki uygulama acilisinda veya FCM token yenilenince tekrar denenir.
+      stderr.writeln('Push token registration: $e');
+    }
   }
 
   static Future<void> show(RemoteMessage m) async {
     final data=m.data;
     final type=data['type'] ?? 'notification';
     final isCall=type=='incoming_call' || type=='call_request';
-    final title=m.notification?.title ?? (isCall?'Gelen arama':'HeyCar');
+    final title=m.notification?.title ?? (isCall?'Gelen arama':'Cepqar');
     final body=m.notification?.body ?? (isCall?'Aracınız için anonim arama isteği var.':(data['body'] ?? 'Yeni bildiriminiz var.'));
     final details=NotificationDetails(android:AndroidNotificationDetails(
-      isCall?_callChannel:_generalChannel,isCall?'Gelen Aramalar':'HeyCar Bildirimleri',
+      isCall?_callChannel:_generalChannel,isCall?'Gelen Aramalar':'Cepqar Bildirimleri',
       channelDescription:isCall?'QR üzerinden gelen arama istekleri':'Mesaj, araç ve sistem bildirimleri',
       importance:isCall?Importance.max:Importance.high,priority:isCall?Priority.max:Priority.high,
       category:isCall?AndroidNotificationCategory.call:null,fullScreenIntent:isCall,ongoing:isCall,autoCancel:!isCall,
