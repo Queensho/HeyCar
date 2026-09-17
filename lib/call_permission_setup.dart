@@ -118,7 +118,7 @@ class _CallPermissionSetupPageState extends State<CallPermissionSetupPage> with 
                 decoration:BoxDecoration(color:i<=_step?CepqarTheme.purple:Theme.of(context).dividerColor,borderRadius:BorderRadius.circular(20)),
               ))),
               const SizedBox(height:12),
-              Text('\${_step+1} / 4',style:const TextStyle(fontWeight:FontWeight.w800)),
+              Text('${_step+1} / 4',style:const TextStyle(fontWeight:FontWeight.w800)),
             ],
             const Spacer(),
             if(!_started)
