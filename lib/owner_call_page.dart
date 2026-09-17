@@ -8,8 +8,9 @@ const _ownerCallPurple = Color(0xFF8B5CFF);
 const _ownerCallMuted = Color(0xFFA7B0C7);
 
 class OwnerCallPage extends StatefulWidget {
-  const OwnerCallPage({super.key, required this.call});
+  const OwnerCallPage({super.key, required this.call, this.autoAccept = false});
   final Map<String, dynamic> call;
+  final bool autoAccept;
 
   @override
   State<OwnerCallPage> createState() => _OwnerCallPageState();
@@ -37,7 +38,12 @@ class _OwnerCallPageState extends State<OwnerCallPage> {
     // Ringing calls must also be watched. Previously polling started only
     // after accept, so a caller cancelling left the accept/reject screen open.
     poller = Timer.periodic(const Duration(milliseconds: 700), (_) => _poll());
-    Future.microtask(_poll);
+    Future.microtask(() async {
+      await _poll();
+      if (widget.autoAccept && mounted && !closing && !connected && !busy) {
+        await _accept();
+      }
+    });
   }
 
   Future<void> _closeFromRemote() async {
