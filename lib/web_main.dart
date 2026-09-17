@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import 'public_qr_entry.dart';
 import 'public_qr_personalized.dart';
@@ -20,7 +21,13 @@ class HeyCarPublicWebApp extends StatefulWidget {
 class _HeyCarPublicWebAppState extends State<HeyCarPublicWebApp>{
   late bool showCall;
   @override void initState(){super.initState();showCall=widget.call.trim()=='1'&&widget.token.trim().isNotEmpty;}
-  void closeCall(){if(!mounted)return;setState(()=>showCall=false);}
+  void closeCall(){
+    if(!mounted)return;
+    setState(()=>showCall=false);
+    final params=Map<String,String>.from(Uri.base.queryParameters)..remove('call');
+    final clean=Uri.base.replace(queryParameters:params.isEmpty?null:params);
+    html.window.history.replaceState(null,'',clean.toString());
+  }
   @override Widget build(BuildContext context)=>MaterialApp(
     debugShowCheckedModeBanner:false,title:'Cepqar | Araç sahibine ulaş',
     theme:ThemeData(useMaterial3:true,brightness:Brightness.dark,scaffoldBackgroundColor:const Color(0xFF07101F),colorScheme:ColorScheme.fromSeed(seedColor:const Color(0xFFB6FF2A),brightness:Brightness.dark,primary:const Color(0xFFB6FF2A),secondary:const Color(0xFF7C4DFF),surface:const Color(0xFF101A31))),
