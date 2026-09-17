@@ -36,9 +36,11 @@ module.exports=function registerPushRoutes(app,pool){
     for(const row of rows){
       const call=data.type==='incoming_call';
       const fcmData=Object.fromEntries(Object.entries({...data,title,body}).map(([k,v])=>[k,String(v??'')]));
+      // Incoming calls MUST stay data-only. This lets Flutter create a MAX priority
+      // CALL notification with fullScreenIntent even while the app is backgrounded.
       const message={token:row.fcm_token,data:fcmData,android:{priority:'HIGH'}};
       if(!call){
-        message.android.notification={channel_id:'heycar_notifications',sound:'default',visibility:'PUBLIC',notification_priority:'PRIORITY_HIGH'};
+        message.android.notification={channel_id:'cepqar_notifications_v2',icon:'ic_stat_cepqar',sound:'default',visibility:'PUBLIC',notification_priority:'PRIORITY_HIGH'};
         message.notification={title,body};
       }
       const r=await fetch(`https://fcm.googleapis.com/v1/projects/${project}/messages:send`,{method:'POST',headers:{authorization:`Bearer ${key}`,'content-type':'application/json'},body:JSON.stringify({message})});
