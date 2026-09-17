@@ -33,7 +33,16 @@ module.exports = function registerCallRoutes(app, pool) {
          RETURNING id, visitor_token, status, expires_at`,
         [token, vehicle.vehicle_id, vehicle.owner_id]
       );
-      return res.status(201).json({ ok: true, call: created.rows[0], plate: vehicle.plate });
+      const call = created.rows[0];
+      if (app.locals.heycarPush) {
+        app.locals.heycarPush.send(
+          String(vehicle.owner_id),
+          { type: 'incoming_call', callId: String(call.id), visitorToken: String(call.visitor_token), vehicleId: String(vehicle.vehicle_id), plate: vehicle.plate || '' },
+          'Gelen Araç Araması',
+          `${vehicle.plate || 'Aracınız'} için biri sizi arıyor`
+        ).catch(err => console.error('incoming call push', err));
+      }
+      return res.status(201).json({ ok: true, call, plate: vehicle.plate });
     } catch (e) {
       console.error('call create', e);
       return res.status(500).json({ error: 'SERVER_ERROR' });
@@ -45,17 +54,12 @@ module.exports = function registerCallRoutes(app, pool) {
       const visitorToken = String(req.headers['x-visitor-token'] || '').trim();
       if (!visitorToken) return res.status(401).json({ error: 'VISITOR_TOKEN_REQUIRED' });
       const result = await pool.query(
-        `SELECT id,status,answer,owner_candidates,expires_at,answered_at,ended_at
-         FROM anonymous_calls
-         WHERE id=$1 AND visitor_token::text=$2 LIMIT 1`,
+        `SELECT id,status,answer,owner_candidates,expires_at,answered_at,ended_at FROM anonymous_calls WHERE id=$1 AND visitor_token::text=$2 LIMIT 1`,
         [req.params.callId, visitorToken]
       );
       if (!result.rows.length) return res.status(404).json({ error: 'CALL_NOT_FOUND' });
       return res.json({ ok: true, call: result.rows[0] });
-    } catch (e) {
-      console.error('call public status', e);
-      return res.status(500).json({ error: 'SERVER_ERROR' });
-    }
+    } catch (e) { console.error('call public status', e); return res.status(500).json({ error: 'SERVER_ERROR' }); }
   });
 
   app.patch('/api/public/calls/:callId', async (req, res) => {
@@ -66,21 +70,12 @@ module.exports = function registerCallRoutes(app, pool) {
       const candidate = req.body && req.body.candidate ? JSON.stringify(req.body.candidate) : null;
       const cancel = req.body && req.body.action === 'cancel';
       const result = await pool.query(
-        `UPDATE anonymous_calls
-         SET offer=COALESCE($3::jsonb,offer),
-             caller_candidates=CASE WHEN $4::jsonb IS NULL THEN caller_candidates ELSE caller_candidates || jsonb_build_array($4::jsonb) END,
-             status=CASE WHEN $5 THEN 'cancelled' ELSE status END,
-             ended_at=CASE WHEN $5 THEN NOW() ELSE ended_at END
-         WHERE id=$1 AND visitor_token::text=$2
-         RETURNING id,status`,
+        `UPDATE anonymous_calls SET offer=COALESCE($3::jsonb,offer), caller_candidates=CASE WHEN $4::jsonb IS NULL THEN caller_candidates ELSE caller_candidates || jsonb_build_array($4::jsonb) END, status=CASE WHEN $5 THEN 'cancelled' ELSE status END, ended_at=CASE WHEN $5 THEN NOW() ELSE ended_at END WHERE id=$1 AND visitor_token::text=$2 RETURNING id,status`,
         [req.params.callId, visitorToken, offer, candidate, cancel]
       );
       if (!result.rows.length) return res.status(404).json({ error: 'CALL_NOT_FOUND' });
       return res.json({ ok: true, call: result.rows[0] });
-    } catch (e) {
-      console.error('call public update', e);
-      return res.status(500).json({ error: 'SERVER_ERROR' });
-    }
+    } catch (e) { console.error('call public update', e); return res.status(500).json({ error: 'SERVER_ERROR' }); }
   });
 
   app.get('/api/owner/calls/incoming', async (req, res) => {
@@ -88,36 +83,19 @@ module.exports = function registerCallRoutes(app, pool) {
       const ownerId = String(req.headers['x-owner-id'] || '').trim();
       if (!ownerId) return res.status(401).json({ error: 'OWNER_REQUIRED' });
       await pool.query(`UPDATE anonymous_calls SET status='missed', ended_at=NOW() WHERE status='ringing' AND expires_at<=NOW()`);
-      const result = await pool.query(
-        `SELECT c.id,c.status,c.offer,c.caller_candidates,c.created_at,c.expires_at,v.plate
-         FROM anonymous_calls c
-         LEFT JOIN vehicles v ON v.id=c.vehicle_id
-         WHERE c.owner_id=$1 AND c.status='ringing' AND c.expires_at>NOW()
-         ORDER BY c.created_at DESC LIMIT 1`,
-        [ownerId]
-      );
+      const result = await pool.query(`SELECT c.id,c.status,c.offer,c.caller_candidates,c.created_at,c.expires_at,v.plate FROM anonymous_calls c LEFT JOIN vehicles v ON v.id=c.vehicle_id WHERE c.owner_id=$1 AND c.status='ringing' AND c.expires_at>NOW() ORDER BY c.created_at DESC LIMIT 1`, [ownerId]);
       return res.json({ ok: true, call: result.rows[0] || null });
-    } catch (e) {
-      console.error('incoming call', e);
-      return res.status(500).json({ error: 'SERVER_ERROR' });
-    }
+    } catch (e) { console.error('incoming call', e); return res.status(500).json({ error: 'SERVER_ERROR' }); }
   });
 
   app.get('/api/owner/calls/:callId', async (req, res) => {
     try {
       const ownerId = String(req.headers['x-owner-id'] || '').trim();
       if (!ownerId) return res.status(401).json({ error: 'OWNER_REQUIRED' });
-      const result = await pool.query(
-        `SELECT id,status,offer,caller_candidates,created_at,expires_at,answered_at,ended_at
-         FROM anonymous_calls WHERE id=$1 AND owner_id=$2 LIMIT 1`,
-        [req.params.callId, ownerId]
-      );
+      const result = await pool.query(`SELECT id,status,offer,caller_candidates,created_at,expires_at,answered_at,ended_at FROM anonymous_calls WHERE id=$1 AND owner_id=$2 LIMIT 1`, [req.params.callId, ownerId]);
       if (!result.rows.length) return res.status(404).json({ error: 'CALL_NOT_FOUND' });
       return res.json({ ok: true, call: result.rows[0] });
-    } catch (e) {
-      console.error('owner call status', e);
-      return res.status(500).json({ error: 'SERVER_ERROR' });
-    }
+    } catch (e) { console.error('owner call status', e); return res.status(500).json({ error: 'SERVER_ERROR' }); }
   });
 
   app.patch('/api/owner/calls/:callId', async (req, res) => {
@@ -129,22 +107,9 @@ module.exports = function registerCallRoutes(app, pool) {
       const answer = req.body && req.body.answer ? JSON.stringify(req.body.answer) : null;
       const candidate = req.body && req.body.candidate ? JSON.stringify(req.body.candidate) : null;
       if (!nextStatus && !candidate) return res.status(400).json({ error: 'INVALID_ACTION' });
-      const result = await pool.query(
-        `UPDATE anonymous_calls
-         SET status=COALESCE($3,status),
-             answer=COALESCE($4::jsonb,answer),
-             owner_candidates=CASE WHEN $5::jsonb IS NULL THEN owner_candidates ELSE owner_candidates || jsonb_build_array($5::jsonb) END,
-             answered_at=CASE WHEN $3='accepted' THEN COALESCE(answered_at,NOW()) ELSE answered_at END,
-             ended_at=CASE WHEN $3 IN ('rejected','ended') THEN NOW() ELSE ended_at END
-         WHERE id=$1 AND owner_id=$2
-         RETURNING id,status,answer,owner_candidates`,
-        [req.params.callId, ownerId, nextStatus, answer, candidate]
-      );
+      const result = await pool.query(`UPDATE anonymous_calls SET status=COALESCE($3,status), answer=COALESCE($4::jsonb,answer), owner_candidates=CASE WHEN $5::jsonb IS NULL THEN owner_candidates ELSE owner_candidates || jsonb_build_array($5::jsonb) END, answered_at=CASE WHEN $3='accepted' THEN COALESCE(answered_at,NOW()) ELSE answered_at END, ended_at=CASE WHEN $3 IN ('rejected','ended') THEN NOW() ELSE ended_at END WHERE id=$1 AND owner_id=$2 RETURNING id,status,answer,owner_candidates`, [req.params.callId, ownerId, nextStatus, answer, candidate]);
       if (!result.rows.length) return res.status(404).json({ error: 'CALL_NOT_FOUND' });
       return res.json({ ok: true, call: result.rows[0] });
-    } catch (e) {
-      console.error('owner call update', e);
-      return res.status(500).json({ error: 'SERVER_ERROR' });
-    }
+    } catch (e) { console.error('owner call update', e); return res.status(500).json({ error: 'SERVER_ERROR' }); }
   });
 };
