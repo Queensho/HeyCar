@@ -37,6 +37,80 @@ jobs:
         run: python3 tool/fix_runtime_android.py
       - name: Generate Android platform
         run: flutter create . --platforms=android --project-name app --org com.cepqar --no-pub
+      - name: Add Android system settings bridge
+        run: |
+          cat > android/app/src/main/kotlin/com/cepqar/app/MainActivity.kt <<'EOF'
+          package com.cepqar.app
+
+          import android.content.ComponentName
+          import android.content.Intent
+          import android.net.Uri
+          import android.provider.Settings
+          import io.flutter.embedding.android.FlutterActivity
+          import io.flutter.embedding.engine.FlutterEngine
+          import io.flutter.plugin.common.MethodChannel
+
+          class MainActivity : FlutterActivity() {
+              private val channelName = "com.cepqar.app/system_settings"
+
+              override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+                  super.configureFlutterEngine(flutterEngine)
+                  MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName).setMethodCallHandler { call, result ->
+                      try {
+                          when (call.method) {
+                              "openAutoStart" -> openAutoStart()
+                              "openMiuiPermissions" -> openMiuiPermissions()
+                              "openBatterySettings" -> startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                              "openAppDetails" -> openAppDetails()
+                              else -> { result.notImplemented(); return@setMethodCallHandler }
+                          }
+                          result.success(true)
+                      } catch (e: Exception) {
+                          try { openAppDetails(); result.success(false) }
+                          catch (fallback: Exception) { result.error("SETTINGS", fallback.message, null) }
+                      }
+                  }
+              }
+
+              private fun openAutoStart() {
+                  val intent = Intent().apply {
+                      component = ComponentName(
+                          "com.miui.securitycenter",
+                          "com.miui.permcenter.autostart.AutoStartManagementActivity"
+                      )
+                      addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                  }
+                  startActivity(intent)
+              }
+
+              private fun openMiuiPermissions() {
+                  val candidates = listOf(
+                      "com.miui.permcenter.permissions.AppPermissionsEditorActivity",
+                      "com.miui.permcenter.permissions.PermissionsEditorActivity"
+                  )
+                  var last: Exception? = null
+                  for (activity in candidates) {
+                      try {
+                          val intent = Intent("miui.intent.action.APP_PERM_EDITOR").apply {
+                              component = ComponentName("com.miui.securitycenter", activity)
+                              putExtra("extra_pkgname", packageName)
+                              addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                          }
+                          startActivity(intent)
+                          return
+                      } catch (e: Exception) { last = e }
+                  }
+                  throw last ?: IllegalStateException("MIUI permission screen unavailable")
+              }
+
+              private fun openAppDetails() {
+                  startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                      data = Uri.parse("package:$packageName")
+                      addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                  })
+              }
+          }
+          EOF
       - name: Restore Firebase Android config
         env:
           GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
