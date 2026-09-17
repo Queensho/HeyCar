@@ -14,37 +14,27 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
-
       - name: Apply Cepqar frontend branding
         run: python3 tool/brand_frontend.py
-
       - name: Apply owner light theme
         run: python3 tool/owner_light_theme_patch.py
-
       - name: Apply maintenance light theme
         run: python3 tool/maintenance_light_theme_patch.py
-
       - name: Apply call ringback
         run: python3 tool/call_ringback_patch.py
-
       - name: Apply driver light dark theme
         run: python3 tool/driver_theme_patch.py
-
       - name: Match owner header to driver
         run: python3 tool/owner_header_size_patch.py
-
       - name: Apply Android back navigation
         run: python3 tool/back_navigation_patch.py
-
       - name: Generate Android platform
         run: flutter create . --platforms=android --project-name app --org com.cepqar --no-pub
-
       - name: Restore Firebase Android config
         env:
           GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
@@ -55,73 +45,47 @@ jobs:
           python3 - <<'PY'
           import json
           from pathlib import Path
-          p = Path('android/app/google-services.json')
-          data = json.loads(p.read_text())
-          packages = [
-              c.get('client_info', {}).get('android_client_info', {}).get('package_name')
-              for c in data.get('client', [])
-          ]
-          if 'com.cepqar.app' not in packages:
-              raise SystemExit('Firebase config package mismatch: com.cepqar.app not found')
+          p=Path('android/app/google-services.json'); data=json.loads(p.read_text())
+          packages=[c.get('client_info',{}).get('android_client_info',{}).get('package_name') for c in data.get('client',[])]
+          if 'com.cepqar.app' not in packages: raise SystemExit('Firebase config package mismatch: com.cepqar.app not found')
           print('Firebase Android config restored for com.cepqar.app')
           PY
-
       - name: Enable Firebase and Android desugaring
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          p = Path('android/app/build.gradle.kts')
-          text = p.read_text()
-          if 'com.google.gms.google-services' not in text:
-              text = text.replace('plugins {', 'plugins {\n    id("com.google.gms.google-services") version "4.4.4"', 1)
-          if 'isCoreLibraryDesugaringEnabled = true' not in text:
-              text = text.replace('compileOptions {', 'compileOptions {\n        isCoreLibraryDesugaringEnabled = true', 1)
+          p=Path('android/app/build.gradle.kts'); text=p.read_text()
+          if 'com.google.gms.google-services' not in text:text=text.replace('plugins {','plugins {\n    id("com.google.gms.google-services") version "4.4.4"',1)
+          if 'isCoreLibraryDesugaringEnabled = true' not in text:text=text.replace('compileOptions {','compileOptions {\n        isCoreLibraryDesugaringEnabled = true',1)
           if 'coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:' not in text:
-              if 'dependencies {' in text:
-                  text = text.replace('dependencies {', 'dependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")', 1)
-              else:
-                  text += '\n\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")\n}\n'
+            if 'dependencies {' in text:text=text.replace('dependencies {','dependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")',1)
+            else:text+='\n\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")\n}\n'
           p.write_text(text)
           PY
-
       - name: Add Android call and notification permissions
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          p = Path('android/app/src/main/AndroidManifest.xml')
-          text = p.read_text()
-          marker = '<application'
-          permissions = '''    <uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />\n    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />\n    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />\n    <uses-permission android:name="android.permission.WAKE_LOCK" />\n    <uses-permission android:name="android.permission.VIBRATE" />\n'''
-          if 'android.permission.RECORD_AUDIO' not in text:
-              text = text.replace(marker, permissions + '\n    ' + marker, 1)
-          else:
-              extra = '''    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />\n    <uses-permission android:name="android.permission.WAKE_LOCK" />\n    <uses-permission android:name="android.permission.VIBRATE" />\n'''
-              if 'android.permission.POST_NOTIFICATIONS' not in text:
-                  text = text.replace(marker, extra + '\n    ' + marker, 1)
-          text = text.replace('android:label="app"', 'android:label="Cepqar"')
+          p=Path('android/app/src/main/AndroidManifest.xml'); text=p.read_text(); marker='<application'
+          permissions='''    <uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />\n    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />\n    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />\n    <uses-permission android:name="android.permission.WAKE_LOCK" />\n    <uses-permission android:name="android.permission.VIBRATE" />\n'''
+          if 'android.permission.RECORD_AUDIO' not in text:text=text.replace(marker,permissions+'\n    '+marker,1)
+          elif 'android.permission.POST_NOTIFICATIONS' not in text:text=text.replace(marker,'''    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />\n    <uses-permission android:name="android.permission.WAKE_LOCK" />\n    <uses-permission android:name="android.permission.VIBRATE" />\n\n    '''+marker,1)
+          text=text.replace('android:label="app"','android:label="Cepqar"')
+          # Allow the notification full-screen intent to wake and display the Flutter call UI over lock screen.
+          text=text.replace('android:name=".MainActivity"', 'android:name=".MainActivity"\n            android:showWhenLocked="true"\n            android:turnScreenOn="true"')
           p.write_text(text)
           PY
-
       - name: Apply Cepqar Android launcher icon
         run: |
           set -e
-          ICON="assets/app_icons/cepqar_icon.png"
-          test -f "$ICON"
-          for dir in android/app/src/main/res/mipmap-mdpi android/app/src/main/res/mipmap-hdpi android/app/src/main/res/mipmap-xhdpi android/app/src/main/res/mipmap-xxhdpi android/app/src/main/res/mipmap-xxxhdpi; do
-            mkdir -p "$dir"
-            cp "$ICON" "$dir/ic_launcher.png"
-            cp "$ICON" "$dir/ic_launcher_round.png"
-          done
-
+          ICON="assets/app_icons/cepqar_icon.png"; test -f "$ICON"
+          for dir in android/app/src/main/res/mipmap-mdpi android/app/src/main/res/mipmap-hdpi android/app/src/main/res/mipmap-xhdpi android/app/src/main/res/mipmap-xxhdpi android/app/src/main/res/mipmap-xxxhdpi; do mkdir -p "$dir"; cp "$ICON" "$dir/ic_launcher.png"; cp "$ICON" "$dir/ic_launcher_round.png"; done
       - name: Get dependencies
         run: flutter pub get
-
       - name: Analyze app
         run: flutter analyze lib --no-fatal-infos --no-fatal-warnings
-
       - name: Build Android test APK
         run: flutter build apk --debug --target lib/entry_theme_live.dart
-
       - name: Upload Android test APK
         uses: actions/upload-artifact@v4
         with:
