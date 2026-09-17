@@ -45,6 +45,27 @@ jobs:
       - name: Generate Android platform
         run: flutter create . --platforms=android --project-name app --org com.cepqar --no-pub
 
+      - name: Restore Firebase Android config
+        env:
+          GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
+        run: |
+          set -e
+          test -n "$GOOGLE_SERVICES_JSON_B64"
+          printf '%s' "$GOOGLE_SERVICES_JSON_B64" | base64 --decode > android/app/google-services.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('android/app/google-services.json')
+          data = json.loads(p.read_text())
+          packages = [
+              c.get('client_info', {}).get('android_client_info', {}).get('package_name')
+              for c in data.get('client', [])
+          ]
+          if 'com.cepqar.app' not in packages:
+              raise SystemExit('Firebase config package mismatch: com.cepqar.app not found')
+          print('Firebase Android config restored for com.cepqar.app')
+          PY
+
       - name: Enable Firebase Google Services plugin
         run: |
           python3 - <<'PY'
