@@ -74,16 +74,18 @@ for filename, replacements in TARGETS.items():
     text = re.sub(r'FilledButton\.styleFrom\(backgroundColor:\s*_purple,\s*foregroundColor:\s*CepqarTheme\.text','FilledButton.styleFrom(backgroundColor:_purple,foregroundColor:Colors.white',text)
     text = re.sub(r'FilledButton\.styleFrom\(backgroundColor:\s*_purple(?!\s*,\s*foregroundColor)','FilledButton.styleFrom(backgroundColor:_purple,foregroundColor:Colors.white',text)
 
-    # Settings: the 3D hero stays visible in BOTH themes.
-    # Only the brand logo changes in light mode so its white lettering does not disappear.
     if filename == 'lib/owner_settings_page.dart':
-        text = text.replace(
-            "Image.asset('assets/Logoqr.png', height: 38, fit: BoxFit.contain)",
-            "Image.asset(CepqarTheme.isLight ? 'assets/Aylogo.png' : 'assets/Logoqr.png', key: ValueKey(CepqarTheme.isLight), height: 38, fit: BoxFit.contain)",
-            1,
+        # brand_frontend.py runs first and creates the Logoqr.png expression below.
+        # Replace both raw and already theme-patched forms so repeated CI runs are idempotent.
+        light_logo = "Image.asset(CepqarTheme.isLight ? 'assets/Aylogo.png' : 'assets/Logoqr.png', key: ValueKey(CepqarTheme.isLight), height: 38, fit: BoxFit.contain)"
+        text = text.replace("Image.asset('assets/Logoqr.png', height: 38, fit: BoxFit.contain)", light_logo, 1)
+        text = re.sub(
+            r"Image\.asset\(CepqarTheme\.isLight \? 'assets/Aylogo\.png' : 'assets/Logoqr\.png',(?: key: ValueKey\(CepqarTheme\.isLight\),)? height: 38, fit: BoxFit\.contain\)",
+            light_logo,
+            text,
+            count=1,
         )
 
-    # QR promo is intentionally purple in both themes: its QR and copy stay white.
     if filename == 'lib/owner_settings_page.dart' and 'class _QrPromo' in text:
         before, promo = text.split('class _QrPromo', 1)
         promo = promo.replace('CepqarTheme.text', 'Colors.white')
@@ -91,7 +93,6 @@ for filename, replacements in TARGETS.items():
 
     p.write_text(text, encoding='utf-8')
 
-# Driver assignment card: keep the requested purple premium card with white copy.
 p = Path('lib/active_driver_card.dart')
 text = p.read_text(encoding='utf-8')
 text = text.replace("color:const Color(0xFF101A30),borderRadius:BorderRadius.circular(20),border:Border.all(color:const Color(0xFF27355D))", "color:const Color(0xFF6F3DE8),borderRadius:BorderRadius.circular(20),border:Border.all(color:const Color(0xFF8F6BFF))")
@@ -101,7 +102,6 @@ text = text.replace("OutlinedButton.icon(onPressed:loading?null:invite,icon:cons
 text = text.replace("FilledButton(onPressed:loading?null:(active?stop:choose),child:Text(active?'Sürüşü Bitir':'Sürücü Seç'))", "FilledButton(style:FilledButton.styleFrom(backgroundColor:Colors.white24,foregroundColor:Colors.white),onPressed:loading?null:(active?stop:choose),child:Text(active?'Sürüşü Bitir':'Sürücü Seç'))")
 p.write_text(text, encoding='utf-8')
 
-# Parking sheet/card: compact height again and follow light/dark palette.
 p = Path('lib/parking_location_card.dart')
 text = p.read_text(encoding='utf-8')
 if "import 'cepqar_theme.dart';" not in text:
