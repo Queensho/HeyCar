@@ -34,12 +34,12 @@ module.exports=function registerPushRoutes(app,pool){
     const project=sa.project_id;
     const rows=(await pool.query(`SELECT fcm_token FROM owner_push_tokens WHERE owner_id=$1 AND active=TRUE`,[String(owner)])).rows;
     for(const row of rows){
-      const call=data.type==='incoming_call';
+      const callEvent=data.type==='incoming_call'||data.type==='incoming_call_cancelled';
       const fcmData=Object.fromEntries(Object.entries({...data,title,body}).map(([k,v])=>[k,String(v??'')]));
-      // Incoming calls MUST stay data-only. This lets Flutter create a MAX priority
-      // CALL notification with fullScreenIntent even while the app is backgrounded.
+      // Call start/cancel events stay data-only so Android can create or cancel
+      // the full-screen call notification even while the UI is not running.
       const message={token:row.fcm_token,data:fcmData,android:{priority:'HIGH'}};
-      if(!call){
+      if(!callEvent){
         message.android.notification={channel_id:'cepqar_notifications_v2',icon:'ic_stat_cepqar',sound:'default',visibility:'PUBLIC',notification_priority:'PRIORITY_HIGH'};
         message.notification={title,body};
       }
