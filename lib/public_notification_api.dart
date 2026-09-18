@@ -12,6 +12,8 @@ class PublicNotificationApi {
   static double? latitude;
   static double? longitude;
   static Timer? _replyWatch;
+  static String? lastNotificationId;
+  static String? lastStatusToken;
 
   static String currentToken() => (Uri.base.queryParameters['tag'] ?? '').trim().toUpperCase();
   static String _guestStorageKey() => 'heycar_guest_${currentToken()}';
@@ -61,12 +63,22 @@ class PublicNotificationApi {
     if(response.statusCode<200||response.statusCode>=300)throw Exception('NOTIFICATION_SEND_FAILED_${response.statusCode}');
     final notificationData=jsonDecode(response.body) as Map<String,dynamic>; final notification=notificationData['notification']; final notificationId=notification is Map?notification['id']?.toString()??'':'';
     if(notificationId.isEmpty)throw Exception('NOTIFICATION_ID_MISSING');
+    lastNotificationId=notificationId;
+    lastStatusToken=notification is Map?notification['public_status_token']?.toString():null;
     clearDraft();
     if(type!='message') return notificationId;
     final c=await http.post(Uri.parse('${PublicThemeBackend.baseUrl}/api/qr/${Uri.encodeComponent(token)}/conversations'),headers:const {'Content-Type':'application/json'},body:jsonEncode({'notificationId':notificationId,'guestToken':guestToken(),'message':message.trim()})).timeout(const Duration(seconds:15));
     if(c.statusCode<200||c.statusCode>=300)throw Exception('CONVERSATION_CREATE_FAILED_${c.statusCode}');
     final conversationData=jsonDecode(c.body) as Map<String,dynamic>; final conversation=conversationData['conversation']; final conversationId=conversation is Map?conversation['id']?.toString()??'':'';
     if(conversationId.isEmpty)throw Exception('CONVERSATION_ID_MISSING'); saveConversationId(conversationId); _watchForOwnerReply(conversationId,token); return conversationId;
+  }
+
+  static Future<Map<String,dynamic>> fetchNotificationStatus(String notificationId,String statusToken)async{
+    final token=currentToken();if(token.isEmpty||notificationId.isEmpty||statusToken.isEmpty)throw Exception('STATUS_MISSING');
+    final uri=Uri.parse('${PublicThemeBackend.baseUrl}/api/qr/${Uri.encodeComponent(token)}/notifications/${Uri.encodeComponent(notificationId)}/status').replace(queryParameters:{'statusToken':statusToken});
+    final r=await http.get(uri).timeout(const Duration(seconds:10));
+    if(r.statusCode<200||r.statusCode>=300)throw Exception('STATUS_LOAD_FAILED');
+    final d=jsonDecode(r.body) as Map<String,dynamic>;final n=d['notification'];return n is Map?Map<String,dynamic>.from(n):<String,dynamic>{};
   }
 
   static void _watchForOwnerReply(String conversationId,String token){_replyWatch?.cancel();var busy=false;var failures=0;Future<void> check()async{if(busy)return;busy=true;try{final messages=await fetchConversation(conversationId);failures=0;if(messages.any((m)=>m['sender']?.toString()=='owner')){_replyWatch?.cancel();final next=Uri.base.replace(queryParameters:{...Uri.base.queryParameters,'tag':token,'chat':conversationId});html.window.location.href=next.toString();}}catch(_){failures++;if(failures>=10)_replyWatch?.cancel();}finally{busy=false;}}check();_replyWatch=Timer.periodic(const Duration(seconds:3),(_)=>check());}
