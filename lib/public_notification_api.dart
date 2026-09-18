@@ -86,8 +86,8 @@ class PublicNotificationApi {
 
   static Future<Map<String,dynamic>> fetchNotificationStatus(String notificationId,String statusToken)async{
     final token=currentToken();if(token.isEmpty||notificationId.isEmpty||statusToken.isEmpty)throw Exception('STATUS_MISSING');
-    final uri=Uri.parse('${PublicThemeBackend.baseUrl}/api/qr/${Uri.encodeComponent(token)}/notifications/${Uri.encodeComponent(notificationId)}/status').replace(queryParameters:{'statusToken':statusToken});
-    final r=await http.get(uri).timeout(const Duration(seconds:10));
+    final uri=Uri.parse('${PublicThemeBackend.baseUrl}/api/qr/${Uri.encodeComponent(token)}/notifications/${Uri.encodeComponent(notificationId)}/status').replace(queryParameters:{'statusToken':statusToken,'_t':'${DateTime.now().millisecondsSinceEpoch}'});
+    final r=await http.get(uri,headers:const {'Cache-Control':'no-cache','Pragma':'no-cache'}).timeout(const Duration(seconds:10));
     if(r.statusCode<200||r.statusCode>=300)throw Exception('STATUS_LOAD_FAILED');
     final d=jsonDecode(r.body) as Map<String,dynamic>;final n=d['notification'];return n is Map?Map<String,dynamic>.from(n):<String,dynamic>{};
   }
