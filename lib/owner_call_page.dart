@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'anonymous_call_api.dart';
 
 const _ownerCallBg = Color(0xFF07111F);
@@ -23,6 +24,7 @@ class _OwnerCallPageState extends State<OwnerCallPage> {
   Timer? poller;
   bool connected = false;
   bool busy = false;
+  late bool nativeAccepted;
   bool muted = false;
   bool closing = false;
   String? error;
@@ -34,6 +36,7 @@ class _OwnerCallPageState extends State<OwnerCallPage> {
   @override
   void initState() {
     super.initState();
+    nativeAccepted = widget.autoAccept;
     remoteRenderer.initialize();
     // Ringing calls must also be watched. Previously polling started only
     // after accept, so a caller cancelling left the accept/reject screen open.
@@ -104,7 +107,8 @@ class _OwnerCallPageState extends State<OwnerCallPage> {
       final answer = await peer!.createAnswer({'offerToReceiveAudio': 1});
       await peer!.setLocalDescription(answer);
       await AnonymousCallApi.ownerSignal(callId, action: 'accept', answer: {'sdp': answer.sdp, 'type': answer.type});
-      if (mounted) setState(() { connected = true; busy = false; });
+      try { await FlutterCallkitIncoming.setCallConnected(callId); } catch (_) {}
+      if (mounted) setState(() { connected = true; busy = false; nativeAccepted = false; });
     } catch (e) {
       if (mounted && !closing) setState(() { error = e.toString().replaceFirst('Exception: ', ''); busy = false; });
     }
@@ -181,7 +185,13 @@ class _OwnerCallPageState extends State<OwnerCallPage> {
               const Text('Arayan kişi telefon numaranızı göremez.', style: TextStyle(color: _ownerCallMuted, fontSize: 13)),
               if (error != null) ...[const SizedBox(height: 12), Text(error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.redAccent))],
               const Spacer(),
-              if (!connected)
+              if (!connected && nativeAccepted)
+                const Column(children: [
+                  SizedBox(width: 34, height: 34, child: CircularProgressIndicator(strokeWidth: 3, color: _ownerCallPurple)),
+                  SizedBox(height: 12),
+                  Text('Bağlanıyor…', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                ])
+              else if (!connected)
                 Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
                   _OwnerCallAction(icon: Icons.call_end_rounded, label: 'Reddet', danger: true, onTap: busy ? null : _reject),
                   _OwnerCallAction(icon: Icons.call_rounded, label: busy ? 'Bağlanıyor' : 'Kabul et', accept: true, onTap: busy ? null : _accept),
