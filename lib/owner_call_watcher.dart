@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'anonymous_call_api.dart';
 import 'owner_call_page.dart';
 
@@ -42,7 +43,21 @@ class _OwnerCallWatcherState extends State<OwnerCallWatcher> with WidgetsBinding
       if (id.isEmpty || id == activeCallId) return;
       if (pendingId.isNotEmpty && pendingId != id && !force) return;
       final autoAcceptId = prefs.getString('pending_incoming_call_auto_accept') ?? '';
-      final autoAccept = autoAcceptId == id;
+      var autoAccept = autoAcceptId == id;
+      // When Android launches a terminated app after the native Accept button,
+      // the Dart event can be emitted before our listener is attached. Recover
+      // the accepted state from CallKit so we never show a second Accept screen.
+      if (!autoAccept) {
+        try {
+          final active = await FlutterCallkitIncoming.activeCalls();
+          for (final nativeCall in active) {
+            if (nativeCall.id == id && nativeCall.isAccepted == true) {
+              autoAccept = true;
+              break;
+            }
+          }
+        } catch (_) {}
+      }
       await prefs.remove('pending_incoming_call_id');
       if (autoAccept) await prefs.remove('pending_incoming_call_auto_accept');
       activeCallId = id;
