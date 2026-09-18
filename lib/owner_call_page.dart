@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
+import 'package:flutter_callkit_incoming/entities/entities.dart';
 import 'anonymous_call_api.dart';
 
 const _ownerCallBg = Color(0xFF07111F);
@@ -49,6 +50,13 @@ class _OwnerCallPageState extends State<OwnerCallPage> {
     });
   }
 
+  Future<void> _clearNativeCall() async {
+    if (callId.isEmpty) return;
+    try { await FlutterCallkitIncoming.hideCallkitIncoming(CallKitParams(id: callId)); } catch (_) {}
+    try { await FlutterCallkitIncoming.endCall(callId); } catch (_) {}
+    try { await FlutterCallkitIncoming.endAllCalls(); } catch (_) {}
+  }
+
   Future<void> _closeFromRemote() async {
     if (closing) return;
     closing = true;
@@ -57,6 +65,7 @@ class _OwnerCallPageState extends State<OwnerCallPage> {
       track.stop();
     }
     await peer?.close();
+    await _clearNativeCall();
     if (mounted) Navigator.of(context).pop();
   }
 
@@ -64,6 +73,7 @@ class _OwnerCallPageState extends State<OwnerCallPage> {
     if (busy || callId.isEmpty) return;
     setState(() => busy = true);
     try { await AnonymousCallApi.ownerSignal(callId, action: 'reject'); } catch (_) {}
+    await _clearNativeCall();
     if (mounted) Navigator.pop(context);
   }
 
@@ -143,6 +153,7 @@ class _OwnerCallPageState extends State<OwnerCallPage> {
   Future<void> _end() async {
     poller?.cancel();
     try { await AnonymousCallApi.ownerSignal(callId, action: 'end'); } catch (_) {}
+    await _clearNativeCall();
     if (mounted) Navigator.pop(context);
   }
 
