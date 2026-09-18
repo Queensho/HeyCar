@@ -18,6 +18,7 @@ class _CallPermissionSetupPageState extends State<CallPermissionSetupPage> with 
   bool _started=false;
   bool _opening=false;
   bool _leftApp=false;
+  bool _readyForNext=false;
 
   @override void initState(){super.initState();WidgetsBinding.instance.addObserver(this);}
   @override void dispose(){WidgetsBinding.instance.removeObserver(this);super.dispose();}
@@ -26,23 +27,22 @@ class _CallPermissionSetupPageState extends State<CallPermissionSetupPage> with 
   void didChangeAppLifecycleState(AppLifecycleState state){
     if(!_started)return;
     if(state==AppLifecycleState.paused||state==AppLifecycleState.inactive){_leftApp=true;return;}
-    if(state==AppLifecycleState.resumed&&_leftApp&&!_opening){
+    if(state==AppLifecycleState.resumed&&_leftApp){
       _leftApp=false;
-      Future.delayed(const Duration(milliseconds:650),_next);
+      _opening=false;
+      if(mounted)setState(()=>_readyForNext=true);
     }
   }
 
   Future<void> _start()async{
     if(_opening)return;
-    setState((){_started=true;_step=0;});
-    await _openCurrent();
+    setState((){_started=true;_step=0;_readyForNext=false;});
   }
 
   Future<void> _next()async{
     if(!mounted||_opening)return;
     if(_step>=3){await _finish();return;}
-    setState(()=>_step++);
-    await _openCurrent();
+    setState((){_step++;_readyForNext=false;});
   }
 
   Future<void> _openCurrent()async{
@@ -51,12 +51,11 @@ class _CallPermissionSetupPageState extends State<CallPermissionSetupPage> with 
     try{
       if(_step==0){
         await PushNotifications.prepareCallPermissions();
-        if(mounted){
-          Future.delayed(const Duration(milliseconds:500),(){
-            if(mounted&&!_leftApp&&_step==0){_opening=false;_next();}
-          });
-          return;
+        if(mounted&&!_leftApp){
+          _opening=false;
+          setState(()=>_readyForNext=true);
         }
+        return;
       }else if(Platform.isAndroid){
         final method=switch(_step){
           1=>'openAutoStart',
@@ -128,8 +127,15 @@ class _CallPermissionSetupPageState extends State<CallPermissionSetupPage> with 
                 label:const Text('Arama izinlerini ayarla',style:TextStyle(fontWeight:FontWeight.w800)),
                 style:FilledButton.styleFrom(minimumSize:const Size.fromHeight(56),backgroundColor:CepqarTheme.purple),
               ))
-            else
-              const Text('Ayarı yaptıktan sonra Cepqar’a geri dönün.\nSıradaki adım otomatik açılacak.',textAlign:TextAlign.center,style:TextStyle(fontSize:13,fontWeight:FontWeight.w600)),
+            else ...[
+              SizedBox(width:double.infinity,child:FilledButton(
+                onPressed:_opening?null:(_readyForNext?_next:_openCurrent),
+                style:FilledButton.styleFrom(minimumSize:const Size.fromHeight(56),backgroundColor:CepqarTheme.purple),
+                child:Text(_readyForNext?(_step>=3?'Kurulumu tamamla':'Sonraki izin'):'İzin ver',style:const TextStyle(fontWeight:FontWeight.w800)),
+              )),
+              const SizedBox(height:10),
+              Text(_readyForNext?'Bu adım tamamlandı.':'Önce açıklamayı okuyun, sonra “İzin ver”e basın.',textAlign:TextAlign.center,style:const TextStyle(fontSize:13,fontWeight:FontWeight.w600)),
+            ],
           ]),
         ),
       ),
