@@ -118,13 +118,11 @@ class _StreetParkingCardState extends State<StreetParkingCard>{
               Text('QR kodunu okutan kişi bu notu görebilir.',style:TextStyle(color:CepqarTheme.muted,fontSize:13.5)),
               const SizedBox(height:14),
               ...presets.keys.map((x)=>RadioListTile<String>(value:x,groupValue:selected,onChanged:saving?null:(v)=>setSheet(()=>selected=v!),contentPadding:EdgeInsets.zero,activeColor:CepqarTheme.purple,title:Text(x,style:TextStyle(color:CepqarTheme.text,fontWeight:FontWeight.w700)))),
-              RadioListTile<String>(value:'Özel not yaz',groupValue:selected,onChanged:saving?null:(v)=>setSheet(()=>selected=v!),contentPadding:EdgeInsets.zero,activeColor:CepqarTheme.purple,title:Text('Özel not yaz',style:TextStyle(color:CepqarTheme.text,fontWeight:FontWeight.w700))),
-              if(selected=='Özel not yaz')TextField(controller:custom,maxLength:180,maxLines:3,autofocus:true,enabled:!saving,style:TextStyle(color:CepqarTheme.text),decoration:InputDecoration(hintText:'Örn: 10 dakika içinde döneceğim.',hintStyle:TextStyle(color:CepqarTheme.muted),filled:true,fillColor:CepqarTheme.bg,border:OutlineInputBorder(borderRadius:BorderRadius.circular(15),borderSide:BorderSide(color:CepqarTheme.line)))),
               SwitchListTile(value:showOnQr,onChanged:saving?null:(v)=>setSheet(()=>showOnQr=v),contentPadding:EdgeInsets.zero,activeThumbColor:CepqarTheme.purple,title:Text('QR’da göster',style:TextStyle(color:CepqarTheme.text,fontWeight:FontWeight.w900)),subtitle:Text('Kapalıysa QR ziyaretçisine park notu gösterilmez.',style:TextStyle(color:CepqarTheme.muted,fontSize:12.5))),
               const SizedBox(height:8),
               SizedBox(width:double.infinity,height:52,child:FilledButton(
                 onPressed:saving?null:()async{
-                  final msg=selected=='Özel not yaz'?custom.text.trim():selected;
+                  final msg=selected;
                   if(showOnQr&&msg.isEmpty){
                     ScaffoldMessenger.of(modalContext).showSnackBar(const SnackBar(content:Text('Park notunu yazmalısın.')));
                     return;
@@ -168,7 +166,6 @@ class _StreetParkingCardState extends State<StreetParkingCard>{
     );
 
     await Future<void>.delayed(Duration.zero);
-    custom.dispose();
     if(changed==true&&mounted)await _loadParkNote();
   }
 
