@@ -69,6 +69,8 @@ module.exports = function registerNotificationRoutes(app, pool) {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         read_at TIMESTAMPTZ
       );
+      ALTER TABLE vehicle_notifications ADD COLUMN IF NOT EXISTS public_status_token TEXT;
+      ALTER TABLE vehicle_notifications ADD COLUMN IF NOT EXISTS arriving_at TIMESTAMPTZ;
       ALTER TABLE qr_conversations ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active';
       ALTER TABLE qr_conversations ADD COLUMN IF NOT EXISTS closed_at TIMESTAMPTZ;
     `);
@@ -281,8 +283,23 @@ module.exports = function registerNotificationRoutes(app, pool) {
       if (!qr) return res.status(404).json({ error: 'ACTIVE_QR_NOT_FOUND' });
       const guard = await guardPublicRequest(req, token, qr);
       if (!guard.ok) return res.status(guard.status).json({ error: guard.error });
-      const result = await pool.query(`INSERT INTO vehicle_notifications (vehicle_id, qr_token, type, message, photo_path, latitude, longitude) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, type, message, photo_path, latitude, longitude, status, created_at`, [qr.vehicle_id, token, type, message, photoPath, latitude, longitude]);
-      return res.status(201).json({ ok: true, notification: result.rows[0] });
+      await ensurePrivacySchema();
+      const publicStatusToken = crypto.randomUUID();
+      const result = await pool.query(`INSERT INTO vehicle_notifications (vehicle_id, qr_token, type, message, photo_path, latitude, longitude, public_status_token) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id, type, message, photo_path, latitude, longitude, status, created_at`, [qr.vehicle_id, token, type, message, photoPath, latitude, longitude, publicStatusToken]);
+      return res.status(201).json({ ok: true, notification: {...result.rows[0], public_status_token: publicStatusToken} });
+    } catch (e) { console.error(e); return res.status(500).json({ error: 'SERVER_ERROR' }); }
+  });
+
+  app.get('/api/qr/:token/notifications/:id/status', async (req, res) => {
+    const token = normalizeToken(req.params.token);
+    const id = String(req.params.id || '').trim();
+    const statusToken = String(req.query?.statusToken || '').trim();
+    if (!token || !id || !statusToken) return res.status(400).json({ error: 'INVALID_REQUEST' });
+    try {
+      await ensurePrivacySchema();
+      const r = await pool.query(`SELECT status, read_at, arriving_at, resolved_at FROM vehicle_notifications WHERE id=$1 AND qr_token=$2 AND public_status_token=$3 LIMIT 1`, [id, token, statusToken]);
+      if (!r.rows.length) return res.status(404).json({ error: 'NOT_FOUND' });
+      return res.json({ ok: true, notification: r.rows[0] });
     } catch (e) { console.error(e); return res.status(500).json({ error: 'SERVER_ERROR' }); }
   });
 
@@ -302,9 +319,9 @@ module.exports = function registerNotificationRoutes(app, pool) {
     const id = String(req.params.id || '').trim();
     const status = String(req.body?.status || '').trim();
     if (!ownerId) return res.status(401).json({ error: 'OWNER_REQUIRED' });
-    if (!['read', 'resolved'].includes(status)) return res.status(400).json({ error: 'INVALID_STATUS' });
+    if (!['read', 'arriving', 'resolved'].includes(status)) return res.status(400).json({ error: 'INVALID_STATUS' });
     try {
-      const result = await pool.query(`UPDATE vehicle_notifications n SET status=$1, read_at=CASE WHEN $1 IN ('read','resolved') THEN COALESCE(n.read_at,NOW()) ELSE n.read_at END, resolved_at=CASE WHEN $1='resolved' THEN NOW() ELSE n.resolved_at END FROM vehicles v WHERE n.id=$2 AND v.id=n.vehicle_id AND v.owner_id=$3 RETURNING n.id,n.status,n.read_at,n.resolved_at`, [status, id, ownerId]);
+      const result = await pool.query(`UPDATE vehicle_notifications n SET status=$1, read_at=CASE WHEN $1 IN ('read','arriving','resolved') THEN COALESCE(n.read_at,NOW()) ELSE n.read_at END, arriving_at=CASE WHEN $1='arriving' THEN NOW() ELSE n.arriving_at END, resolved_at=CASE WHEN $1='resolved' THEN NOW() ELSE n.resolved_at END FROM vehicles v WHERE n.id=$2 AND v.id=n.vehicle_id AND v.owner_id=$3 RETURNING n.id,n.status,n.read_at,n.arriving_at,n.resolved_at`, [status, id, ownerId]);
       if (!result.rows.length) return res.status(404).json({ error: 'NOT_FOUND' });
       return res.json({ ok: true, notification: result.rows[0] });
     } catch (e) { console.error(e); return res.status(500).json({ error: 'SERVER_ERROR' }); }
