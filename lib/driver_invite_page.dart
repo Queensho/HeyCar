@@ -511,8 +511,7 @@ class _DriverHome extends StatelessWidget {
       'Kısa süreli park ettim':null,
     };
     final existing = current?['message']?.toString().trim() ?? '';
-    String selected = presets.containsKey(existing) ? existing : 'Özel not yaz';
-    final custom = TextEditingController(text: selected == 'Özel not yaz' ? existing : '');
+    String selected = presets.containsKey(existing) ? existing : presets.keys.first;
     bool showOnQr = existing.isNotEmpty;
     bool saving = false;
     await showModalBottomSheet(
@@ -534,13 +533,11 @@ class _DriverHome extends StatelessWidget {
               const Text('QR kodunu okutan kişi bu notu görebilir.',style:TextStyle(color:_muted,fontSize:13.5)),
               const SizedBox(height:14),
               ...presets.keys.map((x)=>RadioListTile<String>(value:x,groupValue:selected,onChanged:(v)=>setSheet(()=>selected=v!),contentPadding:EdgeInsets.zero,activeColor:_purple,title:Text(x,style:const TextStyle(color:Colors.white,fontWeight:FontWeight.w700)))),
-              RadioListTile<String>(value:'Özel not yaz',groupValue:selected,onChanged:(v)=>setSheet(()=>selected=v!),contentPadding:EdgeInsets.zero,activeColor:_purple,title:const Text('Özel not yaz',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w700))),
-              if(selected=='Özel not yaz')TextField(controller:custom,maxLength:180,maxLines:3,style:const TextStyle(color:Colors.white),decoration:InputDecoration(hintText:'Örn: 10 dakika içinde döneceğim.',hintStyle:const TextStyle(color:_muted),filled:true,fillColor:_panel2,border:OutlineInputBorder(borderRadius:BorderRadius.circular(15),borderSide:const BorderSide(color:_line)))),
               SwitchListTile(value:showOnQr,onChanged:(v)=>setSheet(()=>showOnQr=v),contentPadding:EdgeInsets.zero,activeThumbColor:_purple,title:const Text('QR’da göster',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w900)),subtitle:const Text('Kapalıysa park notu QR ekranında görünmez.',style:TextStyle(color:_muted,fontSize:12.5))),
               const SizedBox(height:8),
               SizedBox(width:double.infinity,height:52,child:FilledButton(
                 onPressed:saving?null:()async{
-                  final msg=selected=='Özel not yaz'?custom.text.trim():selected;
+                  final msg=selected;
                   if(showOnQr&&msg.isEmpty){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Park notunu yazmalısın.')));return;}
                   setSheet(()=>saving=true);
                   try{
@@ -568,7 +565,6 @@ class _DriverHome extends StatelessWidget {
         ),
       )),
     );
-    custom.dispose();
   }
 
   Widget _brandLogo() {
