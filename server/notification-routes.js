@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const registerConversationRoutes = require('./conversation-routes');
+const { sendQrNotificationPush } = require('./notification-push-hook');
 
 function normalizeToken(raw) {
   return String(raw || '').trim().toUpperCase();
@@ -101,7 +102,7 @@ module.exports = function registerNotificationRoutes(app, pool) {
 
   async function activeQr(token) {
     const qr = await pool.query(
-      `SELECT q.vehicle_id, v.owner_id
+      `SELECT q.vehicle_id, v.owner_id, v.plate
          FROM qr_tags q
          JOIN vehicles v ON v.id = q.vehicle_id
         WHERE q.token = $1 AND q.status = 'active'
@@ -297,6 +298,7 @@ module.exports = function registerNotificationRoutes(app, pool) {
       await ensurePrivacySchema();
       const publicStatusToken = crypto.randomUUID();
       const result = await pool.query(`INSERT INTO vehicle_notifications (vehicle_id, qr_token, type, message, photo_path, latitude, longitude, public_status_token) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id, type, message, photo_path, latitude, longitude, status, created_at`, [qr.vehicle_id, token, type, message, photoPath, latitude, longitude, publicStatusToken]);
+      await sendQrNotificationPush({ app, qr, type, message, notificationId: result.rows[0].id, token, getPrivacy });
       return res.status(201).json({ ok: true, notification: {...result.rows[0], public_status_token: publicStatusToken} });
     } catch (e) { console.error(e); return res.status(500).json({ error: 'SERVER_ERROR' }); }
   });
