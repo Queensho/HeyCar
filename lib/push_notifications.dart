@@ -196,7 +196,9 @@ class PushNotifications{
 
   static Future<void> cancelIncomingCall(String callId)async{
     if(callId.isEmpty)return;
+    try{await FlutterCallkitIncoming.hideCallkitIncoming(CallKitParams(id:callId));}catch(_){}
     try{await FlutterCallkitIncoming.endCall(callId);}catch(_){}
+    try{await FlutterCallkitIncoming.endAllCalls();}catch(_){}
     await _local.cancel(_notificationId(callId));
     final prefs=await SharedPreferences.getInstance();
     if((prefs.getString('pending_incoming_call_id')??'')==callId)await prefs.remove('pending_incoming_call_id');
