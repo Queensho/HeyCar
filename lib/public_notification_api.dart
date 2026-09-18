@@ -73,6 +73,17 @@ class PublicNotificationApi {
     if(conversationId.isEmpty)throw Exception('CONVERSATION_ID_MISSING'); saveConversationId(conversationId); _watchForOwnerReply(conversationId,token); return conversationId;
   }
 
+  static Future<Map<String,dynamic>?> fetchParkNote()async{
+    final token=currentToken();if(token.isEmpty)return null;
+    final r=await http.get(Uri.parse('${PublicThemeBackend.baseUrl}/api/qr/${Uri.encodeComponent(token)}/park-note')).timeout(const Duration(seconds:10));
+    if(r.statusCode<200||r.statusCode>=300)return null;
+    final d=jsonDecode(r.body);if(d is! Map||d['parkNote'] is! Map)return null;
+    final note=Map<String,dynamic>.from(d['parkNote']);
+    final expires=DateTime.tryParse('${note['expiresAt']??''}');
+    if(expires!=null&&!expires.toUtc().isAfter(DateTime.now().toUtc()))return null;
+    return note;
+  }
+
   static Future<Map<String,dynamic>> fetchNotificationStatus(String notificationId,String statusToken)async{
     final token=currentToken();if(token.isEmpty||notificationId.isEmpty||statusToken.isEmpty)throw Exception('STATUS_MISSING');
     final uri=Uri.parse('${PublicThemeBackend.baseUrl}/api/qr/${Uri.encodeComponent(token)}/notifications/${Uri.encodeComponent(notificationId)}/status').replace(queryParameters:{'statusToken':statusToken});
