@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -342,17 +343,58 @@ class _CodeEntryState extends State<_CodeEntry> {
   }
 }
 
-class _PublicHome extends StatelessWidget {
+class _PublicHome extends StatefulWidget {
   const _PublicHome({required this.vehicle, required this.theme});
   final Map<String, dynamic> vehicle;
   final PublicThemeData theme;
+  @override State<_PublicHome> createState()=>_PublicHomeState();
+}
+class _PublicHomeState extends State<_PublicHome>{
+  String get plate => widget.vehicle['plate']?.toString() ?? 'Araç';
 
-  String get plate => vehicle['plate']?.toString() ?? 'Araç';
+  @override void initState(){
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_)=>_checkParkNote());
+  }
+
+  String _updatedAgo(dynamic raw){
+    final d=DateTime.tryParse('${raw??''}')?.toLocal();if(d==null)return 'Az önce güncellendi';
+    final diff=DateTime.now().difference(d);
+    if(diff.inMinutes<1)return 'Az önce güncellendi';
+    if(diff.inHours<1)return '${diff.inMinutes} dk önce güncellendi';
+    if(diff.inDays<1)return '${diff.inHours} sa önce güncellendi';
+    return '${diff.inDays} gün önce güncellendi';
+  }
+
+  Future<void> _checkParkNote()async{
+    try{
+      final note=await PublicNotificationApi.fetchParkNote();if(!mounted||note==null)return;
+      final id='${note['id']??''}',message='${note['message']??''}'.trim();if(id.isEmpty||message.isEmpty)return;
+      final key='cepqar_shown_park_note_${PublicNotificationApi.currentToken()}';
+      if(html.window.sessionStorage[key]==id)return;
+      html.window.sessionStorage[key]=id;
+      if(!mounted)return;
+      await showDialog<void>(context:context,barrierDismissible:true,builder:(dialogContext)=>Dialog(
+        backgroundColor:Colors.transparent,insetPadding:const EdgeInsets.symmetric(horizontal:22),
+        child:Container(width:double.infinity,constraints:const BoxConstraints(maxWidth:390),padding:const EdgeInsets.fromLTRB(20,22,20,18),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(26),boxShadow:const [BoxShadow(color:Color(0x33000000),blurRadius:28,offset:Offset(0,12))]),child:Column(mainAxisSize:MainAxisSize.min,children:[
+          Container(width:52,height:52,decoration:BoxDecoration(color:_purple.withValues(alpha:.12),borderRadius:BorderRadius.circular(16)),child:const Icon(Icons.local_parking_rounded,color:_purple,size:31)),
+          const SizedBox(height:14),
+          const Text('🚗 Araç sahibinden not',textAlign:TextAlign.center,style:TextStyle(color:Color(0xFF151826),fontSize:18,fontWeight:FontWeight.w900)),
+          const SizedBox(height:12),
+          Text(message,textAlign:TextAlign.center,style:const TextStyle(color:Color(0xFF151826),fontSize:21,height:1.3,fontWeight:FontWeight.w800)),
+          const SizedBox(height:10),
+          Row(mainAxisAlignment:MainAxisAlignment.center,children:[const Icon(Icons.schedule_rounded,color:Color(0xFF8B91A3),size:17),const SizedBox(width:5),Flexible(child:Text(_updatedAgo(note['createdAt']),style:const TextStyle(color:Color(0xFF8B91A3),fontSize:13,fontWeight:FontWeight.w600)))]),
+          const SizedBox(height:20),
+          SizedBox(width:double.infinity,height:50,child:FilledButton(onPressed:()=>Navigator.of(dialogContext).pop(),style:FilledButton.styleFrom(backgroundColor:_purple,foregroundColor:Colors.white,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15))),child:const Text('Tamam',style:TextStyle(fontSize:16,fontWeight:FontWeight.w900)))),
+        ])),
+      ));
+    }catch(_){}
+  }
 
   @override
   Widget build(BuildContext context) {
     final compact = MediaQuery.sizeOf(context).height < 780;
-    final bgUrl = PublicThemeBackend.resolveBackground(theme.backgroundUrl);
+    final bgUrl = PublicThemeBackend.resolveBackground(widget.theme.backgroundUrl);
     return _Shell(
       background: bgUrl,
       child: ListView(
@@ -363,7 +405,7 @@ class _PublicHome extends StatelessWidget {
           Text('Bana\nulaşmak', style: TextStyle(color: Colors.white, fontSize: compact ? 34 : 39, height: .96, fontWeight: FontWeight.w900)),
           Text('çok kolay.', style: TextStyle(color: _lime, fontSize: compact ? 34 : 39, height: 1, fontWeight: FontWeight.w900)),
           const SizedBox(height: 12),
-          Text(theme.publicMessage.isEmpty ? 'Numaram gizli, yolun açık.' : theme.publicMessage, style: TextStyle(color: Colors.white, fontSize: compact ? 16 : 18, height: 1.35, fontWeight: FontWeight.w600)),
+          Text(widget.theme.publicMessage.isEmpty ? 'Numaram gizli, yolun açık.' : widget.theme.publicMessage, style: TextStyle(color: Colors.white, fontSize: compact ? 16 : 18, height: 1.35, fontWeight: FontWeight.w600)),
           SizedBox(height: compact ? 18 : 24),
           GridView.count(
             shrinkWrap: true,
