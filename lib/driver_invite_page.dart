@@ -314,6 +314,7 @@ class _DriverHomePageState extends State<DriverHomePage> {
   Widget build(BuildContext context) {
     final screens = <Widget>[
       _DriverHome(
+        userId: widget.userId,
         driverName: driverName,
         active: hasActiveVehicle,
         vehicles: vehicles,
@@ -424,6 +425,7 @@ class _DriverHomePageState extends State<DriverHomePage> {
 
 class _DriverHome extends StatelessWidget {
   const _DriverHome({
+    required this.userId,
     required this.driverName,
     required this.active,
     required this.vehicles,
@@ -434,6 +436,7 @@ class _DriverHome extends StatelessWidget {
     required this.onOpenVehicles,
   });
 
+  final String userId;
   final String driverName;
   final bool active;
   final List<Map<String, dynamic>> vehicles;
@@ -475,6 +478,98 @@ class _DriverHome extends StatelessWidget {
       }).length;
 
   int get calls => notifications.where((e) => e['type']?.toString() == 'call_request').length;
+
+  Future<void> _parkNote(BuildContext context) async {
+    if (vehicles.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Yetkili araç bulunamadı.')));
+      return;
+    }
+    Map<String,dynamic>? vehicle;
+    for (final v in vehicles) {
+      if (v['active'] == true) { vehicle = v; break; }
+    }
+    if (vehicle == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Park notunu yalnızca aktif sürücü ekleyebilir.')));
+      return;
+    }
+    final vehicleId = vehicle['vehicle_id']?.toString().trim() ?? '';
+    if (vehicleId.isEmpty) return;
+    Map<String,dynamic>? current;
+    try {
+      final r = await http.get(Uri.parse('$_api/api/driver/vehicles/${Uri.encodeComponent(vehicleId)}/park-note'), headers: {'x-user-id': userId});
+      if (r.statusCode == 200) {
+        final d = jsonDecode(r.body);
+        if (d is Map && d['parkNote'] is Map) current = Map<String,dynamic>.from(d['parkNote']);
+      }
+    } catch (_) {}
+    if (!context.mounted) return;
+    const presets=<String,int?>{
+      '5 dakika içinde döneceğim':5,
+      '10 dakika içinde döneceğim':10,
+      '15 dakika içinde döneceğim':15,
+      '30 dakika içinde döneceğim':30,
+      'Kısa süreli park ettim':null,
+    };
+    final existing = current?['message']?.toString().trim() ?? '';
+    String selected = presets.containsKey(existing) ? existing : 'Özel not yaz';
+    final custom = TextEditingController(text: selected == 'Özel not yaz' ? existing : '');
+    bool showOnQr = existing.isNotEmpty;
+    bool saving = false;
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => StatefulBuilder(builder: (context,setSheet) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+        child: Container(
+          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * .82),
+          decoration: const BoxDecoration(color: _panel, borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+          child: SafeArea(top:false,child:SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20,12,20,24),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start,children:[
+              Center(child:Container(width:42,height:4,decoration:BoxDecoration(color:_line,borderRadius:BorderRadius.circular(9)))),
+              const SizedBox(height:18),
+              const Text('Park Notu',style:TextStyle(color:Colors.white,fontSize:22,fontWeight:FontWeight.w900)),
+              const SizedBox(height:5),
+              const Text('QR kodunu okutan kişi bu notu görebilir.',style:TextStyle(color:_muted,fontSize:13.5)),
+              const SizedBox(height:14),
+              ...presets.keys.map((x)=>RadioListTile<String>(value:x,groupValue:selected,onChanged:(v)=>setSheet(()=>selected=v!),contentPadding:EdgeInsets.zero,activeColor:_purple,title:Text(x,style:const TextStyle(color:Colors.white,fontWeight:FontWeight.w700)))),
+              RadioListTile<String>(value:'Özel not yaz',groupValue:selected,onChanged:(v)=>setSheet(()=>selected=v!),contentPadding:EdgeInsets.zero,activeColor:_purple,title:const Text('Özel not yaz',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w700))),
+              if(selected=='Özel not yaz')TextField(controller:custom,maxLength:180,maxLines:3,style:const TextStyle(color:Colors.white),decoration:InputDecoration(hintText:'Örn: 10 dakika içinde döneceğim.',hintStyle:const TextStyle(color:_muted),filled:true,fillColor:_panel2,border:OutlineInputBorder(borderRadius:BorderRadius.circular(15),borderSide:const BorderSide(color:_line)))),
+              SwitchListTile(value:showOnQr,onChanged:(v)=>setSheet(()=>showOnQr=v),contentPadding:EdgeInsets.zero,activeThumbColor:_purple,title:const Text('QR’da göster',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w900)),subtitle:const Text('Kapalıysa park notu QR ekranında görünmez.',style:TextStyle(color:_muted,fontSize:12.5))),
+              const SizedBox(height:8),
+              SizedBox(width:double.infinity,height:52,child:FilledButton(
+                onPressed:saving?null:()async{
+                  final msg=selected=='Özel not yaz'?custom.text.trim():selected;
+                  if(showOnQr&&msg.isEmpty){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Park notunu yazmalısın.')));return;}
+                  setSheet(()=>saving=true);
+                  try{
+                    http.Response r;
+                    if(!showOnQr){
+                      r=await http.delete(Uri.parse('$_api/api/driver/vehicles/${Uri.encodeComponent(vehicleId)}/park-note'),headers:{'x-user-id':userId});
+                    }else{
+                      final minutes=presets[selected];
+                      final expires=minutes==null?null:DateTime.now().toUtc().add(Duration(minutes:minutes)).toIso8601String();
+                      r=await http.post(Uri.parse('$_api/api/driver/vehicles/${Uri.encodeComponent(vehicleId)}/park-note'),headers:{'Content-Type':'application/json','x-user-id':userId},body:jsonEncode({'message':msg,'expiresAt':expires}));
+                    }
+                    if(r.statusCode<200||r.statusCode>=300)throw Exception();
+                    if(sheetContext.mounted)Navigator.pop(sheetContext);
+                    if(context.mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(showOnQr?'Park notu QR ekranına eklendi.':'Park notu QR ekranından kaldırıldı.')));
+                  }catch(_){
+                    if(context.mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Park notu kaydedilemedi.')));
+                    setSheet(()=>saving=false);
+                  }
+                },
+                style:FilledButton.styleFrom(backgroundColor:_purple,foregroundColor:Colors.white,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15))),
+                child:Text(saving?'Kaydediliyor...':(showOnQr?'Notu Kaydet':'QR’da Gizle'),style:const TextStyle(fontWeight:FontWeight.w900)),
+              )),
+            ]),
+          )),
+        ),
+      )),
+    );
+    custom.dispose();
+  }
 
   Widget _brandLogo() {
     final url = make.isEmpty ? null : VehicleApi.brandLogoUrl(make);
@@ -787,6 +882,16 @@ class _DriverHome extends StatelessWidget {
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: _Shortcut(
+                    icon: Icons.edit_note_rounded,
+                    title: 'Park Notu',
+                    sub: active ? 'QR ekranına not ekle / değiştir' : 'Yalnızca aktif sürücü kullanabilir',
+                    onTap: () => _parkNote(context),
+                  ),
                 ),
                 const SizedBox(height: 14),
                 const _Card(
