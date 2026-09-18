@@ -28,7 +28,7 @@ class _StreetParkingCardState extends State<StreetParkingCard>{
     final p=await SharedPreferences.getInstance();
     final a=p.getDouble('${prefix}lat'),b=p.getDouble('${prefix}lng'),t=p.getString('${prefix}time');
     if(mounted)setState((){lat=a;lng=b;parkedAt=t==null?null:DateTime.tryParse(t);parkNote=null;});
-    if(a!=null&&b!=null)await _loadParkNote();
+    await _loadParkNote();
   }
 
   Future<void> _loadParkNote()async{
@@ -137,7 +137,15 @@ class _StreetParkingCardState extends State<StreetParkingCard>{
       if(!has)...[
         Text('Mahallede veya açık alanda aracını bıraktığın GPS konumunu tek dokunuşla kaydet.',style:TextStyle(color:CepqarTheme.muted,fontSize:14,height:1.45,fontWeight:FontWeight.w600)),
         const SizedBox(height:15),
-        SizedBox(width:double.infinity,height:52,child:FilledButton.icon(onPressed:busy?null:_save,style:FilledButton.styleFrom(backgroundColor:CepqarTheme.purple,foregroundColor:Colors.white,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15))),icon:busy?const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)):const Icon(Icons.my_location_rounded),label:Text(busy?'Konum alınıyor...':'Aracımı Burada Bıraktım',style:const TextStyle(fontWeight:FontWeight.w900))))
+        SizedBox(width:double.infinity,height:52,child:FilledButton.icon(onPressed:busy?null:_save,style:FilledButton.styleFrom(backgroundColor:CepqarTheme.purple,foregroundColor:Colors.white,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15))),icon:busy?const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)):const Icon(Icons.my_location_rounded),label:Text(busy?'Konum alınıyor...':'Aracımı Burada Bıraktım',style:const TextStyle(fontWeight:FontWeight.w900)))),
+        const SizedBox(height:12),
+        Container(width:double.infinity,padding:const EdgeInsets.all(14),decoration:BoxDecoration(color:CepqarTheme.bg,borderRadius:BorderRadius.circular(16),border:Border.all(color:CepqarTheme.line)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          Row(children:[Expanded(child:Text('QR’da gösterilecek park notu',style:TextStyle(color:CepqarTheme.text,fontWeight:FontWeight.w900))),Icon(noteActive?Icons.visibility_rounded:Icons.visibility_off_rounded,color:noteActive?CepqarTheme.purple:CepqarTheme.muted,size:20)]),
+          const SizedBox(height:7),
+          Text(noteActive?noteMessage:'Aktif park notu yok',style:TextStyle(color:noteActive?CepqarTheme.text:CepqarTheme.muted,fontSize:14,height:1.35,fontWeight:noteActive?FontWeight.w700:FontWeight.w500)),
+          const SizedBox(height:10),
+          SizedBox(width:double.infinity,child:OutlinedButton.icon(onPressed:noteBusy?null:_editNote,icon:const Icon(Icons.edit_note_rounded,size:19),label:Text(noteActive?'Notu Değiştir':'Park Notu Ekle'),style:OutlinedButton.styleFrom(foregroundColor:CepqarTheme.purple,side:BorderSide(color:CepqarTheme.purple.withValues(alpha:.45)),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(13))))),
+        ]))
       ] else...[
         Container(width:double.infinity,padding:const EdgeInsets.all(15),decoration:BoxDecoration(color:CepqarTheme.purple.withValues(alpha:.09),borderRadius:BorderRadius.circular(16)),child:Row(children:[const Icon(Icons.directions_car_filled_rounded,color:CepqarTheme.purple,size:28),const SizedBox(width:11),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('Aracın parkta',style:TextStyle(color:CepqarTheme.text,fontWeight:FontWeight.w900)),const SizedBox(height:3),Text(elapsed,style:TextStyle(color:CepqarTheme.muted,fontSize:13,fontWeight:FontWeight.w700)),const SizedBox(height:3),Text('📍 Kaydedilen park konumu',style:TextStyle(color:CepqarTheme.muted,fontSize:13,fontWeight:FontWeight.w700))]))])),
         const SizedBox(height:12),
