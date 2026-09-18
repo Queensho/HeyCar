@@ -501,7 +501,7 @@ class _MessageComposerState extends State<_MessageComposer> {
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => _SentScreen(plate: widget.plate)),
+        MaterialPageRoute(builder: (_) => _SentScreen(plate: widget.plate, notificationId: PublicNotificationApi.lastNotificationId ?? '', statusToken: PublicNotificationApi.lastStatusToken ?? '')),
       );
     } catch (_) {
       if (!mounted) return;
@@ -579,35 +579,38 @@ class _MessageComposerState extends State<_MessageComposer> {
       );
 }
 
-class _SentScreen extends StatelessWidget {
-  const _SentScreen({required this.plate});
-  final String plate;
-
-  @override
-  Widget build(BuildContext context) => _Shell(
-        child: Scaffold(
-          backgroundColor: Colors.transparent,
-          appBar: _appBar(''),
-          body: ListView(
-            padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
-            children: [
-              const CircleAvatar(radius: 39, backgroundColor: Color(0xFF1B263F), child: Icon(Icons.send_rounded, color: _lime, size: 40)),
-              const SizedBox(height: 16),
-              const Text('Mesajınız gönderildi!', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 25, fontWeight: FontWeight.w900)),
-              const SizedBox(height: 8),
-              const Text('Araç sahibine bildiriminiz ulaştı.', textAlign: TextAlign.center, style: TextStyle(color: _muted, height: 1.45)),
-              const SizedBox(height: 18),
-              _glass(child: const Column(children: [
-                _TimelineRow(Icons.check_circle, Colors.green, 'Mesaj gönderildi', 'Şimdi'),
-                SizedBox(height: 16),
-                _TimelineRow(Icons.circle_outlined, _muted, 'Araç sahibinin görmesi bekleniyor', 'Bildirim araç sahibinin gelen kutusuna kaydedildi'),
-              ])),
-              const SizedBox(height: 14),
-              OutlinedButton.icon(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.chat_bubble_outline), label: const Text('Yeni mesaj gönder')),
-            ],
-          ),
-        ),
-      );
+class _SentScreen extends StatefulWidget {
+  const _SentScreen({required this.plate,required this.notificationId,required this.statusToken});
+  final String plate,notificationId,statusToken;
+  @override State<_SentScreen> createState()=>_SentScreenState();
+}
+class _SentScreenState extends State<_SentScreen>{
+  Timer? timer;String status='new';
+  @override void initState(){super.initState();_poll();timer=Timer.periodic(const Duration(seconds:2),(_)=>_poll());}
+  @override void dispose(){timer?.cancel();super.dispose();}
+  Future<void> _poll()async{if(widget.notificationId.isEmpty||widget.statusToken.isEmpty)return;try{final n=await PublicNotificationApi.fetchNotificationStatus(widget.notificationId,widget.statusToken);final s='${n['status']??'new'}';if(mounted&&s!=status)setState(()=>status=s);if(const {'resolved'}.contains(s))timer?.cancel();}catch(_){}}
+  String get headline=>status=='arriving'?'Araç sahibi geliyor':status=='resolved'?'İşlem tamamlandı':status=='read'?'Araç sahibi gördü':'Bildirim ulaştı';
+  IconData get stateIcon=>status=='arriving'?Icons.directions_walk_rounded:status=='resolved'?Icons.task_alt_rounded:status=='read'?Icons.visibility_rounded:Icons.notifications_active_rounded;
+  Color get stateColor=>status=='arriving'?_lime:status=='resolved'?Colors.green:status=='read'?_purple:Colors.green;
+  @override Widget build(BuildContext context)=>_Shell(
+    child:Scaffold(backgroundColor:Colors.transparent,appBar:_appBar(''),body:ListView(
+      padding:const EdgeInsets.fromLTRB(18,8,18,24),children:[
+        CircleAvatar(radius:39,backgroundColor:const Color(0xFF1B263F),child:Icon(stateIcon,color:stateColor,size:40)),
+        const SizedBox(height:16),
+        Text(headline,textAlign:TextAlign.center,style:const TextStyle(color:Colors.white,fontSize:25,fontWeight:FontWeight.w900)),
+        const SizedBox(height:8),
+        Text(status=='new'?'Bildiriminiz araç sahibine ulaştı.':status=='read'?'Araç sahibi bildiriminizi açtı.':status=='arriving'?'Araç sahibi “Geliyorum” dedi. Boşuna beklemiyorsunuz.':'Araç sahibi bildirimi tamamlandı olarak işaretledi.',textAlign:TextAlign.center,style:const TextStyle(color:_muted,height:1.45)),
+        const SizedBox(height:18),
+        _glass(child:Column(children:[
+          const _TimelineRow(Icons.check_circle,Colors.green,'Bildirim ulaştı','Araç sahibinin gelen kutusuna gönderildi'),
+          const SizedBox(height:16),
+          _TimelineRow(status=='read'||status=='arriving'||status=='resolved'?Icons.check_circle:Icons.circle_outlined,status=='read'||status=='arriving'||status=='resolved'?_purple:_muted,'Araç sahibi gördü',status=='new'?'Bekleniyor':'Bildirim açıldı'),
+          const SizedBox(height:16),
+          _TimelineRow(status=='arriving'||status=='resolved'?Icons.check_circle:Icons.circle_outlined,status=='arriving'||status=='resolved'?_lime:_muted,'Araç sahibi geliyor',status=='arriving'||status=='resolved'?'Geliyorum yanıtı verildi':'Bekleniyor'),
+        ])),
+        const SizedBox(height:14),
+        OutlinedButton.icon(onPressed:()=>Navigator.pop(context),icon:const Icon(Icons.arrow_back_rounded),label:const Text('Araca geri dön')),
+      ])));
 }
 
 class _HiddenCall extends StatelessWidget {
