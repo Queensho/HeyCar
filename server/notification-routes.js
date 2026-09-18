@@ -61,6 +61,15 @@ module.exports = function registerNotificationRoutes(app, pool) {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
       CREATE INDEX IF NOT EXISTS idx_qr_request_log_recent ON qr_request_log(owner_id, visitor_key, created_at DESC);
+      CREATE TABLE IF NOT EXISTS vehicle_park_notes (
+        id TEXT PRIMARY KEY,
+        vehicle_id TEXT NOT NULL,
+        message TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        expires_at TIMESTAMPTZ,
+        is_active BOOLEAN NOT NULL DEFAULT TRUE
+      );
+      CREATE INDEX IF NOT EXISTS idx_vehicle_park_notes_active ON vehicle_park_notes(vehicle_id, is_active, created_at DESC);
       CREATE TABLE IF NOT EXISTS owner_login_events (
         id TEXT PRIMARY KEY,
         owner_id TEXT NOT NULL,
@@ -300,6 +309,82 @@ module.exports = function registerNotificationRoutes(app, pool) {
       const r = await pool.query(`SELECT status, read_at, arriving_at, resolved_at FROM vehicle_notifications WHERE id=$1 AND qr_token=$2 AND public_status_token=$3 LIMIT 1`, [id, token, statusToken]);
       if (!r.rows.length) return res.status(404).json({ error: 'NOT_FOUND' });
       return res.json({ ok: true, notification: r.rows[0] });
+    } catch (e) { console.error(e); return res.status(500).json({ error: 'SERVER_ERROR' }); }
+  });
+
+  async function expireParkNotes(vehicleId = null) {
+    if (vehicleId) {
+      await pool.query(`UPDATE vehicle_park_notes SET is_active=FALSE WHERE vehicle_id=$1 AND is_active=TRUE AND expires_at IS NOT NULL AND expires_at<=NOW()`, [vehicleId]);
+    } else {
+      await pool.query(`UPDATE vehicle_park_notes SET is_active=FALSE WHERE is_active=TRUE AND expires_at IS NOT NULL AND expires_at<=NOW()`);
+    }
+  }
+
+  app.get('/api/owner/vehicles/:vehicleId/park-note', async (req, res) => {
+    const ownerId = String(req.headers['x-owner-id'] || '').trim();
+    const vehicleId = String(req.params.vehicleId || '').trim();
+    if (!ownerId) return res.status(401).json({ error: 'OWNER_REQUIRED' });
+    try {
+      await ensurePrivacySchema();
+      const own = await pool.query(`SELECT 1 FROM vehicles WHERE id=$1 AND owner_id=$2 LIMIT 1`, [vehicleId, ownerId]);
+      if (!own.rows.length) return res.status(404).json({ error: 'VEHICLE_NOT_FOUND' });
+      await expireParkNotes(vehicleId);
+      const r = await pool.query(`SELECT id,message,created_at AS "createdAt",expires_at AS "expiresAt",is_active AS "isActive" FROM vehicle_park_notes WHERE vehicle_id=$1 AND is_active=TRUE ORDER BY created_at DESC LIMIT 1`, [vehicleId]);
+      return res.json({ ok: true, parkNote: r.rows[0] || null });
+    } catch (e) { console.error(e); return res.status(500).json({ error: 'SERVER_ERROR' }); }
+  });
+
+  app.post('/api/owner/vehicles/:vehicleId/park-note', async (req, res) => {
+    const ownerId = String(req.headers['x-owner-id'] || '').trim();
+    const vehicleId = String(req.params.vehicleId || '').trim();
+    const message = String(req.body?.message || '').trim().slice(0, 180);
+    const isActive = req.body?.isActive !== false;
+    const expiresAtRaw = req.body?.expiresAt == null ? null : String(req.body.expiresAt).trim();
+    if (!ownerId) return res.status(401).json({ error: 'OWNER_REQUIRED' });
+    if (!message) return res.status(400).json({ error: 'MESSAGE_REQUIRED' });
+    let expiresAt = null;
+    if (expiresAtRaw) {
+      expiresAt = new Date(expiresAtRaw);
+      if (Number.isNaN(expiresAt.getTime()) || expiresAt <= new Date()) return res.status(400).json({ error: 'INVALID_EXPIRES_AT' });
+    }
+    try {
+      await ensurePrivacySchema();
+      const own = await pool.query(`SELECT 1 FROM vehicles WHERE id=$1 AND owner_id=$2 LIMIT 1`, [vehicleId, ownerId]);
+      if (!own.rows.length) return res.status(404).json({ error: 'VEHICLE_NOT_FOUND' });
+      await pool.query('BEGIN');
+      try {
+        await pool.query(`UPDATE vehicle_park_notes SET is_active=FALSE WHERE vehicle_id=$1 AND is_active=TRUE`, [vehicleId]);
+        const id = crypto.randomUUID();
+        const r = await pool.query(`INSERT INTO vehicle_park_notes(id,vehicle_id,message,expires_at,is_active) VALUES($1,$2,$3,$4,$5) RETURNING id,message,created_at AS "createdAt",expires_at AS "expiresAt",is_active AS "isActive"`, [id, vehicleId, message, expiresAt, isActive]);
+        await pool.query('COMMIT');
+        return res.status(201).json({ ok: true, parkNote: r.rows[0] });
+      } catch (e) { await pool.query('ROLLBACK'); throw e; }
+    } catch (e) { console.error(e); return res.status(500).json({ error: 'SERVER_ERROR' }); }
+  });
+
+  app.delete('/api/owner/vehicles/:vehicleId/park-note', async (req, res) => {
+    const ownerId = String(req.headers['x-owner-id'] || '').trim();
+    const vehicleId = String(req.params.vehicleId || '').trim();
+    if (!ownerId) return res.status(401).json({ error: 'OWNER_REQUIRED' });
+    try {
+      await ensurePrivacySchema();
+      const own = await pool.query(`SELECT 1 FROM vehicles WHERE id=$1 AND owner_id=$2 LIMIT 1`, [vehicleId, ownerId]);
+      if (!own.rows.length) return res.status(404).json({ error: 'VEHICLE_NOT_FOUND' });
+      await pool.query(`UPDATE vehicle_park_notes SET is_active=FALSE WHERE vehicle_id=$1 AND is_active=TRUE`, [vehicleId]);
+      return res.json({ ok: true });
+    } catch (e) { console.error(e); return res.status(500).json({ error: 'SERVER_ERROR' }); }
+  });
+
+  app.get('/api/qr/:token/park-note', async (req, res) => {
+    const token = normalizeToken(req.params.token);
+    if (!token) return res.status(400).json({ error: 'TOKEN_REQUIRED' });
+    try {
+      await ensurePrivacySchema();
+      const qr = await activeQr(token);
+      if (!qr) return res.status(404).json({ error: 'ACTIVE_QR_NOT_FOUND' });
+      await expireParkNotes(String(qr.vehicle_id));
+      const r = await pool.query(`SELECT id,message,created_at AS "createdAt",expires_at AS "expiresAt" FROM vehicle_park_notes WHERE vehicle_id=$1 AND is_active=TRUE AND (expires_at IS NULL OR expires_at>NOW()) ORDER BY created_at DESC LIMIT 1`, [qr.vehicle_id]);
+      return res.json({ ok: true, parkNote: r.rows[0] || null });
     } catch (e) { console.error(e); return res.status(500).json({ error: 'SERVER_ERROR' }); }
   });
 
