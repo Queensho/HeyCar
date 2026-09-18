@@ -94,8 +94,7 @@ class _StreetParkingCardState extends State<StreetParkingCard>{
       '30 dakika içinde döneceğim':30,
       'Kısa süreli park ettim':null,
     };
-    String selected=presets.containsKey(noteMessage)?noteMessage:'Özel not yaz';
-    final custom=TextEditingController(text:selected=='Özel not yaz'?noteMessage:'');
+    String selected=presets.containsKey(noteMessage)?noteMessage:presets.keys.first;
     bool showOnQr=noteActive;
     bool saving=false;
 
