@@ -62,8 +62,8 @@ module.exports = function registerNotificationRoutes(app, pool) {
       );
       CREATE INDEX IF NOT EXISTS idx_qr_request_log_recent ON qr_request_log(owner_id, visitor_key, created_at DESC);
       CREATE TABLE IF NOT EXISTS vehicle_park_notes (
-        id TEXT PRIMARY KEY,
-        vehicle_id TEXT NOT NULL,
+        id UUID PRIMARY KEY,
+        vehicle_id UUID NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
         message TEXT NOT NULL,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         expires_at TIMESTAMPTZ,
@@ -80,6 +80,8 @@ module.exports = function registerNotificationRoutes(app, pool) {
       );
       ALTER TABLE vehicle_notifications ADD COLUMN IF NOT EXISTS public_status_token TEXT;
       ALTER TABLE vehicle_notifications ADD COLUMN IF NOT EXISTS arriving_at TIMESTAMPTZ;
+      ALTER TABLE vehicle_notifications DROP CONSTRAINT IF EXISTS vehicle_notifications_status_check;
+      ALTER TABLE vehicle_notifications ADD CONSTRAINT vehicle_notifications_status_check CHECK (status IN ('new','read','arriving','resolved'));
       ALTER TABLE qr_conversations ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active';
       ALTER TABLE qr_conversations ADD COLUMN IF NOT EXISTS closed_at TIMESTAMPTZ;
     `);
