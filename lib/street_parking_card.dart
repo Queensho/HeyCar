@@ -86,7 +86,7 @@ class _StreetParkingCardState extends State<StreetParkingCard>{
   String get noteMessage=>'${parkNote?['message']??''}'.trim();
   bool get noteActive=>parkNote?['isActive']!=false&&noteMessage.isNotEmpty;
 
-  Future<void> _editNote()async{
+  Future<void> _editNote() async {
     const presets=<String,int?>{
       '5 dakika içinde döneceğim':5,
       '10 dakika içinde döneceğim':10,
@@ -97,36 +97,79 @@ class _StreetParkingCardState extends State<StreetParkingCard>{
     String selected=presets.containsKey(noteMessage)?noteMessage:'Özel not yaz';
     final custom=TextEditingController(text:selected=='Özel not yaz'?noteMessage:'');
     bool showOnQr=noteActive;
-    await showModalBottomSheet(
-      context:context,isScrollControlled:true,backgroundColor:Colors.transparent,
-      builder:(sheetContext)=>StatefulBuilder(builder:(context,setSheet)=>Padding(
-        padding:EdgeInsets.only(bottom:MediaQuery.viewInsetsOf(context).bottom),
+    bool saving=false;
+
+    final changed=await showModalBottomSheet<bool>(
+      context:context,
+      isScrollControlled:true,
+      backgroundColor:Colors.transparent,
+      builder:(sheetContext)=>StatefulBuilder(builder:(modalContext,setSheet)=>Padding(
+        padding:EdgeInsets.only(bottom:MediaQuery.viewInsetsOf(modalContext).bottom),
         child:Container(
-          constraints:BoxConstraints(maxHeight:MediaQuery.sizeOf(context).height*.82),
+          constraints:BoxConstraints(maxHeight:MediaQuery.sizeOf(modalContext).height*.82),
           decoration:BoxDecoration(color:CepqarTheme.panel,borderRadius:const BorderRadius.vertical(top:Radius.circular(28))),
-          child:SafeArea(top:false,child:SingleChildScrollView(padding:const EdgeInsets.fromLTRB(20,12,20,24),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-            Center(child:Container(width:42,height:4,decoration:BoxDecoration(color:CepqarTheme.line,borderRadius:BorderRadius.circular(9)))),
-            const SizedBox(height:18),
-            Text('Park Notu',style:TextStyle(color:CepqarTheme.text,fontSize:22,fontWeight:FontWeight.w900)),
-            const SizedBox(height:5),
-            Text('QR kodunu okutan kişi bu notu görebilir.',style:TextStyle(color:CepqarTheme.muted,fontSize:13.5)),
-            const SizedBox(height:14),
-            ...presets.keys.map((x)=>RadioListTile<String>(value:x,groupValue:selected,onChanged:(v)=>setSheet(()=>selected=v!),contentPadding:EdgeInsets.zero,activeColor:CepqarTheme.purple,title:Text(x,style:TextStyle(color:CepqarTheme.text,fontWeight:FontWeight.w700)))),
-            RadioListTile<String>(value:'Özel not yaz',groupValue:selected,onChanged:(v)=>setSheet(()=>selected=v!),contentPadding:EdgeInsets.zero,activeColor:CepqarTheme.purple,title:Text('Özel not yaz',style:TextStyle(color:CepqarTheme.text,fontWeight:FontWeight.w700))),
-            if(selected=='Özel not yaz')TextField(controller:custom,maxLength:180,maxLines:3,autofocus:true,style:TextStyle(color:CepqarTheme.text),decoration:InputDecoration(hintText:'Örn: 10 dakika içinde döneceğim.',hintStyle:TextStyle(color:CepqarTheme.muted),filled:true,fillColor:CepqarTheme.bg,border:OutlineInputBorder(borderRadius:BorderRadius.circular(15),borderSide:BorderSide(color:CepqarTheme.line)))),
-            SwitchListTile(value:showOnQr,onChanged:(v)=>setSheet(()=>showOnQr=v),contentPadding:EdgeInsets.zero,activeThumbColor:CepqarTheme.purple,title:Text('QR’da göster',style:TextStyle(color:CepqarTheme.text,fontWeight:FontWeight.w900)),subtitle:Text('Kapalıysa QR ziyaretçisine park notu gösterilmez.',style:TextStyle(color:CepqarTheme.muted,fontSize:12.5))),
-            const SizedBox(height:8),
-            SizedBox(width:double.infinity,height:52,child:FilledButton(onPressed:noteBusy?null:()async{
-              final msg=selected=='Özel not yaz'?custom.text.trim():selected;
-              if(showOnQr&&msg.isEmpty){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Park notunu yazmalısın.')));return;}
-              final ok=await _saveNote(msg,presets[selected],showOnQr);
-              if(ok&&sheetContext.mounted)Navigator.of(sheetContext).pop();
-            },style:FilledButton.styleFrom(backgroundColor:CepqarTheme.purple,foregroundColor:Colors.white,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15))),child:Text(showOnQr?'Notu Kaydet':'QR’da Gizle',style:const TextStyle(fontWeight:FontWeight.w900)))),
-          ]))),
+          child:SafeArea(top:false,child:SingleChildScrollView(
+            padding:const EdgeInsets.fromLTRB(20,12,20,24),
+            child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+              Center(child:Container(width:42,height:4,decoration:BoxDecoration(color:CepqarTheme.line,borderRadius:BorderRadius.circular(9)))),
+              const SizedBox(height:18),
+              Text('Park Notu',style:TextStyle(color:CepqarTheme.text,fontSize:22,fontWeight:FontWeight.w900)),
+              const SizedBox(height:5),
+              Text('QR kodunu okutan kişi bu notu görebilir.',style:TextStyle(color:CepqarTheme.muted,fontSize:13.5)),
+              const SizedBox(height:14),
+              ...presets.keys.map((x)=>RadioListTile<String>(value:x,groupValue:selected,onChanged:saving?null:(v)=>setSheet(()=>selected=v!),contentPadding:EdgeInsets.zero,activeColor:CepqarTheme.purple,title:Text(x,style:TextStyle(color:CepqarTheme.text,fontWeight:FontWeight.w700)))),
+              RadioListTile<String>(value:'Özel not yaz',groupValue:selected,onChanged:saving?null:(v)=>setSheet(()=>selected=v!),contentPadding:EdgeInsets.zero,activeColor:CepqarTheme.purple,title:Text('Özel not yaz',style:TextStyle(color:CepqarTheme.text,fontWeight:FontWeight.w700))),
+              if(selected=='Özel not yaz')TextField(controller:custom,maxLength:180,maxLines:3,autofocus:true,enabled:!saving,style:TextStyle(color:CepqarTheme.text),decoration:InputDecoration(hintText:'Örn: 10 dakika içinde döneceğim.',hintStyle:TextStyle(color:CepqarTheme.muted),filled:true,fillColor:CepqarTheme.bg,border:OutlineInputBorder(borderRadius:BorderRadius.circular(15),borderSide:BorderSide(color:CepqarTheme.line)))),
+              SwitchListTile(value:showOnQr,onChanged:saving?null:(v)=>setSheet(()=>showOnQr=v),contentPadding:EdgeInsets.zero,activeThumbColor:CepqarTheme.purple,title:Text('QR’da göster',style:TextStyle(color:CepqarTheme.text,fontWeight:FontWeight.w900)),subtitle:Text('Kapalıysa QR ziyaretçisine park notu gösterilmez.',style:TextStyle(color:CepqarTheme.muted,fontSize:12.5))),
+              const SizedBox(height:8),
+              SizedBox(width:double.infinity,height:52,child:FilledButton(
+                onPressed:saving?null:()async{
+                  final msg=selected=='Özel not yaz'?custom.text.trim():selected;
+                  if(showOnQr&&msg.isEmpty){
+                    ScaffoldMessenger.of(modalContext).showSnackBar(const SnackBar(content:Text('Park notunu yazmalısın.')));
+                    return;
+                  }
+                  final owner=OnboardingDraft.userId.trim();
+                  if(owner.isEmpty||widget.vehicleId.isEmpty)return;
+                  FocusScope.of(modalContext).unfocus();
+                  setSheet(()=>saving=true);
+                  try{
+                    http.Response r;
+                    if(!showOnQr){
+                      r=await http.delete(
+                        Uri.parse('$base/api/owner/vehicles/${Uri.encodeComponent(widget.vehicleId)}/park-note'),
+                        headers:{'x-owner-id':owner},
+                      ).timeout(const Duration(seconds:12));
+                    }else{
+                      final minutes=presets[selected];
+                      final expires=minutes==null?null:DateTime.now().toUtc().add(Duration(minutes:minutes)).toIso8601String();
+                      r=await http.post(
+                        Uri.parse('$base/api/owner/vehicles/${Uri.encodeComponent(widget.vehicleId)}/park-note'),
+                        headers:{'Content-Type':'application/json','x-owner-id':owner},
+                        body:jsonEncode({'message':msg,'expiresAt':expires,'isActive':true}),
+                      ).timeout(const Duration(seconds:12));
+                    }
+                    if(r.statusCode<200||r.statusCode>=300)throw Exception();
+                    if(sheetContext.mounted)Navigator.of(sheetContext).pop(true);
+                  }catch(_){
+                    if(sheetContext.mounted){
+                      setSheet(()=>saving=false);
+                      ScaffoldMessenger.of(modalContext).showSnackBar(const SnackBar(content:Text('Park notu kaydedilemedi. Tekrar dene.')));
+                    }
+                  }
+                },
+                style:FilledButton.styleFrom(backgroundColor:CepqarTheme.purple,foregroundColor:Colors.white,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15))),
+                child:Text(saving?'Kaydediliyor...':(showOnQr?'Notu Kaydet':'QR’da Gizle'),style:const TextStyle(fontWeight:FontWeight.w900)),
+              )),
+            ]),
+          )),
         ),
       )),
     );
+
+    await Future<void>.delayed(Duration.zero);
     custom.dispose();
+    if(changed==true&&mounted)await _loadParkNote();
   }
 
   @override Widget build(BuildContext context){
