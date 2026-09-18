@@ -351,14 +351,14 @@ module.exports = function registerNotificationRoutes(app, pool) {
       await ensurePrivacySchema();
       const own = await pool.query(`SELECT 1 FROM vehicles WHERE id=$1 AND owner_id=$2 LIMIT 1`, [vehicleId, ownerId]);
       if (!own.rows.length) return res.status(404).json({ error: 'VEHICLE_NOT_FOUND' });
-      await pool.query('BEGIN');
-      try {
-        await pool.query(`UPDATE vehicle_park_notes SET is_active=FALSE WHERE vehicle_id=$1 AND is_active=TRUE`, [vehicleId]);
-        const id = crypto.randomUUID();
-        const r = await pool.query(`INSERT INTO vehicle_park_notes(id,vehicle_id,message,expires_at,is_active) VALUES($1,$2,$3,$4,$5) RETURNING id,message,created_at AS "createdAt",expires_at AS "expiresAt",is_active AS "isActive"`, [id, vehicleId, message, expiresAt, isActive]);
-        await pool.query('COMMIT');
-        return res.status(201).json({ ok: true, parkNote: r.rows[0] });
-      } catch (e) { await pool.query('ROLLBACK'); throw e; }
+      const id = crypto.randomUUID();
+      const r = await pool.query(`WITH deactivated AS (
+        UPDATE vehicle_park_notes SET is_active=FALSE WHERE vehicle_id=$1 AND is_active=TRUE
+      )
+      INSERT INTO vehicle_park_notes(id,vehicle_id,message,expires_at,is_active)
+      VALUES($2,$1,$3,$4,$5)
+      RETURNING id,message,created_at AS "createdAt",expires_at AS "expiresAt",is_active AS "isActive"`, [vehicleId, id, message, expiresAt, isActive]);
+      return res.status(201).json({ ok: true, parkNote: r.rows[0] });
     } catch (e) { console.error(e); return res.status(500).json({ error: 'SERVER_ERROR' }); }
   });
 
