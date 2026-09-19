@@ -1,3 +1,4 @@
+const { validateScanSession } = require('./scan-session-service');
 function normalizeToken(raw) {
   return String(raw || '').trim().toUpperCase();
 }
@@ -19,6 +20,8 @@ module.exports = function registerCallRoutes(app, pool) {
       if (!qr.rows.length) return res.status(404).json({ error: 'ACTIVE_QR_NOT_FOUND' });
 
       const vehicle = qr.rows[0];
+      const scan = await validateScanSession(pool, String(req.headers['x-scan-token'] || ''), token);
+      if (!scan || String(scan.vehicle_id) !== String(vehicle.vehicle_id)) return res.status(401).json({ error: 'SCAN_SESSION_REQUIRED' });
       const busy = await pool.query(
         `SELECT 1 FROM anonymous_calls
          WHERE owner_id = $1 AND status IN ('ringing','accepted') AND expires_at > NOW()
