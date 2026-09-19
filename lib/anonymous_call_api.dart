@@ -2,15 +2,28 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'onboarding_backend.dart';
 import 'public_theme_backend.dart';
-import 'public_notification_api.dart';
 
 class AnonymousCallApi {
   const AnonymousCallApi._();
 
+  static Future<String> _createScanToken(String token) async {
+    final normalized=token.trim().toUpperCase();
+    if(normalized.isEmpty)throw Exception('QR_TOKEN_MISSING');
+    final response=await http.post(
+      Uri.parse('${PublicThemeBackend.baseUrl}/api/qr/${Uri.encodeComponent(normalized)}/session'),
+      headers: const {'Content-Type':'application/json'},
+    ).timeout(const Duration(seconds:12));
+    if(response.statusCode<200||response.statusCode>=300)throw Exception('SCAN_SESSION_FAILED_${response.statusCode}');
+    final data=jsonDecode(response.body) as Map<String,dynamic>;
+    final scanToken=data['scanToken']?.toString()??'';
+    if(scanToken.isEmpty)throw Exception('SCAN_TOKEN_MISSING');
+    return scanToken;
+  }
+
   static Future<Map<String, dynamic>> create(String token) async {
     final response = await http.post(
       Uri.parse('${PublicThemeBackend.baseUrl}/api/public/calls'),
-      headers: {'Content-Type': 'application/json', 'x-scan-token': await PublicNotificationApi.scanToken()},
+      headers: {'Content-Type': 'application/json', 'x-scan-token': await _createScanToken(token)},
       body: jsonEncode({'qrToken': token}),
     );
     final data = jsonDecode(response.body) as Map<String, dynamic>;
