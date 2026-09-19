@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'onboarding_backend.dart';
 import 'public_theme_backend.dart';
+import 'public_notification_api.dart';
 
 class AnonymousCallApi {
   const AnonymousCallApi._();
@@ -9,7 +10,7 @@ class AnonymousCallApi {
   static Future<Map<String, dynamic>> create(String token) async {
     final response = await http.post(
       Uri.parse('${PublicThemeBackend.baseUrl}/api/public/calls'),
-      headers: const {'Content-Type': 'application/json'},
+      headers: {'Content-Type': 'application/json', 'x-scan-token': await PublicNotificationApi.scanToken()},
       body: jsonEncode({'qrToken': token}),
     );
     final data = jsonDecode(response.body) as Map<String, dynamic>;
