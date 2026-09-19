@@ -124,10 +124,24 @@ class PushNotifications{
 
   static Future<void> ensureChannels()async{
     const android=AndroidInitializationSettings('ic_stat_cepqar');
-    await _local.initialize(const InitializationSettings(android:android),onDidReceiveNotificationResponse:handleResponse,onDidReceiveBackgroundNotificationResponse:heyCarNotificationResponseBackground);
-    final p=_local.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
-    await p?.createNotificationChannel(const AndroidNotificationChannel(_generalChannel,'Cepqar Bildirimleri',description:'Araç bildirimleri ve mesajlar',importance:Importance.high,playSound:true,enableVibration:true));
-    await p?.requestNotificationsPermission();
+    const darwin=DarwinInitializationSettings(
+      requestAlertPermission:false,
+      requestBadgePermission:false,
+      requestSoundPermission:false,
+    );
+    await _local.initialize(
+      const InitializationSettings(android:android,iOS:darwin),
+      onDidReceiveNotificationResponse:handleResponse,
+      onDidReceiveBackgroundNotificationResponse:heyCarNotificationResponseBackground,
+    );
+    if(Platform.isAndroid){
+      final p=_local.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      await p?.createNotificationChannel(const AndroidNotificationChannel(_generalChannel,'Cepqar Bildirimleri',description:'Araç bildirimleri ve mesajlar',importance:Importance.high,playSound:true,enableVibration:true));
+      await p?.requestNotificationsPermission();
+    }else if(Platform.isIOS){
+      final p=_local.resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
+      await p?.requestPermissions(alert:true,badge:true,sound:true);
+    }
   }
 
   static Future<void> registerToken()async{
@@ -189,7 +203,10 @@ class PushNotifications{
     final title=plate.isNotEmpty?plate.toUpperCase():(serverTitle.isNotEmpty?serverTitle:'Cepqar');
     final serverBody=m.notification?.body?.trim()??'';
     final body=serverBody.isNotEmpty?serverBody:(data['body']??data['message']??'Yeni bildiriminiz var.').toString();
-    final details=NotificationDetails(android:AndroidNotificationDetails(_generalChannel,'Cepqar Bildirimleri',channelDescription:'Araç bildirimleri ve mesajlar',importance:Importance.high,priority:Priority.high,autoCancel:true,visibility:NotificationVisibility.public,playSound:true,enableVibration:true,icon:'ic_stat_cepqar',largeIcon:const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),styleInformation:BigTextStyleInformation(body,contentTitle:title)));
+    final details=NotificationDetails(
+      android:AndroidNotificationDetails(_generalChannel,'Cepqar Bildirimleri',channelDescription:'Araç bildirimleri ve mesajlar',importance:Importance.high,priority:Priority.high,autoCancel:true,visibility:NotificationVisibility.public,playSound:true,enableVibration:true,icon:'ic_stat_cepqar',largeIcon:const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),styleInformation:BigTextStyleInformation(body,contentTitle:title)),
+      iOS:const DarwinNotificationDetails(presentAlert:true,presentBadge:true,presentSound:true),
+    );
     final key=(data['notificationId']??m.messageId??DateTime.now().millisecondsSinceEpoch.toString()).toString();
     await _local.show(_notificationId(key),title,body,details,payload:jsonEncode(data));
   }
