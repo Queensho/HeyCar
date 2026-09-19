@@ -77,7 +77,7 @@ for filename, replacements in TARGETS.items():
     if filename == 'lib/owner_settings_page.dart':
         # brand_frontend.py runs first and creates the Logoqr.png expression below.
         # Replace both raw and already theme-patched forms so repeated CI runs are idempotent.
-        light_logo = "Image.asset(CepqarTheme.isLight ? 'assets/Aylogo.png' : 'assets/Logoqr.png', key: ValueKey(CepqarTheme.isLight), height: 38, fit: BoxFit.contain)"
+        light_logo = "Image.asset('assets/Logoqr.png', height: 38, fit: BoxFit.contain)"
         text = text.replace("Image.asset('assets/Logoqr.png', height: 38, fit: BoxFit.contain)", light_logo, 1)
         text = re.sub(
             r"Image\.asset\(CepqarTheme\.isLight \? 'assets/Aylogo\.png' : 'assets/Logoqr\.png',(?: key: ValueKey\(CepqarTheme\.isLight\),)? height: 38, fit: BoxFit\.contain\)",
