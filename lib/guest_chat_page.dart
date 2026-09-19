@@ -82,14 +82,24 @@ class _GuestChatPageState extends State<GuestChatPage> {
       input.clear();
       await _load();
       _scrollToBottom();
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
+        final blocked=e.toString().contains('MESSAGE_NOT_ALLOWED');
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Mesaj gönderilemedi. Tekrar dene.')),
+          SnackBar(content: Text(blocked?'Bu mesaj küfür/hakaret filtresine takıldı.':'Mesaj gönderilemedi. Tekrar dene.')),
         );
       }
     } finally {
       if (mounted) setState(() => sending = false);
+    }
+  }
+
+  Future<void> _report() async {
+    try {
+      await PublicNotificationApi.reportConversation(widget.conversationId);
+      if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Şikayet alındı.')));
+    } catch (_) {
+      if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Şikayet gönderilemedi.')));
     }
   }
 
@@ -104,6 +114,7 @@ class _GuestChatPageState extends State<GuestChatPage> {
             Text('Araç Sahibi', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
             Text('Anonim sohbet', style: TextStyle(color: _muted, fontSize: 11)),
           ]),
+          actions:[IconButton(tooltip:'Şikayet et',onPressed:_report,icon:const Icon(Icons.flag_outlined))],
         ),
         body: Column(children: [
           Container(
