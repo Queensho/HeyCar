@@ -9,8 +9,14 @@ import 'upcoming_maintenance_page.dart';
 import 'maintenance_share_page.dart';
 import 'parking_location_card.dart';
 import 'vehicle_reminders_page.dart';
+import 'cepqar_theme.dart';
 
-const _bg=Color(0xFF060D1B),_panel=Color(0xFF0E172A),_line=Color(0xFF202D47),_purple=Color(0xFF813CFF),_muted=Color(0xFF9CA8BE),_lime=Color(0xFF68FF8B);
+Color get _bg => CepqarTheme.isLight ? CepqarTheme.bg : const Color(0xFF060D1B);
+Color get _panel => CepqarTheme.isLight ? CepqarTheme.panel : const Color(0xFF0E172A);
+Color get _line => CepqarTheme.isLight ? CepqarTheme.line : const Color(0xFF202D47);
+Color get _muted => CepqarTheme.isLight ? CepqarTheme.muted : const Color(0xFF9CA8BE);
+Color get _lime => CepqarTheme.isLight ? const Color(0xFF16834A) : const Color(0xFF68FF8B);
+const _purple = Color(0xFF813CFF);
 
 class VehicleCenterPage extends StatefulWidget {
   const VehicleCenterPage({super.key,required this.plate,required this.title});
@@ -22,7 +28,9 @@ class _VehicleCenterPageState extends State<VehicleCenterPage>{
   String get vid=>QrDraft.vehicleId.trim().isNotEmpty?QrDraft.vehicleId.trim():OnboardingDraft.vehicleId.trim();
   String get owner=>OnboardingDraft.userId.trim();
   Map<String,String> get headers=>{'x-owner-id':owner};
-  @override void initState(){super.initState();load();}
+  @override void initState(){super.initState();CepqarTheme.mode.addListener(_themeChanged);load();}
+  void _themeChanged(){if(mounted)setState((){});}
+  @override void dispose(){CepqarTheme.mode.removeListener(_themeChanged);super.dispose();}
   Future<void> load()async{try{final r=await http.get(Uri.parse('${QrBackend.baseUrl}/api/vehicles/$vid/maintenance'),headers:headers);final d=jsonDecode(r.body);if(!mounted)return;setState((){km=int.tryParse('${d['currentKm']}')??0;records=d['records'] is List?d['records']:[];upcoming=d['upcoming'] is List?d['upcoming']:[];loading=false;});}catch(_){if(mounted)setState(()=>loading=false);}}
   void maintenance()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>MaintenancePage(plate:widget.plate,title:widget.title))).then((_)=>load());
   void upcomingPage()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>UpcomingMaintenancePage(upcoming:upcoming,records:records,currentKm:km,onEditIntervals:maintenance))).then((_)=>load());
@@ -32,31 +40,31 @@ class _VehicleCenterPageState extends State<VehicleCenterPage>{
   Future<void> _activateQr()async{if(qrBusy||QrDraft.token.trim().isEmpty)return;if(mounted)setState(()=>qrBusy=true);try{await QrBackend.activate(token:QrDraft.token,vehicleId:vid,plate:widget.plate,make:QrDraft.make,model:QrDraft.model);if(!mounted)return;ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('${widget.plate} için QR etiketi aktif edildi.')));}catch(e){if(!mounted)return;ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString().replaceFirst('Exception: ',''))));}finally{if(mounted)setState(()=>qrBusy=false);}}
 
   @override Widget build(BuildContext context){
-    if(loading)return const Scaffold(backgroundColor:_bg,body:Center(child:CircularProgressIndicator()));
+    if(loading)return Scaffold(backgroundColor:_bg,body:Center(child:CircularProgressIndicator()));
     final Map<String,dynamic>? next=upcoming.isEmpty?null:Map<String,dynamic>.from(upcoming.first);
     final Map<String,dynamic>? last=records.isEmpty?null:Map<String,dynamic>.from(records.first);
     return Scaffold(backgroundColor:_bg,body:SafeArea(child:ListView(padding:const EdgeInsets.fromLTRB(22,18,22,30),children:[
       Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-        Row(children:[Flexible(child:Text(widget.plate,style:const TextStyle(color:Colors.white,fontSize:30,fontWeight:FontWeight.w900))),const SizedBox(width:9),const Icon(Icons.edit_outlined,color:Colors.white,size:25)]),
-        const SizedBox(height:5),Text(widget.title,style:const TextStyle(color:_muted,fontSize:18,fontWeight:FontWeight.w700)),
-        const SizedBox(height:5),Text(km>0?'$km km':'Kilometre girilmedi',style:const TextStyle(color:_muted,fontSize:16,fontWeight:FontWeight.w700)),
+        Row(children:[Flexible(child:Text(widget.plate,style:TextStyle(color:CepqarTheme.text,fontSize:30,fontWeight:FontWeight.w900))),const SizedBox(width:9),Icon(Icons.edit_outlined,color:CepqarTheme.text,size:25)]),
+        const SizedBox(height:5),Text(widget.title,style:TextStyle(color:_muted,fontSize:18,fontWeight:FontWeight.w700)),
+        const SizedBox(height:5),Text(km>0?'$km km':'Kilometre girilmedi',style:TextStyle(color:_muted,fontSize:16,fontWeight:FontWeight.w700)),
       ]),
       const SizedBox(height:24),
       Row(mainAxisAlignment:MainAxisAlignment.spaceBetween,children:[_Tab(Icons.directions_car_outlined,'Genel',true,(){}),_Tab(Icons.build_outlined,'Bakım',false,maintenance),_Tab(Icons.description_outlined,'Belgeler',false,reminders),_Tab(Icons.qr_code_rounded,qrBusy?'Bağlanıyor':'QR',false,qr)]),
       const SizedBox(height:22),ParkingLocationCard(vehicleId:vid),const SizedBox(height:18),
       InkWell(onTap:upcomingPage,borderRadius:BorderRadius.circular(22),child:_Next(data:next)),const SizedBox(height:14),
       Row(children:[
-        Expanded(child:SizedBox(height:54,child:FilledButton.icon(onPressed:maintenance,style:FilledButton.styleFrom(backgroundColor:_purple,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(16))),icon:const Icon(Icons.add,size:25),label:const Text('Bakım Kaydı Ekle',style:TextStyle(fontSize:15.5,fontWeight:FontWeight.w900))))),
+        Expanded(child:SizedBox(height:54,child:FilledButton.icon(onPressed:maintenance,style:FilledButton.styleFrom(backgroundColor:_purple,foregroundColor:Colors.white,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(16))),icon:Icon(Icons.add,size:25),label:Text('Bakım Kaydı Ekle',style:TextStyle(fontSize:15.5,fontWeight:FontWeight.w900))))),
         const SizedBox(width:9),
-        SizedBox(width:54,height:54,child:OutlinedButton(onPressed:shareHistory,style:OutlinedButton.styleFrom(padding:EdgeInsets.zero,foregroundColor:const Color(0xFFC06CFF),side:const BorderSide(color:_purple),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(16))),child:const Icon(Icons.share_outlined,size:23))),
+        SizedBox(width:54,height:54,child:OutlinedButton(onPressed:shareHistory,style:OutlinedButton.styleFrom(padding:EdgeInsets.zero,foregroundColor:CepqarTheme.isLight?CepqarTheme.purple:const Color(0xFFC06CFF),side:const BorderSide(color:_purple),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(16))),child:Icon(Icons.share_outlined,size:23))),
       ]),
       const SizedBox(height:25),
-      Row(children:[const Expanded(child:Text('Son Kayıtlar',style:TextStyle(color:Colors.white,fontSize:22,fontWeight:FontWeight.w900))),TextButton(onPressed:maintenance,child:const Text('Tümü  ›',style:TextStyle(color:Color(0xFFB653FF),fontSize:16,fontWeight:FontWeight.w900)))]),
+      Row(children:[Expanded(child:Text('Son Kayıtlar',style:TextStyle(color:CepqarTheme.text,fontSize:22,fontWeight:FontWeight.w900))),TextButton(onPressed:maintenance,child:Text('Tümü  ›',style:TextStyle(color:CepqarTheme.isLight?CepqarTheme.purple:const Color(0xFFB653FF),fontSize:16,fontWeight:FontWeight.w900)))]),
       if(last==null)_Empty(onTap:maintenance)else _Record(data:last,onTap:maintenance),
     ])));
   }
 }
-class _Tab extends StatelessWidget{const _Tab(this.icon,this.text,this.active,this.tap);final IconData icon;final String text;final bool active;final VoidCallback tap;@override Widget build(BuildContext context)=>InkWell(onTap:tap,borderRadius:BorderRadius.circular(15),child:SizedBox(width:76,child:Column(children:[Container(width:62,height:58,decoration:BoxDecoration(color:active?_purple:_panel,borderRadius:BorderRadius.circular(17)),child:Icon(icon,color:Colors.white,size:27)),const SizedBox(height:6),Text(text,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Colors.white,fontSize:12,fontWeight:FontWeight.w800))])));}
-class _Next extends StatelessWidget{const _Next({required this.data});final Map<String,dynamic>? data;@override Widget build(BuildContext context){final remaining=int.tryParse('${data?['remainingKm']}')??0;final label=data?['label']?.toString()??'Bakım';final detail=data==null?'Henüz bakım planı yok':'$label • ${remaining<=0?'Bakım zamanı':'$remaining km kaldı'}';return Container(padding:const EdgeInsets.all(18),decoration:BoxDecoration(color:const Color(0xFF082321),borderRadius:BorderRadius.circular(20),border:Border.all(color:const Color(0xFF12543D))),child:Row(children:[Container(width:62,height:62,decoration:BoxDecoration(color:const Color(0xFF173D25),borderRadius:BorderRadius.circular(18)),child:const Icon(Icons.build_rounded,color:_lime,size:36)),const SizedBox(width:15),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('Sonraki Bakım',style:TextStyle(color:Colors.white,fontSize:17,fontWeight:FontWeight.w900)),const SizedBox(height:5),Text(detail,style:const TextStyle(color:Colors.white,fontSize:15,fontWeight:FontWeight.w800))]))]));}}
-class _Record extends StatelessWidget{const _Record({required this.data,required this.onTap});final Map<String,dynamic> data;final VoidCallback onTap;@override Widget build(BuildContext context){final items=data['items'] is List?(data['items'] as List).join(' + '):'Bakım';return InkWell(onTap:onTap,child:Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:_panel,borderRadius:BorderRadius.circular(18),border:Border.all(color:_line)),child:Row(children:[const Icon(Icons.build_rounded,color:_lime,size:30),const SizedBox(width:13),Expanded(child:Text('${data['mileage']??'—'} km  •  $items',maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Colors.white,fontSize:14.5,fontWeight:FontWeight.w700))),const Icon(Icons.chevron_right,color:_muted)])));}}
-class _Empty extends StatelessWidget{const _Empty({required this.onTap});final VoidCallback onTap;@override Widget build(BuildContext context)=>InkWell(onTap:onTap,child:Container(padding:const EdgeInsets.all(18),decoration:BoxDecoration(color:_panel,borderRadius:BorderRadius.circular(18),border:Border.all(color:_line)),child:const Text('Henüz bakım kaydı yok.',style:TextStyle(color:_muted))));}
+class _Tab extends StatelessWidget{const _Tab(this.icon,this.text,this.active,this.tap);final IconData icon;final String text;final bool active;final VoidCallback tap;@override Widget build(BuildContext context)=>InkWell(onTap:tap,borderRadius:BorderRadius.circular(15),child:SizedBox(width:76,child:Column(children:[Container(width:62,height:58,decoration:BoxDecoration(color:active?_purple:_panel,borderRadius:BorderRadius.circular(17)),child:Icon(icon,color:active?Colors.white:CepqarTheme.text,size:27)),const SizedBox(height:6),Text(text,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:CepqarTheme.text,fontSize:12,fontWeight:FontWeight.w800))])));}
+class _Next extends StatelessWidget{const _Next({required this.data});final Map<String,dynamic>? data;@override Widget build(BuildContext context){final remaining=int.tryParse('${data?['remainingKm']}')??0;final label=data?['label']?.toString()??'Bakım';final detail=data==null?'Henüz bakım planı yok':'$label • ${remaining<=0?'Bakım zamanı':'$remaining km kaldı'}';return Container(padding:const EdgeInsets.all(18),decoration:BoxDecoration(color:CepqarTheme.isLight?const Color(0xFFEAF8EF):const Color(0xFF082321),borderRadius:BorderRadius.circular(20),border:Border.all(color:CepqarTheme.isLight?const Color(0xFFC7E8D4):const Color(0xFF12543D))),child:Row(children:[Container(width:62,height:62,decoration:BoxDecoration(color:CepqarTheme.isLight?const Color(0xFFD7F0E1):const Color(0xFF173D25),borderRadius:BorderRadius.circular(18)),child:Icon(Icons.build_rounded,color:_lime,size:36)),const SizedBox(width:15),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('Sonraki Bakım',style:TextStyle(color:CepqarTheme.text,fontSize:17,fontWeight:FontWeight.w900)),const SizedBox(height:5),Text(detail,style:TextStyle(color:CepqarTheme.text,fontSize:15,fontWeight:FontWeight.w800))]))]));}}
+class _Record extends StatelessWidget{const _Record({required this.data,required this.onTap});final Map<String,dynamic> data;final VoidCallback onTap;@override Widget build(BuildContext context){final items=data['items'] is List?(data['items'] as List).join(' + '):'Bakım';return InkWell(onTap:onTap,child:Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:_panel,borderRadius:BorderRadius.circular(18),border:Border.all(color:_line)),child:Row(children:[Icon(Icons.build_rounded,color:_lime,size:30),const SizedBox(width:13),Expanded(child:Text('${data['mileage']??'—'} km  •  $items',maxLines:2,overflow:TextOverflow.ellipsis,style:TextStyle(color:CepqarTheme.text,fontSize:14.5,fontWeight:FontWeight.w700))),Icon(Icons.chevron_right,color:_muted)])));}}
+class _Empty extends StatelessWidget{const _Empty({required this.onTap});final VoidCallback onTap;@override Widget build(BuildContext context)=>InkWell(onTap:onTap,child:Container(padding:const EdgeInsets.all(18),decoration:BoxDecoration(color:_panel,borderRadius:BorderRadius.circular(18),border:Border.all(color:_line)),child:Text('Henüz bakım kaydı yok.',style:TextStyle(color:_muted))));}
