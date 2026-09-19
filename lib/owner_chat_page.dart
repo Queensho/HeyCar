@@ -119,15 +119,28 @@ class _OwnerChatPageState extends State<OwnerChatPage> {
         headers: {'Content-Type': 'application/json', 'x-owner-id': OnboardingDraft.userId.trim()},
         body: jsonEncode({'message': text}),
       ).timeout(const Duration(seconds: 15));
-      if (r.statusCode < 200 || r.statusCode >= 300) throw Exception();
+      if (r.statusCode < 200 || r.statusCode >= 300) {
+        final d=jsonDecode(r.body);
+        if(d is Map && d['error']=='MESSAGE_NOT_ALLOWED')throw Exception('MESSAGE_NOT_ALLOWED');
+        throw Exception();
+      }
       input.clear();
       await _load();
       _scrollToBottom();
-    } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mesaj gönderilemedi. Tekrar dene.')));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().contains('MESSAGE_NOT_ALLOWED')?'Bu mesaj küfür/hakaret filtresine takıldı.':'Mesaj gönderilemedi. Tekrar dene.')));
     } finally {
       if (mounted) setState(() => sending = false);
     }
+  }
+
+  Future<void> _report() async {
+    final id=conversationId;if(id==null||id.isEmpty)return;
+    try{
+      final r=await http.post(Uri.parse('$baseUrl/api/owner/conversations/${Uri.encodeComponent(id)}/report'),headers:{'Content-Type':'application/json','x-owner-id':OnboardingDraft.userId.trim()},body:jsonEncode({'reason':'uygunsuz_icerik'})).timeout(const Duration(seconds:15));
+      if(r.statusCode<200||r.statusCode>=300)throw Exception();
+      if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Şikayet alındı.')));
+    }catch(_){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Şikayet gönderilemedi.')));}
   }
 
   Future<void> _block() async {
@@ -184,6 +197,8 @@ class _OwnerChatPageState extends State<OwnerChatPage> {
           ],
         ),
         actions: [
+          if (!loading && conversationId != null)
+            IconButton(tooltip: 'Şikayet et', onPressed: _report, icon: const Icon(Icons.flag_outlined)),
           if (!loading && !blocked && conversationId != null)
             IconButton(tooltip: 'Oturumu Engelle', onPressed: _block, icon: const Icon(Icons.block_rounded, color: _danger)),
         ],
