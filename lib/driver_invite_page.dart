@@ -788,7 +788,7 @@ class _DriverHome extends StatelessWidget {
                 onTap: onOpenVehicles,
                 borderRadius: BorderRadius.circular(26),
                 child: Container(
-                  minHeight: 108,
+                  constraints: const BoxConstraints(minHeight: 108),
                   padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 17),
                   decoration: BoxDecoration(
                     color: _panel,
