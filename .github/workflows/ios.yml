@@ -1,0 +1,101 @@
+name: Build Cepqar iOS
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "lib/**"
+      - "assets/**"
+      - "pubspec.yaml"
+      - "tool/**"
+      - ".github/workflows/ios.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Apply shared Cepqar patches
+        run: |
+          python3 tool/brand_frontend.py
+          python3 tool/owner_light_theme_patch.py
+          python3 tool/maintenance_light_theme_patch.py
+          python3 tool/call_ringback_patch.py
+          python3 tool/driver_theme_patch.py
+          python3 tool/owner_header_size_patch.py
+
+      - name: Generate iOS platform
+        run: flutter create . --platforms=ios --project-name app --org com.cepqar --no-pub
+
+      - name: Configure Cepqar iOS
+        run: |
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName Cepqar" ios/Runner/Info.plist || true
+          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'QR kod taramak ve araç görselleri için kamera erişimi gerekir.'" ios/Runner/Info.plist
+          /usr/libexec/PlistBuddy -c "Add :NSMicrophoneUsageDescription string 'Cepqar sesli görüşmeleri için mikrofon erişimi gerekir.'" ios/Runner/Info.plist
+          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'Araç görseli seçmek için fotoğraf arşivi erişimi gerekir.'" ios/Runner/Info.plist
+          /usr/libexec/PlistBuddy -c "Add :NSLocationWhenInUseUsageDescription string 'Park yerinizi kaydetmek için konum erişimi gerekir.'" ios/Runner/Info.plist
+          /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes array" ios/Runner/Info.plist
+          /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:0 string remote-notification" ios/Runner/Info.plist
+          /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:1 string voip" ios/Runner/Info.plist
+          cat > ios/Runner/Runner.entitlements <<'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>aps-environment</key>
+            <string>development</string>
+          </dict>
+          </plist>
+          EOF
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("ios/Runner.xcodeproj/project.pbxproj")
+          s=p.read_text()
+          s=s.replace("PRODUCT_BUNDLE_IDENTIFIER = com.cepqar.app;", "PRODUCT_BUNDLE_IDENTIFIER = com.cepqar.app;\n\t\t\t\tCODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;")
+          p.write_text(s)
+          PY
+
+      - name: Restore Firebase iOS config
+        env:
+          GOOGLE_SERVICE_INFO_PLIST_B64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_B64 }}
+        run: |
+          if [ -n "$GOOGLE_SERVICE_INFO_PLIST_B64" ]; then
+            printf '%s' "$GOOGLE_SERVICE_INFO_PLIST_B64" | base64 --decode > ios/Runner/GoogleService-Info.plist
+            /usr/libexec/PlistBuddy -c "Print :BUNDLE_ID" ios/Runner/GoogleService-Info.plist | grep -qx "com.cepqar.app"
+            echo "Firebase iOS config restored for com.cepqar.app"
+          else
+            echo "GOOGLE_SERVICE_INFO_PLIST_B64 is not set; unsigned compile test will continue."
+          fi
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Analyze app
+        run: flutter analyze lib --no-fatal-infos --no-fatal-warnings
+
+      - name: Build unsigned iOS app
+        run: flutter build ios --debug --no-codesign --target lib/entry_theme_live.dart
+
+      - name: Package unsigned iOS app
+        run: |
+          mkdir -p build/ios-artifact
+          ditto -c -k --sequesterRsrc --keepParent build/ios/iphoneos/Runner.app build/ios-artifact/Cepqar-iOS-unsigned.zip
+
+      - name: Upload unsigned iOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cepqar-ios-unsigned
+          path: build/ios-artifact/Cepqar-iOS-unsigned.zip
+          retention-days: 7
