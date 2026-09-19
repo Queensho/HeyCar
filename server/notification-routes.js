@@ -4,6 +4,8 @@ const path = require('path');
 const crypto = require('crypto');
 const registerConversationRoutes = require('./conversation-routes');
 const { sendQrNotificationPush } = require('./notification-push-hook');
+const { createScanSession, validateScanSession } = require('./scan-session-service');
+const { moderateMessage } = require('./message-moderation');
 
 function normalizeToken(raw) {
   return String(raw || '').trim().toUpperCase();
@@ -96,36 +98,27 @@ module.exports = function registerNotificationRoutes(app, pool) {
     return r.rows[0];
   }
 
-  function visitorKey(req) {
-    return String(req.headers['x-guest-token'] || req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'anonymous').split(',')[0].trim().slice(0, 200);
-  }
-
-  async function activeQr(token) {
-    const qr = await pool.query(
-      `SELECT q.vehicle_id, v.owner_id, v.plate
-         FROM qr_tags q
-         JOIN vehicles v ON v.id = q.vehicle_id
-        WHERE q.token = $1 AND q.status = 'active'
-        LIMIT 1`,
-      [token]
-    );
-    return qr.rows[0] || null;
-  }
-
   async function guardPublicRequest(req, token, qr) {
-    await ensurePrivacySchema();
-    const ownerId = String(qr.owner_id);
-    const key = visitorKey(req);
-    const blocked = await pool.query(`SELECT 1 FROM owner_blocked_visitors WHERE owner_id=$1 AND visitor_key=$2 LIMIT 1`, [ownerId, key]);
-    if (blocked.rows.length) return { ok: false, status: 403, error: 'VISITOR_BLOCKED' };
-    const settings = await getPrivacy(ownerId);
-    if (!settings.qr_abuse_protection) return { ok: true };
-    await pool.query(`DELETE FROM qr_request_log WHERE created_at < NOW() - INTERVAL '1 day'`);
-    const recent = await pool.query(`SELECT COUNT(*)::int AS count FROM qr_request_log WHERE owner_id=$1 AND visitor_key=$2 AND created_at > NOW() - INTERVAL '1 minute'`, [ownerId, key]);
-    if ((recent.rows[0]?.count || 0) >= 10) return { ok: false, status: 429, error: 'TOO_MANY_REQUESTS' };
-    await pool.query(`INSERT INTO qr_request_log(owner_id, qr_token, visitor_key) VALUES($1,$2,$3)`, [ownerId, token, key]);
-    return { ok: true };
+    const raw = String(req.headers['x-scan-token'] || '').trim();
+    const session = await validateScanSession(pool, raw, token);
+    if (!session || String(session.vehicle_id) !== String(qr.vehicle_id)) {
+      return { ok: false, status: 401, error: 'SCAN_SESSION_REQUIRED' };
+    }
+    return { ok: true, session };
   }
+
+  app.post('/api/qr/:token/session', async (req, res) => {
+    const token = normalizeToken(req.params.token);
+    if (!token) return res.status(400).json({ error: 'TOKEN_REQUIRED' });
+    try {
+      const qr = await activeQr(token);
+      if (!qr) return res.status(404).json({ error: 'ACTIVE_QR_NOT_FOUND' });
+      await pool.query(`DELETE FROM qr_scan_sessions WHERE expires_at<=NOW()`);
+      const session = await createScanSession(pool, qr);
+      res.set('Cache-Control', 'no-store');
+      return res.status(201).json({ ok: true, scanToken: session.token, expiresInSeconds: session.expiresInSeconds });
+    } catch (e) { console.error(e); return res.status(500).json({ error: 'SERVER_ERROR' }); }
+  });
 
   app.get('/api/owner/privacy-settings', async (req, res) => {
     const ownerId = String(req.headers['x-owner-id'] || '').trim();
@@ -289,6 +282,10 @@ module.exports = function registerNotificationRoutes(app, pool) {
     const latitude = req.body?.latitude == null ? null : Number(req.body.latitude);
     const longitude = req.body?.longitude == null ? null : Number(req.body.longitude);
     if (!token || !allowedTypes.has(type)) return res.status(400).json({ error: 'INVALID_REQUEST' });
+    if (type === 'message' && message) {
+      const moderation = moderateMessage(message);
+      if (!moderation.ok) return res.status(422).json({ error: moderation.code });
+    }
     if ((latitude != null && !Number.isFinite(latitude)) || (longitude != null && !Number.isFinite(longitude))) return res.status(400).json({ error: 'INVALID_LOCATION' });
     try {
       const qr = await activeQr(token);
@@ -386,6 +383,8 @@ module.exports = function registerNotificationRoutes(app, pool) {
       await ensurePrivacySchema();
       const qr = await activeQr(token);
       if (!qr) return res.status(404).json({ error: 'ACTIVE_QR_NOT_FOUND' });
+      const guard = await guardPublicRequest(req, token, qr);
+      if (!guard.ok) return res.status(guard.status).json({ error: guard.error });
       await expireParkNotes(String(qr.vehicle_id));
       const r = await pool.query(`SELECT id,message,created_at AS "createdAt",expires_at AS "expiresAt" FROM vehicle_park_notes WHERE vehicle_id=$1 AND is_active=TRUE AND (expires_at IS NULL OR expires_at>NOW()) ORDER BY created_at DESC LIMIT 1`, [qr.vehicle_id]);
       return res.json({ ok: true, parkNote: r.rows[0] || null });
