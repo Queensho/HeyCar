@@ -221,7 +221,9 @@ module.exports = function registerNotificationRoutes(app, pool) {
     if (!ownerId) return res.status(401).json({ error: 'OWNER_REQUIRED' });
     try {
       await ensurePrivacySchema();
-      await pool.query(`DELETE FROM owner_blocked_visitors WHERE owner_id=$1 AND visitor_key=$2`, [ownerId, decodeURIComponent(String(req.params.visitorKey))]);
+      const key=decodeURIComponent(String(req.params.visitorKey));
+      await pool.query(`DELETE FROM owner_blocked_visitors WHERE owner_id=$1 AND visitor_key=$2`, [ownerId, key]);
+      await pool.query(`UPDATE qr_scan_sessions SET blocked=FALSE WHERE owner_id=$1 AND token_hash=$2 AND expires_at>NOW()`, [ownerId, key]);
       return res.json({ ok: true });
     } catch (e) { console.error(e); return res.status(500).json({ error: 'SERVER_ERROR' }); }
   });
