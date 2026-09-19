@@ -18,9 +18,22 @@ class PublicNotificationApi {
 
   static String currentToken() => (Uri.base.queryParameters['tag'] ?? '').trim().toUpperCase();
   static String _conversationStorageKey() => 'cepqar_conversation_${currentToken()}';
+  static String _scanStorageKey() => 'cepqar_scan_${currentToken()}';
+  static String _scanExpiryStorageKey() => 'cepqar_scan_exp_${currentToken()}';
+
   static Future<String> scanToken() {
     final current=_scanToken;
     if(current!=null&&current.isNotEmpty)return Future.value(current);
+    final saved=html.window.sessionStorage[_scanStorageKey()]??'';
+    final expiry=int.tryParse(html.window.sessionStorage[_scanExpiryStorageKey()]??'')??0;
+    if(saved.isNotEmpty&&expiry>DateTime.now().millisecondsSinceEpoch){
+      _scanToken=saved;
+      return Future.value(saved);
+    }
+    if(saved.isNotEmpty){
+      html.window.sessionStorage.remove(_scanStorageKey());
+      html.window.sessionStorage.remove(_scanExpiryStorageKey());
+    }
     final pending=_scanTokenFuture;
     if(pending!=null)return pending;
     final future=_createScanToken();
@@ -36,7 +49,10 @@ class PublicNotificationApi {
     final d=jsonDecode(r.body) as Map<String,dynamic>;
     final value=d['scanToken']?.toString()??'';
     if(value.isEmpty)throw Exception('SCAN_TOKEN_MISSING');
+    final seconds=(d['expiresInSeconds'] is num?(d['expiresInSeconds'] as num).toInt():1800).clamp(60,1800);
     _scanToken=value;
+    html.window.sessionStorage[_scanStorageKey()]=value;
+    html.window.sessionStorage[_scanExpiryStorageKey()]='${DateTime.now().millisecondsSinceEpoch+(seconds-30)*1000}';
     return value;
   }
 
