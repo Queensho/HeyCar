@@ -98,6 +98,18 @@ module.exports = function registerNotificationRoutes(app, pool) {
     return r.rows[0];
   }
 
+  async function activeQr(token) {
+    const r = await pool.query(
+      `SELECT q.token, q.vehicle_id, v.owner_id, v.plate
+       FROM qr_tags q
+       JOIN vehicles v ON v.id = q.vehicle_id
+       WHERE q.token = $1 AND q.status = 'active'
+       LIMIT 1`,
+      [normalizeToken(token)]
+    );
+    return r.rows[0] || null;
+  }
+
   async function guardPublicRequest(req, token, qr) {
     const raw = String(req.headers['x-scan-token'] || '').trim();
     const session = await validateScanSession(pool, raw, token);
