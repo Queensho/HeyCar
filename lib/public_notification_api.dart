@@ -17,6 +17,7 @@ class PublicNotificationApi {
   static Future<String>? _scanTokenFuture;
 
   static String currentToken() => (Uri.base.queryParameters['tag'] ?? '').trim().toUpperCase();
+  static String _conversationStorageKey() => 'cepqar_conversation_${currentToken()}';
   static Future<String> scanToken() {
     final current=_scanToken;
     if(current!=null&&current.isNotEmpty)return Future.value(current);
