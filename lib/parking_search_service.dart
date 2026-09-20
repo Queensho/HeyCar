@@ -110,7 +110,10 @@ class ParkingSearchService {
       _lastRequest = _now();
       // 4 km query covers 3 km radius plus 0.01-degree cache-grid rounding.
       final query =
-          '[out:json][timeout:20][maxsize:8388608];nwr["amenity"="parking"]["access"!="private"]["access"!="no"](around:4000,$lat,$lon);out center tags;';
+          '[out:json][timeout:20][maxsize:8388608];('
+          'nwr["amenity"="parking"]["access"!="private"]["access"!="no"](around:4000,$lat,$lon);'
+          'nwr["shop"="mall"](around:4000,$lat,$lon);'
+          ');out center tags;';';
       http.Response? response;
       Object? lastError;
       for (final endpoint in _endpoints) {
@@ -163,10 +166,41 @@ class ParkingSearchService {
           'Otopark sonuçları tamamlanamadı. Tekrar dene.',
         );
       final places = <String, ParkingPlace>{};
+      final malls = <({double lat, double lon, String name})>[];
       for (final raw in data['elements'] as List) {
         if (raw is! Map) continue;
-        final place = ParkingPlace.fromOsm(Map<String, dynamic>.from(raw));
+        final element = Map<String, dynamic>.from(raw);
+        final tags = element['tags'];
+        if (tags is Map && tags['shop'] == 'mall') {
+          final center = element['center'];
+          final mallLat = element['lat'] ?? (center is Map ? center['lat'] : null);
+          final mallLon = element['lon'] ?? (center is Map ? center['lon'] : null);
+          if (mallLat is num && mallLon is num) {
+            malls.add((lat: mallLat.toDouble(), lon: mallLon.toDouble(),
+              name: '${tags['name:tr'] ?? tags['name'] ?? ''}'));
+          }
+          continue;
+        }
+        final place = ParkingPlace.fromOsm(element);
         if (place != null) places[place.id] = place;
+      }
+      for (final entry in places.entries.toList()) {
+        final place = entry.value;
+        if (place.isMall) continue;
+        ({double lat, double lon, String name})? nearest;
+        var nearestDistance = 250.0;
+        for (final mall in malls) {
+          final distance = distanceMeters(place.latitude, place.longitude, mall.lat, mall.lon);
+          if (distance <= nearestDistance) { nearest = mall; nearestDistance = distance; }
+        }
+        if (nearest != null) {
+          final tags = Map<String, String>.from(place.tags)..['cepqar:mall'] = 'yes';
+          if (place.name == 'İsimsiz otopark' && nearest.name.isNotEmpty) {
+            tags['name'] = '${nearest.name} Otoparkı';
+          }
+          places[entry.key] = ParkingPlace(id: place.id, latitude: place.latitude,
+            longitude: place.longitude, tags: Map.unmodifiable(tags));
+        }
       }
       final cache = _Cache(_now(), places.values.toList());
       _cache.remove(key);
