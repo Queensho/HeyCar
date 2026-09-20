@@ -124,9 +124,9 @@ class ParkingSearchService {
                   'Accept': 'application/json',
                   'User-Agent': 'Cepqar/1.0 (parking search)',
                 },
-                body: 'data=\${Uri.encodeQueryComponent(query)}',
+                body: 'data=${Uri.encodeQueryComponent(query)}',
               )
-              .timeout(const Duration(seconds: 28));
+              .timeout(const Duration(seconds: 10));
           if (candidate.statusCode == 200) {
             response = candidate;
             break;
