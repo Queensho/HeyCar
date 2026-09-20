@@ -1,8 +1,60 @@
-const express=require('express');
-module.exports=function registerParkingRoutes(app,pool){
- const owner=req=>String(req.headers['x-owner-id']||'').trim();
- async function owns(req,res){const o=owner(req),v=String(req.params.vehicleId||'');if(!o){res.status(401).json({error:'OWNER_REQUIRED'});return null;}const r=await pool.query('SELECT id FROM vehicles WHERE id::text=$1 AND owner_id::text=$2 LIMIT 1',[v,o]);if(!r.rows.length){res.status(403).json({error:'FORBIDDEN'});return null;}return String(r.rows[0].id);}
- app.get('/api/vehicles/:vehicleId/parking',async(req,res)=>{try{const v=await owns(req,res);if(!v)return;const r=await pool.query('SELECT area,floor,spot,note,updated_at FROM vehicle_parking_locations WHERE vehicle_id=$1 AND owner_id=$2 LIMIT 1',[v,owner(req)]);res.json({ok:true,parking:r.rows[0]||null});}catch(e){console.error(e);res.status(500).json({error:'SERVER_ERROR'});}});
- app.put('/api/vehicles/:vehicleId/parking',express.json(),async(req,res)=>{try{const v=await owns(req,res);if(!v)return;const area=String(req.body.area||'').trim().slice(0,40),floor=String(req.body.floor||'').trim().slice(0,20),spot=String(req.body.spot||'').trim().slice(0,30),note=String(req.body.note||'').trim().slice(0,180);if(!area&&!floor&&!spot)return res.status(400).json({error:'PARKING_FIELDS_REQUIRED'});const r=await pool.query(`INSERT INTO vehicle_parking_locations(vehicle_id,owner_id,area,floor,spot,note,updated_at) VALUES($1,$2,$3,$4,$5,$6,NOW()) ON CONFLICT(vehicle_id) DO UPDATE SET owner_id=EXCLUDED.owner_id,area=EXCLUDED.area,floor=EXCLUDED.floor,spot=EXCLUDED.spot,note=EXCLUDED.note,updated_at=NOW() RETURNING area,floor,spot,note,updated_at`,[v,owner(req),area,floor,spot,note]);res.json({ok:true,parking:r.rows[0]});}catch(e){console.error(e);res.status(500).json({error:'SERVER_ERROR'});}});
- app.delete('/api/vehicles/:vehicleId/parking',async(req,res)=>{try{const v=await owns(req,res);if(!v)return;await pool.query('DELETE FROM vehicle_parking_locations WHERE vehicle_id=$1 AND owner_id=$2',[v,owner(req)]);res.json({ok:true});}catch(e){console.error(e);res.status(500).json({error:'SERVER_ERROR'});}});
+const express = require('express');
+module.exports = function registerParkingRoutes(app, pool) {
+  const owner = req => String(req.headers['x-owner-id'] || '').trim();
+  const fields = 'area,floor,spot,note,parking_name,latitude,longitude,osm_id,started_at,updated_at';
+  async function owns(req, res) {
+    const o = owner(req), v = String(req.params.vehicleId || '');
+    if (!o) { res.status(401).json({ error: 'OWNER_REQUIRED' }); return null; }
+    const r = await pool.query('SELECT id FROM vehicles WHERE id::text=$1 AND owner_id::text=$2 LIMIT 1', [v, o]);
+    if (!r.rows.length) { res.status(403).json({ error: 'FORBIDDEN' }); return null; }
+    return String(r.rows[0].id);
+  }
+  app.get('/api/vehicles/:vehicleId/parking', async (req, res) => {
+    try {
+      const v = await owns(req, res); if (!v) return;
+      const r = await pool.query(`SELECT ${fields} FROM vehicle_parking_locations WHERE vehicle_id=$1 AND owner_id=$2 LIMIT 1`, [v, owner(req)]);
+      res.json({ ok: true, parking: r.rows[0] || null });
+    } catch (e) { console.error(e); res.status(500).json({ error: 'SERVER_ERROR' }); }
+  });
+  app.put('/api/vehicles/:vehicleId/parking', express.json(), async (req, res) => {
+    try {
+      const v = await owns(req, res); if (!v) return;
+      const body = req.body || {};
+      const area = String(body.area || '').trim().slice(0, 40), floor = String(body.floor || '').trim().slice(0, 20);
+      const spot = String(body.spot || '').trim().slice(0, 30), note = String(body.note || '').trim().slice(0, 180);
+      const hasLocation = ['parking_name', 'latitude', 'longitude', 'osm_id'].some(k => Object.hasOwn(body, k));
+      const name = String(body.parking_name || '').trim().slice(0, 200), osmId = String(body.osm_id || '').trim();
+      const lat = body.latitude, lon = body.longitude;
+      if (hasLocation && (!name || typeof lat !== 'number' || typeof lon !== 'number' ||
+          !Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180 ||
+          !/^(node|way|relation)\/\d+$/.test(osmId) || osmId.length > 80)) {
+        return res.status(400).json({ error: 'INVALID_PARKING_LOCATION' });
+      }
+      if (!hasLocation && !area && !floor && !spot) {
+        const existing = await pool.query('SELECT 1 FROM vehicle_parking_locations WHERE vehicle_id=$1 AND owner_id=$2 AND latitude IS NOT NULL', [v, owner(req)]);
+        if (!existing.rows.length) return res.status(400).json({ error: 'PARKING_FIELDS_REQUIRED' });
+      }
+      const r = await pool.query(`INSERT INTO vehicle_parking_locations
+        (vehicle_id,owner_id,area,floor,spot,note,parking_name,latitude,longitude,osm_id,started_at,updated_at)
+        VALUES($1,$2,$3,$4,$5,$6,$8,$9,$10,$11,CASE WHEN $7 THEN NOW() ELSE NULL END,NOW())
+        ON CONFLICT(vehicle_id) DO UPDATE SET owner_id=EXCLUDED.owner_id,
+          area=EXCLUDED.area,floor=EXCLUDED.floor,spot=EXCLUDED.spot,note=EXCLUDED.note,
+          parking_name=CASE WHEN $7 THEN EXCLUDED.parking_name ELSE vehicle_parking_locations.parking_name END,
+          latitude=CASE WHEN $7 THEN EXCLUDED.latitude ELSE vehicle_parking_locations.latitude END,
+          longitude=CASE WHEN $7 THEN EXCLUDED.longitude ELSE vehicle_parking_locations.longitude END,
+          osm_id=CASE WHEN $7 THEN EXCLUDED.osm_id ELSE vehicle_parking_locations.osm_id END,
+          started_at=CASE WHEN $7 THEN NOW() ELSE vehicle_parking_locations.started_at END,
+          updated_at=NOW() RETURNING ${fields}`,
+        [v, owner(req), area, floor, spot, note, hasLocation, hasLocation ? name : null,
+          hasLocation ? lat : null, hasLocation ? lon : null, hasLocation ? osmId : null]);
+      res.json({ ok: true, parking: r.rows[0] });
+    } catch (e) { console.error(e); res.status(500).json({ error: 'SERVER_ERROR' }); }
+  });
+  app.delete('/api/vehicles/:vehicleId/parking', async (req, res) => {
+    try {
+      const v = await owns(req, res); if (!v) return;
+      await pool.query('DELETE FROM vehicle_parking_locations WHERE vehicle_id=$1 AND owner_id=$2', [v, owner(req)]);
+      res.json({ ok: true });
+    } catch (e) { console.error(e); res.status(500).json({ error: 'SERVER_ERROR' }); }
+  });
 };
