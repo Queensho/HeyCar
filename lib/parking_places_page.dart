@@ -543,7 +543,7 @@ class _ParkingPlacesPageState extends State<ParkingPlacesPage>
                                   ),
                                 ),
                               if (_searching)
-                                const Positioned(
+                                Positioned(
                                   left: 0,
                                   right: 0,
                                   top: 0,
