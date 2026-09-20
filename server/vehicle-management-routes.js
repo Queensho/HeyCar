@@ -54,4 +54,54 @@ module.exports = function registerVehicleManagementRoutes(app, pool) {
       return res.status(500).json({ error:'SERVER_ERROR' });
     } finally { client.release(); }
   });
+  app.put('/api/owner/vehicles/:vehicleId', async (req, res) => {
+    const owner = ownerId(req);
+    const vehicleId = String(req.params.vehicleId || '').trim();
+    const body = req.body || {};
+    if (!owner) return res.status(401).json({ error: 'OWNER_REQUIRED' });
+    if (!vehicleId || typeof body.plate !== 'string' || typeof body.make !== 'string' ||
+        (body.model !== undefined && typeof body.model !== 'string')) {
+      return res.status(400).json({ error: 'INVALID_INPUT' });
+    }
+    const plate = body.plate.trim().toUpperCase();
+    const make = body.make.trim();
+    const model = (body.model || '').trim();
+    if (!plate || !make || plate.length > 20 || make.length > 80 || model.length > 80) {
+      return res.status(400).json({ error: 'INVALID_INPUT' });
+    }
+    let client;
+    try {
+      client = await pool.connect();
+      await client.query('BEGIN');
+      const owned = await client.query(
+        'SELECT id FROM vehicles WHERE id::text=$1 AND owner_id::text=$2 FOR UPDATE',
+        [vehicleId, owner]);
+      if (!owned.rows.length) {
+        await client.query('ROLLBACK');
+        return res.status(403).json({ error: 'FORBIDDEN' });
+      }
+      // Serialize edits that request the same normalized plate.
+      await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [plate.replace(/ /g, '')]);
+      const duplicate = await client.query(
+        "SELECT 1 FROM vehicles WHERE UPPER(REPLACE(plate,' ',''))=UPPER(REPLACE($1,' ','')) AND id::text<>$2 LIMIT 1",
+        [plate, vehicleId]);
+      if (duplicate.rows.length) {
+        await client.query('ROLLBACK');
+        return res.status(409).json({ error: 'PLATE_EXISTS' });
+      }
+      const updated = await client.query(
+        'UPDATE vehicles SET plate=$1,make=$2,model=$3 WHERE id::text=$4 AND owner_id::text=$5 RETURNING id,plate,make,model,color,created_at',
+        [plate, make, model || null, vehicleId, owner]);
+      await client.query('COMMIT');
+      return res.json({ ok: true, vehicle: updated.rows[0] });
+    } catch (e) {
+      if (client) await client.query('ROLLBACK').catch(() => {});
+      if (e.code === '23505') return res.status(409).json({ error: 'PLATE_EXISTS' });
+      console.error('owner vehicle update error', e);
+      return res.status(500).json({ error: 'SERVER_ERROR' });
+    } finally {
+      client?.release();
+    }
+  });
+
 };
