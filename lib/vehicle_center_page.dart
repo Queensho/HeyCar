@@ -318,7 +318,7 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: _panel,
+      backgroundColor: CepqarTheme.panel,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
       ),
