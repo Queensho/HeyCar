@@ -30,6 +30,11 @@ class ParkingSearchService {
   static final shared = ParkingSearchService();
   static const ttl = Duration(minutes: 15), staleTtl = Duration(hours: 24);
   static const radius = 3000.0;
+  static const _endpoints = [
+    'https://overpass-api.de/api/interpreter',
+    'https://overpass.kumi.systems/api/interpreter',
+    'https://overpass.nchc.org.tw/api/interpreter',
+  ];
   final http.Client _client;
   final Future<SharedPreferences> Function() _preferences;
   final DateTime Function() _now;
@@ -106,12 +111,48 @@ class ParkingSearchService {
       // 4 km query covers 3 km radius plus 0.01-degree cache-grid rounding.
       final query =
           '[out:json][timeout:20][maxsize:8388608];nwr["amenity"="parking"]["access"!="private"]["access"!="no"](around:4000,$lat,$lon);out center tags;';
-      final response = await _client
-          .post(
-            Uri.parse('https://overpass-api.de/api/interpreter'),
-            body: {'data': query},
-          )
-          .timeout(const Duration(seconds: 28));
+      http.Response? response;
+      Object? lastError;
+      for (final endpoint in _endpoints) {
+        try {
+          final candidate = await _client
+              .post(
+                Uri.parse(endpoint),
+                headers: const {
+                  'Content-Type':
+                      'application/x-www-form-urlencoded; charset=UTF-8',
+                  'Accept': 'application/json',
+                  'User-Agent': 'Cepqar/1.0 (parking search)',
+                },
+                body: 'data=\${Uri.encodeQueryComponent(query)}',
+              )
+              .timeout(const Duration(seconds: 28));
+          if (candidate.statusCode == 200) {
+            response = candidate;
+            break;
+          }
+          lastError = candidate.statusCode;
+          if (candidate.statusCode != 400 &&
+              candidate.statusCode != 403 &&
+              candidate.statusCode != 406 &&
+              candidate.statusCode != 429 &&
+              candidate.statusCode < 500) {
+            response = candidate;
+            break;
+          }
+        } catch (e) {
+          lastError = e;
+        }
+      }
+      if (response == null) {
+        if (lastError == 429) {
+          _retryAfter = _now().add(const Duration(seconds: 60));
+          throw const ParkingSearchException(
+            'Otopark servisi yoğun. Biraz sonra tekrar dene.',
+          );
+        }
+        throw const ParkingSearchException('Otopark servisine ulaşılamadı.');
+      }
       if (response.statusCode == 429 || response.statusCode >= 500)
         _retryAfter = _now().add(const Duration(seconds: 60));
       if (response.statusCode != 200)
