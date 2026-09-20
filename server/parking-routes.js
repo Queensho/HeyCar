@@ -1,5 +1,50 @@
 const express = require('express');
 module.exports = function registerParkingRoutes(app, pool) {
+  const geoCache = new Map();
+  app.get('/api/parking/nearby', async (req, res) => {
+    const lat = Number(req.query.lat), lon = Number(req.query.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 85 || Math.abs(lon) > 180)
+      return res.status(400).json({ error: 'INVALID_LOCATION' });
+    const apiKey = String(process.env.GEOAPIFY_API_KEY || '').trim();
+    if (!apiKey) return res.status(503).json({ error: 'GEOAPIFY_NOT_CONFIGURED' });
+    const key = `${lat.toFixed(2)},${lon.toFixed(2)}`, cached = geoCache.get(key);
+    if (cached && Date.now() - cached.at < 15 * 60 * 1000) return res.json({ ok:true, source:'geoapify', cached:true, places:cached.places });
+    try {
+      const url = new URL('https://api.geoapify.com/v2/places');
+      url.searchParams.set('categories', 'parking');
+      url.searchParams.set('filter', `circle:${lon},${lat},4000`);
+      url.searchParams.set('bias', `proximity:${lon},${lat}`);
+      url.searchParams.set('limit', '100');
+      url.searchParams.set('apiKey', apiKey);
+      const response = await fetch(url, { headers:{ Accept:'application/json', 'User-Agent':'Cepqar/1.0' }, signal:AbortSignal.timeout(9000) });
+      if (!response.ok) return res.status(502).json({ error:'GEOAPIFY_ERROR' });
+      const data = await response.json(), features = Array.isArray(data.features) ? data.features : [];
+      const places = features.map(f => {
+        const x=f.properties||{}, coords=f.geometry?.coordinates||[];
+        if (!Number.isFinite(coords[0]) || !Number.isFinite(coords[1])) return null;
+        const cats=Array.isArray(x.categories)?x.categories:[];
+        const tags = {
+          name: String(x.name || x.address_line1 || 'İsimsiz otopark'),
+          'addr:full': String(x.formatted || x.address_line2 || ''),
+          ...(x.opening_hours ? { opening_hours:String(x.opening_hours) } : {}),
+          ...(x.fee === true ? { fee:'yes' } : x.fee === false ? { fee:'no' } : {}),
+          ...(cats.some(v=>String(v).includes('multi_storey')) ? { parking:'multi-storey' } :
+              cats.some(v=>String(v).includes('underground')) ? { parking:'underground' } : { parking:'surface' }),
+          ...(cats.some(v=>String(v).includes('shopping_mall')) ? { 'cepqar:mall':'yes' } : {}),
+          ...(cats.some(v=>String(v).includes('wheelchair')) ? { wheelchair:'yes' } : {}),
+          ...(cats.some(v=>String(v).includes('charging')) ? { charging_station:'yes' } : {}),
+          'cepqar:source':'geoapify'
+        };
+        return { id:`geoapify/${String(x.place_id||'').replace(/[^A-Za-z0-9_-]/g,'')}`, latitude:coords[1], longitude:coords[0], tags };
+      }).filter(Boolean);
+      geoCache.set(key,{at:Date.now(),places});
+      if (geoCache.size>30) geoCache.delete(geoCache.keys().next().value);
+      res.json({ok:true,source:'geoapify',cached:false,places});
+    } catch(e) {
+      console.error('Geoapify parking:', e.message);
+      res.status(502).json({error:'GEOAPIFY_UNAVAILABLE'});
+    }
+  });
   const owner = req => String(req.headers['x-owner-id'] || '').trim();
   const fields = 'area,floor,spot,note,parking_name,latitude,longitude,osm_id,started_at,updated_at';
   async function owns(req, res) {
