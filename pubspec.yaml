@@ -12,6 +12,8 @@ dependencies:
   cupertino_icons: ^1.0.8
   http: ^1.2.2
   flutter_svg: ^2.0.10+1
+  flutter_map: 8.2.2
+  latlong2: ^0.9.1
   mobile_scanner: ^7.0.0
   image_picker: ^1.1.2
   url_launcher: ^6.3.1
