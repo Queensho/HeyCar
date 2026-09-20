@@ -64,6 +64,16 @@ void main() {
         ParkingPlace.fromOsm(osm(tags: {'opening_hours': '24/7'}))!.hoursLabel,
         '24 saat açık');
   });
+  test('mall filter associates separately mapped nearby mall', () async {
+    final s = ParkingSearchService(client: MockClient((_) async => success([
+      osm(id: 1, lat: 41, lon: 29),
+      {'type': 'way', 'id': 99, 'center': {'lat': 41.0005, 'lon': 29.0005},
+       'tags': {'shop': 'mall', 'name': 'Torium AVM'}}
+    ])));
+    final places = (await s.nearby(41, 29)).places;
+    expect(places.single.matches(ParkingFilter.mall), isTrue);
+    expect(places.single.name, 'Torium AVM Otoparkı');
+  });
   test('distance is measured from the user, not map center', () {
     expect(distanceMeters(41, 29, 41, 29), 0);
     expect(distanceMeters(0, 0, 0, 1), closeTo(111195, 2));
