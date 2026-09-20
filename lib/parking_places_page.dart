@@ -242,7 +242,7 @@ class _ParkingPlacesPageState extends State<ParkingPlacesPage>
   Widget _state(
     IconData icon,
     String title,
-    String text,
+    String message,
     String action,
     VoidCallback? tap,
   ) => Padding(
@@ -256,16 +256,16 @@ class _ParkingPlacesPageState extends State<ParkingPlacesPage>
           title,
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: text,
+            color: CepqarTheme.text,
             fontSize: 21,
             fontWeight: FontWeight.w800,
           ),
         ),
         const SizedBox(height: 8),
         Text(
-          text,
+          message,
           textAlign: TextAlign.center,
-          style: TextStyle(color: muted, height: 1.5),
+          style: TextStyle(color: CepqarTheme.muted, height: 1.5),
         ),
         const SizedBox(height: 18),
         FilledButton(
@@ -549,7 +549,7 @@ class _ParkingPlacesPageState extends State<ParkingPlacesPage>
                                   top: 0,
                                   child: LinearProgressIndicator(
                                     color: parkingPurple,
-                                    backgroundColor: panel,
+                                    backgroundColor: CepqarTheme.panel,
                                     minHeight: 3,
                                   ),
                                 ),
@@ -566,7 +566,7 @@ class _ParkingPlacesPageState extends State<ParkingPlacesPage>
                           decoration: InputDecoration(
                             hintText: 'Otopark ara (ad, cadde, ilçe…)',
                             hintStyle: TextStyle(color: muted),
-                            prefixIcon: const Icon(
+                            prefixIcon: Icon(
                               Icons.search,
                               color: muted,
                             ),
@@ -574,7 +574,7 @@ class _ParkingPlacesPageState extends State<ParkingPlacesPage>
                                 ? null
                                 : IconButton(
                                     onPressed: _search.clear,
-                                    icon: const Icon(
+                                    icon: Icon(
                                       Icons.close,
                                       color: muted,
                                     ),
@@ -636,7 +636,7 @@ class _ParkingPlacesPageState extends State<ParkingPlacesPage>
                           _stale
                               ? 'Bağlantı yok • Önceki sonuçlar gösteriliyor'
                               : '${visible.length} otopark • Harita merkezinin 3 km çevresi',
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: muted,
                             fontSize: 12,
                           ),
@@ -714,7 +714,11 @@ class _ParkingPlacesPageState extends State<ParkingPlacesPage>
     );
   }
 
-  Widget _card(ParkingPlace p) => Padding(
+  Widget _card(ParkingPlace p) {
+    final light = CepqarTheme.isLight;
+    final panel = CepqarTheme.panel, line = CepqarTheme.line;
+    final text = CepqarTheme.text, muted = CepqarTheme.muted;
+    return Padding(
     padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
     child: Material(
       color: panel,
@@ -812,6 +816,7 @@ class _ParkingPlacesPageState extends State<ParkingPlacesPage>
       ),
     ),
   );
+  }
 }
 
 class ParkingMapPin extends StatelessWidget {
