@@ -41,7 +41,7 @@ module.exports = function registerParkingRoutes(app, pool) {
         const x=f.properties||{}, coords=f.geometry?.coordinates||[];
         if (!Number.isFinite(coords[0]) || !Number.isFinite(coords[1])) return null;
         const cats=Array.isArray(x.categories)?x.categories:[];
-        let nearestMall=null, nearestMallDistance=350;
+        let nearestMall=null, nearestMallDistance=800;
         for (const mall of malls) {
           const d=meters(coords[1],coords[0],mall.lat,mall.lon);
           if (d <= nearestMallDistance) { nearestMall=mall; nearestMallDistance=d; }
