@@ -96,7 +96,7 @@ module.exports = function registerParkingRoutes(app, pool) {
       const lat = body.latitude, lon = body.longitude;
       if (hasLocation && (!name || typeof lat !== 'number' || typeof lon !== 'number' ||
           !Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180 ||
-          !/^(node|way|relation)\/\d+$/.test(osmId) || osmId.length > 80)) {
+          !/^(?:(?:node|way|relation)\/\d+|geoapify\/[A-Za-z0-9_-]+)$/.test(osmId) || osmId.length > 80)) {
         return res.status(400).json({ error: 'INVALID_PARKING_LOCATION' });
       }
       if (!hasLocation && !area && !floor && !spot) {
