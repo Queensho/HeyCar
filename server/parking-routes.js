@@ -16,21 +16,45 @@ module.exports = function registerParkingRoutes(app, pool) {
       url.searchParams.set('bias', `proximity:${lon},${lat}`);
       url.searchParams.set('limit', '100');
       url.searchParams.set('apiKey', apiKey);
-      const response = await fetch(url, { headers:{ Accept:'application/json', 'User-Agent':'Cepqar/1.0' }, signal:AbortSignal.timeout(9000) });
+      const mallUrl = new URL('https://api.geoapify.com/v2/places');
+      mallUrl.searchParams.set('categories', 'commercial.shopping_mall');
+      mallUrl.searchParams.set('filter', `circle:${lon},${lat},4000`);
+      mallUrl.searchParams.set('bias', `proximity:${lon},${lat}`);
+      mallUrl.searchParams.set('limit', '40');
+      mallUrl.searchParams.set('apiKey', apiKey);
+      const opts = { headers:{ Accept:'application/json', 'User-Agent':'Cepqar/1.0' }, signal:AbortSignal.timeout(9000) };
+      const [response, mallResponse] = await Promise.all([fetch(url, opts), fetch(mallUrl, { ...opts, signal:AbortSignal.timeout(9000) })]);
       if (!response.ok) return res.status(502).json({ error:'GEOAPIFY_ERROR' });
       const data = await response.json(), features = Array.isArray(data.features) ? data.features : [];
+      const mallData = mallResponse.ok ? await mallResponse.json() : { features:[] };
+      const malls = (Array.isArray(mallData.features) ? mallData.features : []).map(f => {
+        const x=f.properties||{}, q=f.geometry?.coordinates||[];
+        return Number.isFinite(q[0]) && Number.isFinite(q[1])
+          ? { lon:q[0], lat:q[1], name:String(x.name||x.address_line1||'AVM') } : null;
+      }).filter(Boolean);
+      const meters = (a,b,c,d) => {
+        const r=6371000, p=Math.PI/180, d1=(c-a)*p, d2=(d-b)*p;
+        const h=Math.sin(d1/2)**2 + Math.cos(a*p)*Math.cos(c*p)*Math.sin(d2/2)**2;
+        return 2*r*Math.asin(Math.sqrt(h));
+      };
       const places = features.map(f => {
         const x=f.properties||{}, coords=f.geometry?.coordinates||[];
         if (!Number.isFinite(coords[0]) || !Number.isFinite(coords[1])) return null;
         const cats=Array.isArray(x.categories)?x.categories:[];
+        let nearestMall=null, nearestMallDistance=350;
+        for (const mall of malls) {
+          const d=meters(coords[1],coords[0],mall.lat,mall.lon);
+          if (d <= nearestMallDistance) { nearestMall=mall; nearestMallDistance=d; }
+        }
+        const rawName=String(x.name || x.address_line1 || 'İsimsiz otopark');
         const tags = {
-          name: String(x.name || x.address_line1 || 'İsimsiz otopark'),
+          name: nearestMall && (!x.name || /^\\d+[. ]|sokak|cadde/i.test(rawName)) ? `${nearestMall.name} Otoparkı` : rawName,
           'addr:full': String(x.formatted || x.address_line2 || ''),
           ...(x.opening_hours ? { opening_hours:String(x.opening_hours) } : {}),
           ...(x.fee === true ? { fee:'yes' } : x.fee === false ? { fee:'no' } : {}),
           ...(cats.some(v=>String(v).includes('multi_storey')) ? { parking:'multi-storey' } :
               cats.some(v=>String(v).includes('underground')) ? { parking:'underground' } : { parking:'surface' }),
-          ...(cats.some(v=>String(v).includes('shopping_mall')) ? { 'cepqar:mall':'yes' } : {}),
+          ...(nearestMall || cats.some(v=>String(v).includes('shopping_mall')) ? { 'cepqar:mall':'yes', ...(nearestMall ? {'cepqar:mall_name':nearestMall.name} : {}) } : {}),
           ...(cats.some(v=>String(v).includes('wheelchair')) ? { wheelchair:'yes' } : {}),
           ...(cats.some(v=>String(v).includes('charging')) ? { charging_station:'yes' } : {}),
           'cepqar:source':'geoapify'
