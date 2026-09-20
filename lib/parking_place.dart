@@ -74,9 +74,10 @@ class ParkingPlace {
   String get hours => tags['opening_hours'] ?? '';
   // Only unambiguous 24/7 data gets an "open" label. Do not guess complex schedules.
   String get hoursLabel => hours == '24/7' ? '24 saat açık' : hours;
-  bool get isMall => RegExp(
-    r'\b(avm|mall|alisveris)\b',
-  ).hasMatch(parkingSearchText('$name ${tags['operator'] ?? ''}'));
+  bool get isMall =>
+      tags['cepqar:mall'] == 'yes' ||
+      RegExp(r'\b(avm|mall|alisveris)\b')
+          .hasMatch(parkingSearchText('$name ${tags['operator'] ?? ''}'));
   bool get isMunicipal =>
       ['public', 'government'].contains(tags['operator:type']) ||
       RegExp(
