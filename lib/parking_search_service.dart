@@ -113,7 +113,7 @@ class ParkingSearchService {
           '[out:json][timeout:20][maxsize:8388608];('
           'nwr["amenity"="parking"]["access"!="private"]["access"!="no"](around:4000,$lat,$lon);'
           'nwr["shop"="mall"](around:4000,$lat,$lon);'
-          ');out center tags;';';
+          ');out center tags;';
       http.Response? response;
       Object? lastError;
       for (final endpoint in _endpoints) {
