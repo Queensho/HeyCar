@@ -9,6 +9,7 @@ import 'parking_search_service.dart';
 import 'parking_place_detail_page.dart';
 import 'parking_navigation.dart';
 import 'parking_style.dart';
+import 'cepqar_theme.dart';
 
 class ParkingPlacesPage extends StatefulWidget {
   const ParkingPlacesPage({super.key, required this.vehicleId});
@@ -254,8 +255,8 @@ class _ParkingPlacesPageState extends State<ParkingPlacesPage>
         Text(
           title,
           textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: text,
             fontSize: 21,
             fontWeight: FontWeight.w800,
           ),
@@ -264,7 +265,7 @@ class _ParkingPlacesPageState extends State<ParkingPlacesPage>
         Text(
           text,
           textAlign: TextAlign.center,
-          style: const TextStyle(color: parkingMuted, height: 1.5),
+          style: TextStyle(color: muted, height: 1.5),
         ),
         const SizedBox(height: 18),
         FilledButton(
@@ -281,19 +282,22 @@ class _ParkingPlacesPageState extends State<ParkingPlacesPage>
   @override
   Widget build(BuildContext context) {
     final visible = _visible;
+    final light = CepqarTheme.isLight;
+    final bg = CepqarTheme.bg, panel = CepqarTheme.panel, line = CepqarTheme.line;
+    final text = CepqarTheme.text, muted = CepqarTheme.muted;
     return Theme(
-      data: ThemeData.dark(useMaterial3: true).copyWith(
+      data: ThemeData(useMaterial3: true, brightness: light ? Brightness.light : Brightness.dark).copyWith(
         colorScheme: ColorScheme.fromSeed(
           seedColor: parkingPurple,
-          brightness: Brightness.dark,
+          brightness: light ? Brightness.light : Brightness.dark,
         ),
       ),
       child: Scaffold(
-        backgroundColor: parkingBg,
+        backgroundColor: bg,
         appBar: AppBar(
-          backgroundColor: parkingBg,
-          foregroundColor: Colors.white,
-          title: const Text(
+          backgroundColor: bg,
+          foregroundColor: text,
+          title: Text(
             'Park Yerleri',
             style: TextStyle(fontWeight: FontWeight.w900),
           ),
@@ -500,7 +504,7 @@ class _ParkingPlacesPageState extends State<ParkingPlacesPage>
                                 right: 8,
                                 bottom: 6,
                                 child: Material(
-                                  color: parkingBg,
+                                  color: bg,
                                   child: InkWell(
                                     onTap: () => launchUrl(
                                       Uri.parse(
@@ -528,8 +532,8 @@ class _ParkingPlacesPageState extends State<ParkingPlacesPage>
                                   right: 8,
                                   child: Container(
                                     padding: const EdgeInsets.all(8),
-                                    color: parkingPanel,
-                                    child: const Text(
+                                    color: panel,
+                                    child: Text(
                                       'Harita yüklenemedi. Otopark listesini kullanabilirsin.',
                                       style: TextStyle(
                                         color: Colors.white,
@@ -545,7 +549,7 @@ class _ParkingPlacesPageState extends State<ParkingPlacesPage>
                                   top: 0,
                                   child: LinearProgressIndicator(
                                     color: parkingPurple,
-                                    backgroundColor: parkingPanel,
+                                    backgroundColor: panel,
                                     minHeight: 3,
                                   ),
                                 ),
@@ -558,13 +562,13 @@ class _ParkingPlacesPageState extends State<ParkingPlacesPage>
                         padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
                         child: TextField(
                           controller: _search,
-                          style: const TextStyle(color: Colors.white),
+                          style: TextStyle(color: text),
                           decoration: InputDecoration(
                             hintText: 'Otopark ara (ad, cadde, ilçe…)',
-                            hintStyle: const TextStyle(color: parkingMuted),
+                            hintStyle: TextStyle(color: muted),
                             prefixIcon: const Icon(
                               Icons.search,
-                              color: parkingMuted,
+                              color: muted,
                             ),
                             suffixIcon: _search.text.isEmpty
                                 ? null
@@ -572,18 +576,18 @@ class _ParkingPlacesPageState extends State<ParkingPlacesPage>
                                     onPressed: _search.clear,
                                     icon: const Icon(
                                       Icons.close,
-                                      color: parkingMuted,
+                                      color: muted,
                                     ),
                                   ),
                             filled: true,
-                            fillColor: parkingPanel,
+                            fillColor: panel,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(18),
-                              borderSide: const BorderSide(color: parkingLine),
+                              borderSide: BorderSide(color: line),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(18),
-                              borderSide: const BorderSide(color: parkingLine),
+                              borderSide: BorderSide(color: line),
                             ),
                           ),
                         ),
@@ -613,14 +617,14 @@ class _ParkingPlacesPageState extends State<ParkingPlacesPage>
                             ),
                             showCheckmark: false,
                             selectedColor: parkingPurple,
-                            backgroundColor: parkingPanel,
+                            backgroundColor: panel,
                             labelStyle: TextStyle(
                               color: _filter == ParkingFilter.values[i]
                                   ? Colors.white
-                                  : parkingMuted,
+                                  : muted,
                               fontWeight: FontWeight.w700,
                             ),
-                            side: const BorderSide(color: parkingLine),
+                            side: BorderSide(color: line),
                           ),
                         ),
                       ),
@@ -633,7 +637,7 @@ class _ParkingPlacesPageState extends State<ParkingPlacesPage>
                               ? 'Bağlantı yok • Önceki sonuçlar gösteriliyor'
                               : '${visible.length} otopark • Harita merkezinin 3 km çevresi',
                           style: const TextStyle(
-                            color: parkingMuted,
+                            color: muted,
                             fontSize: 12,
                           ),
                         ),
@@ -690,13 +694,13 @@ class _ParkingPlacesPageState extends State<ParkingPlacesPage>
                           childCount: visible.length,
                         ),
                       ),
-                    const SliverToBoxAdapter(
+                    SliverToBoxAdapter(
                       child: Padding(
                         padding: EdgeInsets.fromLTRB(18, 12, 18, 24),
                         child: Text(
                           'Mesafeler kuş uçuşudur. Otopark bilgileri OpenStreetMap katkıcılarından gelir; doluluk bilgisi içermez.',
                           style: TextStyle(
-                            color: parkingMuted,
+                            color: muted,
                             fontSize: 11,
                             height: 1.4,
                           ),
@@ -713,10 +717,10 @@ class _ParkingPlacesPageState extends State<ParkingPlacesPage>
   Widget _card(ParkingPlace p) => Padding(
     padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
     child: Material(
-      color: parkingPanel,
+      color: panel,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
-        side: const BorderSide(color: parkingLine),
+        side: BorderSide(color: line),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
@@ -752,8 +756,8 @@ class _ParkingPlacesPageState extends State<ParkingPlacesPage>
                   children: [
                     Text(
                       p.name,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: text,
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
                       ),
@@ -773,7 +777,7 @@ class _ParkingPlacesPageState extends State<ParkingPlacesPage>
                           : p.address,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: parkingMuted, fontSize: 12),
+                      style: TextStyle(color: muted, fontSize: 12),
                     ),
                     if (p.hours.isNotEmpty) ...[
                       const SizedBox(height: 5),
@@ -784,7 +788,7 @@ class _ParkingPlacesPageState extends State<ParkingPlacesPage>
                         style: TextStyle(
                           color: p.hours == '24/7'
                               ? const Color(0xFF60DF95)
-                              : parkingMuted,
+                              : muted,
                           fontSize: 12,
                         ),
                       ),
@@ -797,7 +801,7 @@ class _ParkingPlacesPageState extends State<ParkingPlacesPage>
                 tooltip: 'Yol Tarifi',
                 onPressed: () => _navigate(p),
                 style: IconButton.styleFrom(
-                  backgroundColor: const Color(0xFF20223C),
+                  backgroundColor: light ? const Color(0xFFF0EBFF) : const Color(0xFF20223C),
                   foregroundColor: const Color(0xFFAE85FF),
                 ),
                 icon: const Icon(Icons.navigation_rounded),
