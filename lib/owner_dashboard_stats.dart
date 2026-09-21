@@ -6,6 +6,7 @@ import 'onboarding_backend.dart';
 import 'qr_backend.dart';
 import 'cepqar_theme.dart';
 import 'nearest_vehicle_reminder_card.dart';
+import 'owner_auth.dart';
 
 class OwnerDashboardStatsRow extends StatefulWidget {
   const OwnerDashboardStatsRow({super.key, required this.onTap});
