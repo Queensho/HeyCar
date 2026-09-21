@@ -104,4 +104,27 @@ module.exports = function registerVehicleManagementRoutes(app, pool) {
     }
   });
 
+
+  app.delete('/api/owner/vehicles/:vehicleId', async (req,res)=>{
+    const owner=ownerId(req), vehicleId=String(req.params.vehicleId||'').trim(); if(!owner)return res.status(401).json({error:'OWNER_REQUIRED'});
+    const client=await pool.connect();try{await client.query('BEGIN');const v=await client.query('SELECT id FROM vehicles WHERE id::text=$1 AND owner_id::text=$2 FOR UPDATE',[vehicleId,owner]);if(!v.rows.length){await client.query('ROLLBACK');return res.status(404).json({error:'VEHICLE_NOT_FOUND'});}
+      await client.query("UPDATE qr_tags SET status='revoked' WHERE vehicle_id=$1 AND status='active'",[vehicleId]);
+      await client.query("UPDATE vehicle_transfers SET status='cancelled' WHERE vehicle_id=$1 AND status='pending'",[vehicleId]);
+      await client.query('DELETE FROM vehicles WHERE id=$1',[vehicleId]);await client.query('COMMIT');return res.json({ok:true,qrRevoked:true});
+    }catch(e){await client.query('ROLLBACK').catch(()=>{});console.error('vehicle remove',e);return res.status(500).json({error:'SERVER_ERROR'});}finally{client.release();}
+  });
+
+  app.post('/api/owner/vehicles/:vehicleId/transfer',async(req,res)=>{
+    const owner=ownerId(req),vehicleId=String(req.params.vehicleId||'').trim();if(!owner)return res.status(401).json({error:'OWNER_REQUIRED'});const client=await pool.connect();try{await client.query('BEGIN');const v=await client.query('SELECT id,plate FROM vehicles WHERE id::text=$1 AND owner_id::text=$2 FOR UPDATE',[vehicleId,owner]);if(!v.rows.length){await client.query('ROLLBACK');return res.status(404).json({error:'VEHICLE_NOT_FOUND'});}
+      await client.query("UPDATE vehicle_transfers SET status='cancelled' WHERE vehicle_id=$1 AND status='pending'",[vehicleId]);const code=require('crypto').randomBytes(4).toString('hex').toUpperCase();const t=await client.query("INSERT INTO vehicle_transfers(vehicle_id,from_owner_id,transfer_code,expires_at) VALUES($1,$2,$3,now()+interval '24 hours') RETURNING transfer_code,expires_at",[vehicleId,owner,code]);await client.query('COMMIT');return res.status(201).json({ok:true,plate:v.rows[0].plate,...t.rows[0]});
+    }catch(e){await client.query('ROLLBACK').catch(()=>{});console.error('vehicle transfer create',e);return res.status(500).json({error:'SERVER_ERROR'});}finally{client.release();}
+  });
+
+  app.post('/api/owner/vehicle-transfers/accept',async(req,res)=>{
+    const owner=ownerId(req),code=String(req.body?.code||'').trim().toUpperCase();if(!owner)return res.status(401).json({error:'OWNER_REQUIRED'});if(!code)return res.status(400).json({error:'CODE_REQUIRED'});const client=await pool.connect();try{await client.query('BEGIN');const t=await client.query("SELECT t.*,v.plate FROM vehicle_transfers t JOIN vehicles v ON v.id=t.vehicle_id WHERE t.transfer_code=$1 FOR UPDATE",[code]);if(!t.rows.length){await client.query('ROLLBACK');return res.status(404).json({error:'TRANSFER_NOT_FOUND'});}const x=t.rows[0];if(x.status!=='pending'||new Date(x.expires_at)<=new Date()){if(x.status==='pending')await client.query("UPDATE vehicle_transfers SET status='expired' WHERE id=$1",[x.id]);await client.query('COMMIT');return res.status(410).json({error:'TRANSFER_EXPIRED'});}if(String(x.from_owner_id)===owner){await client.query('ROLLBACK');return res.status(400).json({error:'SAME_OWNER'});}
+      const u=await client.query('SELECT COALESCE(premium,false) premium FROM users WHERE id::text=$1 FOR UPDATE',[owner]);if(!u.rows.length){await client.query('ROLLBACK');return res.status(404).json({error:'OWNER_NOT_FOUND'});}const lim=u.rows[0].premium?3:1,cnt=await client.query('SELECT count(*)::int n FROM vehicles WHERE owner_id::text=$1',[owner]);if(cnt.rows[0].n>=lim){await client.query('ROLLBACK');return res.status(403).json({error:'VEHICLE_LIMIT_REACHED',limit:lim});}
+      await client.query('UPDATE vehicles SET owner_id=$1 WHERE id=$2',[owner,x.vehicle_id]);await client.query("UPDATE vehicle_transfers SET status='accepted',accepted_by=$1,accepted_at=now() WHERE id=$2",[owner,x.id]);await client.query('COMMIT');return res.json({ok:true,vehicleId:x.vehicle_id,plate:x.plate,qrPreserved:true});
+    }catch(e){await client.query('ROLLBACK').catch(()=>{});console.error('vehicle transfer accept',e);return res.status(500).json({error:'SERVER_ERROR'});}finally{client.release();}
+  });
+
 };
