@@ -8,6 +8,7 @@ class OwnerShortcutDefinition {
 
 /// Add future shortcuts here only. Existing user selections keep working by id.
 const ownerShortcutCatalog=<OwnerShortcutDefinition>[
+  OwnerShortcutDefinition(id:'offers',title:'Cepqar Fırsatlar',subtitle:'Yakındaki kampanyalar',icon:Icons.local_offer_rounded,action:'offers'),
   OwnerShortcutDefinition(id:'qr',title:'QR Kodum',subtitle:'İndir / Paylaş',icon:Icons.qr_code_scanner_rounded,action:'qr'),
   OwnerShortcutDefinition(id:'vehicle',title:'Araç Bilgilerim',subtitle:'Düzenle',icon:Icons.directions_car_filled_rounded,action:'vehicles'),
   OwnerShortcutDefinition(id:'parking',title:'Park Yerim',subtitle:'Kaydet / Gör',icon:Icons.local_parking_rounded,action:'parking'),
