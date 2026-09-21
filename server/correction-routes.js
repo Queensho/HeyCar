@@ -1,3 +1,4 @@
+const {ownerId: authenticatedOwnerId}=require('./owner-auth-service');
 function clean(value, max = 500) {
   return String(value == null ? '' : value).trim().slice(0, max);
 }
@@ -13,7 +14,7 @@ async function ownerOwnsVehicle(pool, ownerId, vehicleId) {
 
 function registerOwnerCorrectionRoutes(app, pool) {
   app.post('/api/owner/correction-requests', async (req, res) => {
-    const ownerId = clean(req.body.ownerId || req.headers['x-owner-id'], 100);
+    const ownerId = authenticatedOwnerId(req);
     const vehicleId = clean(req.body.vehicleId, 100);
     const qrToken = clean(req.body.qrToken, 120).toUpperCase();
     const requestType = clean(req.body.requestType || 'qr_change', 40);
@@ -52,7 +53,7 @@ function registerOwnerCorrectionRoutes(app, pool) {
   });
 
   app.get('/api/owner/correction-requests', async (req, res) => {
-    const ownerId = clean(req.headers['x-owner-id'], 100);
+    const ownerId = authenticatedOwnerId(req);
     if (!ownerId) return res.status(401).json({ error: 'OWNER_REQUIRED' });
     try {
       const r = await pool.query(
