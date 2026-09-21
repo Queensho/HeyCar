@@ -70,10 +70,7 @@ class AnonymousCallApi {
   static Future<Map<String, dynamic>?> incoming() async {
     final ownerId = OnboardingDraft.userId.trim();
     if (ownerId.isEmpty) return null;
-    final response = await http.get(
-      Uri.parse('${PublicThemeBackend.baseUrl}/api/owner/calls/incoming'),
-      headers: await OwnerAuth.headers(json:false),
-    );
+    final response = await OwnerHttp.get(\n      Uri.parse('${PublicThemeBackend.baseUrl}/api/owner/calls/incoming'),\n      json: false,\n    );
     if (response.statusCode < 200 || response.statusCode >= 300) return null;
     final data = jsonDecode(response.body) as Map<String, dynamic>;
     final call = data['call'];
@@ -81,10 +78,7 @@ class AnonymousCallApi {
   }
 
   static Future<Map<String, dynamic>> ownerStatus(String callId) async {
-    final response = await http.get(
-      Uri.parse('${PublicThemeBackend.baseUrl}/api/owner/calls/${Uri.encodeComponent(callId)}'),
-      headers: await OwnerAuth.headers(json:false),
-    );
+    final response = await OwnerHttp.get(\n      Uri.parse('${PublicThemeBackend.baseUrl}/api/owner/calls/${Uri.encodeComponent(callId)}'),\n      json: false,\n    );
     final data = jsonDecode(response.body) as Map<String, dynamic>;
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception(data['error']?.toString() ?? 'CALL_STATUS_FAILED');
@@ -98,9 +92,7 @@ class AnonymousCallApi {
     Map<String, dynamic>? answer,
     Map<String, dynamic>? candidate,
   }) async {
-    final response = await http.patch(
-      Uri.parse('${PublicThemeBackend.baseUrl}/api/owner/calls/${Uri.encodeComponent(callId)}'),
-      headers: {'Content-Type': 'application/json', 'x-owner-id': OnboardingDraft.userId.trim()},
+    final response = await OwnerHttp.patch(\n      Uri.parse('${PublicThemeBackend.baseUrl}/api/owner/calls/${Uri.encodeComponent(callId)}'),
       body: jsonEncode({
         if (action != null) 'action': action,
         if (answer != null) 'answer': answer,
