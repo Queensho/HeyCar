@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:geolocator/geolocator.dart';
 
 const _bg=Color(0xFF07111F),_panel=Color(0xFF101A30),_line=Color(0xFF27355D),_purple=Color(0xFF713BFF),_muted=Color(0xFFA7B0C7);
 
@@ -48,17 +47,12 @@ class _BusinessPanelPageState extends State<BusinessPanelPage>{
    register:register,email:email,pw:pw,name:name,cat:cat,phone:phone,address:address,
    submit:()async{
     final path=register?'register':'login';
-    double? latitude,longitude;
-    if(register){
-     var permission=await Geolocator.checkPermission();
-     if(permission==LocationPermission.denied)permission=await Geolocator.requestPermission();
-     if(permission==LocationPermission.denied||permission==LocationPermission.deniedForever)return 'Fırsatlarda görünebilmek için işletme konum izni gerekli.';
-     try{final pos=await Geolocator.getCurrentPosition(desiredAccuracy:LocationAccuracy.high);latitude=pos.latitude;longitude=pos.longitude;}catch(_){return 'İşletme konumu alınamadı. Konumu açıp tekrar dene.';}
-    }
-    final body=register?{'email':email.text.trim(),'password':pw.text,'name':name.text.trim(),'category':cat.text.trim(),'phone':phone.text.trim(),'address':address.text.trim(),'latitude':latitude,'longitude':longitude}:{'email':email.text.trim(),'password':pw.text};
+    final body=register?{'email':email.text.trim(),'password':pw.text,'name':name.text.trim(),'category':cat.text.trim(),'phone':phone.text.trim(),'address':address.text.trim()}:{'email':email.text.trim(),'password':pw.text};
     final r=await http.post(Uri.parse('$_businessApi/api/business/auth/$path'),headers:{'Content-Type':'application/json'},body:jsonEncode(body));
     if(r.statusCode==200||r.statusCode==201){final j=jsonDecode(r.body);token=(j['token']??'').toString();final p=await SharedPreferences.getInstance();await p.setString('business_token',token);await _loadAll();return null;}
     if(r.statusCode==409)return 'Bu e-posta ile daha önce kayıt olunmuş.';
+    if(register&&r.statusCode==400&&r.body.contains('ADDRESS_NOT_FOUND'))return 'Adres bulunamadı. Mahalle, cadde/sokak, bina no, ilçe ve il bilgilerini kontrol et.';
+    if(register&&r.statusCode==503)return 'Adres konumu şu anda doğrulanamadı. Biraz sonra tekrar dene.';
     return register?'Kayıt oluşturulamadı. Bilgileri kontrol et.':'E-posta veya şifre hatalı.';
    },
    switchMode:()=>Navigator.pop(context,true),
