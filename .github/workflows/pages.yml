@@ -9,9 +9,16 @@ on:
 
 permissions:
   contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
 
 jobs:
   build:
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -222,6 +229,10 @@ jobs:
           name: cepqar-business-web
           path: business-site
           retention-days: 7
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: business-site
       - name: Build Android test APK
         run: flutter build apk --debug --target lib/entry_theme_live.dart
       - name: Upload Android test APK
@@ -230,3 +241,15 @@ jobs:
           name: heycar-android-test
           path: build/app/outputs/flutter-apk/app-debug.apk
           retention-days: 7
+
+  deploy-business-web:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy business web to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
