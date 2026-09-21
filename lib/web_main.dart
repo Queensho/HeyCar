@@ -11,7 +11,8 @@ void main() {
   final token = Uri.base.queryParameters['tag'] ?? '';
   final chat = Uri.base.queryParameters['chat'] ?? '';
   final call = Uri.base.queryParameters['call'] ?? '';
-  final business = Uri.base.path == '/isletme' || Uri.base.path.startsWith('/isletme/');
+  final path = Uri.base.path.toLowerCase();
+  final business = path == '/isletme' || path.startsWith('/isletme/') || path == '/heycar/isletme' || path.startsWith('/heycar/isletme/');
   runApp(HeyCarPublicWebApp(token: token, chat: chat, call: call, business: business));
 }
 
