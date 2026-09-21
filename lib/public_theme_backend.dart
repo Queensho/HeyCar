@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
+import 'owner_auth.dart';
 
 class PublicThemeData {
   const PublicThemeData({
@@ -38,7 +39,7 @@ class PublicThemeBackend {
   static Future<PublicThemeData> getTheme({required String vehicleId, required String ownerId}) async {
     final response = await http.get(
       Uri.parse('$baseUrl/api/vehicles/$vehicleId/public-theme'),
-      headers: {'x-owner-id': ownerId},
+      headers: await OwnerAuth.headers(json:false),
     ).timeout(const Duration(seconds: 15));
     final decoded = jsonDecode(response.body) as Map<String, dynamic>;
     if (response.statusCode >= 200 && response.statusCode < 300) {
@@ -93,7 +94,7 @@ class PublicThemeBackend {
   static Future<void> removeBackground({required String vehicleId, required String ownerId}) async {
     final response = await http.delete(
       Uri.parse('$baseUrl/api/vehicles/$vehicleId/public-theme/background'),
-      headers: {'x-owner-id': ownerId},
+      headers: await OwnerAuth.headers(json:false),
     ).timeout(const Duration(seconds: 15));
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception('Arka plan kaldırılamadı.');
