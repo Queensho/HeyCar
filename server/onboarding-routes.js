@@ -20,11 +20,12 @@ module.exports = function registerOnboardingRoutes(app, pool) {
     const make = String(req.body.make || '').trim();
     const model = String(req.body.model || '').trim();
     const color = String(req.body.color || '').trim();
+    const transferCode = String(req.body.transferCode || '').trim().toUpperCase();
 
     if (!phone) {
       return res.status(400).json({ error: 'INVALID_PHONE' });
     }
-    if (!displayName || password.length < 6 || !plate || !make) {
+    if (!displayName || password.length < 6 || (!transferCode && (!plate || !make))) {
       return res.status(400).json({ error: 'INVALID_INPUT' });
     }
 
@@ -61,12 +62,23 @@ module.exports = function registerOnboardingRoutes(app, pool) {
 
       const user = userResult.rows[0];
 
-      const vehicleResult = await client.query(
-        `INSERT INTO vehicles (owner_id, plate, make, model, color)
-         VALUES ($1, $2, $3, $4, $5)
-         RETURNING id, owner_id, plate, make, model, color, created_at`,
-        [user.id, plate, make, model || null, color || null]
-      );
+      let vehicleResult;
+      if (transferCode) {
+        const tr=await client.query(`SELECT t.*,v.plate,v.make,v.model,v.color FROM vehicle_transfers t JOIN vehicles v ON v.id=t.vehicle_id WHERE t.transfer_code=$1 FOR UPDATE`,[transferCode]);
+        if(!tr.rows.length){await client.query('ROLLBACK');return res.status(404).json({error:'TRANSFER_NOT_FOUND'});}
+        const t=tr.rows[0];
+        if(t.status!=='pending'||new Date(t.expires_at)<=new Date()){if(t.status==='pending')await client.query("UPDATE vehicle_transfers SET status='expired' WHERE id=$1",[t.id]);await client.query('COMMIT');return res.status(410).json({error:'TRANSFER_EXPIRED'});}
+        await client.query('UPDATE vehicles SET owner_id=$1 WHERE id=$2',[user.id,t.vehicle_id]);
+        await client.query("UPDATE vehicle_transfers SET status='accepted',accepted_by=$1,accepted_at=now() WHERE id=$2",[user.id,t.id]);
+        vehicleResult={rows:[{id:t.vehicle_id,owner_id:user.id,plate:t.plate,make:t.make,model:t.model,color:t.color}]};
+      } else {
+        vehicleResult = await client.query(
+          `INSERT INTO vehicles (owner_id, plate, make, model, color)
+           VALUES ($1, $2, $3, $4, $5)
+           RETURNING id, owner_id, plate, make, model, color, created_at`,
+          [user.id, plate, make, model || null, color || null]
+        );
+      }
 
       await client.query('COMMIT');
 
