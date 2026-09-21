@@ -42,7 +42,7 @@ class _BusinessPanelPageState extends State<BusinessPanelPage>{
      final path=register?'register':'login';
      final body=register?{'email':email.text,'password':pw.text,'name':name.text,'category':cat.text}:{'email':email.text,'password':pw.text};
      final r=await http.post(Uri.parse('$_businessApi/api/business/auth/$path'),headers:{'Content-Type':'application/json'},body:jsonEncode(body));
-     if(r.statusCode==200||r.statusCode==201){final j=jsonDecode(r.body);setState(()=>token=String(j['token']??''));if(d.mounted)Navigator.pop(d);}
+     if(r.statusCode==200||r.statusCode==201){final j=jsonDecode(r.body);setState(()=>token=(j['token'] ?? '').toString());if(d.mounted)Navigator.pop(d);}
      else if(d.mounted){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Giriş/kayıt başarısız.')));}
     },child:Text(register?'Kayıt Ol':'Giriş Yap'))
    ],
