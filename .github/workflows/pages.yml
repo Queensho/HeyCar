@@ -217,6 +217,8 @@ jobs:
         run: flutter pub get
       - name: Analyze app
         run: flutter analyze lib --no-fatal-infos --no-fatal-warnings
+      - name: Enable Flutter web platform
+        run: flutter create . --platforms=web --project-name heycar_app --no-pub
       - name: Build business web panel
         run: flutter build web --release --target lib/entry_business.dart --base-href /HeyCar/isletme/
       - name: Prepare business web artifact
