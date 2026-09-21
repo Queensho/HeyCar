@@ -132,17 +132,17 @@ class _BusinessWelcome extends StatelessWidget{
     const SizedBox(height:12),
     Container(padding:const EdgeInsets.symmetric(horizontal:13,vertical:7),decoration:BoxDecoration(border:Border.all(color:_line),borderRadius:BorderRadius.circular(20)),child:const Text('İşletme Paneli',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w700))),
     const SizedBox(height:28),
-    SizedBox(height:360,child:Stack(clipBehavior:Clip.none,children:[
+    SizedBox(height:285,child:Stack(clipBehavior:Clip.none,children:[
      const Positioned(left:0,top:0,child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
       Text('İşletmen',style:TextStyle(color:Colors.white,fontSize:38,height:1,fontWeight:FontWeight.w900)),
       Text('hep görünür',style:TextStyle(color:Colors.white,fontSize:38,height:1,fontWeight:FontWeight.w900)),
       Text('olsun.',style:TextStyle(color:Color(0xFFB6FF2A),fontSize:38,height:1.02,fontWeight:FontWeight.w900))
      ])),
-     Positioned(right:-8,bottom:0,width:300,height:285,child:Image.asset('assets/İsletmeh.png',fit:BoxFit.contain,alignment:Alignment.bottomRight))
+     Positioned(right:-2,top:58,width:245,height:230,child:Image.asset('assets/İsletmeh.png',fit:BoxFit.contain,alignment:Alignment.bottomRight))
     ])),
-    const SizedBox(height:12),
+    const SizedBox(height:6),
     const SizedBox(width:300,child:Text('Daha fazla müşteriye ulaş,\nkampanyalarını yönet,\nişletmeni büyüt.',style:TextStyle(color:_muted,fontSize:16,height:1.45))),
-    const SizedBox(height:24),
+    const SizedBox(height:18),
     Row(children:[_Benefit(Icons.campaign_rounded,'Kampanya\noluştur'),const SizedBox(width:9),_Benefit(Icons.bar_chart_rounded,'Daha fazla\nmüşteri'),const SizedBox(width:9),_Benefit(Icons.storefront_rounded,'İşletmeni\nöne çıkar')]),
     const SizedBox(height:24),
     SizedBox(width:double.infinity,height:54,child:FilledButton(onPressed:onLogin,style:FilledButton.styleFrom(backgroundColor:const Color(0xFFB6FF2A),foregroundColor:Colors.black,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(17))),child:const Row(mainAxisAlignment:MainAxisAlignment.center,children:[Text('Giriş Yap',style:TextStyle(fontSize:17,fontWeight:FontWeight.w900)),SizedBox(width:8),Icon(Icons.arrow_forward_rounded)]))),
