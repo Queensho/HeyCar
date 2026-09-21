@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'onboarding_backend.dart';
 import 'qr_backend.dart';
+import 'owner_auth.dart';
 
 const _bg = Color(0xFF06111F);
 const _panel = Color(0xFF0E1930);
@@ -63,6 +64,7 @@ class _PasswordOwnerLoginScreenState extends State<PasswordOwnerLoginScreen> {
 
       final data = r.body.isEmpty ? <String, dynamic>{} : jsonDecode(r.body);
       if (r.statusCode >= 200 && r.statusCode < 300 && data is Map<String, dynamic>) {
+        await OwnerAuth.saveFrom(data);
         final user = data['user'];
         final vehicles = data['vehicles'];
         if (user is Map) {
