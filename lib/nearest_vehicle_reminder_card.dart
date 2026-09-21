@@ -5,6 +5,7 @@ import 'cepqar_theme.dart';
 import 'onboarding_backend.dart';
 import 'qr_backend.dart';
 import 'vehicle_reminders_page.dart';
+import 'owner_auth.dart';
 
 class NearestVehicleReminderCard extends StatefulWidget {
   const NearestVehicleReminderCard({super.key, required this.vehicleId});
@@ -34,7 +35,7 @@ class _NearestVehicleReminderCardState extends State<NearestVehicleReminderCard>
     try {
       final r = await http.get(
         Uri.parse('${QrBackend.baseUrl}/api/vehicles/${widget.vehicleId}/reminders'),
-        headers: {'x-owner-id': ownerId},
+        headers: await OwnerAuth.headers(json:false),
       ).timeout(const Duration(seconds: 12));
       if (r.statusCode == 200) {
         final d = jsonDecode(r.body) as Map<String, dynamic>;
