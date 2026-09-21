@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'qr_backend.dart';
+import 'owner_auth.dart';
 
 class OnboardingDraft {
   static String phone = '';
@@ -52,6 +53,7 @@ class OnboardingBackend {
     if (response.statusCode >= 200 &&
         response.statusCode < 300 &&
         decoded is Map<String, dynamic>) {
+      await OwnerAuth.saveFrom(decoded);
       final user = decoded['user'];
       final vehicle = decoded['vehicle'];
       if (user is Map) OnboardingDraft.userId = user['id']?.toString() ?? '';
