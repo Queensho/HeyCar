@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'onboarding_backend.dart';
 import 'qr_backend.dart';
 import 'parking_place.dart';
+import 'owner_auth.dart';
 
 class ParkingRecordApi {
   static Future<Map<String, dynamic>> save(
@@ -21,7 +22,7 @@ class ParkingRecordApi {
           Uri.parse(
             '${QrBackend.baseUrl}/api/vehicles/${Uri.encodeComponent(vehicleId)}/parking',
           ),
-          headers: {'Content-Type': 'application/json', 'x-owner-id': owner},
+          headers: await OwnerAuth.headers(),
           body: jsonEncode({
             'area': area.trim(),
             'floor': floor.trim(),
