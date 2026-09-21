@@ -65,6 +65,7 @@ class _OwnerVehicleSetupPageState extends State<OwnerVehicleSetupPage> {
 
   Future<void> _save() async {
     if (saving) return;
+    if(OnboardingDraft.transferCode.trim().isNotEmpty){setState(()=>saving=true);try{await OnboardingBackend.registerWithVehicle(phone:OnboardingDraft.phone,displayName:OnboardingDraft.displayName,email:OnboardingDraft.email,password:OnboardingDraft.password,plate:'TRANSFER',make:'TRANSFER',model:'TRANSFER',transferCode:OnboardingDraft.transferCode);if(mounted)widget.onDone();}catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString().replaceFirst('Exception: ',''))));}finally{if(mounted)setState(()=>saving=false);}return;}
     if (plate.text.trim().isEmpty || make.isEmpty || model.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Plaka, marka ve modeli tamamla.')));
       return;
