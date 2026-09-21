@@ -438,6 +438,22 @@ class _PublicHomeState extends State<_PublicHome>{
               ]),
             ),
           ),
+          const SizedBox(height: 10),
+          InkWell(
+            borderRadius: BorderRadius.circular(18),
+            onTap: () => html.window.location.href = Uri.base.resolve('app/').toString(),
+            child: Container(
+              height: compact ? 52 : 58,
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              decoration: BoxDecoration(color: _lime, borderRadius: BorderRadius.circular(18)),
+              child: const Row(children: [
+                Icon(Icons.person_add_alt_1_rounded, color: Colors.black),
+                SizedBox(width: 16),
+                Expanded(child: Text("Sen de Cepqar'a Katıl", style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900, fontSize: 17))),
+                Icon(Icons.chevron_right_rounded, color: Colors.black),
+              ]),
+            ),
+          ),
           const SizedBox(height: 18),
           const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
             Icon(Icons.shield_rounded, color: Colors.white70, size: 20),
