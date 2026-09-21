@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'owner_qr_dialog.dart';
 import 'owner_settings_detail.dart';
+import 'premium_page.dart';
 
 const _bg = Color(0xFF07111F);
 const _panel = Color(0xFF111A31);
@@ -30,37 +31,7 @@ class OwnerSettingsPage extends StatelessWidget {
   }
 
   void _showPremium(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: _panel,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (sheetContext) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.workspace_premium_rounded, color: _purple, size: 42),
-              const SizedBox(height: 10),
-              const Text('Cepqar Premium', style: TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.w900)),
-              const SizedBox(height: 7),
-              const Text('Premium üyelik seçenekleri yakında burada.', textAlign: TextAlign.center, style: TextStyle(color: _muted, fontSize: 13.5)),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  style: FilledButton.styleFrom(backgroundColor: _purple),
-                  onPressed: () => Navigator.pop(sheetContext),
-                  child: const Text('Tamam'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    _push(context, const PremiumPage());
   }
 
   Future<void> _logout(BuildContext context) async {
