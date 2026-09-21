@@ -8,6 +8,7 @@ import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:flutter_callkit_incoming/entities/entities.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'owner_auth.dart';
 
 const _apiBase='https://heycar-api-185-165-46-213.nip.io';
 const _generalChannel='cepqar_notifications_v2';
@@ -153,7 +154,7 @@ class PushNotifications{
     var deviceId=prefs.getString('push_device_id');
     if(deviceId==null||deviceId.isEmpty){deviceId='${Platform.operatingSystem}-${DateTime.now().microsecondsSinceEpoch}';await prefs.setString('push_device_id',deviceId);}
     try{
-      final r=await http.post(Uri.parse('$_apiBase/api/owner/push-token'),headers:{'content-type':'application/json','x-owner-id':ownerId},body:jsonEncode({'token':token,'deviceId':deviceId,'platform':Platform.operatingSystem})).timeout(const Duration(seconds:15));
+      final r=await http.post(Uri.parse('$_apiBase/api/owner/push-token'),headers:await OwnerAuth.headers(),body:jsonEncode({'token':token,'deviceId':deviceId,'platform':Platform.operatingSystem})).timeout(const Duration(seconds:15));
       if(r.statusCode<200||r.statusCode>=300)throw HttpException('Push token registration failed: ${r.statusCode}');
       await prefs.setBool('push_token_registered',true);
     }catch(e){await prefs.setBool('push_token_registered',false);stderr.writeln('Push token registration: $e');}
@@ -246,7 +247,7 @@ class PushNotifications{
     final ownerId=prefs.getString('owner_user_id')??prefs.getString('owner_id')??prefs.getString('ownerId');
     if(ownerId==null||ownerId.isEmpty)return;
     try{
-      final r=await http.patch(Uri.parse('$_apiBase/api/owner/calls/$callId'),headers:{'content-type':'application/json','x-owner-id':ownerId},body:jsonEncode({'action':action})).timeout(const Duration(seconds:10));
+      final r=await http.patch(Uri.parse('$_apiBase/api/owner/calls/$callId'),headers:await OwnerAuth.headers(),body:jsonEncode({'action':action})).timeout(const Duration(seconds:10));
       if(r.statusCode<200||r.statusCode>=300)throw HttpException('Call $action failed');
     }catch(e){stderr.writeln('Call $action failed: $e');}
   }
