@@ -47,7 +47,17 @@ class _BusinessPanelPageState extends State<BusinessPanelPage>{
    register:register,email:email,pw:pw,name:name,cat:cat,phone:phone,address:address,street:street,houseNumber:houseNumber,district:district,city:city,
    submit:()async{
     final path=register?'register':'login';
-    final body=register?{'email':email.text.trim(),'password':pw.text,'name':name.text.trim(),'category':cat.text.trim(),'phone':phone.text.trim(),'address':[street.text.trim(),houseNumber.text.trim().isEmpty?'':'No: ${houseNumber.text.trim()}',district.text.trim(),city.text.trim()].where((x)=>x.isNotEmpty).join(', '),'street':street.text.trim(),'houseNumber':houseNumber.text.trim(),'district':district.text.trim(),'city':city.text.trim()}:{'email':email.text.trim(),'password':pw.text};
+    double? selectedLat,selectedLon; String? selectedAddress;
+    if(register){
+     final vr=await http.post(Uri.parse('$_businessApi/api/business/address-candidates'),headers:{'Content-Type':'application/json'},body:jsonEncode({'street':street.text.trim(),'houseNumber':houseNumber.text.trim(),'district':district.text.trim(),'city':city.text.trim()}));
+     if(vr.statusCode!=200)return 'Adres doğrulanamadı. Bilgileri kontrol et.';
+     final candidates=(jsonDecode(vr.body)['candidates'] as List? ?? []).whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).toList();
+     if(candidates.isEmpty)return 'Adres bulunamadı.';
+     final chosen=await showDialog<Map<String,dynamic>>(context:context,builder:(d)=>AlertDialog(backgroundColor:_panel,title:const Text('İşletme adresini seç',style:TextStyle(color:Colors.white)),content:SizedBox(width:430,child:Column(mainAxisSize:MainAxisSize.min,children:candidates.take(5).map((item)=>ListTile(title:Text((item['formatted']??'').toString(),style:const TextStyle(color:Colors.white)),subtitle:Text('Eşleşme güveni: %'+(((item['confidence']??0) as num)*100).round().toString(),style:const TextStyle(color:_muted)),onTap:()=>Navigator.pop(d,item))).toList()))));
+     if(chosen==null)return 'Kayıt için işletme adresini seçmelisin.';
+     selectedLat=(chosen['latitude'] as num?)?.toDouble();selectedLon=(chosen['longitude'] as num?)?.toDouble();selectedAddress=(chosen['formatted']??'').toString();
+    }
+    final body=register?{'email':email.text.trim(),'password':pw.text,'name':name.text.trim(),'category':cat.text.trim(),'phone':phone.text.trim(),'address':selectedAddress,'street':street.text.trim(),'houseNumber':houseNumber.text.trim(),'district':district.text.trim(),'city':city.text.trim(),'latitude':selectedLat,'longitude':selectedLon}:{'email':email.text.trim(),'password':pw.text};
     final r=await http.post(Uri.parse('$_businessApi/api/business/auth/$path'),headers:{'Content-Type':'application/json'},body:jsonEncode(body));
     if(r.statusCode==200||r.statusCode==201){final j=jsonDecode(r.body);token=(j['token']??'').toString();final p=await SharedPreferences.getInstance();await p.setString('business_token',token);await _loadAll();return null;}
     if(r.statusCode==409)return 'Bu e-posta ile daha önce kayıt olunmuş.';
