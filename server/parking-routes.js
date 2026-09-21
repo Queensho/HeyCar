@@ -1,3 +1,4 @@
+const {ownerId: authenticatedOwnerId}=require('./owner-auth-service');
 const express = require('express');
 module.exports = function registerParkingRoutes(app, pool) {
   const geoCache = new Map();
@@ -69,7 +70,7 @@ module.exports = function registerParkingRoutes(app, pool) {
       res.status(502).json({error:'GEOAPIFY_UNAVAILABLE'});
     }
   });
-  const owner = req => String(req.headers['x-owner-id'] || '').trim();
+  const owner = req => authenticatedOwnerId(req);
   const fields = 'area,floor,spot,note,parking_name,latitude,longitude,osm_id,started_at,updated_at';
   async function owns(req, res) {
     const o = owner(req), v = String(req.params.vehicleId || '');
