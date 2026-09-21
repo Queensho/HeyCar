@@ -215,6 +215,7 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
   final transferCode = TextEditingController();
   bool accepted = false;
   bool obscure = true;
+  bool busy = false;
 
   @override
   void dispose() { phone.dispose(); email.dispose(); password.dispose(); name.dispose(); transferCode.dispose(); super.dispose(); }
@@ -238,7 +239,33 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
     OnboardingDraft.email = email.text.trim();
     OnboardingDraft.password = password.text;
     OnboardingDraft.transferCode = transferCode.text.trim().toUpperCase();
-    widget.onContinue();
+    if (OnboardingDraft.transferCode.isNotEmpty) {
+      _registerTransfer();
+    } else {
+      widget.onContinue();
+    }
+  }
+
+  Future<void> _registerTransfer() async {
+    if (busy) return;
+    setState(() => busy = true);
+    try {
+      await OnboardingBackend.registerWithVehicle(
+        phone: OnboardingDraft.phone,
+        displayName: OnboardingDraft.displayName,
+        email: OnboardingDraft.email,
+        password: OnboardingDraft.password,
+        plate: 'TRANSFER',
+        make: 'TRANSFER',
+        model: '',
+        transferCode: OnboardingDraft.transferCode,
+      );
+      if (mounted) widget.onContinue();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))));
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
   }
 
   @override
@@ -283,7 +310,7 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
                 ]),
               ),
               const SizedBox(height: 16),
-              _PrimaryAuthButton(text: 'Kayıt Ol', onPressed: submit),
+              _PrimaryAuthButton(text: busy ? 'Kayıt yapılıyor...' : 'Kayıt Ol', onPressed: busy ? null : submit),
             ])),
           ),
         ]),
