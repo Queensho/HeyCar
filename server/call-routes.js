@@ -1,3 +1,4 @@
+const {ownerId: authenticatedOwnerId}=require('./owner-auth-service');
 const { validateScanSession } = require('./scan-session-service');
 function normalizeToken(raw) {
   return String(raw || '').trim().toUpperCase();
@@ -91,7 +92,7 @@ module.exports = function registerCallRoutes(app, pool) {
 
   app.get('/api/owner/calls/incoming', async (req, res) => {
     try {
-      const ownerId = String(req.headers['x-owner-id'] || '').trim();
+      const ownerId = authenticatedOwnerId(req);
       if (!ownerId) return res.status(401).json({ error: 'OWNER_REQUIRED' });
       await pool.query(`UPDATE anonymous_calls SET status='missed', ended_at=NOW() WHERE status='ringing' AND expires_at<=NOW()`);
       const result = await pool.query(`SELECT c.id,c.status,c.offer,c.caller_candidates,c.created_at,c.expires_at,v.plate FROM anonymous_calls c LEFT JOIN vehicles v ON v.id=c.vehicle_id WHERE c.owner_id=$1 AND c.status='ringing' AND c.expires_at>NOW() ORDER BY c.created_at DESC LIMIT 1`, [ownerId]);
@@ -101,7 +102,7 @@ module.exports = function registerCallRoutes(app, pool) {
 
   app.get('/api/owner/calls/:callId', async (req, res) => {
     try {
-      const ownerId = String(req.headers['x-owner-id'] || '').trim();
+      const ownerId = authenticatedOwnerId(req);
       if (!ownerId) return res.status(401).json({ error: 'OWNER_REQUIRED' });
       const result = await pool.query(`SELECT id,status,offer,caller_candidates,created_at,expires_at,answered_at,ended_at FROM anonymous_calls WHERE id=$1 AND owner_id=$2 LIMIT 1`, [req.params.callId, ownerId]);
       if (!result.rows.length) return res.status(404).json({ error: 'CALL_NOT_FOUND' });
@@ -111,7 +112,7 @@ module.exports = function registerCallRoutes(app, pool) {
 
   app.patch('/api/owner/calls/:callId', async (req, res) => {
     try {
-      const ownerId = String(req.headers['x-owner-id'] || '').trim();
+      const ownerId = authenticatedOwnerId(req);
       if (!ownerId) return res.status(401).json({ error: 'OWNER_REQUIRED' });
       const action = String((req.body && req.body.action) || '').trim();
       const nextStatus = action === 'accept' ? 'accepted' : action === 'reject' ? 'rejected' : action === 'end' ? 'ended' : null;
