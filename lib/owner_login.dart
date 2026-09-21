@@ -212,11 +212,12 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
   final email = TextEditingController();
   final password = TextEditingController();
   final name = TextEditingController();
+  final transferCode = TextEditingController();
   bool accepted = false;
   bool obscure = true;
 
   @override
-  void dispose() { phone.dispose(); email.dispose(); password.dispose(); name.dispose(); super.dispose(); }
+  void dispose() { phone.dispose(); email.dispose(); password.dispose(); name.dispose(); transferCode.dispose(); super.dispose(); }
 
   void submit() {
     final normalized = OwnerLoginBackend.normalizeTrMobile(phone.text);
@@ -236,6 +237,7 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
     OnboardingDraft.displayName = name.text.trim();
     OnboardingDraft.email = email.text.trim();
     OnboardingDraft.password = password.text;
+    OnboardingDraft.transferCode = transferCode.text.trim().toUpperCase();
     widget.onContinue();
   }
 
@@ -265,6 +267,12 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
               const _FieldLabel(icon: Icons.person_outline_rounded, text: 'Ad Soyad'),
               const SizedBox(height: 7),
               _DarkTextField(controller: name, hint: 'Adını gir'),
+              const SizedBox(height: 14),
+              const _FieldLabel(icon: Icons.swap_horiz_rounded, text: 'Araç Devir Kodun var mı?'),
+              const SizedBox(height: 7),
+              _DarkTextField(controller: transferCode, hint: 'Devir kodu (isteğe bağlı)'),
+              const SizedBox(height: 6),
+              const Text('Araç satın aldıysan eski sahibinin verdiği kodu buraya girebilirsin.',style:TextStyle(color:_authMuted,fontSize:11.5)),
               const SizedBox(height: 14),
               InkWell(
                 onTap: () => setState(() => accepted = !accepted),
