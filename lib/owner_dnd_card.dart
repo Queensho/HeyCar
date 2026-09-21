@@ -45,8 +45,8 @@ class _OwnerDndCardState extends State<OwnerDndCard> {
     if (ownerId.isEmpty) { if (mounted) setState(() => loading = false); return; }
     try {
       final rs = await Future.wait([
-        http.get(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/dnd'), headers: await OwnerAuth.headers(json:false)),
-        http.get(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/vehicles'), headers: await OwnerAuth.headers(json:false)),
+        OwnerHttp.get(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/dnd'), json:false),
+        OwnerHttp.get(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/vehicles'), json:false),
       ]);
       final j = jsonDecode(rs[0].body) as Map<String, dynamic>;
       final u = jsonDecode(rs[1].body) as Map<String, dynamic>;
@@ -72,7 +72,7 @@ class _OwnerDndCardState extends State<OwnerDndCard> {
     if (ownerId.isEmpty || !premium) return;
     setState(() => loading = true);
     try {
-      final r = await http.put(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/dnd'), headers: {'Content-Type':'application/json','x-owner-id':ownerId}, body: jsonEncode({'hours':hours}));
+      final r = await OwnerHttp.put(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/dnd'), body: jsonEncode({'hours':hours}));
       final j = jsonDecode(r.body) as Map<String,dynamic>;
       if (mounted) setState(() {
         active = j['active'] == true;
