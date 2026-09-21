@@ -7,6 +7,7 @@ import 'onboarding_backend.dart';
 import 'qr_backend.dart';
 import 'parking_record_editor.dart';
 import 'parking_navigation.dart';
+import 'owner_auth.dart';
 
 class SavedParkingCard extends StatefulWidget {
   const SavedParkingCard({super.key, required this.vehicleId});
@@ -20,9 +21,7 @@ class _SavedParkingCardState extends State<SavedParkingCard> {
   bool _loading = true, _busy = false;
   String? _error;
   Timer? _timer;
-  Map<String, String> get _headers => {
-    'x-owner-id': OnboardingDraft.userId.trim(),
-  };
+  Future<Map<String,String>> get _headers async => OwnerAuth.headers(json:false);
   Uri get _url => Uri.parse(
     '${QrBackend.baseUrl}/api/vehicles/${Uri.encodeComponent(widget.vehicleId)}/parking',
   );
@@ -44,7 +43,7 @@ class _SavedParkingCardState extends State<SavedParkingCard> {
   Future<void> _load() async {
     try {
       final r = await http
-          .get(_url, headers: _headers)
+          .get(_url, headers: await _headers)
           .timeout(const Duration(seconds: 12));
       if (r.statusCode != 200) throw Exception();
       final data = jsonDecode(r.body);
@@ -72,7 +71,7 @@ class _SavedParkingCardState extends State<SavedParkingCard> {
     setState(() => _busy = true);
     try {
       final r = await http
-          .delete(_url, headers: _headers)
+          .delete(_url, headers: await _headers)
           .timeout(const Duration(seconds: 12));
       if (r.statusCode != 200) throw Exception();
       if (mounted) setState(() => _parking = null);
