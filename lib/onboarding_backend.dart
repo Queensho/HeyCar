@@ -58,9 +58,10 @@ class OnboardingBackend {
       if (vehicle is Map) OnboardingDraft.vehicleId = vehicle['id']?.toString() ?? '';
 
       QrDraft.vehicleId = OnboardingDraft.vehicleId;
-      QrDraft.plate = plate.trim().toUpperCase();
-      QrDraft.make = make.trim();
-      QrDraft.model = model.trim();
+      QrDraft.plate = vehicle is Map ? (vehicle['plate']?.toString() ?? plate.trim().toUpperCase()) : plate.trim().toUpperCase();
+      QrDraft.make = vehicle is Map ? (vehicle['make']?.toString() ?? make.trim()) : make.trim();
+      QrDraft.model = vehicle is Map ? (vehicle['model']?.toString() ?? model.trim()) : model.trim();
+      if (vehicle is Map && vehicle['qr_token'] != null) QrDraft.token = vehicle['qr_token'].toString();
       QrDraft.ownerName = displayName.trim().isEmpty ? 'HeyCar Kullanıcısı' : displayName.trim();
 
       return decoded;
@@ -71,6 +72,8 @@ class OnboardingBackend {
     if (code == 'PHONE_EXISTS') throw Exception('Bu telefon numarası zaten kayıtlı.');
     if (code == 'INVALID_PHONE') throw Exception('Geçerli bir cep telefonu numarası gir.');
     if (code == 'INVALID_INPUT') throw Exception('Bilgileri kontrol edip tekrar dene.');
+    if (code == 'TRANSFER_NOT_FOUND') throw Exception('Devir kodu bulunamadı.');
+    if (code == 'TRANSFER_EXPIRED') throw Exception('Devir kodunun süresi dolmuş veya kod kullanılmış.');
     throw Exception('Kayıt tamamlanamadı. Tekrar dene.');
   }
 }
