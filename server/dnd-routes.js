@@ -1,3 +1,4 @@
+const {ownerId: authenticatedOwnerId}=require('./owner-auth-service');
 module.exports = function registerDndRoutes(app, pool) {
   let ready = false;
   async function ensureSchema() {
@@ -22,14 +23,14 @@ module.exports = function registerDndRoutes(app, pool) {
   }
 
   app.get('/api/owner/dnd', async (req, res) => {
-    const ownerId = String(req.headers['x-owner-id'] || '').trim();
+    const ownerId = authenticatedOwnerId(req);
     if (!ownerId) return res.status(401).json({ error: 'OWNER_REQUIRED' });
     try { return res.json({ ok: true, ...(await status(ownerId)) }); }
     catch (e) { console.error(e); return res.status(500).json({ error: 'SERVER_ERROR' }); }
   });
 
   app.put('/api/owner/dnd', async (req, res) => {
-    const ownerId = String(req.headers['x-owner-id'] || '').trim();
+    const ownerId = authenticatedOwnerId(req);
     if (!ownerId) return res.status(401).json({ error: 'OWNER_REQUIRED' });
     const hours = Number(req.body?.hours || 0);
     if (![0, 1, 3, 5, 8, 12].includes(hours)) return res.status(400).json({ error: 'INVALID_DURATION' });
