@@ -7,6 +7,7 @@ import 'cepqar_theme.dart';
 import 'street_parking_card.dart';
 import 'parking_places_page.dart';
 import 'saved_parking_card.dart';
+import 'owner_auth.dart';
 
 class ParkingLocationCard extends StatefulWidget {
   const ParkingLocationCard({super.key, required this.vehicleId});
@@ -31,7 +32,7 @@ class _ParkingLocationCardState extends State<ParkingLocationCard> {
         Uri.parse(
           '${QrBackend.baseUrl}/api/vehicles/${widget.vehicleId}/maintenance',
         ),
-        headers: {'x-owner-id': owner},
+        headers: await OwnerAuth.headers(json:false),
       );
       final d = jsonDecode(r.body);
       if (mounted)
