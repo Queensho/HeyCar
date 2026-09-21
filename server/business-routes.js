@@ -4,12 +4,15 @@ module.exports=function registerBusinessRoutes(app,pool){
  const password=s=>crypto.scryptSync(String(s),String(process.env.BUSINESS_PASSWORD_SALT||'cepqar-business-v1'),64).toString('hex');
  const token=()=>crypto.randomBytes(32).toString('hex');
  async function auth(req,res){const raw=String(req.headers.authorization||'').replace(/^Bearer\s+/i,'');if(!raw){res.status(401).json({error:'AUTH_REQUIRED'});return null;}const q=await pool.query("SELECT a.id FROM business_sessions s JOIN business_accounts a ON a.id=s.account_id WHERE s.token_hash=$1 AND s.expires_at>now()",[hash(raw)]);if(!q.rowCount){res.status(401).json({error:'INVALID_SESSION'});return null;}return q.rows[0].id;}
- app.post('/api/business/auth/register',async(req,res)=>{try{let {email,password:pw,name,category,phone,address,latitude,longitude}=req.body||{};if(!email||!pw||String(pw).length<8||!name||!category)return res.status(400).json({error:'INVALID_INPUT'});
+ app.post('/api/business/auth/register',async(req,res)=>{try{let {email,password:pw,name,category,phone,address,street,houseNumber,district,city,latitude,longitude}=req.body||{};if(!email||!pw||String(pw).length<8||!name||!category)return res.status(400).json({error:'INVALID_INPUT'});
   if(address&&(!Number.isFinite(Number(latitude))||!Number.isFinite(Number(longitude)))){
    try{
     const key=process.env.GEOAPIFY_API_KEY;
     if(!key)return res.status(503).json({error:'GEOCODING_UNAVAILABLE'});
-    const url='https://api.geoapify.com/v1/geocode/search?text='+encodeURIComponent(String(address)+', Türkiye')+'&limit=1&filter=countrycode:tr&apiKey='+encodeURIComponent(key);
+    const structured=street&&houseNumber;
+    const url=structured
+     ? 'https://api.geoapify.com/v1/geocode/search?housenumber='+encodeURIComponent(houseNumber)+'&street='+encodeURIComponent(street)+(district?'&suburb='+encodeURIComponent(district):'')+(city?'&city='+encodeURIComponent(city):'')+'&country='+encodeURIComponent('Türkiye')+'&limit=1&filter=countrycode:tr&apiKey='+encodeURIComponent(key)
+     : 'https://api.geoapify.com/v1/geocode/search?text='+encodeURIComponent(String(address)+', Türkiye')+'&limit=1&filter=countrycode:tr&apiKey='+encodeURIComponent(key);
     const gr=await fetch(url);const gj=await gr.json();const p=gj&&gj.features&&gj.features[0]&&gj.features[0].properties;
     if(!p||!Number.isFinite(Number(p.lat))||!Number.isFinite(Number(p.lon)))return res.status(400).json({error:'ADDRESS_NOT_FOUND'});
     latitude=Number(p.lat);longitude=Number(p.lon);
