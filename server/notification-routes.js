@@ -1,3 +1,4 @@
+const {ownerId: authenticatedOwnerId}=require('./owner-auth-service');
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
@@ -133,7 +134,7 @@ module.exports = function registerNotificationRoutes(app, pool) {
   });
 
   app.get('/api/owner/privacy-settings', async (req, res) => {
-    const ownerId = String(req.headers['x-owner-id'] || '').trim();
+    const ownerId = authenticatedOwnerId(req);
     if (!ownerId) return res.status(401).json({ error: 'OWNER_REQUIRED' });
     try {
       const s = await getPrivacy(ownerId);
@@ -147,7 +148,7 @@ module.exports = function registerNotificationRoutes(app, pool) {
   });
 
   app.put('/api/owner/privacy-settings', async (req, res) => {
-    const ownerId = String(req.headers['x-owner-id'] || '').trim();
+    const ownerId = authenticatedOwnerId(req);
     if (!ownerId) return res.status(401).json({ error: 'OWNER_REQUIRED' });
     try {
       const current = await getPrivacy(ownerId);
@@ -163,7 +164,7 @@ module.exports = function registerNotificationRoutes(app, pool) {
   });
 
   app.get('/api/owner/notification-settings', async (req, res) => {
-    const ownerId = String(req.headers['x-owner-id'] || '').trim();
+    const ownerId = authenticatedOwnerId(req);
     if (!ownerId) return res.status(401).json({ error: 'OWNER_REQUIRED' });
     try {
       const s = await getPrivacy(ownerId);
@@ -177,7 +178,7 @@ module.exports = function registerNotificationRoutes(app, pool) {
   });
 
   app.put('/api/owner/notification-settings', async (req, res) => {
-    const ownerId = String(req.headers['x-owner-id'] || '').trim();
+    const ownerId = authenticatedOwnerId(req);
     if (!ownerId) return res.status(401).json({ error: 'OWNER_REQUIRED' });
     try {
       const current = await getPrivacy(ownerId);
@@ -191,7 +192,7 @@ module.exports = function registerNotificationRoutes(app, pool) {
   });
 
   app.post('/api/owner/device-presence', async (req, res) => {
-    const ownerId = String(req.headers['x-owner-id'] || '').trim();
+    const ownerId = authenticatedOwnerId(req);
     const deviceId = String(req.body?.deviceId || '').trim().slice(0, 200);
     const deviceName = String(req.body?.deviceName || 'Bu cihaz').trim().slice(0, 120);
     if (!ownerId || !deviceId) return res.status(400).json({ error: 'REQUIRED_FIELDS_MISSING' });
@@ -209,7 +210,7 @@ module.exports = function registerNotificationRoutes(app, pool) {
   });
 
   app.get('/api/owner/devices', async (req, res) => {
-    const ownerId = String(req.headers['x-owner-id'] || '').trim();
+    const ownerId = authenticatedOwnerId(req);
     if (!ownerId) return res.status(401).json({ error: 'OWNER_REQUIRED' });
     try {
       await ensurePrivacySchema();
@@ -219,7 +220,7 @@ module.exports = function registerNotificationRoutes(app, pool) {
   });
 
   app.get('/api/owner/blocked-visitors', async (req, res) => {
-    const ownerId = String(req.headers['x-owner-id'] || '').trim();
+    const ownerId = authenticatedOwnerId(req);
     if (!ownerId) return res.status(401).json({ error: 'OWNER_REQUIRED' });
     try {
       await ensurePrivacySchema();
@@ -229,7 +230,7 @@ module.exports = function registerNotificationRoutes(app, pool) {
   });
 
   app.delete('/api/owner/blocked-visitors/:visitorKey', async (req, res) => {
-    const ownerId = String(req.headers['x-owner-id'] || '').trim();
+    const ownerId = authenticatedOwnerId(req);
     if (!ownerId) return res.status(401).json({ error: 'OWNER_REQUIRED' });
     try {
       await ensurePrivacySchema();
@@ -241,7 +242,7 @@ module.exports = function registerNotificationRoutes(app, pool) {
   });
 
   app.post('/api/owner/privacy-reset', async (req, res) => {
-    const ownerId = String(req.headers['x-owner-id'] || '').trim();
+    const ownerId = authenticatedOwnerId(req);
     const keepDeviceId = String(req.body?.keepDeviceId || '').trim();
     if (!ownerId) return res.status(401).json({ error: 'OWNER_REQUIRED' });
     try {
@@ -254,7 +255,7 @@ module.exports = function registerNotificationRoutes(app, pool) {
   });
 
   app.post('/api/owner/conversations/:id/block-visitor', async (req, res) => {
-    const ownerId = String(req.headers['x-owner-id'] || '').trim();
+    const ownerId = authenticatedOwnerId(req);
     if (!ownerId) return res.status(401).json({ error: 'OWNER_REQUIRED' });
     try {
       await ensurePrivacySchema();
@@ -336,7 +337,7 @@ module.exports = function registerNotificationRoutes(app, pool) {
   }
 
   app.get('/api/owner/vehicles/:vehicleId/park-note', async (req, res) => {
-    const ownerId = String(req.headers['x-owner-id'] || '').trim();
+    const ownerId = authenticatedOwnerId(req);
     const vehicleId = String(req.params.vehicleId || '').trim();
     if (!ownerId) return res.status(401).json({ error: 'OWNER_REQUIRED' });
     try {
@@ -350,7 +351,7 @@ module.exports = function registerNotificationRoutes(app, pool) {
   });
 
   app.post('/api/owner/vehicles/:vehicleId/park-note', async (req, res) => {
-    const ownerId = String(req.headers['x-owner-id'] || '').trim();
+    const ownerId = authenticatedOwnerId(req);
     const vehicleId = String(req.params.vehicleId || '').trim();
     const message = String(req.body?.message || '').trim().slice(0, 180);
     const isActive = req.body?.isActive !== false;
@@ -378,7 +379,7 @@ module.exports = function registerNotificationRoutes(app, pool) {
   });
 
   app.delete('/api/owner/vehicles/:vehicleId/park-note', async (req, res) => {
-    const ownerId = String(req.headers['x-owner-id'] || '').trim();
+    const ownerId = authenticatedOwnerId(req);
     const vehicleId = String(req.params.vehicleId || '').trim();
     if (!ownerId) return res.status(401).json({ error: 'OWNER_REQUIRED' });
     try {
@@ -406,7 +407,7 @@ module.exports = function registerNotificationRoutes(app, pool) {
   });
 
   app.get('/api/owner/notifications', async (req, res) => {
-    const ownerId = String(req.headers['x-owner-id'] || '').trim();
+    const ownerId = authenticatedOwnerId(req);
     if (!ownerId) return res.status(401).json({ error: 'OWNER_REQUIRED' });
     try {
       const p = await getPrivacy(ownerId);
@@ -417,7 +418,7 @@ module.exports = function registerNotificationRoutes(app, pool) {
   });
 
   app.patch('/api/owner/notifications/:id', async (req, res) => {
-    const ownerId = String(req.headers['x-owner-id'] || '').trim();
+    const ownerId = authenticatedOwnerId(req);
     const id = String(req.params.id || '').trim();
     const status = String(req.body?.status || '').trim();
     if (!ownerId) return res.status(401).json({ error: 'OWNER_REQUIRED' });
