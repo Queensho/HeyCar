@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'onboarding_backend.dart';
+import 'owner_auth.dart';
 
 const _bg = Color(0xFF07111F);
 const _panel = Color(0xFF101A30);
@@ -63,7 +64,7 @@ class _OwnerChatPageState extends State<OwnerChatPage> {
     try {
       final r = await http.get(
         Uri.parse('$baseUrl/api/owner/notifications/${Uri.encodeComponent(widget.notificationId)}/conversation'),
-        headers: {'x-owner-id': ownerId},
+        headers: await OwnerAuth.headers(json:false),
       ).timeout(const Duration(seconds: 15));
       if (r.statusCode < 200 || r.statusCode >= 300) throw Exception();
       final d = jsonDecode(r.body) as Map<String, dynamic>;
@@ -85,7 +86,7 @@ class _OwnerChatPageState extends State<OwnerChatPage> {
     try {
       final r = await http.get(
         Uri.parse('$baseUrl/api/owner/conversations/${Uri.encodeComponent(id)}'),
-        headers: {'x-owner-id': OnboardingDraft.userId.trim()},
+        headers: await OwnerAuth.headers(json:false),
       ).timeout(const Duration(seconds: 15));
       if (r.statusCode < 200 || r.statusCode >= 300) throw Exception();
       final d = jsonDecode(r.body) as Map<String, dynamic>;
@@ -137,7 +138,7 @@ class _OwnerChatPageState extends State<OwnerChatPage> {
   Future<void> _report() async {
     final id=conversationId;if(id==null||id.isEmpty)return;
     try{
-      final r=await http.post(Uri.parse('$baseUrl/api/owner/conversations/${Uri.encodeComponent(id)}/report'),headers:{'Content-Type':'application/json','x-owner-id':OnboardingDraft.userId.trim()},body:jsonEncode({'reason':'uygunsuz_icerik'})).timeout(const Duration(seconds:15));
+      final r=await http.post(Uri.parse('$baseUrl/api/owner/conversations/${Uri.encodeComponent(id)}/report'),headers:await OwnerAuth.headers(),body:jsonEncode({'reason':'uygunsuz_icerik'})).timeout(const Duration(seconds:15));
       if(r.statusCode<200||r.statusCode>=300)throw Exception();
       if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Şikayet alındı.')));
     }catch(_){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Şikayet gönderilemedi.')));}
@@ -169,7 +170,7 @@ class _OwnerChatPageState extends State<OwnerChatPage> {
     try {
       final r = await http.post(
         Uri.parse('$baseUrl/api/owner/conversations/${Uri.encodeComponent(id)}/block'),
-        headers: {'x-owner-id': OnboardingDraft.userId.trim()},
+        headers: await OwnerAuth.headers(json:false),
       ).timeout(const Duration(seconds: 15));
       if (r.statusCode < 200 || r.statusCode >= 300) throw Exception();
       timer?.cancel();
