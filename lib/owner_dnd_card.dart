@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'onboarding_backend.dart';
+import 'owner_auth.dart';
 
 const _dndPanel = Color(0xFF101A30);
 const _dndLine = Color(0xFF27355D);
@@ -44,8 +45,8 @@ class _OwnerDndCardState extends State<OwnerDndCard> {
     if (ownerId.isEmpty) { if (mounted) setState(() => loading = false); return; }
     try {
       final rs = await Future.wait([
-        http.get(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/dnd'), headers: {'x-owner-id': ownerId}),
-        http.get(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/vehicles'), headers: {'x-owner-id': ownerId}),
+        http.get(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/dnd'), headers: await OwnerAuth.headers(json:false)),
+        http.get(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/vehicles'), headers: await OwnerAuth.headers(json:false)),
       ]);
       final j = jsonDecode(rs[0].body) as Map<String, dynamic>;
       final u = jsonDecode(rs[1].body) as Map<String, dynamic>;
