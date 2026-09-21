@@ -210,6 +210,18 @@ jobs:
         run: flutter pub get
       - name: Analyze app
         run: flutter analyze lib --no-fatal-infos --no-fatal-warnings
+      - name: Build business web panel
+        run: flutter build web --release --target lib/entry_business.dart --base-href /HeyCar/isletme/
+      - name: Prepare business web artifact
+        run: |
+          mkdir -p business-site/isletme
+          cp -R build/web/. business-site/isletme/
+      - name: Upload business web artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cepqar-business-web
+          path: business-site
+          retention-days: 7
       - name: Build Android test APK
         run: flutter build apk --debug --target lib/entry_theme_live.dart
       - name: Upload Android test APK
