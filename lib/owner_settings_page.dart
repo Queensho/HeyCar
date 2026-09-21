@@ -29,6 +29,40 @@ class OwnerSettingsPage extends StatelessWidget {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
   }
 
+  void _showPremium(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: _panel,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.workspace_premium_rounded, color: _purple, size: 42),
+              const SizedBox(height: 10),
+              const Text('Cepqar Premium', style: TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 7),
+              const Text('Premium üyelik seçenekleri yakında burada.', textAlign: TextAlign.center, style: TextStyle(color: _muted, fontSize: 13.5)),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(backgroundColor: _purple),
+                  onPressed: () => Navigator.pop(sheetContext),
+                  child: const Text('Tamam'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _logout(BuildContext context) async {
     final ok = await showDialog<bool>(
       context: context,
@@ -174,6 +208,14 @@ class OwnerSettingsPage extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(14, 0, 14, 22),
               child: Column(
                 children: [
+                  _SettingsTile(
+                    icon: Icons.workspace_premium_rounded,
+                    iconColor: _purple,
+                    title: 'Cepqar Premium',
+                    subtitle: 'Premium özellikleri keşfedin',
+                    onTap: () => _showPremium(context),
+                  ),
+                  const SizedBox(height: 8),
                   _SettingsTile(
                     icon: Icons.person_outline_rounded,
                     iconColor: _purple,
