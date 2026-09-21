@@ -1,3 +1,4 @@
+const {ownerId: authenticatedOwnerId}=require('./owner-auth-service');
 const express = require('express');
 
 const TYPES = new Set(['kasko','traffic_insurance','inspection','maintenance']);
@@ -66,7 +67,7 @@ module.exports = function registerReminderRoutes(app, pool) {
   }
 
   app.get('/api/vehicles/:vehicleId/reminders', async (req,res) => {
-    const ownerId=String(req.headers['x-owner-id']||'').trim();
+    const ownerId=authenticatedOwnerId(req);
     if(!ownerId) return res.status(401).json({error:'OWNER_REQUIRED'});
     try{
       await schema();
@@ -78,7 +79,7 @@ module.exports = function registerReminderRoutes(app, pool) {
   });
 
   app.put('/api/vehicles/:vehicleId/reminders/:type', express.json(), async (req,res) => {
-    const ownerId=String(req.headers['x-owner-id']||'').trim();
+    const ownerId=authenticatedOwnerId(req);
     const vehicleId=String(req.params.vehicleId||'').trim();
     const type=String(req.params.type||'').trim();
     const dueDate=String(req.body?.dueDate||'').trim();
@@ -95,7 +96,7 @@ module.exports = function registerReminderRoutes(app, pool) {
   });
 
   app.delete('/api/vehicles/:vehicleId/reminders/:type', async (req,res) => {
-    const ownerId=String(req.headers['x-owner-id']||'').trim();
+    const ownerId=authenticatedOwnerId(req);
     if(!ownerId) return res.status(401).json({error:'OWNER_REQUIRED'});
     try{
       await schema();
