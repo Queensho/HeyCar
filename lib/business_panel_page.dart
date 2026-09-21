@@ -121,17 +121,39 @@ class _Metric extends StatelessWidget{const _Metric(this.t,this.v,this.i);final 
 class _SettingsPage extends StatelessWidget{const _SettingsPage({required this.business,required this.onEdit,required this.onLogout});final Map<String,dynamic>? business;final VoidCallback onEdit,onLogout;@override Widget build(BuildContext c)=>Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('Ayarlar',style:TextStyle(color:Colors.white,fontSize:25,fontWeight:FontWeight.w900)),const SizedBox(height:18),_Box(child:Column(children:[ListTile(contentPadding:EdgeInsets.zero,leading:const Icon(Icons.storefront_rounded,color:_purple),title:Text((business?['name']??'İşletme Bilgileri').toString(),style:const TextStyle(color:Colors.white,fontWeight:FontWeight.w800)),subtitle:Text((business?['category']??'Profilini düzenle').toString(),style:const TextStyle(color:_muted)),trailing:const Icon(Icons.chevron_right,color:_muted),onTap:onEdit),const Divider(color:_line),ListTile(contentPadding:EdgeInsets.zero,leading:const Icon(Icons.logout_rounded,color:Colors.redAccent),title:const Text('Çıkış Yap',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w800)),onTap:onLogout)]))]);}
 
 class _BusinessWelcome extends StatelessWidget{
- const _BusinessWelcome({required this.onLogin,required this.onRegister});final VoidCallback onLogin,onRegister;
- @override Widget build(BuildContext c)=>Scaffold(backgroundColor:_bg,body:SafeArea(child:Center(child:SingleChildScrollView(padding:const EdgeInsets.fromLTRB(24,20,24,28),child:ConstrainedBox(constraints:const BoxConstraints(maxWidth:430),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-  Image.asset('assets/Logoqr.png',height:48),const SizedBox(height:14),
-  Container(padding:const EdgeInsets.symmetric(horizontal:13,vertical:7),decoration:BoxDecoration(border:Border.all(color:_line),borderRadius:BorderRadius.circular(20)),child:const Text('İşletme Paneli',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w700))),
-  const SizedBox(height:24),SizedBox(height:330,child:Stack(clipBehavior:Clip.none,children:[Positioned(left:0,top:16,child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('İşletmen\nhep görünür',style:TextStyle(color:Colors.white,fontSize:42,height:.98,fontWeight:FontWeight.w900)),const Text('olsun.',style:TextStyle(color:Color(0xFFB6FF2A),fontSize:42,height:1,fontWeight:FontWeight.w900))])),Positioned(right:-35,bottom:0,width:285,height:310,child:Image.asset('assets/İsletmeh.png',fit:BoxFit.contain,alignment:Alignment.bottomRight))])),
-  const SizedBox(height:16),const Text('Daha fazla müşteriye ulaş, kampanyalarını yönet, işletmeni büyüt.',style:TextStyle(color:_muted,fontSize:16,height:1.45)),
-  const SizedBox(height:28),Row(children:[_Benefit(Icons.campaign_rounded,'Kampanya\noluştur'),const SizedBox(width:9),_Benefit(Icons.bar_chart_rounded,'Daha fazla\nmüşteri'),const SizedBox(width:9),_Benefit(Icons.storefront_rounded,'İşletmeni\nöne çıkar')]),
-  const SizedBox(height:28),SizedBox(width:double.infinity,height:54,child:FilledButton(onPressed:onLogin,style:FilledButton.styleFrom(backgroundColor:const Color(0xFFB6FF2A),foregroundColor:Colors.black,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(17))),child:const Row(mainAxisAlignment:MainAxisAlignment.center,children:[Text('Giriş Yap',style:TextStyle(fontSize:17,fontWeight:FontWeight.w900)),SizedBox(width:8),Icon(Icons.arrow_forward_rounded)]))),
-  const SizedBox(height:11),SizedBox(width:double.infinity,height:54,child:OutlinedButton(onPressed:onRegister,style:OutlinedButton.styleFrom(side:const BorderSide(color:_line,width:1.4),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(17))),child:const Text('Kayıt Ol',style:TextStyle(color:Colors.white,fontSize:17,fontWeight:FontWeight.w900)))),
-  const SizedBox(height:25),const Row(mainAxisAlignment:MainAxisAlignment.center,children:[Icon(Icons.lock_outline_rounded,color:_muted,size:18),SizedBox(width:7),Text('İşletme bilgileriniz güvende.',style:TextStyle(color:_muted,fontSize:13))])
- ]))))));}
+ const _BusinessWelcome({required this.onLogin,required this.onRegister});
+ final VoidCallback onLogin,onRegister;
+ @override Widget build(BuildContext c)=>Scaffold(
+  backgroundColor:_bg,
+  body:SafeArea(child:Center(child:SingleChildScrollView(
+   padding:const EdgeInsets.fromLTRB(24,18,24,26),
+   child:ConstrainedBox(constraints:const BoxConstraints(maxWidth:430),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+    Image.asset('assets/Logoqr.png',height:48),
+    const SizedBox(height:12),
+    Container(padding:const EdgeInsets.symmetric(horizontal:13,vertical:7),decoration:BoxDecoration(border:Border.all(color:_line),borderRadius:BorderRadius.circular(20)),child:const Text('İşletme Paneli',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w700))),
+    const SizedBox(height:28),
+    SizedBox(height:360,child:Stack(clipBehavior:Clip.none,children:[
+     const Positioned(left:0,top:0,child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      Text('İşletmen',style:TextStyle(color:Colors.white,fontSize:38,height:1,fontWeight:FontWeight.w900)),
+      Text('hep görünür',style:TextStyle(color:Colors.white,fontSize:38,height:1,fontWeight:FontWeight.w900)),
+      Text('olsun.',style:TextStyle(color:Color(0xFFB6FF2A),fontSize:38,height:1.02,fontWeight:FontWeight.w900))
+     ])),
+     Positioned(right:-8,bottom:0,width:300,height:285,child:Image.asset('assets/İsletmeh.png',fit:BoxFit.contain,alignment:Alignment.bottomRight))
+    ])),
+    const SizedBox(height:12),
+    const SizedBox(width:300,child:Text('Daha fazla müşteriye ulaş,\nkampanyalarını yönet,\nişletmeni büyüt.',style:TextStyle(color:_muted,fontSize:16,height:1.45))),
+    const SizedBox(height:24),
+    Row(children:[_Benefit(Icons.campaign_rounded,'Kampanya\noluştur'),const SizedBox(width:9),_Benefit(Icons.bar_chart_rounded,'Daha fazla\nmüşteri'),const SizedBox(width:9),_Benefit(Icons.storefront_rounded,'İşletmeni\nöne çıkar')]),
+    const SizedBox(height:24),
+    SizedBox(width:double.infinity,height:54,child:FilledButton(onPressed:onLogin,style:FilledButton.styleFrom(backgroundColor:const Color(0xFFB6FF2A),foregroundColor:Colors.black,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(17))),child:const Row(mainAxisAlignment:MainAxisAlignment.center,children:[Text('Giriş Yap',style:TextStyle(fontSize:17,fontWeight:FontWeight.w900)),SizedBox(width:8),Icon(Icons.arrow_forward_rounded)]))),
+    const SizedBox(height:11),
+    SizedBox(width:double.infinity,height:54,child:OutlinedButton(onPressed:onRegister,style:OutlinedButton.styleFrom(side:const BorderSide(color:_line,width:1.4),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(17))),child:const Text('Kayıt Ol',style:TextStyle(color:Colors.white,fontSize:17,fontWeight:FontWeight.w900)))),
+    const SizedBox(height:22),
+    const Row(mainAxisAlignment:MainAxisAlignment.center,children:[Icon(Icons.lock_outline_rounded,color:_muted,size:18),SizedBox(width:7),Text('İşletme bilgileriniz güvende.',style:TextStyle(color:_muted,fontSize:13))])
+   ]))
+  )))
+ );
+}
 class _Benefit extends StatelessWidget{const _Benefit(this.icon,this.text);final IconData icon;final String text;@override Widget build(BuildContext c)=>Expanded(child:Container(height:112,padding:const EdgeInsets.all(10),decoration:BoxDecoration(color:_panel,borderRadius:BorderRadius.circular(18),border:Border.all(color:_line)),child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[Icon(icon,color:_purple,size:28),const SizedBox(height:9),Text(text,textAlign:TextAlign.center,style:const TextStyle(color:Colors.white,fontSize:12,fontWeight:FontWeight.w700))])));}
 class _BusinessAuthPage extends StatefulWidget{
  const _BusinessAuthPage({required this.register,required this.email,required this.pw,required this.name,required this.cat,required this.phone,required this.address,required this.submit,required this.switchMode});
