@@ -10,6 +10,7 @@ class OnboardingDraft {
   static String otpCode = '';
   static String userId = '';
   static String vehicleId = '';
+  static String transferCode = '';
 }
 
 class OnboardingBackend {
