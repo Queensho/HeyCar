@@ -1,3 +1,4 @@
+const {issueTokens,rotateRefresh,revokeRefresh}=require('./owner-auth-service');
 function normalizeTrMobile(raw) {
   let digits = String(raw || '').replace(/\D/g, '');
   if (digits.startsWith('90') && digits.length === 12) digits = digits.slice(2);
@@ -45,14 +46,13 @@ module.exports = function registerOwnerAuthRoutes(app, pool) {
         [user.id]
       );
 
-      return res.json({
-        ok: true,
-        user,
-        vehicles: vehiclesResult.rows,
-      });
+      const tokens=await issueTokens(pool,user.id);
+      return res.json({ok:true,user,vehicles:vehiclesResult.rows,...tokens});
     } catch (error) {
       console.error('owner phone/password login error', error);
       return res.status(500).json({ error: 'SERVER_ERROR' });
     }
   });
+  app.post('/api/owner/auth/refresh',async(req,res)=>{try{const refreshToken=String(req.body?.refreshToken||'');if(!refreshToken)return res.status(400).json({error:'REFRESH_REQUIRED'});const tokens=await rotateRefresh(pool,refreshToken);if(!tokens)return res.status(401).json({error:'REFRESH_INVALID'});return res.json({ok:true,...tokens});}catch(e){console.error('owner refresh error',e);return res.status(500).json({error:'SERVER_ERROR'});}});
+  app.post('/api/owner/auth/logout',async(req,res)=>{try{await revokeRefresh(pool,String(req.body?.refreshToken||''));return res.json({ok:true});}catch(e){return res.status(500).json({error:'SERVER_ERROR'});}});
 };
