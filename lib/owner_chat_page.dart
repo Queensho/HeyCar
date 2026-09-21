@@ -138,7 +138,7 @@ class _OwnerChatPageState extends State<OwnerChatPage> {
   Future<void> _report() async {
     final id=conversationId;if(id==null||id.isEmpty)return;
     try{
-      final r=await http.post(Uri.parse('$baseUrl/api/owner/conversations/${Uri.encodeComponent(id)}/report'),headers:await OwnerAuth.headers(),body:jsonEncode({'reason':'uygunsuz_icerik'})).timeout(const Duration(seconds:15));
+      final r=await OwnerHttp.post(Uri.parse('$baseUrl/api/owner/conversations/${Uri.encodeComponent(id)}/report'),body:jsonEncode({'reason':'uygunsuz_icerik'})).timeout(const Duration(seconds:15));
       if(r.statusCode<200||r.statusCode>=300)throw Exception();
       if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Şikayet alındı.')));
     }catch(_){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Şikayet gönderilemedi.')));}
