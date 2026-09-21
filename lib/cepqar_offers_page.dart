@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:share_plus/share_plus.dart';
 import 'cepqar_theme.dart';
 import 'onboarding_backend.dart';
+import 'owner_auth.dart';
 
 class CepqarOffersPage extends StatefulWidget {
   const CepqarOffersPage({super.key});
