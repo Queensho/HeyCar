@@ -42,22 +42,20 @@ class _BusinessPanelPageState extends State<BusinessPanelPage>{
  Future<void> _editProfile(BuildContext context)async{if(token.isEmpty){await _showAuth(context);return;}final n=TextEditingController(text:(business?['name']??'').toString()),cat=TextEditingController(text:(business?['category']??'').toString()),phone=TextEditingController(text:(business?['phone']??'').toString()),address=TextEditingController(text:(business?['address']??'').toString()),hours=TextEditingController(text:(business?['opening_hours']??'').toString()),desc=TextEditingController(text:(business?['description']??'').toString());await showDialog(context:context,builder:(d)=>AlertDialog(backgroundColor:_panel,title:const Text('İşletme Bilgileri',style:TextStyle(color:Colors.white)),content:SizedBox(width:430,child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[_Field(n,'İşletme adı'),_Field(cat,'Kategori'),_Field(phone,'Telefon'),_Field(address,'Adres'),_Field(hours,'Çalışma saatleri'),_Field(desc,'Açıklama')]))),actions:[TextButton(onPressed:()=>Navigator.pop(d),child:const Text('Vazgeç')),FilledButton(onPressed:()async{final r=await http.patch(Uri.parse('$_businessApi/api/business/me'),headers:{'Content-Type':'application/json','Authorization':'Bearer $token'},body:jsonEncode({'name':n.text,'category':cat.text,'phone':phone.text,'address':address.text,'openingHours':hours.text,'description':desc.text,'latitude':business?['latitude'],'longitude':business?['longitude']}));if(r.statusCode==200){if(d.mounted)Navigator.pop(d);await _loadAll();}},child:const Text('Kaydet'))]));}
  Future<void> _showCampaign(BuildContext context) async {final title=TextEditingController(),desc=TextEditingController(),badge=TextEditingController(),code=TextEditingController();DateTime start=DateTime.now(),end=DateTime.now().add(const Duration(days:30));await showDialog(context:context,builder:(d)=>AlertDialog(backgroundColor:_panel,title:const Text('Yeni Kampanya Oluştur',style:TextStyle(color:Colors.white)),content:SizedBox(width:430,child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[_Field(title,'Kampanya başlığı'),_Field(desc,'Açıklama'),_Field(badge,'İndirim etiketi (%30 İndirim)'),_Field(code,'Kampanya kodu')]))),actions:[TextButton(onPressed:()=>Navigator.pop(d),child:const Text('Vazgeç')),FilledButton(onPressed:()async{if(token.isEmpty){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Önce işletme hesabıyla giriş yapmalısın.')));return;}final r=await http.post(Uri.parse('$_businessApi/api/business/campaigns'),headers:{'Content-Type':'application/json','Authorization':'Bearer $token'},body:jsonEncode({'title':title.text,'description':desc.text,'badge':badge.text,'couponCode':code.text,'startsAt':start.toIso8601String(),'endsAt':end.toIso8601String()}));if(d.mounted&&r.statusCode==201){Navigator.pop(d);await _loadAll();}},child:const Text('Yayınla'))]));}
  Future<void> _showAuth(BuildContext context,{bool register=false}) async {
-  final email=TextEditingController(),pw=TextEditingController(),name=TextEditingController(),cat=TextEditingController();
-  await showDialog(context:context,builder:(d)=>AlertDialog(
-   backgroundColor:_panel,
-   title:Text(register?'İşletme Kaydı':'İşletme Girişi',style:const TextStyle(color:Colors.white)),
-   content:SizedBox(width:420,child:Column(mainAxisSize:MainAxisSize.min,children:[if(register)_Field(name,'İşletme adı'),if(register)_Field(cat,'Kategori'),_Field(email,'E-posta'),_Field(pw,'Şifre',secret:true)])),
-   actions:[
-    if(!register)TextButton(onPressed:(){Navigator.pop(d);_showAuth(context,register:true);},child:const Text('Kayıt Ol')),
-    FilledButton(onPressed:()async{
-     final path=register?'register':'login';
-     final body=register?{'email':email.text,'password':pw.text,'name':name.text,'category':cat.text}:{'email':email.text,'password':pw.text};
-     final r=await http.post(Uri.parse('$_businessApi/api/business/auth/$path'),headers:{'Content-Type':'application/json'},body:jsonEncode(body));
-     if(r.statusCode==200||r.statusCode==201){final j=jsonDecode(r.body);token=(j['token'] ?? '').toString();final p=await SharedPreferences.getInstance();await p.setString('business_token',token);if(d.mounted)Navigator.pop(d);await _loadAll();}
-     else if(d.mounted){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Giriş/kayıt başarısız.')));}
-    },child:Text(register?'Kayıt Ol':'Giriş Yap'))
-   ],
-  ));
+  final email=TextEditingController(),pw=TextEditingController(),name=TextEditingController(),cat=TextEditingController(),phone=TextEditingController(),address=TextEditingController();
+  final result=await Navigator.push<bool>(context,MaterialPageRoute(fullscreenDialog:true,builder:(_)=>_BusinessAuthPage(
+   register:register,email:email,pw:pw,name:name,cat:cat,phone:phone,address:address,
+   submit:()async{
+    final path=register?'register':'login';
+    final body=register?{'email':email.text.trim(),'password':pw.text,'name':name.text.trim(),'category':cat.text.trim(),'phone':phone.text.trim(),'address':address.text.trim()}:{'email':email.text.trim(),'password':pw.text};
+    final r=await http.post(Uri.parse('$_businessApi/api/business/auth/$path'),headers:{'Content-Type':'application/json'},body:jsonEncode(body));
+    if(r.statusCode==200||r.statusCode==201){final j=jsonDecode(r.body);token=(j['token']??'').toString();final p=await SharedPreferences.getInstance();await p.setString('business_token',token);await _loadAll();return null;}
+    if(r.statusCode==409)return 'Bu e-posta ile daha önce kayıt olunmuş.';
+    return register?'Kayıt oluşturulamadı. Bilgileri kontrol et.':'E-posta veya şifre hatalı.';
+   },
+   switchMode:()=>Navigator.pop(context,true),
+  )));
+  if(result==true&&mounted)await _showAuth(context,register:!register);
  }
 }
 class _Field extends StatelessWidget{const _Field(this.c,this.label,{this.secret=false});final TextEditingController c;final String label;final bool secret;@override Widget build(BuildContext x)=>Padding(padding:const EdgeInsets.only(bottom:10),child:TextField(controller:c,obscureText:secret,style:const TextStyle(color:Colors.white),decoration:InputDecoration(labelText:label,labelStyle:const TextStyle(color:_muted),filled:true,fillColor:_bg,border:OutlineInputBorder(borderRadius:BorderRadius.circular(12)))));}
@@ -76,28 +74,35 @@ class _Metric extends StatelessWidget{const _Metric(this.t,this.v,this.i);final 
 class _SettingsPage extends StatelessWidget{const _SettingsPage({required this.business,required this.onEdit,required this.onLogout});final Map<String,dynamic>? business;final VoidCallback onEdit,onLogout;@override Widget build(BuildContext c)=>Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('Ayarlar',style:TextStyle(color:Colors.white,fontSize:25,fontWeight:FontWeight.w900)),const SizedBox(height:18),_Box(child:Column(children:[ListTile(contentPadding:EdgeInsets.zero,leading:const Icon(Icons.storefront_rounded,color:_purple),title:Text((business?['name']??'İşletme Bilgileri').toString(),style:const TextStyle(color:Colors.white,fontWeight:FontWeight.w800)),subtitle:Text((business?['category']??'Profilini düzenle').toString(),style:const TextStyle(color:_muted)),trailing:const Icon(Icons.chevron_right,color:_muted),onTap:onEdit),const Divider(color:_line),ListTile(contentPadding:EdgeInsets.zero,leading:const Icon(Icons.logout_rounded,color:Colors.redAccent),title:const Text('Çıkış Yap',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w800)),onTap:onLogout)]))]);}
 
 class _BusinessWelcome extends StatelessWidget{
- const _BusinessWelcome({required this.onLogin,required this.onRegister});
- final VoidCallback onLogin,onRegister;
- @override Widget build(BuildContext c)=>Scaffold(
-  backgroundColor:_bg,
-  body:SafeArea(child:Center(child:SingleChildScrollView(
-   padding:const EdgeInsets.all(24),
-   child:ConstrainedBox(
-    constraints:const BoxConstraints(maxWidth:430),
-    child:Column(children:[
-     Image.asset('assets/Logoqr.png',height:48),
-     const SizedBox(height:34),
-     Container(width:88,height:88,decoration:BoxDecoration(color:_purple.withValues(alpha:.15),shape:BoxShape.circle,border:Border.all(color:_purple.withValues(alpha:.5))),child:const Icon(Icons.storefront_rounded,color:_purple,size:42)),
-     const SizedBox(height:22),
-     const Text('Cepqar İşletme Paneli',textAlign:TextAlign.center,style:TextStyle(color:Colors.white,fontSize:28,fontWeight:FontWeight.w900)),
-     const SizedBox(height:9),
-     const Text('Kampanyalarını yönet, işletme bilgilerini güncelle ve müşterilerine ulaş.',textAlign:TextAlign.center,style:TextStyle(color:_muted,fontSize:14,height:1.45)),
-     const SizedBox(height:32),
-     SizedBox(width:double.infinity,height:52,child:FilledButton(onPressed:onLogin,style:FilledButton.styleFrom(backgroundColor:_purple,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15))),child:const Text('Giriş Yap',style:TextStyle(fontSize:16,fontWeight:FontWeight.w900)))),
-     const SizedBox(height:12),
-     SizedBox(width:double.infinity,height:52,child:OutlinedButton(onPressed:onRegister,style:OutlinedButton.styleFrom(side:const BorderSide(color:_purple),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15))),child:const Text('Kayıt Ol',style:TextStyle(color:_purple,fontSize:16,fontWeight:FontWeight.w900))))
-    ])
-   )
-  )))
- );
+ const _BusinessWelcome({required this.onLogin,required this.onRegister});final VoidCallback onLogin,onRegister;
+ @override Widget build(BuildContext c)=>Scaffold(backgroundColor:_bg,body:SafeArea(child:Center(child:SingleChildScrollView(padding:const EdgeInsets.fromLTRB(24,20,24,28),child:ConstrainedBox(constraints:const BoxConstraints(maxWidth:430),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+  Image.asset('assets/Logoqr.png',height:48),const SizedBox(height:14),
+  Container(padding:const EdgeInsets.symmetric(horizontal:13,vertical:7),decoration:BoxDecoration(border:Border.all(color:_line),borderRadius:BorderRadius.circular(20)),child:const Text('İşletme Paneli',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w700))),
+  const SizedBox(height:30),const Text('İşletmen\nhep görünür',style:TextStyle(color:Colors.white,fontSize:42,height:.98,fontWeight:FontWeight.w900)),const Text('olsun.',style:TextStyle(color:Color(0xFFB6FF2A),fontSize:42,height:1,fontWeight:FontWeight.w900)),
+  const SizedBox(height:16),const Text('Daha fazla müşteriye ulaş, kampanyalarını yönet, işletmeni büyüt.',style:TextStyle(color:_muted,fontSize:16,height:1.45)),
+  const SizedBox(height:28),Row(children:[_Benefit(Icons.campaign_rounded,'Kampanya\noluştur'),const SizedBox(width:9),_Benefit(Icons.bar_chart_rounded,'Daha fazla\nmüşteri'),const SizedBox(width:9),_Benefit(Icons.storefront_rounded,'İşletmeni\öne çıkar')]),
+  const SizedBox(height:28),SizedBox(width:double.infinity,height:54,child:FilledButton(onPressed:onLogin,style:FilledButton.styleFrom(backgroundColor:const Color(0xFFB6FF2A),foregroundColor:Colors.black,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(17))),child:const Row(mainAxisAlignment:MainAxisAlignment.center,children:[Text('Giriş Yap',style:TextStyle(fontSize:17,fontWeight:FontWeight.w900)),SizedBox(width:8),Icon(Icons.arrow_forward_rounded)]))),
+  const SizedBox(height:11),SizedBox(width:double.infinity,height:54,child:OutlinedButton(onPressed:onRegister,style:OutlinedButton.styleFrom(side:const BorderSide(color:_line,width:1.4),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(17))),child:const Text('Kayıt Ol',style:TextStyle(color:Colors.white,fontSize:17,fontWeight:FontWeight.w900)))),
+  const SizedBox(height:25),const Row(mainAxisAlignment:MainAxisAlignment.center,children:[Icon(Icons.lock_outline_rounded,color:_muted,size:18),SizedBox(width:7),Text('İşletme bilgileriniz güvende.',style:TextStyle(color:_muted,fontSize:13))])
+ ]))))));}
+class _Benefit extends StatelessWidget{const _Benefit(this.icon,this.text);final IconData icon;final String text;@override Widget build(BuildContext c)=>Expanded(child:Container(height:112,padding:const EdgeInsets.all(10),decoration:BoxDecoration(color:_panel,borderRadius:BorderRadius.circular(18),border:Border.all(color:_line)),child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[Icon(icon,color:_purple,size:28),const SizedBox(height:9),Text(text,textAlign:TextAlign.center,style:const TextStyle(color:Colors.white,fontSize:12,fontWeight:FontWeight.w700))])));}
+class _BusinessAuthPage extends StatefulWidget{
+ const _BusinessAuthPage({required this.register,required this.email,required this.pw,required this.name,required this.cat,required this.phone,required this.address,required this.submit,required this.switchMode});
+ final bool register;final TextEditingController email,pw,name,cat,phone,address;final Future<String?> Function() submit;final VoidCallback switchMode;
+ @override State<_BusinessAuthPage> createState()=>_BusinessAuthPageState();
 }
+class _BusinessAuthPageState extends State<_BusinessAuthPage>{bool busy=false,hide=true,agree=false;String? error;
+ Future<void> go()async{if(widget.register&&!agree){setState(()=>error='Devam etmek için kullanım koşullarını kabul et.');return;}setState((){busy=true;error=null;});final e=await widget.submit();if(!mounted)return;if(e==null){Navigator.pop(context);return;}setState((){busy=false;error=e;});}
+ @override Widget build(BuildContext c)=>Scaffold(backgroundColor:_bg,body:SafeArea(child:Center(child:SingleChildScrollView(padding:const EdgeInsets.fromLTRB(22,16,22,28),child:ConstrainedBox(constraints:const BoxConstraints(maxWidth:470),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+  Row(children:[IconButton(onPressed:()=>Navigator.pop(c),icon:const Icon(Icons.arrow_back,color:_muted)),const Spacer(),Image.asset('assets/Logoqr.png',height:40),const Spacer(),const SizedBox(width:48)]),
+  const SizedBox(height:8),Center(child:Container(padding:const EdgeInsets.symmetric(horizontal:12,vertical:6),decoration:BoxDecoration(border:Border.all(color:_line),borderRadius:BorderRadius.circular(20)),child:const Text('İşletme Paneli',style:TextStyle(color:Colors.white,fontSize:13)))),
+  const SizedBox(height:22),Text(widget.register?'İşletmeni Kaydet':'Tekrar Hoş Geldin',style:const TextStyle(color:Colors.white,fontSize:30,fontWeight:FontWeight.w900)),const SizedBox(height:5),Text(widget.register?'Dakikalar içinde hesap oluştur, hemen müşterilerine ulaş.':'İşletme paneline devam etmek için giriş yap.',style:const TextStyle(color:_muted,fontSize:16,height:1.35)),const SizedBox(height:22),
+  if(widget.register)...[_AuthField(widget.name,'İşletme Adı',Icons.storefront_rounded),_AuthField(widget.cat,'Kategori',Icons.category_rounded),_AuthField(widget.address,'Adres',Icons.location_on_rounded),_AuthField(widget.phone,'Telefon Numarası',Icons.phone_rounded,keyboard:TextInputType.phone)],
+  _AuthField(widget.email,'E-posta',Icons.mail_rounded,keyboard:TextInputType.emailAddress),
+  _AuthField(widget.pw,'Şifre',Icons.lock_rounded,secret:hide,suffix:IconButton(onPressed:()=>setState(()=>hide=!hide),icon:Icon(hide?Icons.visibility_outlined:Icons.visibility_off_outlined,color:_muted))),
+  if(widget.register)CheckboxListTile(contentPadding:EdgeInsets.zero,value:agree,onChanged:(v)=>setState(()=>agree=v??false),activeColor:_purple,controlAffinity:ListTileControlAffinity.leading,title:const Text('Kullanım koşullarını ve gizlilik politikasını kabul ediyorum.',style:TextStyle(color:_muted,fontSize:12.5))),
+  if(error!=null)Padding(padding:const EdgeInsets.only(bottom:10),child:Text(error!,style:const TextStyle(color:Colors.redAccent,fontWeight:FontWeight.w700))),
+  SizedBox(width:double.infinity,height:54,child:FilledButton(onPressed:busy?null:go,style:FilledButton.styleFrom(backgroundColor:const Color(0xFFB6FF2A),foregroundColor:Colors.black,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(17))),child:busy?const SizedBox(width:22,height:22,child:CircularProgressIndicator(strokeWidth:2.5,color:Colors.black)):Text(widget.register?'Hesap Oluştur':'Giriş Yap',style:const TextStyle(fontSize:17,fontWeight:FontWeight.w900)))),
+  const SizedBox(height:16),Center(child:TextButton(onPressed:widget.switchMode,child:Text(widget.register?'Zaten hesabın var mı? Giriş Yap':'Hesabın yok mu? Kayıt Ol',style:const TextStyle(color:_purple,fontWeight:FontWeight.w800))))
+ ]))))));}}
+class _AuthField extends StatelessWidget{const _AuthField(this.c,this.label,this.icon,{this.secret=false,this.suffix,this.keyboard});final TextEditingController c;final String label;final IconData icon;final bool secret;final Widget? suffix;final TextInputType? keyboard;@override Widget build(BuildContext x)=>Padding(padding:const EdgeInsets.only(bottom:11),child:TextField(controller:c,obscureText:secret,keyboardType:keyboard,style:const TextStyle(color:Colors.white,fontWeight:FontWeight.w700),decoration:InputDecoration(labelText:label,labelStyle:const TextStyle(color:_muted),prefixIcon:Icon(icon,color:const Color(0xFFD3D8E6)),suffixIcon:suffix,filled:true,fillColor:_panel,contentPadding:const EdgeInsets.symmetric(vertical:19,horizontal:14),enabledBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(18),borderSide:const BorderSide(color:_line)),focusedBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(18),borderSide:const BorderSide(color:_purple,width:1.4)),border:OutlineInputBorder(borderRadius:BorderRadius.circular(18)))));}
