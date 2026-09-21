@@ -1,5 +1,6 @@
+const {ownerId: authenticatedOwnerId}=require('./owner-auth-service');
 module.exports = function registerVehicleManagementRoutes(app, pool) {
-  const ownerId = (req) => String(req.headers['x-owner-id'] || '').trim();
+  const ownerId = (req) => authenticatedOwnerId(req);
 
   app.get('/api/owner/vehicles', async (req, res) => {
     const owner = ownerId(req);
