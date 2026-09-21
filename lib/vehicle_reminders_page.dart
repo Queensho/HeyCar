@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'onboarding_backend.dart';
 import 'qr_backend.dart';
 import 'cepqar_theme.dart';
+import 'owner_auth.dart';
 
 Color get _bg => CepqarTheme.bg;
 Color get _panel => CepqarTheme.panel;
@@ -55,7 +56,7 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
             Uri.parse(
               '${QrBackend.baseUrl}/api/vehicles/${widget.vehicleId}/reminders',
             ),
-            headers: {'x-owner-id': owner},
+            headers: await OwnerAuth.headers(json:false),
           )
           .timeout(const Duration(seconds: 12));
       if (r.statusCode == 200) {
@@ -142,7 +143,7 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
             Uri.parse(
               '${QrBackend.baseUrl}/api/vehicles/${widget.vehicleId}/reminders/${apiType(type)}',
             ),
-            headers: {'x-owner-id': owner},
+            headers: await OwnerAuth.headers(json:false),
           )
           .timeout(const Duration(seconds: 12));
       if (!mounted) return;
