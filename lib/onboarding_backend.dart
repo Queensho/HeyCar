@@ -25,6 +25,7 @@ class OnboardingBackend {
     required String make,
     required String model,
     String color = '',
+    String transferCode = '',
   }) async {
     final response = await http
         .post(
@@ -39,6 +40,7 @@ class OnboardingBackend {
             'make': make.trim(),
             'model': model.trim(),
             'color': color.trim(),
+            'transferCode': transferCode.trim().toUpperCase(),
           }),
         )
         .timeout(const Duration(seconds: 15));
