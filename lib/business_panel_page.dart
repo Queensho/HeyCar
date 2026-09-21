@@ -8,6 +8,7 @@ import 'package:latlong2/latlong.dart';
 const _bg=Color(0xFF07111F),_panel=Color(0xFF101A30),_line=Color(0xFF27355D),_purple=Color(0xFF713BFF),_muted=Color(0xFFA7B0C7);
 
 const _businessApi='https://heycar-api-185-165-46-213.nip.io';
+const _offerCategories=['Oto Yıkama','Detailing','Lastik','Otopark','Servis','Akaryakıt'];
 
 class BusinessPanelPage extends StatefulWidget{const BusinessPanelPage({super.key});@override State<BusinessPanelPage> createState()=>_BusinessPanelPageState();}
 class _BusinessPanelPageState extends State<BusinessPanelPage>{
@@ -68,9 +69,9 @@ class _BusinessPanelPageState extends State<BusinessPanelPage>{
   )));
  }
  Future<void> _showAuth(BuildContext context,{bool register=false}) async {
-  final email=TextEditingController(),pw=TextEditingController(),name=TextEditingController(),cat=TextEditingController(),phone=TextEditingController(),address=TextEditingController(),street=TextEditingController(),houseNumber=TextEditingController(),district=TextEditingController(),city=TextEditingController();
+  final email=TextEditingController(),pw=TextEditingController(),name=TextEditingController(),cat=TextEditingController(),phone=TextEditingController(),address=TextEditingController(),street=TextEditingController(),houseNumber=TextEditingController(),district=TextEditingController(),city=TextEditingController(),openingHours=TextEditingController(text:'08:00 - 22:00'); final selectedServices=<String>[];
   final result=await Navigator.push<bool>(context,MaterialPageRoute(fullscreenDialog:true,builder:(_)=>_BusinessAuthPage(
-   register:register,email:email,pw:pw,name:name,cat:cat,phone:phone,address:address,street:street,houseNumber:houseNumber,district:district,city:city,
+   register:register,email:email,pw:pw,name:name,cat:cat,phone:phone,address:address,street:street,houseNumber:houseNumber,district:district,city:city,openingHours:openingHours,selectedServices:selectedServices,
    submit:()async{
     final path=register?'register':'login';
     double? selectedLat,selectedLon; String? selectedAddress;
@@ -83,7 +84,7 @@ class _BusinessPanelPageState extends State<BusinessPanelPage>{
      if(chosen==null)return 'Kayıt için işletme adresini seçmelisin.';
      selectedLat=(chosen['latitude'] as num?)?.toDouble();selectedLon=(chosen['longitude'] as num?)?.toDouble();selectedAddress=(chosen['formatted']??[street.text.trim(),'No: '+houseNumber.text.trim(),district.text.trim(),city.text.trim()].where((e)=>e.isNotEmpty).join(', ')).toString();
     }
-    final body=register?{'email':email.text.trim(),'password':pw.text,'name':name.text.trim(),'category':cat.text.trim(),'phone':phone.text.trim(),'address':selectedAddress,'street':street.text.trim(),'houseNumber':houseNumber.text.trim(),'district':district.text.trim(),'city':city.text.trim(),'latitude':selectedLat,'longitude':selectedLon}:{'email':email.text.trim(),'password':pw.text};
+    final body=register?{'email':email.text.trim(),'password':pw.text,'name':name.text.trim(),'category':selectedServices.join(','),'services':selectedServices,'phone':phone.text.trim(),'openingHours':openingHours.text.trim(),'address':selectedAddress,'street':street.text.trim(),'houseNumber':houseNumber.text.trim(),'district':district.text.trim(),'city':city.text.trim(),'latitude':selectedLat,'longitude':selectedLon}:{'email':email.text.trim(),'password':pw.text};
     final r=await http.post(Uri.parse('$_businessApi/api/business/auth/$path'),headers:{'Content-Type':'application/json'},body:jsonEncode(body));
     if(r.statusCode==200||r.statusCode==201){final j=jsonDecode(r.body);token=(j['token']??'').toString();final p=await SharedPreferences.getInstance();await p.setString('business_token',token);await _loadAll();return null;}
     if(r.statusCode==409)return 'Bu e-posta ile daha önce kayıt olunmuş.';
@@ -194,17 +195,17 @@ class _BusinessWelcome extends StatelessWidget{
 }
 class _Benefit extends StatelessWidget{const _Benefit(this.icon,this.text);final IconData icon;final String text;@override Widget build(BuildContext c)=>Expanded(child:Container(height:112,padding:const EdgeInsets.all(10),decoration:BoxDecoration(color:_panel,borderRadius:BorderRadius.circular(18),border:Border.all(color:_line)),child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[Icon(icon,color:_purple,size:28),const SizedBox(height:9),Text(text,textAlign:TextAlign.center,style:const TextStyle(color:Colors.white,fontSize:12,fontWeight:FontWeight.w700))])));}
 class _BusinessAuthPage extends StatefulWidget{
- const _BusinessAuthPage({required this.register,required this.email,required this.pw,required this.name,required this.cat,required this.phone,required this.address,required this.street,required this.houseNumber,required this.district,required this.city,required this.submit,required this.switchMode});
- final bool register;final TextEditingController email,pw,name,cat,phone,address,street,houseNumber,district,city;final Future<String?> Function() submit;final VoidCallback switchMode;
+ const _BusinessAuthPage({required this.register,required this.email,required this.pw,required this.name,required this.cat,required this.phone,required this.address,required this.street,required this.houseNumber,required this.district,required this.city,required this.openingHours,required this.selectedServices,required this.submit,required this.switchMode});
+ final bool register;final TextEditingController email,pw,name,cat,phone,address,street,houseNumber,district,city,openingHours;final List<String> selectedServices;final Future<String?> Function() submit;final VoidCallback switchMode;
  @override State<_BusinessAuthPage> createState()=>_BusinessAuthPageState();
 }
 class _BusinessAuthPageState extends State<_BusinessAuthPage>{bool busy=false,hide=true,agree=false;String? error;
- Future<void> go()async{if(widget.register&&!agree){setState(()=>error='Devam etmek için kullanım koşullarını kabul et.');return;}setState((){busy=true;error=null;});final e=await widget.submit();if(!mounted)return;if(e==null){Navigator.pop(context);return;}setState((){busy=false;error=e;});}
+ Future<void> go()async{if(widget.register&&widget.selectedServices.isEmpty){setState(()=>error='En az bir hizmet seçmelisin.');return;}if(widget.register&&!agree){setState(()=>error='Devam etmek için kullanım koşullarını kabul et.');return;}setState((){busy=true;error=null;});final e=await widget.submit();if(!mounted)return;if(e==null){Navigator.pop(context);return;}setState((){busy=false;error=e;});}
  @override Widget build(BuildContext c)=>Scaffold(backgroundColor:_bg,body:SafeArea(child:Center(child:SingleChildScrollView(padding:const EdgeInsets.fromLTRB(22,16,22,28),child:ConstrainedBox(constraints:const BoxConstraints(maxWidth:470),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
   Row(children:[IconButton(onPressed:()=>Navigator.pop(c),icon:const Icon(Icons.arrow_back,color:_muted)),const Spacer(),Image.asset('assets/Logoqr.png',height:40),const Spacer(),const SizedBox(width:48)]),
   const SizedBox(height:8),Center(child:Container(padding:const EdgeInsets.symmetric(horizontal:12,vertical:6),decoration:BoxDecoration(border:Border.all(color:_line),borderRadius:BorderRadius.circular(20)),child:const Text('İşletme Paneli',style:TextStyle(color:Colors.white,fontSize:13)))),
   const SizedBox(height:22),Text(widget.register?'İşletmeni Kaydet':'Tekrar Hoş Geldin',style:const TextStyle(color:Colors.white,fontSize:30,fontWeight:FontWeight.w900)),const SizedBox(height:5),Text(widget.register?'Dakikalar içinde hesap oluştur, hemen müşterilerine ulaş.':'İşletme paneline devam etmek için giriş yap.',style:const TextStyle(color:_muted,fontSize:16,height:1.35)),const SizedBox(height:22),
-  if(widget.register)...[_AuthField(widget.name,'İşletme Adı',Icons.storefront_rounded),_AuthField(widget.cat,'Kategori',Icons.category_rounded),_AuthField(widget.street,'Sokak / Cadde',Icons.location_on_rounded),_AuthField(widget.houseNumber,'Bina No',Icons.numbers_rounded,keyboard:TextInputType.streetAddress),_AuthField(widget.district,'İlçe',Icons.location_city_rounded),_AuthField(widget.city,'İl',Icons.map_rounded),_AuthField(widget.phone,'Telefon Numarası',Icons.phone_rounded,keyboard:TextInputType.phone)],
+  if(widget.register)...[_AuthField(widget.name,'İşletme Adı',Icons.storefront_rounded),const Padding(padding:EdgeInsets.only(bottom:8),child:Text('Hizmetler / Fırsat Kategorileri',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w900))),Wrap(spacing:7,runSpacing:7,children:_offerCategories.map((x){final a=widget.selectedServices.contains(x);return FilterChip(label:Text(x),selected:a,onSelected:(v)=>setState((){if(v){widget.selectedServices.add(x);}else{widget.selectedServices.remove(x);}}),selectedColor:_purple,checkmarkColor:Colors.white,labelStyle:TextStyle(color:a?Colors.white:_muted));}).toList()),const SizedBox(height:14),_AuthField(widget.openingHours,'Çalışma Saatleri (örn. 08:00 - 22:00)',Icons.schedule_rounded),_AuthField(widget.street,'Sokak / Cadde',Icons.location_on_rounded),_AuthField(widget.houseNumber,'Bina No',Icons.numbers_rounded,keyboard:TextInputType.streetAddress),_AuthField(widget.district,'İlçe',Icons.location_city_rounded),_AuthField(widget.city,'İl',Icons.map_rounded),_AuthField(widget.phone,'Telefon Numarası',Icons.phone_rounded,keyboard:TextInputType.phone)],
   _AuthField(widget.email,'E-posta',Icons.mail_rounded,keyboard:TextInputType.emailAddress),
   _AuthField(widget.pw,'Şifre',Icons.lock_rounded,secret:hide,suffix:IconButton(onPressed:()=>setState(()=>hide=!hide),icon:Icon(hide?Icons.visibility_outlined:Icons.visibility_off_outlined,color:_muted))),
   if(widget.register)CheckboxListTile(contentPadding:EdgeInsets.zero,value:agree,onChanged:(v)=>setState(()=>agree=v??false),activeColor:_purple,controlAffinity:ListTileControlAffinity.leading,title:const Text('Kullanım koşullarını ve gizlilik politikasını kabul ediyorum.',style:TextStyle(color:_muted,fontSize:12.5))),
