@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'onboarding_backend.dart';
 import 'public_theme_backend.dart';
+import 'owner_auth.dart';
 
 class AnonymousCallApi {
   const AnonymousCallApi._();
@@ -71,7 +72,7 @@ class AnonymousCallApi {
     if (ownerId.isEmpty) return null;
     final response = await http.get(
       Uri.parse('${PublicThemeBackend.baseUrl}/api/owner/calls/incoming'),
-      headers: {'x-owner-id': ownerId},
+      headers: await OwnerAuth.headers(json:false),
     );
     if (response.statusCode < 200 || response.statusCode >= 300) return null;
     final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -82,7 +83,7 @@ class AnonymousCallApi {
   static Future<Map<String, dynamic>> ownerStatus(String callId) async {
     final response = await http.get(
       Uri.parse('${PublicThemeBackend.baseUrl}/api/owner/calls/${Uri.encodeComponent(callId)}'),
-      headers: {'x-owner-id': OnboardingDraft.userId.trim()},
+      headers: await OwnerAuth.headers(json:false),
     );
     final data = jsonDecode(response.body) as Map<String, dynamic>;
     if (response.statusCode < 200 || response.statusCode >= 300) {
