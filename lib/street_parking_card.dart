@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'cepqar_theme.dart';
 import 'onboarding_backend.dart';
+import 'owner_auth.dart';
 
 class StreetParkingCard extends StatefulWidget {
   const StreetParkingCard({super.key, required this.vehicleId});
@@ -34,7 +35,7 @@ class _StreetParkingCardState extends State<StreetParkingCard>{
   Future<void> _loadParkNote()async{
     final owner=OnboardingDraft.userId.trim();if(owner.isEmpty||widget.vehicleId.isEmpty)return;
     try{
-      final r=await http.get(Uri.parse('$base/api/owner/vehicles/${Uri.encodeComponent(widget.vehicleId)}/park-note'),headers:{'x-owner-id':owner}).timeout(const Duration(seconds:12));
+      final r=await http.get(Uri.parse('$base/api/owner/vehicles/${Uri.encodeComponent(widget.vehicleId)}/park-note'),headers:await OwnerAuth.headers(json:false)).timeout(const Duration(seconds:12));
       if(r.statusCode<200||r.statusCode>=300)return;
       final d=jsonDecode(r.body);if(d is Map&&mounted)setState(()=>parkNote=d['parkNote'] is Map?Map<String,dynamic>.from(d['parkNote']):null);
     }catch(_){}
@@ -57,7 +58,7 @@ class _StreetParkingCardState extends State<StreetParkingCard>{
 
   Future<void> _deactivateNote()async{
     final owner=OnboardingDraft.userId.trim();if(owner.isEmpty||widget.vehicleId.isEmpty)return;
-    try{await http.delete(Uri.parse('$base/api/owner/vehicles/${Uri.encodeComponent(widget.vehicleId)}/park-note'),headers:{'x-owner-id':owner}).timeout(const Duration(seconds:12));}catch(_){}
+    try{await http.delete(Uri.parse('$base/api/owner/vehicles/${Uri.encodeComponent(widget.vehicleId)}/park-note'),headers:await OwnerAuth.headers(json:false)).timeout(const Duration(seconds:12));}catch(_){}
     if(mounted)setState(()=>parkNote=null);
   }
 
@@ -67,7 +68,7 @@ class _StreetParkingCardState extends State<StreetParkingCard>{
     setState(()=>noteBusy=true);
     try{
       final expires=minutes==null?null:DateTime.now().toUtc().add(Duration(minutes:minutes)).toIso8601String();
-      final r=await http.post(Uri.parse('$base/api/owner/vehicles/${Uri.encodeComponent(widget.vehicleId)}/park-note'),headers:{'Content-Type':'application/json','x-owner-id':owner},body:jsonEncode({'message':message.trim(),'expiresAt':expires,'isActive':true})).timeout(const Duration(seconds:12));
+      final r=await http.post(Uri.parse('$base/api/owner/vehicles/${Uri.encodeComponent(widget.vehicleId)}/park-note'),headers:await OwnerAuth.headers(),body:jsonEncode({'message':message.trim(),'expiresAt':expires,'isActive':true})).timeout(const Duration(seconds:12));
       if(r.statusCode<200||r.statusCode>=300)throw Exception();
       final d=jsonDecode(r.body);if(d is Map&&d['parkNote'] is Map&&mounted)setState(()=>parkNote=Map<String,dynamic>.from(d['parkNote']));
       return true;
@@ -135,14 +136,14 @@ class _StreetParkingCardState extends State<StreetParkingCard>{
                     if(!showOnQr){
                       r=await http.delete(
                         Uri.parse('$base/api/owner/vehicles/${Uri.encodeComponent(widget.vehicleId)}/park-note'),
-                        headers:{'x-owner-id':owner},
+                        headers:await OwnerAuth.headers(json:false),
                       ).timeout(const Duration(seconds:12));
                     }else{
                       final minutes=presets[selected];
                       final expires=minutes==null?null:DateTime.now().toUtc().add(Duration(minutes:minutes)).toIso8601String();
                       r=await http.post(
                         Uri.parse('$base/api/owner/vehicles/${Uri.encodeComponent(widget.vehicleId)}/park-note'),
-                        headers:{'Content-Type':'application/json','x-owner-id':owner},
+                        headers:await OwnerAuth.headers(),
                         body:jsonEncode({'message':msg,'expiresAt':expires,'isActive':true}),
                       ).timeout(const Duration(seconds:12));
                     }
