@@ -1,3 +1,4 @@
+const {ownerId: authenticatedOwnerId}=require('./owner-auth-service');
 const crypto = require('crypto');
 const { hashScanToken, validateScanSession } = require('./scan-session-service');
 const { moderateMessage } = require('./message-moderation');
@@ -116,33 +117,33 @@ module.exports = function registerConversationRoutes(app, pool) {
   });
 
   app.get('/api/owner/notifications/:notificationId/conversation', async (req,res) => {
-    const ownerId=String(req.headers['x-owner-id']||'').trim(); const notificationId=String(req.params.notificationId||'').trim();
+    const ownerId=authenticatedOwnerId(req); const notificationId=String(req.params.notificationId||'').trim();
     if(!ownerId)return res.status(401).json({error:'OWNER_REQUIRED'});
     try{await ensureStatusColumns();const c=await pool.query(`SELECT c.id,c.status,c.expires_at FROM qr_conversations c JOIN vehicles v ON v.id=c.vehicle_id WHERE c.notification_id=$1 AND v.owner_id=$2 LIMIT 1`,[notificationId,ownerId]);if(!c.rows.length)return res.status(404).json({error:'NOT_FOUND'});await expireConversation(c.rows[0].id);const fresh=await pool.query(`SELECT id,status,expires_at FROM qr_conversations WHERE id=$1`,[c.rows[0].id]);return res.json({ok:true,conversationId:fresh.rows[0].id,status:fresh.rows[0].status,expiresAt:fresh.rows[0].expires_at});}catch(e){console.error(e);return res.status(500).json({error:'SERVER_ERROR'});}
   });
 
   app.get('/api/owner/conversations/:id', async (req,res) => {
-    const ownerId=String(req.headers['x-owner-id']||'').trim(); const id=String(req.params.id||'').trim();
+    const ownerId=authenticatedOwnerId(req); const id=String(req.params.id||'').trim();
     if(!ownerId)return res.status(401).json({error:'OWNER_REQUIRED'});
     try{await ensureStatusColumns();await expireConversation(id);const c=await pool.query(`SELECT c.id,c.status,c.expires_at FROM qr_conversations c JOIN vehicles v ON v.id=c.vehicle_id WHERE c.id=$1 AND v.owner_id=$2 LIMIT 1`,[id,ownerId]);if(!c.rows.length)return res.status(404).json({error:'NOT_FOUND'});const m=await pool.query(`SELECT id,sender,message,created_at FROM qr_conversation_messages WHERE conversation_id=$1 ORDER BY created_at ASC`,[id]);return res.json({ok:true,status:c.rows[0].status,expiresAt:c.rows[0].expires_at,messages:m.rows});}catch(e){console.error(e);return res.status(500).json({error:'SERVER_ERROR'});}
   });
 
   app.post('/api/owner/conversations/:id/messages', async (req,res) => {
-    const ownerId=String(req.headers['x-owner-id']||'').trim(); const id=String(req.params.id||'').trim(); const message=String(req.body?.message||'').trim().slice(0,1000);
+    const ownerId=authenticatedOwnerId(req); const id=String(req.params.id||'').trim(); const message=String(req.body?.message||'').trim().slice(0,1000);
     if(!ownerId)return res.status(401).json({error:'OWNER_REQUIRED'});
     const moderation=moderateMessage(message); if(!moderation.ok)return res.status(moderation.code==='MESSAGE_REQUIRED'?400:422).json({error:moderation.code});
     try{await ensureStatusColumns();await expireConversation(id);const c=await pool.query(`SELECT c.id,c.status,c.expires_at FROM qr_conversations c JOIN vehicles v ON v.id=c.vehicle_id WHERE c.id=$1 AND v.owner_id=$2 LIMIT 1`,[id,ownerId]);if(!c.rows.length)return res.status(404).json({error:'NOT_FOUND'});if(c.rows[0].status!=='active')return res.status(410).json({error:c.rows[0].status==='blocked'?'CONVERSATION_BLOCKED':'CONVERSATION_EXPIRED'});const m=await pool.query(`INSERT INTO qr_conversation_messages(conversation_id,sender,message) VALUES($1,'owner',$2) RETURNING id,sender,message,created_at`,[id,message]);await pool.query(`UPDATE qr_conversations SET updated_at=NOW() WHERE id=$1`,[id]);return res.status(201).json({ok:true,expiresAt:c.rows[0].expires_at,message:m.rows[0]});}catch(e){console.error(e);return res.status(500).json({error:'SERVER_ERROR'});}
   });
 
   app.post('/api/owner/conversations/:id/report', async (req,res) => {
-    const ownerId=String(req.headers['x-owner-id']||'').trim(); const id=String(req.params.id||'').trim();
+    const ownerId=authenticatedOwnerId(req); const id=String(req.params.id||'').trim();
     const messageId=String(req.body?.messageId||'').trim()||null; const reason=String(req.body?.reason||'uygunsuz_icerik').trim().slice(0,120);
     if(!ownerId)return res.status(401).json({error:'OWNER_REQUIRED'});
     try{const c=await pool.query(`SELECT c.id FROM qr_conversations c JOIN vehicles v ON v.id=c.vehicle_id WHERE c.id=$1 AND v.owner_id=$2 LIMIT 1`,[id,ownerId]);if(!c.rows.length)return res.status(404).json({error:'NOT_FOUND'});await pool.query(`INSERT INTO message_reports(id,conversation_id,message_id,reporter_type,reason) VALUES($1,$2,$3,'owner',$4)`,[crypto.randomUUID(),id,messageId,reason]);return res.status(201).json({ok:true});}catch(e){console.error(e);return res.status(500).json({error:'SERVER_ERROR'});}
   });
 
   app.post('/api/owner/conversations/:id/block', async (req,res) => {
-    const ownerId=String(req.headers['x-owner-id']||'').trim(); const id=String(req.params.id||'').trim();
+    const ownerId=authenticatedOwnerId(req); const id=String(req.params.id||'').trim();
     if(!ownerId)return res.status(401).json({error:'OWNER_REQUIRED'});
     try{await ensureStatusColumns();const c=await pool.query(`SELECT c.id,c.status,c.scan_session_hash FROM qr_conversations c JOIN vehicles v ON v.id=c.vehicle_id WHERE c.id=$1 AND v.owner_id=$2 LIMIT 1`,[id,ownerId]);if(!c.rows.length)return res.status(404).json({error:'NOT_FOUND'});await pool.query(`UPDATE qr_conversations SET status='blocked',closed_at=COALESCE(closed_at,NOW()),updated_at=NOW() WHERE id=$1`,[id]);const h=String(c.rows[0].scan_session_hash||'');if(h){await pool.query(`UPDATE qr_scan_sessions SET blocked=TRUE WHERE token_hash=$1 AND owner_id=$2`,[h,ownerId]);await pool.query(`INSERT INTO owner_blocked_visitors(owner_id,visitor_key) VALUES($1,$2) ON CONFLICT(owner_id,visitor_key) DO NOTHING`,[ownerId,h]);}return res.json({ok:true,status:'blocked'});}catch(e){console.error(e);return res.status(500).json({error:'SERVER_ERROR'});}
   });
