@@ -59,17 +59,12 @@ module.exports=function registerPushRoutes(app,pool){
       if(callEvent){
         android.ttl=data.type==='incoming_call'?'45s':'15s';
         android.collapse_key='cepqar_call_'+String(data.callId||userId);
+      }else{
+        // Data-only: Android must not auto-render a second notification.
+        // Cepqar's Firebase background/foreground handler renders exactly one local notification.
+        android.ttl='120s';
       }
       const message={token:row.fcm_token,data:fcmData,android};
-      if(!callEvent){
-        // Keep this payload intentionally minimal. This is the same shape as the
-        // direct FCM test that is known to display correctly on the target Android device.
-        message.notification={title,body};
-        message.android.notification={
-          channel_id:'cepqar_notifications_v2',
-          sound:'default'
-        };
-      }
       try{
         const r=await fetch(endpoint,{method:'POST',headers:{authorization:`Bearer ${key}`,'content-type':'application/json'},body:JSON.stringify({message})});
         if(r.ok)return true;
