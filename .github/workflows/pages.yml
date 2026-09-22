@@ -145,9 +145,11 @@ jobs:
           import json
           from pathlib import Path
           p=Path('android/app/google-services.json'); data=json.loads(p.read_text())
+          project_id=data.get('project_info',{}).get('project_id','')
+          project_number=data.get('project_info',{}).get('project_number','')
           packages=[c.get('client_info',{}).get('android_client_info',{}).get('package_name') for c in data.get('client',[])]
           if 'com.cepqar.app' not in packages: raise SystemExit('Firebase config package mismatch: com.cepqar.app not found')
-          print('Firebase Android config restored for com.cepqar.app')
+          print(f'Firebase Android config restored for com.cepqar.app | project_id={project_id} | project_number={project_number}')
           PY
       - name: Enable Firebase and Android desugaring
         run: |
