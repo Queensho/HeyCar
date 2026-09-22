@@ -1,6 +1,7 @@
 const express=require('express');
+const {ownerId:authenticatedOwnerId}=require('./owner-auth-service');
 module.exports=function registerVehicleReminderRoutes(app,pool){
- const owner=req=>String(req.headers['x-owner-id']||'').trim();
+ const owner=req=>authenticatedOwnerId(req);
  const meta={inspection:{label:'Muayene',days:[30,7,1]},traffic_insurance:{label:'Trafik sigortası',days:[15,7,1]},casco:{label:'Kasko',days:[15,7,1]}};
  async function premium(ownerId){const r=await pool.query('SELECT COALESCE(premium,false) AS premium FROM users WHERE id::text=$1 LIMIT 1',[ownerId]);return r.rows[0]?.premium===true;}
  async function owned(req,res){const o=owner(req),id=String(req.params.vehicleId||'');if(!o)return res.status(401).json({error:'OWNER_REQUIRED'}),null;const r=await pool.query('SELECT id,plate,make,model FROM vehicles WHERE id::text=$1 AND owner_id::text=$2 LIMIT 1',[id,o]);if(!r.rows.length)return res.status(403).json({error:'FORBIDDEN'}),null;return r.rows[0];}
