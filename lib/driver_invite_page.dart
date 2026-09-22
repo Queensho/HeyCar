@@ -1149,9 +1149,36 @@ class _DriverNotificationsPageState extends State<_DriverNotificationsPage> {
     return '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}';
   }
 
-  void _showDetail(Map<String, dynamic> n) {
+  Future<void> _markRead(Map<String, dynamic> n) async {
+    final status=n['status']?.toString().toLowerCase() ?? 'new';
+    if(status!='new'&&status!='unread'&&status.isNotEmpty)return;
+    final id=n['id']?.toString() ?? '';
+    if(id.isEmpty)return;
+    try{
+      final r=await DriverHttp.patch(
+        Uri.parse('$_api/api/driver/notifications/${Uri.encodeComponent(id)}/read'),
+        body:'{}',
+      ).timeout(const Duration(seconds:12));
+      if(r.statusCode>=200&&r.statusCode<300){
+        final d=jsonDecode(r.body);
+        if(d is Map&&d['notification'] is Map){
+          final updated=Map<String,dynamic>.from(d['notification'] as Map);
+          n['status']=updated['status']??'read';
+          n['read_at']=updated['read_at'];
+        }else{
+          n['status']='read';
+          n['read_at']=DateTime.now().toUtc().toIso8601String();
+        }
+        if(mounted)setState((){});
+      }
+    }catch(_){}
+  }
+
+  Future<void> _showDetail(Map<String, dynamic> n) async {
+    await _markRead(n);
+    if(!mounted)return;
     final type = n['type']?.toString() ?? 'message';
-    showModalBottomSheet(
+    await showModalBottomSheet(
       context: context,
       backgroundColor: _panel,
       showDragHandle: true,
@@ -1168,6 +1195,7 @@ class _DriverNotificationsPageState extends State<_DriverNotificationsPage> {
         ),
       ),
     );
+    await widget.onRefresh();
   }
 
   @override
