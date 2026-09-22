@@ -93,9 +93,11 @@ module.exports = function registerConversationRoutes(app, pool) {
       if (c.rows[0].status === 'closed') return res.status(410).json({ error: 'CONVERSATION_EXPIRED' });
       const m = await pool.query(`INSERT INTO qr_conversation_messages(conversation_id,sender,message) VALUES($1,'guest',$2) RETURNING id,sender,message,created_at`, [id, message]);
       await pool.query(`UPDATE qr_conversations SET updated_at=NOW() WHERE id=$1`, [id]);
-      const owner = await pool.query(`SELECT v.owner_id,v.plate FROM qr_conversations c JOIN vehicles v ON v.id=c.vehicle_id WHERE c.id=$1 LIMIT 1`, [id]);
-      if (owner.rows.length && app.locals.heycarPush) {
-        app.locals.heycarPush.send(String(owner.rows[0].owner_id), { type:'message', conversationId:String(id), messageId:String(m.rows[0].id) }, 'Yeni Mesaj', message).catch(err => console.error('conversation message push', err));
+      const target = await pool.query(`SELECT v.owner_id,v.plate,c.notification_id,n.recipient_user_id FROM qr_conversations c JOIN vehicles v ON v.id=c.vehicle_id LEFT JOIN vehicle_notifications n ON n.id::text=c.notification_id::text WHERE c.id=$1 LIMIT 1`, [id]);
+      if (target.rows.length && app.locals.heycarPush) {
+        const row=target.rows[0],ownerId=String(row.owner_id),recipient=String(row.recipient_user_id||ownerId),isDriver=recipient!==ownerId;
+        const sender=isDriver?app.locals.heycarPush.sendDriver:(app.locals.heycarPush.sendOwner||app.locals.heycarPush.send);
+        if(sender)sender(recipient,{type:'message',recipientType:isDriver?'driver':'owner',notificationId:String(row.notification_id||''),conversationId:String(id),messageId:String(m.rows[0].id),plate:String(row.plate||'')},'Yeni Mesaj',message).catch(err=>console.error('conversation message push',err));
       }
       return res.status(201).json({ ok:true, expiresAt:c.rows[0].expires_at, message:m.rows[0] });
     } catch (e) { console.error(e); return res.status(500).json({ error:'SERVER_ERROR' }); }
