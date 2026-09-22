@@ -7,7 +7,11 @@ res = Path("android/app/src/main/res")
 
 launch = """<?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="#07111F" />
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#07111F" />
+        </shape>
+    </item>
     <item>
         <bitmap
             android:gravity="center"
