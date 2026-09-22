@@ -1,4 +1,5 @@
 const crypto=require('crypto');
+const {ownerId:authenticatedOwnerId}=require('./owner-auth-service');
 module.exports=function registerBusinessRoutes(app,pool){
  const hash=s=>crypto.createHash('sha256').update(String(s)).digest('hex');
  const password=s=>crypto.scryptSync(String(s),String(process.env.BUSINESS_PASSWORD_SALT||'cepqar-business-v1'),64).toString('hex');
@@ -38,7 +39,7 @@ module.exports=function registerBusinessRoutes(app,pool){
  app.get('/api/offers/nearby',async(req,res)=>{const lat=Number(req.query.lat),lon=Number(req.query.lon);if(!Number.isFinite(lat)||!Number.isFinite(lon))return res.status(400).json({error:'INVALID_LOCATION'});const q=await pool.query(`SELECT c.id,c.title,c.description,c.badge,c.coupon_code,c.ends_at,c.offer_type,c.regular_price,c.offer_price,c.discount_percent,c.image_url,b.id AS business_id,b.name,b.logo_url,b.category,b.category AS services,b.opening_hours,b.address,b.latitude,b.longitude,(6371000*2*asin(sqrt(power(sin(radians(b.latitude-$1)/2),2)+cos(radians($1))*cos(radians(b.latitude))*power(sin(radians(b.longitude-$2)/2),2)))) distance_m FROM business_campaigns c JOIN businesses b ON b.id=c.business_id WHERE b.is_active=true AND c.is_active=true AND now() BETWEEN c.starts_at AND c.ends_at AND b.latitude IS NOT NULL AND b.longitude IS NOT NULL ORDER BY distance_m LIMIT 50`,[lat,lon]);const ids=q.rows.map(x=>x.business_id);let sums={};if(ids.length){const s=await pool.query(`SELECT c.business_id,round(avg(r.rating)::numeric,1) rating,count(r.id)::int review_count FROM offer_reviews r JOIN business_campaigns c ON c.id=r.campaign_id WHERE c.business_id=ANY($1::uuid[]) GROUP BY c.business_id`,[ids]);for(const x of s.rows)sums[x.business_id]=x;}for(const x of q.rows){const s=sums[x.business_id]||{};x.rating=s.rating||null;x.review_count=s.review_count||0;}res.json({ok:true,offers:q.rows.filter(x=>Number(x.distance_m)<=10000)});});
 
  // --- Offer usage / favorites / verified reviews ---
- const ownerId=req=>String(req.headers['x-owner-id']||'').trim();
+ const ownerId=req=>authenticatedOwnerId(req);
  const usageCode=()=>crypto.randomBytes(4).toString('hex').toUpperCase();
 
  app.get('/api/offers/favorites',async(req,res)=>{try{const owner=ownerId(req);if(!owner)return res.status(401).json({error:'OWNER_REQUIRED'});const q=await pool.query('SELECT campaign_id FROM offer_favorites WHERE owner_id=$1 ORDER BY created_at DESC',[owner]);res.json({ok:true,favorites:q.rows.map(x=>x.campaign_id)});}catch(e){console.error('favorites list',e);res.status(500).json({error:'SERVER_ERROR'});}});
