@@ -190,7 +190,7 @@ class PushNotifications{
       }
 
       final token=await FirebaseMessaging.instance.getToken().timeout(const Duration(seconds:20));
-      if(token==null||token.trim().isEmpty)throw const HttpException('FCM token is empty');
+      if(token==null||token.trim().isEmpty)throw HttpException('FCM token is empty');
 
       var deviceId=prefs.getString('push_device_id');
       if(deviceId==null||deviceId.isEmpty){
@@ -235,7 +235,8 @@ class PushNotifications{
   static void _scheduleTokenRetry(){
     if(_tokenRetryTimer?.isActive==true)return;
     const delays=<int>[2,5,10,20,30,60];
-    final seconds=delays[_tokenRetryAttempt.clamp(0,delays.length-1)];
+    final index=_tokenRetryAttempt<0?0:(_tokenRetryAttempt>=delays.length?delays.length-1:_tokenRetryAttempt);
+    final seconds=delays[index];
     if(_tokenRetryAttempt<delays.length-1)_tokenRetryAttempt++;
     _tokenRetryTimer=Timer(Duration(seconds:seconds),(){
       _tokenRetryTimer=null;
