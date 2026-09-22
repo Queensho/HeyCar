@@ -28,10 +28,7 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
   bool loading = true, saving = false;
   DateTime? inspection, trafficInsurance, kasko, maintenance;
   String get owner => OnboardingDraft.userId.trim();
-  Map<String, String> get headers => {
-    'Content-Type': 'application/json',
-    'x-owner-id': owner,
-  };
+  Map<String, String> get headers => const {'Content-Type': 'application/json'};
   @override
   void initState() {
     super.initState();
@@ -51,12 +48,12 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
 
   Future<void> load() async {
     try {
-      final r = await http
+      final r = await OwnerHttp
           .get(
             Uri.parse(
               '${QrBackend.baseUrl}/api/vehicles/${widget.vehicleId}/reminders',
             ),
-            headers: await OwnerAuth.headers(json:false),
+            json: false,
           )
           .timeout(const Duration(seconds: 12));
       if (r.statusCode == 200) {
@@ -103,7 +100,7 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
       final ds =
           '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
       final api = apiType(type);
-      final r = await http
+      final r = await OwnerHttp
           .put(
             Uri.parse(
               '${QrBackend.baseUrl}/api/vehicles/${widget.vehicleId}/reminders/$api',
@@ -138,12 +135,12 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
   Future<void> clear(String type) async {
     setState(() => saving = true);
     try {
-      final r = await http
+      final r = await OwnerHttp
           .delete(
             Uri.parse(
               '${QrBackend.baseUrl}/api/vehicles/${widget.vehicleId}/reminders/${apiType(type)}',
             ),
-            headers: await OwnerAuth.headers(json:false),
+            json: false,
           )
           .timeout(const Duration(seconds: 12));
       if (!mounted) return;
