@@ -1,12 +1,14 @@
 const {ownerId: authenticatedOwnerId}=require('./owner-auth-service');
 const {driverId: authenticatedDriverId}=require('./driver-auth-service');
 const { validateScanSession } = require('./scan-session-service');
+const registerPushRoutes = require('./push-routes');
 
 function normalizeToken(raw) {
   return String(raw || '').trim().toUpperCase();
 }
 
 module.exports = function registerCallRoutes(app, pool) {
+  registerPushRoutes(app, pool);
   async function expireCalls() {
     await pool.query(`UPDATE anonymous_calls SET status='missed', ended_at=NOW() WHERE status='ringing' AND expires_at<=NOW()`);
   }
