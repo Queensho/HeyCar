@@ -5,6 +5,7 @@ const path = require('path');
 const crypto = require('crypto');
 const registerConversationRoutes = require('./conversation-routes');
 const { sendQrNotificationPush } = require('./notification-push-hook');
+const registerPushRoutes = require('./push-routes');
 const { createScanSession, validateScanSession } = require('./scan-session-service');
 const { moderateMessage } = require('./message-moderation');
 
@@ -15,6 +16,7 @@ function normalizeToken(raw) {
 const allowedTypes = new Set(['move_vehicle', 'lights_on', 'damage', 'message', 'call_request']);
 
 module.exports = function registerNotificationRoutes(app, pool) {
+  registerPushRoutes(app, pool);
   registerConversationRoutes(app, pool);
   const uploadDir = path.join(__dirname, 'uploads', 'notification-photos');
   fs.mkdirSync(uploadDir, { recursive: true });
