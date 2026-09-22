@@ -24,6 +24,7 @@ async function accessToken(){
 }
 
 module.exports=function registerPushRoutes(app,pool){
+  if(app.locals.heycarPush)return app.locals.heycarPush;
   let ready=false;
   async function schema(){
     if(ready)return;
@@ -86,4 +87,6 @@ module.exports=function registerPushRoutes(app,pool){
   const sendDriver=(driver,data,title,body)=>sendFrom('driver_push_tokens','driver_id',driver,data,title,body);
   const send=sendOwner;
   app.locals.heycarPush={send,sendOwner,sendDriver};
+  console.log('Cepqar push service registered');
+  return app.locals.heycarPush;
 };
