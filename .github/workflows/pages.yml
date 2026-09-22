@@ -157,6 +157,7 @@ jobs:
           from pathlib import Path
           p=Path('android/app/build.gradle.kts'); text=p.read_text()
           if 'com.google.gms.google-services' not in text:text=text.replace('plugins {','plugins {\n    id("com.google.gms.google-services") version "4.4.4"',1)
+          if 'com.google.firebase.crashlytics' not in text:text=text.replace('plugins {','plugins {\n    id("com.google.firebase.crashlytics") version "3.0.8"',1)
           if 'isCoreLibraryDesugaringEnabled = true' not in text:text=text.replace('compileOptions {','compileOptions {\n        isCoreLibraryDesugaringEnabled = true',1)
           if 'coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:' not in text:
             if 'dependencies {' in text:text=text.replace('dependencies {','dependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")',1)
