@@ -81,8 +81,8 @@ class DriverHttp {
   static Future<http.Response> get(Uri u, {bool json = true, Map<String, String>? headers}) =>
       _send((h) => http.get(u, headers: {...h, ...?headers}), json: json);
 
-  static Future<http.Response> delete(Uri u, {bool json = true, Map<String, String>? headers}) =>
-      _send((h) => http.delete(u, headers: {...h, ...?headers}), json: json);
+  static Future<http.Response> delete(Uri u, {Object? body, bool json = true, Map<String, String>? headers}) =>
+      _send((h) => http.delete(u, headers: {...h, ...?headers}, body: body), json: json);
 
   static Future<http.Response> post(Uri u, {Object? body, bool json = true, Map<String, String>? headers}) =>
       _send((h) => http.post(u, headers: {...h, ...?headers}, body: body), json: json);
