@@ -16,6 +16,7 @@ class OnboardingDraft {
 
 class OnboardingBackend {
   static const String baseUrl = 'https://heycar-api-185-165-46-213.nip.io';
+  static const String legalVersion = '1.0';
 
   static Future<Map<String, dynamic>> registerWithVehicle({
     required String phone,
@@ -42,6 +43,8 @@ class OnboardingBackend {
             'model': model.trim(),
             'color': color.trim(),
             'transferCode': transferCode.trim().toUpperCase(),
+            'legalAccepted': true,
+            'legalVersion': legalVersion,
           }),
         )
         .timeout(const Duration(seconds: 15));
@@ -74,6 +77,7 @@ class OnboardingBackend {
     if (code == 'PHONE_EXISTS') throw Exception('Bu telefon numarası zaten kayıtlı.');
     if (code == 'INVALID_PHONE') throw Exception('Geçerli bir cep telefonu numarası gir.');
     if (code == 'INVALID_INPUT') throw Exception('Bilgileri kontrol edip tekrar dene.');
+    if (code == 'LEGAL_CONSENT_REQUIRED') throw Exception('Güncel Kullanım Şartları ve Gizlilik/KVKK metnini kabul etmelisin.');
     if (code == 'TRANSFER_NOT_FOUND') throw Exception('Devir kodu bulunamadı.');
     if (code == 'TRANSFER_EXPIRED') throw Exception('Devir kodunun süresi dolmuş veya kod kullanılmış.');
     throw Exception('Kayıt tamamlanamadı. Tekrar dene.');
