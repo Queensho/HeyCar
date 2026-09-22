@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'vehicle_api.dart';
 import 'driver_auth.dart';
+import 'push_notifications.dart';
 
 const _api = 'https://heycar-api-185-165-46-213.nip.io';
 const _bg = Color(0xFF07111F);
@@ -143,6 +144,7 @@ class _DriverLoginPageState extends State<DriverLoginPage> {
         await prefs.setBool('driver_logged_in', true);
         await prefs.setString('driver_user_id', id);
         if (displayName.isNotEmpty) await prefs.setString('driver_name', displayName);
+        await PushNotifications.registerToken();
         if (mounted) {
           Navigator.pushAndRemoveUntil(
             context,
@@ -214,6 +216,7 @@ class _DriverInvitePageState extends State<DriverInvitePage> {
   @override
   void initState() {
     super.initState();
+    current = widget.initialTab < 0 ? 0 : (widget.initialTab > 3 ? 3 : widget.initialTab);
     load();
   }
 
@@ -250,6 +253,7 @@ class _DriverInvitePageState extends State<DriverInvitePage> {
         await prefs.setString('driver_user_id', data['user']['id'].toString());
         await prefs.setString('driver_name', data['user']['displayName'].toString());
         await DriverAuth.saveFrom(data);
+        await PushNotifications.registerToken();
         if (mounted) {
           Navigator.pushReplacement(
             context,
@@ -337,7 +341,8 @@ class _DriverInvitePageState extends State<DriverInvitePage> {
 
 class DriverHomePage extends StatefulWidget {
   final String userId;
-  const DriverHomePage({super.key, required this.userId});
+  final int initialTab;
+  const DriverHomePage({super.key, required this.userId, this.initialTab = 0});
 
   @override
   State<DriverHomePage> createState() => _DriverHomePageState();
@@ -1449,6 +1454,7 @@ class _DriverSettingsPage extends StatelessWidget {
     );
     if (ok != true) return;
 
+    await PushNotifications.unregisterDriverToken();
     await DriverAuth.logout();
     final prefs = await SharedPreferences.getInstance();
     for (final key in ['driver_logged_in', 'driver_user_id', 'driver_name']) {
