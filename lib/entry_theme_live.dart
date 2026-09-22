@@ -25,7 +25,24 @@ import 'driver_auth.dart';
 import 'crash_reporting.dart';
 
 final GlobalKey<NavigatorState> cepqarNavigatorKey=GlobalKey<NavigatorState>();
-void main(){WidgetsFlutterBinding.ensureInitialized();runApp(const ThemeOwnerApp());Future<void>(() async{try{await PushNotifications.bootstrap();await CrashReporting.init();await Future.wait([CepqarTheme.load(),PushNotifications.init()]);}catch(e,st){debugPrint('Startup init failed: $e');await CrashReporting.record(e,st,reason:'startup_init');}});}
+Future<void> main()async{
+  WidgetsFlutterBinding.ensureInitialized();
+  try{
+    await PushNotifications.bootstrap();
+  }catch(e){
+    debugPrint('Push bootstrap failed before UI: $e');
+  }
+  runApp(const ThemeOwnerApp());
+  Future<void>(() async{
+    try{
+      await CrashReporting.init();
+      await Future.wait([CepqarTheme.load(),PushNotifications.init()]);
+    }catch(e,st){
+      debugPrint('Startup init failed: $e');
+      await CrashReporting.record(e,st,reason:'startup_init');
+    }
+  });
+}
 class ThemeOwnerApp extends StatelessWidget{const ThemeOwnerApp({super.key});@override Widget build(BuildContext context)=>ValueListenableBuilder<ThemeMode>(valueListenable:CepqarTheme.mode,builder:(_,mode,__)=>(MaterialApp(navigatorKey:cepqarNavigatorKey,debugShowCheckedModeBanner:false,themeMode:mode,theme:ThemeData(useMaterial3:true,brightness:Brightness.light,scaffoldBackgroundColor:CepqarTheme.lightBg,colorScheme:ColorScheme.fromSeed(seedColor:CepqarTheme.purple,brightness:Brightness.light,surface:CepqarTheme.lightPanel),cardColor:CepqarTheme.lightPanel,dividerColor:CepqarTheme.lightLine,fontFamily:'sans'),darkTheme:ThemeData(useMaterial3:true,brightness:Brightness.dark,scaffoldBackgroundColor:CepqarTheme.darkBg,colorScheme:ColorScheme.fromSeed(seedColor:CepqarTheme.purple,brightness:Brightness.dark,surface:CepqarTheme.darkPanel),cardColor:CepqarTheme.darkPanel,dividerColor:CepqarTheme.darkLine,fontFamily:'sans'),home:const ThemeOwnerEntry())));}
 class ThemeOwnerEntry extends StatefulWidget{const ThemeOwnerEntry({super.key});@override State<ThemeOwnerEntry> createState()=>_ThemeOwnerEntryState();}
 class _ThemeOwnerEntryState extends State<ThemeOwnerEntry>{int index=0;bool loginMode=false,registerMode=false,restoring=true,hasSession=false,callPermissionSetupDone=false;String driverId='';Widget ownerHome()=>const OwnerCallWatcher(child:OwnerDashboardLive());@override void initState(){super.initState();PushNotifications.onNavigationRequested=_routePush;_restoreSession();}
