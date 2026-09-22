@@ -10,9 +10,10 @@ const _ownerCallPurple = Color(0xFF8B5CFF);
 const _ownerCallMuted = Color(0xFFA7B0C7);
 
 class OwnerCallPage extends StatefulWidget {
-  const OwnerCallPage({super.key, required this.call, this.autoAccept = false});
+  const OwnerCallPage({super.key, required this.call, this.autoAccept = false, this.driverMode = false});
   final Map<String, dynamic> call;
   final bool autoAccept;
+  final bool driverMode;
 
   @override
   State<OwnerCallPage> createState() => _OwnerCallPageState();
@@ -33,6 +34,17 @@ class _OwnerCallPageState extends State<OwnerCallPage> {
 
   String get callId => widget.call['id']?.toString() ?? '';
   String get plate => widget.call['plate']?.toString() ?? 'Araç';
+
+  Future<Map<String,dynamic>> _status() =>
+      widget.driverMode ? AnonymousCallApi.driverStatus(callId) : _status();
+
+  Future<Map<String,dynamic>> _signal({
+    String? action,
+    Map<String,dynamic>? answer,
+    Map<String,dynamic>? candidate,
+  }) => widget.driverMode
+      ? AnonymousCallApi.driverSignal(callId,action:action,answer:answer,candidate:candidate)
+      : AnonymousCallApi.ownerSignal(callId,action:action,answer:answer,candidate:candidate);
 
   @override
   void initState() {
@@ -72,7 +84,7 @@ class _OwnerCallPageState extends State<OwnerCallPage> {
   Future<void> _reject() async {
     if (busy || callId.isEmpty) return;
     setState(() => busy = true);
-    try { await AnonymousCallApi.ownerSignal(callId, action: 'reject'); } catch (_) {}
+    try { await _signal(action: 'reject'); } catch (_) {}
     await _clearNativeCall();
     if (mounted) Navigator.pop(context);
   }
@@ -106,7 +118,7 @@ class _OwnerCallPageState extends State<OwnerCallPage> {
       };
       peer!.onIceCandidate = (candidate) {
         if (candidate.candidate == null) return;
-        AnonymousCallApi.ownerSignal(callId, candidate: {
+        _signal(candidate: {
           'candidate': candidate.candidate,
           'sdpMid': candidate.sdpMid,
           'sdpMLineIndex': candidate.sdpMLineIndex,
@@ -116,7 +128,7 @@ class _OwnerCallPageState extends State<OwnerCallPage> {
       await _addCallerCandidates(latest['caller_candidates']);
       final answer = await peer!.createAnswer({'offerToReceiveAudio': 1});
       await peer!.setLocalDescription(answer);
-      await AnonymousCallApi.ownerSignal(callId, action: 'accept', answer: {'sdp': answer.sdp, 'type': answer.type});
+      await _signal(action: 'accept', answer: {'sdp': answer.sdp, 'type': answer.type});
       try { await FlutterCallkitIncoming.setCallConnected(callId); } catch (_) {}
       if (mounted) setState(() { connected = true; busy = false; nativeAccepted = false; });
     } catch (e) {
@@ -152,7 +164,7 @@ class _OwnerCallPageState extends State<OwnerCallPage> {
 
   Future<void> _end() async {
     poller?.cancel();
-    try { await AnonymousCallApi.ownerSignal(callId, action: 'end'); } catch (_) {}
+    try { await _signal(action: 'end'); } catch (_) {}
     await _clearNativeCall();
     if (mounted) Navigator.pop(context);
   }
