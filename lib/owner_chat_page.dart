@@ -167,7 +167,7 @@ class _OwnerChatPageState extends State<OwnerChatPage> {
     );
     if (ok != true) return;
     try {
-      final r = await http.post(
+      final r = await OwnerHttp.post(
         Uri.parse('$baseUrl/api/owner/conversations/${Uri.encodeComponent(id)}/block'),
         json: false,
       ).timeout(const Duration(seconds: 15));
