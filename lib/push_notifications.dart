@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/widgets.dart';
@@ -47,6 +48,9 @@ Future<void> heyCarFirebaseBackgroundHandler(RemoteMessage m)async{
 class PushNotifications{
   static bool _bootstrapped=false;
   static bool _callEventsReady=false;
+  static bool _tokenRegistrationInFlight=false;
+  static int _tokenRetryAttempt=0;
+  static Timer? _tokenRetryTimer;
   static Future<void> Function(Map<String,dynamic> data)? onNavigationRequested;
 
   static Future<void> bootstrap()async{
@@ -170,25 +174,79 @@ class PushNotifications{
     }
   }
 
-  static Future<void> registerToken()async{
-    final prefs=await SharedPreferences.getInstance();
-    final ownerLogged=prefs.getBool('owner_logged_in')??false;
-    final driverLogged=prefs.getBool('driver_logged_in')??false;
-    if(!ownerLogged&&!driverLogged)return;
-    final token=await FirebaseMessaging.instance.getToken();
-    if(token==null||token.isEmpty)return;
-    var deviceId=prefs.getString('push_device_id');
-    if(deviceId==null||deviceId.isEmpty){deviceId='${Platform.operatingSystem}-${DateTime.now().microsecondsSinceEpoch}';await prefs.setString('push_device_id',deviceId);}
+  static Future<void> registerToken({bool scheduleRetry=true})async{
+    if(_tokenRegistrationInFlight)return;
+    _tokenRegistrationInFlight=true;
+    SharedPreferences? prefs;
     try{
+      await bootstrap();
+      prefs=await SharedPreferences.getInstance();
+      final ownerLogged=prefs.getBool('owner_logged_in')??false;
+      final driverLogged=prefs.getBool('driver_logged_in')??false;
+      if(!ownerLogged&&!driverLogged){
+        _tokenRetryAttempt=0;
+        _tokenRetryTimer?.cancel();
+        return;
+      }
+
+      final token=await FirebaseMessaging.instance.getToken().timeout(const Duration(seconds:20));
+      if(token==null||token.trim().isEmpty)throw const HttpException('FCM token is empty');
+
+      var deviceId=prefs.getString('push_device_id');
+      if(deviceId==null||deviceId.isEmpty){
+        deviceId='${Platform.operatingSystem}-${DateTime.now().microsecondsSinceEpoch}';
+        await prefs.setString('push_device_id',deviceId);
+      }
+
       late final http.Response r;
       if(ownerLogged){
-        r=await OwnerHttp.post(Uri.parse('$_apiBase/api/owner/push-token'),body:jsonEncode({'token':token,'deviceId':deviceId,'platform':Platform.operatingSystem})).timeout(const Duration(seconds:15));
+        r=await OwnerHttp.post(
+          Uri.parse('$_apiBase/api/owner/push-token'),
+          body:jsonEncode({'token':token,'deviceId':deviceId,'platform':Platform.operatingSystem}),
+        ).timeout(const Duration(seconds:20));
       }else{
-        r=await DriverHttp.post(Uri.parse('$_apiBase/api/driver/push-token'),body:jsonEncode({'token':token,'deviceId':deviceId,'platform':Platform.operatingSystem})).timeout(const Duration(seconds:15));
+        r=await DriverHttp.post(
+          Uri.parse('$_apiBase/api/driver/push-token'),
+          body:jsonEncode({'token':token,'deviceId':deviceId,'platform':Platform.operatingSystem}),
+        ).timeout(const Duration(seconds:20));
       }
-      if(r.statusCode<200||r.statusCode>=300)throw HttpException('Push token registration failed: ${r.statusCode}');
+
+      if(r.statusCode<200||r.statusCode>=300){
+        throw HttpException('Push token registration failed: ${r.statusCode} ${r.body}');
+      }
+
       await prefs.setBool('push_token_registered',true);
-    }catch(e){await prefs.setBool('push_token_registered',false);stderr.writeln('Push token registration: $e');}
+      await prefs.setString('push_token_last_registered_at',DateTime.now().toUtc().toIso8601String());
+      await prefs.setString('push_token_last_error','');
+      _tokenRetryAttempt=0;
+      _tokenRetryTimer?.cancel();
+      debugPrint('Push token registered successfully.');
+    }catch(e){
+      prefs??=await SharedPreferences.getInstance();
+      await prefs.setBool('push_token_registered',false);
+      await prefs.setString('push_token_last_error',e.toString());
+      stderr.writeln('Push token registration failed: $e');
+      if(scheduleRetry)_scheduleTokenRetry();
+    }finally{
+      _tokenRegistrationInFlight=false;
+    }
+  }
+
+  static void _scheduleTokenRetry(){
+    if(_tokenRetryTimer?.isActive==true)return;
+    const delays=<int>[2,5,10,20,30,60];
+    final seconds=delays[_tokenRetryAttempt.clamp(0,delays.length-1)];
+    if(_tokenRetryAttempt<delays.length-1)_tokenRetryAttempt++;
+    _tokenRetryTimer=Timer(Duration(seconds:seconds),(){
+      _tokenRetryTimer=null;
+      registerToken();
+    });
+  }
+
+  static Future<void> refreshTokenRegistration()async{
+    _tokenRetryTimer?.cancel();
+    _tokenRetryTimer=null;
+    await registerToken();
   }
 
   static Future<void> unregisterDriverToken()async{
