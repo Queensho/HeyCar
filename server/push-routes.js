@@ -62,8 +62,13 @@ module.exports=function registerPushRoutes(app,pool){
       }
       const message={token:row.fcm_token,data:fcmData,android};
       if(!callEvent){
-        message.android.notification={channel_id:'cepqar_notifications_v2',icon:'ic_stat_cepqar',sound:'default',visibility:'PUBLIC',notification_priority:'PRIORITY_HIGH'};
+        // Keep this payload intentionally minimal. This is the same shape as the
+        // direct FCM test that is known to display correctly on the target Android device.
         message.notification={title,body};
+        message.android.notification={
+          channel_id:'cepqar_notifications_v2',
+          sound:'default'
+        };
       }
       try{
         const r=await fetch(endpoint,{method:'POST',headers:{authorization:`Bearer ${key}`,'content-type':'application/json'},body:JSON.stringify({message})});
