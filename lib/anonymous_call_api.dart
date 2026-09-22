@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'onboarding_backend.dart';
 import 'public_theme_backend.dart';
 import 'owner_auth.dart';
+import 'driver_auth.dart';
 
 class AnonymousCallApi {
   const AnonymousCallApi._();
@@ -78,6 +79,50 @@ class AnonymousCallApi {
     final data = jsonDecode(response.body) as Map<String, dynamic>;
     final call = data['call'];
     return call is Map ? Map<String, dynamic>.from(call) : null;
+  }
+
+  static Future<Map<String, dynamic>?> driverIncoming() async {
+    final response = await DriverHttp.get(
+      Uri.parse('${PublicThemeBackend.baseUrl}/api/driver/calls/incoming'),
+      json: false,
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) return null;
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    final call = data['call'];
+    return call is Map ? Map<String, dynamic>.from(call) : null;
+  }
+
+  static Future<Map<String, dynamic>> driverStatus(String callId) async {
+    final response = await DriverHttp.get(
+      Uri.parse('${PublicThemeBackend.baseUrl}/api/driver/calls/${Uri.encodeComponent(callId)}'),
+      json: false,
+    );
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(data['error']?.toString() ?? 'CALL_STATUS_FAILED');
+    }
+    return Map<String, dynamic>.from(data['call'] as Map);
+  }
+
+  static Future<Map<String, dynamic>> driverSignal(
+    String callId, {
+    String? action,
+    Map<String, dynamic>? answer,
+    Map<String, dynamic>? candidate,
+  }) async {
+    final response = await DriverHttp.patch(
+      Uri.parse('${PublicThemeBackend.baseUrl}/api/driver/calls/${Uri.encodeComponent(callId)}'),
+      body: jsonEncode({
+        if (action != null) 'action': action,
+        if (answer != null) 'answer': answer,
+        if (candidate != null) 'candidate': candidate,
+      }),
+    );
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(data['error']?.toString() ?? 'CALL_UPDATE_FAILED');
+    }
+    return Map<String, dynamic>.from(data['call'] as Map);
   }
 
   static Future<Map<String, dynamic>> ownerStatus(String callId) async {
