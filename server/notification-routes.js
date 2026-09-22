@@ -328,8 +328,8 @@ module.exports = function registerNotificationRoutes(app, pool) {
       if (!guard.ok) return res.status(guard.status).json({ error: guard.error });
       await ensurePrivacySchema();
       const publicStatusToken = crypto.randomUUID();
-      const result = await pool.query(`INSERT INTO vehicle_notifications (vehicle_id, qr_token, type, message, photo_path, latitude, longitude, public_status_token) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id, type, message, photo_path, latitude, longitude, status, created_at`, [qr.vehicle_id, token, type, message, photoPath, latitude, longitude, publicStatusToken]);
-      await sendQrNotificationPush({ app, qr, type, message, notificationId: result.rows[0].id, token, getPrivacy });
+      const result = await pool.query(`INSERT INTO vehicle_notifications (vehicle_id, qr_token, type, message, photo_path, latitude, longitude, public_status_token) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id, type, message, photo_path, latitude, longitude, status, created_at, recipient_user_id`, [qr.vehicle_id, token, type, message, photoPath, latitude, longitude, publicStatusToken]);
+      await sendQrNotificationPush({ app, qr, type, message, notificationId: result.rows[0].id, recipientUserId: result.rows[0].recipient_user_id, token, getPrivacy });
       return res.status(201).json({ ok: true, notification: {...result.rows[0], public_status_token: publicStatusToken} });
     } catch (e) { console.error(e); return res.status(500).json({ error: 'SERVER_ERROR' }); }
   });
