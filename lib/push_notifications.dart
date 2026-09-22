@@ -9,6 +9,7 @@ import 'package:flutter_callkit_incoming/entities/entities.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'owner_auth.dart';
+import 'driver_auth.dart';
 
 const _apiBase='https://heycar-api-185-165-46-213.nip.io';
 const _generalChannel='cepqar_notifications_v2';
@@ -147,17 +148,33 @@ class PushNotifications{
 
   static Future<void> registerToken()async{
     final prefs=await SharedPreferences.getInstance();
-    final ownerId=prefs.getString('owner_user_id')??prefs.getString('owner_id')??prefs.getString('ownerId');
-    if(ownerId==null||ownerId.isEmpty)return;
+    final ownerLogged=prefs.getBool('owner_logged_in')??false;
+    final driverLogged=prefs.getBool('driver_logged_in')??false;
+    if(!ownerLogged&&!driverLogged)return;
     final token=await FirebaseMessaging.instance.getToken();
     if(token==null||token.isEmpty)return;
     var deviceId=prefs.getString('push_device_id');
     if(deviceId==null||deviceId.isEmpty){deviceId='${Platform.operatingSystem}-${DateTime.now().microsecondsSinceEpoch}';await prefs.setString('push_device_id',deviceId);}
     try{
-      final r=await OwnerHttp.post(Uri.parse('$_apiBase/api/owner/push-token'),body:jsonEncode({'token':token,'deviceId':deviceId,'platform':Platform.operatingSystem})).timeout(const Duration(seconds:15));
+      late final http.Response r;
+      if(ownerLogged){
+        r=await OwnerHttp.post(Uri.parse('$_apiBase/api/owner/push-token'),body:jsonEncode({'token':token,'deviceId':deviceId,'platform':Platform.operatingSystem})).timeout(const Duration(seconds:15));
+      }else{
+        r=await DriverHttp.post(Uri.parse('$_apiBase/api/driver/push-token'),body:jsonEncode({'token':token,'deviceId':deviceId,'platform':Platform.operatingSystem})).timeout(const Duration(seconds:15));
+      }
       if(r.statusCode<200||r.statusCode>=300)throw HttpException('Push token registration failed: ${r.statusCode}');
       await prefs.setBool('push_token_registered',true);
     }catch(e){await prefs.setBool('push_token_registered',false);stderr.writeln('Push token registration: $e');}
+  }
+
+  static Future<void> unregisterDriverToken()async{
+    final prefs=await SharedPreferences.getInstance();
+    final deviceId=prefs.getString('push_device_id')??'';
+    if(deviceId.isEmpty)return;
+    try{
+      await DriverHttp.delete(Uri.parse('$_apiBase/api/driver/push-token?deviceId=${Uri.encodeQueryComponent(deviceId)}'),json:false).timeout(const Duration(seconds:10));
+    }catch(e){stderr.writeln('Driver push token unregister: $e');}
+    await prefs.setBool('push_token_registered',false);
   }
 
   static Future<void> showIncomingCall(Map<String,dynamic> data)async{
