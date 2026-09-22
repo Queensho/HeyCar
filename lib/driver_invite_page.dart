@@ -216,7 +216,6 @@ class _DriverInvitePageState extends State<DriverInvitePage> {
   @override
   void initState() {
     super.initState();
-    current = widget.initialTab < 0 ? 0 : (widget.initialTab > 3 ? 3 : widget.initialTab);
     load();
   }
 
@@ -364,6 +363,7 @@ class _DriverHomePageState extends State<DriverHomePage> {
   @override
   void initState() {
     super.initState();
+    current = widget.initialTab < 0 ? 0 : (widget.initialTab > 3 ? 3 : widget.initialTab);
     load();
   }
 
