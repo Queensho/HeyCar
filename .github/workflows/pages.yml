@@ -176,6 +176,8 @@ jobs:
           text=text.replace('android:name=".MainActivity"', 'android:name=".MainActivity"\n            android:showWhenLocked="true"\n            android:turnScreenOn="true"')
           if 'com.google.firebase.messaging.default_notification_icon' not in text:
             text=text.replace('</application>','''        <meta-data\n            android:name="com.google.firebase.messaging.default_notification_icon"\n            android:resource="@drawable/ic_stat_cepqar" />\n    </application>''')
+          if 'com.google.firebase.messaging.default_notification_channel_id' not in text:
+            text=text.replace('</application>','''        <meta-data\n            android:name="com.google.firebase.messaging.default_notification_channel_id"\n            android:value="cepqar_notifications_v4" />\n    </application>''')
           if 'com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver' not in text:
             text=text.replace('</application>','''        <receiver\n            android:exported="false"\n            android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver" />\n    </application>''')
           p.write_text(text)
