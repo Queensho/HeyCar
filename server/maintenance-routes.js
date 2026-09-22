@@ -1,6 +1,7 @@
 const express=require('express');
+const {ownerId:authenticatedOwnerId}=require('./owner-auth-service');
 module.exports=function registerMaintenanceRoutes(app,pool){
- const ownerId=req=>String(req.headers['x-owner-id']||'').trim();
+ const ownerId=req=>authenticatedOwnerId(req);
  async function vehicle(req,res){const o=ownerId(req),v=String(req.params.vehicleId||'');if(!o){res.status(401).json({error:'OWNER_REQUIRED'});return null;}const r=await pool.query('SELECT id,plate,make,model,owner_id FROM vehicles WHERE id::text=$1 AND owner_id::text=$2 LIMIT 1',[v,o]);if(!r.rows.length){res.status(403).json({error:'FORBIDDEN'});return null;}return r.rows[0];}
  async function premium(o){try{const r=await pool.query(`SELECT COALESCE((to_jsonb(u)->>'premium')::boolean,false) premium FROM users u WHERE id::text=$1 LIMIT 1`,[o]);return r.rows[0]?.premium===true;}catch(_){return false;}}
  async function record(req,res,v){const r=await pool.query(`SELECT * FROM vehicle_maintenance_records WHERE id::text=$1 AND vehicle_id=$2 AND owner_id=$3 LIMIT 1`,[String(req.params.recordId||''),String(v.id),ownerId(req)]);if(!r.rows.length){res.status(404).json({error:'MAINTENANCE_NOT_FOUND'});return null;}return r.rows[0];}
