@@ -9,7 +9,7 @@ function accessToken(ownerId){const now=Math.floor(Date.now()/1000);return sign(
 function hash(v){return crypto.createHash('sha256').update(v).digest('hex');}
 async function issueTokens(db,ownerId){const refresh=crypto.randomBytes(48).toString('base64url');await db.query("INSERT INTO owner_auth_sessions(owner_id,refresh_token_hash,expires_at) VALUES($1,$2,now()+interval '30 days')",[ownerId,hash(refresh)]);return{accessToken:accessToken(ownerId),refreshToken:refresh,expiresIn:ACCESS_TTL_SECONDS};}
 function bearer(req){const h=String(req.headers.authorization||'');return h.toLowerCase().startsWith('bearer ')?h.slice(7).trim():'';}
-function ownerId(req){const p=verify(bearer(req));if(p)return String(p.sub);if(process.env.ALLOW_LEGACY_OWNER_ID==='true')return String(req.headers['x-owner-id']||'').trim();return '';}
+function ownerId(req){const p=verify(bearer(req));return p?String(p.sub):'';}
 async function rotateRefresh(db,refresh){const h=hash(refresh);const c=await db.connect();try{await c.query('BEGIN');const r=await c.query("SELECT id,owner_id FROM owner_auth_sessions WHERE refresh_token_hash=$1 AND revoked_at IS NULL AND expires_at>now() FOR UPDATE",[h]);if(!r.rows.length){await c.query('ROLLBACK');return null;}await c.query('UPDATE owner_auth_sessions SET revoked_at=now() WHERE id=$1',[r.rows[0].id]);const out=await issueTokens(c,r.rows[0].owner_id);await c.query('COMMIT');return out;}catch(e){await c.query('ROLLBACK').catch(()=>{});throw e;}finally{c.release();}}
 async function revokeRefresh(db,refresh){if(!refresh)return;await db.query('UPDATE owner_auth_sessions SET revoked_at=now() WHERE refresh_token_hash=$1',[hash(refresh)]);}
 module.exports={issueTokens,rotateRefresh,revokeRefresh,ownerId,verify,ACCESS_TTL_SECONDS,REFRESH_TTL_DAYS};
