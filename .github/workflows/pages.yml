@@ -189,7 +189,9 @@ jobs:
           </vector>
           EOF
       - name: Apply Cepqar native splash
-        run: python3 tool/native_splash_patch.py
+        run: |
+          python3 -m pip install --quiet pillow
+          python3 tool/native_splash_patch.py
       - name: Generate Cepqar incoming call ringtone
         run: |
           mkdir -p android/app/src/main/res/raw
