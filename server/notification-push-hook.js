@@ -29,11 +29,18 @@ async function sendQrNotificationPush({ app, qr, type, message, notificationId, 
     const isDriver = recipient !== ownerId;
     const sender = isDriver ? app.locals.heycarPush.sendDriver : app.locals.heycarPush.sendOwner || app.locals.heycarPush.send;
     if (!sender) return;
-    await sender(
+    const payload={ type: type === 'message' ? 'message' : 'vehicle_notification', sourceType:type, recipientType: isDriver ? 'driver' : 'owner', notificationId: String(notificationId), vehicleId: String(qr.vehicle_id), qrToken: String(token), plate, body, message: body };
+    const result=await sender(
       recipient,
-      { type: type === 'message' ? 'message' : 'vehicle_notification', recipientType: isDriver ? 'driver' : 'owner', notificationId: String(notificationId), vehicleId: String(qr.vehicle_id), qrToken: String(token), plate, body, message: body },
+      payload,
       plate || titles[type] || 'Cepqar', body,
     );
+    if(isDriver&&(!result||result.delivered===0)){
+      const ownerSender=app.locals.heycarPush.sendOwner||app.locals.heycarPush.send;
+      if(ownerSender){
+        await ownerSender(ownerId,{...payload,recipientType:'owner'},plate || titles[type] || 'Cepqar',body);
+      }
+    }
   } catch (err) { console.error('notification push', err); }
 }
 module.exports = { sendQrNotificationPush };
