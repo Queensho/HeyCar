@@ -34,9 +34,9 @@ module.exports=function registerPushRoutes(app,pool){
     ready=true;
   }
 
-  app.post('/api/owner/push-token',async(req,res)=>{try{const owner=authenticatedOwnerId(req);const token=String(req.body?.token||'').trim();const device=String(req.body?.deviceId||'').trim();const platform=String(req.body?.platform||'android').trim();if(!owner)return res.status(401).json({error:'OWNER_REQUIRED'});if(!token||!device)return res.status(400).json({error:'REQUIRED_FIELDS_MISSING'});await schema();await pool.query(`INSERT INTO owner_push_tokens(owner_id,device_id,fcm_token,platform) VALUES($1,$2,$3,$4) ON CONFLICT(owner_id,device_id) DO UPDATE SET fcm_token=EXCLUDED.fcm_token,platform=EXCLUDED.platform,active=TRUE,updated_at=NOW()`,[owner,device,token,platform]);return res.json({ok:true});}catch(e){console.error('push token',e);return res.status(500).json({error:'SERVER_ERROR'});}});
+  app.post('/api/owner/push-token',async(req,res)=>{try{const owner=authenticatedOwnerId(req);const token=String(req.body?.token||'').trim();const device=String(req.body?.deviceId||'').trim();const platform=String(req.body?.platform||'android').trim();if(!owner)return res.status(401).json({error:'OWNER_REQUIRED'});if(!token||!device)return res.status(400).json({error:'REQUIRED_FIELDS_MISSING'});await schema();await pool.query(`INSERT INTO owner_push_tokens(owner_id,device_id,fcm_token,platform) VALUES($1,$2,$3,$4) ON CONFLICT(owner_id,device_id) DO UPDATE SET fcm_token=EXCLUDED.fcm_token,platform=EXCLUDED.platform,active=TRUE,updated_at=NOW()`,[owner,device,token,platform]);await pool.query('UPDATE owner_push_tokens SET active=FALSE,updated_at=NOW() WHERE owner_id=$1 AND fcm_token=$2 AND device_id<>$3',[owner,token,device]);return res.json({ok:true});}catch(e){console.error('push token',e);return res.status(500).json({error:'SERVER_ERROR'});}});
 
-  app.post('/api/driver/push-token',async(req,res)=>{try{const driver=authenticatedDriverId(req);const token=String(req.body?.token||'').trim();const device=String(req.body?.deviceId||'').trim();const platform=String(req.body?.platform||'android').trim();if(!driver)return res.status(401).json({error:'DRIVER_REQUIRED'});if(!token||!device)return res.status(400).json({error:'REQUIRED_FIELDS_MISSING'});await schema();await pool.query(`INSERT INTO driver_push_tokens(driver_id,device_id,fcm_token,platform) VALUES($1,$2,$3,$4) ON CONFLICT(driver_id,device_id) DO UPDATE SET fcm_token=EXCLUDED.fcm_token,platform=EXCLUDED.platform,active=TRUE,updated_at=NOW()`,[driver,device,token,platform]);return res.json({ok:true});}catch(e){console.error('driver push token',e);return res.status(500).json({error:'SERVER_ERROR'});}});
+  app.post('/api/driver/push-token',async(req,res)=>{try{const driver=authenticatedDriverId(req);const token=String(req.body?.token||'').trim();const device=String(req.body?.deviceId||'').trim();const platform=String(req.body?.platform||'android').trim();if(!driver)return res.status(401).json({error:'DRIVER_REQUIRED'});if(!token||!device)return res.status(400).json({error:'REQUIRED_FIELDS_MISSING'});await schema();await pool.query(`INSERT INTO driver_push_tokens(driver_id,device_id,fcm_token,platform) VALUES($1,$2,$3,$4) ON CONFLICT(driver_id,device_id) DO UPDATE SET fcm_token=EXCLUDED.fcm_token,platform=EXCLUDED.platform,active=TRUE,updated_at=NOW()`,[driver,device,token,platform]);await pool.query('UPDATE driver_push_tokens SET active=FALSE,updated_at=NOW() WHERE driver_id=$1 AND fcm_token=$2 AND device_id<>$3',[driver,token,device]);return res.json({ok:true});}catch(e){console.error('driver push token',e);return res.status(500).json({error:'SERVER_ERROR'});}});
   app.delete('/api/driver/push-token',async(req,res)=>{try{const driver=authenticatedDriverId(req);const device=String(req.query?.deviceId||req.body?.deviceId||'').trim();if(!driver)return res.status(401).json({error:'DRIVER_REQUIRED'});if(!device)return res.status(400).json({error:'DEVICE_REQUIRED'});await schema();await pool.query('UPDATE driver_push_tokens SET active=FALSE,updated_at=NOW() WHERE driver_id=$1 AND device_id=$2',[driver,device]);return res.json({ok:true});}catch(e){console.error('driver push token deactivate',e);return res.status(500).json({error:'SERVER_ERROR'});}});
 
   async function sendFrom(table,idColumn,userId,data,title,body){
@@ -45,7 +45,7 @@ module.exports=function registerPushRoutes(app,pool){
     if(!key||!sa){console.warn('Firebase service account missing; push skipped');return {attempted:0,delivered:0};}
     const project=sa.project_id;
     const rows=(await pool.query(
-      `SELECT id,fcm_token FROM ${table} WHERE ${idColumn}=$1 AND active=TRUE ORDER BY updated_at DESC`,
+      `SELECT DISTINCT ON (fcm_token) id,fcm_token FROM ${table} WHERE ${idColumn}=$1 AND active=TRUE ORDER BY fcm_token,updated_at DESC`,
       [String(userId)]
     )).rows;
     if(!rows.length)return {attempted:0,delivered:0};
@@ -67,7 +67,7 @@ module.exports=function registerPushRoutes(app,pool){
         const tag=String(data.notificationId||data.messageId||data.eventId||Date.now());
         message.notification={title,body};
         message.android.notification={
-          channel_id:'cepqar_notifications_v2',
+          channel_id:'cepqar_notifications_v4',
           sound:'default',
           tag:'cepqar_'+tag
         };
