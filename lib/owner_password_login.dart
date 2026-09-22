@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'onboarding_backend.dart';
 import 'qr_backend.dart';
 import 'owner_auth.dart';
+import 'account_recovery_page.dart';
 
 const _bg = Color(0xFF06111F);
 const _panel = Color(0xFF0E1930);
@@ -164,7 +165,14 @@ class _PasswordOwnerLoginScreenState extends State<PasswordOwnerLoginScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 18),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: busy ? null : () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountRecoveryPage(mode: 'owner'))),
+                      child: const Text('Şifremi unuttum', style: TextStyle(color: _purple)),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
                     height: 56,
