@@ -6,6 +6,7 @@ import 'vehicle_api.dart';
 import 'driver_auth.dart';
 import 'push_notifications.dart';
 import 'account_recovery_page.dart';
+import 'legal_pages.dart';
 
 const _api = 'https://heycar-api-185-165-46-213.nip.io';
 const _bg = Color(0xFF07111F);
@@ -124,7 +125,6 @@ class _DriverLoginPageState extends State<DriverLoginPage> {
   final phone = TextEditingController();
   final pass = TextEditingController();
   bool busy = false;
-  bool acceptedLegal = false;
   String? error;
 
   Future<void> login() async {
@@ -220,6 +220,7 @@ class _DriverInvitePageState extends State<DriverInvitePage> {
   final pass = TextEditingController();
   Map<String, dynamic>? invite;
   bool busy = false;
+  bool acceptedLegal = false;
   String? error;
 
   @override
