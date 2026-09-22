@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'onboarding_backend.dart';
 import 'qr_backend.dart';
+import 'legal_pages.dart';
 
 const _authBg = Color(0xFF06111F);
 const _authPanel = Color(0xFF0E1930);
@@ -301,14 +302,36 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
               const SizedBox(height: 6),
               const Text('Araç satın aldıysan eski sahibinin verdiği kodu buraya girebilirsin.',style:TextStyle(color:_authMuted,fontSize:11.5)),
               const SizedBox(height: 14),
-              InkWell(
-                onTap: () => setState(() => accepted = !accepted),
-                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Container(width: 24, height: 24, decoration: BoxDecoration(borderRadius: BorderRadius.circular(7), border: Border.all(color: _authPurple, width: 1.8), color: accepted ? _authPurple : Colors.transparent), child: accepted ? const Icon(Icons.check_rounded, size: 17, color: Colors.white) : null),
-                  const SizedBox(width: 10),
-                  const Expanded(child: Text('Kullanım koşullarını ve gizlilik politikasını kabul ediyorum.', style: TextStyle(color: _authMuted, fontSize: 12.5, height: 1.35))),
-                ]),
-              ),
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                InkWell(
+                  onTap: () => setState(() => accepted = !accepted),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(width: 24, height: 24, decoration: BoxDecoration(borderRadius: BorderRadius.circular(7), border: Border.all(color: _authPurple, width: 1.8), color: accepted ? _authPurple : Colors.transparent), child: accepted ? const Icon(Icons.check_rounded, size: 17, color: Colors.white) : null),
+                ),
+                const SizedBox(width: 10),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  InkWell(
+                    onTap: () => setState(() => accepted = !accepted),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 2),
+                      child: Text('Kullanım koşullarını ve gizlilik politikasını okudum ve kabul ediyorum.', style: TextStyle(color: _authMuted, fontSize: 12.5, height: 1.35)),
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Wrap(spacing: 2, runSpacing: 0, children: [
+                    TextButton(
+                      onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsOfUsePage())),
+                      style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0), minimumSize: const Size(0, 28), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                      child: const Text('Kullanım Şartları', style: TextStyle(fontSize: 11.8, fontWeight: FontWeight.w800)),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PrivacyKvkkPage())),
+                      style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0), minimumSize: const Size(0, 28), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                      child: const Text('Gizlilik / KVKK', style: TextStyle(fontSize: 11.8, fontWeight: FontWeight.w800)),
+                    ),
+                  ]),
+                ])),
+              ]),
               const SizedBox(height: 16),
               _PrimaryAuthButton(text: busy ? 'Kayıt yapılıyor...' : 'Kayıt Ol', onPressed: busy ? null : submit),
             ])),
