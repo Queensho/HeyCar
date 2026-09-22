@@ -4,6 +4,8 @@ import { Counter, Rate, Trend } from 'k6/metrics';
 
 const BASE_URL = (__ENV.BASE_URL || 'https://heycar-api-185-165-46-213.nip.io').replace(/\/$/, '');
 const ACCESS_TOKEN = __ENV.ACCESS_TOKEN || '';
+const TEST_PHONE = __ENV.TEST_PHONE || '';
+const TEST_PASSWORD = __ENV.TEST_PASSWORD || '';
 const QR_TOKEN = __ENV.QR_TOKEN || '';
 const PROFILE = __ENV.PROFILE || 'smoke';
 
@@ -24,7 +26,7 @@ export const options = {
     http_req_failed: ['rate<0.01'],
     http_req_duration: ['p(95)<1000', 'p(99)<2000'],
   },
-  discardResponseBodies: true,
+  discardResponseBodies: false,
 };
 
 function record(r) {
@@ -35,8 +37,18 @@ function record(r) {
 }
 
 export default function () {
-  const authHeaders = ACCESS_TOKEN ? { Authorization: `Bearer ${ACCESS_TOKEN}` } : {};
-  if (ACCESS_TOKEN) {
+  let token = ACCESS_TOKEN;
+  if (!token && TEST_PHONE && TEST_PASSWORD) {
+    const login = record(http.post(`${BASE_URL}/api/owner/login-phone`, JSON.stringify({ phone: TEST_PHONE, password: TEST_PASSWORD }), {
+      headers: {'Content-Type':'application/json'}, tags:{endpoint:'login'}
+    }));
+    check(login, { 'login ok': x => x.status === 200 });
+    if (login.status === 200) {
+      try { token = JSON.parse(login.body).accessToken || ''; } catch (_) {}
+    }
+  }
+  const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+  if (token) {
     let r = record(http.get(`${BASE_URL}/api/owner/vehicles`, { headers: authHeaders, tags:{endpoint:'vehicles'} }));
     check(r, { 'vehicles ok': x => x.status === 200 });
     r = record(http.get(`${BASE_URL}/api/owner/notifications`, { headers: authHeaders, tags:{endpoint:'notifications'} }));
