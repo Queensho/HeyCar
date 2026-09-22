@@ -124,6 +124,7 @@ class _DriverLoginPageState extends State<DriverLoginPage> {
   final phone = TextEditingController();
   final pass = TextEditingController();
   bool busy = false;
+  bool acceptedLegal = false;
   String? error;
 
   Future<void> login() async {
@@ -242,6 +243,7 @@ class _DriverInvitePageState extends State<DriverInvitePage> {
   }
 
   Future<void> accept() async {
+    if(!acceptedLegal){setState(() => error='Kullanım Şartları ve Gizlilik/KVKK metnini kabul etmelisin.');return;}
     setState(() => busy = true);
     try {
       final r = await http.post(
@@ -325,7 +327,34 @@ class _DriverInvitePageState extends State<DriverInvitePage> {
                   obscureText: true,
                   decoration: const InputDecoration(labelText: 'Şifre (en az 6 karakter)'),
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 14),
+                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  InkWell(
+                    onTap: busy ? null : () => setState(() => acceptedLegal = !acceptedLegal),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(width:24,height:24,decoration:BoxDecoration(borderRadius:BorderRadius.circular(7),border:Border.all(color:_purple,width:1.8),color:acceptedLegal?_purple:Colors.transparent),child:acceptedLegal?const Icon(Icons.check_rounded,size:17,color:Colors.white):null),
+                  ),
+                  const SizedBox(width:10),
+                  Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                    InkWell(
+                      onTap: busy ? null : () => setState(() => acceptedLegal = !acceptedLegal),
+                      child: const Padding(padding:EdgeInsets.symmetric(vertical:2),child:Text('Kullanım Şartları ve Gizlilik/KVKK metnini okudum ve kabul ediyorum.',style:TextStyle(color:_muted,fontSize:12.3,height:1.35))),
+                    ),
+                    Wrap(spacing:2,children:[
+                      TextButton(
+                        onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const TermsOfUsePage())),
+                        style:TextButton.styleFrom(padding:const EdgeInsets.symmetric(horizontal:4),minimumSize:const Size(0,28),tapTargetSize:MaterialTapTargetSize.shrinkWrap),
+                        child:const Text('Kullanım Şartları',style:TextStyle(fontSize:11.5,fontWeight:FontWeight.w800)),
+                      ),
+                      TextButton(
+                        onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const PrivacyKvkkPage())),
+                        style:TextButton.styleFrom(padding:const EdgeInsets.symmetric(horizontal:4),minimumSize:const Size(0,28),tapTargetSize:MaterialTapTargetSize.shrinkWrap),
+                        child:const Text('Gizlilik / KVKK',style:TextStyle(fontSize:11.5,fontWeight:FontWeight.w800)),
+                      ),
+                    ]),
+                  ])),
+                ]),
+                const SizedBox(height: 10),
                 FilledButton(
                   onPressed: busy ? null : accept,
                   child: Text(busy ? 'Bekle...' : 'Daveti Kabul Et'),
@@ -1590,6 +1619,14 @@ class _DriverSettingsPage extends StatelessWidget {
                 title: 'Gizlilik ve güvenlik',
                 subtitle: 'Sürücü yetkilerin araç sahibi tarafından yönetilir',
                 onTap: () => _showInfo(context, 'Gizlilik ve güvenlik', 'Araç ekleme, düzenleme, silme, aktif sürücü seçme ve yeni sürücü davet etme yetkileri yalnızca araç sahibindedir.'),
+              ),
+              const SizedBox(height: 8),
+              _SettingsTile(
+                icon: Icons.gavel_rounded,
+                iconColor: const Color(0xFFB78CFF),
+                title: 'Yasal ve gizlilik',
+                subtitle: 'Kullanım Şartları ve KVKK aydınlatma metni',
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LegalCenterPage())),
               ),
               const SizedBox(height: 8),
               _SettingsTile(icon: Icons.refresh_rounded, iconColor: const Color(0xFF55E6A5), title: 'Verileri yenile', subtitle: 'Araç ve bildirim bilgilerini güncelle', onTap: onRefresh),
