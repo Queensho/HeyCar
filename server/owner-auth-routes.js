@@ -1,4 +1,5 @@
-const {issueTokens,rotateRefresh,revokeRefresh}=require('./owner-auth-service');
+const {issueTokens,rotateRefresh,revokeRefresh,ownerId:authenticatedOwnerId}=require('./owner-auth-service');
+const {issueRecoveryCode,recoverPassword,verifyPassword,deleteAccount}=require('./account-lifecycle-service');
 function normalizeTrMobile(raw) {
   let digits = String(raw || '').replace(/\D/g, '');
   if (digits.startsWith('90') && digits.length === 12) digits = digits.slice(2);
@@ -53,6 +54,9 @@ module.exports = function registerOwnerAuthRoutes(app, pool) {
       return res.status(500).json({ error: 'SERVER_ERROR' });
     }
   });
+  app.post('/api/account/recover',async(req,res)=>{try{const out=await recoverPassword(pool,{phone:req.body?.phone,recoveryCode:req.body?.recoveryCode,newPassword:req.body?.newPassword,mode:String(req.body?.mode||'owner')});if(!out.ok){const status=out.error==='RECOVERY_RATE_LIMITED'?429:out.error==='INVALID_INPUT'?400:401;return res.status(status).json({error:out.error});}return res.json({ok:true});}catch(e){console.error('account recovery error',e);return res.status(500).json({error:'SERVER_ERROR'});}});
+  app.post('/api/owner/account/recovery-code',async(req,res)=>{try{const ownerId=authenticatedOwnerId(req);if(!ownerId)return res.status(401).json({error:'OWNER_REQUIRED'});const code=await issueRecoveryCode(pool,ownerId);return res.json({ok:true,recoveryCode:code});}catch(e){console.error('owner recovery code error',e);return res.status(500).json({error:'SERVER_ERROR'});}});
+  app.delete('/api/owner/account',async(req,res)=>{try{const ownerId=authenticatedOwnerId(req);if(!ownerId)return res.status(401).json({error:'OWNER_REQUIRED'});const password=String(req.body?.password||'');if(password.length<6)return res.status(400).json({error:'PASSWORD_REQUIRED'});if(!await verifyPassword(pool,ownerId,password))return res.status(401).json({error:'PASSWORD_INVALID'});const out=await deleteAccount(pool,ownerId,{mode:'owner'});if(!out.ok)return res.status(out.error==='USER_NOT_FOUND'?404:409).json({error:out.error});return res.json({ok:true});}catch(e){console.error('owner account delete error',e);return res.status(500).json({error:'SERVER_ERROR'});}});
   app.post('/api/owner/auth/refresh',async(req,res)=>{try{const refreshToken=String(req.body?.refreshToken||'');if(!refreshToken)return res.status(400).json({error:'REFRESH_REQUIRED'});const tokens=await rotateRefresh(pool,refreshToken);if(!tokens)return res.status(401).json({error:'REFRESH_INVALID'});return res.json({ok:true,...tokens});}catch(e){console.error('owner refresh error',e);return res.status(500).json({error:'SERVER_ERROR'});}});
   app.post('/api/owner/auth/logout',async(req,res)=>{try{await revokeRefresh(pool,String(req.body?.refreshToken||''));return res.json({ok:true});}catch(e){return res.status(500).json({error:'SERVER_ERROR'});}});
 };
