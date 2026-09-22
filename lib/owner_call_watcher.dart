@@ -14,7 +14,6 @@ class OwnerCallWatcher extends StatefulWidget {
 }
 
 class _OwnerCallWatcherState extends State<OwnerCallWatcher> with WidgetsBindingObserver {
-  Timer? timer;
   String? activeCallId;
   bool checking = false;
 
@@ -23,7 +22,6 @@ class _OwnerCallWatcherState extends State<OwnerCallWatcher> with WidgetsBinding
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) => _check(force: true));
-    timer = Timer.periodic(const Duration(milliseconds: 700), (_) => _check());
   }
 
   @override
@@ -73,7 +71,6 @@ class _OwnerCallWatcherState extends State<OwnerCallWatcher> with WidgetsBinding
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    timer?.cancel();
     super.dispose();
   }
 
