@@ -41,7 +41,12 @@ module.exports=function registerPushRoutes(app,pool){
     for(const row of rows){
       const callEvent=data.type==='incoming_call'||data.type==='incoming_call_cancelled';
       const fcmData=Object.fromEntries(Object.entries({...data,title,body}).map(([k,v])=>[k,String(v??'')]));
-      const message={token:row.fcm_token,data:fcmData,android:{priority:'HIGH'}};
+      const android={priority:'HIGH'};
+      if(callEvent){
+        android.ttl=data.type==='incoming_call'?'45s':'15s';
+        android.collapse_key='cepqar_call_'+String(data.callId||userId);
+      }
+      const message={token:row.fcm_token,data:fcmData,android};
       if(!callEvent){
         message.android.notification={channel_id:'cepqar_notifications_v2',icon:'ic_stat_cepqar',sound:'default',visibility:'PUBLIC',notification_priority:'PRIORITY_HIGH'};
         message.notification={title,body};
