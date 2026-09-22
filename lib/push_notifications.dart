@@ -13,8 +13,8 @@ import 'owner_auth.dart';
 import 'driver_auth.dart';
 
 const _apiBase='https://heycar-api-185-165-46-213.nip.io';
-const _generalChannel='cepqar_notifications_v2';
-const _callChannel='cepqar_calls_v3';
+const _generalChannel='cepqar_notifications_v4';
+const _callChannel='cepqar_calls_v4';
 const _callAcceptAction='cepqar_accept_call';
 const _callDeclineAction='cepqar_decline_call';
 final FlutterLocalNotificationsPlugin _local=FlutterLocalNotificationsPlugin();
@@ -52,6 +52,7 @@ class PushNotifications{
   static int _tokenRetryAttempt=0;
   static Timer? _tokenRetryTimer;
   static Future<void> Function(Map<String,dynamic> data)? onNavigationRequested;
+  static final Map<String,DateTime> _recentLocalNotifications=<String,DateTime>{};
 
   static Future<void> bootstrap()async{
     if(_bootstrapped)return;
@@ -267,57 +268,7 @@ class PushNotifications{
     final plate=(data['plate']??'').toString().trim().toUpperCase();
     final body=(data['body']??data['message']??'QR üzerinden gizli arama').toString();
 
-    if(Platform.isAndroid){
-      await ensureChannels();
-      final payload=jsonEncode({...data,'callId':callId,'type':'incoming_call'});
-      final details=NotificationDetails(
-        android:AndroidNotificationDetails(
-          _callChannel,
-          'Cepqar Gelen Aramalar',
-          channelDescription:'Kilit ekranında tam ekran gelen Cepqar aramaları',
-          importance:Importance.max,
-          priority:Priority.max,
-          category:AndroidNotificationCategory.call,
-          fullScreenIntent:true,
-          ongoing:true,
-          autoCancel:false,
-          timeoutAfter:45000,
-          visibility:NotificationVisibility.public,
-          playSound:true,
-          sound:const RawResourceAndroidNotificationSound('cepqar_call'),
-          enableVibration:true,
-          icon:'ic_stat_cepqar',
-          largeIcon:const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
-          audioAttributesUsage:AudioAttributesUsage.notificationRingtone,
-          styleInformation:BigTextStyleInformation(
-            body,
-            contentTitle:plate.isNotEmpty?plate:'Cepqar Araması',
-            summaryText:'Gelen arama',
-          ),
-          actions:const <AndroidNotificationAction>[
-            AndroidNotificationAction(
-              _callDeclineAction,
-              'Reddet',
-              cancelNotification:true,
-            ),
-            AndroidNotificationAction(
-              _callAcceptAction,
-              'Kabul Et',
-              showsUserInterface:true,
-              cancelNotification:false,
-            ),
-          ],
-        ),
-      );
-      await _local.show(
-        _notificationId(callId),
-        plate.isNotEmpty?plate:'Cepqar Araması',
-        body,
-        details,
-        payload:payload,
-      );
-      return;
-    }
+    await ensureChannels();
 
     final params=CallKitParams(
       id:callId,
@@ -362,6 +313,11 @@ class PushNotifications{
       iOS:const DarwinNotificationDetails(presentAlert:true,presentBadge:true,presentSound:true),
     );
     final key=(data['notificationId']??m.messageId??DateTime.now().millisecondsSinceEpoch.toString()).toString();
+    final now=DateTime.now();
+    _recentLocalNotifications.removeWhere((_,t)=>now.difference(t)>const Duration(minutes:2));
+    final previous=_recentLocalNotifications[key];
+    if(previous!=null&&now.difference(previous)<const Duration(seconds:15))return;
+    _recentLocalNotifications[key]=now;
     await _local.show(_notificationId(key),title,body,details,payload:jsonEncode(data));
   }
 
