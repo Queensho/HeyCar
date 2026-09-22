@@ -9,6 +9,8 @@ const TEST_PHONE = __ENV.TEST_PHONE || '';
 const TEST_PASSWORD = __ENV.TEST_PASSWORD || '';
 const QR_TOKEN = __ENV.QR_TOKEN || '';
 const PROFILE = __ENV.PROFILE || 'smoke';
+const WORKLOAD = (__ENV.WORKLOAD || 'stress').toLowerCase();
+const TOKEN_POOL = (__ENV.ACCESS_TOKENS || '').split(',').map(x => x.trim()).filter(Boolean);
 
 const failures = new Rate('cepqar_failures');
 const auth401 = new Counter('cepqar_401');
@@ -32,7 +34,7 @@ export const options = {
     'http_req_duration{endpoint:notifications}': ['p(95)<1000'],
     'http_req_duration{endpoint:incoming_call}': ['p(95)<1000'],
   },
-  discardResponseBodies: false,
+  discardResponseBodies: true,
 };
 
 function record(r) {
@@ -45,24 +47,37 @@ function record(r) {
 export function setup() {
   if (ACCESS_TOKEN) return { token: ACCESS_TOKEN };
   if (!TEST_PHONE || !TEST_PASSWORD) return { token: '' };
-  const login = http.post(`${BASE_URL}/api/owner/login-phone`, JSON.stringify({ phone: TEST_PHONE, password: TEST_PASSWORD }), { headers: {'Content-Type':'application/json'}, tags:{endpoint:'setup_login'} });
+  const login = http.post(`${BASE_URL}/api/owner/login-phone`, JSON.stringify({ phone: TEST_PHONE, password: TEST_PASSWORD }), { headers: {'Content-Type':'application/json'}, tags:{endpoint:'setup_login'}, responseType:'text' });
   check(login, { 'setup login ok': x => x.status === 200 });
   if (login.status !== 200) return { token: '' };
   try { return { token: JSON.parse(login.body).accessToken || '' }; } catch (_) { return { token: '' }; }
 }
 
 export default function (data) {
-  let token = data?.token || ACCESS_TOKEN;
+  const pooled = TOKEN_POOL.length ? TOKEN_POOL[(exec.vu.idInTest - 1) % TOKEN_POOL.length] : '';
+  const token = pooled || data?.token || ACCESS_TOKEN;
   const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+  const realistic = WORKLOAD === 'realistic';
+  const iter = exec.vu.iterationInScenario;
+
   if (token) {
-    let r = record(http.get(`${BASE_URL}/api/owner/vehicles`, { headers: authHeaders, tags:{endpoint:'vehicles'} }));
-    check(r, { 'vehicles ok': x => x.status === 200 });
-    r = record(http.get(`${BASE_URL}/api/owner/notifications`, { headers: authHeaders, tags:{endpoint:'notifications'} }));
-    check(r, { 'notifications ok': x => x.status === 200 });
-    r = record(http.get(`${BASE_URL}/api/owner/calls/incoming`, { headers: authHeaders, tags:{endpoint:'incoming_call'} }));
-    check(r, { 'incoming call reachable': x => x.status >= 200 && x.status < 400 });
+    // Stress mode intentionally hammers all endpoints every loop.
+    // Realistic mode mirrors the app after the push-first call change:
+    // vehicles ~30s, notifications ~15s, incoming-call HTTP only as a rare recovery check.
+    if (!realistic || iter % 15 === 0) {
+      const r = record(http.get(`${BASE_URL}/api/owner/vehicles`, { headers: authHeaders, tags:{endpoint:'vehicles'} }));
+      check(r, { 'vehicles ok': x => x.status === 200 });
+    }
+    if (!realistic || iter % 8 === 0) {
+      const r = record(http.get(`${BASE_URL}/api/owner/notifications`, { headers: authHeaders, tags:{endpoint:'notifications'} }));
+      check(r, { 'notifications ok': x => x.status === 200 });
+    }
+    if (!realistic || iter === 0 || iter % 60 === 0) {
+      const r = record(http.get(`${BASE_URL}/api/owner/calls/incoming`, { headers: authHeaders, tags:{endpoint:'incoming_call'} }));
+      check(r, { 'incoming call reachable': x => x.status >= 200 && x.status < 400 });
+    }
   }
-  if (QR_TOKEN) {
+  if (QR_TOKEN && (!realistic || iter % 30 === 0)) {
     const r = record(http.post(`${BASE_URL}/api/qr/${encodeURIComponent(QR_TOKEN)}/session`, null, { headers:{'Content-Type':'application/json'}, tags:{endpoint:'qr_session'} }));
     check(r, { 'qr session ok': x => x.status >= 200 && x.status < 300 });
   }
