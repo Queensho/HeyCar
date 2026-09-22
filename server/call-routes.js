@@ -11,15 +11,22 @@ module.exports = function registerCallRoutes(app, pool) {
     await pool.query(`UPDATE anonymous_calls SET status='missed', ended_at=NOW() WHERE status='ringing' AND expires_at<=NOW()`);
   }
 
-  async function sendRecipientPush(recipientId, recipientType, data, title, body) {
+  async function sendRecipientPush(recipientId, recipientType, data, title, body, ownerId=null) {
     const push=app.locals.heycarPush;
-    if(!push)return;
+    if(!push)return {attempted:0,delivered:0};
     const sender=recipientType==='driver' ? push.sendDriver : (push.sendOwner || push.send);
     if(!sender){
       console.warn('call push sender missing',recipientType);
-      return;
+      return {attempted:0,delivered:0};
     }
-    await sender(String(recipientId),{...data,recipientType},title,body);
+    const result=await sender(String(recipientId),{...data,recipientType},title,body);
+    if(recipientType==='driver'&&ownerId&&(!result||result.delivered===0)){
+      const ownerSender=push.sendOwner||push.send;
+      if(ownerSender){
+        return ownerSender(String(ownerId),{...data,recipientType:'owner'},title,body);
+      }
+    }
+    return result||{attempted:0,delivered:0};
   }
 
   async function incomingFor(recipientId, recipientType) {
@@ -123,7 +130,8 @@ module.exports = function registerCallRoutes(app, pool) {
         recipientType,
         {type:'incoming_call',callId:String(call.id),visitorToken:String(call.visitor_token),vehicleId:String(vehicle.vehicle_id),plate:vehicle.plate||''},
         'Gelen Araç Araması',
-        `${vehicle.plate||'Aracınız'} için biri sizi arıyor`
+        `${vehicle.plate||'Aracınız'} için biri sizi arıyor`,
+        String(vehicle.owner_id)
       ).catch(err=>console.error('incoming call push',err));
 
       return res.status(201).json({ok:true,call,plate:vehicle.plate});
@@ -166,7 +174,7 @@ module.exports = function registerCallRoutes(app, pool) {
              status=CASE WHEN $5 THEN 'cancelled' ELSE status END,
              ended_at=CASE WHEN $5 THEN NOW() ELSE ended_at END
          WHERE id=$1 AND visitor_token::text=$2
-         RETURNING id,status,recipient_user_id,recipient_type`,
+         RETURNING id,status,recipient_user_id,recipient_type,owner_id`,
         [req.params.callId,visitorToken,offer,candidate,cancel]
       );
       if(!result.rows.length)return res.status(404).json({error:'CALL_NOT_FOUND'});
@@ -177,7 +185,8 @@ module.exports = function registerCallRoutes(app, pool) {
           call.recipient_type,
           {type:'incoming_call_cancelled',callId:String(call.id)},
           'Arama sona erdi',
-          'Arayan kişi aramayı kapattı'
+          'Arayan kişi aramayı kapattı',
+          String(call.owner_id||'')
         ).catch(err=>console.error('incoming call cancel push',err));
       }
       return res.json({ok:true,call});
