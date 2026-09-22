@@ -41,12 +41,19 @@ module.exports=function registerPushRoutes(app,pool){
   async function sendFrom(table,idColumn,userId,data,title,body){
     await schema();
     const sa=serviceAccount();const key=await accessToken();
-    if(!key||!sa){console.warn('Firebase service account missing; push skipped');return;}
+    if(!key||!sa){console.warn('Firebase service account missing; push skipped');return {attempted:0,delivered:0};}
     const project=sa.project_id;
-    const rows=(await pool.query(`SELECT id,fcm_token FROM ${table} WHERE ${idColumn}=$1 AND active=TRUE`,[String(userId)])).rows;
-    for(const row of rows){
-      const callEvent=data.type==='incoming_call'||data.type==='incoming_call_cancelled';
-      const fcmData=Object.fromEntries(Object.entries({...data,title,body}).map(([k,v])=>[k,String(v??'')]));
+    const rows=(await pool.query(
+      `SELECT id,fcm_token FROM ${table} WHERE ${idColumn}=$1 AND active=TRUE ORDER BY updated_at DESC`,
+      [String(userId)]
+    )).rows;
+    if(!rows.length)return {attempted:0,delivered:0};
+
+    const callEvent=data.type==='incoming_call'||data.type==='incoming_call_cancelled';
+    const fcmData=Object.fromEntries(Object.entries({...data,title,body}).map(([k,v])=>[k,String(v??'')]));
+    const endpoint=`https://fcm.googleapis.com/v1/projects/${project}/messages:send`;
+
+    const results=await Promise.all(rows.map(async row=>{
       const android={priority:'HIGH'};
       if(callEvent){
         android.ttl=data.type==='incoming_call'?'45s':'15s';
@@ -57,13 +64,23 @@ module.exports=function registerPushRoutes(app,pool){
         message.android.notification={channel_id:'cepqar_notifications_v2',icon:'ic_stat_cepqar',sound:'default',visibility:'PUBLIC',notification_priority:'PRIORITY_HIGH'};
         message.notification={title,body};
       }
-      const r=await fetch(`https://fcm.googleapis.com/v1/projects/${project}/messages:send`,{method:'POST',headers:{authorization:`Bearer ${key}`,'content-type':'application/json'},body:JSON.stringify({message})});
-      if(!r.ok){
+      try{
+        const r=await fetch(endpoint,{method:'POST',headers:{authorization:`Bearer ${key}`,'content-type':'application/json'},body:JSON.stringify({message})});
+        if(r.ok)return true;
         const detail=await r.text();
         console.error('FCM send',r.status,detail);
-        if(r.status===404||detail.includes('UNREGISTERED'))await pool.query(`UPDATE ${table} SET active=FALSE,updated_at=NOW() WHERE id=$1`,[row.id]).catch(()=>{});
+        if(r.status===404||detail.includes('UNREGISTERED')||detail.includes('NotRegistered')){
+          await pool.query(`UPDATE ${table} SET active=FALSE,updated_at=NOW() WHERE id=$1`,[row.id]).catch(()=>{});
+        }
+        return false;
+      }catch(e){
+        console.error('FCM transport',e);
+        return false;
       }
-    }
+    }));
+
+    const delivered=results.filter(Boolean).length;
+    return {attempted:rows.length,delivered};
   }
   const sendOwner=(owner,data,title,body)=>sendFrom('owner_push_tokens','owner_id',owner,data,title,body);
   const sendDriver=(driver,data,title,body)=>sendFrom('driver_push_tokens','driver_id',driver,data,title,body);
