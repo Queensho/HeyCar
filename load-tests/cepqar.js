@@ -17,6 +17,8 @@ const latency = new Trend('cepqar_api_latency', true);
 const profiles = {
   smoke: { executor:'constant-vus', vus:10, duration:'30s' },
   '1k': { executor:'ramping-vus', startVUs:0, stages:[{duration:'2m',target:1000},{duration:'3m',target:1000},{duration:'1m',target:0}], gracefulRampDown:'30s' },
+  '2k': { executor:'ramping-vus', startVUs:0, stages:[{duration:'2m',target:2000},{duration:'3m',target:2000},{duration:'1m',target:0}], gracefulRampDown:'30s' },
+  '5k': { executor:'ramping-vus', startVUs:0, stages:[{duration:'3m',target:5000},{duration:'4m',target:5000},{duration:'1m',target:0}], gracefulRampDown:'30s' },
   '10k': { executor:'ramping-vus', startVUs:0, stages:[{duration:'5m',target:10000},{duration:'5m',target:10000},{duration:'2m',target:0}], gracefulRampDown:'30s' },
 };
 
@@ -26,6 +28,9 @@ export const options = {
     cepqar_failures: ['rate<0.01'],
     http_req_failed: ['rate<0.01'],
     http_req_duration: ['p(95)<1000', 'p(99)<2000'],
+    'http_req_duration{endpoint:vehicles}': ['p(95)<1000'],
+    'http_req_duration{endpoint:notifications}': ['p(95)<1000'],
+    'http_req_duration{endpoint:incoming_call}': ['p(95)<1000'],
   },
   discardResponseBodies: false,
 };
@@ -61,6 +66,6 @@ export default function (data) {
     const r = record(http.post(`${BASE_URL}/api/qr/${encodeURIComponent(QR_TOKEN)}/session`, null, { headers:{'Content-Type':'application/json'}, tags:{endpoint:'qr_session'} }));
     check(r, { 'qr session ok': x => x.status >= 200 && x.status < 300 });
   }
-  // Stagger each virtual user so 1k VUs do not synchronize unrealistically.
+  // Stagger each virtual user so large VU counts do not synchronize unrealistically.
   sleep(1 + ((exec.vu.idInTest * 37) % 2000) / 1000);
 }
