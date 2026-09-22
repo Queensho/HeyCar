@@ -11,6 +11,7 @@ import 'maintenance_share_page.dart';
 import 'parking_location_card.dart';
 import 'vehicle_reminders_page.dart';
 import 'cepqar_theme.dart';
+import 'owner_auth.dart';
 
 Color get _bg => CepqarTheme.bg;
 Color get _panel => CepqarTheme.panel;
@@ -43,7 +44,7 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
   int _loadVersion = 0, _tab = 0;
   String get vid => _vehicleId;
   String get owner => OnboardingDraft.userId.trim();
-  Map<String, String> get headers => {'x-owner-id': owner};
+  Map<String, String> get headers => const {};
   @override
   void initState() {
     super.initState();
@@ -67,8 +68,8 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
   }
 
   Future<Map<String, dynamic>> _get(String path) async {
-    final response = await http
-        .get(Uri.parse('${QrBackend.baseUrl}$path'), headers: headers)
+    final response = await OwnerHttp
+        .get(Uri.parse('${QrBackend.baseUrl}$path'), json:false, headers: headers)
         .timeout(const Duration(seconds: 12));
     if (response.statusCode != 200) throw Exception('Veriler yüklenemedi');
     final data = jsonDecode(response.body);
@@ -199,9 +200,10 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
     if (editing || qrBusy) return;
     setState(() => editing = true);
     try {
-      final response = await http
+      final response = await OwnerHttp
           .get(
             Uri.parse('${QrBackend.baseUrl}/api/owner/vehicles'),
+            json:false,
             headers: headers,
           )
           .timeout(const Duration(seconds: 15));
@@ -1063,15 +1065,11 @@ class _EditVehicleDialogState extends State<_EditVehicleDialog> {
       _error = null;
     });
     try {
-      final response = await http
+      final response = await OwnerHttp
           .put(
             Uri.parse(
               '${QrBackend.baseUrl}/api/owner/vehicles/${Uri.encodeComponent('${widget.vehicle['id']}')}',
             ),
-            headers: {
-              'Content-Type': 'application/json',
-              'x-owner-id': widget.ownerId,
-            },
             body: jsonEncode({
               'plate': _plate.text.trim().toUpperCase(),
               'make': _make.text.trim(),
