@@ -179,11 +179,7 @@ class OwnerSettingsPage extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(14, 0, 14, 22),
               child: Column(
                 children: [
-                  _SettingsTile(
-                    icon: Icons.workspace_premium_rounded,
-                    iconColor: _purple,
-                    title: 'Cepqar Premium',
-                    subtitle: 'Premium özellikleri keşfedin',
+                  _PremiumSettingsTile(
                     onTap: () => _showPremium(context),
                   ),
                   const SizedBox(height: 8),
@@ -323,6 +319,67 @@ class _RoundIcon extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+class _PremiumSettingsTile extends StatelessWidget {
+  const _PremiumSettingsTile({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          height: 84,
+          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            gradient: const LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: [Color(0xFF3B176F), Color(0xFF5A20B8), Color(0xFF35116F)],
+            ),
+            border: Border.all(color: const Color(0xFF9B5CFF), width: 1.2),
+            boxShadow: const [
+              BoxShadow(color: Color(0x443E16A5), blurRadius: 14, spreadRadius: 1),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF7C35DF),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFB67BFF), width: 1.2),
+                ),
+                child: const Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 27),
+              ),
+              const SizedBox(width: 14),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text('Cepqar Premium', style: TextStyle(color: Colors.white, fontSize: 15.5, fontWeight: FontWeight.w900)),
+                    SizedBox(height: 4),
+                    Text('Premium özellikleri keşfedin', style: TextStyle(color: Color(0xFFD8C7F5), fontSize: 12, height: 1.2)),
+                  ],
+                ),
+              ),
+              SizedBox(width: 6),
+              Icon(Icons.chevron_right_rounded, color: Colors.white, size: 26),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
