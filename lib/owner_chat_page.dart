@@ -62,9 +62,9 @@ class _OwnerChatPageState extends State<OwnerChatPage> {
     }
     if (mounted) setState(() { loading = true; error = null; });
     try {
-      final r = await http.get(
+      final r = await OwnerHttp.get(
         Uri.parse('$baseUrl/api/owner/notifications/${Uri.encodeComponent(widget.notificationId)}/conversation'),
-        headers: await OwnerAuth.headers(json:false),
+        json: false,
       ).timeout(const Duration(seconds: 15));
       if (r.statusCode < 200 || r.statusCode >= 300) throw Exception();
       final d = jsonDecode(r.body) as Map<String, dynamic>;
@@ -84,9 +84,9 @@ class _OwnerChatPageState extends State<OwnerChatPage> {
     final id = conversationId;
     if (id == null || id.isEmpty) return;
     try {
-      final r = await http.get(
+      final r = await OwnerHttp.get(
         Uri.parse('$baseUrl/api/owner/conversations/${Uri.encodeComponent(id)}'),
-        headers: await OwnerAuth.headers(json:false),
+        json: false,
       ).timeout(const Duration(seconds: 15));
       if (r.statusCode < 200 || r.statusCode >= 300) throw Exception();
       final d = jsonDecode(r.body) as Map<String, dynamic>;
@@ -115,9 +115,8 @@ class _OwnerChatPageState extends State<OwnerChatPage> {
     if (id == null || id.isEmpty || text.isEmpty || sending || blocked) return;
     setState(() => sending = true);
     try {
-      final r = await http.post(
+      final r = await OwnerHttp.post(
         Uri.parse('$baseUrl/api/owner/conversations/${Uri.encodeComponent(id)}/messages'),
-        headers: {'Content-Type': 'application/json', 'x-owner-id': OnboardingDraft.userId.trim()},
         body: jsonEncode({'message': text}),
       ).timeout(const Duration(seconds: 15));
       if (r.statusCode < 200 || r.statusCode >= 300) {
@@ -170,7 +169,7 @@ class _OwnerChatPageState extends State<OwnerChatPage> {
     try {
       final r = await http.post(
         Uri.parse('$baseUrl/api/owner/conversations/${Uri.encodeComponent(id)}/block'),
-        headers: await OwnerAuth.headers(json:false),
+        json: false,
       ).timeout(const Duration(seconds: 15));
       if (r.statusCode < 200 || r.statusCode >= 300) throw Exception();
       timer?.cancel();
