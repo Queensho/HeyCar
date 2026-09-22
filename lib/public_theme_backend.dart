@@ -37,9 +37,9 @@ class PublicThemeBackend {
   }
 
   static Future<PublicThemeData> getTheme({required String vehicleId, required String ownerId}) async {
-    final response = await http.get(
+    final response = await OwnerHttp.get(
       Uri.parse('$baseUrl/api/vehicles/$vehicleId/public-theme'),
-      headers: await OwnerAuth.headers(json:false),
+      json: false,
     ).timeout(const Duration(seconds: 15));
     final decoded = jsonDecode(response.body) as Map<String, dynamic>;
     if (response.statusCode >= 200 && response.statusCode < 300) {
@@ -56,9 +56,8 @@ class PublicThemeBackend {
     required String publicMessage,
     required double overlayStrength,
   }) async {
-    final response = await http.put(
+    final response = await OwnerHttp.put(
       Uri.parse('$baseUrl/api/vehicles/$vehicleId/public-theme'),
-      headers: {'Content-Type': 'application/json', 'x-owner-id': ownerId},
       body: jsonEncode({
         'preset': preset,
         'accentColor': accentColor,
@@ -79,9 +78,10 @@ class PublicThemeBackend {
     required Uint8List bytes,
     required String mimeType,
   }) async {
-    final response = await http.post(
+    final response = await OwnerHttp.post(
       Uri.parse('$baseUrl/api/vehicles/$vehicleId/public-theme/background'),
-      headers: {'Content-Type': mimeType, 'x-owner-id': ownerId},
+      json: false,
+      headers: {'Content-Type': mimeType},
       body: bytes,
     ).timeout(const Duration(seconds: 30));
     final decoded = jsonDecode(response.body) as Map<String, dynamic>;
@@ -92,9 +92,9 @@ class PublicThemeBackend {
   }
 
   static Future<void> removeBackground({required String vehicleId, required String ownerId}) async {
-    final response = await http.delete(
+    final response = await OwnerHttp.delete(
       Uri.parse('$baseUrl/api/vehicles/$vehicleId/public-theme/background'),
-      headers: await OwnerAuth.headers(json:false),
+      json: false,
     ).timeout(const Duration(seconds: 15));
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception('Arka plan kaldırılamadı.');
