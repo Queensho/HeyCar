@@ -25,7 +25,13 @@ async function accessToken(){
 
 module.exports=function registerPushRoutes(app,pool){
   let ready=false;
-  async function schema(){if(ready)return;await pool.query(`CREATE TABLE IF NOT EXISTS owner_push_tokens(id BIGSERIAL PRIMARY KEY,owner_id TEXT NOT NULL,device_id TEXT NOT NULL,fcm_token TEXT NOT NULL,platform TEXT NOT NULL DEFAULT 'android',active BOOLEAN NOT NULL DEFAULT TRUE,updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),UNIQUE(owner_id,device_id)); CREATE INDEX IF NOT EXISTS idx_owner_push_tokens_owner ON owner_push_tokens(owner_id,active); CREATE TABLE IF NOT EXISTS driver_push_tokens(id BIGSERIAL PRIMARY KEY,driver_id TEXT NOT NULL,device_id TEXT NOT NULL,fcm_token TEXT NOT NULL,platform TEXT NOT NULL DEFAULT 'android',active BOOLEAN NOT NULL DEFAULT TRUE,updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),UNIQUE(driver_id,device_id)); CREATE INDEX IF NOT EXISTS idx_driver_push_tokens_driver ON driver_push_tokens(driver_id,active);`);ready=true;}
+  async function schema(){
+    if(ready)return;
+    const check=await pool.query("SELECT to_regclass('public.owner_push_tokens') AS owner_tokens, to_regclass('public.driver_push_tokens') AS driver_tokens");
+    const row=check.rows[0]||{};
+    if(!row.owner_tokens||!row.driver_tokens)throw new Error('PUSH_SCHEMA_MISSING');
+    ready=true;
+  }
 
   app.post('/api/owner/push-token',async(req,res)=>{try{const owner=authenticatedOwnerId(req);const token=String(req.body?.token||'').trim();const device=String(req.body?.deviceId||'').trim();const platform=String(req.body?.platform||'android').trim();if(!owner||!token||!device)return res.status(400).json({error:'REQUIRED_FIELDS_MISSING'});await schema();await pool.query(`INSERT INTO owner_push_tokens(owner_id,device_id,fcm_token,platform) VALUES($1,$2,$3,$4) ON CONFLICT(owner_id,device_id) DO UPDATE SET fcm_token=EXCLUDED.fcm_token,platform=EXCLUDED.platform,active=TRUE,updated_at=NOW()`,[owner,device,token,platform]);return res.json({ok:true});}catch(e){console.error('push token',e);return res.status(500).json({error:'SERVER_ERROR'});}});
 
