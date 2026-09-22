@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'vehicle_api.dart';
 import 'driver_auth.dart';
 import 'push_notifications.dart';
+import 'account_recovery_page.dart';
 
 const _api = 'https://heycar-api-185-165-46-213.nip.io';
 const _bg = Color(0xFF07111F);
@@ -189,7 +190,14 @@ class _DriverLoginPageState extends State<DriverLoginPage> {
                 const SizedBox(height: 12),
                 Text(error!, style: const TextStyle(color: Colors.redAccent)),
               ],
-              const SizedBox(height: 18),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: busy ? null : () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountRecoveryPage(mode: 'driver'))),
+                  child: const Text('Şifremi unuttum'),
+                ),
+              ),
+              const SizedBox(height: 8),
               FilledButton(onPressed: busy ? null : login, child: Text(busy ? 'Giriş yapılıyor...' : 'Giriş Yap')),
             ],
           ),
