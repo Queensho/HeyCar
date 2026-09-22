@@ -1,5 +1,6 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
+import exec from 'k6/execution';
 import { Counter, Rate, Trend } from 'k6/metrics';
 
 const BASE_URL = (__ENV.BASE_URL || 'https://heycar-api-185-165-46-213.nip.io').replace(/\/$/, '');
@@ -36,17 +37,17 @@ function record(r) {
   return r;
 }
 
-export default function () {
-  let token = ACCESS_TOKEN;
-  if (!token && TEST_PHONE && TEST_PASSWORD) {
-    const login = record(http.post(`${BASE_URL}/api/owner/login-phone`, JSON.stringify({ phone: TEST_PHONE, password: TEST_PASSWORD }), {
-      headers: {'Content-Type':'application/json'}, tags:{endpoint:'login'}
-    }));
-    check(login, { 'login ok': x => x.status === 200 });
-    if (login.status === 200) {
-      try { token = JSON.parse(login.body).accessToken || ''; } catch (_) {}
-    }
-  }
+export function setup() {
+  if (ACCESS_TOKEN) return { token: ACCESS_TOKEN };
+  if (!TEST_PHONE || !TEST_PASSWORD) return { token: '' };
+  const login = http.post(`${BASE_URL}/api/owner/login-phone`, JSON.stringify({ phone: TEST_PHONE, password: TEST_PASSWORD }), { headers: {'Content-Type':'application/json'}, tags:{endpoint:'setup_login'} });
+  check(login, { 'setup login ok': x => x.status === 200 });
+  if (login.status !== 200) return { token: '' };
+  try { return { token: JSON.parse(login.body).accessToken || '' }; } catch (_) { return { token: '' }; }
+}
+
+export default function (data) {
+  let token = data?.token || ACCESS_TOKEN;
   const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
   if (token) {
     let r = record(http.get(`${BASE_URL}/api/owner/vehicles`, { headers: authHeaders, tags:{endpoint:'vehicles'} }));
@@ -60,5 +61,6 @@ export default function () {
     const r = record(http.post(`${BASE_URL}/api/qr/${encodeURIComponent(QR_TOKEN)}/session`, null, { headers:{'Content-Type':'application/json'}, tags:{endpoint:'qr_session'} }));
     check(r, { 'qr session ok': x => x.status >= 200 && x.status < 300 });
   }
-  sleep(Math.random() * 2 + 1);
+  // Stagger each virtual user so 1k VUs do not synchronize unrealistically.
+  sleep(1 + ((exec.vu.idInTest * 37) % 2000) / 1000);
 }
