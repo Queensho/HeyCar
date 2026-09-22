@@ -92,11 +92,30 @@ module.exports = function registerNotificationRoutes(app, pool) {
     schemaReady = true;
   }
 
+  const autoCloseCleanupAt = new Map();
+
   async function getPrivacy(ownerId) {
     await ensurePrivacySchema();
-    await pool.query(`INSERT INTO owner_privacy_settings(owner_id) VALUES($1) ON CONFLICT(owner_id) DO NOTHING`, [ownerId]);
-    const r = await pool.query(`SELECT suspicious_login_alerts, qr_abuse_protection, auto_close_old_chats, security_version, message_notifications, call_notifications, damage_notifications, system_notifications FROM owner_privacy_settings WHERE owner_id=$1`, [ownerId]);
+    let r = await pool.query(`SELECT suspicious_login_alerts, qr_abuse_protection, auto_close_old_chats, security_version, message_notifications, call_notifications, damage_notifications, system_notifications FROM owner_privacy_settings WHERE owner_id=$1`, [ownerId]);
+    if (!r.rows.length) {
+      await pool.query(`INSERT INTO owner_privacy_settings(owner_id) VALUES($1) ON CONFLICT(owner_id) DO NOTHING`, [ownerId]);
+      r = await pool.query(`SELECT suspicious_login_alerts, qr_abuse_protection, auto_close_old_chats, security_version, message_notifications, call_notifications, damage_notifications, system_notifications FROM owner_privacy_settings WHERE owner_id=$1`, [ownerId]);
+    }
     return r.rows[0];
+  }
+
+  async function maybeAutoCloseOldChats(ownerId, enabled) {
+    if (!enabled) return;
+    const now = Date.now();
+    const nextAllowedAt = autoCloseCleanupAt.get(ownerId) || 0;
+    if (now < nextAllowedAt) return;
+    autoCloseCleanupAt.set(ownerId, now + 5 * 60 * 1000);
+    try {
+      await pool.query(`UPDATE qr_conversations c SET status='closed', closed_at=NOW() FROM vehicles v WHERE c.vehicle_id=v.id AND v.owner_id=$1 AND c.status='active' AND c.updated_at < NOW() - INTERVAL '30 days'`, [ownerId]);
+    } catch (e) {
+      autoCloseCleanupAt.delete(ownerId);
+      throw e;
+    }
   }
 
   async function activeQr(token) {
@@ -411,7 +430,7 @@ module.exports = function registerNotificationRoutes(app, pool) {
     if (!ownerId) return res.status(401).json({ error: 'OWNER_REQUIRED' });
     try {
       const p = await getPrivacy(ownerId);
-      if (p.auto_close_old_chats) await pool.query(`UPDATE qr_conversations c SET status='closed', closed_at=NOW() FROM vehicles v WHERE c.vehicle_id=v.id AND v.owner_id=$1 AND c.status='active' AND c.updated_at < NOW() - INTERVAL '30 days'`, [ownerId]);
+      await maybeAutoCloseOldChats(ownerId, p.auto_close_old_chats);
       const result = await pool.query(`SELECT n.id, n.vehicle_id, n.qr_token, n.type, n.message, n.photo_path, n.latitude, n.longitude, n.status, n.created_at, n.read_at, n.resolved_at, v.plate, v.make, v.model, v.color FROM vehicle_notifications n JOIN vehicles v ON v.id=n.vehicle_id WHERE v.owner_id=$1 AND ((n.type='message' AND $2) OR (n.type='call_request' AND $3) OR (n.type='damage' AND $4) OR (n.type IN ('move_vehicle','lights_on') AND $5)) ORDER BY n.created_at DESC LIMIT 100`, [ownerId, p.message_notifications, p.call_notifications, p.damage_notifications, p.system_notifications]);
       return res.json({ ok: true, notifications: result.rows });
     } catch (e) { console.error(e); return res.status(500).json({ error: 'SERVER_ERROR' }); }
