@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'onboarding_backend.dart';
 import 'qr_backend.dart';
+import 'owner_auth.dart';
 
 const _bg = Color(0xFF07111F);
 const _panel = Color(0xFF111A31);
@@ -13,9 +14,7 @@ const _purple = Color(0xFF8B5CFF);
 const _muted = Color(0xFFA7B0C7);
 const _baseUrl = 'https://heycar-api-185-165-46-213.nip.io';
 
-Map<String, String> get _ownerHeaders => {
-      'x-owner-id': OnboardingDraft.userId.trim(),
-    };
+Map<String, String> get _ownerHeaders => const {};
 
 class OwnerAccountSettingsPage extends StatelessWidget {
   const OwnerAccountSettingsPage({super.key});
@@ -82,7 +81,7 @@ class _OwnerNotificationSettingsPageState extends State<OwnerNotificationSetting
       return;
     }
     try {
-      final r = await http
+      final r = await OwnerHttp
           .get(Uri.parse('$_baseUrl/api/owner/notification-settings'), headers: _ownerHeaders)
           .timeout(const Duration(seconds: 15));
       if (r.statusCode < 200 || r.statusCode >= 300) throw Exception();
@@ -109,7 +108,7 @@ class _OwnerNotificationSettingsPageState extends State<OwnerNotificationSetting
 
   Future<void> _save() async {
     try {
-      final r = await http
+      final r = await OwnerHttp
           .put(
             Uri.parse('$_baseUrl/api/owner/notification-settings'),
             headers: {..._ownerHeaders, 'Content-Type': 'application/json'},
@@ -221,7 +220,7 @@ class _OwnerPrivacySettingsPageState extends State<OwnerPrivacySettingsPage> {
       return;
     }
     try {
-      final r = await http
+      final r = await OwnerHttp
           .get(Uri.parse('$_baseUrl/api/owner/privacy-settings'), headers: _ownerHeaders)
           .timeout(const Duration(seconds: 15));
       if (r.statusCode < 200 || r.statusCode >= 300) throw Exception();
@@ -248,7 +247,7 @@ class _OwnerPrivacySettingsPageState extends State<OwnerPrivacySettingsPage> {
 
   Future<void> _save() async {
     try {
-      final r = await http
+      final r = await OwnerHttp
           .put(
             Uri.parse('$_baseUrl/api/owner/privacy-settings'),
             headers: {..._ownerHeaders, 'Content-Type': 'application/json'},
@@ -283,7 +282,7 @@ class _OwnerPrivacySettingsPageState extends State<OwnerPrivacySettingsPage> {
   Future<void> _registerThisDevice() async {
     final id = await _deviceId();
     try {
-      await http
+      await OwnerHttp
           .post(
             Uri.parse('$_baseUrl/api/owner/device-presence'),
             headers: {..._ownerHeaders, 'Content-Type': 'application/json'},
@@ -322,7 +321,7 @@ class _OwnerPrivacySettingsPageState extends State<OwnerPrivacySettingsPage> {
     if (ok != true) return;
     try {
       final id = await _deviceId();
-      final r = await http
+      final r = await OwnerHttp
           .post(
             Uri.parse('$_baseUrl/api/owner/privacy-reset'),
             headers: {..._ownerHeaders, 'Content-Type': 'application/json'},
@@ -457,7 +456,7 @@ class _OwnerActiveSessionsPageState extends State<OwnerActiveSessionsPage> {
 
   Future<void> _load() async {
     try {
-      final r = await http
+      final r = await OwnerHttp
           .get(Uri.parse('$_baseUrl/api/owner/devices'), headers: _ownerHeaders)
           .timeout(const Duration(seconds: 15));
       final data = jsonDecode(r.body) as Map<String, dynamic>;
@@ -519,7 +518,7 @@ class _OwnerBlockedVisitorsPageState extends State<OwnerBlockedVisitorsPage> {
 
   Future<void> _load() async {
     try {
-      final r = await http
+      final r = await OwnerHttp
           .get(Uri.parse('$_baseUrl/api/owner/blocked-visitors'), headers: _ownerHeaders)
           .timeout(const Duration(seconds: 15));
       final data = jsonDecode(r.body) as Map<String, dynamic>;
@@ -539,7 +538,7 @@ class _OwnerBlockedVisitorsPageState extends State<OwnerBlockedVisitorsPage> {
 
   Future<void> _remove(String key) async {
     try {
-      await http
+      await OwnerHttp
           .delete(
             Uri.parse('$_baseUrl/api/owner/blocked-visitors/${Uri.encodeComponent(key)}'),
             headers: _ownerHeaders,
