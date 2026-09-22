@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'onboarding_backend.dart';
@@ -15,6 +16,87 @@ const _muted = Color(0xFFA7B0C7);
 const _baseUrl = 'https://heycar-api-185-165-46-213.nip.io';
 
 Map<String, String> get _ownerHeaders => const {};
+
+Future<void> _showOwnerRecoveryCode(BuildContext context) async {
+  try {
+    final r=await OwnerHttp.post(Uri.parse('$_baseUrl/api/owner/account/recovery-code')).timeout(const Duration(seconds:15));
+    if(r.statusCode<200||r.statusCode>=300)throw Exception();
+    final d=jsonDecode(r.body) as Map<String,dynamic>;
+    final code='${d['recoveryCode']??''}';
+    if(code.isEmpty)throw Exception();
+    if(!context.mounted)return;
+    await showDialog<void>(context:context,builder:(c)=>AlertDialog(
+      backgroundColor:_panel,
+      title:const Text('Kurtarma kodun',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w900)),
+      content:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+        const Text('Bu kod şifreni unutursan hesabını kurtarmak için kullanılır. Güvenli bir yerde sakla. Yeni kod oluşturursan eskisi geçersiz olur.',style:TextStyle(color:_muted,height:1.35)),
+        const SizedBox(height:16),
+        SelectableText(code,textAlign:TextAlign.center,style:const TextStyle(color:Colors.white,fontSize:21,fontWeight:FontWeight.w900,letterSpacing:1.2)),
+      ]),
+      actions:[
+        TextButton(onPressed:()async{await Clipboard.setData(ClipboardData(text:code));if(c.mounted)ScaffoldMessenger.of(c).showSnackBar(const SnackBar(content:Text('Kurtarma kodu kopyalandı.')));},child:const Text('Kopyala')),
+        FilledButton(onPressed:()=>Navigator.pop(c),style:FilledButton.styleFrom(backgroundColor:_purple),child:const Text('Tamam')),
+      ],
+    ));
+  } catch (_) {
+    if(context.mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Kurtarma kodu oluşturulamadı.')));
+  }
+}
+
+Future<void> _deleteOwnerAccount(BuildContext context) async {
+  final pass=TextEditingController();
+  String? error;bool busy=false;
+  final confirmed=await showDialog<bool>(context:context,builder:(dialogContext)=>StatefulBuilder(builder:(c,setLocal)=>AlertDialog(
+    backgroundColor:_panel,
+    title:const Text('Hesabı kalıcı olarak sil',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w900)),
+    content:Column(mainAxisSize:MainAxisSize.min,children:[
+      const Text('Araçların, QR bağlantıların, mesajların, bildirimlerin ve hesap oturumların silinecek. Bu işlem geri alınamaz.',style:TextStyle(color:_muted,height:1.35)),
+      const SizedBox(height:14),
+      TextField(controller:pass,obscureText:true,style:const TextStyle(color:Colors.white),decoration:const InputDecoration(labelText:'Şifren',border:OutlineInputBorder())),
+      if(error!=null)...[const SizedBox(height:8),Text(error!,style:const TextStyle(color:Colors.redAccent))],
+    ]),
+    actions:[
+      TextButton(onPressed:busy?null:()=>Navigator.pop(c,false),child:const Text('Vazgeç')),
+      FilledButton(
+        style:FilledButton.styleFrom(backgroundColor:Colors.redAccent),
+        onPressed:busy?null:()async{
+          if(pass.text.length<6){setLocal(()=>error='Şifreni gir.');return;}
+          setLocal((){busy=true;error=null;});
+          try{
+            final r=await OwnerHttp.delete(Uri.parse('$_baseUrl/api/owner/account'),body:jsonEncode({'password':pass.text})).timeout(const Duration(seconds:20));
+            if(r.statusCode==401){setLocal((){busy=false;error='Şifre yanlış.';});return;}
+            if(r.statusCode<200||r.statusCode>=300)throw Exception();
+            if(c.mounted)Navigator.pop(c,true);
+          }catch(_){setLocal((){busy=false;error='Hesap silinemedi. Tekrar dene.';});}
+        },
+        child:Text(busy?'Siliniyor...':'Hesabı Sil'),
+      ),
+    ],
+  )));
+  pass.dispose();
+  if(confirmed!=true)return;
+  await OwnerAuth.clear();
+  final p=await SharedPreferences.getInstance();
+  for(final k in ['owner_logged_in','owner_user_id','owner_phone','owner_display_name','owner_email','owner_vehicle_id','owner_plate','owner_make','owner_model','owner_qr_token','push_token_registered']){await p.remove(k);}
+  if(!context.mounted)return;
+  Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder:(_)=>const _AccountDeletedPage()),(_)=>false);
+}
+
+class _AccountDeletedPage extends StatelessWidget{
+  const _AccountDeletedPage();
+  @override Widget build(BuildContext context)=>Scaffold(
+    backgroundColor:_bg,
+    body:SafeArea(child:Center(child:Padding(padding:const EdgeInsets.all(28),child:Column(mainAxisSize:MainAxisSize.min,children:[
+      const Icon(Icons.check_circle_outline_rounded,color:_purple,size:78),
+      const SizedBox(height:18),
+      const Text('Hesabın silindi',style:TextStyle(color:Colors.white,fontSize:25,fontWeight:FontWeight.w900)),
+      const SizedBox(height:10),
+      const Text('Hesabın ve bağlı verilerin silindi. Yeni hesap oluşturmak için Cepqar uygulamasını yeniden açabilirsin.',textAlign:TextAlign.center,style:TextStyle(color:_muted,height:1.4)),
+      const SizedBox(height:22),
+      OutlinedButton.icon(onPressed:SystemNavigator.pop,icon:const Icon(Icons.close_rounded),label:const Text('Uygulamayı Kapat')),
+    ])))),
+  );
+}
 
 class OwnerAccountSettingsPage extends StatelessWidget {
   const OwnerAccountSettingsPage({super.key});
@@ -43,6 +125,9 @@ class OwnerAccountSettingsPage extends StatelessWidget {
           _InfoTile(icon: Icons.person_outline_rounded, label: 'Ad Soyad', value: name),
           _InfoTile(icon: Icons.phone_outlined, label: 'Telefon', value: phone),
           _InfoTile(icon: Icons.mail_outline_rounded, label: 'E-posta', value: email),
+          const SizedBox(height: 12),
+          _ActionTile(icon: Icons.vpn_key_outlined, title: 'Hesap kurtarma kodu', subtitle: 'Şifreni unutursan kullanacağın kodu oluştur', onTap: () => _showOwnerRecoveryCode(context)),
+          _ActionTile(icon: Icons.delete_forever_outlined, title: 'Hesabı sil', subtitle: 'Hesabını ve bağlı verilerini kalıcı olarak sil', onTap: () => _deleteOwnerAccount(context)),
         ],
       ),
     );
