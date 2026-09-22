@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'driver_auth.dart';
@@ -121,6 +122,71 @@ class _DriverAccountDialogState extends State<DriverAccountDialog> {
     } finally {
       if (mounted) setState(() => saving = false);
     }
+  }
+
+  Future<void> _showRecoveryCode() async {
+    try {
+      final r=await DriverHttp.post(Uri.parse('$_api/api/driver/account/recovery-code')).timeout(const Duration(seconds:15));
+      if(r.statusCode<200||r.statusCode>=300)throw Exception();
+      final d=jsonDecode(r.body) as Map<String,dynamic>;
+      final code='${d['recoveryCode']??''}';
+      if(code.isEmpty)throw Exception();
+      if(!mounted)return;
+      await showDialog<void>(context:context,builder:(c)=>AlertDialog(
+        backgroundColor:_panel,
+        title:const Text('Kurtarma kodun',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w900)),
+        content:Column(mainAxisSize:MainAxisSize.min,children:[
+          const Text('Şifreni unutursan bu kodla hesabını kurtarabilirsin. Güvenli bir yerde sakla. Yeni kod eskisini geçersiz yapar.',style:TextStyle(color:_muted,height:1.35)),
+          const SizedBox(height:16),
+          SelectableText(code,textAlign:TextAlign.center,style:const TextStyle(color:Colors.white,fontSize:20,fontWeight:FontWeight.w900,letterSpacing:1.1)),
+        ]),
+        actions:[
+          TextButton(onPressed:()async{await Clipboard.setData(ClipboardData(text:code));if(c.mounted)ScaffoldMessenger.of(c).showSnackBar(const SnackBar(content:Text('Kurtarma kodu kopyalandı.')));},child:const Text('Kopyala')),
+          FilledButton(onPressed:()=>Navigator.pop(c),style:FilledButton.styleFrom(backgroundColor:_purple),child:const Text('Tamam')),
+        ],
+      ));
+    }catch(_){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Kurtarma kodu oluşturulamadı.')));}
+  }
+
+  Future<void> _deleteAccount() async {
+    final pass=TextEditingController();
+    String? dialogError;bool busy=false;
+    final ok=await showDialog<bool>(context:context,builder:(dialogContext)=>StatefulBuilder(builder:(c,setLocal)=>AlertDialog(
+      backgroundColor:_panel,
+      title:const Text('Hesabı kalıcı olarak sil',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w900)),
+      content:Column(mainAxisSize:MainAxisSize.min,children:[
+        const Text('Sürücü hesabın, araç yetkilerin, oturumların ve sürücü bildirim verilerin silinecek. Bu işlem geri alınamaz.',style:TextStyle(color:_muted,height:1.35)),
+        const SizedBox(height:14),
+        TextField(controller:pass,obscureText:true,style:const TextStyle(color:Colors.white),decoration:const InputDecoration(labelText:'Şifren',border:OutlineInputBorder())),
+        if(dialogError!=null)...[const SizedBox(height:8),Text(dialogError!,style:const TextStyle(color:Colors.redAccent))],
+      ]),
+      actions:[
+        TextButton(onPressed:busy?null:()=>Navigator.pop(c,false),child:const Text('Vazgeç')),
+        FilledButton(
+          style:FilledButton.styleFrom(backgroundColor:Colors.redAccent),
+          onPressed:busy?null:()async{
+            if(pass.text.length<6){setLocal(()=>dialogError='Şifreni gir.');return;}
+            setLocal((){busy=true;dialogError=null;});
+            try{
+              final r=await DriverHttp.delete(Uri.parse('$_api/api/driver/account'),body:jsonEncode({'password':pass.text})).timeout(const Duration(seconds:20));
+              final d=r.body.isEmpty?<String,dynamic>{}:jsonDecode(r.body);
+              if(r.statusCode==401){setLocal((){busy=false;dialogError='Şifre yanlış.';});return;}
+              if(r.statusCode==409&&d is Map&&d['error']=='OWNER_ACCOUNT_EXISTS'){setLocal((){busy=false;dialogError='Bu hesap aynı zamanda araç sahibi. Tam hesabı araç sahibi hesabından silmelisin.';});return;}
+              if(r.statusCode<200||r.statusCode>=300)throw Exception();
+              if(c.mounted)Navigator.pop(c,true);
+            }catch(_){setLocal((){busy=false;dialogError='Hesap silinemedi. Tekrar dene.';});}
+          },
+          child:Text(busy?'Siliniyor...':'Hesabı Sil'),
+        ),
+      ],
+    )));
+    pass.dispose();
+    if(ok!=true)return;
+    await DriverAuth.clear();
+    final p=await SharedPreferences.getInstance();
+    for(final k in ['driver_logged_in','driver_user_id','driver_name','push_token_registered']){await p.remove(k);}
+    if(!mounted)return;
+    Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder:(_)=>const _DriverDeletedPage()),(_)=>false);
   }
 
   Future<void> _changePassword() async {
@@ -272,6 +338,10 @@ class _DriverAccountDialogState extends State<DriverAccountDialog> {
                           const SizedBox(height: 10),
                           _ActionRow(icon: Icons.lock_outline_rounded, title: 'Şifreyi değiştir', subtitle: 'Mevcut şifreni doğrulayarak güncelle', onTap: _changePassword),
                           const SizedBox(height: 10),
+                          _ActionRow(icon: Icons.vpn_key_outlined, title: 'Hesap kurtarma kodu', subtitle: 'Şifreni unutursan kullanacağın kodu oluştur', onTap: _showRecoveryCode),
+                          const SizedBox(height: 10),
+                          _ActionRow(icon: Icons.delete_forever_outlined, title: 'Hesabı sil', subtitle: 'Sürücü hesabını kalıcı olarak sil', onTap: _deleteAccount),
+                          const SizedBox(height: 10),
                           const _ReadOnlyRow(icon: Icons.shield_outlined, label: 'Sürücü yetkileri', value: 'Araç sahibi tarafından yönetilir'),
                         ],
                       ),
@@ -357,4 +427,20 @@ class _PasswordField extends StatelessWidget {
         style: const TextStyle(color: Colors.white),
         decoration: _input(label, Icons.lock_outline_rounded),
       );
+}
+
+class _DriverDeletedPage extends StatelessWidget{
+  const _DriverDeletedPage();
+  @override Widget build(BuildContext context)=>Scaffold(
+    backgroundColor:_bg,
+    body:SafeArea(child:Center(child:Padding(padding:const EdgeInsets.all(28),child:Column(mainAxisSize:MainAxisSize.min,children:[
+      const Icon(Icons.check_circle_outline_rounded,color:_purple,size:78),
+      const SizedBox(height:18),
+      const Text('Sürücü hesabın silindi',style:TextStyle(color:Colors.white,fontSize:24,fontWeight:FontWeight.w900)),
+      const SizedBox(height:10),
+      const Text('Hesap verilerin ve sürücü yetkilerin silindi. Cepqar’ı yeniden açarak tekrar giriş veya kayıt yapabilirsin.',textAlign:TextAlign.center,style:TextStyle(color:_muted,height:1.4)),
+      const SizedBox(height:22),
+      OutlinedButton.icon(onPressed:SystemNavigator.pop,icon:const Icon(Icons.close_rounded),label:const Text('Uygulamayı Kapat')),
+    ])))),
+  );
 }
