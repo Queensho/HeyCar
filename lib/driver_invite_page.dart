@@ -253,6 +253,8 @@ class _DriverInvitePageState extends State<DriverInvitePage> {
           'phone': phone.text,
           'displayName': name.text,
           'password': pass.text,
+          'legalAccepted': true,
+          'legalVersion': legalVersion,
         }),
       );
       final data = jsonDecode(r.body);
@@ -273,7 +275,9 @@ class _DriverInvitePageState extends State<DriverInvitePage> {
         setState(() {
           error = data['error'] == 'PASSWORD_INVALID'
               ? 'Bu telefon kayıtlı. Şifreni kontrol et.'
-              : 'Davet kabul edilemedi.';
+              : data['error'] == 'LEGAL_CONSENT_REQUIRED'
+                  ? 'Güncel Kullanım Şartları ve Gizlilik/KVKK metnini kabul etmelisin.'
+                  : 'Davet kabul edilemedi.';
         });
       }
     } catch (_) {
