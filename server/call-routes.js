@@ -13,20 +13,34 @@ module.exports = function registerCallRoutes(app, pool) {
 
   async function sendRecipientPush(recipientId, recipientType, data, title, body, ownerId=null) {
     const push=app.locals.heycarPush;
-    if(!push)return {attempted:0,delivered:0};
-    const sender=recipientType==='driver' ? push.sendDriver : (push.sendOwner || push.send);
-    if(!sender){
-      console.warn('call push sender missing',recipientType);
-      return {attempted:0,delivered:0};
+    if(!push)return {owner:{attempted:0,delivered:0},driver:null};
+
+    const ownerTarget=String(ownerId||recipientId||'');
+    const ownerSender=push.sendOwner||push.send;
+    const ownerResult=ownerTarget&&ownerSender
+      ? await ownerSender(ownerTarget,{...data,recipientType:'owner'},title,body)
+      : {attempted:0,delivered:0};
+
+    let driverResult=null;
+    if(recipientType==='driver'&&String(recipientId)!==ownerTarget&&push.sendDriver){
+      driverResult=await push.sendDriver(
+        String(recipientId),
+        {...data,recipientType:'driver'},
+        title,
+        body,
+      );
     }
-    const result=await sender(String(recipientId),{...data,recipientType},title,body);
-    if(recipientType==='driver'&&ownerId&&(!result||result.delivered===0)){
-      const ownerSender=push.sendOwner||push.send;
-      if(ownerSender){
-        return ownerSender(String(ownerId),{...data,recipientType:'owner'},title,body);
-      }
-    }
-    return result||{attempted:0,delivered:0};
+
+    console.log('Call push delivery',{
+      callId:String(data.callId||''),
+      ownerId:ownerTarget,
+      owner:ownerResult||null,
+      recipientId:String(recipientId||''),
+      recipientType,
+      driver:driverResult,
+    });
+
+    return {owner:ownerResult||{attempted:0,delivered:0},driver:driverResult};
   }
 
   async function incomingFor(recipientId, recipientType) {
@@ -125,14 +139,18 @@ module.exports = function registerCallRoutes(app, pool) {
       );
       const call=created.rows[0];
 
-      sendRecipientPush(
-        recipientId,
-        recipientType,
-        {type:'incoming_call',callId:String(call.id),visitorToken:String(call.visitor_token),vehicleId:String(vehicle.vehicle_id),plate:vehicle.plate||''},
-        'Gelen Araç Araması',
-        `${vehicle.plate||'Aracınız'} için biri sizi arıyor`,
-        String(vehicle.owner_id)
-      ).catch(err=>console.error('incoming call push',err));
+      try{
+        await sendRecipientPush(
+          recipientId,
+          recipientType,
+          {type:'incoming_call',callId:String(call.id),visitorToken:String(call.visitor_token),vehicleId:String(vehicle.vehicle_id),plate:vehicle.plate||'',sentAt:String(Date.now())},
+          'Gelen Araç Araması',
+          `${vehicle.plate||'Aracınız'} için biri sizi arıyor`,
+          String(vehicle.owner_id)
+        );
+      }catch(err){
+        console.error('incoming call push',err);
+      }
 
       return res.status(201).json({ok:true,call,plate:vehicle.plate});
     } catch(e) {
