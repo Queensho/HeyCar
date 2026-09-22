@@ -5,6 +5,7 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 
 class CrashReporting {
   static bool _ready=false;
+  static String _pendingRole='unknown';
 
   static Future<void> init() async {
     if(_ready)return;
@@ -23,10 +24,12 @@ class CrashReporting {
 
     await FirebaseCrashlytics.instance.setCustomKey('app','Cepqar');
     await FirebaseCrashlytics.instance.setCustomKey('channel',kReleaseMode?'release':kProfileMode?'profile':'debug');
+    await FirebaseCrashlytics.instance.setCustomKey('role',_pendingRole);
     _ready=true;
   }
 
   static Future<void> setContext({required String role}) async {
+    _pendingRole=role;
     if(!_ready)return;
     await FirebaseCrashlytics.instance.setCustomKey('role',role);
   }
