@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'vehicle_api.dart';
+import 'driver_auth.dart';
 
 const _api = 'https://heycar-api-185-165-46-213.nip.io';
 const _bg = Color(0xFF07111F);
@@ -158,6 +159,7 @@ class _DriverInvitePageState extends State<DriverInvitePage> {
         await prefs.setBool('driver_logged_in', true);
         await prefs.setString('driver_user_id', data['user']['id'].toString());
         await prefs.setString('driver_name', data['user']['displayName'].toString());
+        await DriverAuth.saveFrom(data);
         if (mounted) {
           Navigator.pushReplacement(
             context,
@@ -275,10 +277,9 @@ class _DriverHomePageState extends State<DriverHomePage> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final savedName = prefs.getString('driver_name')?.trim();
-      final headers = {'x-user-id': widget.userId};
       final rs = await Future.wait([
-        http.get(Uri.parse('$_api/api/driver/vehicles'), headers: headers),
-        http.get(Uri.parse('$_api/api/driver/notifications'), headers: headers),
+        DriverHttp.get(Uri.parse('$_api/api/driver/vehicles'), json: false),
+        DriverHttp.get(Uri.parse('$_api/api/driver/notifications'), json: false),
       ]);
       if (!mounted) return;
 
@@ -496,7 +497,7 @@ class _DriverHome extends StatelessWidget {
     if (vehicleId.isEmpty) return;
     Map<String,dynamic>? current;
     try {
-      final r = await http.get(Uri.parse('$_api/api/driver/vehicles/${Uri.encodeComponent(vehicleId)}/park-note'), headers: {'x-user-id': userId});
+      final r = await DriverHttp.get(Uri.parse('$_api/api/driver/vehicles/${Uri.encodeComponent(vehicleId)}/park-note'), json: false);
       if (r.statusCode == 200) {
         final d = jsonDecode(r.body);
         if (d is Map && d['parkNote'] is Map) current = Map<String,dynamic>.from(d['parkNote']);
@@ -543,11 +544,11 @@ class _DriverHome extends StatelessWidget {
                   try{
                     http.Response r;
                     if(!showOnQr){
-                      r=await http.delete(Uri.parse('$_api/api/driver/vehicles/${Uri.encodeComponent(vehicleId)}/park-note'),headers:{'x-user-id':userId});
+                      r=await DriverHttp.delete(Uri.parse('$_api/api/driver/vehicles/${Uri.encodeComponent(vehicleId)}/park-note'));
                     }else{
                       final minutes=presets[selected];
                       final expires=minutes==null?null:DateTime.now().toUtc().add(Duration(minutes:minutes)).toIso8601String();
-                      r=await http.post(Uri.parse('$_api/api/driver/vehicles/${Uri.encodeComponent(vehicleId)}/park-note'),headers:{'Content-Type':'application/json','x-user-id':userId},body:jsonEncode({'message':msg,'expiresAt':expires}));
+                      r=await DriverHttp.post(Uri.parse('$_api/api/driver/vehicles/${Uri.encodeComponent(vehicleId)}/park-note'),body:jsonEncode({'message':msg,'expiresAt':expires}));
                     }
                     if(r.statusCode<200||r.statusCode>=300)throw Exception();
                     if(sheetContext.mounted)Navigator.pop(sheetContext);
@@ -1358,6 +1359,7 @@ class _DriverSettingsPage extends StatelessWidget {
     );
     if (ok != true) return;
 
+    await DriverAuth.logout();
     final prefs = await SharedPreferences.getInstance();
     for (final key in ['driver_logged_in', 'driver_user_id', 'driver_name']) {
       await prefs.remove(key);
