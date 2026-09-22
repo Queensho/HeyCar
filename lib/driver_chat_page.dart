@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'driver_auth.dart';
 
 const _bg = Color(0xFF07111F);
 const _panel = Color(0xFF101A30);
@@ -34,8 +35,6 @@ class _DriverChatPageState extends State<DriverChatPage> {
   bool loading = true;
   bool sending = false;
   Timer? timer;
-
-  Map<String, String> get headers => {'x-user-id': widget.userId};
 
   @override
   void initState() {
@@ -72,9 +71,9 @@ class _DriverChatPageState extends State<DriverChatPage> {
   Future<void> _resolve() async {
     if (mounted) setState(() { loading = true; error = null; });
     try {
-      final r = await http.get(
+      final r = await DriverHttp.get(
         Uri.parse('$baseUrl/api/driver/notifications/${Uri.encodeComponent(widget.notificationId)}/conversation'),
-        headers: headers,
+        json: false,
       ).timeout(const Duration(seconds: 15));
       if (r.statusCode < 200 || r.statusCode >= 300) {
         if (mounted) setState(() { loading = false; error = _errorFor(r.statusCode); });
@@ -96,9 +95,9 @@ class _DriverChatPageState extends State<DriverChatPage> {
     final id = conversationId;
     if (id == null || id.isEmpty) return;
     try {
-      final r = await http.get(
+      final r = await DriverHttp.get(
         Uri.parse('$baseUrl/api/driver/conversations/${Uri.encodeComponent(id)}'),
-        headers: headers,
+        json: false,
       ).timeout(const Duration(seconds: 15));
       if (r.statusCode < 200 || r.statusCode >= 300) {
         if (!silent && mounted) setState(() { loading = false; error = _errorFor(r.statusCode); });
@@ -129,9 +128,8 @@ class _DriverChatPageState extends State<DriverChatPage> {
     if (id == null || id.isEmpty || text.isEmpty || sending) return;
     setState(() => sending = true);
     try {
-      final r = await http.post(
+      final r = await DriverHttp.post(
         Uri.parse('$baseUrl/api/driver/conversations/${Uri.encodeComponent(id)}/messages'),
-        headers: {'Content-Type': 'application/json', ...headers},
         body: jsonEncode({'message': text}),
       ).timeout(const Duration(seconds: 15));
       if (r.statusCode < 200 || r.statusCode >= 300) {
