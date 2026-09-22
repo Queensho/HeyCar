@@ -1,4 +1,5 @@
 const {ownerId: authenticatedOwnerId}=require('./owner-auth-service');
+const {driverId: authenticatedDriverId}=require('./driver-auth-service');
 const crypto=require('crypto');
 const fs=require('fs');
 
@@ -24,29 +25,37 @@ async function accessToken(){
 
 module.exports=function registerPushRoutes(app,pool){
   let ready=false;
-  async function schema(){if(ready)return;await pool.query(`CREATE TABLE IF NOT EXISTS owner_push_tokens(id BIGSERIAL PRIMARY KEY,owner_id TEXT NOT NULL,device_id TEXT NOT NULL,fcm_token TEXT NOT NULL,platform TEXT NOT NULL DEFAULT 'android',active BOOLEAN NOT NULL DEFAULT TRUE,updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),UNIQUE(owner_id,device_id)); CREATE INDEX IF NOT EXISTS idx_owner_push_tokens_owner ON owner_push_tokens(owner_id,active);`);ready=true;}
+  async function schema(){if(ready)return;await pool.query(`CREATE TABLE IF NOT EXISTS owner_push_tokens(id BIGSERIAL PRIMARY KEY,owner_id TEXT NOT NULL,device_id TEXT NOT NULL,fcm_token TEXT NOT NULL,platform TEXT NOT NULL DEFAULT 'android',active BOOLEAN NOT NULL DEFAULT TRUE,updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),UNIQUE(owner_id,device_id)); CREATE INDEX IF NOT EXISTS idx_owner_push_tokens_owner ON owner_push_tokens(owner_id,active); CREATE TABLE IF NOT EXISTS driver_push_tokens(id BIGSERIAL PRIMARY KEY,driver_id TEXT NOT NULL,device_id TEXT NOT NULL,fcm_token TEXT NOT NULL,platform TEXT NOT NULL DEFAULT 'android',active BOOLEAN NOT NULL DEFAULT TRUE,updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),UNIQUE(driver_id,device_id)); CREATE INDEX IF NOT EXISTS idx_driver_push_tokens_driver ON driver_push_tokens(driver_id,active);`);ready=true;}
 
   app.post('/api/owner/push-token',async(req,res)=>{try{const owner=authenticatedOwnerId(req);const token=String(req.body?.token||'').trim();const device=String(req.body?.deviceId||'').trim();const platform=String(req.body?.platform||'android').trim();if(!owner||!token||!device)return res.status(400).json({error:'REQUIRED_FIELDS_MISSING'});await schema();await pool.query(`INSERT INTO owner_push_tokens(owner_id,device_id,fcm_token,platform) VALUES($1,$2,$3,$4) ON CONFLICT(owner_id,device_id) DO UPDATE SET fcm_token=EXCLUDED.fcm_token,platform=EXCLUDED.platform,active=TRUE,updated_at=NOW()`,[owner,device,token,platform]);return res.json({ok:true});}catch(e){console.error('push token',e);return res.status(500).json({error:'SERVER_ERROR'});}});
 
-  async function send(owner,data,title,body){
+  app.post('/api/driver/push-token',async(req,res)=>{try{const driver=authenticatedDriverId(req);const token=String(req.body?.token||'').trim();const device=String(req.body?.deviceId||'').trim();const platform=String(req.body?.platform||'android').trim();if(!driver)return res.status(401).json({error:'DRIVER_REQUIRED'});if(!token||!device)return res.status(400).json({error:'REQUIRED_FIELDS_MISSING'});await schema();await pool.query(`INSERT INTO driver_push_tokens(driver_id,device_id,fcm_token,platform) VALUES($1,$2,$3,$4) ON CONFLICT(driver_id,device_id) DO UPDATE SET fcm_token=EXCLUDED.fcm_token,platform=EXCLUDED.platform,active=TRUE,updated_at=NOW()`,[driver,device,token,platform]);return res.json({ok:true});}catch(e){console.error('driver push token',e);return res.status(500).json({error:'SERVER_ERROR'});}});
+  app.delete('/api/driver/push-token',async(req,res)=>{try{const driver=authenticatedDriverId(req);const device=String(req.query?.deviceId||req.body?.deviceId||'').trim();if(!driver)return res.status(401).json({error:'DRIVER_REQUIRED'});if(!device)return res.status(400).json({error:'DEVICE_REQUIRED'});await schema();await pool.query('UPDATE driver_push_tokens SET active=FALSE,updated_at=NOW() WHERE driver_id=$1 AND device_id=$2',[driver,device]);return res.json({ok:true});}catch(e){console.error('driver push token deactivate',e);return res.status(500).json({error:'SERVER_ERROR'});}});
+
+  async function sendFrom(table,idColumn,userId,data,title,body){
     await schema();
     const sa=serviceAccount();const key=await accessToken();
     if(!key||!sa){console.warn('Firebase service account missing; push skipped');return;}
     const project=sa.project_id;
-    const rows=(await pool.query(`SELECT fcm_token FROM owner_push_tokens WHERE owner_id=$1 AND active=TRUE`,[String(owner)])).rows;
+    const rows=(await pool.query(`SELECT id,fcm_token FROM ${table} WHERE ${idColumn}=$1 AND active=TRUE`,[String(userId)])).rows;
     for(const row of rows){
       const callEvent=data.type==='incoming_call'||data.type==='incoming_call_cancelled';
       const fcmData=Object.fromEntries(Object.entries({...data,title,body}).map(([k,v])=>[k,String(v??'')]));
-      // Call start/cancel events stay data-only so Android can create or cancel
-      // the full-screen call notification even while the UI is not running.
       const message={token:row.fcm_token,data:fcmData,android:{priority:'HIGH'}};
       if(!callEvent){
         message.android.notification={channel_id:'cepqar_notifications_v2',icon:'ic_stat_cepqar',sound:'default',visibility:'PUBLIC',notification_priority:'PRIORITY_HIGH'};
         message.notification={title,body};
       }
       const r=await fetch(`https://fcm.googleapis.com/v1/projects/${project}/messages:send`,{method:'POST',headers:{authorization:`Bearer ${key}`,'content-type':'application/json'},body:JSON.stringify({message})});
-      if(!r.ok)console.error('FCM send',r.status,await r.text());
+      if(!r.ok){
+        const detail=await r.text();
+        console.error('FCM send',r.status,detail);
+        if(r.status===404||detail.includes('UNREGISTERED'))await pool.query(`UPDATE ${table} SET active=FALSE,updated_at=NOW() WHERE id=$1`,[row.id]).catch(()=>{});
+      }
     }
   }
-  app.locals.heycarPush={send};
+  const sendOwner=(owner,data,title,body)=>sendFrom('owner_push_tokens','owner_id',owner,data,title,body);
+  const sendDriver=(driver,data,title,body)=>sendFrom('driver_push_tokens','driver_id',driver,data,title,body);
+  const send=sendOwner;
+  app.locals.heycarPush={send,sendOwner,sendDriver};
 };
