@@ -119,7 +119,7 @@ class PushNotifications{
         final callback=onNavigationRequested;
         if(callback!=null)await callback({...data,'callId':callId,'type':'incoming_call','autoAccept':'1'});
       }else if(event is CallEventActionCallDecline){
-        await _callAction(callId,'reject');
+        await _callAction(callId,'reject',data);
       }
     });
   }
@@ -259,12 +259,15 @@ class PushNotifications{
     await _openFromPush(data);
   }
 
-  static Future<void> _callAction(String callId,String action)async{
-    final prefs=await SharedPreferences.getInstance();
-    final ownerId=prefs.getString('owner_user_id')??prefs.getString('owner_id')??prefs.getString('ownerId');
-    if(ownerId==null||ownerId.isEmpty)return;
+  static Future<void> _callAction(String callId,String action,Map<String,dynamic> data)async{
+    final recipientType=(data['recipientType']??'owner').toString();
     try{
-      final r=await OwnerHttp.patch(Uri.parse('$_apiBase/api/owner/calls/$callId'),body:jsonEncode({'action':action})).timeout(const Duration(seconds:10));
+      late final http.Response r;
+      if(recipientType=='driver'){
+        r=await DriverHttp.patch(Uri.parse('$_apiBase/api/driver/calls/$callId'),body:jsonEncode({'action':action})).timeout(const Duration(seconds:10));
+      }else{
+        r=await OwnerHttp.patch(Uri.parse('$_apiBase/api/owner/calls/$callId'),body:jsonEncode({'action':action})).timeout(const Duration(seconds:10));
+      }
       if(r.statusCode<200||r.statusCode>=300)throw HttpException('Call $action failed');
     }catch(e){stderr.writeln('Call $action failed: $e');}
   }
