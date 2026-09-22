@@ -99,7 +99,97 @@ class _DriverCodeEntryPageState extends State<DriverCodeEntryPage> {
                 onPressed: busy ? null : go,
                 child: Text(busy ? 'Kontrol ediliyor...' : 'Devam Et'),
               ),
+              const SizedBox(height: 10),
+              TextButton(
+                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DriverLoginPage())),
+                child: const Text('Sürücü hesabımla giriş yap'),
+              ),
             ]),
+          ),
+        ),
+      );
+}
+
+
+class DriverLoginPage extends StatefulWidget {
+  const DriverLoginPage({super.key});
+
+  @override
+  State<DriverLoginPage> createState() => _DriverLoginPageState();
+}
+
+class _DriverLoginPageState extends State<DriverLoginPage> {
+  final phone = TextEditingController();
+  final pass = TextEditingController();
+  bool busy = false;
+  String? error;
+
+  Future<void> login() async {
+    if (busy) return;
+    setState(() { busy = true; error = null; });
+    try {
+      final r = await http.post(
+        Uri.parse('$_api/api/driver/login-phone'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'phone': phone.text, 'password': pass.text}),
+      ).timeout(const Duration(seconds: 15));
+      final data = r.body.isEmpty ? <String,dynamic>{} : jsonDecode(r.body);
+      if (r.statusCode >= 200 && r.statusCode < 300 && data is Map) {
+        await DriverAuth.saveFrom(data);
+        final prefs = await SharedPreferences.getInstance();
+        final user = data['user'] is Map ? Map<String,dynamic>.from(data['user']) : <String,dynamic>{};
+        final id = '${user['id'] ?? ''}';
+        final displayName = '${user['displayName'] ?? ''}';
+        await prefs.setBool('driver_logged_in', true);
+        await prefs.setString('driver_user_id', id);
+        if (displayName.isNotEmpty) await prefs.setString('driver_name', displayName);
+        if (mounted) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => DriverHomePage(userId: id)),
+            (_) => false,
+          );
+        }
+      } else if (mounted) {
+        setState(() => error = r.statusCode == 401 ? 'Telefon veya şifre hatalı.' : 'Giriş yapılamadı.');
+      }
+    } catch (_) {
+      if (mounted) setState(() => error = 'Bağlantı hatası.');
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    phone.dispose();
+    pass.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        backgroundColor: _bg,
+        appBar: AppBar(backgroundColor: const Color(0xFF0A1020), title: const Text('Sürücü Girişi')),
+        body: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.all(22),
+            children: [
+              const SizedBox(height: 28),
+              const Icon(Icons.key_rounded, size: 70, color: _purple),
+              const SizedBox(height: 20),
+              const Text('Sürücü hesabına giriş yap', textAlign: TextAlign.center, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 24),
+              TextField(controller: phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Telefon')),
+              const SizedBox(height: 12),
+              TextField(controller: pass, obscureText: true, decoration: const InputDecoration(labelText: 'Şifre')),
+              if (error != null) ...[
+                const SizedBox(height: 12),
+                Text(error!, style: const TextStyle(color: Colors.redAccent)),
+              ],
+              const SizedBox(height: 18),
+              FilledButton(onPressed: busy ? null : login, child: Text(busy ? 'Giriş yapılıyor...' : 'Giriş Yap')),
+            ],
           ),
         ),
       );
