@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'driver_auth.dart';
 
 const _bg = Color(0xFF07111F);
 const _panel = Color(0xFF111A31);
@@ -65,8 +66,6 @@ class _DriverAccountDialogState extends State<DriverAccountDialog> {
   bool saving = false;
   String? error;
 
-  Map<String, String> get headers => {'x-user-id': widget.userId};
-
   @override
   void initState() {
     super.initState();
@@ -82,8 +81,8 @@ class _DriverAccountDialogState extends State<DriverAccountDialog> {
   Future<void> _load() async {
     if (mounted) setState(() { loading = true; error = null; });
     try {
-      final r = await http
-          .get(Uri.parse('$_api/api/driver/account'), headers: headers)
+      final r = await DriverHttp
+          .get(Uri.parse('$_api/api/driver/account'), json: false)
           .timeout(const Duration(seconds: 15));
       if (r.statusCode < 200 || r.statusCode >= 300) throw Exception('account_${r.statusCode}');
       final data = jsonDecode(r.body) as Map<String, dynamic>;
@@ -105,10 +104,9 @@ class _DriverAccountDialogState extends State<DriverAccountDialog> {
     if (value.length < 2 || saving) return;
     setState(() => saving = true);
     try {
-      final r = await http
+      final r = await DriverHttp
           .put(
             Uri.parse('$_api/api/driver/account'),
-            headers: {...headers, 'Content-Type': 'application/json'},
             body: jsonEncode({'displayName': value}),
           )
           .timeout(const Duration(seconds: 15));
@@ -182,10 +180,9 @@ class _DriverAccountDialogState extends State<DriverAccountDialog> {
                               }
                               setDialogState(() { busy = true; dialogError = null; });
                               try {
-                                final r = await http
+                                final r = await DriverHttp
                                     .put(
                                       Uri.parse('$_api/api/driver/account/password'),
-                                      headers: {...headers, 'Content-Type': 'application/json'},
                                       body: jsonEncode({'currentPassword': current.text, 'newPassword': next.text}),
                                     )
                                     .timeout(const Duration(seconds: 15));
@@ -194,6 +191,8 @@ class _DriverAccountDialogState extends State<DriverAccountDialog> {
                                   return;
                                 }
                                 if (r.statusCode < 200 || r.statusCode >= 300) throw Exception('password_${r.statusCode}');
+                                final d = r.body.isEmpty ? <String,dynamic>{} : jsonDecode(r.body);
+                                if (d is Map) await DriverAuth.saveFrom(d);
                                 if (dialogContext.mounted) Navigator.pop(dialogContext);
                                 if (mounted) ScaffoldMessenger.of(this.context).showSnackBar(const SnackBar(content: Text('Şifre güncellendi.')));
                               } catch (_) {
