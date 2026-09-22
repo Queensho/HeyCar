@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'onboarding_backend.dart';
+import 'owner_auth.dart';
 
 class QrDraft {
   static String token = '';
@@ -43,12 +44,10 @@ class QrBackend {
     if (ownerId.isEmpty) throw Exception('Oturum bilgisi bulunamadı. Tekrar giriş yap.');
     if (resolvedVehicleId.isEmpty) throw Exception('Kayıtlı araç bulunamadı.');
 
-    final response = await http.post(
+    final response = await OwnerHttp.post(
       Uri.parse('$baseUrl/api/qr/activate'),
-      headers: const {'Content-Type': 'application/json'},
       body: jsonEncode({
         'token': normalizeToken(token),
-        'ownerId': ownerId,
         'vehicleId': resolvedVehicleId,
         'plate': plate.trim().toUpperCase(),
         'make': make.trim(),
@@ -77,12 +76,10 @@ class QrBackend {
     final ownerId = OnboardingDraft.userId.trim();
     if (ownerId.isEmpty) throw Exception('Oturum bilgisi bulunamadı. Tekrar giriş yap.');
 
-    final response = await http
+    final response = await OwnerHttp
         .post(
           Uri.parse('$baseUrl/api/owner/correction-requests'),
-          headers: const {'Content-Type': 'application/json'},
           body: jsonEncode({
-            'ownerId': ownerId,
             'vehicleId': QrDraft.vehicleId.trim().isEmpty ? OnboardingDraft.vehicleId.trim() : QrDraft.vehicleId.trim(),
             'qrToken': normalizeToken(QrDraft.token),
             'requestType': requestType,
