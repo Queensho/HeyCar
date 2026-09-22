@@ -42,7 +42,7 @@ class _OwnerDashboardStatsRowState extends State<OwnerDashboardStatsRow> {
       return;
     }
     try {
-      final response = await http.get(Uri.parse('$_baseUrl/api/owner/notifications'), headers: {'x-owner-id': id}).timeout(const Duration(seconds: 15));
+      final response = await OwnerHttp.get(Uri.parse('$_baseUrl/api/owner/notifications'), json:false).timeout(const Duration(seconds: 15));
       if (response.statusCode < 200 || response.statusCode >= 300) return;
       final data = response.body.isEmpty ? <String, dynamic>{} : jsonDecode(response.body);
       if (data is! Map || data['notifications'] is! List) return;
