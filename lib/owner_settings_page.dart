@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'owner_qr_dialog.dart';
 import 'owner_settings_detail.dart';
 import 'premium_page.dart';
+import 'legal_pages.dart';
 
 const _bg = Color(0xFF07111F);
 const _panel = Color(0xFF111A31);
@@ -222,6 +223,14 @@ class OwnerSettingsPage extends StatelessWidget {
                     title: 'Gizlilik ve güvenlik',
                     subtitle: 'Verileriniz ve güvenlik ayarları',
                     onTap: () => _push(context, const OwnerPrivacySettingsPage()),
+                  ),
+                  const SizedBox(height: 8),
+                  _SettingsTile(
+                    icon: Icons.gavel_rounded,
+                    iconColor: const Color(0xFFB78CFF),
+                    title: 'Yasal ve gizlilik',
+                    subtitle: 'Kullanım Şartları ve KVKK aydınlatma metni',
+                    onTap: () => _push(context, const LegalCenterPage()),
                   ),
                   const SizedBox(height: 14),
                   _QrPromo(onTap: onOpenQr ?? () => showOwnerQrDialog(context)),
