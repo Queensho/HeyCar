@@ -1,7 +1,8 @@
 const crypto=require('crypto');
+const {ownerId:authenticatedOwnerId}=require('./owner-auth-service');
 const path=require('path');
 module.exports=function registerMaintenanceShareRoutes(app,pool){
- const ownerId=req=>String(req.headers['x-owner-id']||'').trim();
+ const ownerId=req=>authenticatedOwnerId(req);
  async function owns(vehicleId,owner){const r=await pool.query('SELECT id,plate,make,model FROM vehicles WHERE id::text=$1 AND owner_id::text=$2 LIMIT 1',[String(vehicleId),owner]);return r.rows[0]||null;}
  async function premium(owner){try{const r=await pool.query(`SELECT COALESCE((to_jsonb(u)->>'premium')::boolean,false) premium FROM users u WHERE id::text=$1 LIMIT 1`,[owner]);return r.rows[0]?.premium===true;}catch(_){return false;}}
  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
