@@ -1,4 +1,6 @@
 const {issueTokens}=require('./owner-auth-service');
+const LEGAL_VERSION='1.0';
+function requestIp(req){return String(req.headers['x-forwarded-for']||req.socket?.remoteAddress||'').split(',')[0].trim().slice(0,120);}
 function normalizeTrMobile(raw) {
   let digits = String(raw || '').replace(/\D/g, '');
   if (digits.startsWith('90') && digits.length === 12) {
@@ -22,12 +24,17 @@ module.exports = function registerOnboardingRoutes(app, pool) {
     const model = String(req.body.model || '').trim();
     const color = String(req.body.color || '').trim();
     const transferCode = String(req.body.transferCode || '').trim().toUpperCase();
+    const legalAccepted = req.body.legalAccepted === true;
+    const legalVersion = String(req.body.legalVersion || '').trim();
 
     if (!phone) {
       return res.status(400).json({ error: 'INVALID_PHONE' });
     }
     if (!displayName || password.length < 6 || (!transferCode && (!plate || !make))) {
       return res.status(400).json({ error: 'INVALID_INPUT' });
+    }
+    if (!legalAccepted || legalVersion !== LEGAL_VERSION) {
+      return res.status(400).json({ error: 'LEGAL_CONSENT_REQUIRED', legalVersion: LEGAL_VERSION });
     }
 
     const client = await pool.connect();
@@ -83,6 +90,14 @@ module.exports = function registerOnboardingRoutes(app, pool) {
           [user.id, plate, make, model || null, color || null]
         );
       }
+
+      await client.query(
+        `INSERT INTO legal_acceptances(user_id,role,document_version,ip_address,user_agent)
+         VALUES($1,'owner',$2,$3,$4)
+         ON CONFLICT(user_id,role,document_version)
+         DO UPDATE SET terms_accepted_at=NOW(),privacy_accepted_at=NOW(),ip_address=EXCLUDED.ip_address,user_agent=EXCLUDED.user_agent`,
+        [user.id, LEGAL_VERSION, requestIp(req), String(req.headers['user-agent']||'').slice(0,500)]
+      );
 
       const tokens=await issueTokens(client,user.id);
       await client.query('COMMIT');
