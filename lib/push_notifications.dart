@@ -13,6 +13,9 @@ import 'driver_auth.dart';
 
 const _apiBase='https://heycar-api-185-165-46-213.nip.io';
 const _generalChannel='cepqar_notifications_v2';
+const _callChannel='cepqar_calls_v3';
+const _callAcceptAction='cepqar_accept_call';
+const _callDeclineAction='cepqar_decline_call';
 final FlutterLocalNotificationsPlugin _local=FlutterLocalNotificationsPlugin();
 
 int _notificationId(String key){var h=0x811c9dc5;for(final c in key.codeUnits){h^=c;h=(h*0x01000193)&0x7fffffff;}return h;}
@@ -56,7 +59,7 @@ class PushNotifications{
 
   static Future<void> prepareCallPermissions()async{
     await bootstrap();
-    await ensureChannels();
+    await ensureChannels(requestPermissions:true);
     await FirebaseMessaging.instance.requestPermission(alert:true,badge:true,sound:true);
     if(Platform.isAndroid){
       try{
@@ -68,7 +71,7 @@ class PushNotifications{
 
   static Future<void> init()async{
     await bootstrap();
-    await ensureChannels();
+    await ensureChannels(requestPermissions:true);
     await FirebaseMessaging.instance.requestPermission(alert:true,badge:true,sound:true);
     if(Platform.isAndroid){
       try{
@@ -124,7 +127,7 @@ class PushNotifications{
     });
   }
 
-  static Future<void> ensureChannels()async{
+  static Future<void> ensureChannels({bool requestPermissions=false})async{
     const android=AndroidInitializationSettings('ic_stat_cepqar');
     const darwin=DarwinInitializationSettings(
       requestAlertPermission:false,
@@ -138,9 +141,30 @@ class PushNotifications{
     );
     if(Platform.isAndroid){
       final p=_local.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
-      await p?.createNotificationChannel(const AndroidNotificationChannel(_generalChannel,'Cepqar Bildirimleri',description:'Araç bildirimleri ve mesajlar',importance:Importance.high,playSound:true,enableVibration:true));
-      await p?.requestNotificationsPermission();
-    }else if(Platform.isIOS){
+      await p?.createNotificationChannel(const AndroidNotificationChannel(
+        _generalChannel,
+        'Cepqar Bildirimleri',
+        description:'Araç bildirimleri ve mesajlar',
+        importance:Importance.high,
+        playSound:true,
+        enableVibration:true,
+      ));
+      await p?.createNotificationChannel(const AndroidNotificationChannel(
+        _callChannel,
+        'Cepqar Gelen Aramalar',
+        description:'Kilit ekranında tam ekran gelen Cepqar aramaları',
+        importance:Importance.max,
+        playSound:true,
+        sound:RawResourceAndroidNotificationSound('cepqar_call'),
+        enableVibration:true,
+        showBadge:false,
+        audioAttributesUsage:AudioAttributesUsage.ringtone,
+      ));
+      if(requestPermissions){
+        await p?.requestNotificationsPermission();
+        try{await p?.requestFullScreenIntentPermission();}catch(_){}
+      }
+    }else if(Platform.isIOS&&requestPermissions){
       final p=_local.resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
       await p?.requestPermissions(alert:true,badge:true,sound:true);
     }
@@ -183,6 +207,59 @@ class PushNotifications{
     await _rememberNavigation({...data,'type':'incoming_call'});
     final plate=(data['plate']??'').toString().trim().toUpperCase();
     final body=(data['body']??data['message']??'QR üzerinden gizli arama').toString();
+
+    if(Platform.isAndroid){
+      await ensureChannels();
+      final payload=jsonEncode({...data,'callId':callId,'type':'incoming_call'});
+      final details=NotificationDetails(
+        android:AndroidNotificationDetails(
+          _callChannel,
+          'Cepqar Gelen Aramalar',
+          channelDescription:'Kilit ekranında tam ekran gelen Cepqar aramaları',
+          importance:Importance.max,
+          priority:Priority.max,
+          category:AndroidNotificationCategory.call,
+          fullScreenIntent:true,
+          ongoing:true,
+          autoCancel:false,
+          timeoutAfter:45000,
+          visibility:NotificationVisibility.public,
+          playSound:true,
+          sound:const RawResourceAndroidNotificationSound('cepqar_call'),
+          enableVibration:true,
+          icon:'ic_stat_cepqar',
+          largeIcon:const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+          audioAttributesUsage:AudioAttributesUsage.ringtone,
+          styleInformation:BigTextStyleInformation(
+            body,
+            contentTitle:plate.isNotEmpty?plate:'Cepqar Araması',
+            summaryText:'Gelen arama',
+          ),
+          actions:const <AndroidNotificationAction>[
+            AndroidNotificationAction(
+              _callDeclineAction,
+              'Reddet',
+              cancelNotification:true,
+            ),
+            AndroidNotificationAction(
+              _callAcceptAction,
+              'Kabul Et',
+              showsUserInterface:true,
+              cancelNotification:false,
+            ),
+          ],
+        ),
+      );
+      await _local.show(
+        _notificationId(callId),
+        plate.isNotEmpty?plate:'Cepqar Araması',
+        body,
+        details,
+        payload:payload,
+      );
+      return;
+    }
+
     final params=CallKitParams(
       id:callId,
       nameCaller:plate.isNotEmpty?plate:'Cepqar Araması',
@@ -256,6 +333,17 @@ class PushNotifications{
   static Future<void> handleResponse(NotificationResponse response)async{
     Map<String,dynamic> data={};
     try{if(response.payload!=null&&response.payload!.isNotEmpty)data=Map<String,dynamic>.from(jsonDecode(response.payload!));}catch(_){}
+    final callId=(data['callId']??'').toString();
+    if(response.actionId==_callDeclineAction&&callId.isNotEmpty){
+      await _callAction(callId,'reject',data);
+      await cancelIncomingCall(callId);
+      return;
+    }
+    if(response.actionId==_callAcceptAction&&callId.isNotEmpty){
+      final prefs=await SharedPreferences.getInstance();
+      await prefs.setString('pending_incoming_call_auto_accept',callId);
+      data={...data,'type':'incoming_call','autoAccept':'1'};
+    }
     await _openFromPush(data);
   }
 
