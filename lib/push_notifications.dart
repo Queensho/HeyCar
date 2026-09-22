@@ -158,7 +158,7 @@ class PushNotifications{
         sound:RawResourceAndroidNotificationSound('cepqar_call'),
         enableVibration:true,
         showBadge:false,
-        audioAttributesUsage:AudioAttributesUsage.ringtone,
+        audioAttributesUsage:AudioAttributesUsage.notificationRingtone,
       ));
       if(requestPermissions){
         await p?.requestNotificationsPermission();
@@ -229,7 +229,7 @@ class PushNotifications{
           enableVibration:true,
           icon:'ic_stat_cepqar',
           largeIcon:const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
-          audioAttributesUsage:AudioAttributesUsage.ringtone,
+          audioAttributesUsage:AudioAttributesUsage.notificationRingtone,
           styleInformation:BigTextStyleInformation(
             body,
             contentTitle:plate.isNotEmpty?plate:'Cepqar Araması',
