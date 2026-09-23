@@ -232,10 +232,16 @@ jobs:
           test -f assets/Arama.wav
           mkdir -p android/app/src/main/res/raw
           cp assets/Bildirim.wav android/app/src/main/res/raw/bildirim.wav
+          cp assets/Bildirim.wav android/app/src/main/res/raw/cepqar_notification.wav
           cp assets/Arama.wav android/app/src/main/res/raw/arama.wav
+          cp assets/Arama.wav android/app/src/main/res/raw/cepqar_call.wav
+          cp assets/Arama.wav android/app/src/main/res/raw/ringtone_default.wav
           test -s android/app/src/main/res/raw/bildirim.wav
+          test -s android/app/src/main/res/raw/cepqar_notification.wav
           test -s android/app/src/main/res/raw/arama.wav
-          echo "Uploaded Cepqar sounds installed"
+          test -s android/app/src/main/res/raw/cepqar_call.wav
+          test -s android/app/src/main/res/raw/ringtone_default.wav
+          echo "Uploaded Cepqar sounds installed with compatibility aliases"
 
       - name: Get dependencies
         run: flutter pub get
