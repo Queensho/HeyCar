@@ -13,8 +13,8 @@ import 'owner_auth.dart';
 import 'driver_auth.dart';
 
 const _apiBase='https://heycar-api-185-165-46-213.nip.io';
-const _generalChannel='cepqar_notifications_v7';
-const _callChannel='cepqar_calls_v4';
+const _generalChannel='cepqar_notifications_v8';
+const _callChannel='cepqar_calls_v5';
 const _callAcceptAction='cepqar_accept_call';
 const _callDeclineAction='cepqar_decline_call';
 final FlutterLocalNotificationsPlugin _local=FlutterLocalNotificationsPlugin();
@@ -151,7 +151,9 @@ class PushNotifications{
         description:'Araç bildirimleri ve mesajlar',
         importance:Importance.max,
         playSound:true,
+        sound:RawResourceAndroidNotificationSound('cepqar_notification'),
         enableVibration:true,
+        audioAttributesUsage:AudioAttributesUsage.notification,
       ));
       await p?.createNotificationChannel(const AndroidNotificationChannel(
         _callChannel,
@@ -291,14 +293,14 @@ class PushNotifications{
       android:const AndroidParams(
         isCustomNotification:false,
         isShowLogo:false,
-        ringtonePath:'cepqar_call',
+        ringtonePath:'system_ringtone_default',
         backgroundColor:'#111827',
         actionColor:'#22C55E',
         textColor:'#FFFFFF',
         textAccept:'Kabul Et',
         textDecline:'Reddet',
-        incomingCallNotificationChannelName:'Cepqar Gelen Aramalar',
-        missedCallNotificationChannelName:'Cepqar Cevapsız Aramalar',
+        incomingCallNotificationChannelName:'Cepqar Gelen Aramalar v2',
+        missedCallNotificationChannelName:'Cepqar Cevapsız Aramalar v2',
         isShowCallID:false,
         isShowFullLockedScreen:true,
         isImportant:true,
@@ -329,7 +331,7 @@ class PushNotifications{
     if(body.isEmpty&&plate.isEmpty&&serverTitle.isEmpty)return;
     final title=plate.isNotEmpty?'Cepqar • $plate':(serverTitle.isNotEmpty?serverTitle:'Cepqar');
     final details=NotificationDetails(
-      android:AndroidNotificationDetails(_generalChannel,'Cepqar Bildirimleri',channelDescription:'Araç bildirimleri ve mesajlar',importance:Importance.max,priority:Priority.high,autoCancel:true,visibility:NotificationVisibility.public,playSound:true,enableVibration:true,icon:'ic_stat_cepqar',largeIcon:const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),styleInformation:BigTextStyleInformation(body,contentTitle:title)),
+      android:AndroidNotificationDetails(_generalChannel,'Cepqar Bildirimleri',channelDescription:'Araç bildirimleri ve mesajlar',importance:Importance.max,priority:Priority.max,autoCancel:true,visibility:NotificationVisibility.public,playSound:true,sound:const RawResourceAndroidNotificationSound('cepqar_notification'),enableVibration:true,category:AndroidNotificationCategory.message,icon:'ic_stat_cepqar',largeIcon:const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),styleInformation:BigTextStyleInformation(body,contentTitle:title)),
       iOS:const DarwinNotificationDetails(presentAlert:true,presentBadge:true,presentSound:true),
     );
     final key=(data['notificationId']??m.messageId??DateTime.now().millisecondsSinceEpoch.toString()).toString();
