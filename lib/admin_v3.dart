@@ -521,10 +521,10 @@ class _QrPageState extends State<QrPage>{
 
   Widget _sticker(String token,String url)=>Container(
     color:Colors.white,
-    padding:const EdgeInsets.fromLTRB(18,18,18,16),
+    padding:const EdgeInsets.fromLTRB(10,10,10,12),
     child:Column(children:[
       Expanded(child:Padding(
-        padding:const EdgeInsets.symmetric(horizontal:18),
+        padding:const EdgeInsets.symmetric(horizontal:6),
         child:LayoutBuilder(builder:(context,c){
           final s=c.maxWidth<c.maxHeight?c.maxWidth:c.maxHeight;
           final dot=s*.075;
@@ -545,10 +545,8 @@ class _QrPageState extends State<QrPage>{
         }),
       )),
       const SizedBox(height:8),
-      const FittedBox(fit:BoxFit.scaleDown,child:Text('QR KODU OKUT',style:TextStyle(color:Color(0xFF070B24),fontSize:30,fontWeight:FontWeight.w900,letterSpacing:.4))),
-      const SizedBox(height:12),
       Container(
-        width:double.infinity,height:58,padding:const EdgeInsets.symmetric(horizontal:18),
+        width:double.infinity,height:54,padding:const EdgeInsets.symmetric(horizontal:18),
         decoration:BoxDecoration(
           color:const Color(0xFFEBD9FF),
           borderRadius:BorderRadius.circular(24),
@@ -557,7 +555,7 @@ class _QrPageState extends State<QrPage>{
           fit:BoxFit.scaleDown,alignment:Alignment.centerLeft,
           child:RichText(text:TextSpan(children:[
             const TextSpan(text:'Etiket Kodu:  ',style:TextStyle(color:Color(0xFF6A32E8),fontSize:17,fontWeight:FontWeight.w500)),
-            TextSpan(text:token,style:const TextStyle(color:Color(0xFF7B22F2),fontSize:23,fontWeight:FontWeight.w900,letterSpacing:.2)),
+            TextSpan(text:token,style:const TextStyle(color:Color(0xFF7B22F2),fontSize:24,fontWeight:FontWeight.w900,letterSpacing:.2)),
           ])),
         ),
       ),
