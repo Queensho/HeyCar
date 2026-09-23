@@ -179,7 +179,7 @@ jobs:
           if 'com.google.firebase.messaging.default_notification_icon' not in text:
             text=text.replace('</application>','''        <meta-data\n            android:name="com.google.firebase.messaging.default_notification_icon"\n            android:resource="@drawable/ic_stat_cepqar" />\n    </application>''')
           if 'com.google.firebase.messaging.default_notification_channel_id' not in text:
-            text=text.replace('</application>','''        <meta-data\n            android:name="com.google.firebase.messaging.default_notification_channel_id"\n            android:value="cepqar_notifications_v6" />\n    </application>''')
+            text=text.replace('</application>','''        <meta-data\n            android:name="com.google.firebase.messaging.default_notification_channel_id"\n            android:value="cepqar_notifications_v7" />\n    </application>''')
           if 'com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver' not in text:
             text=text.replace('</application>','''        <receiver\n            android:exported="false"\n            android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver" />\n    </application>''')
           p.write_text(text)
@@ -190,13 +190,37 @@ jobs:
           ICON="assets/app_icons/cepqar_icon.png"; test -f "$ICON"
           for dir in android/app/src/main/res/mipmap-mdpi android/app/src/main/res/mipmap-hdpi android/app/src/main/res/mipmap-xhdpi android/app/src/main/res/mipmap-xxhdpi android/app/src/main/res/mipmap-xxxhdpi; do mkdir -p "$dir"; cp "$ICON" "$dir/ic_launcher.png"; cp "$ICON" "$dir/ic_launcher_round.png"; done
           mkdir -p android/app/src/main/res/drawable
-          cat > android/app/src/main/res/drawable/ic_stat_cepqar.xml <<'EOF'
-          <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
-            <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd" android:pathData="M2.5,4h5.2c3.6,0 6,2.1 6,5.2s-2.4,5.2-6,5.2H6V20H2.5V4zM6,7.1v4.2h1.7c1.7,0 2.7,-0.8 2.7,-2.1s-1,-2.1-2.7,-2.1H6z"/>
-            <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd" android:pathData="M18.2,6a5.3,5.3 0,1 1,0 10.6a5.3,5.3 0,1 1,0 -10.6M18.2,8.7a2.6,2.6 0,1 0,0 5.2a2.6,2.6 0,1 0,0 -5.2"/>
-            <path android:fillColor="#FFFFFFFF" android:pathData="M16.4,10h1.2v1.2h-1.2zM18.8,10h1.2v1.2h-1.2zM16.4,12.4h1.2v1.2h-1.2zM18.8,12.4h1.2v1.2h-1.2z"/>
-          </vector>
-          EOF
+          python3 -m pip install --quiet pillow
+          python3 - <<'PY'
+          from PIL import Image
+          from pathlib import Path
+
+          src=Image.open("assets/app_icons/cepqar_icon.png").convert("RGBA")
+          mask=Image.new("L",src.size,0)
+          sp=src.load(); mp=mask.load()
+          for y in range(src.height):
+            for x in range(src.width):
+              r,g,b,a=sp[x,y]
+              # Extract the white pq/QR mark from the purple launcher icon.
+              # Android small notification icons must be a monochrome alpha mask.
+              if a>0 and min(r,g,b)>=175 and (max(r,g,b)-min(r,g,b))<=55:
+                strength=max(0,min(255,int((min(r,g,b)-165)*2.9)))
+                mp[x,y]=strength
+
+          bbox=mask.getbbox()
+          if not bbox:
+            raise SystemExit("Could not extract Cepqar pq mark from launcher icon")
+          mark=mask.crop(bbox)
+          canvas=Image.new("L",(96,96),0)
+          mark.thumbnail((76,76),Image.Resampling.LANCZOS)
+          x=(96-mark.width)//2; y=(96-mark.height)//2
+          canvas.paste(mark,(x,y))
+
+          out=Image.new("RGBA",(96,96),(255,255,255,0))
+          out.putalpha(canvas)
+          out.save("android/app/src/main/res/drawable/ic_stat_cepqar.png")
+          print("Cepqar pq notification mask generated")
+          PY
       - name: Apply Cepqar native splash
         run: |
           python3 -m pip install --quiet pillow
