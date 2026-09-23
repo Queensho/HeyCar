@@ -245,6 +245,8 @@ jobs:
 
       - name: Get dependencies
         run: flutter pub get
+      - name: Patch CallKit locked-screen ringtone
+        run: python3 tool/callkit_locked_ringtone_patch.py
       - name: Analyze app
         run: flutter analyze lib --no-fatal-infos --no-fatal-warnings
       - name: Enable Flutter web platform
