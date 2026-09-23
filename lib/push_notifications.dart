@@ -313,11 +313,21 @@ class PushNotifications{
     final type=(data['type']??'notification').toString();
     if(type=='incoming_call_cancelled'){await cancelIncomingCall((data['callId']??'').toString());return;}
     if(type=='incoming_call'||type=='call_request'){await showIncomingCall(data);return;}
-    final plate=(data['plate']??'').toString().trim();
+    final plate=(data['plate']??'').toString().trim().toUpperCase();
     final serverTitle=m.notification?.title?.trim()??'';
-    final title=plate.isNotEmpty?plate.toUpperCase():(serverTitle.isNotEmpty?serverTitle:'Cepqar');
     final serverBody=m.notification?.body?.trim()??'';
-    final body=serverBody.isNotEmpty?serverBody:(data['body']??data['message']??'Yeni bildiriminiz var.').toString();
+    final dataBody=(data['body']??data['message']??'').toString().trim();
+    final sourceType=(data['sourceType']??data['type']??'').toString();
+    final fallbackBody=switch(sourceType){
+      'lights_on'=>'Farlarınız açık kalmış.',
+      'move_vehicle'=>'Aracınızı çekebilir misiniz?',
+      'damage'=>'Aracınızla ilgili hasar bildirimi var.',
+      'message'=>'Yeni bir mesajınız var.',
+      _=>'',
+    };
+    final body=serverBody.isNotEmpty?serverBody:(dataBody.isNotEmpty?dataBody:fallbackBody);
+    if(body.isEmpty&&plate.isEmpty&&serverTitle.isEmpty)return;
+    final title=plate.isNotEmpty?'Cepqar • $plate':(serverTitle.isNotEmpty?serverTitle:'Cepqar');
     final details=NotificationDetails(
       android:AndroidNotificationDetails(_generalChannel,'Cepqar Bildirimleri',channelDescription:'Araç bildirimleri ve mesajlar',importance:Importance.high,priority:Priority.high,autoCancel:true,visibility:NotificationVisibility.public,playSound:true,enableVibration:true,icon:'ic_stat_cepqar',largeIcon:const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),styleInformation:BigTextStyleInformation(body,contentTitle:title)),
       iOS:const DarwinNotificationDetails(presentAlert:true,presentBadge:true,presentSound:true),
