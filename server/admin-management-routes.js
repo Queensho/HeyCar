@@ -108,13 +108,35 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
     try {
       await client.query('BEGIN');
 
-      // New CepQar labels use a short, sequential code.
-      // Existing HC-* tokens are intentionally left unchanged.
-      // Locking the table prevents two admins from receiving the same number.
+      // New CepQar labels use a short sequential code.
+      // Existing HC-* tokens remain unchanged.
+      // Locking avoids duplicate sequence numbers during concurrent admin requests.
       await client.query('LOCK TABLE qr_tags IN SHARE ROW EXCLUSIVE MODE');
       const nextResult = await client.query(
-        `SELECT COALESCE(MAX(SUBSTRING(token FROM '^CP-QAR-([0-9]+)
+        "SELECT COALESCE(MAX(SUBSTRING(token FROM 8)::int),0)+1 AS next_no FROM qr_tags WHERE token ~ '^CP-QAR-[0-9]+$'"
+      );
+      let nextNo = Number(nextResult.rows[0]?.next_no || 1);
 
+      const items = [];
+      for (let i = 0; i < count; i++) {
+        const token = 'CP-QAR-' + String(nextNo++).padStart(2, '0');
+        const r = await client.query(
+          "INSERT INTO qr_tags(token,status) VALUES($1,'unassigned') RETURNING id,token,status",
+          [token]
+        );
+        items.push(r.rows[0]);
+      }
+
+      await client.query('COMMIT');
+      res.status(201).json({ ok: true, items });
+    } catch (e) {
+      await client.query('ROLLBACK');
+      console.error(e);
+      res.status(500).json({ error: 'SERVER_ERROR' });
+    } finally {
+      client.release();
+    }
+  });
   app.patch('/api/admin/manage/qr/:token', guard, async (req, res) => {
     const token = normalizeToken(req.params.token);
     const action = String(req.body.action || '');
