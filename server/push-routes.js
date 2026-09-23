@@ -24,7 +24,12 @@ async function accessToken(){
 }
 
 module.exports=function registerPushRoutes(app,pool){
-  if(app.locals.heycarPush)return app.locals.heycarPush;
+  const existing=app.locals.heycarPush;
+  if(existing&&(typeof existing.sendOwner==='function'||typeof existing.send==='function'))return existing;
+  if(existing){
+    console.warn('Replacing invalid Cepqar push service instance');
+    delete app.locals.heycarPush;
+  }
   let ready=false;
   async function schema(){
     if(ready)return;
