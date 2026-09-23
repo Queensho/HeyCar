@@ -13,7 +13,7 @@ import 'owner_auth.dart';
 import 'driver_auth.dart';
 
 const _apiBase='https://heycar-api-185-165-46-213.nip.io';
-const _generalChannel='cepqar_notifications_v6';
+const _generalChannel='cepqar_notifications_v7';
 const _callChannel='cepqar_calls_v4';
 const _callAcceptAction='cepqar_accept_call';
 const _callDeclineAction='cepqar_decline_call';
@@ -149,7 +149,7 @@ class PushNotifications{
         _generalChannel,
         'Cepqar Bildirimleri',
         description:'Araç bildirimleri ve mesajlar',
-        importance:Importance.high,
+        importance:Importance.max,
         playSound:true,
         enableVibration:true,
       ));
@@ -329,7 +329,7 @@ class PushNotifications{
     if(body.isEmpty&&plate.isEmpty&&serverTitle.isEmpty)return;
     final title=plate.isNotEmpty?'Cepqar • $plate':(serverTitle.isNotEmpty?serverTitle:'Cepqar');
     final details=NotificationDetails(
-      android:AndroidNotificationDetails(_generalChannel,'Cepqar Bildirimleri',channelDescription:'Araç bildirimleri ve mesajlar',importance:Importance.high,priority:Priority.high,autoCancel:true,visibility:NotificationVisibility.public,playSound:true,enableVibration:true,icon:'ic_stat_cepqar',largeIcon:const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),styleInformation:BigTextStyleInformation(body,contentTitle:title)),
+      android:AndroidNotificationDetails(_generalChannel,'Cepqar Bildirimleri',channelDescription:'Araç bildirimleri ve mesajlar',importance:Importance.max,priority:Priority.high,autoCancel:true,visibility:NotificationVisibility.public,playSound:true,enableVibration:true,icon:'ic_stat_cepqar',largeIcon:const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),styleInformation:BigTextStyleInformation(body,contentTitle:title)),
       iOS:const DarwinNotificationDetails(presentAlert:true,presentBadge:true,presentSound:true),
     );
     final key=(data['notificationId']??m.messageId??DateTime.now().millisecondsSinceEpoch.toString()).toString();
