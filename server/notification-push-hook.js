@@ -57,10 +57,11 @@ async function sendQrNotificationPush({ app, push: providedPush, qr, type, messa
       return {attempted:0,delivered:0,skipped:'OWNER_SENDER_MISSING'};
     }
 
+    const notificationTitle=plate?`Cepqar • ${plate.toUpperCase()}`:'Cepqar';
     const ownerResult=await ownerSender(
       ownerId,
       payload,
-      plate||titles[type]||'Cepqar',
+      notificationTitle,
       body,
     );
 
@@ -69,7 +70,7 @@ async function sendQrNotificationPush({ app, push: providedPush, qr, type, messa
       driverResult=await push.sendDriver(
         routedRecipient,
         {...payload,recipientType:'driver'},
-        plate||titles[type]||'Cepqar',
+        notificationTitle,
         body,
       );
     }
