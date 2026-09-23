@@ -8,14 +8,17 @@ function normalizeToken(raw) {
 }
 
 module.exports = function registerCallRoutes(app, pool) {
-  registerPushRoutes(app, pool);
+  const pushService=registerPushRoutes(app, pool);
   async function expireCalls() {
     await pool.query(`UPDATE anonymous_calls SET status='missed', ended_at=NOW() WHERE status='ringing' AND expires_at<=NOW()`);
   }
 
   async function sendRecipientPush(recipientId, recipientType, data, title, body, ownerId=null) {
-    const push=app.locals.heycarPush;
-    if(!push)return {owner:{attempted:0,delivered:0},driver:null};
+    const push=pushService||app.locals.heycarPush;
+    if(!push){
+      console.error('Call push skipped',{reason:'PUSH_SERVICE_MISSING',callId:String(data.callId||''),recipientId:String(recipientId||''),recipientType});
+      return {owner:{attempted:0,delivered:0},driver:null};
+    }
 
     const ownerTarget=String(ownerId||recipientId||'');
     const ownerSender=push.sendOwner||push.send;
