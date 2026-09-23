@@ -25,4 +25,7 @@ CREATE TABLE IF NOT EXISTS admin_promos (
 CREATE INDEX IF NOT EXISTS idx_admin_promos_active
   ON admin_promos(audience,is_active,starts_at,ends_at);
 
+ALTER TABLE admin_promos OWNER TO heycar_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE admin_promos TO heycar_user;
+
 COMMIT;
