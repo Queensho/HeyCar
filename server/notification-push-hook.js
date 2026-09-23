@@ -7,12 +7,19 @@ function notificationPushEnabled(type, settings) {
   );
 }
 
-async function sendQrNotificationPush({ app, qr, type, message, notificationId, recipientUserId, token, getPrivacy }) {
+async function sendQrNotificationPush({ app, push: providedPush, qr, type, message, notificationId, recipientUserId, token, getPrivacy }) {
   try {
-    const push=app.locals.heycarPush;
-    if(!push)return;
-    const settings=await getPrivacy(String(qr.owner_id));
-    if(!notificationPushEnabled(type,settings))return;
+    const ownerId=String(qr.owner_id);
+    const push=providedPush||app.locals.heycarPush;
+    if(!push){
+      console.error('QR push skipped',{reason:'PUSH_SERVICE_MISSING',type,ownerId,notificationId:String(notificationId)});
+      return {attempted:0,delivered:0,skipped:'PUSH_SERVICE_MISSING'};
+    }
+    const settings=await getPrivacy(ownerId);
+    if(!notificationPushEnabled(type,settings)){
+      console.warn('QR push skipped',{reason:'NOTIFICATION_DISABLED',type,ownerId,notificationId:String(notificationId)});
+      return {attempted:0,delivered:0,skipped:'NOTIFICATION_DISABLED'};
+    }
 
     let plate=String(qr.plate||'').trim();
     if(!plate&&qr.vehicle_id){
@@ -30,7 +37,6 @@ async function sendQrNotificationPush({ app, qr, type, message, notificationId, 
       lights_on:'Farlarınız Açık'
     };
     const body=message||titles[type]||'Aracınız için yeni bir bildirim var';
-    const ownerId=String(qr.owner_id);
     const routedRecipient=String(recipientUserId||ownerId);
     const payload={
       type:type==='message'?'message':'vehicle_notification',
@@ -46,7 +52,10 @@ async function sendQrNotificationPush({ app, qr, type, message, notificationId, 
     };
 
     const ownerSender=push.sendOwner||push.send;
-    if(!ownerSender)return;
+    if(typeof ownerSender!=='function'){
+      console.error('QR push skipped',{reason:'OWNER_SENDER_MISSING',type,ownerId,notificationId:String(notificationId)});
+      return {attempted:0,delivered:0,skipped:'OWNER_SENDER_MISSING'};
+    }
 
     const ownerResult=await ownerSender(
       ownerId,
