@@ -1,10 +1,14 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'admin_requests_page.dart';
+import 'admin_download.dart';
 
 const _navy = Color(0xFF060A18);
 const _purple = Color(0xFFB100FF);
@@ -497,28 +501,139 @@ class QrPage extends StatefulWidget{
 }
 class _QrPageState extends State<QrPage>{
   final search=TextEditingController();
+  final GlobalKey _stickerKey=GlobalKey();
   String publicUrl(String token)=>'$_publicBase?tag=${Uri.encodeQueryComponent(token)}';
-  String qrPng(String token)=>'https://quickchart.io/qr?text=${Uri.encodeQueryComponent(publicUrl(token))}&size=1000&margin=4&format=png';
+
+  Future<void> _downloadSticker(String token) async{
+    try{
+      await WidgetsBinding.instance.endOfFrame;
+      final boundary=_stickerKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      if(boundary==null)throw Exception('Etiket görseli hazırlanamadı.');
+      final image=await boundary.toImage(pixelRatio:4);
+      final data=await image.toByteData(format:ui.ImageByteFormat.png);
+      image.dispose();
+      if(data==null)throw Exception('PNG oluşturulamadı.');
+      await saveAdminPng(data.buffer.asUint8List(),'cepqar-etiket-$token.png');
+    }catch(e){
+      if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString().replaceFirst('Exception: ',''))));
+    }
+  }
+
+  Widget _sticker(String token,String url)=>Container(
+    color:Colors.white,
+    padding:const EdgeInsets.fromLTRB(18,18,18,16),
+    child:Column(children:[
+      Expanded(child:Padding(
+        padding:const EdgeInsets.symmetric(horizontal:18),
+        child:LayoutBuilder(builder:(context,c){
+          final s=c.maxWidth<c.maxHeight?c.maxWidth:c.maxHeight;
+          final dot=s*.075;
+          final inset=s*.070;
+          return Center(child:SizedBox(width:s,height:s,child:Stack(children:[
+            Positioned.fill(child:QrImageView(
+              data:url,
+              version:QrVersions.auto,
+              padding:EdgeInsets.zero,
+              backgroundColor:Colors.white,
+              eyeStyle:const QrEyeStyle(eyeShape:QrEyeShape.square,color:Colors.black),
+              dataModuleStyle:const QrDataModuleStyle(dataModuleShape:QrDataModuleShape.square,color:Colors.black),
+            )),
+            Positioned(left:inset,top:inset,width:dot,height:dot,child:_finderDot()),
+            Positioned(right:inset,top:inset,width:dot,height:dot,child:_finderDot()),
+            Positioned(left:inset,bottom:inset,width:dot,height:dot,child:_finderDot()),
+          ])));
+        }),
+      )),
+      const SizedBox(height:8),
+      const FittedBox(fit:BoxFit.scaleDown,child:Text('QR KODU OKUT',style:TextStyle(color:Color(0xFF070B24),fontSize:30,fontWeight:FontWeight.w900,letterSpacing:.4))),
+      const SizedBox(height:12),
+      Container(
+        width:double.infinity,height:58,padding:const EdgeInsets.symmetric(horizontal:18),
+        decoration:BoxDecoration(
+          color:const Color(0xFFEBD9FF),
+          borderRadius:BorderRadius.circular(24),
+        ),
+        child:FittedBox(
+          fit:BoxFit.scaleDown,alignment:Alignment.centerLeft,
+          child:RichText(text:TextSpan(children:[
+            const TextSpan(text:'Etiket Kodu:  ',style:TextStyle(color:Color(0xFF6A32E8),fontSize:17,fontWeight:FontWeight.w500)),
+            TextSpan(text:token,style:const TextStyle(color:Color(0xFF7B22F2),fontSize:23,fontWeight:FontWeight.w900,letterSpacing:.2)),
+          ])),
+        ),
+      ),
+    ]),
+  );
+
+  Widget _finderDot()=>Container(
+    decoration:BoxDecoration(
+      color:const Color(0xFF8428FF),
+      borderRadius:BorderRadius.circular(2.5),
+      boxShadow:[BoxShadow(color:const Color(0xFF8428FF).withValues(alpha:.16),blurRadius:3)],
+    ),
+  );
 
   Future<void> showQr(Map<String,dynamic> e) async{
     final token=e['token']?.toString()??''; if(token.isEmpty)return;
-    final png=qrPng(token); final url=publicUrl(token);
+    final url=publicUrl(token);
     if(!mounted)return;
-    await showDialog(context:context,builder:(ctx)=>Dialog(child:ConstrainedBox(constraints:const BoxConstraints(maxWidth:430),child:Padding(padding:const EdgeInsets.all(22),child:Column(mainAxisSize:MainAxisSize.min,children:[
-      const Text('QR Görseli',style:TextStyle(fontSize:22,fontWeight:FontWeight.w900)),const SizedBox(height:6),Text(token,style:const TextStyle(fontWeight:FontWeight.w800,color:_muted)),const SizedBox(height:16),
-      Container(padding:const EdgeInsets.all(14),color:Colors.white,child:Image.network(png,width:280,height:280,errorBuilder:(_,__,___)=>const SizedBox(width:280,height:280,child:Center(child:Text('QR görseli yüklenemedi'))))),
-      const SizedBox(height:10),SelectableText(url,textAlign:TextAlign.center,style:const TextStyle(fontSize:12,color:_muted)),const SizedBox(height:16),
-      Row(children:[Expanded(child:OutlinedButton.icon(onPressed:()=>launchUrl(Uri.parse(url),mode:LaunchMode.externalApplication),icon:const Icon(Icons.open_in_new),label:const Text('QR sayfasını aç'))),const SizedBox(width:10),Expanded(child:FilledButton.icon(style:FilledButton.styleFrom(backgroundColor:_orange,foregroundColor:Colors.black),onPressed:()=>launchUrl(Uri.parse(png),mode:LaunchMode.externalApplication),icon:const Icon(Icons.download_rounded),label:const Text('PNG aç / indir')))]),
-    ])))));
+    await showDialog(context:context,builder:(ctx)=>Dialog(
+      backgroundColor:const Color(0xFF080D22),
+      shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(24),side:BorderSide(color:_purple.withValues(alpha:.42))),
+      child:ConstrainedBox(
+        constraints:const BoxConstraints(maxWidth:460),
+        child:Padding(padding:const EdgeInsets.all(18),child:Column(mainAxisSize:MainAxisSize.min,children:[
+          const Text('QR Etiketi',style:TextStyle(fontSize:22,fontWeight:FontWeight.w900,color:Colors.white)),
+          const SizedBox(height:4),
+          Text(token,style:const TextStyle(fontWeight:FontWeight.w800,color:_muted,fontSize:13)),
+          const SizedBox(height:14),
+          ConstrainedBox(
+            constraints:const BoxConstraints(maxWidth:400),
+            child:AspectRatio(aspectRatio:1,child:RepaintBoundary(key:_stickerKey,child:_sticker(token,url))),
+          ),
+          const SizedBox(height:12),
+          Row(children:[
+            Expanded(child:OutlinedButton.icon(
+              onPressed:()=>launchUrl(Uri.parse(url),mode:LaunchMode.externalApplication),
+              icon:const Icon(Icons.open_in_new_rounded),
+              label:const Text('QR sayfasını aç',textAlign:TextAlign.center),
+            )),
+            const SizedBox(width:10),
+            Expanded(child:FilledButton.icon(
+              style:FilledButton.styleFrom(backgroundColor:_purple,foregroundColor:Colors.white),
+              onPressed:()=>_downloadSticker(token),
+              icon:const Icon(Icons.download_rounded),
+              label:const Text('Etiket PNG indir',textAlign:TextAlign.center),
+            )),
+          ]),
+        ])),
+      ),
+    ));
   }
 
-  @override Widget build(BuildContext context){final q=search.text.toLowerCase();final r=widget.rows.where((e)=>'${e['token']} ${e['plate']} ${e['owner_name']}'.toLowerCase().contains(q)).toList();return ListView(padding:const EdgeInsets.all(22),children:[
-    Row(children:[const Expanded(child:Text('QR Yönetimi',style:TextStyle(fontSize:22,fontWeight:FontWeight.w900,color:Colors.white))),PopupMenuButton<int>(onSelected:widget.create,itemBuilder:(_)=>const[PopupMenuItem(value:1,child:Text('1 QR üret')),PopupMenuItem(value:10,child:Text('10 QR üret')),PopupMenuItem(value:50,child:Text('50 QR üret'))],child:const Chip(avatar:Icon(Icons.add),label:Text('Yeni QR üret')))]),
-    const SizedBox(height:14),TextField(controller:search,onChanged:(_)=>setState((){}),decoration:const InputDecoration(prefixIcon:Icon(Icons.search),hintText:'Token, plaka veya kullanıcı ara',filled:true,fillColor:_card2,border:OutlineInputBorder(borderSide:BorderSide.none))),const SizedBox(height:14),
-    ...r.map((e)=>Card(elevation:0,child:Padding(padding:const EdgeInsets.symmetric(vertical:6),child:ListTile(leading:const Icon(Icons.qr_code_2_rounded,color:_orange,size:34),title:Text(e['token']?.toString()??'-',style:const TextStyle(fontWeight:FontWeight.w900)),subtitle:Text('${e['plate']??'Bağlı araç yok'} • ${e['owner_name']??''}'),onTap:()=>showQr(e),trailing:Wrap(spacing:4,children:[IconButton(tooltip:'QR Görseli',onPressed:()=>showQr(e),icon:const Icon(Icons.image_outlined,color:_orange)),PopupMenuButton<String>(onSelected:(a)=>widget.action(e['token'].toString(),a),itemBuilder:(_)=>[if(e['status']=='disabled')const PopupMenuItem(value:'enable',child:Text('Aktif et'))else const PopupMenuItem(value:'disable',child:Text('Devre dışı bırak')),if(e['vehicle_id']!=null)const PopupMenuItem(value:'unbind',child:Text('Araçtan ayır'))])]))))),
-  ]);}
+  @override Widget build(BuildContext context){
+    final q=search.text.toLowerCase();
+    final r=widget.rows.where((e)=>'${e['token']} ${e['plate']} ${e['owner_name']}'.toLowerCase().contains(q)).toList();
+    return ListView(padding:const EdgeInsets.all(22),children:[
+      Row(children:[const Expanded(child:Text('QR Yönetimi',style:TextStyle(fontSize:22,fontWeight:FontWeight.w900,color:Colors.white))),PopupMenuButton<int>(onSelected:widget.create,itemBuilder:(_)=>const[PopupMenuItem(value:1,child:Text('1 QR üret')),PopupMenuItem(value:10,child:Text('10 QR üret')),PopupMenuItem(value:50,child:Text('50 QR üret'))],child:const Chip(avatar:Icon(Icons.add),label:Text('Yeni QR üret')))]),
+      const SizedBox(height:14),
+      TextField(controller:search,onChanged:(_)=>setState((){}),decoration:const InputDecoration(prefixIcon:Icon(Icons.search),hintText:'Token, plaka veya kullanıcı ara',filled:true,fillColor:_card2,border:OutlineInputBorder(borderSide:BorderSide.none))),
+      const SizedBox(height:14),
+      ...r.map((e)=>Card(elevation:0,child:Padding(padding:const EdgeInsets.symmetric(vertical:6),child:ListTile(
+        leading:const Icon(Icons.qr_code_2_rounded,color:_purple,size:34),
+        title:Text(e['token']?.toString()??'-',style:const TextStyle(fontWeight:FontWeight.w900)),
+        subtitle:Text('${e['plate']??'Bağlı araç yok'} • ${e['owner_name']??''}'),
+        onTap:()=>showQr(e),
+        trailing:Wrap(spacing:4,children:[
+          IconButton(tooltip:'QR Etiketi',onPressed:()=>showQr(e),icon:const Icon(Icons.image_outlined,color:_purple)),
+          PopupMenuButton<String>(onSelected:(a)=>widget.action(e['token'].toString(),a),itemBuilder:(_)=>[
+            if(e['status']=='disabled')const PopupMenuItem(value:'enable',child:Text('Aktif et'))else const PopupMenuItem(value:'disable',child:Text('Devre dışı bırak')),
+            if(e['vehicle_id']!=null)const PopupMenuItem(value:'unbind',child:Text('Araçtan ayır')),
+          ]),
+        ]),
+      )))),
+    ]);
+  }
 }
-
 class ModerationPage extends StatelessWidget{
   const ModerationPage({super.key,required this.rows,required this.removeBackground,required this.resetTheme});final List<Map<String,dynamic>> rows;final Future<void> Function(String) removeBackground,resetTheme;
   @override Widget build(BuildContext context)=>ListView(padding:const EdgeInsets.all(22),children:[const Text('Kişiselleştirme Moderasyonu',style:TextStyle(fontSize:22,fontWeight:FontWeight.w900,color:Colors.white)),const SizedBox(height:14),...rows.map((e){final bg=e['background_path']?.toString();return Container(margin:const EdgeInsets.only(bottom:12),padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(18),border:Border.all(color:_line)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(e['plate']?.toString()??'-',style:const TextStyle(fontSize:17,fontWeight:FontWeight.w900)),Text('${e['owner_name']??'-'} • ${e['preset']??'classic'}',style:const TextStyle(color:_muted)),const SizedBox(height:8),Text(e['public_message']?.toString()??''),if(bg!=null&&bg.isNotEmpty)...[const SizedBox(height:10),ClipRRect(borderRadius:BorderRadius.circular(14),child:Image.network('$_baseUrl$bg',height:150,width:double.infinity,fit:BoxFit.cover))],const SizedBox(height:10),Wrap(spacing:8,children:[if(bg!=null&&bg.isNotEmpty)OutlinedButton(onPressed:()=>removeBackground(e['vehicle_id'].toString()),child:const Text('Arka planı kaldır')),FilledButton(onPressed:()=>resetTheme(e['vehicle_id'].toString()),child:const Text('Temayı sıfırla'))]) ]));})]);
