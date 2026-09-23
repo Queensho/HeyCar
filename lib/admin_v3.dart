@@ -103,8 +103,8 @@ class _AdminHomeState extends State<AdminHome> {
   int tab=0;
   bool loading=true;
   String? error;
-  List<Map<String,dynamic>> users=[],vehicles=[],qr=[],themes=[];
-  final tabs=const [('Genel Bakış',Icons.dashboard_rounded),('Kullanıcılar',Icons.people_alt_rounded),('Araçlar',Icons.directions_car_filled_rounded),('QR Yönetimi',Icons.qr_code_2_rounded),('Moderasyon',Icons.shield_rounded),('Düzeltme Talepleri',Icons.support_agent_rounded)];
+  List<Map<String,dynamic>> users=[],vehicles=[],qr=[],themes=[],promos=[];
+  final tabs=const [('Genel Bakış',Icons.dashboard_rounded),('Kullanıcılar',Icons.people_alt_rounded),('Araçlar',Icons.directions_car_filled_rounded),('QR Yönetimi',Icons.qr_code_2_rounded),('Moderasyon',Icons.shield_rounded),('Düzeltme Talepleri',Icons.support_agent_rounded),('Promo & Duyurular',Icons.campaign_rounded)];
   Map<String,String> get headers=>{'Authorization':'Bearer ${widget.token}','Content-Type':'application/json'};
 
   @override void initState(){super.initState();load();}
@@ -121,8 +121,8 @@ class _AdminHomeState extends State<AdminHome> {
   Future<void> load() async {
     setState((){loading=true;error=null;});
     try{
-      final r=await Future.wait([getJson('/api/admin/users'),getJson('/api/admin/vehicles'),getJson('/api/admin/manage/qr'),getJson('/api/admin/manage/moderation/themes')]);
-      if(!mounted)return; setState((){users=_list(r[0]);vehicles=_list(r[1]);qr=_list(r[2]);themes=_list(r[3]);});
+      final r=await Future.wait([getJson('/api/admin/users'),getJson('/api/admin/vehicles'),getJson('/api/admin/manage/qr'),getJson('/api/admin/manage/moderation/themes'),getJson('/api/admin/manage/promos')]);
+      if(!mounted)return; setState((){users=_list(r[0]);vehicles=_list(r[1]);qr=_list(r[2]);themes=_list(r[3]);promos=_list(r[4]);});
     }catch(e){if(mounted)setState(()=>error=e.toString().replaceFirst('Exception: ',''));}finally{if(mounted)setState(()=>loading=false);}
   }
   void snack(Object e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString().replaceFirst('Exception: ',''))));}
@@ -137,6 +137,9 @@ class _AdminHomeState extends State<AdminHome> {
   Future<void> qrAction(String token,String action) async {try{await send('PATCH','/api/admin/manage/qr/$token',{'action':action});await load();}catch(e){snack(e);}}
   Future<void> removeBg(String id) async {try{await send('DELETE','/api/admin/manage/moderation/themes/$id/background');await load();}catch(e){snack(e);}}
   Future<void> resetTheme(String id) async {try{await send('POST','/api/admin/manage/moderation/themes/$id/reset');await load();}catch(e){snack(e);}}
+  Future<void> createPromo(Map<String,dynamic> data) async {try{await send('POST','/api/admin/manage/promos',data);await load();}catch(e){snack(e);rethrow;}}
+  Future<void> setPromoActive(String id,bool active) async {try{await send('PATCH','/api/admin/manage/promos/$id',{'isActive':active});await load();}catch(e){snack(e);}}
+  Future<void> pushPromo(String id) async {try{final d=await send('POST','/api/admin/manage/promos/$id/push');final p=d['push'];if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(p is Map?'Push: ${p['delivered']??0}/${p['attempted']??0} teslim edildi.':'Push gönderildi.')));await load();}catch(e){snack(e);}}
 
   @override
   Widget build(BuildContext context){final wide=MediaQuery.sizeOf(context).width>=950;return Scaffold(
@@ -145,7 +148,7 @@ class _AdminHomeState extends State<AdminHome> {
   );}
   Widget side()=>Container(width:240,color:_navy,padding:const EdgeInsets.fromLTRB(18,26,18,18),child:Column(children:[const Align(alignment:Alignment.centerLeft,child:Text('HeyCar Admin',style:TextStyle(color:Colors.white,fontSize:24,fontWeight:FontWeight.w900))),const SizedBox(height:24),...List.generate(tabs.length,(i)=>ListTile(shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(14)),tileColor:tab==i?const Color(0x22FCA311):Colors.transparent,leading:Icon(tabs[i].$2,color:tab==i?_orange:Colors.white70),title:Text(tabs[i].$1,style:TextStyle(color:tab==i?Colors.white:Colors.white70)),onTap:()=>setState(()=>tab=i))),const Spacer(),TextButton.icon(onPressed:widget.onLogout,icon:const Icon(Icons.logout,color:Colors.white70),label:const Text('Çıkış',style:TextStyle(color:Colors.white70)))]));
   Widget top(bool wide)=>Container(height:70,color:Colors.white,padding:const EdgeInsets.symmetric(horizontal:22),child:Row(children:[Text(wide?tabs[tab].$1:'HeyCar Admin',style:const TextStyle(fontSize:21,fontWeight:FontWeight.w900)),const Spacer(),IconButton(onPressed:load,icon:const Icon(Icons.refresh)),if(!wide)IconButton(onPressed:widget.onLogout,icon:const Icon(Icons.logout))]));
-  Widget page(){switch(tab){case 1:return UsersPage(rows:users,open:openUser);case 2:return VehiclesPage(rows:vehicles,open:openVehicle);case 3:return QrPage(rows:qr,create:createQr,action:qrAction);case 4:return ModerationPage(rows:themes,removeBackground:removeBg,resetTheme:resetTheme);case 5:return AdminCorrectionRequestsPage(token:widget.token);default:return Dashboard(users:users,vehicles:vehicles,qr:qr,themes:themes);}}
+  Widget page(){switch(tab){case 1:return UsersPage(rows:users,open:openUser);case 2:return VehiclesPage(rows:vehicles,open:openVehicle);case 3:return QrPage(rows:qr,create:createQr,action:qrAction);case 4:return ModerationPage(rows:themes,removeBackground:removeBg,resetTheme:resetTheme);case 5:return AdminCorrectionRequestsPage(token:widget.token);case 6:return AdminPromoPage(rows:promos,onCreate:createPromo,onSetActive:setPromoActive,onPush:pushPromo);default:return Dashboard(users:users,vehicles:vehicles,qr:qr,themes:themes);}}
 }
 
 class Dashboard extends StatelessWidget{
@@ -193,6 +196,81 @@ class ModerationPage extends StatelessWidget{
   const ModerationPage({super.key,required this.rows,required this.removeBackground,required this.resetTheme});final List<Map<String,dynamic>> rows;final Future<void> Function(String) removeBackground,resetTheme;
   @override Widget build(BuildContext context)=>ListView(padding:const EdgeInsets.all(22),children:[const Text('Kişiselleştirme Moderasyonu',style:TextStyle(fontSize:28,fontWeight:FontWeight.w900)),const SizedBox(height:14),...rows.map((e){final bg=e['background_path']?.toString();return Container(margin:const EdgeInsets.only(bottom:12),padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(18),border:Border.all(color:_line)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(e['plate']?.toString()??'-',style:const TextStyle(fontSize:17,fontWeight:FontWeight.w900)),Text('${e['owner_name']??'-'} • ${e['preset']??'classic'}',style:const TextStyle(color:_muted)),const SizedBox(height:8),Text(e['public_message']?.toString()??''),if(bg!=null&&bg.isNotEmpty)...[const SizedBox(height:10),ClipRRect(borderRadius:BorderRadius.circular(14),child:Image.network('$_baseUrl$bg',height:150,width:double.infinity,fit:BoxFit.cover))],const SizedBox(height:10),Wrap(spacing:8,children:[if(bg!=null&&bg.isNotEmpty)OutlinedButton(onPressed:()=>removeBackground(e['vehicle_id'].toString()),child:const Text('Arka planı kaldır')),FilledButton(onPressed:()=>resetTheme(e['vehicle_id'].toString()),child:const Text('Temayı sıfırla'))]) ]));})]);
 }
+
+
+class AdminPromoPage extends StatefulWidget{
+  const AdminPromoPage({super.key,required this.rows,required this.onCreate,required this.onSetActive,required this.onPush});
+  final List<Map<String,dynamic>> rows;
+  final Future<void> Function(Map<String,dynamic>) onCreate;
+  final Future<void> Function(String,bool) onSetActive;
+  final Future<void> Function(String) onPush;
+  @override State<AdminPromoPage> createState()=>_AdminPromoPageState();
+}
+class _AdminPromoPageState extends State<AdminPromoPage>{
+  String filter='all';
+  String audienceLabel(String x)=>switch(x){'owner'=>'Araç sahipleri','business'=>'İşletmeler','both'=>'Her ikisi',_=>x};
+  String kindLabel(String x)=>x=='announcement'?'Duyuru':'Promo';
+  String dateText(dynamic raw){final d=DateTime.tryParse(raw?.toString()??'')?.toLocal();if(d==null)return '-';return '${d.day.toString().padLeft(2,'0')}.${d.month.toString().padLeft(2,'0')}.${d.year} ${d.hour.toString().padLeft(2,'0')}:${d.minute.toString().padLeft(2,'0')}';}
+
+  Future<void> createDialog() async {
+    final title=TextEditingController(),body=TextEditingController(),image=TextEditingController(),cta=TextEditingController(),url=TextEditingController();
+    final start=TextEditingController(text:DateTime.now().toUtc().toIso8601String());
+    final end=TextEditingController(text:DateTime.now().toUtc().add(const Duration(days:7)).toIso8601String());
+    String audience='owner',kind='promo';bool active=true,sendPush=true,busy=false;String? error;
+    await showDialog(context:context,builder:(dialog)=>StatefulBuilder(builder:(dialog,setD)=>AlertDialog(
+      title:const Text('Yeni Promo / Duyuru',style:TextStyle(fontWeight:FontWeight.w900)),
+      content:SizedBox(width:520,child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
+        Row(children:[
+          Expanded(child:DropdownButtonFormField<String>(initialValue:kind,decoration:const InputDecoration(labelText:'Tür',border:OutlineInputBorder()),items:const[DropdownMenuItem(value:'promo',child:Text('Promo')),DropdownMenuItem(value:'announcement',child:Text('Duyuru'))],onChanged:(v)=>setD(()=>kind=v??'promo'))),
+          const SizedBox(width:10),
+          Expanded(child:DropdownButtonFormField<String>(initialValue:audience,decoration:const InputDecoration(labelText:'Hedef kitle',border:OutlineInputBorder()),items:const[DropdownMenuItem(value:'owner',child:Text('Araç sahipleri')),DropdownMenuItem(value:'business',child:Text('İşletmeler')),DropdownMenuItem(value:'both',child:Text('Her ikisi'))],onChanged:(v)=>setD((){audience=v??'owner';if(audience=='business')sendPush=false;}))),
+        ]),
+        const SizedBox(height:10),_adminField(title,'Başlık'),const SizedBox(height:10),_adminField(body,'Açıklama',lines:4),
+        const SizedBox(height:10),_adminField(image,'Görsel URL (isteğe bağlı)'),const SizedBox(height:10),
+        Row(children:[Expanded(child:_adminField(cta,'Buton metni')),const SizedBox(width:10),Expanded(child:_adminField(url,'Yönlendirme linki'))]),
+        const SizedBox(height:10),_adminField(start,'Başlangıç (ISO tarih)'),const SizedBox(height:10),_adminField(end,'Bitiş (ISO tarih, boş olabilir)'),
+        SwitchListTile(contentPadding:EdgeInsets.zero,value:active,onChanged:(v)=>setD(()=>active=v),title:const Text('Aktif yayınla',style:TextStyle(fontWeight:FontWeight.w800))),
+        if(audience!='business')SwitchListTile(contentPadding:EdgeInsets.zero,value:sendPush,onChanged:(v)=>setD(()=>sendPush=v),title:const Text('Araç sahiplerine push bildirimi gönder',style:TextStyle(fontWeight:FontWeight.w800)),subtitle:const Text('Promo kartı ayrıca uygulama ana sayfasında gösterilir.')),
+        if(audience=='business')const Padding(padding:EdgeInsets.only(top:4),child:Align(alignment:Alignment.centerLeft,child:Text('İşletme duyuruları işletme panelinde gösterilir.',style:TextStyle(color:_muted)))),
+        if(error!=null)Padding(padding:const EdgeInsets.only(top:8),child:Text(error!,style:const TextStyle(color:Colors.red,fontWeight:FontWeight.w700))),
+      ]))),
+      actions:[TextButton(onPressed:busy?null:()=>Navigator.pop(dialog),child:const Text('Vazgeç')),FilledButton.icon(
+        onPressed:busy?null:()async{
+          if(title.text.trim().isEmpty||body.text.trim().isEmpty){setD(()=>error='Başlık ve açıklama zorunlu.');return;}
+          setD((){busy=true;error=null;});
+          try{
+            await widget.onCreate({'kind':kind,'audience':audience,'title':title.text.trim(),'body':body.text.trim(),'imageUrl':image.text.trim(),'ctaLabel':cta.text.trim(),'ctaUrl':url.text.trim(),'startsAt':start.text.trim(),'endsAt':end.text.trim().isEmpty?null:end.text.trim(),'isActive':active,'sendPush':sendPush});
+            if(dialog.mounted)Navigator.pop(dialog);
+          }catch(e){if(dialog.mounted)setD((){busy=false;error=e.toString().replaceFirst('Exception: ','');});}
+        },
+        icon:busy?const SizedBox(width:17,height:17,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)):const Icon(Icons.send_rounded),
+        label:Text(sendPush?'Yayınla ve Gönder':'Yayınla'),
+      )]
+    )));
+  }
+
+  @override Widget build(BuildContext context){
+    final rows=filter=='all'?widget.rows:widget.rows.where((x)=>x['audience']==filter||x['audience']=='both').toList();
+    return ListView(padding:const EdgeInsets.all(22),children:[
+      Row(children:[const Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('Promo & Duyurular',style:TextStyle(fontSize:28,fontWeight:FontWeight.w900)),SizedBox(height:4),Text('Araç sahipleri ve işletmelere tek panelden içerik yayınla.',style:TextStyle(color:_muted))])),FilledButton.icon(onPressed:createDialog,style:FilledButton.styleFrom(backgroundColor:_orange,foregroundColor:Colors.black),icon:const Icon(Icons.add_rounded),label:const Text('Yeni Ekle',style:TextStyle(fontWeight:FontWeight.w900)))]),
+      const SizedBox(height:16),
+      Wrap(spacing:8,children:[('all','Tümü'),('owner','Araç Sahipleri'),('business','İşletmeler')].map((e)=>ChoiceChip(label:Text(e.$2),selected:filter==e.$1,onSelected:(_)=>setState(()=>filter=e.$1))).toList()),
+      const SizedBox(height:16),
+      if(rows.isEmpty)Container(padding:const EdgeInsets.all(28),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(18),border:Border.all(color:_line)),child:const Center(child:Text('Henüz promo veya duyuru oluşturulmadı.',style:TextStyle(color:_muted))))
+      else ...rows.map((p){
+        final id=(p['id']??'').toString(),active=p['isActive']==true,aud=(p['audience']??'owner').toString(),kind=(p['kind']??'promo').toString();
+        return Container(margin:const EdgeInsets.only(bottom:12),padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(18),border:Border.all(color:_line)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          Row(children:[Container(padding:const EdgeInsets.symmetric(horizontal:9,vertical:5),decoration:BoxDecoration(color:(kind=='announcement'?Colors.blue:_orange).withValues(alpha:.14),borderRadius:BorderRadius.circular(20)),child:Text(kindLabel(kind),style:TextStyle(color:kind=='announcement'?Colors.blue.shade700:Colors.orange.shade900,fontWeight:FontWeight.w900,fontSize:11))),const SizedBox(width:7),Container(padding:const EdgeInsets.symmetric(horizontal:9,vertical:5),decoration:BoxDecoration(color:_navy.withValues(alpha:.08),borderRadius:BorderRadius.circular(20)),child:Text(audienceLabel(aud),style:const TextStyle(fontWeight:FontWeight.w800,fontSize:11))),const Spacer(),Switch(value:active,onChanged:(v)=>widget.onSetActive(id,v))]),
+          const SizedBox(height:7),Text((p['title']??'').toString(),style:const TextStyle(fontSize:18,fontWeight:FontWeight.w900)),const SizedBox(height:4),Text((p['body']??'').toString(),style:const TextStyle(color:_muted,height:1.35)),
+          const SizedBox(height:10),Wrap(spacing:14,runSpacing:6,children:[Text('Başlangıç: ${dateText(p['startsAt'])}',style:const TextStyle(fontSize:11,color:_muted)),Text('Bitiş: ${p['endsAt']==null?'-':dateText(p['endsAt'])}',style:const TextStyle(fontSize:11,color:_muted)),Text('Görüntülenme: ${p['viewCount']??0}',style:const TextStyle(fontSize:11,color:_muted)),Text('Tıklama: ${p['clickCount']??0}',style:const TextStyle(fontSize:11,color:_muted))]),
+          if((p['pushSentAt']??'').toString().isNotEmpty)Padding(padding:const EdgeInsets.only(top:7),child:Text('Son push: ${p['pushDeliveredCount']??0}/${p['pushAttemptedCount']??0} teslim • ${dateText(p['pushSentAt'])}',style:const TextStyle(fontSize:11,color:Colors.green,fontWeight:FontWeight.w800))),
+          const SizedBox(height:10),Row(children:[if(aud!='business')OutlinedButton.icon(onPressed:()=>widget.onPush(id),icon:const Icon(Icons.notifications_active_outlined),label:const Text('Push Gönder')),if((p['ctaUrl']??'').toString().isNotEmpty)...[const SizedBox(width:8),TextButton.icon(onPressed:()=>launchUrl(Uri.parse((p['ctaUrl']).toString()),mode:LaunchMode.externalApplication),icon:const Icon(Icons.open_in_new,size:17),label:Text((p['ctaLabel']??'Linki Aç').toString().isEmpty?'Linki Aç':(p['ctaLabel']).toString()))]])
+        ]));
+      }),
+    ]);
+  }
+}
+Widget _adminField(TextEditingController c,String label,{int lines=1})=>TextField(controller:c,maxLines:lines,decoration:InputDecoration(labelText:label,border:const OutlineInputBorder()));
 
 class UserDetail extends StatefulWidget{const UserDetail({super.key,required this.data,required this.changeStatus});final Map<String,dynamic> data;final Future<void> Function(String) changeStatus;@override State<UserDetail> createState()=>_UserDetailState();}
 class _UserDetailState extends State<UserDetail>{bool busy=false;@override Widget build(BuildContext context){final u=Map<String,dynamic>.from(widget.data['user'] as Map);final vs=_list({'items':widget.data['vehicles']??[]});final active=u['status']=='active';return Scaffold(appBar:AppBar(title:const Text('Kullanıcı Detayı')),body:ListView(padding:const EdgeInsets.all(20),children:[detail('Ad Soyad',u['display_name']),detail('Telefon',u['phone']),detail('E-posta',u['email']),detail('Durum',u['status']),const SizedBox(height:10),FilledButton(onPressed:busy?null:()async{setState(()=>busy=true);await widget.changeStatus(active?'suspended':'active');if(mounted)Navigator.pop(context);},child:Text(active?'Kullanıcıyı askıya al':'Kullanıcıyı aktif et')),const SizedBox(height:20),const Text('Araçları',style:TextStyle(fontSize:20,fontWeight:FontWeight.w900)),...vs.map((v)=>detail(v['plate']?.toString()??'-','${v['make']??''} ${v['model']??''} • QR: ${v['qr_token']??'-'}'))]));}}
