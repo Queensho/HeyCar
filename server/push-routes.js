@@ -74,9 +74,12 @@ module.exports=function registerPushRoutes(app,pool){
         const tag=String(data.notificationId||data.messageId||data.eventId||Date.now());
         message.notification={title,body};
         message.android.notification={
-          channel_id:'cepqar_notifications_v7',
-          sound:'default',
-          tag:'cepqar_'+tag
+          channel_id:'cepqar_notifications_v8',
+          sound:'cepqar_notification',
+          tag:'cepqar_'+tag,
+          notification_priority:'PRIORITY_MAX',
+          default_vibrate_timings:true,
+          visibility:'PUBLIC'
         };
       }
       try{
