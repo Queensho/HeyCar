@@ -350,6 +350,9 @@ jobs:
           if 'coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:' not in text:
             if 'dependencies {' in text:text=text.replace('dependencies {','dependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")',1)
             else:text+='\n\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")\n}\n'
+          if 'com.google.firebase:firebase-messaging:' not in text:
+            if 'dependencies {' in text:text=text.replace('dependencies {','dependencies {\n    implementation("com.google.firebase:firebase-messaging:24.1.0")',1)
+            else:text+='\n\ndependencies {\n    implementation("com.google.firebase:firebase-messaging:24.1.0")\n}\n'
           p.write_text(text)
           PY
       - name: Add Android call and notification permissions
