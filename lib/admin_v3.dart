@@ -521,41 +521,38 @@ class _QrPageState extends State<QrPage>{
 
   Widget _sticker(String token,String url)=>Container(
     color:Colors.white,
-    padding:const EdgeInsets.fromLTRB(10,10,10,12),
+    padding:const EdgeInsets.fromLTRB(6,6,6,8),
     child:Column(children:[
-      Expanded(child:Padding(
-        padding:const EdgeInsets.symmetric(horizontal:6),
-        child:LayoutBuilder(builder:(context,c){
-          final s=c.maxWidth<c.maxHeight?c.maxWidth:c.maxHeight;
-          final dot=s*.075;
-          final inset=s*.070;
-          return Center(child:SizedBox(width:s,height:s,child:Stack(children:[
-            Positioned.fill(child:QrImageView(
-              data:url,
-              version:QrVersions.auto,
-              padding:EdgeInsets.zero,
-              backgroundColor:Colors.white,
-              eyeStyle:const QrEyeStyle(eyeShape:QrEyeShape.square,color:Colors.black),
-              dataModuleStyle:const QrDataModuleStyle(dataModuleShape:QrDataModuleShape.square,color:Colors.black),
-            )),
-            Positioned(left:inset,top:inset,width:dot,height:dot,child:_finderDot()),
-            Positioned(right:inset,top:inset,width:dot,height:dot,child:_finderDot()),
-            Positioned(left:inset,bottom:inset,width:dot,height:dot,child:_finderDot()),
-          ])));
-        }),
-      )),
-      const SizedBox(height:8),
+      Expanded(child:LayoutBuilder(builder:(context,c){
+        final s=c.maxWidth<c.maxHeight?c.maxWidth:c.maxHeight;
+        final dot=s*.075;
+        final inset=s*.070;
+        return Center(child:SizedBox(width:s,height:s,child:Stack(children:[
+          Positioned.fill(child:QrImageView(
+            data:url,
+            version:QrVersions.auto,
+            padding:EdgeInsets.zero,
+            backgroundColor:Colors.white,
+            eyeStyle:const QrEyeStyle(eyeShape:QrEyeShape.square,color:Colors.black),
+            dataModuleStyle:const QrDataModuleStyle(dataModuleShape:QrDataModuleShape.square,color:Colors.black),
+          )),
+          Positioned(left:inset,top:inset,width:dot,height:dot,child:_finderDot()),
+          Positioned(right:inset,top:inset,width:dot,height:dot,child:_finderDot()),
+          Positioned(left:inset,bottom:inset,width:dot,height:dot,child:_finderDot()),
+        ])));
+      })),
+      const SizedBox(height:4),
       Container(
-        width:double.infinity,height:54,padding:const EdgeInsets.symmetric(horizontal:18),
+        width:double.infinity,height:40,padding:const EdgeInsets.symmetric(horizontal:14),
         decoration:BoxDecoration(
-          color:const Color(0xFFEBD9FF),
-          borderRadius:BorderRadius.circular(24),
+          color:const Color(0xFFF0E4FC),
+          borderRadius:BorderRadius.circular(18),
         ),
         child:FittedBox(
           fit:BoxFit.scaleDown,alignment:Alignment.centerLeft,
           child:RichText(text:TextSpan(children:[
-            const TextSpan(text:'Etiket Kodu:  ',style:TextStyle(color:Color(0xFF6A32E8),fontSize:17,fontWeight:FontWeight.w500)),
-            TextSpan(text:token,style:const TextStyle(color:Color(0xFF7B22F2),fontSize:24,fontWeight:FontWeight.w900,letterSpacing:.2)),
+            const TextSpan(text:'Etiket Kodu:  ',style:TextStyle(color:Color(0xFF5A5570),fontSize:12,fontWeight:FontWeight.w500)),
+            TextSpan(text:token,style:const TextStyle(color:Color(0xFF5F2FBF),fontSize:17,fontWeight:FontWeight.w800,letterSpacing:.1)),
           ])),
         ),
       ),
