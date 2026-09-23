@@ -179,7 +179,7 @@ jobs:
           if 'com.google.firebase.messaging.default_notification_icon' not in text:
             text=text.replace('</application>','''        <meta-data\n            android:name="com.google.firebase.messaging.default_notification_icon"\n            android:resource="@drawable/ic_stat_cepqar" />\n    </application>''')
           if 'com.google.firebase.messaging.default_notification_channel_id' not in text:
-            text=text.replace('</application>','''        <meta-data\n            android:name="com.google.firebase.messaging.default_notification_channel_id"\n            android:value="cepqar_notifications_v7" />\n    </application>''')
+            text=text.replace('</application>','''        <meta-data\n            android:name="com.google.firebase.messaging.default_notification_channel_id"\n            android:value="cepqar_notifications_v8" />\n    </application>''')
           if 'com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver' not in text:
             text=text.replace('</application>','''        <receiver\n            android:exported="false"\n            android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver" />\n    </application>''')
           p.write_text(text)
@@ -249,6 +249,23 @@ jobs:
                   frames.append(struct.pack('<h',int(max(-1,min(1,s))*14500)))
               w.writeframes(b''.join(frames))
           print('Cepqar ringtone generated:',out,out.stat().st_size)
+          PY
+          python3 - <<'PY'
+          import math, struct, wave
+          from pathlib import Path
+          rate=22050
+          duration=1.25
+          out=Path('android/app/src/main/res/raw/cepqar_notification.wav')
+          with wave.open(str(out),'wb') as w:
+              w.setnchannels(1); w.setsampwidth(2); w.setframerate(rate)
+              frames=[]
+              for i in range(int(rate*duration)):
+                  t=i/rate
+                  env=min(1.0,t/0.025)*max(0.0,min(1.0,(duration-t)/0.35))
+                  s=(0.72*math.sin(2*math.pi*880*t)+0.28*math.sin(2*math.pi*1320*t))*env
+                  frames.append(struct.pack('<h',int(max(-1,min(1,s))*12500)))
+              w.writeframes(b''.join(frames))
+          print('Cepqar notification sound generated:',out,out.stat().st_size)
           PY
       - name: Get dependencies
         run: flutter pub get
