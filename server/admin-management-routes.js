@@ -12,6 +12,14 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
     ? adminGuard
     : (_req, res) => res.status(500).json({ error: 'ADMIN_GUARD_NOT_CONFIGURED' });
   const uploadDir = path.join(__dirname, 'uploads', 'public-themes');
+  const promoUploadDir = process.env.PROMO_UPLOAD_DIR || '/opt/heycar/uploads/promos';
+  try { fs.mkdirSync(promoUploadDir, { recursive: true }); } catch (e) { console.error('promo upload dir', e); }
+
+  app.get('/uploads/promos/:name', (req, res) => {
+    const name = path.basename(String(req.params.name || ''));
+    if (!/^[a-f0-9-]+\.(jpg|jpeg|png|webp)$/i.test(name)) return res.status(404).end();
+    return res.sendFile(path.join(promoUploadDir, name));
+  });
   registerAdminCorrectionRoutes(app, pool, guard);
 
   app.get('/api/admin/manage/users/:userId', guard, async (req, res) => {
@@ -321,6 +329,27 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
       return res.json({ ok: true });
     } catch (e) {
       return res.status(500).json({ error: 'SERVER_ERROR' });
+    }
+  });
+
+  app.post('/api/admin/manage/promos/media', guard, async (req, res) => {
+    try {
+      const raw = String((req.body || {}).data || '');
+      const m = raw.match(/^data:image\/(jpeg|jpg|png|webp);base64,(.+)$/);
+      if (!m) return res.status(400).json({ error: 'INVALID_IMAGE' });
+      const buf = Buffer.from(m[2], 'base64');
+      if (!buf.length || buf.length > 3000000) return res.status(413).json({ error: 'IMAGE_TOO_LARGE' });
+      const ext = m[1] === 'jpeg' ? 'jpg' : m[1];
+      const name = crypto.randomUUID() + '.' + ext;
+      fs.writeFileSync(path.join(promoUploadDir, name), buf, { mode: 0o644 });
+      const forwardedProto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
+      const proto = forwardedProto || req.protocol || 'https';
+      const host = req.get('host');
+      const base = String(process.env.PUBLIC_API_BASE_URL || (host ? (proto + '://' + host) : 'https://heycar-api-185-165-46-213.nip.io')).replace(/\/$/, '');
+      return res.status(201).json({ ok: true, url: base + '/uploads/promos/' + name });
+    } catch (e) {
+      console.error('admin promo media', e);
+      return res.status(500).json({ error: 'UPLOAD_FAILED' });
     }
   });
 
