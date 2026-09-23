@@ -13,8 +13,8 @@ import 'owner_auth.dart';
 import 'driver_auth.dart';
 
 const _apiBase='https://heycar-api-185-165-46-213.nip.io';
-const _generalChannel='cepqar_notifications_v8';
-const _callChannel='cepqar_calls_v5';
+const _generalChannel='cepqar_notifications_v9';
+const _callChannel='cepqar_calls_v6';
 const _callAcceptAction='cepqar_accept_call';
 const _callDeclineAction='cepqar_decline_call';
 final FlutterLocalNotificationsPlugin _local=FlutterLocalNotificationsPlugin();
@@ -151,7 +151,7 @@ class PushNotifications{
         description:'Araç bildirimleri ve mesajlar',
         importance:Importance.max,
         playSound:true,
-        sound:RawResourceAndroidNotificationSound('cepqar_notification'),
+        sound:RawResourceAndroidNotificationSound('bildirim'),
         enableVibration:true,
         audioAttributesUsage:AudioAttributesUsage.notification,
       ));
@@ -161,7 +161,7 @@ class PushNotifications{
         description:'Kilit ekranında tam ekran gelen Cepqar aramaları',
         importance:Importance.max,
         playSound:true,
-        sound:RawResourceAndroidNotificationSound('cepqar_call'),
+        sound:RawResourceAndroidNotificationSound('arama'),
         enableVibration:true,
         showBadge:false,
         audioAttributesUsage:AudioAttributesUsage.notificationRingtone,
@@ -293,14 +293,14 @@ class PushNotifications{
       android:const AndroidParams(
         isCustomNotification:false,
         isShowLogo:false,
-        ringtonePath:'system_ringtone_default',
+        ringtonePath:'arama',
         backgroundColor:'#111827',
         actionColor:'#22C55E',
         textColor:'#FFFFFF',
         textAccept:'Kabul Et',
         textDecline:'Reddet',
-        incomingCallNotificationChannelName:'Cepqar Gelen Aramalar v2',
-        missedCallNotificationChannelName:'Cepqar Cevapsız Aramalar v2',
+        incomingCallNotificationChannelName:'Cepqar Gelen Aramalar v3',
+        missedCallNotificationChannelName:'Cepqar Cevapsız Aramalar v3',
         isShowCallID:false,
         isShowFullLockedScreen:true,
         isImportant:true,
@@ -331,7 +331,7 @@ class PushNotifications{
     if(body.isEmpty&&plate.isEmpty&&serverTitle.isEmpty)return;
     final title=plate.isNotEmpty?'Cepqar • $plate':(serverTitle.isNotEmpty?serverTitle:'Cepqar');
     final details=NotificationDetails(
-      android:AndroidNotificationDetails(_generalChannel,'Cepqar Bildirimleri',channelDescription:'Araç bildirimleri ve mesajlar',importance:Importance.max,priority:Priority.max,autoCancel:true,visibility:NotificationVisibility.public,playSound:true,sound:const RawResourceAndroidNotificationSound('cepqar_notification'),enableVibration:true,category:AndroidNotificationCategory.message,icon:'ic_stat_cepqar',largeIcon:const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),styleInformation:BigTextStyleInformation(body,contentTitle:title)),
+      android:AndroidNotificationDetails(_generalChannel,'Cepqar Bildirimleri',channelDescription:'Araç bildirimleri ve mesajlar',importance:Importance.max,priority:Priority.max,autoCancel:true,visibility:NotificationVisibility.public,playSound:true,sound:const RawResourceAndroidNotificationSound('bildirim'),enableVibration:true,category:AndroidNotificationCategory.message,icon:'ic_stat_cepqar',largeIcon:const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),styleInformation:BigTextStyleInformation(body,contentTitle:title)),
       iOS:const DarwinNotificationDetails(presentAlert:true,presentBadge:true,presentSound:true),
     );
     final key=(data['notificationId']??m.messageId??DateTime.now().millisecondsSinceEpoch.toString()).toString();
