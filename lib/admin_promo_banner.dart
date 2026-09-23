@@ -71,7 +71,7 @@ class _AdminPromoBannerState extends State<AdminPromoBanner> {
   Widget build(BuildContext context) {
     if (loading || items.isEmpty) return const SizedBox.shrink();
     final width = MediaQuery.sizeOf(context).width;
-    final cardWidth = width > 430 ? 390.0 : (width - 30).clamp(280.0, 390.0);
+    final cardWidth = width > 430 ? 390.0 : (width - 30).clamp(280.0, 390.0).toDouble();
     return SizedBox(
       height: 146,
       child: ListView.separated(
