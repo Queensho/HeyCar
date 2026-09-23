@@ -103,7 +103,6 @@ class PushNotifications{
     if(initial!=null)await _openFromPush(Map<String,dynamic>.from(initial.data));
     final launch=await _local.getNotificationAppLaunchDetails();
     if(launch?.didNotificationLaunchApp==true&&launch?.notificationResponse!=null)await handleResponse(launch!.notificationResponse!);
-    await registerToken();
     FirebaseMessaging.instance.onTokenRefresh.listen((_)=>registerToken());
   }
 
@@ -191,10 +190,10 @@ class PushNotifications{
       }
 
       if(ownerLogged){
-        await OwnerAuth.restore();
-        if(OwnerAuth.refreshToken.isEmpty){
+        final valid=await OwnerAuth.ensureValidSession();
+        if(!valid){
           await prefs.setBool('push_token_registered',false);
-          await prefs.setString('push_token_last_error','OWNER_AUTH_MISSING');
+          await prefs.setString('push_token_last_error','OWNER_AUTH_INVALID');
           _tokenRetryAttempt=0;
           _tokenRetryTimer?.cancel();
           return;
