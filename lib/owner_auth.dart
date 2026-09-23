@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'onboarding_backend.dart';
 class OwnerAuth{
   static String accessToken='',refreshToken='';
+  static Future<bool>? _refreshInFlight;
 
   static Future<void> restore()async{
     final p=await SharedPreferences.getInstance();
@@ -51,21 +52,39 @@ class OwnerAuth{
   }
 
   static Future<bool> refresh()async{
+    final active=_refreshInFlight;
+    if(active!=null)return active;
+    final future=_refreshOnce();
+    _refreshInFlight=future;
+    try{
+      return await future;
+    }finally{
+      if(identical(_refreshInFlight,future))_refreshInFlight=null;
+    }
+  }
+
+  static Future<bool> _refreshOnce()async{
     if(refreshToken.isEmpty)await restore();
     if(refreshToken.isEmpty)return false;
+    final tokenToRotate=refreshToken;
     try{
       final r=await http.post(
         Uri.parse('${OnboardingBackend.baseUrl}/api/owner/auth/refresh'),
         headers:{'Content-Type':'application/json'},
-        body:jsonEncode({'refreshToken':refreshToken}),
+        body:jsonEncode({'refreshToken':tokenToRotate}),
       ).timeout(const Duration(seconds:15));
-      if(r.statusCode<200||r.statusCode>=300)return false;
+      if(r.statusCode<200||r.statusCode>=300){
+        // Another completed refresh may already have replaced this token.
+        await restore();
+        return refreshToken.isNotEmpty&&refreshToken!=tokenToRotate&&_accessTokenUsable();
+      }
       final d=jsonDecode(r.body);
       if(d is! Map)return false;
       await saveFrom(d);
       return accessToken.isNotEmpty&&refreshToken.isNotEmpty;
     }catch(_){
-      return false;
+      await restore();
+      return refreshToken.isNotEmpty&&refreshToken!=tokenToRotate&&_accessTokenUsable();
     }
   }
 
