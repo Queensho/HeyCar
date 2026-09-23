@@ -151,7 +151,7 @@ class _LoginPageState extends State<LoginPage> {
   );
 }
 
-class AdminHomeclass AdminHome extends StatefulWidget {
+class AdminHome extends StatefulWidget {
   const AdminHome({super.key, required this.token, required this.admin, required this.onLogout});
   final String token;
   final Map<String,dynamic>? admin;
@@ -165,7 +165,16 @@ class _AdminHomeState extends State<AdminHome> {
   bool loading=true;
   String? error;
   List<Map<String,dynamic>> users=[],vehicles=[],qr=[],themes=[],promos=[];
-  final tabs=const [('Genel Bakış',Icons.dashboard_rounded),('Kullanıcılar',Icons.people_alt_rounded),('Araçlar',Icons.directions_car_filled_rounded),('QR Yönetimi',Icons.qr_code_2_rounded),('Moderasyon',Icons.shield_rounded),('Düzeltme Talepleri',Icons.support_agent_rounded),('Promo & Duyurular',Icons.campaign_rounded)];
+  final tabs=const [
+    ('Genel Bakış',Icons.grid_view_rounded),
+    ('Kullanıcılar',Icons.people_alt_rounded),
+    ('Araçlar',Icons.directions_car_filled_rounded),
+    ('QR Yönetimi',Icons.qr_code_2_rounded),
+    ('Moderasyon',Icons.shield_rounded),
+    ('Düzeltme Talepleri',Icons.support_agent_rounded),
+    ('Promo & Duyurular',Icons.campaign_rounded),
+  ];
+  static const mobileTabIndexes=[0,1,2,3,4,6];
   Map<String,String> get headers=>{'Authorization':'Bearer ${widget.token}','Content-Type':'application/json'};
 
   @override void initState(){super.initState();load();}
@@ -203,11 +212,7 @@ class _AdminHomeState extends State<AdminHome> {
     if(bytes.length>3000000)throw Exception('Görsel 3 MB sınırını aşıyor.');
     final name=file.name.toLowerCase();
     final mime=name.endsWith('.png')?'png':name.endsWith('.webp')?'webp':'jpeg';
-    final r=await http.post(
-      Uri.parse('$_baseUrl/api/admin/manage/promos/media'),
-      headers:headers,
-      body:jsonEncode({'data':'data:image/$mime;base64,${base64Encode(bytes)}'}),
-    );
+    final r=await http.post(Uri.parse('$_baseUrl/api/admin/manage/promos/media'),headers:headers,body:jsonEncode({'data':'data:image/$mime;base64,${base64Encode(bytes)}'}));
     final d=_decode(r);
     if(r.statusCode<200||r.statusCode>=300)throw Exception(_message(d));
     final imageUrl=(d['url']??'').toString();
@@ -218,23 +223,268 @@ class _AdminHomeState extends State<AdminHome> {
   Future<void> setPromoActive(String id,bool active) async {try{await send('PATCH','/api/admin/manage/promos/$id',{'isActive':active});await load();}catch(e){snack(e);}}
   Future<void> pushPromo(String id) async {try{final d=await send('POST','/api/admin/manage/promos/$id/push');final p=d['push'];if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(p is Map?'Push: ${p['delivered']??0}/${p['attempted']??0} teslim edildi.':'Push gönderildi.')));await load();}catch(e){snack(e);}}
 
+  void openTab(int index)=>setState(()=>tab=index);
+
   @override
-  Widget build(BuildContext context){final wide=MediaQuery.sizeOf(context).width>=950;return Scaffold(
-    body:Row(children:[if(wide)side(),Expanded(child:SafeArea(child:Column(children:[top(wide),Expanded(child:loading?const Center(child:CircularProgressIndicator(color:_orange)):error!=null?Center(child:Text(error!)):page())])))]),
-    bottomNavigationBar:wide?null:NavigationBar(selectedIndex:tab,onDestinationSelected:(i)=>setState(()=>tab=i),destinations:tabs.map((e)=>NavigationDestination(icon:Icon(e.$2),label:e.$1)).toList()),
-  );}
-  Widget side()=>Container(width:240,color:_navy,padding:const EdgeInsets.fromLTRB(18,26,18,18),child:Column(children:[const Align(alignment:Alignment.centerLeft,child:Text('HeyCar Admin',style:TextStyle(color:Colors.white,fontSize:24,fontWeight:FontWeight.w900))),const SizedBox(height:24),...List.generate(tabs.length,(i)=>ListTile(shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(14)),tileColor:tab==i?const Color(0x22FCA311):Colors.transparent,leading:Icon(tabs[i].$2,color:tab==i?_orange:Colors.white70),title:Text(tabs[i].$1,style:TextStyle(color:tab==i?Colors.white:Colors.white70)),onTap:()=>setState(()=>tab=i))),const Spacer(),TextButton.icon(onPressed:widget.onLogout,icon:const Icon(Icons.logout,color:Colors.white70),label:const Text('Çıkış',style:TextStyle(color:Colors.white70)))]));
-  Widget top(bool wide)=>Container(height:70,color:Colors.white,padding:const EdgeInsets.symmetric(horizontal:22),child:Row(children:[Text(wide?tabs[tab].$1:'HeyCar Admin',style:const TextStyle(fontSize:21,fontWeight:FontWeight.w900)),const Spacer(),IconButton(onPressed:load,icon:const Icon(Icons.refresh)),if(!wide)IconButton(onPressed:widget.onLogout,icon:const Icon(Icons.logout))]));
-  Widget page(){switch(tab){case 1:return UsersPage(rows:users,open:openUser);case 2:return VehiclesPage(rows:vehicles,open:openVehicle);case 3:return QrPage(rows:qr,create:createQr,action:qrAction);case 4:return ModerationPage(rows:themes,removeBackground:removeBg,resetTheme:resetTheme);case 5:return AdminCorrectionRequestsPage(token:widget.token);case 6:return AdminPromoPage(rows:promos,onCreate:createPromo,onSetActive:setPromoActive,onPush:pushPromo,onUploadImage:uploadPromoImage);default:return Dashboard(users:users,vehicles:vehicles,qr:qr,themes:themes);}}
+  Widget build(BuildContext context){
+    final wide=MediaQuery.sizeOf(context).width>=1040;
+    final content=loading
+      ? const Center(child:CircularProgressIndicator(color:_purple))
+      : error!=null
+        ? Center(child:Column(mainAxisSize:MainAxisSize.min,children:[Text(error!,style:const TextStyle(color:Colors.white)),const SizedBox(height:12),FilledButton.icon(onPressed:load,icon:const Icon(Icons.refresh_rounded),label:const Text('Tekrar dene'))]))
+        : tab==0
+          ? Dashboard(users:users,vehicles:vehicles,qr:qr,themes:themes,promos:promos,onOpenTab:openTab,onRefresh:load,onLogout:widget.onLogout)
+          : Column(children:[_pageHeader(),Expanded(child:page())]);
+    return Scaffold(
+      backgroundColor:_bg,
+      body:SafeArea(child:Row(children:[
+        if(wide)_side(),
+        Expanded(child:Center(child:ConstrainedBox(constraints:BoxConstraints(maxWidth:1380),child:content))),
+      ])),
+      bottomNavigationBar:wide?null:_bottomNav(),
+    );
+  }
+
+  Widget _side()=>Container(
+    width:226,
+    margin:const EdgeInsets.fromLTRB(14,14,0,14),
+    padding:const EdgeInsets.fromLTRB(14,20,14,14),
+    decoration:BoxDecoration(
+      color:_card,borderRadius:BorderRadius.circular(24),
+      border:Border.all(color:_purple.withValues(alpha:.32)),
+      boxShadow:[BoxShadow(color:_purple.withValues(alpha:.10),blurRadius:28)],
+    ),
+    child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      Padding(padding:const EdgeInsets.symmetric(horizontal:8),child:_brand(fontSize:28)),
+      const SizedBox(height:24),
+      ...List.generate(tabs.length,(i)=>Padding(
+        padding:const EdgeInsets.only(bottom:6),
+        child:InkWell(
+          borderRadius:BorderRadius.circular(15),
+          onTap:()=>openTab(i),
+          child:AnimatedContainer(
+            duration:const Duration(milliseconds:180),
+            padding:const EdgeInsets.symmetric(horizontal:12,vertical:12),
+            decoration:BoxDecoration(
+              borderRadius:BorderRadius.circular(15),
+              gradient:tab==i?const LinearGradient(colors:[Color(0xFF5E1BC9),Color(0xFFB100FF)]):null,
+              border:Border.all(color:tab==i?_purple.withValues(alpha:.65):Colors.transparent),
+            ),
+            child:Row(children:[Icon(tabs[i].$2,color:tab==i?Colors.white:_muted,size:21),const SizedBox(width:10),Expanded(child:Text(tabs[i].$1,style:TextStyle(color:tab==i?Colors.white:_muted,fontSize:13,fontWeight:FontWeight.w800)))]),
+          ),
+        ),
+      )),
+      const Spacer(),
+      TextButton.icon(onPressed:widget.onLogout,icon:const Icon(Icons.logout_rounded,color:_muted),label:const Text('Çıkış',style:TextStyle(color:_muted,fontWeight:FontWeight.w700))),
+    ]),
+  );
+
+  Widget _pageHeader()=>Container(
+    height:64,
+    margin:const EdgeInsets.fromLTRB(14,12,14,0),
+    padding:const EdgeInsets.symmetric(horizontal:16),
+    decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(18),border:Border.all(color:_line)),
+    child:Row(children:[
+      Icon(tabs[tab].$2,color:_purple,size:23),const SizedBox(width:9),
+      Expanded(child:Text(tabs[tab].$1,style:const TextStyle(fontSize:18,fontWeight:FontWeight.w900,color:Colors.white))),
+      _roundAction(Icons.refresh_rounded,load),const SizedBox(width:8),_roundAction(Icons.logout_rounded,widget.onLogout),
+    ]),
+  );
+
+  Widget _bottomNav(){
+    var selected=mobileTabIndexes.indexOf(tab);
+    if(selected<0)selected=0;
+    return SafeArea(top:false,child:Container(
+      height:76,padding:const EdgeInsets.fromLTRB(6,8,6,8),
+      decoration:BoxDecoration(color:const Color(0xFF060A18),border:Border(top:BorderSide(color:_purple.withValues(alpha:.28))),boxShadow:[BoxShadow(color:_purple.withValues(alpha:.12),blurRadius:22)]),
+      child:Row(children:List.generate(mobileTabIndexes.length,(i){
+        final realIndex=mobileTabIndexes[i],active=i==selected;
+        final label=realIndex==3?'QR':realIndex==6?'Promolar':tabs[realIndex].$1;
+        return Expanded(child:InkWell(
+          borderRadius:BorderRadius.circular(15),
+          onTap:()=>openTab(realIndex),
+          child:AnimatedContainer(
+            duration:const Duration(milliseconds:180),
+            padding:const EdgeInsets.symmetric(vertical:6,horizontal:2),
+            decoration:BoxDecoration(borderRadius:BorderRadius.circular(15),gradient:active?const LinearGradient(colors:[Color(0xFF5A19B8),Color(0xFFAE26FF)]):null,boxShadow:active?[BoxShadow(color:_purple.withValues(alpha:.32),blurRadius:16)]:null),
+            child:Column(mainAxisSize:MainAxisSize.min,mainAxisAlignment:MainAxisAlignment.center,children:[Icon(tabs[realIndex].$2,color:active?Colors.white:_muted,size:22),const SizedBox(height:3),Text(label,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:active?Colors.white:_muted,fontSize:9.5,fontWeight:active?FontWeight.w900:FontWeight.w600))]),
+          ),
+        ));
+      })),
+    ));
+  }
+
+  Widget _roundAction(IconData icon,VoidCallback onTap)=>InkWell(
+    onTap:onTap,borderRadius:BorderRadius.circular(12),
+    child:Container(width:38,height:38,decoration:BoxDecoration(color:_card2,borderRadius:BorderRadius.circular(12),border:Border.all(color:_purple.withValues(alpha:.45))),child:Icon(icon,color:Colors.white,size:20)),
+  );
+
+  Widget page(){switch(tab){case 1:return UsersPage(rows:users,open:openUser);case 2:return VehiclesPage(rows:vehicles,open:openVehicle);case 3:return QrPage(rows:qr,create:createQr,action:qrAction);case 4:return ModerationPage(rows:themes,removeBackground:removeBg,resetTheme:resetTheme);case 5:return AdminCorrectionRequestsPage(token:widget.token);case 6:return AdminPromoPage(rows:promos,onCreate:createPromo,onSetActive:setPromoActive,onPush:pushPromo,onUploadImage:uploadPromoImage);default:return const SizedBox.shrink();}}
 }
+
+Widget _brand({double fontSize=34})=>RichText(text:TextSpan(children:[
+  TextSpan(text:'Cep',style:TextStyle(color:Colors.white,fontSize:fontSize,fontWeight:FontWeight.w900,letterSpacing:-1.2)),
+  TextSpan(text:'Qar',style:TextStyle(color:_purple,fontSize:fontSize,fontWeight:FontWeight.w900,letterSpacing:-1.2)),
+  TextSpan(text:'®',style:TextStyle(color:Colors.white70,fontSize:fontSize*.28,fontWeight:FontWeight.w700)),
+]));
 
 class Dashboard extends StatelessWidget{
-  const Dashboard({super.key,required this.users,required this.vehicles,required this.qr,required this.themes});
-  final List<Map<String,dynamic>> users,vehicles,qr,themes;
-  @override Widget build(BuildContext context)=>ListView(padding:const EdgeInsets.all(22),children:[const Text('Genel Bakış',style:TextStyle(fontSize:28,fontWeight:FontWeight.w900)),const SizedBox(height:18),Wrap(spacing:12,runSpacing:12,children:[stat('Kullanıcı',users.length,Icons.people),stat('Araç',vehicles.length,Icons.directions_car),stat('Aktif QR',qr.where((e)=>e['status']=='active').length,Icons.qr_code_2),stat('Özel tema',themes.length,Icons.palette)])]);
-}
-Widget stat(String t,int v,IconData i)=>Container(width:210,padding:const EdgeInsets.all(18),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(20),border:Border.all(color:_line)),child:Row(children:[CircleAvatar(backgroundColor:const Color(0xFFFFF1DB),child:Icon(i,color:_orange)),const SizedBox(width:12),Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('$v',style:const TextStyle(fontSize:25,fontWeight:FontWeight.w900)),Text(t,style:const TextStyle(color:_muted))]) ]));
+  const Dashboard({super.key,required this.users,required this.vehicles,required this.qr,required this.themes,required this.promos,required this.onOpenTab,required this.onRefresh,required this.onLogout});
+  final List<Map<String,dynamic>> users,vehicles,qr,themes,promos;
+  final ValueChanged<int> onOpenTab;
+  final VoidCallback onRefresh,onLogout;
 
+  int get activeQr=>qr.where((e)=>e['status']=='active').length;
+  int get activePromos=>promos.where((e)=>e['isActive']==true).length;
+  int get todayUsers{
+    final now=DateTime.now();
+    return users.where((u){final d=DateTime.tryParse((u['created_at']??'').toString())?.toLocal();return d!=null&&d.year==now.year&&d.month==now.month&&d.day==now.day;}).length;
+  }
+
+  @override
+  Widget build(BuildContext context)=>LayoutBuilder(builder:(context,constraints){
+    final compact=constraints.maxWidth<720;
+    final pad=compact?12.0:20.0;
+    return SingleChildScrollView(padding:EdgeInsets.fromLTRB(pad,12,pad,22),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      _hero(compact),
+      const SizedBox(height:12),
+      _stats(constraints.maxWidth-(pad*2),compact),
+      const SizedBox(height:12),
+      _section(
+        title:'Hızlı Erişim',subtitle:'Yönetim paneli işlemlerine hızlı ulaşın',icon:Icons.bolt_rounded,
+        trailing:'Tüm işlemleri gör',
+        child:_quickGrid(constraints.maxWidth-(pad*2),compact),
+      ),
+      const SizedBox(height:12),
+      _section(
+        title:'Canlı Durum',subtitle:'Sistemin anlık durumu',icon:Icons.bar_chart_rounded,
+        trailing:'Tüm durumu gör',
+        child:_liveGrid(constraints.maxWidth-(pad*2),compact),
+      ),
+      const SizedBox(height:12),
+      _section(
+        title:'Son Aktiviteler',subtitle:'',icon:Icons.schedule_rounded,trailing:'Tümünü Gör',
+        child:Column(children:[
+          _activity(Icons.support_agent_rounded,_blue,'${users.length} kayıtlı kullanıcı','Kullanıcı hesapları sistemde aktif','Şimdi'),
+          _activity(Icons.campaign_rounded,_pink,'$activePromos aktif promo yayında','Promo ve duyurular kullanıcılara gösteriliyor','Şimdi'),
+          _activity(Icons.qr_code_2_rounded,_green,'$activeQr QR aktif','Sistemde aktif olarak kullanılıyor','Şimdi'),
+        ]),
+      ),
+    ]));
+  });
+
+  Widget _hero(bool compact)=>Container(
+    height:compact?158:178,
+    padding:EdgeInsets.all(compact?18:24),
+    decoration:BoxDecoration(
+      color:_card,borderRadius:BorderRadius.circular(24),
+      border:Border.all(color:_purple.withValues(alpha:.42)),
+      boxShadow:[BoxShadow(color:_purple.withValues(alpha:.14),blurRadius:28)],
+    ),
+    child:Stack(children:[
+      Positioned.fill(child:ClipRRect(borderRadius:BorderRadius.circular(22),child:CustomPaint(painter:_AdminRoadPainter()))),
+      Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          _brand(fontSize:compact?34:43),
+          const SizedBox(height:10),
+          Text('Yönetim merkezi',style:TextStyle(color:Colors.white,fontSize:compact?18:23,fontWeight:FontWeight.w800)),
+          const SizedBox(height:4),
+          Text('Araç sahiplerine daha iyi bir deneyim ♡',style:TextStyle(color:_muted,fontSize:compact?12.5:15,fontWeight:FontWeight.w500)),
+        ])),
+        Row(children:[_heroButton(Icons.refresh_rounded,onRefresh),const SizedBox(width:9),_heroButton(Icons.logout_rounded,onLogout)]),
+      ]),
+      if(!compact)const Positioned(right:10,bottom:6,child:Text('Daha temiz\nDaha yaşanabilir\nşehirler için ♡',textAlign:TextAlign.right,style:TextStyle(color:Color(0xFFFF86F4),fontSize:14,fontStyle:FontStyle.italic,fontWeight:FontWeight.w700,height:1.15))),
+    ]),
+  );
+
+  Widget _heroButton(IconData icon,VoidCallback onTap)=>InkWell(onTap:onTap,borderRadius:BorderRadius.circular(14),child:Container(width:48,height:48,decoration:BoxDecoration(color:const Color(0xCC080D20),borderRadius:BorderRadius.circular(14),border:Border.all(color:_purple.withValues(alpha:.72)),boxShadow:[BoxShadow(color:_purple.withValues(alpha:.18),blurRadius:14)]),child:Icon(icon,color:Colors.white,size:24)));
+
+  Widget _stats(double width,bool compact){
+    const gap=10.0;final cols=compact?2:4;final itemWidth=(width-gap*(cols-1))/cols;
+    final data=[
+      ('${users.length}','Kullanıcı',Icons.people_alt_rounded,_green),
+      ('${vehicles.length}','Araç',Icons.directions_car_filled_rounded,_blue),
+      ('$activeQr','Aktif QR',Icons.qr_code_2_rounded,_green),
+      ('${themes.length}','Özel tema',Icons.palette_rounded,_purple),
+    ];
+    return _panel(child:Wrap(spacing:gap,runSpacing:gap,children:data.map((x)=>SizedBox(width:itemWidth,height:92,child:_metricCard(x.$1,x.$2,x.$3,x.$4))).toList()));
+  }
+
+  Widget _metricCard(String value,String label,IconData icon,Color dot)=>Container(
+    padding:const EdgeInsets.symmetric(horizontal:12,vertical:11),
+    decoration:_glowDecoration(radius:17),
+    child:Row(children:[
+      Container(width:43,height:43,decoration:BoxDecoration(shape:BoxShape.circle,gradient:const LinearGradient(colors:[Color(0xFF40106F),Color(0xFF8C19E8)]),border:Border.all(color:_purple.withValues(alpha:.45))),child:Icon(icon,color:_purple,size:23)),
+      const SizedBox(width:10),
+      Expanded(child:Column(mainAxisAlignment:MainAxisAlignment.center,crossAxisAlignment:CrossAxisAlignment.start,children:[
+        Row(children:[Text(value,style:const TextStyle(color:Colors.white,fontSize:23,fontWeight:FontWeight.w900)),const Spacer(),Container(width:8,height:8,decoration:BoxDecoration(shape:BoxShape.circle,color:dot,boxShadow:[BoxShadow(color:dot.withValues(alpha:.65),blurRadius:9)]))]),
+        Text(label,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Colors.white,fontSize:12.5,fontWeight:FontWeight.w600)),
+      ])),
+    ]),
+  );
+
+  Widget _section({required String title,required String subtitle,required IconData icon,required String trailing,required Widget child})=>_panel(child:Column(children:[
+    Row(children:[Icon(icon,color:_purple,size:27),const SizedBox(width:9),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(title,style:const TextStyle(color:Colors.white,fontSize:20,fontWeight:FontWeight.w900)),if(subtitle.isNotEmpty)Text(subtitle,style:const TextStyle(color:_muted,fontSize:12.5))])),Text(trailing,style:const TextStyle(color:Color(0xFFC96CFF),fontSize:11.5,fontWeight:FontWeight.w800)),const SizedBox(width:4),const Icon(Icons.arrow_forward_rounded,color:Color(0xFFC96CFF),size:17)]),
+    const SizedBox(height:12),child,
+  ]));
+
+  Widget _quickGrid(double width,bool compact){
+    const gap=10.0;final cols=width>=900?3:2;final itemWidth=(width-32-gap*(cols-1))/cols;
+    final data=[
+      ('Kullanıcılar','Kullanıcıları yönet',Icons.people_alt_rounded,1),
+      ('Araçlar','Araçları yönet',Icons.directions_car_filled_rounded,2),
+      ('QR Yönetimi','QR kodlarını yönet',Icons.qr_code_2_rounded,3),
+      ('Moderasyon','İçerikleri kontrol et',Icons.shield_rounded,4),
+      ('Düzeltme Talepleri','Gelen talepleri incele',Icons.support_agent_rounded,5),
+      ('Promo & Duyurular','Kampanya ve duyurular',Icons.campaign_rounded,6),
+    ];
+    return Wrap(spacing:gap,runSpacing:gap,children:data.map((x)=>SizedBox(width:itemWidth,height:compact?96:92,child:InkWell(borderRadius:BorderRadius.circular(17),onTap:()=>onOpenTab(x.$4),child:Container(padding:const EdgeInsets.symmetric(horizontal:12,vertical:11),decoration:_glowDecoration(radius:17),child:Row(children:[Container(width:44,height:44,decoration:BoxDecoration(shape:BoxShape.circle,color:_purple.withValues(alpha:.12),border:Border.all(color:_purple.withValues(alpha:.38))),child:Icon(x.$3,color:_purple,size:24)),const SizedBox(width:10),Expanded(child:Column(mainAxisAlignment:MainAxisAlignment.center,crossAxisAlignment:CrossAxisAlignment.start,children:[Text(x.$1,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Colors.white,fontSize:13.5,fontWeight:FontWeight.w900)),const SizedBox(height:3),Text(x.$2,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_muted,fontSize:11.5))])),const Icon(Icons.chevron_right_rounded,color:Color(0xFFC96CFF),size:24)]))))).toList());
+  }
+
+  Widget _liveGrid(double width,bool compact){
+    const gap=10.0;final cols=compact?3:3;final itemWidth=(width-32-gap*(cols-1))/cols;
+    final data=[
+      ('$activeQr','QR aktif',Icons.qr_code_2_rounded,_green),
+      ('$todayUsers','Bugün yeni kullanıcı',Icons.people_alt_rounded,_blue),
+      ('$activePromos','Aktif promo',Icons.campaign_rounded,_amber),
+    ];
+    return Wrap(spacing:gap,runSpacing:gap,children:data.map((x)=>SizedBox(width:itemWidth,height:82,child:Container(padding:const EdgeInsets.symmetric(horizontal:10,vertical:10),decoration:_glowDecoration(radius:16),child:Row(children:[Container(width:8,height:8,decoration:BoxDecoration(shape:BoxShape.circle,color:x.$4,boxShadow:[BoxShadow(color:x.$4.withValues(alpha:.6),blurRadius:9)])),const SizedBox(width:8),Expanded(child:Column(mainAxisAlignment:MainAxisAlignment.center,crossAxisAlignment:CrossAxisAlignment.start,children:[Text(x.$1,style:const TextStyle(color:Colors.white,fontSize:21,fontWeight:FontWeight.w900)),Text(x.$2,maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_muted,fontSize:10.5,fontWeight:FontWeight.w600))])),Icon(x.$3,color:_purple,size:23)])))).toList());
+  }
+
+  Widget _activity(IconData icon,Color color,String title,String subtitle,String time)=>Container(
+    margin:const EdgeInsets.only(bottom:8),padding:const EdgeInsets.symmetric(horizontal:12,vertical:10),
+    decoration:BoxDecoration(color:const Color(0xFF091329),borderRadius:BorderRadius.circular(15),border:Border.all(color:Colors.white.withValues(alpha:.06))),
+    child:Row(children:[
+      Container(width:42,height:42,decoration:BoxDecoration(shape:BoxShape.circle,color:color.withValues(alpha:.20),border:Border.all(color:color.withValues(alpha:.45))),child:Icon(icon,color:color,size:22)),
+      const SizedBox(width:10),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(title,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Colors.white,fontSize:13.5,fontWeight:FontWeight.w900)),const SizedBox(height:2),Text(subtitle,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_muted,fontSize:11.5))])),
+      const SizedBox(width:8),Column(crossAxisAlignment:CrossAxisAlignment.end,children:[Text(time,style:const TextStyle(color:_muted,fontSize:10.5)),const SizedBox(height:7),Container(width:7,height:7,decoration:BoxDecoration(shape:BoxShape.circle,color:_purple,boxShadow:[BoxShadow(color:_purple.withValues(alpha:.7),blurRadius:8)]))]),
+    ]),
+  );
+
+  Widget _panel({required Widget child})=>Container(
+    width:double.infinity,padding:const EdgeInsets.all(14),
+    decoration:BoxDecoration(color:const Color(0xFF070C1D),borderRadius:BorderRadius.circular(22),border:Border.all(color:_purple.withValues(alpha:.24)),boxShadow:[BoxShadow(color:_purple.withValues(alpha:.07),blurRadius:22)]),
+    child:child,
+  );
+
+  BoxDecoration _glowDecoration({double radius=18})=>BoxDecoration(
+    color:_card2,borderRadius:BorderRadius.circular(radius),
+    border:Border.all(color:_purple.withValues(alpha:.45)),
+    boxShadow:[BoxShadow(color:_purple.withValues(alpha:.13),blurRadius:14,spreadRadius:-2)],
+  );
+}
+
+class _AdminRoadPainter extends CustomPainter{
+  @override void paint(Canvas canvas,Size size){
+    final glow=Paint()..color=_purple.withValues(alpha:.55)..style=PaintingStyle.stroke..strokeWidth=3..maskFilter=const MaskFilter.blur(BlurStyle.normal,7);
+    final sharp=Paint()..color=_pink.withValues(alpha:.70)..style=PaintingStyle.stroke..strokeWidth=1.2;
+    final p1=Path()..moveTo(size.width*.46,size.height*.18)..quadraticBezierTo(size.width*.74,size.height*.34,size.width*.94,size.height*.12);
+    final p2=Path()..moveTo(size.width*.50,size.height*.28)..quadraticBezierTo(size.width*.76,size.height*.43,size.width*.99,size.height*.20);
+    final p3=Path()..moveTo(size.width*.56,size.height*.36)..quadraticBezierTo(size.width*.78,size.height*.49,size.width*.96,size.height*.33);
+    canvas.drawPath(p1,glow);canvas.drawPath(p2,glow);canvas.drawPath(p3,sharp);
+  }
+  @override bool shouldRepaint(covariant CustomPainter oldDelegate)=>false;
+}
 class UsersPage extends StatefulWidget{const UsersPage({super.key,required this.rows,required this.open});final List<Map<String,dynamic>> rows;final ValueChanged<Map<String,dynamic>> open;@override State<UsersPage> createState()=>_UsersPageState();}
 class _UsersPageState extends State<UsersPage>{final search=TextEditingController();@override Widget build(BuildContext context){final q=search.text.toLowerCase();final r=widget.rows.where((e)=>'${e['display_name']} ${e['phone']} ${e['email']}'.toLowerCase().contains(q)).toList();return listPage('Kullanıcılar',search,()=>setState((){}),r.map((e)=>rowCard(Icons.person,e['display_name']?.toString()??'İsimsiz','${e['phone']??'-'} • ${e['email']??'-'}',status(e['status']?.toString()??''),()=>widget.open(e))).toList());}}
 class VehiclesPage extends StatefulWidget{const VehiclesPage({super.key,required this.rows,required this.open});final List<Map<String,dynamic>> rows;final ValueChanged<Map<String,dynamic>> open;@override State<VehiclesPage> createState()=>_VehiclesPageState();}
