@@ -190,6 +190,17 @@ class PushNotifications{
         return;
       }
 
+      if(ownerLogged){
+        await OwnerAuth.restore();
+        if(OwnerAuth.refreshToken.isEmpty){
+          await prefs.setBool('push_token_registered',false);
+          await prefs.setString('push_token_last_error','OWNER_AUTH_MISSING');
+          _tokenRetryAttempt=0;
+          _tokenRetryTimer?.cancel();
+          return;
+        }
+      }
+
       final token=await FirebaseMessaging.instance.getToken().timeout(const Duration(seconds:20));
       if(token==null||token.trim().isEmpty)throw HttpException('FCM token is empty');
 
