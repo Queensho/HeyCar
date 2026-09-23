@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
+import 'package:image_picker/image_picker.dart';
 import 'admin_requests_page.dart';
 
 const _navy = Color(0xFF14213D);
@@ -137,6 +139,22 @@ class _AdminHomeState extends State<AdminHome> {
   Future<void> qrAction(String token,String action) async {try{await send('PATCH','/api/admin/manage/qr/$token',{'action':action});await load();}catch(e){snack(e);}}
   Future<void> removeBg(String id) async {try{await send('DELETE','/api/admin/manage/moderation/themes/$id/background');await load();}catch(e){snack(e);}}
   Future<void> resetTheme(String id) async {try{await send('POST','/api/admin/manage/moderation/themes/$id/reset');await load();}catch(e){snack(e);}}
+  Future<String> uploadPromoImage(XFile file) async {
+    final bytes=await file.readAsBytes();
+    if(bytes.length>3000000)throw Exception('Görsel 3 MB sınırını aşıyor.');
+    final name=file.name.toLowerCase();
+    final mime=name.endsWith('.png')?'png':name.endsWith('.webp')?'webp':'jpeg';
+    final r=await http.post(
+      Uri.parse('$_baseUrl/api/admin/manage/promos/media'),
+      headers:headers,
+      body:jsonEncode({'data':'data:image/$mime;base64,${base64Encode(bytes)}'}),
+    );
+    final d=_decode(r);
+    if(r.statusCode<200||r.statusCode>=300)throw Exception(_message(d));
+    final imageUrl=(d['url']??'').toString();
+    if(imageUrl.isEmpty)throw Exception('Görsel yüklenemedi.');
+    return imageUrl;
+  }
   Future<void> createPromo(Map<String,dynamic> data) async {try{await send('POST','/api/admin/manage/promos',data);await load();}catch(e){snack(e);rethrow;}}
   Future<void> setPromoActive(String id,bool active) async {try{await send('PATCH','/api/admin/manage/promos/$id',{'isActive':active});await load();}catch(e){snack(e);}}
   Future<void> pushPromo(String id) async {try{final d=await send('POST','/api/admin/manage/promos/$id/push');final p=d['push'];if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(p is Map?'Push: ${p['delivered']??0}/${p['attempted']??0} teslim edildi.':'Push gönderildi.')));await load();}catch(e){snack(e);}}
@@ -148,7 +166,7 @@ class _AdminHomeState extends State<AdminHome> {
   );}
   Widget side()=>Container(width:240,color:_navy,padding:const EdgeInsets.fromLTRB(18,26,18,18),child:Column(children:[const Align(alignment:Alignment.centerLeft,child:Text('HeyCar Admin',style:TextStyle(color:Colors.white,fontSize:24,fontWeight:FontWeight.w900))),const SizedBox(height:24),...List.generate(tabs.length,(i)=>ListTile(shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(14)),tileColor:tab==i?const Color(0x22FCA311):Colors.transparent,leading:Icon(tabs[i].$2,color:tab==i?_orange:Colors.white70),title:Text(tabs[i].$1,style:TextStyle(color:tab==i?Colors.white:Colors.white70)),onTap:()=>setState(()=>tab=i))),const Spacer(),TextButton.icon(onPressed:widget.onLogout,icon:const Icon(Icons.logout,color:Colors.white70),label:const Text('Çıkış',style:TextStyle(color:Colors.white70)))]));
   Widget top(bool wide)=>Container(height:70,color:Colors.white,padding:const EdgeInsets.symmetric(horizontal:22),child:Row(children:[Text(wide?tabs[tab].$1:'HeyCar Admin',style:const TextStyle(fontSize:21,fontWeight:FontWeight.w900)),const Spacer(),IconButton(onPressed:load,icon:const Icon(Icons.refresh)),if(!wide)IconButton(onPressed:widget.onLogout,icon:const Icon(Icons.logout))]));
-  Widget page(){switch(tab){case 1:return UsersPage(rows:users,open:openUser);case 2:return VehiclesPage(rows:vehicles,open:openVehicle);case 3:return QrPage(rows:qr,create:createQr,action:qrAction);case 4:return ModerationPage(rows:themes,removeBackground:removeBg,resetTheme:resetTheme);case 5:return AdminCorrectionRequestsPage(token:widget.token);case 6:return AdminPromoPage(rows:promos,onCreate:createPromo,onSetActive:setPromoActive,onPush:pushPromo);default:return Dashboard(users:users,vehicles:vehicles,qr:qr,themes:themes);}}
+  Widget page(){switch(tab){case 1:return UsersPage(rows:users,open:openUser);case 2:return VehiclesPage(rows:vehicles,open:openVehicle);case 3:return QrPage(rows:qr,create:createQr,action:qrAction);case 4:return ModerationPage(rows:themes,removeBackground:removeBg,resetTheme:resetTheme);case 5:return AdminCorrectionRequestsPage(token:widget.token);case 6:return AdminPromoPage(rows:promos,onCreate:createPromo,onSetActive:setPromoActive,onPush:pushPromo,onUploadImage:uploadPromoImage);default:return Dashboard(users:users,vehicles:vehicles,qr:qr,themes:themes);}}
 }
 
 class Dashboard extends StatelessWidget{
@@ -199,11 +217,12 @@ class ModerationPage extends StatelessWidget{
 
 
 class AdminPromoPage extends StatefulWidget{
-  const AdminPromoPage({super.key,required this.rows,required this.onCreate,required this.onSetActive,required this.onPush});
+  const AdminPromoPage({super.key,required this.rows,required this.onCreate,required this.onSetActive,required this.onPush,required this.onUploadImage});
   final List<Map<String,dynamic>> rows;
   final Future<void> Function(Map<String,dynamic>) onCreate;
   final Future<void> Function(String,bool) onSetActive;
   final Future<void> Function(String) onPush;
+  final Future<String> Function(XFile) onUploadImage;
   @override State<AdminPromoPage> createState()=>_AdminPromoPageState();
 }
 class _AdminPromoPageState extends State<AdminPromoPage>{
@@ -213,9 +232,12 @@ class _AdminPromoPageState extends State<AdminPromoPage>{
   String dateText(dynamic raw){final d=DateTime.tryParse(raw?.toString()??'')?.toLocal();if(d==null)return '-';return '${d.day.toString().padLeft(2,'0')}.${d.month.toString().padLeft(2,'0')}.${d.year} ${d.hour.toString().padLeft(2,'0')}:${d.minute.toString().padLeft(2,'0')}';}
 
   Future<void> createDialog() async {
-    final title=TextEditingController(),body=TextEditingController(),image=TextEditingController(),cta=TextEditingController(),url=TextEditingController();
+    final title=TextEditingController(),body=TextEditingController(),cta=TextEditingController(),url=TextEditingController();
     final start=TextEditingController(text:DateTime.now().toUtc().toIso8601String());
     final end=TextEditingController(text:DateTime.now().toUtc().add(const Duration(days:7)).toIso8601String());
+    final picker=ImagePicker();
+    XFile? image;
+    Uint8List? imageBytes;
     String audience='owner',kind='promo';bool active=true,sendPush=true,busy=false;String? error;
     await showDialog(context:context,builder:(dialog)=>StatefulBuilder(builder:(dialog,setD)=>AlertDialog(
       title:const Text('Yeni Promo / Duyuru',style:TextStyle(fontWeight:FontWeight.w900)),
@@ -226,7 +248,39 @@ class _AdminPromoPageState extends State<AdminPromoPage>{
           Expanded(child:DropdownButtonFormField<String>(initialValue:audience,decoration:const InputDecoration(labelText:'Hedef kitle',border:OutlineInputBorder()),items:const[DropdownMenuItem(value:'owner',child:Text('Araç sahipleri')),DropdownMenuItem(value:'business',child:Text('İşletmeler')),DropdownMenuItem(value:'both',child:Text('Her ikisi'))],onChanged:(v)=>setD((){audience=v??'owner';if(audience=='business')sendPush=false;}))),
         ]),
         const SizedBox(height:10),_adminField(title,'Başlık'),const SizedBox(height:10),_adminField(body,'Açıklama',lines:4),
-        const SizedBox(height:10),_adminField(image,'Görsel URL (isteğe bağlı)'),const SizedBox(height:10),
+        const SizedBox(height:10),
+        Container(
+          width:double.infinity,padding:const EdgeInsets.all(14),
+          decoration:BoxDecoration(color:_bg,borderRadius:BorderRadius.circular(14),border:Border.all(color:_line)),
+          child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+            const Text('Promo görseli',style:TextStyle(fontWeight:FontWeight.w900)),
+            const SizedBox(height:8),
+            if(imageBytes!=null)...[
+              ClipRRect(borderRadius:BorderRadius.circular(12),child:Image.memory(imageBytes!,height:170,width:double.infinity,fit:BoxFit.cover)),
+              const SizedBox(height:10),
+            ],
+            Row(children:[
+              Expanded(child:OutlinedButton.icon(
+                onPressed:busy?null:()async{
+                  final picked=await picker.pickImage(source:ImageSource.gallery,imageQuality:88,maxWidth:1800);
+                  if(picked==null)return;
+                  final bytes=await picked.readAsBytes();
+                  if(bytes.length>3000000){if(dialog.mounted)setD(()=>error='Görsel 3 MB sınırını aşıyor.');return;}
+                  if(dialog.mounted)setD((){image=picked;imageBytes=bytes;error=null;});
+                },
+                icon:const Icon(Icons.photo_library_outlined),
+                label:Text(image==null?'Galeriden Görsel Seç':'Görseli Değiştir'),
+              )),
+              if(image!=null)...[
+                const SizedBox(width:8),
+                IconButton(tooltip:'Görseli kaldır',onPressed:busy?null:()=>setD((){image=null;imageBytes=null;}),icon:const Icon(Icons.delete_outline,color:Colors.red)),
+              ]
+            ]),
+            const SizedBox(height:5),
+            const Text('JPG, PNG veya WEBP • en fazla 3 MB',style:TextStyle(color:_muted,fontSize:11)),
+          ]),
+        ),
+        const SizedBox(height:10),
         Row(children:[Expanded(child:_adminField(cta,'Buton metni')),const SizedBox(width:10),Expanded(child:_adminField(url,'Yönlendirme linki'))]),
         const SizedBox(height:10),_adminField(start,'Başlangıç (ISO tarih)'),const SizedBox(height:10),_adminField(end,'Bitiş (ISO tarih, boş olabilir)'),
         SwitchListTile(contentPadding:EdgeInsets.zero,value:active,onChanged:(v)=>setD(()=>active=v),title:const Text('Aktif yayınla',style:TextStyle(fontWeight:FontWeight.w800))),
@@ -239,7 +293,9 @@ class _AdminPromoPageState extends State<AdminPromoPage>{
           if(title.text.trim().isEmpty||body.text.trim().isEmpty){setD(()=>error='Başlık ve açıklama zorunlu.');return;}
           setD((){busy=true;error=null;});
           try{
-            await widget.onCreate({'kind':kind,'audience':audience,'title':title.text.trim(),'body':body.text.trim(),'imageUrl':image.text.trim(),'ctaLabel':cta.text.trim(),'ctaUrl':url.text.trim(),'startsAt':start.text.trim(),'endsAt':end.text.trim().isEmpty?null:end.text.trim(),'isActive':active,'sendPush':sendPush});
+            String imageUrl='';
+            if(image!=null)imageUrl=await widget.onUploadImage(image!);
+            await widget.onCreate({'kind':kind,'audience':audience,'title':title.text.trim(),'body':body.text.trim(),'imageUrl':imageUrl,'ctaLabel':cta.text.trim(),'ctaUrl':url.text.trim(),'startsAt':start.text.trim(),'endsAt':end.text.trim().isEmpty?null:end.text.trim(),'isActive':active,'sendPush':sendPush});
             if(dialog.mounted)Navigator.pop(dialog);
           }catch(e){if(dialog.mounted)setD((){busy=false;error=e.toString().replaceFirst('Exception: ','');});}
         },
@@ -258,8 +314,9 @@ class _AdminPromoPageState extends State<AdminPromoPage>{
       const SizedBox(height:16),
       if(rows.isEmpty)Container(padding:const EdgeInsets.all(28),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(18),border:Border.all(color:_line)),child:const Center(child:Text('Henüz promo veya duyuru oluşturulmadı.',style:TextStyle(color:_muted))))
       else ...rows.map((p){
-        final id=(p['id']??'').toString(),active=p['isActive']==true,aud=(p['audience']??'owner').toString(),kind=(p['kind']??'promo').toString();
+        final id=(p['id']??'').toString(),active=p['isActive']==true,aud=(p['audience']??'owner').toString(),kind=(p['kind']??'promo').toString(),imageUrl=(p['imageUrl']??'').toString();
         return Container(margin:const EdgeInsets.only(bottom:12),padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(18),border:Border.all(color:_line)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          if(imageUrl.isNotEmpty)...[ClipRRect(borderRadius:BorderRadius.circular(14),child:Image.network(imageUrl,height:160,width:double.infinity,fit:BoxFit.cover,errorBuilder:(_,__,___)=>const SizedBox.shrink())),const SizedBox(height:12)],
           Row(children:[Container(padding:const EdgeInsets.symmetric(horizontal:9,vertical:5),decoration:BoxDecoration(color:(kind=='announcement'?Colors.blue:_orange).withValues(alpha:.14),borderRadius:BorderRadius.circular(20)),child:Text(kindLabel(kind),style:TextStyle(color:kind=='announcement'?Colors.blue.shade700:Colors.orange.shade900,fontWeight:FontWeight.w900,fontSize:11))),const SizedBox(width:7),Container(padding:const EdgeInsets.symmetric(horizontal:9,vertical:5),decoration:BoxDecoration(color:_navy.withValues(alpha:.08),borderRadius:BorderRadius.circular(20)),child:Text(audienceLabel(aud),style:const TextStyle(fontWeight:FontWeight.w800,fontSize:11))),const Spacer(),Switch(value:active,onChanged:(v)=>widget.onSetActive(id,v))]),
           const SizedBox(height:7),Text((p['title']??'').toString(),style:const TextStyle(fontSize:18,fontWeight:FontWeight.w900)),const SizedBox(height:4),Text((p['body']??'').toString(),style:const TextStyle(color:_muted,height:1.35)),
           const SizedBox(height:10),Wrap(spacing:14,runSpacing:6,children:[Text('Başlangıç: ${dateText(p['startsAt'])}',style:const TextStyle(fontSize:11,color:_muted)),Text('Bitiş: ${p['endsAt']==null?'-':dateText(p['endsAt'])}',style:const TextStyle(fontSize:11,color:_muted)),Text('Görüntülenme: ${p['viewCount']??0}',style:const TextStyle(fontSize:11,color:_muted)),Text('Tıklama: ${p['clickCount']??0}',style:const TextStyle(fontSize:11,color:_muted))]),
