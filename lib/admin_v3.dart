@@ -542,18 +542,27 @@ class _QrPageState extends State<QrPage>{
         ])));
       })),
       const SizedBox(height:4),
-      Container(
-        width:double.infinity,height:40,padding:const EdgeInsets.symmetric(horizontal:14),
-        decoration:BoxDecoration(
-          color:const Color(0xFFF0E4FC),
-          borderRadius:BorderRadius.circular(18),
-        ),
-        child:FittedBox(
-          fit:BoxFit.scaleDown,alignment:Alignment.centerLeft,
-          child:RichText(text:TextSpan(children:[
-            const TextSpan(text:'Etiket Kodu:  ',style:TextStyle(color:Color(0xFF5A5570),fontSize:12,fontWeight:FontWeight.w500)),
-            TextSpan(text:token,style:const TextStyle(color:Color(0xFF5F2FBF),fontSize:17,fontWeight:FontWeight.w800,letterSpacing:.1)),
-          ])),
+      FractionallySizedBox(
+        widthFactor:.82,
+        child:Container(
+          height:34,
+          padding:const EdgeInsets.symmetric(horizontal:10),
+          decoration:BoxDecoration(
+            color:const Color(0xFFF0E4FC),
+            borderRadius:BorderRadius.circular(16),
+          ),
+          child:Center(
+            child:FittedBox(
+              fit:BoxFit.scaleDown,
+              child:RichText(
+                textAlign:TextAlign.center,
+                text:TextSpan(children:[
+                  const TextSpan(text:'Etiket Kodu:  ',style:TextStyle(color:Color(0xFF5A5570),fontSize:11,fontWeight:FontWeight.w500)),
+                  TextSpan(text:token,style:const TextStyle(color:Color(0xFF5F2FBF),fontSize:15,fontWeight:FontWeight.w800)),
+                ]),
+              ),
+            ),
+          ),
         ),
       ),
     ]),
