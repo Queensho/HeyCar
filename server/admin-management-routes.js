@@ -201,4 +201,273 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
       res.status(500).json({ error: 'SERVER_ERROR' });
     }
   });
+
+  // Promo & announcement management. Promos are stored once and can target
+  // vehicle owners, businesses, or both audiences.
+  let promoSchemaReady = false;
+  async function ensurePromoSchema() {
+    if (promoSchemaReady) return;
+    await pool.query(\`
+      CREATE TABLE IF NOT EXISTS admin_promos (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        kind TEXT NOT NULL DEFAULT 'promo' CHECK (kind IN ('promo','announcement')),
+        audience TEXT NOT NULL CHECK (audience IN ('owner','business','both')),
+        title TEXT NOT NULL,
+        body TEXT NOT NULL,
+        image_url TEXT,
+        cta_label TEXT,
+        cta_url TEXT,
+        starts_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        ends_at TIMESTAMPTZ,
+        is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        view_count BIGINT NOT NULL DEFAULT 0,
+        click_count BIGINT NOT NULL DEFAULT 0,
+        push_sent_at TIMESTAMPTZ,
+        push_attempted_count INTEGER NOT NULL DEFAULT 0,
+        push_delivered_count INTEGER NOT NULL DEFAULT 0,
+        created_by TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_admin_promos_active
+        ON admin_promos(audience,is_active,starts_at,ends_at);
+    \`);
+    promoSchemaReady = true;
+  }
+
+  function promoPayload(row) {
+    return {
+      id: row.id,
+      kind: row.kind,
+      audience: row.audience,
+      title: row.title,
+      body: row.body,
+      imageUrl: row.image_url || '',
+      ctaLabel: row.cta_label || '',
+      ctaUrl: row.cta_url || '',
+      startsAt: row.starts_at,
+      endsAt: row.ends_at,
+      isActive: row.is_active,
+      viewCount: Number(row.view_count || 0),
+      clickCount: Number(row.click_count || 0),
+      pushSentAt: row.push_sent_at,
+      pushAttemptedCount: Number(row.push_attempted_count || 0),
+      pushDeliveredCount: Number(row.push_delivered_count || 0),
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
+  }
+
+  async function sendPromoOwnerPush(row) {
+    if (!['owner','both'].includes(row.audience)) {
+      return { attempted: 0, delivered: 0, skipped: 'OWNER_NOT_TARGETED' };
+    }
+    const push = app.locals.heycarPush;
+    if (!push || typeof push.sendOwner !== 'function') {
+      return { attempted: 0, delivered: 0, skipped: 'PUSH_SERVICE_UNAVAILABLE' };
+    }
+    const owners = (await pool.query(\`
+      SELECT DISTINCT v.owner_id::text AS owner_id
+      FROM vehicles v
+      JOIN users u ON u.id=v.owner_id
+      WHERE u.status='active'
+    \`)).rows;
+    let attempted = 0;
+    let delivered = 0;
+    for (const item of owners) {
+      try {
+        const out = await push.sendOwner(
+          item.owner_id,
+          {
+            type: 'promo',
+            sourceType: 'promo',
+            promoId: String(row.id),
+            audience: String(row.audience),
+            ctaUrl: String(row.cta_url || ''),
+            notificationId: 'promo_' + String(row.id)
+          },
+          String(row.title),
+          String(row.body)
+        );
+        attempted += Number(out?.attempted || 0);
+        delivered += Number(out?.delivered || 0);
+      } catch (e) {
+        console.error('promo owner push', item.owner_id, e);
+      }
+    }
+    await pool.query(
+      \`UPDATE admin_promos
+       SET push_sent_at=NOW(),push_attempted_count=$2,push_delivered_count=$3,updated_at=NOW()
+       WHERE id=$1\`,
+      [row.id, attempted, delivered]
+    );
+    return { attempted, delivered };
+  }
+
+  // Active promo feed consumed by the owner app and business panel.
+  app.get('/api/promos/active', async (req, res) => {
+    const audience = String(req.query.audience || '').trim();
+    if (!['owner','business'].includes(audience)) return res.status(400).json({ error: 'INVALID_AUDIENCE' });
+    try {
+      await ensurePromoSchema();
+      const r = await pool.query(
+        \`SELECT * FROM admin_promos
+         WHERE is_active=TRUE
+           AND audience IN ($1,'both')
+           AND starts_at<=NOW()
+           AND (ends_at IS NULL OR ends_at>NOW())
+         ORDER BY starts_at DESC,created_at DESC
+         LIMIT 20\`,
+        [audience]
+      );
+      return res.json({ ok: true, items: r.rows.map(promoPayload) });
+    } catch (e) {
+      console.error('promo active list', e);
+      return res.status(500).json({ error: 'SERVER_ERROR' });
+    }
+  });
+
+  app.post('/api/promos/:id/view', async (req, res) => {
+    try {
+      await ensurePromoSchema();
+      await pool.query('UPDATE admin_promos SET view_count=view_count+1 WHERE id=$1', [req.params.id]);
+      return res.json({ ok: true });
+    } catch (e) {
+      return res.status(500).json({ error: 'SERVER_ERROR' });
+    }
+  });
+
+  app.post('/api/promos/:id/click', async (req, res) => {
+    try {
+      await ensurePromoSchema();
+      await pool.query('UPDATE admin_promos SET click_count=click_count+1 WHERE id=$1', [req.params.id]);
+      return res.json({ ok: true });
+    } catch (e) {
+      return res.status(500).json({ error: 'SERVER_ERROR' });
+    }
+  });
+
+  app.get('/api/admin/manage/promos', guard, async (_req, res) => {
+    try {
+      await ensurePromoSchema();
+      const r = await pool.query('SELECT * FROM admin_promos ORDER BY created_at DESC');
+      return res.json({ ok: true, items: r.rows.map(promoPayload) });
+    } catch (e) {
+      console.error('admin promo list', e);
+      return res.status(500).json({ error: 'SERVER_ERROR' });
+    }
+  });
+
+  app.post('/api/admin/manage/promos', guard, async (req, res) => {
+    try {
+      await ensurePromoSchema();
+      const b = req.body || {};
+      const kind = String(b.kind || 'promo');
+      const audience = String(b.audience || 'owner');
+      const title = String(b.title || '').trim().slice(0, 140);
+      const body = String(b.body || '').trim().slice(0, 1200);
+      if (!['promo','announcement'].includes(kind) || !['owner','business','both'].includes(audience) || !title || !body) {
+        return res.status(400).json({ error: 'INVALID_INPUT' });
+      }
+      const startsAt = b.startsAt ? new Date(b.startsAt) : new Date();
+      const endsAt = b.endsAt ? new Date(b.endsAt) : null;
+      if (Number.isNaN(startsAt.getTime()) || (endsAt && Number.isNaN(endsAt.getTime())) || (endsAt && endsAt <= startsAt)) {
+        return res.status(400).json({ error: 'INVALID_DATE_RANGE' });
+      }
+      const r = await pool.query(
+        \`INSERT INTO admin_promos
+          (kind,audience,title,body,image_url,cta_label,cta_url,starts_at,ends_at,is_active,created_by)
+         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+         RETURNING *\`,
+        [
+          kind,audience,title,body,
+          String(b.imageUrl || '').trim() || null,
+          String(b.ctaLabel || '').trim().slice(0,60) || null,
+          String(b.ctaUrl || '').trim() || null,
+          startsAt,endsAt,
+          b.isActive !== false,
+          String(req.user?.id || req.admin?.id || req.user?.email || 'admin')
+        ]
+      );
+      let row = r.rows[0];
+      let pushResult = null;
+      if (b.sendPush === true) {
+        pushResult = await sendPromoOwnerPush(row);
+        const refreshed = await pool.query('SELECT * FROM admin_promos WHERE id=$1', [row.id]);
+        row = refreshed.rows[0] || row;
+      }
+      return res.status(201).json({ ok: true, promo: promoPayload(row), push: pushResult });
+    } catch (e) {
+      console.error('admin promo create', e);
+      return res.status(500).json({ error: 'SERVER_ERROR' });
+    }
+  });
+
+  app.patch('/api/admin/manage/promos/:id', guard, async (req, res) => {
+    try {
+      await ensurePromoSchema();
+      const b = req.body || {};
+      const current = await pool.query('SELECT * FROM admin_promos WHERE id=$1 LIMIT 1', [req.params.id]);
+      if (!current.rows.length) return res.status(404).json({ error: 'PROMO_NOT_FOUND' });
+      const old = current.rows[0];
+      const kind = b.kind == null ? old.kind : String(b.kind);
+      const audience = b.audience == null ? old.audience : String(b.audience);
+      const title = b.title == null ? old.title : String(b.title).trim().slice(0,140);
+      const body = b.body == null ? old.body : String(b.body).trim().slice(0,1200);
+      if (!['promo','announcement'].includes(kind) || !['owner','business','both'].includes(audience) || !title || !body) {
+        return res.status(400).json({ error: 'INVALID_INPUT' });
+      }
+      const startsAt = b.startsAt == null ? new Date(old.starts_at) : new Date(b.startsAt);
+      const endsAt = b.endsAt === undefined ? (old.ends_at ? new Date(old.ends_at) : null) : (b.endsAt ? new Date(b.endsAt) : null);
+      if (Number.isNaN(startsAt.getTime()) || (endsAt && Number.isNaN(endsAt.getTime())) || (endsAt && endsAt <= startsAt)) {
+        return res.status(400).json({ error: 'INVALID_DATE_RANGE' });
+      }
+      const r = await pool.query(
+        \`UPDATE admin_promos SET
+          kind=$2,audience=$3,title=$4,body=$5,image_url=$6,cta_label=$7,cta_url=$8,
+          starts_at=$9,ends_at=$10,is_active=$11,updated_at=NOW()
+         WHERE id=$1 RETURNING *\`,
+        [
+          req.params.id,kind,audience,title,body,
+          b.imageUrl === undefined ? old.image_url : (String(b.imageUrl || '').trim() || null),
+          b.ctaLabel === undefined ? old.cta_label : (String(b.ctaLabel || '').trim().slice(0,60) || null),
+          b.ctaUrl === undefined ? old.cta_url : (String(b.ctaUrl || '').trim() || null),
+          startsAt,endsAt,
+          b.isActive === undefined ? old.is_active : b.isActive === true
+        ]
+      );
+      return res.json({ ok: true, promo: promoPayload(r.rows[0]) });
+    } catch (e) {
+      console.error('admin promo update', e);
+      return res.status(500).json({ error: 'SERVER_ERROR' });
+    }
+  });
+
+  app.post('/api/admin/manage/promos/:id/push', guard, async (req, res) => {
+    try {
+      await ensurePromoSchema();
+      const r = await pool.query('SELECT * FROM admin_promos WHERE id=$1 LIMIT 1', [req.params.id]);
+      if (!r.rows.length) return res.status(404).json({ error: 'PROMO_NOT_FOUND' });
+      const push = await sendPromoOwnerPush(r.rows[0]);
+      return res.json({ ok: true, push });
+    } catch (e) {
+      console.error('admin promo push', e);
+      return res.status(500).json({ error: 'SERVER_ERROR' });
+    }
+  });
+
+  app.delete('/api/admin/manage/promos/:id', guard, async (req, res) => {
+    try {
+      await ensurePromoSchema();
+      const r = await pool.query(
+        'UPDATE admin_promos SET is_active=FALSE,updated_at=NOW() WHERE id=$1 RETURNING id',
+        [req.params.id]
+      );
+      if (!r.rows.length) return res.status(404).json({ error: 'PROMO_NOT_FOUND' });
+      return res.json({ ok: true });
+    } catch (e) {
+      return res.status(500).json({ error: 'SERVER_ERROR' });
+    }
+  });
+
 };
