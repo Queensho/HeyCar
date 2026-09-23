@@ -207,7 +207,7 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
   let promoSchemaReady = false;
   async function ensurePromoSchema() {
     if (promoSchemaReady) return;
-    await pool.query(\`
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS admin_promos (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         kind TEXT NOT NULL DEFAULT 'promo' CHECK (kind IN ('promo','announcement')),
@@ -231,7 +231,7 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
       );
       CREATE INDEX IF NOT EXISTS idx_admin_promos_active
         ON admin_promos(audience,is_active,starts_at,ends_at);
-    \`);
+    `);
     promoSchemaReady = true;
   }
 
@@ -266,12 +266,12 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
     if (!push || typeof push.sendOwner !== 'function') {
       return { attempted: 0, delivered: 0, skipped: 'PUSH_SERVICE_UNAVAILABLE' };
     }
-    const owners = (await pool.query(\`
+    const owners = (await pool.query(`
       SELECT DISTINCT v.owner_id::text AS owner_id
       FROM vehicles v
       JOIN users u ON u.id=v.owner_id
       WHERE u.status='active'
-    \`)).rows;
+    `)).rows;
     let attempted = 0;
     let delivered = 0;
     for (const item of owners) {
@@ -296,9 +296,9 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
       }
     }
     await pool.query(
-      \`UPDATE admin_promos
+      `UPDATE admin_promos
        SET push_sent_at=NOW(),push_attempted_count=$2,push_delivered_count=$3,updated_at=NOW()
-       WHERE id=$1\`,
+       WHERE id=$1`,
       [row.id, attempted, delivered]
     );
     return { attempted, delivered };
@@ -311,13 +311,13 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
     try {
       await ensurePromoSchema();
       const r = await pool.query(
-        \`SELECT * FROM admin_promos
+        `SELECT * FROM admin_promos
          WHERE is_active=TRUE
            AND audience IN ($1,'both')
            AND starts_at<=NOW()
            AND (ends_at IS NULL OR ends_at>NOW())
          ORDER BY starts_at DESC,created_at DESC
-         LIMIT 20\`,
+         LIMIT 20`,
         [audience]
       );
       return res.json({ ok: true, items: r.rows.map(promoPayload) });
@@ -375,10 +375,10 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
         return res.status(400).json({ error: 'INVALID_DATE_RANGE' });
       }
       const r = await pool.query(
-        \`INSERT INTO admin_promos
+        `INSERT INTO admin_promos
           (kind,audience,title,body,image_url,cta_label,cta_url,starts_at,ends_at,is_active,created_by)
          VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
-         RETURNING *\`,
+         RETURNING *`,
         [
           kind,audience,title,body,
           String(b.imageUrl || '').trim() || null,
@@ -423,10 +423,10 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
         return res.status(400).json({ error: 'INVALID_DATE_RANGE' });
       }
       const r = await pool.query(
-        \`UPDATE admin_promos SET
+        `UPDATE admin_promos SET
           kind=$2,audience=$3,title=$4,body=$5,image_url=$6,cta_label=$7,cta_url=$8,
           starts_at=$9,ends_at=$10,is_active=$11,updated_at=NOW()
-         WHERE id=$1 RETURNING *\`,
+         WHERE id=$1 RETURNING *`,
         [
           req.params.id,kind,audience,title,body,
           b.imageUrl === undefined ? old.image_url : (String(b.imageUrl || '').trim() || null),
