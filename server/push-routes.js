@@ -74,7 +74,7 @@ module.exports=function registerPushRoutes(app,pool){
         const tag=String(data.notificationId||data.messageId||data.eventId||Date.now());
         message.notification={title,body};
         message.android.notification={
-          channel_id:'cepqar_notifications_v6',
+          channel_id:'cepqar_notifications_v7',
           sound:'default',
           tag:'cepqar_'+tag
         };
