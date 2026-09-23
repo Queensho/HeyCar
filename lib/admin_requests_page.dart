@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 const _baseUrl = 'https://heycar-api-185-165-46-213.nip.io';
-const _navy = Color(0xFF14213D);
-const _orange = Color(0xFFFCA311);
-const _muted = Color(0xFF667085);
-const _line = Color(0xFFE7EAF0);
+const _navy = Color(0xFF060A18);
+const _orange = Color(0xFFB100FF);
+const _card = Color(0xFF090E22);
+const _card2 = Color(0xFF0C1230);
+const _muted = Color(0xFFA9AFC4);
+const _line = Color(0xFF4A236C);
 
 class AdminCorrectionRequestsPage extends StatefulWidget {
   const AdminCorrectionRequestsPage({super.key, required this.token});
@@ -134,7 +136,7 @@ class _AdminCorrectionRequestsPageState extends State<AdminCorrectionRequestsPag
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Düzeltme talebi', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: _navy)),
+              const Text('Düzeltme talebi', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.white)),
               const SizedBox(height: 16),
               _detail('Kullanıcı', item['owner_name']),
               _detail('Telefon', item['owner_phone']),
@@ -146,7 +148,7 @@ class _AdminCorrectionRequestsPageState extends State<AdminCorrectionRequestsPag
               const SizedBox(height: 8),
               const Text('Kullanıcı açıklaması', style: TextStyle(fontWeight: FontWeight.w900)),
               const SizedBox(height: 6),
-              Container(width: double.infinity, padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: const Color(0xFFF6F7F9), borderRadius: BorderRadius.circular(14)), child: Text(item['message']?.toString().isNotEmpty == true ? item['message'].toString() : 'Açıklama yok.')),
+              Container(width: double.infinity, padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: _card2, borderRadius: BorderRadius.circular(14)), child: Text(item['message']?.toString().isNotEmpty == true ? item['message'].toString() : 'Açıklama yok.')),
               const SizedBox(height: 14),
               TextField(controller: note, maxLines: 4, decoration: const InputDecoration(labelText: 'Admin notu', border: OutlineInputBorder())),
               const SizedBox(height: 14),
@@ -181,11 +183,11 @@ class _AdminCorrectionRequestsPageState extends State<AdminCorrectionRequestsPag
     }
 
     return ListView(
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
       children: [
         Row(
           children: [
-            const Expanded(child: Text('Düzeltme Talepleri', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900))),
+            const Expanded(child: Text('Düzeltme Talepleri', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.white))),
             IconButton(onPressed: load, icon: const Icon(Icons.refresh_rounded)),
           ],
         ),
@@ -204,14 +206,14 @@ class _AdminCorrectionRequestsPageState extends State<AdminCorrectionRequestsPag
         ),
         const SizedBox(height: 16),
         if (items.isEmpty)
-          Container(padding: const EdgeInsets.all(24), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: _line)), child: const Center(child: Text('Bu filtrede talep yok.', style: TextStyle(color: _muted))))
+          Container(padding: const EdgeInsets.all(24), decoration: BoxDecoration(color: _card, borderRadius: BorderRadius.circular(18), border: Border.all(color: _line)), child: const Center(child: Text('Bu filtrede talep yok.', style: TextStyle(color: _muted))))
         else
           ...items.map((e) => Container(
                 margin: const EdgeInsets.only(bottom: 10),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: _line)),
+                decoration: BoxDecoration(color: _card, borderRadius: BorderRadius.circular(18), border: Border.all(color: _line)),
                 child: ListTile(
                   onTap: () => openRequest(e),
-                  leading: CircleAvatar(backgroundColor: const Color(0xFFFFF1DB), child: Icon(e['request_type'] == 'qr_change' ? Icons.qr_code_2_rounded : Icons.build_circle_outlined, color: _orange)),
+                  leading: CircleAvatar(backgroundColor: const Color(0xFF26103E), child: Icon(e['request_type'] == 'qr_change' ? Icons.qr_code_2_rounded : Icons.build_circle_outlined, color: _orange)),
                   title: Text(e['plate']?.toString() ?? 'Araç belirtilmedi', style: const TextStyle(fontWeight: FontWeight.w900)),
                   subtitle: Text('${e['owner_name'] ?? '-'} • ${_typeLabel(e['request_type']?.toString() ?? '')}\n${e['qr_token'] ?? ''}'),
                   isThreeLine: true,
