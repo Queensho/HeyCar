@@ -6,11 +6,19 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:image_picker/image_picker.dart';
 import 'admin_requests_page.dart';
 
-const _navy = Color(0xFF14213D);
-const _orange = Color(0xFFFCA311);
-const _bg = Color(0xFFF6F7F9);
-const _muted = Color(0xFF667085);
-const _line = Color(0xFFE7EAF0);
+const _navy = Color(0xFF060A18);
+const _purple = Color(0xFFB100FF);
+const _purple2 = Color(0xFF7B2CFF);
+const _pink = Color(0xFFFF4FD8);
+const _blue = Color(0xFF499DFF);
+const _green = Color(0xFF28F39A);
+const _amber = Color(0xFFFFB62E);
+const _orange = _purple;
+const _bg = Color(0xFF040714);
+const _card = Color(0xFF090E22);
+const _card2 = Color(0xFF0C1230);
+const _muted = Color(0xFFA9AFC4);
+const _line = Color(0xFF4A236C);
 const _baseUrl = 'https://heycar-api-185-165-46-213.nip.io';
 const _publicBase = 'https://queensho.github.io/HeyCar/';
 
@@ -23,8 +31,42 @@ class AdminV3App extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           useMaterial3: true,
+          brightness: Brightness.dark,
           scaffoldBackgroundColor: _bg,
-          colorScheme: ColorScheme.fromSeed(seedColor: _orange),
+          colorScheme: const ColorScheme.dark(
+            primary: _purple,
+            secondary: _purple2,
+            surface: _card,
+          ),
+          textTheme: const TextTheme(
+            bodyMedium: TextStyle(color: Colors.white),
+            bodyLarge: TextStyle(color: Colors.white),
+          ),
+          inputDecorationTheme: InputDecorationTheme(
+            filled: true,
+            fillColor: _card2,
+            labelStyle: const TextStyle(color: _muted),
+            hintStyle: const TextStyle(color: _muted),
+            prefixIconColor: _purple,
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: _line),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: _purple,width:1.3),
+            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+          ),
+          dialogTheme: DialogThemeData(
+            backgroundColor: _card,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22),side:const BorderSide(color:_line)),
+          ),
+          cardTheme: CardThemeData(
+            color: _card,
+            elevation: 0,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18),side:const BorderSide(color:_line)),
+          ),
         ),
         home: const AdminGate(),
       );
@@ -77,22 +119,39 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(body: Center(child: SingleChildScrollView(padding: const EdgeInsets.all(24), child: Container(
-    width: 430, padding: const EdgeInsets.all(28), decoration: BoxDecoration(color: Colors.white,borderRadius: BorderRadius.circular(28)),
-    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Row(children:[Icon(Icons.directions_car_filled_rounded,color:_orange,size:34),SizedBox(width:10),Text('HeyCar Admin',style:TextStyle(fontSize:27,fontWeight:FontWeight.w900,color:_navy))]),
-      const SizedBox(height:22),
-      TextField(controller:email,keyboardType:TextInputType.emailAddress,decoration:const InputDecoration(labelText:'E-posta',border:OutlineInputBorder())),
-      const SizedBox(height:12),
-      TextField(controller:password,obscureText:true,onSubmitted:(_)=>submit(),decoration:const InputDecoration(labelText:'Şifre',border:OutlineInputBorder())),
-      if(error!=null)...[const SizedBox(height:12),Text(error!,style:const TextStyle(color:Colors.red,fontWeight:FontWeight.w700))],
-      const SizedBox(height:18),
-      SizedBox(width:double.infinity,height:52,child:FilledButton(style:FilledButton.styleFrom(backgroundColor:_orange,foregroundColor:Colors.black),onPressed:busy?null:submit,child:busy?const CircularProgressIndicator():const Text('Giriş yap',style:TextStyle(fontWeight:FontWeight.w900))))
-    ]),
-  ))));
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor:_bg,
+    body:Center(child:SingleChildScrollView(padding:const EdgeInsets.all(20),child:Container(
+      width:420,padding:const EdgeInsets.all(24),
+      decoration:BoxDecoration(
+        color:_card,borderRadius:BorderRadius.circular(24),
+        border:Border.all(color:_purple.withValues(alpha:.45)),
+        boxShadow:[BoxShadow(color:_purple.withValues(alpha:.16),blurRadius:34)],
+      ),
+      child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        RichText(text:const TextSpan(children:[
+          TextSpan(text:'Cep',style:TextStyle(color:Colors.white,fontSize:32,fontWeight:FontWeight.w900)),
+          TextSpan(text:'Qar',style:TextStyle(color:_purple,fontSize:32,fontWeight:FontWeight.w900)),
+        ])),
+        const SizedBox(height:4),
+        const Text('Yönetim merkezi',style:TextStyle(fontSize:18,fontWeight:FontWeight.w800,color:Colors.white)),
+        const SizedBox(height:22),
+        TextField(controller:email,keyboardType:TextInputType.emailAddress,decoration:const InputDecoration(labelText:'E-posta',prefixIcon:Icon(Icons.mail_outline_rounded))),
+        const SizedBox(height:12),
+        TextField(controller:password,obscureText:true,onSubmitted:(_)=>submit(),decoration:const InputDecoration(labelText:'Şifre',prefixIcon:Icon(Icons.lock_outline_rounded))),
+        if(error!=null)...[const SizedBox(height:12),Text(error!,style:const TextStyle(color:Colors.redAccent,fontWeight:FontWeight.w700))],
+        const SizedBox(height:18),
+        SizedBox(width:double.infinity,height:50,child:FilledButton(
+          style:FilledButton.styleFrom(backgroundColor:_purple,foregroundColor:Colors.white,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(14))),
+          onPressed:busy?null:submit,
+          child:busy?const SizedBox(width:20,height:20,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)):const Text('Giriş yap',style:TextStyle(fontWeight:FontWeight.w900)),
+        )),
+      ]),
+    ))),
+  );
 }
 
-class AdminHome extends StatefulWidget {
+class AdminHomeclass AdminHome extends StatefulWidget {
   const AdminHome({super.key, required this.token, required this.admin, required this.onLogout});
   final String token;
   final Map<String,dynamic>? admin;
