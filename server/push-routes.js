@@ -62,9 +62,18 @@ module.exports=function registerPushRoutes(app,pool){
       }else{
         android.ttl='120s';
       }
-      // Data-only messages are non-collapsible by default. Native Android code
-      // renders every event so rapid QR notifications cannot replace each other.
       const message={token:row.fcm_token,data:fcmData,android};
+      if(!callEvent){
+        const sourceType=String(data.sourceType||data.type||'system');
+        android.collapse_key='cepqar_'+sourceType;
+        const tag=String(data.notificationId||data.messageId||data.eventId||Date.now());
+        message.notification={title,body};
+        message.android.notification={
+          channel_id:'cepqar_notifications_v6',
+          sound:'default',
+          tag:'cepqar_'+tag
+        };
+      }
       try{
         const r=await fetch(endpoint,{method:'POST',headers:{authorization:`Bearer ${key}`,'content-type':'application/json'},body:JSON.stringify({message})});
         if(r.ok)return true;
