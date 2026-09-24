@@ -669,6 +669,8 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
     const token = normalizeToken(req.params.token);
     const action = String(req.body.action || '');
     try {
+      const before = await pool.query('SELECT * FROM qr_tags WHERE token=$1 LIMIT 1', [token]);
+      if (!before.rows.length) return res.status(404).json({ error: 'QR_NOT_FOUND' });
       let r;
       if (action === 'disable') {
         r = await pool.query("UPDATE qr_tags SET status='disabled' WHERE token=$1 RETURNING *", [token]);
@@ -679,7 +681,19 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
       } else {
         return res.status(400).json({ error: 'INVALID_ACTION' });
       }
-      if (!r.rows.length) return res.status(404).json({ error: 'QR_NOT_FOUND' });
+      const auditAction = action === 'disable'
+        ? 'qr.disabled'
+        : action === 'enable'
+          ? 'qr.enabled'
+          : 'qr.unbound';
+      await writeAdminAudit(pool, req, {
+        action: auditAction,
+        targetType: 'qr',
+        targetId: token,
+        targetLabel: token,
+        before: before.rows[0],
+        after: r.rows[0],
+      });
       res.json({ ok: true, qr: r.rows[0] });
     } catch (e) {
       console.error(e);
