@@ -986,20 +986,20 @@ class _QrPageState extends State<QrPage>{
       return;
     }
     final doc=pw.Document();
-    const perPage=40;
+    const perPage=27;
     final purple=PdfColor.fromHex('#6E22D9');
     final lilac=PdfColor.fromHex('#F0E4FC');
     final muted=PdfColor.fromHex('#665D77');
     final templateData=await rootBundle.load('assets/Etiket2.png');
     final template=pw.MemoryImage(templateData.buffer.asUint8List());
 
-    // 40-up A4 layout for the new Etiket2 artwork.
-    // Each label keeps the artwork's native ratio at 50 x 25.5 mm.
-    // A4: 4 columns x 10 rows = 40 labels, centered on the page.
-    final labelWidth=50*PdfPageFormat.mm;
-    final labelHeight=25.5*PdfPageFormat.mm;
-    final pageHorizontalMargin=(PdfPageFormat.a4.width-(labelWidth*4))/2;
-    final pageVerticalMargin=(PdfPageFormat.a4.height-(labelHeight*10))/2;
+    // 27-up A4 layout for the Etiket2 artwork.
+    // Keep the exact artwork ratio at 60 x 30.6 mm.
+    // A4: 3 columns x 9 rows = 27 labels, centered on the page.
+    final labelWidth=60*PdfPageFormat.mm;
+    final labelHeight=30.6*PdfPageFormat.mm;
+    final pageHorizontalMargin=(PdfPageFormat.a4.width-(labelWidth*3))/2;
+    final pageVerticalMargin=(PdfPageFormat.a4.height-(labelHeight*9))/2;
 
     pw.Widget labelCard(Map<String,dynamic> e){
       final token=_tokenOf(e);
@@ -1013,17 +1013,17 @@ class _QrPageState extends State<QrPage>{
           // Etiket2 already contains the white QR panel. Place the generated
           // QR inside that blank area and keep the label code directly below it.
           pw.Positioned(
-            right:1.0*PdfPageFormat.mm,
-            top:1.15*PdfPageFormat.mm,
+            right:1.2*PdfPageFormat.mm,
+            top:1.38*PdfPageFormat.mm,
             child:pw.SizedBox(
-              width:19.3*PdfPageFormat.mm,
-              height:22.9*PdfPageFormat.mm,
+              width:23.16*PdfPageFormat.mm,
+              height:27.48*PdfPageFormat.mm,
               child:pw.Column(children:[
-                pw.SizedBox(height:2.7*PdfPageFormat.mm),
+                pw.SizedBox(height:3.24*PdfPageFormat.mm),
                 pw.Center(
                   child:pw.SizedBox(
-                    width:14.0*PdfPageFormat.mm,
-                    height:14.0*PdfPageFormat.mm,
+                    width:16.8*PdfPageFormat.mm,
+                    height:16.8*PdfPageFormat.mm,
                     child:pw.BarcodeWidget(
                       barcode:pw.Barcode.qrCode(),
                       data:publicUrl(token),
@@ -1031,27 +1031,27 @@ class _QrPageState extends State<QrPage>{
                     ),
                   ),
                 ),
-                pw.SizedBox(height:1.0*PdfPageFormat.mm),
+                pw.SizedBox(height:1.2*PdfPageFormat.mm),
                 pw.Center(
                   child:pw.Container(
-                    width:16.5*PdfPageFormat.mm,
-                    height:2.7*PdfPageFormat.mm,
+                    width:19.8*PdfPageFormat.mm,
+                    height:3.24*PdfPageFormat.mm,
                     alignment:pw.Alignment.center,
-                    padding:pw.EdgeInsets.symmetric(horizontal:.32*PdfPageFormat.mm),
+                    padding:pw.EdgeInsets.symmetric(horizontal:.384*PdfPageFormat.mm),
                     decoration:pw.BoxDecoration(
                       color:lilac,
-                      borderRadius:pw.BorderRadius.circular(1.1*PdfPageFormat.mm),
+                      borderRadius:pw.BorderRadius.circular(1.32*PdfPageFormat.mm),
                     ),
                     child:pw.FittedBox(
                       fit:pw.BoxFit.scaleDown,
                       child:pw.RichText(text:pw.TextSpan(children:[
                         pw.TextSpan(
                           text:'Etiket Kodu: ',
-                          style:pw.TextStyle(color:muted,fontSize:3.0),
+                          style:pw.TextStyle(color:muted,fontSize:3.6),
                         ),
                         pw.TextSpan(
                           text:token,
-                          style:pw.TextStyle(color:purple,fontSize:4.1,fontWeight:pw.FontWeight.bold),
+                          style:pw.TextStyle(color:purple,fontSize:4.92,fontWeight:pw.FontWeight.bold),
                         ),
                       ])),
                     ),
@@ -1075,10 +1075,10 @@ class _QrPageState extends State<QrPage>{
         ),
         build:(_){
           final slots=<pw.Widget>[];
-          for(var row=0;row<10;row++){
+          for(var row=0;row<9;row++){
             final cells=<pw.Widget>[];
-            for(var col=0;col<4;col++){
-              final index=(row*4)+col;
+            for(var col=0;col<3;col++){
+              final index=(row*3)+col;
               cells.add(index<pageItems.length
                 ? labelCard(pageItems[index])
                 : pw.SizedBox(width:labelWidth,height:labelHeight));
@@ -1094,7 +1094,7 @@ class _QrPageState extends State<QrPage>{
     final suffix=batchFilter=='all'?'tum-qr':batchFilter.toLowerCase();
     await saveAdminFile(
       Uint8List.fromList(bytes),
-      'cepqar-baski-a4-40li-$suffix.pdf',
+      'cepqar-baski-a4-27li-$suffix.pdf',
       'application/pdf',
     );
     final newlyDownloaded=printableRows
@@ -1201,7 +1201,7 @@ class _QrPageState extends State<QrPage>{
           Text(token,style:const TextStyle(fontWeight:FontWeight.w800,color:_muted,fontSize:13)),
           if((e['batch_code']??'').toString().isNotEmpty)Text('${e['batch_code']} • Parti sıra ${e['batch_serial']??'-'}',style:const TextStyle(color:_muted,fontSize:11)),
           const SizedBox(height:12),
-          ConstrainedBox(constraints:const BoxConstraints(maxWidth:640),child:AspectRatio(aspectRatio:50/25.5,child:RepaintBoundary(key:_stickerKey,child:_sticker(token,url)))),
+          ConstrainedBox(constraints:const BoxConstraints(maxWidth:640),child:AspectRatio(aspectRatio:60/30.6,child:RepaintBoundary(key:_stickerKey,child:_sticker(token,url)))),
           const SizedBox(height:12),
           Row(children:[
             Expanded(child:OutlinedButton.icon(onPressed:()=>launchUrl(Uri.parse(url),mode:LaunchMode.externalApplication),icon:const Icon(Icons.open_in_new_rounded),label:const Text('QR sayfasını aç',textAlign:TextAlign.center))),
