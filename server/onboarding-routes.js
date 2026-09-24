@@ -41,6 +41,19 @@ module.exports = function registerOnboardingRoutes(app, pool) {
     try {
       await client.query('BEGIN');
 
+      if (!transferCode) {
+        const normalizedPlate = plate.replace(/\s+/g, '');
+        await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [normalizedPlate]);
+        const plateExists = await client.query(
+          "SELECT 1 FROM vehicles WHERE UPPER(REPLACE(plate,' ',''))=UPPER($1) LIMIT 1",
+          [normalizedPlate]
+        );
+        if (plateExists.rows.length) {
+          await client.query('ROLLBACK');
+          return res.status(409).json({ error: 'PLATE_EXISTS' });
+        }
+      }
+
       const phoneExists = await client.query(
         'SELECT 1 FROM users WHERE phone = $1 LIMIT 1',
         [phone]
@@ -104,8 +117,25 @@ module.exports = function registerOnboardingRoutes(app, pool) {
 
       return res.status(201).json({ok:true,user,vehicle:vehicleResult.rows[0],...tokens});
     } catch (error) {
-      await client.query('ROLLBACK');
-      console.error('onboarding register error', error);
+      await client.query('ROLLBACK').catch(() => {});
+      if (error?.code === '23505') {
+        const constraint = String(error.constraint || '').toLowerCase();
+        const detail = String(error.detail || '').toLowerCase();
+        if (constraint.includes('plate') || detail.includes('(plate)')) {
+          return res.status(409).json({ error: 'PLATE_EXISTS' });
+        }
+        if (constraint.includes('phone') || detail.includes('(phone)')) {
+          return res.status(409).json({ error: 'PHONE_EXISTS' });
+        }
+        if (constraint.includes('email') || detail.includes('(email)')) {
+          return res.status(409).json({ error: 'EMAIL_EXISTS' });
+        }
+      }
+      console.error('onboarding register error', {
+        code:error?.code,
+        constraint:error?.constraint,
+        message:error?.message,
+      });
       return res.status(500).json({ error: 'SERVER_ERROR' });
     } finally {
       client.release();
