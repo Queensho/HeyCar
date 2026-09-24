@@ -57,8 +57,8 @@ module.exports=function registerAdminCommunicationSecurityRoutes(app,pool,adminG
         params.push(userIds);
         q+=' AND u.id::text=ANY($1::text[])';
       }else if(mode==='segment'){
-        if(segment==='premium')q+=' AND COALESCE(u.premium,false)=TRUE AND u.status=\'active\'';
-        if(segment==='standard')q+=' AND COALESCE(u.premium,false)=FALSE AND u.status=\'active\'';
+        if(segment==='premium')q+=" AND COALESCE(u.premium,false)=TRUE AND (u.premium_expires_at IS NULL OR u.premium_expires_at>NOW()) AND u.status='active'";
+        if(segment==='standard')q+=" AND NOT (COALESCE(u.premium,false)=TRUE AND (u.premium_expires_at IS NULL OR u.premium_expires_at>NOW())) AND u.status='active'";
         if(segment==='active')q+=' AND u.status=\'active\'';
         if(segment==='suspended')q+=' AND u.status<>\'active\'';
       }else{
