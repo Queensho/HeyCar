@@ -1,3 +1,4 @@
+const { requestIp } = require('./proxy-security');
 const crypto = require('crypto');
 const {logSecurityEvent}=require('./security-event-log');
 
@@ -28,8 +29,9 @@ async function getSettings(pool, ownerId) {
 }
 
 function visitorKey(req, explicit) {
-  const raw = String(explicit || req.headers['x-guest-token'] || req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '').trim();
-  return raw.split(',')[0].trim().slice(0, 200) || 'anonymous';
+  return String(explicit || req.headers['x-guest-token'] || requestIp(req) || 'anonymous')
+    .trim()
+    .slice(0, 200) || 'anonymous';
 }
 
 async function ownerForQr(pool, token) {
