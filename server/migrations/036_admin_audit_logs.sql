@@ -26,9 +26,6 @@ CREATE INDEX IF NOT EXISTS idx_admin_audit_logs_target
 
 CREATE INDEX IF NOT EXISTS idx_admin_audit_logs_action
   ON admin_audit_logs(action, created_at DESC);
-
-ALTER TABLE admin_audit_logs OWNER TO heycar_user;
-
 REVOKE UPDATE, DELETE, TRUNCATE ON admin_audit_logs FROM heycar_user;
 GRANT SELECT, INSERT ON admin_audit_logs TO heycar_user;
 GRANT USAGE, SELECT ON SEQUENCE admin_audit_logs_id_seq TO heycar_user;
