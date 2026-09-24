@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_runtime_config.dart';
 
 const _bg=Color(0xFF07111F),_panel=Color(0xFF101A30),_line=Color(0xFF27355D),_purple=Color(0xFF8B5CFF),_muted=Color(0xFFA7B0C7),_lime=Color(0xFF79FF45);
 
@@ -8,6 +9,14 @@ class PremiumPage extends StatefulWidget{
 }
 class _PremiumPageState extends State<PremiumPage>{
   bool yearly=false;
+  RuntimeAppConfig? runtimeConfig;
+  @override void initState(){super.initState();_loadConfig();}
+  Future<void> _loadConfig()async{
+    try{
+      final cfg=await RuntimeConfigService.load();
+      if(mounted)setState(()=>runtimeConfig=cfg);
+    }catch(_){}
+  }
   static const features=[
     (Icons.directions_car_filled_rounded,'3 Araca Kadar Ekle','Tüm araçlarını tek hesapta yönet.'),
     (Icons.group_rounded,'Aile Üyeleri / Yetkili Sürücü','Aracını güvendiğin kişilerle paylaş.'),
@@ -34,15 +43,15 @@ class _PremiumPageState extends State<PremiumPage>{
       ])),
       const SizedBox(height:12),
       Row(children:[
-        Expanded(child:_Plan(selected:!yearly,title:'Aylık',price:'₺49,99',note:'/ ay',onTap:()=>setState(()=>yearly=false))),
+        Expanded(child:_Plan(selected:!yearly,title:'Aylık',price:runtimeConfig?.monthlyPriceText??'₺49,99',note:'/ ay',onTap:()=>setState(()=>yearly=false))),
         const SizedBox(width:10),
-        Expanded(child:_Plan(selected:yearly,title:'Yıllık',price:'₺499,99',note:'/ yıl  •  %17 tasarruf',onTap:()=>setState(()=>yearly=true))),
+        Expanded(child:_Plan(selected:yearly,title:'Yıllık',price:runtimeConfig?.yearlyPriceText??'₺499,99',note:'/ yıl  •  %17 tasarruf',onTap:()=>setState(()=>yearly=true))),
       ]),
       const SizedBox(height:12),
       SizedBox(height:52,child:FilledButton.icon(
         style:FilledButton.styleFrom(backgroundColor:_purple,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(16))),
-        onPressed:()=>ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Ödeme entegrasyonu sonraki adımda bağlanacak.'))),
-        icon:const Icon(Icons.workspace_premium_rounded),label:const Text('Premium’a Geç',style:TextStyle(fontSize:16,fontWeight:FontWeight.w900))
+        onPressed:runtimeConfig?.featureEnabled('premium')==false?null:()=>ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Ödeme entegrasyonu sonraki adımda bağlanacak.'))),
+        icon:const Icon(Icons.workspace_premium_rounded),label:Text(runtimeConfig?.featureEnabled('premium')==false?'Premium geçici olarak kapalı':'Premium’a Geç',style:const TextStyle(fontSize:16,fontWeight:FontWeight.w900))
       )),
       const SizedBox(height:8),
       const Text('Aboneliğini istediğin zaman iptal edebilirsin.',textAlign:TextAlign.center,style:TextStyle(color:_muted,fontSize:11.5))
