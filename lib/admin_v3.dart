@@ -1545,7 +1545,7 @@ class _ReportLinePainter extends CustomPainter{
       _paintChartText(canvas,value>=1000?'${(value/1000).toStringAsFixed(value>=10000?0:1)}K':'${value.round()}',Offset(0,y-7),const Color(0xFF7E879F),9.5);
     }
 
-    final step=rows.length<=1?0:w/(rows.length-1);
+    final step=rows.length<=1?0.0:w/(rows.length-1);
     for(final s in series){
       final path=Path();
       final linePaint=Paint()..color=s.color..style=PaintingStyle.stroke..strokeWidth=2.2..strokeCap=StrokeCap.round..strokeJoin=StrokeJoin.round;
@@ -1578,7 +1578,7 @@ class _ReportLinePainter extends CustomPainter{
         text:TextSpan(text:label,style:const TextStyle(color:Color(0xFF7E879F),fontSize:9.5)),
         textDirection:TextDirection.ltr,
       )..layout();
-      final dx=(x-tp.width/2).clamp(left,left+w-tp.width);
+      final dx=(x-tp.width/2).clamp(left,left+w-tp.width).toDouble();
       tp.paint(canvas,Offset(dx,top+h+7));
     }
   }
@@ -1624,7 +1624,7 @@ class _ReportRankingCard extends StatelessWidget{
           final i=entry.key;
           final r=entry.value;
           final value=_reportInt(r[valueKey]);
-          final fraction=maxValue<=0?0.0:(value/maxValue).clamp(0.0,1.0);
+          final fraction=maxValue<=0?0.0:(value/maxValue).clamp(0.0,1.0).toDouble();
           return Padding(
             padding:const EdgeInsets.only(bottom:11),
             child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
