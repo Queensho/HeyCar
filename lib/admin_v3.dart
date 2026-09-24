@@ -222,6 +222,24 @@ class _AdminHomeState extends State<AdminHome> {
     }catch(e){snack(e);}
   }
   Future<void> qrAction(String token,String action) async {try{await send('PATCH','/api/admin/manage/qr/$token',{'action':action});await load();}catch(e){snack(e);}}
+  Future<void> qrBatchStatus(List<String> batchIds,String status) async {
+    try{
+      final ids=batchIds.where((e)=>e.isNotEmpty).toSet().toList();
+      for(final id in ids){
+        await send('PATCH','/api/admin/manage/qr/batches/$id/status',{'status':status});
+      }
+      await load();
+      if(mounted&&ids.isNotEmpty){
+        final label=switch(status){
+          'pdf_downloaded'=>'PDF Alındı',
+          'sent_to_print'=>'Baskıya Gönderildi',
+          'printed'=>'Basıldı',
+          _=>status,
+        };
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('${ids.length} baskı partisi • $label')));
+      }
+    }catch(e){snack(e);rethrow;}
+  }
   Future<void> removeBg(String id) async {try{await send('DELETE','/api/admin/manage/moderation/themes/$id/background');await load();}catch(e){snack(e);}}
   Future<void> resetTheme(String id) async {try{await send('POST','/api/admin/manage/moderation/themes/$id/reset');await load();}catch(e){snack(e);}}
   Future<String> uploadPromoImage(XFile file) async {
@@ -336,7 +354,7 @@ class _AdminHomeState extends State<AdminHome> {
     child:Container(width:38,height:38,decoration:BoxDecoration(color:_card2,borderRadius:BorderRadius.circular(12),border:Border.all(color:_purple.withValues(alpha:.45))),child:Icon(icon,color:Colors.white,size:20)),
   );
 
-  Widget page(){switch(tab){case 1:return UsersPage(rows:users,open:openUser);case 2:return VehiclesPage(rows:vehicles,open:openVehicle);case 3:return QrPage(rows:qr,create:createQr,action:qrAction);case 4:return ModerationPage(rows:themes,removeBackground:removeBg,resetTheme:resetTheme);case 5:return AdminCorrectionRequestsPage(token:widget.token);case 6:return AdminPromoPage(rows:promos,onCreate:createPromo,onSetActive:setPromoActive,onPush:pushPromo,onUploadImage:uploadPromoImage);default:return const SizedBox.shrink();}}
+  Widget page(){switch(tab){case 1:return UsersPage(rows:users,open:openUser);case 2:return VehiclesPage(rows:vehicles,open:openVehicle);case 3:return QrPage(rows:qr,create:createQr,action:qrAction,batchStatus:qrBatchStatus);case 4:return ModerationPage(rows:themes,removeBackground:removeBg,resetTheme:resetTheme);case 5:return AdminCorrectionRequestsPage(token:widget.token);case 6:return AdminPromoPage(rows:promos,onCreate:createPromo,onSetActive:setPromoActive,onPush:pushPromo,onUploadImage:uploadPromoImage);default:return const SizedBox.shrink();}}
 }
 
 Widget _brand({double fontSize=34})=>RichText(text:TextSpan(children:[
@@ -508,10 +526,11 @@ class VehiclesPage extends StatefulWidget{const VehiclesPage({super.key,required
 class _VehiclesPageState extends State<VehiclesPage>{final search=TextEditingController();@override Widget build(BuildContext context){final q=search.text.toLowerCase();final r=widget.rows.where((e)=>'${e['plate']} ${e['make']} ${e['model']}'.toLowerCase().contains(q)).toList();return listPage('Araçlar',search,()=>setState((){}),r.map((e)=>rowCard(Icons.directions_car,e['plate']?.toString()??'-','${e['make']??''} ${e['model']??''}',const Icon(Icons.chevron_right),()=>widget.open(e))).toList());}}
 
 class QrPage extends StatefulWidget{
-  const QrPage({super.key,required this.rows,required this.create,required this.action});
+  const QrPage({super.key,required this.rows,required this.create,required this.action,required this.batchStatus});
   final List<Map<String,dynamic>> rows;
   final Future<void> Function(int) create;
   final Future<void> Function(String,String) action;
+  final Future<void> Function(List<String>,String) batchStatus;
   @override State<QrPage> createState()=>_QrPageState();
 }
 
@@ -519,6 +538,7 @@ class _QrPageState extends State<QrPage>{
   final search=TextEditingController();
   final GlobalKey _stickerKey=GlobalKey();
   String batchFilter='all';
+  String printFilter='all';
 
   String publicUrl(String token)=>'$_publicBase?tag=${Uri.encodeQueryComponent(token)}';
 
@@ -528,6 +548,28 @@ class _QrPageState extends State<QrPage>{
     return values;
   }
 
+  String _printStatus(Map<String,dynamic> e){
+    if((e['batch_code']??'').toString().isEmpty)return 'legacy';
+    return (e['print_status']??'ready').toString();
+  }
+
+  String _printStatusLabel(String status)=>switch(status){
+    'ready'=>'Hazır',
+    'pdf_downloaded'=>'PDF Alındı',
+    'sent_to_print'=>'Baskıya Gönderildi',
+    'printed'=>'Basıldı',
+    'legacy'=>'Eski / Partisiz',
+    _=>status,
+  };
+
+  Color _printStatusColor(String status)=>switch(status){
+    'printed'=>_green,
+    'sent_to_print'=>_amber,
+    'pdf_downloaded'=>_blue,
+    'ready'=>_purple,
+    _=>_muted,
+  };
+
   String _csvCell(Object? value){
     final s=(value??'').toString().replaceAll('"','""');
     return '"$s"';
@@ -536,9 +578,9 @@ class _QrPageState extends State<QrPage>{
   Future<void> _exportCsv(List<Map<String,dynamic>> rows) async{
     if(rows.isEmpty)return;
     final out=<String>[
-      ['Etiket Kodu','Seri No','Baskı Partisi','Parti Sırası','Durum','Plaka','Araç Sahibi','Aktivasyon','QR Linki'].map(_csvCell).join(','),
+      ['Etiket Kodu','Seri No','Baskı Partisi','Parti Sırası','Baskı Durumu','Durum','Plaka','Araç Sahibi','Aktivasyon','QR Linki'].map(_csvCell).join(','),
       ...rows.map((e)=>[
-        e['token'],e['serial_no'],e['batch_code'],e['batch_serial'],e['status'],e['plate'],e['owner_name'],e['activated_at'],publicUrl((e['token']??'').toString())
+        e['token'],e['serial_no'],e['batch_code'],e['batch_serial'],_printStatusLabel(_printStatus(e)),e['status'],e['plate'],e['owner_name'],e['activated_at'],publicUrl((e['token']??'').toString())
       ].map(_csvCell).join(',')),
     ];
     final bytes=Uint8List.fromList(utf8.encode('\uFEFF${out.join('\n')}'));
@@ -665,6 +707,8 @@ class _QrPageState extends State<QrPage>{
       'cepqar-baski-10x4cm-$suffix.pdf',
       'application/pdf',
     );
+    final batchIds=rows.map((e)=>(e['print_batch_id']??'').toString()).where((e)=>e.isNotEmpty).toSet().toList();
+    if(batchIds.isNotEmpty)await widget.batchStatus(batchIds,'pdf_downloaded');
   }
   Future<void> _downloadSticker(String token) async{
     try{
@@ -756,7 +800,15 @@ class _QrPageState extends State<QrPage>{
       final text='${e['token']} ${e['plate']} ${e['owner_name']} ${e['batch_code']}'.toLowerCase();
       final matchesSearch=text.contains(q);
       final matchesBatch=batchFilter=='all'||(batchFilter=='legacy'&&(e['batch_code']??'').toString().isEmpty)||(e['batch_code']??'').toString()==batchFilter;
-      return matchesSearch&&matchesBatch;
+      final ps=_printStatus(e);
+      final matchesPrint=switch(printFilter){
+        'unprinted'=>ps!='legacy'&&ps!='printed',
+        'pdf_downloaded'=>ps=='pdf_downloaded',
+        'sent_to_print'=>ps=='sent_to_print',
+        'printed'=>ps=='printed',
+        _=>true,
+      };
+      return matchesSearch&&matchesBatch&&matchesPrint;
     }).toList();
 
     return ListView(padding:const EdgeInsets.fromLTRB(14,14,14,24),children:[
@@ -791,24 +843,52 @@ class _QrPageState extends State<QrPage>{
         )),
         Text('${rows.length} QR • ${batches.length} baskı partisi',style:const TextStyle(color:_muted,fontSize:12,fontWeight:FontWeight.w700)),
       ]),
+      const SizedBox(height:10),
+      Wrap(spacing:7,runSpacing:7,children:[
+        ChoiceChip(label:const Text('Tümü'),selected:printFilter=='all',onSelected:(_)=>setState(()=>printFilter='all')),
+        ChoiceChip(label:const Text('Basılmadı'),selected:printFilter=='unprinted',onSelected:(_)=>setState(()=>printFilter='unprinted')),
+        ChoiceChip(label:const Text('PDF Alındı'),selected:printFilter=='pdf_downloaded',onSelected:(_)=>setState(()=>printFilter='pdf_downloaded')),
+        ChoiceChip(label:const Text('Baskıya Gönderildi'),selected:printFilter=='sent_to_print',onSelected:(_)=>setState(()=>printFilter='sent_to_print')),
+        ChoiceChip(label:const Text('Basıldı'),selected:printFilter=='printed',onSelected:(_)=>setState(()=>printFilter='printed')),
+      ]),
       const SizedBox(height:14),
       if(rows.isEmpty)Container(padding:const EdgeInsets.all(24),decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(18),border:Border.all(color:_line)),child:const Center(child:Text('Bu filtrede QR bulunamadı.',style:TextStyle(color:_muted))))
       else ...rows.map((e){
         final batch=(e['batch_code']??'').toString();
+        final batchId=(e['print_batch_id']??'').toString();
         final serial=e['serial_no']?.toString()??'-';
         final batchSerial=e['batch_serial']?.toString()??'-';
+        final ps=_printStatus(e);
+        final psColor=_printStatusColor(ps);
+        final printedAt=DateTime.tryParse((e['printed_at']??'').toString())?.toLocal();
+        final printedText=printedAt==null?'':' • ${printedAt.day.toString().padLeft(2,'0')}.${printedAt.month.toString().padLeft(2,'0')}.${printedAt.year}';
         return Card(elevation:0,child:Padding(padding:const EdgeInsets.symmetric(vertical:5),child:ListTile(
           leading:const Icon(Icons.qr_code_2_rounded,color:_purple,size:34),
-          title:Row(children:[Expanded(child:Text(e['token']?.toString()??'-',style:const TextStyle(fontWeight:FontWeight.w900))),if(batch.isNotEmpty)Container(padding:const EdgeInsets.symmetric(horizontal:7,vertical:3),decoration:BoxDecoration(color:_purple.withValues(alpha:.12),borderRadius:BorderRadius.circular(12)),child:Text(batch,style:const TextStyle(color:Color(0xFFC879FF),fontSize:9.5,fontWeight:FontWeight.w800)))]),
+          title:Wrap(spacing:6,runSpacing:5,crossAxisAlignment:WrapCrossAlignment.center,children:[
+            Text(e['token']?.toString()??'-',style:const TextStyle(fontWeight:FontWeight.w900)),
+            if(batch.isNotEmpty)Container(padding:const EdgeInsets.symmetric(horizontal:7,vertical:3),decoration:BoxDecoration(color:_purple.withValues(alpha:.12),borderRadius:BorderRadius.circular(12)),child:Text(batch,style:const TextStyle(color:Color(0xFFC879FF),fontSize:9.5,fontWeight:FontWeight.w800))),
+            Container(padding:const EdgeInsets.symmetric(horizontal:7,vertical:3),decoration:BoxDecoration(color:psColor.withValues(alpha:.14),borderRadius:BorderRadius.circular(12)),child:Text('${_printStatusLabel(ps)}$printedText',style:TextStyle(color:psColor,fontSize:9.5,fontWeight:FontWeight.w900))),
+          ]),
           subtitle:Text('${e['plate']??'Bağlı araç yok'} • ${e['owner_name']??''}\nSeri #$serial • ${batch.isEmpty?'Eski / Partisiz':'Parti sıra $batchSerial'}'),
           isThreeLine:true,
           onTap:()=>showQr(e),
           trailing:Wrap(spacing:4,children:[
             IconButton(tooltip:'QR Etiketi',onPressed:()=>showQr(e),icon:const Icon(Icons.image_outlined,color:_purple)),
-            PopupMenuButton<String>(onSelected:(a)=>widget.action(e['token'].toString(),a),itemBuilder:(_)=>[
-              if(e['status']=='disabled')const PopupMenuItem(value:'enable',child:Text('Aktif et'))else const PopupMenuItem(value:'disable',child:Text('Devre dışı bırak')),
-              if(e['vehicle_id']!=null)const PopupMenuItem(value:'unbind',child:Text('Araçtan ayır')),
-            ]),
+            PopupMenuButton<String>(
+              onSelected:(a)async{
+                if(a.startsWith('print:')){
+                  if(batchId.isNotEmpty)await widget.batchStatus([batchId],a.substring(6));
+                }else{
+                  await widget.action(e['token'].toString(),a);
+                }
+              },
+              itemBuilder:(_)=>[
+                if(batchId.isNotEmpty&&ps!='sent_to_print'&&ps!='printed')const PopupMenuItem(value:'print:sent_to_print',child:Text('Baskıya gönderildi işaretle')),
+                if(batchId.isNotEmpty&&ps!='printed')const PopupMenuItem(value:'print:printed',child:Text('Basıldı olarak işaretle')),
+                if(e['status']=='disabled')const PopupMenuItem(value:'enable',child:Text('Aktif et'))else const PopupMenuItem(value:'disable',child:Text('Devre dışı bırak')),
+                if(e['vehicle_id']!=null)const PopupMenuItem(value:'unbind',child:Text('Araçtan ayır')),
+              ],
+            ),
           ]),
         )));
       }),
