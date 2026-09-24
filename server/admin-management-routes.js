@@ -20,7 +20,7 @@ async function ensureQrItemPrintSchema(pool) {
     ALTER TABLE qr_tags
       ADD COLUMN IF NOT EXISTS printed_at TIMESTAMPTZ;
 
-    DO $ BEGIN
+    DO $qr$ BEGIN
       IF NOT EXISTS (
         SELECT 1 FROM pg_constraint WHERE conname='qr_tags_print_status_check'
       ) THEN
@@ -28,7 +28,7 @@ async function ensureQrItemPrintSchema(pool) {
           ADD CONSTRAINT qr_tags_print_status_check
           CHECK (print_status IN ('ready','pdf_downloaded','sent_to_print','printed'));
       END IF;
-    END $;
+    END $qr$;
 
   `);
   qrItemPrintSchemaReady = true;
