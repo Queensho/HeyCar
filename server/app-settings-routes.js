@@ -11,6 +11,11 @@ function bool(v){return v===true||v==='true';}
 function actor(req){
   return clean(req.headers?.['x-admin-email']||req.headers?.['x-admin-name']||req.headers?.['x-admin-id']||'admin',240);
 }
+function formatTry(value){
+  const n=Number(value);
+  if(!Number.isFinite(n))return '';
+  return '₺'+n.toFixed(2).replace('.',',');
+}
 
 module.exports=function registerAppSettingsRoutes(app,pool,adminGuard){
   const guard=typeof adminGuard==='function'?adminGuard:(_req,res)=>res.status(500).json({error:'ADMIN_GUARD_NOT_CONFIGURED'});
@@ -44,9 +49,13 @@ module.exports=function registerAppSettingsRoutes(app,pool,adminGuard){
     if(iosVersion!==null&&!validVersion(iosVersion))return res.status(400).json({error:'INVALID_IOS_VERSION'});
 
     const fee=b.defaultPlatformFee===undefined?null:Number(b.defaultPlatformFee);
+    const premiumMonthly=b.premiumMonthlyPrice===undefined?null:Number(b.premiumMonthlyPrice);
+    const premiumYearly=b.premiumYearlyPrice===undefined?null:Number(b.premiumYearlyPrice);
     const qrMax=b.qrRateLimitMax===undefined?null:Number(b.qrRateLimitMax);
     const qrWindow=b.qrRateLimitWindowSeconds===undefined?null:Number(b.qrRateLimitWindowSeconds);
     if(fee!==null&&(!Number.isFinite(fee)||fee<0||fee>100000))return res.status(400).json({error:'INVALID_PLATFORM_FEE'});
+    if(premiumMonthly!==null&&(!Number.isFinite(premiumMonthly)||premiumMonthly<0||premiumMonthly>100000))return res.status(400).json({error:'INVALID_PREMIUM_MONTHLY_PRICE'});
+    if(premiumYearly!==null&&(!Number.isFinite(premiumYearly)||premiumYearly<0||premiumYearly>1000000))return res.status(400).json({error:'INVALID_PREMIUM_YEARLY_PRICE'});
     if(qrMax!==null&&(!Number.isInteger(qrMax)||qrMax<1||qrMax>10000))return res.status(400).json({error:'INVALID_QR_RATE_MAX'});
     if(qrWindow!==null&&(!Number.isInteger(qrWindow)||qrWindow<1||qrWindow>86400))return res.status(400).json({error:'INVALID_QR_RATE_WINDOW'});
 
@@ -70,11 +79,14 @@ module.exports=function registerAppSettingsRoutes(app,pool,adminGuard){
           default_platform_fee=COALESCE($12,default_platform_fee),
           qr_rate_limit_max=COALESCE($13,qr_rate_limit_max),
           qr_rate_limit_window_seconds=COALESCE($14,qr_rate_limit_window_seconds),
-          premium_monthly_price_text=COALESCE($15,premium_monthly_price_text),
-          premium_yearly_price_text=COALESCE($16,premium_yearly_price_text),
-          features=COALESCE($17::jsonb,features),
+          premium_monthly_price=COALESCE($15,premium_monthly_price),
+          premium_yearly_price=COALESCE($16,premium_yearly_price),
+          premium_currency=COALESCE($17,premium_currency),
+          premium_monthly_price_text=COALESCE($18,premium_monthly_price_text),
+          premium_yearly_price_text=COALESCE($19,premium_yearly_price_text),
+          features=COALESCE($20::jsonb,features),
           updated_at=NOW(),
-          updated_by=$18
+          updated_by=$21
         WHERE id=1
         RETURNING *`,
         [
@@ -92,8 +104,11 @@ module.exports=function registerAppSettingsRoutes(app,pool,adminGuard){
           fee,
           qrMax,
           qrWindow,
-          clean(b.premiumMonthlyPriceText,120),
-          clean(b.premiumYearlyPriceText,120),
+          premiumMonthly,
+          premiumYearly,
+          clean(b.premiumCurrency,12),
+          premiumMonthly!==null?formatTry(premiumMonthly):clean(b.premiumMonthlyPriceText,120),
+          premiumYearly!==null?formatTry(premiumYearly):clean(b.premiumYearlyPriceText,120),
           features?JSON.stringify(features):null,
           actor(req),
         ]
@@ -112,6 +127,9 @@ module.exports=function registerAppSettingsRoutes(app,pool,adminGuard){
           force_update_android:before.force_update_android,
           force_update_ios:before.force_update_ios,
           default_platform_fee:before.default_platform_fee,
+          premium_monthly_price:before.premium_monthly_price,
+          premium_yearly_price:before.premium_yearly_price,
+          premium_currency:before.premium_currency,
           qr_rate_limit_max:before.qr_rate_limit_max,
           qr_rate_limit_window_seconds:before.qr_rate_limit_window_seconds,
           features:before.features,
@@ -123,6 +141,9 @@ module.exports=function registerAppSettingsRoutes(app,pool,adminGuard){
           force_update_android:after.force_update_android,
           force_update_ios:after.force_update_ios,
           default_platform_fee:after.default_platform_fee,
+          premium_monthly_price:after.premium_monthly_price,
+          premium_yearly_price:after.premium_yearly_price,
+          premium_currency:after.premium_currency,
           qr_rate_limit_max:after.qr_rate_limit_max,
           qr_rate_limit_window_seconds:after.qr_rate_limit_window_seconds,
           features:after.features,
