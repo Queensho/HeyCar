@@ -2,8 +2,14 @@ const {ownerId: authenticatedOwnerId}=require('./owner-auth-service');
 const crypto = require('crypto');
 const { hashScanToken, validateScanSession } = require('./scan-session-service');
 const { moderateMessage } = require('./message-moderation');
+const {getAppSettings}=require('./app-settings-service');
 
 module.exports = function registerConversationRoutes(app, pool) {
+  async function messagesEnabled(res){
+    const runtime=await getAppSettings(pool);
+    if(runtime.features?.messages===false){res.status(503).json({error:'MESSAGES_FEATURE_DISABLED'});return false;}
+    return true;
+  }
   async function ensureStatusColumns() {
     await pool.query(`ALTER TABLE qr_conversations ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active'; ALTER TABLE qr_conversations ADD COLUMN IF NOT EXISTS closed_at TIMESTAMPTZ; ALTER TABLE qr_conversations ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ; ALTER TABLE qr_conversations ADD COLUMN IF NOT EXISTS scan_session_hash TEXT;`);
   }
@@ -21,6 +27,7 @@ module.exports = function registerConversationRoutes(app, pool) {
   }
 
   app.post('/api/qr/:token/conversations', async (req, res) => {
+    if(!await messagesEnabled(res))return;
     const token = String(req.params.token || '').trim().toUpperCase();
     const notificationId = String(req.body?.notificationId || '').trim();
     if (!token || !notificationId) return res.status(400).json({ error: 'INVALID_REQUEST' });
@@ -77,6 +84,7 @@ module.exports = function registerConversationRoutes(app, pool) {
   });
 
   app.post('/api/qr/:token/conversations/:id/messages', async (req, res) => {
+    if(!await messagesEnabled(res))return;
     const token = String(req.params.token || '').trim().toUpperCase();
     const id = String(req.params.id || '').trim();
     const message = String(req.body?.message || '').trim().slice(0, 1000);
@@ -131,6 +139,7 @@ module.exports = function registerConversationRoutes(app, pool) {
   });
 
   app.post('/api/owner/conversations/:id/messages', async (req,res) => {
+    if(!await messagesEnabled(res))return;
     const ownerId=authenticatedOwnerId(req); const id=String(req.params.id||'').trim(); const message=String(req.body?.message||'').trim().slice(0,1000);
     if(!ownerId)return res.status(401).json({error:'OWNER_REQUIRED'});
     const moderation=moderateMessage(message); if(!moderation.ok)return res.status(moderation.code==='MESSAGE_REQUIRED'?400:422).json({error:moderation.code});
