@@ -152,6 +152,103 @@ async function postgresHealth(pool) {
   }
 }
 
+function systemdShowValue(raw) {
+  return String(raw || '').trim();
+}
+
+function systemdTimestampToIso(raw) {
+  const value = systemdShowValue(raw);
+  if (!value || value === 'n/a' || value === '0') return null;
+  const normalized = value.replace(/^[A-Za-z]{3}\s+/, '');
+  const ms = Date.parse(normalized);
+  return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
+}
+
+async function reminderSchedulerHealth(pool) {
+  let timer = {
+    installed: false,
+    active: false,
+    enabled: false,
+    lastTriggerAt: null,
+    nextRunAt: null,
+    error: null,
+  };
+
+  try {
+    const { stdout } = await execFileAsync(
+      'systemctl',
+      ['show','cepqar-reminders.timer','--property=LoadState','--property=ActiveState','--property=UnitFileState','--property=LastTriggerUSec','--property=NextElapseUSecRealtime','--no-pager'],
+      { timeout: 2500 }
+    );
+    const props = {};
+    for (const line of String(stdout || '').split(/\r?\n/)) {
+      const idx = line.indexOf('=');
+      if (idx <= 0) continue;
+      props[line.slice(0, idx)] = line.slice(idx + 1);
+    }
+    timer = {
+      installed: props.LoadState === 'loaded',
+      active: props.ActiveState === 'active',
+      enabled: props.UnitFileState === 'enabled',
+      lastTriggerAt: systemdTimestampToIso(props.LastTriggerUSec),
+      nextRunAt: systemdTimestampToIso(props.NextElapseUSecRealtime),
+      error: null,
+    };
+  } catch (e) {
+    timer.error = safeText(e);
+  }
+
+  let latest = null;
+  let history = [];
+  try {
+    const exists = await pool.query("SELECT to_regclass('public.vehicle_reminder_job_runs') AS name");
+    if (!exists.rows[0]?.name) {
+      return {
+        status: 'not_configured',
+        timer,
+        lastRun: null,
+        recentRuns: [],
+        nextRunAt: timer.nextRunAt,
+      };
+    }
+    const r = await pool.query(
+      `SELECT id,source,status,started_at,finished_at,eligible_count,created_notifications,
+              duplicate_skips,push_attempted,push_delivered,error
+         FROM vehicle_reminder_job_runs
+        ORDER BY started_at DESC LIMIT 8`
+    );
+    history = r.rows;
+    latest = history[0] || null;
+  } catch (e) {
+    return {
+      status: 'warning',
+      timer,
+      lastRun: null,
+      recentRuns: [],
+      nextRunAt: timer.nextRunAt,
+      error: safeText(e),
+    };
+  }
+
+  let status = 'ready';
+  if (!timer.installed || !timer.active || !timer.enabled) {
+    status = 'warning';
+  } else if (latest?.status === 'failed') {
+    status = 'warning';
+  } else if (latest?.status === 'success') {
+    const finished = latest.finished_at ? new Date(latest.finished_at).getTime() : 0;
+    status = finished && Date.now() - finished <= 36 * 3600000 ? 'healthy' : 'warning';
+  }
+
+  return {
+    status,
+    timer,
+    lastRun: latest,
+    recentRuns: history,
+    nextRunAt: timer.nextRunAt,
+  };
+}
+
 async function pushHealth(app, pool) {
   const push = app.locals.heycarPush;
   let tokenCounts = { owner: 0, driver: 0 };
@@ -239,11 +336,12 @@ module.exports = function registerSystemHealthRoutes(app, pool, adminGuard) {
 
   app.get('/api/admin/manage/system-health', guard, async (_req, res) => {
     const requestedAt = new Date().toISOString();
-    const [postgres, disk, backup, firebase] = await Promise.all([
+    const [postgres, disk, backup, firebase, reminders] = await Promise.all([
       postgresHealth(pool),
       diskUsage(),
       findLatestBackup(),
       pushHealth(app, pool),
+      reminderSchedulerHealth(pool),
     ]);
 
     const metrics = systemMetrics();
@@ -269,7 +367,9 @@ module.exports = function registerSystemHealthRoutes(app, pool, adminGuard) {
       postgres.status === 'slow' ||
       backup.status === 'stale' ||
       backup.status === 'missing' ||
-      backup.status === 'not_configured'
+      backup.status === 'not_configured' ||
+      reminders.status === 'warning' ||
+      reminders.status === 'not_configured'
     );
 
     return res.json({
@@ -282,6 +382,7 @@ module.exports = function registerSystemHealthRoutes(app, pool, adminGuard) {
       system: metrics,
       disk,
       backup,
+      reminders,
       lastError,
       recentErrors,
     });
