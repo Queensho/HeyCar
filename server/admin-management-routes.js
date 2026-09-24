@@ -29,6 +29,16 @@ async function tableExists(pool, tableName) {
   return Boolean(r.rows[0]?.name);
 }
 
+async function columnExists(pool, tableName, columnName) {
+  const r = await pool.query(
+    `SELECT 1 FROM information_schema.columns
+      WHERE table_schema='public' AND table_name=$1 AND column_name=$2
+      LIMIT 1`,
+    [tableName, columnName]
+  );
+  return Boolean(r.rows.length);
+}
+
 async function safeRows(pool, tableName, sql, params = []) {
   if (!await tableExists(pool, tableName)) return [];
   const r = await pool.query(sql, params);
@@ -117,7 +127,12 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
 
       let complaintCount = 0;
       let complaints = [];
+      const hasRecipientUser = await columnExists(pool, 'vehicle_notifications', 'recipient_user_id');
       if (await tableExists(pool, 'message_reports')) {
+        const recipientJoin = hasRecipientUser
+          ? 'LEFT JOIN vehicle_notifications n ON n.id::text=c.notification_id::text'
+          : '';
+        const recipientWhere = hasRecipientUser ? ' OR n.recipient_user_id::text=$1' : '';
         const reports = await pool.query(
           `SELECT r.id,r.reporter_type,r.reason,r.created_at,
                   c.id AS conversation_id,c.vehicle_id,
@@ -125,28 +140,49 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
              FROM message_reports r
              LEFT JOIN qr_conversations c ON c.id=r.conversation_id
              LEFT JOIN vehicles v ON v.id::text=c.vehicle_id::text
-             LEFT JOIN vehicle_notifications n ON n.id::text=c.notification_id::text
-            WHERE v.owner_id::text=$1 OR n.recipient_user_id::text=$1
+             ${recipientJoin}
+            WHERE v.owner_id::text=$1${recipientWhere}
             ORDER BY r.created_at DESC
             LIMIT 50`,
           [userId]
         );
         complaints = reports.rows;
-        complaintCount = complaints.length;
+        const count = await pool.query(
+          `SELECT COUNT(*)::int AS n
+             FROM message_reports r
+             LEFT JOIN qr_conversations c ON c.id=r.conversation_id
+             LEFT JOIN vehicles v ON v.id::text=c.vehicle_id::text
+             ${recipientJoin}
+            WHERE v.owner_id::text=$1${recipientWhere}`,
+          [userId]
+        );
+        complaintCount = Number(count.rows[0]?.n || 0);
       }
 
-      const qrUsage = await safeRows(
-        pool,
-        'vehicle_notifications',
-        `SELECT n.id,n.qr_token,n.type,n.status,n.message,n.created_at,n.read_at,n.resolved_at,
-                v.id AS vehicle_id,v.plate
-           FROM vehicle_notifications n
-           JOIN vehicles v ON v.id::text=n.vehicle_id::text
-          WHERE v.owner_id::text=$1 OR n.recipient_user_id::text=$1
-          ORDER BY n.created_at DESC
-          LIMIT 50`,
-        [userId]
-      );
+      let qrUsage = [];
+      let qrUsageCount = 0;
+      if (await tableExists(pool, 'vehicle_notifications')) {
+        const recipientWhere = hasRecipientUser ? ' OR n.recipient_user_id::text=$1' : '';
+        const usage = await pool.query(
+          `SELECT n.id,n.qr_token,n.type,n.status,n.message,n.created_at,n.read_at,n.resolved_at,
+                  v.id AS vehicle_id,v.plate
+             FROM vehicle_notifications n
+             JOIN vehicles v ON v.id::text=n.vehicle_id::text
+            WHERE v.owner_id::text=$1${recipientWhere}
+            ORDER BY n.created_at DESC
+            LIMIT 50`,
+          [userId]
+        );
+        qrUsage = usage.rows;
+        const count = await pool.query(
+          `SELECT COUNT(*)::int AS n
+             FROM vehicle_notifications n
+             JOIN vehicles v ON v.id::text=n.vehicle_id::text
+            WHERE v.owner_id::text=$1${recipientWhere}`,
+          [userId]
+        );
+        qrUsageCount = Number(count.rows[0]?.n || 0);
+      }
 
       const lastSeenCandidates = [
         ...securitySessions.map(x => x.last_seen_at),
@@ -168,7 +204,7 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
             ...devices.map(x => String(x.device_id || '')).filter(Boolean),
           ]).size,
           lastLoginAt: lastSeenCandidates[0]?.toISOString() || null,
-          qrUsageCount: qrUsage.length,
+          qrUsageCount,
         },
         vehicles: vehicles.rows,
         securitySessions,
@@ -252,10 +288,14 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
         [vehicleId]
       );
 
+      const notificationHasArriving = await columnExists(pool, 'vehicle_notifications', 'arriving_at');
+      const notificationHasRecipient = await columnExists(pool, 'vehicle_notifications', 'recipient_user_id');
       const notifications = await safeRows(
         pool,
         'vehicle_notifications',
-        `SELECT id,qr_token,type,message,status,created_at,read_at,resolved_at,arriving_at,recipient_user_id
+        `SELECT id,qr_token,type,message,status,created_at,read_at,resolved_at,
+                ${notificationHasArriving ? 'arriving_at' : 'NULL::timestamptz AS arriving_at'},
+                ${notificationHasRecipient ? 'recipient_user_id' : 'NULL::text AS recipient_user_id'}
            FROM vehicle_notifications
           WHERE vehicle_id::text=$1
           ORDER BY created_at DESC
@@ -278,32 +318,54 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
         [vehicle.plate || '']
       );
 
-      const activeDriver = await safeOne(
-        pool,
-        'vehicle_active_drivers',
-        `SELECT a.driver_name,a.driver_user_id,a.active_until,a.updated_at,
-                u.phone AS driver_phone,u.email AS driver_email,u.status AS driver_status
-           FROM vehicle_active_drivers a
-           LEFT JOIN users u ON u.id::text=a.driver_user_id::text
-          WHERE a.vehicle_id::text=$1
-            AND (a.active_until IS NULL OR a.active_until>NOW())
-          LIMIT 1`,
-        [vehicleId]
-      );
+      const activeDriverHasUser = await columnExists(pool, 'vehicle_active_drivers', 'driver_user_id');
+      const activeDriver = activeDriverHasUser
+        ? await safeOne(
+            pool,
+            'vehicle_active_drivers',
+            `SELECT a.driver_name,a.driver_user_id,a.active_until,a.updated_at,
+                    u.phone AS driver_phone,u.email AS driver_email,u.status AS driver_status
+               FROM vehicle_active_drivers a
+               LEFT JOIN users u ON u.id::text=a.driver_user_id::text
+              WHERE a.vehicle_id::text=$1
+                AND (a.active_until IS NULL OR a.active_until>NOW())
+              LIMIT 1`,
+            [vehicleId]
+          )
+        : await safeOne(
+            pool,
+            'vehicle_active_drivers',
+            `SELECT a.driver_name,NULL::text AS driver_user_id,a.active_until,a.updated_at,
+                    NULL::text AS driver_phone,NULL::text AS driver_email,NULL::text AS driver_status
+               FROM vehicle_active_drivers a
+              WHERE a.vehicle_id::text=$1
+                AND (a.active_until IS NULL OR a.active_until>NOW())
+              LIMIT 1`,
+            [vehicleId]
+          );
 
       const drivers = await safeRows(
         pool,
         'vehicle_drivers',
-        `SELECT d.driver_user_id,d.driver_name,d.created_at,
-                u.phone,u.email,u.status,
-                (a.driver_user_id::text=d.driver_user_id::text AND (a.active_until IS NULL OR a.active_until>NOW())) AS active,
-                a.active_until
-           FROM vehicle_drivers d
-           LEFT JOIN users u ON u.id::text=d.driver_user_id::text
-           LEFT JOIN vehicle_active_drivers a ON a.vehicle_id::text=d.vehicle_id::text
-          WHERE d.vehicle_id::text=$1
-          ORDER BY d.created_at DESC
-          LIMIT 30`,
+        activeDriverHasUser
+          ? `SELECT d.driver_user_id,d.driver_name,d.created_at,
+                    u.phone,u.email,u.status,
+                    (a.driver_user_id::text=d.driver_user_id::text AND (a.active_until IS NULL OR a.active_until>NOW())) AS active,
+                    a.active_until
+               FROM vehicle_drivers d
+               LEFT JOIN users u ON u.id::text=d.driver_user_id::text
+               LEFT JOIN vehicle_active_drivers a ON a.vehicle_id::text=d.vehicle_id::text
+              WHERE d.vehicle_id::text=$1
+              ORDER BY d.created_at DESC
+              LIMIT 30`
+          : `SELECT d.driver_user_id,d.driver_name,d.created_at,
+                    u.phone,u.email,u.status,
+                    FALSE AS active,NULL::timestamptz AS active_until
+               FROM vehicle_drivers d
+               LEFT JOIN users u ON u.id::text=d.driver_user_id::text
+              WHERE d.vehicle_id::text=$1
+              ORDER BY d.created_at DESC
+              LIMIT 30`,
         [vehicleId]
       );
 
