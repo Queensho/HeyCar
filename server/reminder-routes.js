@@ -110,16 +110,22 @@ module.exports = function registerReminderRoutes(app, pool) {
   async function sendDueReminders() {
     try{
       await schema();
-      const r=await pool.query(`SELECT r.id,r.owner_id,r.vehicle_id,r.type,r.due_date,v.plate,(r.due_date-CURRENT_DATE)::int AS days_before FROM vehicle_reminders r JOIN vehicles v ON v.id::text=r.vehicle_id WHERE r.enabled=TRUE AND (r.due_date-CURRENT_DATE)::int IN (30,7,1,0)`);
+      const r=await pool.query(`SELECT r.id,r.owner_id,r.vehicle_id,r.type,r.due_date,v.plate,(r.due_date-((NOW() AT TIME ZONE 'Europe/Istanbul')::date))::int AS days_before FROM vehicle_reminders r JOIN vehicles v ON v.id::text=r.vehicle_id WHERE r.enabled=TRUE AND (r.due_date-((NOW() AT TIME ZONE 'Europe/Istanbul')::date))::int IN (30,7,1,0)`);
       for(const x of r.rows){
         const days=Number(x.days_before);
         const claim=await pool.query(`INSERT INTO vehicle_reminder_delivery_claims(reminder_id,days_before) VALUES($1,$2) ON CONFLICT DO NOTHING RETURNING reminder_id`,[x.id,days]);
         if(!claim.rows.length) continue;
-        if(!app.locals.heycarPush) continue;
+        if(!app.locals.heycarPush){
+          await pool.query(`DELETE FROM vehicle_reminder_delivery_claims WHERE reminder_id=$1 AND days_before=$2`,[x.id,days]);
+          continue;
+        }
         const label=LABELS[x.type]||'Araç hatırlatması';
         const body=days===0?`${x.plate||'Aracınız'} • ${label} bugün sona eriyor.`:`${x.plate||'Aracınız'} • ${label} için ${days} gün kaldı.`;
         try{
-          await app.locals.heycarPush.send(String(x.owner_id),{type:'vehicle_reminder',reminderType:String(x.type),vehicleId:String(x.vehicle_id),daysBefore:String(days),dueDate:String(x.due_date)},`${label} Hatırlatması`,body);
+          const out=await app.locals.heycarPush.send(String(x.owner_id),{type:'vehicle_reminder',sourceType:'vehicle_reminder',reminderType:String(x.type),vehicleId:String(x.vehicle_id),daysBefore:String(days),dueDate:String(x.due_date)},`${label} Hatırlatması`,body);
+          if(Number(out?.delivered||0)<1){
+            await pool.query(`DELETE FROM vehicle_reminder_delivery_claims WHERE reminder_id=$1 AND days_before=$2`,[x.id,days]);
+          }
         }catch(e){
           console.error('vehicle reminder push',e);
           await pool.query(`DELETE FROM vehicle_reminder_delivery_claims WHERE reminder_id=$1 AND days_before=$2`,[x.id,days]);
@@ -129,6 +135,6 @@ module.exports = function registerReminderRoutes(app, pool) {
   }
 
   setTimeout(sendDueReminders, 15000);
-  const timer=setInterval(sendDueReminders, 60*60*1000);
+  const timer=setInterval(sendDueReminders, 15*60*1000);
   timer.unref?.();
 };

@@ -5,8 +5,8 @@ module.exports=function registerVehicleReminderRoutes(app,pool){
   const owner=req=>authenticatedOwnerId(req);
   const meta={
     inspection:{label:'Muayene',days:[30,7,1]},
-    traffic_insurance:{label:'Trafik sigortası',days:[15,7,1]},
-    kasko:{label:'Kasko',days:[15,7,1]},
+    traffic_insurance:{label:'Trafik sigortası',days:[30,7,1]},
+    kasko:{label:'Kasko',days:[30,7,1]},
     maintenance:{label:'Periyodik bakım',days:[30,7,1]},
   };
   let schemaReady=false;
@@ -222,14 +222,26 @@ module.exports=function registerVehicleReminderRoutes(app,pool){
           [x.vehicle_id,x.owner_id,x.type,x.due_date,milestone,x.vehicle_id,fullMessage]
         );
 
+        let deliveryId,notificationId;
         if(!created.rows.length){
-          duplicateSkips++;
-          continue;
+          const previous=await client.query(
+            `SELECT id,notification_id,COALESCE(push_delivered,0) AS push_delivered
+               FROM vehicle_reminder_deliveries
+              WHERE vehicle_id=$1 AND reminder_type=$2 AND due_date=$3 AND milestone_days=$4
+              LIMIT 1`,
+            [x.vehicle_id,x.type,x.due_date,milestone]
+          );
+          if(!previous.rows.length||Number(previous.rows[0].push_delivered||0)>0){
+            duplicateSkips++;
+            continue;
+          }
+          deliveryId=previous.rows[0].id;
+          notificationId=previous.rows[0].notification_id;
+        }else{
+          createdCount++;
+          deliveryId=created.rows[0].id;
+          notificationId=created.rows[0].notification_id;
         }
-
-        createdCount++;
-        const deliveryId=created.rows[0].id;
-        const notificationId=created.rows[0].notification_id;
         const push=app.locals.heycarPush;
         if(push&&typeof push.sendOwner==='function'){
           try{
@@ -267,6 +279,13 @@ module.exports=function registerVehicleReminderRoutes(app,pool){
             );
             console.error('vehicle reminder push',pushError);
           }
+        }else{
+          await client.query(
+            `UPDATE vehicle_reminder_deliveries
+                SET push_attempted_at=NOW(),push_error='PUSH_SERVICE_UNAVAILABLE'
+              WHERE id=$1`,
+            [deliveryId]
+          );
         }
       }
 

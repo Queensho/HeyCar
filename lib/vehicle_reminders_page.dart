@@ -5,6 +5,7 @@ import 'onboarding_backend.dart';
 import 'qr_backend.dart';
 import 'cepqar_theme.dart';
 import 'owner_auth.dart';
+import 'push_notifications.dart';
 
 Color get _bg => CepqarTheme.bg;
 Color get _panel => CepqarTheme.panel;
@@ -117,9 +118,20 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
           if (type == 'kasko') kasko = d;
           if (type == 'maintenance') maintenance = d;
         });
+        try {
+          await PushNotifications.refreshTokenRegistration();
+          await PushNotifications.scheduleVehicleReminder(
+            vehicleId: widget.vehicleId,
+            reminderType: api,
+            dueDate: d,
+            plate: QrDraft.plate,
+          );
+        } catch (e) {
+          debugPrint('Vehicle reminder local schedule failed: $e');
+        }
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('Hatırlatma kaydedildi.')));
+        ).showSnackBar(const SnackBar(content: Text('Hatırlatma kaydedildi ve bildirim planlandı.')));
       } else {
         throw Exception('HTTP ${r.statusCode}');
       }
@@ -151,6 +163,14 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
           if (type == 'kasko') kasko = null;
           if (type == 'maintenance') maintenance = null;
         });
+        try {
+          await PushNotifications.cancelVehicleReminder(
+            vehicleId: widget.vehicleId,
+            reminderType: apiType(type),
+          );
+        } catch (e) {
+          debugPrint('Vehicle reminder local cancel failed: $e');
+        }
       } else {
         throw Exception();
       }

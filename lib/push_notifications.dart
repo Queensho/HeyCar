@@ -5,6 +5,8 @@ import 'package:flutter/widgets.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/data/latest.dart' as tzdata;
+import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:flutter_callkit_incoming/entities/entities.dart';
 import 'package:http/http.dart' as http;
@@ -49,6 +51,7 @@ class PushNotifications{
   static bool _bootstrapped=false;
   static bool _callEventsReady=false;
   static bool _tokenRegistrationInFlight=false;
+  static bool _timeZonesReady=false;
   static int _tokenRetryAttempt=0;
   static Timer? _tokenRetryTimer;
   static Future<void> Function(Map<String,dynamic> data)? onNavigationRequested;
@@ -173,6 +176,96 @@ class PushNotifications{
     }else if(Platform.isIOS&&requestPermissions){
       final p=_local.resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
       await p?.requestPermissions(alert:true,badge:true,sound:true);
+    }
+  }
+
+  static void _ensureTimeZones(){
+    if(_timeZonesReady)return;
+    tzdata.initializeTimeZones();
+    _timeZonesReady=true;
+  }
+
+  static String _vehicleReminderLabel(String type)=>switch(type){
+    'inspection'=>'Araç Muayenesi',
+    'traffic_insurance'=>'Trafik Sigortası',
+    'kasko'=>'Kasko',
+    'maintenance'=>'Periyodik Bakım',
+    _=>'Araç Hatırlatması',
+  };
+
+  static int _vehicleReminderNotificationId(String vehicleId,String type,int daysBefore)=>
+      _notificationId('vehicle_reminder:$vehicleId:$type:$daysBefore');
+
+  static Future<void> cancelVehicleReminder({required String vehicleId,required String reminderType})async{
+    for(final daysBefore in const <int>[30,7,1,0]){
+      await _local.cancel(_vehicleReminderNotificationId(vehicleId,reminderType,daysBefore));
+    }
+  }
+
+  static Future<void> scheduleVehicleReminder({
+    required String vehicleId,
+    required String reminderType,
+    required DateTime dueDate,
+    String plate='',
+  })async{
+    await ensureChannels(requestPermissions:true);
+    _ensureTimeZones();
+    await cancelVehicleReminder(vehicleId:vehicleId,reminderType:reminderType);
+
+    final now=DateTime.now();
+    final today=DateTime(now.year,now.month,now.day);
+    final due=DateTime(dueDate.year,dueDate.month,dueDate.day);
+    if(due.isBefore(today))return;
+
+    final label=_vehicleReminderLabel(reminderType);
+    final vehicleLabel=plate.trim().isEmpty?'Aracınız':plate.trim().toUpperCase();
+    for(final daysBefore in const <int>[30,7,1,0]){
+      final scheduledLocal=DateTime(due.year,due.month,due.day,9).subtract(Duration(days:daysBefore));
+      DateTime fireAt=scheduledLocal;
+      if(!fireAt.isAfter(now)){
+        final sameDay=fireAt.year==now.year&&fireAt.month==now.month&&fireAt.day==now.day;
+        if(!sameDay)continue;
+        fireAt=now.add(const Duration(seconds:3));
+      }
+      final body=daysBefore==0
+          ?'$vehicleLabel • $label bugün sona eriyor.'
+          :'$vehicleLabel • $label için $daysBefore gün kaldı.';
+      final id=_vehicleReminderNotificationId(vehicleId,reminderType,daysBefore);
+      final payload=jsonEncode({
+        'type':'vehicle_reminder',
+        'sourceType':'vehicle_reminder',
+        'vehicleId':vehicleId,
+        'reminderType':reminderType,
+        'daysBefore':'$daysBefore',
+        'dueDate':'${due.year.toString().padLeft(4,'0')}-${due.month.toString().padLeft(2,'0')}-${due.day.toString().padLeft(2,'0')}',
+        'notificationId':'local-$id',
+      });
+      final details=NotificationDetails(
+        android:AndroidNotificationDetails(
+          _generalChannel,
+          'Cepqar Bildirimleri',
+          channelDescription:'Araç bildirimleri ve mesajlar',
+          importance:Importance.max,
+          priority:Priority.max,
+          autoCancel:true,
+          visibility:NotificationVisibility.public,
+          playSound:true,
+          sound:const RawResourceAndroidNotificationSound('bildirim'),
+          enableVibration:true,
+          category:AndroidNotificationCategory.reminder,
+          icon:'ic_stat_cepqar',
+        ),
+        iOS:const DarwinNotificationDetails(presentAlert:true,presentBadge:true,presentSound:true),
+      );
+      await _local.zonedSchedule(
+        id,
+        '$label Hatırlatması',
+        body,
+        tz.TZDateTime.from(fireAt,tz.local),
+        details,
+        androidScheduleMode:AndroidScheduleMode.inexactAllowWhileIdle,
+        payload:payload,
+      );
     }
   }
 
