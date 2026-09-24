@@ -1,1 +1,188 @@
-function firstNonEmpty(...values) {\n  for (const value of values) {\n    if (value == null) continue;\n    const s = String(value).trim();\n    if (s) return s;\n  }\n  return null;\n}\n\nfunction decodeJwtPayload(req) {\n  try {\n    const raw = String(req.headers?.authorization || '').trim();\n    if (!raw.toLowerCase().startsWith('bearer ')) return {};\n    const token = raw.slice(7).trim();\n    const parts = token.split('.');\n    if (parts.length < 2) return {};\n    const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');\n    const padded = payload + '='.repeat((4 - payload.length % 4) % 4);\n    const parsed = JSON.parse(Buffer.from(padded, 'base64').toString('utf8'));\n    return parsed && typeof parsed === 'object' ? parsed : {};\n  } catch (_) {\n    return {};\n  }\n}\n\nasync function auditTableReady(db) {\n  const r = await db.query("SELECT to_regclass('public.admin_audit_logs') AS name");\n  return Boolean(r.rows[0]?.name);\n}\n\nasync function resolveAdmin(db, req) {\n  const source = req.admin || req.user || req.auth || req.adminUser || {};\n  const jwt = decodeJwtPayload(req);\n  let id = firstNonEmpty(source.id, source.userId, source.user_id, source.sub, jwt.id, jwt.userId, jwt.user_id, jwt.sub, req.headers?.['x-admin-id']);\n  let email = firstNonEmpty(source.email, jwt.email, req.headers?.['x-admin-email']);\n  let name = firstNonEmpty(source.display_name, source.displayName, source.name, jwt.display_name, jwt.displayName, jwt.name, req.headers?.['x-admin-name']);\n\n  if (id) {\n    try {\n      const r = await db.query("SELECT id::text AS id,email,display_name FROM users WHERE id::text=$1 AND role='admin' LIMIT 1", [id]);\n      if (r.rows.length) {\n        id = String(r.rows[0].id || id);\n        email = firstNonEmpty(r.rows[0].email, email);\n        name = firstNonEmpty(r.rows[0].display_name, name);\n      }\n    } catch (_) {}\n  } else if (email) {\n    try {\n      const r = await db.query("SELECT id::text AS id,email,display_name FROM users WHERE LOWER(email)=LOWER($1) AND role='admin' LIMIT 1", [email]);\n      if (r.rows.length) {\n        id = String(r.rows[0].id || '');\n        email = firstNonEmpty(r.rows[0].email, email);\n        name = firstNonEmpty(r.rows[0].display_name, name);\n      }\n    } catch (_) {}\n  }\n  return { id: id || null, email: email || null, name: name || null };\n}\n\nfunction requestIp(req) {\n  return firstNonEmpty(String(req.headers?.['x-forwarded-for'] || '').split(',')[0], req.ip, req.socket?.remoteAddress);\n}\n\nasync function writeAdminAudit(db, req, entry) {\n  if (!await auditTableReady(db)) return false;\n  const actor = await resolveAdmin(db, req);\n  const details = {\n    ...(entry?.details && typeof entry.details === 'object' ? entry.details : {}),\n    ...(entry?.before !== undefined ? { before: entry.before } : {}),\n    ...(entry?.after !== undefined ? { after: entry.after } : {}),\n    ...(entry?.metadata !== undefined ? { metadata: entry.metadata } : {}),\n  };\n  await db.query(\n    "INSERT INTO admin_audit_logs (admin_id,admin_email,admin_name,action,target_type,target_id,target_label,details,ip_address,user_agent) VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10)",\n    [\n      actor.id,\n      actor.email,\n      actor.name,\n      String(entry?.action || 'UNKNOWN').slice(0,100),\n      String(entry?.targetType || 'unknown').slice(0,80),\n      entry?.targetId == null ? null : String(entry.targetId).slice(0,240),\n      entry?.targetLabel == null ? null : String(entry.targetLabel).slice(0,300),\n      JSON.stringify(details),\n      requestIp(req),\n      firstNonEmpty(req.headers?.['user-agent'])?.slice(0,600) || null,\n    ]\n  );\n  return true;\n}\n\nfunction registerAdminAuditRoutes(app, pool, adminGuard) {\n  const guard = typeof adminGuard === 'function' ? adminGuard : (_req,res)=>res.status(500).json({error:'ADMIN_GUARD_NOT_CONFIGURED'});\n\n  app.get('/api/admin/manage/audit', guard, async (req, res) => {\n    try {\n      if (!await auditTableReady(pool)) return res.status(503).json({ error: 'ADMIN_AUDIT_MIGRATION_REQUIRED' });\n      const limit = Math.max(1, Math.min(200, Number(req.query?.limit || 100)));\n      const offset = Math.max(0, Number(req.query?.offset || 0));\n      const action = String(req.query?.action || '').trim();\n      const targetType = String(req.query?.targetType || '').trim();\n      const admin = String(req.query?.admin || '').trim();\n      const target = String(req.query?.target || '').trim();\n      const from = String(req.query?.from || '').trim();\n      const to = String(req.query?.to || '').trim();\n      const where = [];\n      const params = [];\n      const add = (value, sql) => { params.push(value); where.push(sql.replace('?', '$' + params.length)); };\n      if (action && action !== 'all') add(action, 'action=?');\n      if (targetType && targetType !== 'all') add(targetType, 'target_type=?');\n      if (admin) { params.push('%' + admin + '%'); const p='$'+params.length; where.push("(COALESCE(admin_name,'') ILIKE "+p+" OR COALESCE(admin_email,'') ILIKE "+p+")"); }\n      if (target) { params.push('%' + target + '%'); const p='$'+params.length; where.push("(COALESCE(target_id,'') ILIKE "+p+" OR COALESCE(target_label,'') ILIKE "+p+")"); }\n      if (from) add(from, 'created_at >= ?::timestamptz');\n      if (to) add(to, 'created_at <= ?::timestamptz');\n      const whereSql = where.length ? 'WHERE ' + where.join(' AND ') : '';\n      const count = await pool.query('SELECT COUNT(*)::int AS n FROM admin_audit_logs ' + whereSql, params);\n      const listParams = params.slice();\n      listParams.push(limit); const limitParam='$'+listParams.length;\n      listParams.push(offset); const offsetParam='$'+listParams.length;\n      const rows = await pool.query(\n        "SELECT id,admin_id,admin_email,admin_name,action,target_type,target_id,target_label,details,ip_address,user_agent,created_at FROM admin_audit_logs " + whereSql + " ORDER BY created_at DESC LIMIT " + limitParam + " OFFSET " + offsetParam,\n        listParams\n      );\n      const summary = await pool.query(\n        "SELECT COUNT(*) FILTER (WHERE created_at>=CURRENT_DATE)::int AS today, COUNT(DISTINCT COALESCE(admin_id,admin_email,admin_name)) FILTER (WHERE created_at>=CURRENT_DATE)::int AS admins_today, COUNT(DISTINCT action)::int AS action_types FROM admin_audit_logs"\n      );\n      const facets = await pool.query(\n        "SELECT ARRAY(SELECT DISTINCT action FROM admin_audit_logs ORDER BY action) AS actions, ARRAY(SELECT DISTINCT target_type FROM admin_audit_logs ORDER BY target_type) AS target_types"\n      );\n      return res.json({\n        ok:true,\n        total:Number(count.rows[0]?.n||0),\n        summary:summary.rows[0]||{},\n        actions:facets.rows[0]?.actions||[],\n        targetTypes:facets.rows[0]?.target_types||[],\n        items:rows.rows\n      });\n    } catch (e) {\n      console.error('admin audit list', e);\n      return res.status(500).json({ error: 'SERVER_ERROR' });\n    }\n  });\n}\n\nmodule.exports = { writeAdminAudit, registerAdminAuditRoutes, auditTableReady };\n
+function firstNonEmpty(...values) {
+  for (const value of values) {
+    if (value == null) continue;
+    const s = String(value).trim();
+    if (s) return s;
+  }
+  return null;
+}
+
+function decodeJwtPayload(req) {
+  try {
+    const raw = String(req.headers?.authorization || '').trim();
+    if (!raw.toLowerCase().startsWith('bearer ')) return {};
+    const token = raw.slice(7).trim();
+    const parts = token.split('.');
+    if (parts.length < 2) return {};
+    const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = payload + '='.repeat((4 - payload.length % 4) % 4);
+    const parsed = JSON.parse(Buffer.from(padded, 'base64').toString('utf8'));
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch (_) {
+    return {};
+  }
+}
+
+async function auditTableReady(pool) {
+  const r = await pool.query("SELECT to_regclass('public.admin_audit_log') AS name");
+  return Boolean(r.rows[0]?.name);
+}
+
+async function resolveAdmin(pool, req) {
+  const source = req.admin || req.user || req.auth || req.adminUser || {};
+  const jwt = decodeJwtPayload(req);
+  let id = firstNonEmpty(
+    source.id, source.userId, source.user_id, source.sub,
+    jwt.id, jwt.userId, jwt.user_id, jwt.sub,
+    req.headers?.['x-admin-id']
+  );
+  let email = firstNonEmpty(source.email, jwt.email, req.headers?.['x-admin-email']);
+  let name = firstNonEmpty(
+    source.display_name, source.displayName, source.name,
+    jwt.display_name, jwt.displayName, jwt.name,
+    req.headers?.['x-admin-name']
+  );
+
+  if (id) {
+    try {
+      const r = await pool.query(
+        "SELECT id::text AS id,email,display_name FROM users WHERE id::text=$1 AND role='admin' LIMIT 1",
+        [id]
+      );
+      if (r.rows.length) {
+        id = String(r.rows[0].id || id);
+        email = firstNonEmpty(r.rows[0].email, email);
+        name = firstNonEmpty(r.rows[0].display_name, name);
+      }
+    } catch (_) {}
+  } else if (email) {
+    try {
+      const r = await pool.query(
+        "SELECT id::text AS id,email,display_name FROM users WHERE LOWER(email)=LOWER($1) AND role='admin' LIMIT 1",
+        [email]
+      );
+      if (r.rows.length) {
+        id = String(r.rows[0].id || '');
+        email = firstNonEmpty(r.rows[0].email, email);
+        name = firstNonEmpty(r.rows[0].display_name, name);
+      }
+    } catch (_) {}
+  }
+
+  return { id: id || null, email: email || null, name: name || null };
+}
+
+function safeJson(value) {
+  if (value == null) return null;
+  try {
+    return JSON.parse(JSON.stringify(value));
+  } catch (_) {
+    return { value: String(value) };
+  }
+}
+
+async function writeAdminAudit(pool, req, entry) {
+  try {
+    if (!await auditTableReady(pool)) return false;
+    const actor = await resolveAdmin(pool, req);
+    const action = String(entry?.action || '').trim().slice(0, 120);
+    const targetType = String(entry?.targetType || '').trim().slice(0, 80);
+    if (!action || !targetType) return false;
+
+    await pool.query(
+      "INSERT INTO admin_audit_log " +
+      "(admin_id,admin_email,admin_name,action,target_type,target_id,target_label,before_state,after_state,metadata) " +
+      "VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9::jsonb,$10::jsonb)",
+      [
+        actor.id,
+        actor.email,
+        actor.name,
+        action,
+        targetType,
+        entry?.targetId == null ? null : String(entry.targetId).slice(0, 250),
+        entry?.targetLabel == null ? null : String(entry.targetLabel).slice(0, 500),
+        entry?.before == null ? null : JSON.stringify(safeJson(entry.before)),
+        entry?.after == null ? null : JSON.stringify(safeJson(entry.after)),
+        JSON.stringify(safeJson(entry?.metadata || {})),
+      ]
+    );
+    return true;
+  } catch (e) {
+    console.error('admin audit write', e);
+    return false;
+  }
+}
+
+function registerAdminAuditRoutes(app, pool, adminGuard) {
+  const guard = typeof adminGuard === 'function'
+    ? adminGuard
+    : (_req, res) => res.status(500).json({ error: 'ADMIN_GUARD_NOT_CONFIGURED' });
+
+  app.get('/api/admin/manage/audit', guard, async (req, res) => {
+    try {
+      if (!await auditTableReady(pool)) {
+        return res.status(503).json({ error: 'ADMIN_AUDIT_MIGRATION_REQUIRED' });
+      }
+
+      const limit = Math.max(1, Math.min(200, Number(req.query?.limit || 100)));
+      const offset = Math.max(0, Number(req.query?.offset || 0));
+      const action = String(req.query?.action || '').trim();
+      const targetType = String(req.query?.targetType || '').trim();
+      const admin = String(req.query?.admin || '').trim();
+
+      const where = [];
+      const params = [];
+      const add = (value, clause) => {
+        params.push(value);
+        where.push(clause.replace('?', '$' + params.length));
+      };
+
+      if (action && action !== 'all') add(action, 'action=?');
+      if (targetType && targetType !== 'all') add(targetType, 'target_type=?');
+      if (admin) {
+        params.push('%' + admin + '%');
+        const p = '$' + params.length;
+        where.push("(COALESCE(admin_name,'') ILIKE " + p + " OR COALESCE(admin_email,'') ILIKE " + p + ")");
+      }
+
+      const whereSql = where.length ? 'WHERE ' + where.join(' AND ') : '';
+      const count = await pool.query(
+        'SELECT COUNT(*)::int AS n FROM admin_audit_log ' + whereSql,
+        params
+      );
+
+      const listParams = params.slice();
+      listParams.push(limit);
+      const limitParam = '$' + listParams.length;
+      listParams.push(offset);
+      const offsetParam = '$' + listParams.length;
+
+      const rows = await pool.query(
+        "SELECT id,admin_id,admin_email,admin_name,action,target_type,target_id,target_label," +
+        "before_state,after_state,metadata,created_at " +
+        "FROM admin_audit_log " + whereSql +
+        " ORDER BY created_at DESC LIMIT " + limitParam + " OFFSET " + offsetParam,
+        listParams
+      );
+
+      const facets = await pool.query(
+        "SELECT " +
+        "ARRAY(SELECT DISTINCT action FROM admin_audit_log ORDER BY action) AS actions," +
+        "ARRAY(SELECT DISTINCT target_type FROM admin_audit_log ORDER BY target_type) AS target_types"
+      );
+
+      return res.json({
+        ok: true,
+        total: Number(count.rows[0]?.n || 0),
+        items: rows.rows,
+        actions: facets.rows[0]?.actions || [],
+        targetTypes: facets.rows[0]?.target_types || [],
+      });
+    } catch (e) {
+      console.error('admin audit list', e);
+      return res.status(500).json({ error: 'SERVER_ERROR' });
+    }
+  });
+}
+
+module.exports = { writeAdminAudit, registerAdminAuditRoutes, auditTableReady };
