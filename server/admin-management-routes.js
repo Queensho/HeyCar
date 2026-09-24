@@ -529,6 +529,15 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
         `UPDATE qr_print_batches SET ${sets.join(',')} WHERE id=$1 RETURNING *`,
         values
       );
+      await writeAdminAudit(pool, req, {
+        action: 'qr_batch.print_status_changed',
+        targetType: 'qr_batch',
+        targetId: r.rows[0].id,
+        targetLabel: r.rows[0].batch_code || batchId,
+        before: current.rows[0],
+        after: r.rows[0],
+        metadata: { status },
+      });
       return res.json({ ok: true, batch: r.rows[0] });
     } catch (e) {
       console.error('qr print status update', e);
@@ -646,6 +655,20 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
       }
 
       await client.query('COMMIT');
+      await writeAdminAudit(pool, req, {
+        action: 'qr.batch_created',
+        targetType: 'qr_batch',
+        targetId: batch.id,
+        targetLabel: batchCode,
+        after: {
+          id: batch.id,
+          batchNo: Number(batch.batch_no),
+          batchCode,
+          itemCount: count,
+          createdAt: batch.created_at
+        },
+        metadata: { tokens: items.map(x => x.token) },
+      });
       res.status(201).json({
         ok: true,
         batch: {
