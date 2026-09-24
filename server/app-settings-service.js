@@ -11,8 +11,8 @@ const DEFAULTS={
   default_platform_fee:20,
   qr_rate_limit_max:10,
   qr_rate_limit_window_seconds:60,
-  premium_monthly_price_text:'₺99,99 / ay',
-  premium_yearly_price_text:'₺799,99 / yıl',
+  premium_monthly_price_text:'₺49,99',
+  premium_yearly_price_text:'₺499,99',
   features:{offers:true,messages:true,calls:true,parking:true,premium:true,business:true},
 };
 
