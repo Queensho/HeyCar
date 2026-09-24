@@ -89,11 +89,20 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
     try {
       const r = await pool.query(
         `SELECT q.id,q.token,q.status,q.vehicle_id,q.activated_at,
+                q.batch_serial,q.print_batch_id,
+                CASE
+                  WHEN q.token ~ '^CP-QAR-[0-9]+$' THEN SUBSTRING(q.token FROM 8)::int
+                  ELSE NULL
+                END AS serial_no,
+                b.batch_code,b.created_at AS batch_created_at,
                 v.plate,v.make,v.model,u.id AS owner_id,u.display_name AS owner_name
          FROM qr_tags q
+         LEFT JOIN qr_print_batches b ON b.id=q.print_batch_id
          LEFT JOIN vehicles v ON v.id=q.vehicle_id
          LEFT JOIN users u ON u.id=v.owner_id
-         ORDER BY q.token ASC`
+         ORDER BY
+           CASE WHEN q.token ~ '^CP-QAR-[0-9]+$' THEN SUBSTRING(q.token FROM 8)::int ELSE NULL END DESC NULLS LAST,
+           q.token ASC`
       );
       res.json({ ok: true, items: r.rows });
     } catch (e) {
@@ -102,33 +111,76 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
     }
   });
 
+  app.get('/api/admin/manage/qr/batches', guard, async (_req, res) => {
+    try {
+      const r = await pool.query(
+        `SELECT b.id,b.batch_no,b.batch_code,b.item_count,b.created_by,b.created_at,
+                COUNT(q.id)::int AS current_item_count,
+                COUNT(q.id) FILTER (WHERE q.status='active')::int AS active_count,
+                COUNT(q.id) FILTER (WHERE q.status='unassigned')::int AS unassigned_count,
+                COUNT(q.id) FILTER (WHERE q.status='disabled')::int AS disabled_count
+         FROM qr_print_batches b
+         LEFT JOIN qr_tags q ON q.print_batch_id=b.id
+         GROUP BY b.id
+         ORDER BY b.batch_no DESC`
+      );
+      res.json({ ok: true, items: r.rows });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: 'SERVER_ERROR' });
+    }
+  });
   app.post('/api/admin/manage/qr', guard, async (req, res) => {
     const count = Math.max(1, Math.min(100, Number(req.body.count || 1)));
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
 
-      // New CepQar labels use a short sequential code.
+      // One admin generation action equals one physical print batch.
       // Existing HC-* tokens remain unchanged.
-      // Locking avoids duplicate sequence numbers during concurrent admin requests.
       await client.query('LOCK TABLE qr_tags IN SHARE ROW EXCLUSIVE MODE');
+
       const nextResult = await client.query(
         "SELECT COALESCE(MAX(SUBSTRING(token FROM 8)::int),0)+1 AS next_no FROM qr_tags WHERE token ~ '^CP-QAR-[0-9]+$'"
       );
       let nextNo = Number(nextResult.rows[0]?.next_no || 1);
 
+      const pendingCode = 'PENDING-' + crypto.randomUUID();
+      const batchResult = await client.query(
+        `INSERT INTO qr_print_batches(batch_code,item_count,created_by)
+         VALUES($1,$2,$3)
+         RETURNING id,batch_no,created_at`,
+        [pendingCode,count,String(req.user?.id || req.admin?.id || req.user?.email || 'admin')]
+      );
+      const batch = batchResult.rows[0];
+      const batchCode = 'CP-BASKI-' + String(batch.batch_no).padStart(4, '0');
+      await client.query('UPDATE qr_print_batches SET batch_code=$1 WHERE id=$2', [batchCode,batch.id]);
+
       const items = [];
       for (let i = 0; i < count; i++) {
-        const token = 'CP-QAR-' + String(nextNo++).padStart(2, '0');
+        const serialNo = nextNo++;
+        const token = 'CP-QAR-' + String(serialNo).padStart(2, '0');
         const r = await client.query(
-          "INSERT INTO qr_tags(token,status) VALUES($1,'unassigned') RETURNING id,token,status",
-          [token]
+          `INSERT INTO qr_tags(token,status,print_batch_id,batch_serial)
+           VALUES($1,'unassigned',$2,$3)
+           RETURNING id,token,status,print_batch_id,batch_serial`,
+          [token,batch.id,i+1]
         );
-        items.push(r.rows[0]);
+        items.push({ ...r.rows[0], serial_no: serialNo, batch_code: batchCode });
       }
 
       await client.query('COMMIT');
-      res.status(201).json({ ok: true, items });
+      res.status(201).json({
+        ok: true,
+        batch: {
+          id: batch.id,
+          batchNo: Number(batch.batch_no),
+          batchCode,
+          itemCount: count,
+          createdAt: batch.created_at
+        },
+        items
+      });
     } catch (e) {
       await client.query('ROLLBACK');
       console.error(e);
