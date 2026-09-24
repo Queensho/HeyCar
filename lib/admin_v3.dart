@@ -213,7 +213,6 @@ class _AdminHomeState extends State<AdminHome> {
     ('Şikâyetler',Icons.report_problem_rounded),
     ('İletişim Denetimi',Icons.forum_rounded),
   ];
-  static const mobileTabIndexes=[0,3,12,13,10,11];
   Map<String,String> get headers=>{
     'Authorization':'Bearer ${widget.token}',
     'Content-Type':'application/json',
@@ -436,14 +435,20 @@ class _AdminHomeState extends State<AdminHome> {
         ? Center(child:Column(mainAxisSize:MainAxisSize.min,children:[Text(error!,style:const TextStyle(color:Colors.white)),const SizedBox(height:12),FilledButton.icon(onPressed:load,icon:const Icon(Icons.refresh_rounded),label:const Text('Tekrar dene'))]))
         : tab==0
           ? Dashboard(users:users,vehicles:vehicles,qr:qr,themes:themes,promos:promos,onOpenTab:openTab,onRefresh:load,onLogout:widget.onLogout)
-          : Column(children:[_pageHeader(),Expanded(child:page())]);
+          : wide
+            ? Column(children:[_pageHeader(),Expanded(child:page())])
+            : page();
     return Scaffold(
       backgroundColor:_bg,
-      body:SafeArea(child:Row(children:[
-        if(wide)_side(),
-        Expanded(child:Center(child:ConstrainedBox(constraints:BoxConstraints(maxWidth:1380),child:content))),
-      ])),
-      bottomNavigationBar:wide?null:_bottomNav(),
+      appBar:wide?null:_mobileAppBar(),
+      drawer:wide?null:_mobileDrawer(),
+      body:SafeArea(
+        top:wide,
+        child:Row(children:[
+          if(wide)_side(),
+          Expanded(child:Center(child:ConstrainedBox(constraints:const BoxConstraints(maxWidth:1380),child:content))),
+        ]),
+      ),
     );
   }
 
@@ -493,28 +498,124 @@ class _AdminHomeState extends State<AdminHome> {
     ]),
   );
 
-  Widget _bottomNav(){
-    var selected=mobileTabIndexes.indexOf(tab);
-    if(selected<0)selected=0;
-    return SafeArea(top:false,child:Container(
-      height:76,padding:const EdgeInsets.fromLTRB(6,8,6,8),
-      decoration:BoxDecoration(color:const Color(0xFF060A18),border:Border(top:BorderSide(color:_purple.withValues(alpha:.28))),boxShadow:[BoxShadow(color:_purple.withValues(alpha:.12),blurRadius:22)]),
-      child:Row(children:List.generate(mobileTabIndexes.length,(i){
-        final realIndex=mobileTabIndexes[i],active=i==selected;
-        final label=realIndex==3?'QR':realIndex==10?'Bildirim':realIndex==11?'Güvenlik':realIndex==12?'Şikâyet':realIndex==13?'İletişim':tabs[realIndex].$1;
-        return Expanded(child:InkWell(
-          borderRadius:BorderRadius.circular(15),
-          onTap:()=>openTab(realIndex),
-          child:AnimatedContainer(
-            duration:const Duration(milliseconds:180),
-            padding:const EdgeInsets.symmetric(vertical:6,horizontal:2),
-            decoration:BoxDecoration(borderRadius:BorderRadius.circular(15),gradient:active?const LinearGradient(colors:[Color(0xFF5A19B8),Color(0xFFAE26FF)]):null,boxShadow:active?[BoxShadow(color:_purple.withValues(alpha:.32),blurRadius:16)]:null),
-            child:Column(mainAxisSize:MainAxisSize.min,mainAxisAlignment:MainAxisAlignment.center,children:[Icon(tabs[realIndex].$2,color:active?Colors.white:_muted,size:22),const SizedBox(height:3),Text(label,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:active?Colors.white:_muted,fontSize:9.5,fontWeight:active?FontWeight.w900:FontWeight.w600))]),
+  PreferredSizeWidget _mobileAppBar()=>AppBar(
+    backgroundColor:const Color(0xFF060A18),
+    elevation:0,
+    toolbarHeight:64,
+    automaticallyImplyLeading:false,
+    leading:Builder(builder:(drawerContext)=>IconButton(
+      tooltip:'Menü',
+      icon:const Icon(Icons.menu_rounded,color:Colors.white,size:28),
+      onPressed:()=>Scaffold.of(drawerContext).openDrawer(),
+    )),
+    titleSpacing:4,
+    title:Row(children:[
+      if(tab==0)
+        _brand(fontSize:25)
+      else ...[
+        Icon(tabs[tab].$2,color:_purple,size:21),
+        const SizedBox(width:8),
+        Expanded(child:Text(tabs[tab].$1,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Colors.white,fontSize:16,fontWeight:FontWeight.w900))),
+      ],
+    ]),
+    actions:[
+      IconButton(
+        tooltip:'Yenile',
+        icon:const Icon(Icons.refresh_rounded,color:Colors.white),
+        onPressed:tab==7?()=>loadReports():tab==8?loadAudit:tab==9?loadSystemHealth:tab==10?loadPushHistory:tab==11?()=>loadSecurityCenter():tab==12?()=>loadComplaints():tab==13?()=>loadCommunications():load,
+      ),
+      const SizedBox(width:4),
+    ],
+    bottom:PreferredSize(
+      preferredSize:const Size.fromHeight(1),
+      child:Container(height:1,color:_purple.withValues(alpha:.24)),
+    ),
+  );
+
+  Widget _mobileDrawer()=>Drawer(
+    width:304,
+    backgroundColor:const Color(0xFF080D1E),
+    shape:const RoundedRectangleBorder(borderRadius:BorderRadius.horizontal(right:Radius.circular(26))),
+    child:SafeArea(child:Column(children:[
+      Container(
+        width:double.infinity,
+        padding:const EdgeInsets.fromLTRB(18,18,18,16),
+        decoration:BoxDecoration(
+          border:Border(bottom:BorderSide(color:_purple.withValues(alpha:.24))),
+        ),
+        child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          _brand(fontSize:30),
+          const SizedBox(height:5),
+          const Text('Yönetim Merkezi',style:TextStyle(color:_muted,fontSize:11.5,fontWeight:FontWeight.w700)),
+          if((widget.admin?['display_name']??widget.admin?['email']??'').toString().isNotEmpty)...[
+            const SizedBox(height:9),
+            Row(children:[
+              const Icon(Icons.admin_panel_settings_rounded,color:_purple,size:17),
+              const SizedBox(width:6),
+              Expanded(child:Text(
+                (widget.admin?['display_name']??widget.admin?['email']).toString(),
+                maxLines:1,
+                overflow:TextOverflow.ellipsis,
+                style:const TextStyle(color:Colors.white70,fontSize:11.5,fontWeight:FontWeight.w700),
+              )),
+            ]),
+          ],
+        ]),
+      ),
+      Expanded(child:ListView.builder(
+        padding:const EdgeInsets.fromLTRB(10,10,10,6),
+        itemCount:tabs.length,
+        itemBuilder:(itemContext,i){
+          final active=tab==i;
+          return Padding(
+            padding:const EdgeInsets.only(bottom:5),
+            child:InkWell(
+              borderRadius:BorderRadius.circular(14),
+              onTap:(){
+                Navigator.of(itemContext).pop();
+                openTab(i);
+              },
+              child:AnimatedContainer(
+                duration:const Duration(milliseconds:160),
+                padding:const EdgeInsets.symmetric(horizontal:12,vertical:12),
+                decoration:BoxDecoration(
+                  borderRadius:BorderRadius.circular(14),
+                  gradient:active?const LinearGradient(colors:[Color(0xFF5E1BC9),Color(0xFFB100FF)]):null,
+                  border:Border.all(color:active?_purple.withValues(alpha:.58):Colors.transparent),
+                ),
+                child:Row(children:[
+                  Icon(tabs[i].$2,color:active?Colors.white:_muted,size:21),
+                  const SizedBox(width:11),
+                  Expanded(child:Text(
+                    tabs[i].$1,
+                    style:TextStyle(color:active?Colors.white:_muted,fontSize:13,fontWeight:active?FontWeight.w900:FontWeight.w700),
+                  )),
+                  if(active)const Icon(Icons.chevron_right_rounded,color:Colors.white,size:19),
+                ]),
+              ),
+            ),
+          );
+        },
+      )),
+      Padding(
+        padding:const EdgeInsets.fromLTRB(12,8,12,14),
+        child:SizedBox(
+          width:double.infinity,
+          height:46,
+          child:OutlinedButton.icon(
+            onPressed:widget.onLogout,
+            icon:const Icon(Icons.logout_rounded),
+            label:const Text('Çıkış Yap',style:TextStyle(fontWeight:FontWeight.w800)),
+            style:OutlinedButton.styleFrom(
+              foregroundColor:Colors.white70,
+              side:BorderSide(color:Colors.white.withValues(alpha:.12)),
+              shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(14)),
+            ),
           ),
-        ));
-      })),
-    ));
-  }
+        ),
+      ),
+    ])),
+  );
 
   Widget _roundAction(IconData icon,VoidCallback onTap)=>InkWell(
     onTap:onTap,borderRadius:BorderRadius.circular(12),
