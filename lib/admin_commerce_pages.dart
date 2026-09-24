@@ -90,7 +90,71 @@ class AdminPremiumPage extends StatelessWidget{
     if(items.isEmpty)_empty('Bu filtrede kullanıcı yok.')else ...items.map((u)=>_user(context,u)),if(error!=null)Text(error!,style:const TextStyle(color:Colors.redAccent)),
   ]);}));}
   Widget _user(BuildContext context,Map<String,dynamic> u){final premium=u['premium']==true,expired=u['premium_flag']==true&&!premium,color=premium?_amber:expired?Colors.redAccent:_muted;return Container(margin:const EdgeInsets.only(bottom:8),padding:const EdgeInsets.all(11),decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(16),border:Border.all(color:color.withValues(alpha:.27))),child:Column(children:[Row(children:[CircleAvatar(backgroundColor:color.withValues(alpha:.12),child:Icon(premium?Icons.workspace_premium_rounded:Icons.person_rounded,color:color)),const SizedBox(width:9),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text((u['display_name']??'İsimsiz').toString(),style:const TextStyle(color:Colors.white,fontWeight:FontWeight.w900)),Text((u['phone']??u['email']??'-').toString(),style:const TextStyle(color:_muted,fontSize:10.5))])),_pill(premium?'Premium':expired?'Süresi Dolmuş':'Standart',color)]),const SizedBox(height:7),Row(children:[Expanded(child:Text(premium?(u['premium_expires_at']==null?'Bitiş: Süresiz':'Bitiş: '+_date(u['premium_expires_at'])):'Premium aktif değil',style:const TextStyle(color:_muted,fontSize:10.5))),Text((u['history_count']??0).toString()+' işlem',style:const TextStyle(color:_muted,fontSize:10.5))]),const SizedBox(height:8),Wrap(spacing:7,runSpacing:7,children:[if(!premium)FilledButton.icon(onPressed:()=>_activate(context,u),icon:const Icon(Icons.workspace_premium_rounded),label:const Text('Premium Yap'),style:FilledButton.styleFrom(backgroundColor:_amber,foregroundColor:Colors.black)),if(premium)OutlinedButton.icon(onPressed:()=>_extend(context,u),icon:const Icon(Icons.add_alarm_rounded),label:const Text('Uzat')),if(premium)OutlinedButton.icon(onPressed:()=>onAction(u['id'].toString(),{'action':'cancel','note':'Admin tarafından iptal edildi'}),icon:const Icon(Icons.cancel_outlined),label:const Text('İptal'),style:OutlinedButton.styleFrom(foregroundColor:Colors.redAccent)),OutlinedButton.icon(onPressed:()=>_history(context,u),icon:const Icon(Icons.history_rounded),label:const Text('Geçmiş'))]) ]));}
-  Future<void> _activate(BuildContext context,Map<String,dynamic> u)async{int days=30;bool unlimited=false;final ok=await showDialog<bool>(context:context,builder:(d)=>StatefulBuilder(builder:(d,setD)=>AlertDialog(title:Text((u['display_name']??'Kullanıcı').toString()+' • Premium'),content:Column(mainAxisSize:MainAxisSize.min,children:[SwitchListTile(value:unlimited,onChanged:(v)=>setD(()=>unlimited=v),title:const Text('Süresiz Premium')),if(!unlimited)DropdownButtonFormField<int>(value:days,decoration:const InputDecoration(labelText:'Süre'),items:const [DropdownMenuItem(value:7,child:Text('7 gün')),DropdownMenuItem(value:30,child:Text('30 gün')),DropdownMenuItem(value:90,child:Text('90 gün')),DropdownMenuItem(value:365,child:Text('1 yıl'))],onChanged:(v)=>setD(()=>days=v??30))]),actions:[TextButton(onPressed:()=>Navigator.pop(d,false),child:const Text('Vazgeç')),FilledButton(onPressed:()=>Navigator.pop(d,true),child:const Text('Premium Yap'))])));if(ok==true){final payload=<String,dynamic>{'action':'activate','note':'Admin manuel Premium'};if(unlimited){payload['expiresAt']=null;}else{payload['days']=days;}await onAction(u['id'].toString(),payload);}}
+  Future<void> _activate(BuildContext context,Map<String,dynamic> u)async{
+    int days=30;
+    bool unlimited=false,custom=false;
+    DateTime? customDate;
+    final ok=await showDialog<bool>(context:context,builder:(d)=>StatefulBuilder(builder:(d,setD)=>AlertDialog(
+      title:Text((u['display_name']??'Kullanıcı').toString()+' • Premium'),
+      content:Column(mainAxisSize:MainAxisSize.min,children:[
+        SwitchListTile(
+          contentPadding:EdgeInsets.zero,
+          value:unlimited,
+          onChanged:(v)=>setD((){unlimited=v;if(v)custom=false;}),
+          title:const Text('Süresiz Premium'),
+        ),
+        if(!unlimited)...[
+          SwitchListTile(
+            contentPadding:EdgeInsets.zero,
+            value:custom,
+            onChanged:(v)=>setD(()=>custom=v),
+            title:const Text('Özel bitiş tarihi'),
+          ),
+          if(custom)
+            OutlinedButton.icon(
+              onPressed:()async{
+                final picked=await showDatePicker(
+                  context:d,
+                  initialDate:customDate??DateTime.now().add(const Duration(days:30)),
+                  firstDate:DateTime.now(),
+                  lastDate:DateTime.now().add(const Duration(days:3650)),
+                );
+                if(picked!=null)setD(()=>customDate=picked);
+              },
+              icon:const Icon(Icons.calendar_month_rounded),
+              label:Text(customDate==null?'Tarih seç':_date(customDate!.toIso8601String())),
+            )
+          else
+            DropdownButtonFormField<int>(
+              value:days,
+              decoration:const InputDecoration(labelText:'Süre'),
+              items:const[
+                DropdownMenuItem(value:7,child:Text('7 gün')),
+                DropdownMenuItem(value:30,child:Text('30 gün')),
+                DropdownMenuItem(value:90,child:Text('90 gün')),
+                DropdownMenuItem(value:365,child:Text('1 yıl')),
+              ],
+              onChanged:(v)=>setD(()=>days=v??30),
+            ),
+        ],
+      ]),
+      actions:[
+        TextButton(onPressed:()=>Navigator.pop(d,false),child:const Text('Vazgeç')),
+        FilledButton(onPressed:custom&&customDate==null?null:()=>Navigator.pop(d,true),child:const Text('Premium Yap')),
+      ],
+    )));
+    if(ok==true){
+      final payload=<String,dynamic>{'action':'activate','note':'Admin manuel Premium'};
+      if(unlimited){
+        payload['expiresAt']=null;
+      }else if(custom&&customDate!=null){
+        payload['expiresAt']=DateTime(customDate!.year,customDate!.month,customDate!.day,23,59,59).toUtc().toIso8601String();
+      }else{
+        payload['days']=days;
+      }
+      await onAction(u['id'].toString(),payload);
+    }
+  }
   Future<void> _extend(BuildContext context,Map<String,dynamic> u)async{int days=30;final ok=await showDialog<bool>(context:context,builder:(d)=>StatefulBuilder(builder:(d,setD)=>AlertDialog(title:const Text('Premium Uzat'),content:DropdownButtonFormField<int>(value:days,decoration:const InputDecoration(labelText:'Eklenecek süre'),items:const [DropdownMenuItem(value:7,child:Text('7 gün')),DropdownMenuItem(value:30,child:Text('30 gün')),DropdownMenuItem(value:90,child:Text('90 gün')),DropdownMenuItem(value:365,child:Text('1 yıl'))],onChanged:(v)=>setD(()=>days=v??30)),actions:[TextButton(onPressed:()=>Navigator.pop(d,false),child:const Text('Vazgeç')),FilledButton(onPressed:()=>Navigator.pop(d,true),child:const Text('Uzat'))])));if(ok==true)await onAction(u['id'].toString(),{'action':'extend','days':days,'note':'Admin uzatma'});}
   Future<void> _history(BuildContext context,Map<String,dynamic> u)async{final rows=await onHistory(u['id'].toString());if(!context.mounted)return;await showDialog(context:context,builder:(d)=>AlertDialog(title:Text((u['display_name']??'Kullanıcı').toString()+' • Premium Geçmişi'),content:SizedBox(width:520,height:400,child:rows.isEmpty?const Center(child:Text('Geçmiş yok')):ListView(children:rows.map((x)=>ListTile(leading:Icon(x['action']=='cancelled'?Icons.cancel_outlined:Icons.workspace_premium_rounded,color:x['action']=='cancelled'?Colors.redAccent:_amber),title:Text((x['action']??'-').toString()),subtitle:Text(_date(x['created_at'])+'\n'+(x['note']??'').toString()),trailing:Text(x['new_premium']==true?(x['new_expires_at']==null?'Süresiz':_date(x['new_expires_at'])):'Kapalı',textAlign:TextAlign.right))).toList())),actions:[TextButton(onPressed:()=>Navigator.pop(d),child:const Text('Kapat'))]));}
 }
