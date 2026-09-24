@@ -621,10 +621,13 @@ class _QrPageState extends State<QrPage>{
     final templateData=await rootBundle.load('assets/Etiket.png');
     final template=pw.MemoryImage(templateData.buffer.asUint8List());
 
-    // A4 is 297 mm high. Eight 3.75 cm rows need 300 mm, so the physical
-    // slot is reduced by only 1% to 37.125 mm to keep 16 labels on one A4.
+    // 16-up A4 safe print layout:
+    // 5 mm left/right margins leave exactly 200 mm for two 100 mm columns.
+    // 3 mm top/bottom margins protect the first/last row from common printer
+    // non-printable areas. The remaining 291 mm is split into 8 equal rows.
     final labelWidth=100*PdfPageFormat.mm;
-    final labelHeight=PdfPageFormat.a4.height/8;
+    final pageTopBottomMargin=3*PdfPageFormat.mm;
+    final labelHeight=(PdfPageFormat.a4.height-(pageTopBottomMargin*2))/8;
 
     pw.Widget labelCard(Map<String,dynamic> e){
       final token=_tokenOf(e);
@@ -700,7 +703,10 @@ class _QrPageState extends State<QrPage>{
       final pageItems=printableRows.sublist(start,end);
       doc.addPage(pw.Page(
         pageFormat:PdfPageFormat.a4,
-        margin:pw.EdgeInsets.symmetric(horizontal:5*PdfPageFormat.mm),
+        margin:pw.EdgeInsets.symmetric(
+          horizontal:5*PdfPageFormat.mm,
+          vertical:pageTopBottomMargin,
+        ),
         build:(_){
           final slots=<pw.Widget>[];
           for(var i=0;i<8;i++){
@@ -724,7 +730,7 @@ class _QrPageState extends State<QrPage>{
     final suffix=batchFilter=='all'?'tum-qr':batchFilter.toLowerCase();
     await saveAdminFile(
       Uint8List.fromList(bytes),
-      'cepqar-baski-10x3-75cm-16li-$suffix.pdf',
+      'cepqar-baski-a4-16li-guvenli-$suffix.pdf',
       'application/pdf',
     );
     final newlyDownloaded=printableRows
