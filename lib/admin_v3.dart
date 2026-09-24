@@ -12,6 +12,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'admin_requests_page.dart';
 import 'admin_download.dart';
+import 'admin_commerce_pages.dart';
 
 const _navy = Color(0xFF060A18);
 const _purple = Color(0xFFB100FF);
@@ -197,6 +198,22 @@ class _AdminHomeState extends State<AdminHome> {
   bool communicationsLoading=false;
   String? communicationsError;
   int communicationsHours=24;
+  Map<String,dynamic> businessesAdminData={};
+  bool businessesAdminLoading=false;
+  String? businessesAdminError;
+  String businessesAdminStatus='pending';
+  Map<String,dynamic> campaignsAdminData={};
+  bool campaignsAdminLoading=false;
+  String? campaignsAdminError;
+  String campaignsAdminStatus='pending';
+  Map<String,dynamic> offerRevenueData={};
+  bool offerRevenueLoading=false;
+  String? offerRevenueError;
+  int offerRevenueDays=30;
+  Map<String,dynamic> premiumAdminData={};
+  bool premiumAdminLoading=false;
+  String? premiumAdminError;
+  String premiumAdminFilter='all';
   final tabs=const [
     ('Genel Bakış',Icons.grid_view_rounded),
     ('Kullanıcılar',Icons.people_alt_rounded),
@@ -212,6 +229,10 @@ class _AdminHomeState extends State<AdminHome> {
     ('Güvenlik Merkezi',Icons.security_rounded),
     ('Şikâyetler',Icons.report_problem_rounded),
     ('İletişim Denetimi',Icons.forum_rounded),
+    ('İşletmeler',Icons.storefront_rounded),
+    ('Kampanyalar',Icons.campaign_rounded),
+    ('Fırsat & Gelir',Icons.payments_rounded),
+    ('Premium Yönetimi',Icons.workspace_premium_rounded),
   ];
   Map<String,String> get headers=>{
     'Authorization':'Bearer ${widget.token}',
@@ -357,6 +378,61 @@ class _AdminHomeState extends State<AdminHome> {
     }
   }
 
+  Future<void> loadBusinessesAdmin([String? status]) async {
+    final next=status??businessesAdminStatus;
+    if(mounted)setState((){businessesAdminStatus=next;businessesAdminLoading=true;businessesAdminError=null;});
+    try{final d=await getJson('/api/admin/manage/businesses?status=$next');if(mounted)setState(()=>businessesAdminData=d);}
+    catch(e){if(mounted)setState(()=>businessesAdminError=e.toString().replaceFirst('Exception: ',''));}
+    finally{if(mounted)setState(()=>businessesAdminLoading=false);}
+  }
+
+  Future<void> updateBusinessAdmin(String id,Map<String,dynamic> payload) async {
+    await send('PATCH','/api/admin/manage/businesses/$id',payload);
+    await loadBusinessesAdmin();
+    if(campaignsAdminData.isNotEmpty)await loadCampaignsAdmin();
+  }
+
+  Future<void> loadCampaignsAdmin([String? status]) async {
+    final next=status??campaignsAdminStatus;
+    if(mounted)setState((){campaignsAdminStatus=next;campaignsAdminLoading=true;campaignsAdminError=null;});
+    try{final d=await getJson('/api/admin/manage/business-campaigns?status=$next');if(mounted)setState(()=>campaignsAdminData=d);}
+    catch(e){if(mounted)setState(()=>campaignsAdminError=e.toString().replaceFirst('Exception: ',''));}
+    finally{if(mounted)setState(()=>campaignsAdminLoading=false);}
+  }
+
+  Future<void> updateCampaignAdmin(String id,Map<String,dynamic> payload) async {
+    await send('PATCH','/api/admin/manage/business-campaigns/$id',payload);
+    await loadCampaignsAdmin();
+    if(offerRevenueData.isNotEmpty)await loadOfferRevenue();
+  }
+
+  Future<void> loadOfferRevenue([int? days]) async {
+    final next=days??offerRevenueDays;
+    if(mounted)setState((){offerRevenueDays=next;offerRevenueLoading=true;offerRevenueError=null;});
+    try{final d=await getJson('/api/admin/manage/offer-revenue?days=$next');if(mounted)setState(()=>offerRevenueData=d);}
+    catch(e){if(mounted)setState(()=>offerRevenueError=e.toString().replaceFirst('Exception: ',''));}
+    finally{if(mounted)setState(()=>offerRevenueLoading=false);}
+  }
+
+  Future<void> loadPremiumAdmin([String? filter]) async {
+    final next=filter??premiumAdminFilter;
+    if(mounted)setState((){premiumAdminFilter=next;premiumAdminLoading=true;premiumAdminError=null;});
+    try{final d=await getJson('/api/admin/manage/premium-users?filter=$next');if(mounted)setState(()=>premiumAdminData=d);}
+    catch(e){if(mounted)setState(()=>premiumAdminError=e.toString().replaceFirst('Exception: ',''));}
+    finally{if(mounted)setState(()=>premiumAdminLoading=false);}
+  }
+
+  Future<void> updatePremiumAdmin(String id,Map<String,dynamic> payload) async {
+    await send('PATCH','/api/admin/manage/premium-users/$id',payload);
+    await loadPremiumAdmin();
+    await load();
+  }
+
+  Future<List<Map<String,dynamic>>> loadPremiumHistory(String id) async {
+    final d=await getJson('/api/admin/manage/premium-users/$id/history');
+    return _list(d);
+  }
+
   Future<void> openUser(Map<String,dynamic> row) async {
     try{final d=await getJson('/api/admin/manage/users/${row['id']}');if(!mounted)return;await Navigator.push(context,MaterialPageRoute(builder:(_)=>UserDetail(data:d,changeStatus:(s)async{await send('PATCH','/api/admin/manage/users/${row['id']}/status',{'status':s});await load();})));}catch(e){snack(e);}
   }
@@ -424,6 +500,10 @@ class _AdminHomeState extends State<AdminHome> {
     if(index==11&&(securityCenter.isEmpty||securityCenterError!=null))loadSecurityCenter();
     if(index==12&&(complaintData.isEmpty||complaintError!=null))loadComplaints();
     if(index==13&&(communicationsData.isEmpty||communicationsError!=null))loadCommunications();
+    if(index==14&&(businessesAdminData.isEmpty||businessesAdminError!=null))loadBusinessesAdmin();
+    if(index==15&&(campaignsAdminData.isEmpty||campaignsAdminError!=null))loadCampaignsAdmin();
+    if(index==16&&(offerRevenueData.isEmpty||offerRevenueError!=null))loadOfferRevenue();
+    if(index==17&&(premiumAdminData.isEmpty||premiumAdminError!=null))loadPremiumAdmin();
   }
 
   @override
@@ -464,24 +544,28 @@ class _AdminHomeState extends State<AdminHome> {
     child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
       Padding(padding:const EdgeInsets.symmetric(horizontal:8),child:_brand(fontSize:28)),
       const SizedBox(height:24),
-      ...List.generate(tabs.length,(i)=>Padding(
-        padding:const EdgeInsets.only(bottom:6),
-        child:InkWell(
-          borderRadius:BorderRadius.circular(15),
-          onTap:()=>openTab(i),
-          child:AnimatedContainer(
-            duration:const Duration(milliseconds:180),
-            padding:const EdgeInsets.symmetric(horizontal:12,vertical:12),
-            decoration:BoxDecoration(
-              borderRadius:BorderRadius.circular(15),
-              gradient:tab==i?const LinearGradient(colors:[Color(0xFF5E1BC9),Color(0xFFB100FF)]):null,
-              border:Border.all(color:tab==i?_purple.withValues(alpha:.65):Colors.transparent),
+      Expanded(child:ListView.builder(
+        padding:EdgeInsets.zero,
+        itemCount:tabs.length,
+        itemBuilder:(context,i)=>Padding(
+          padding:const EdgeInsets.only(bottom:6),
+          child:InkWell(
+            borderRadius:BorderRadius.circular(15),
+            onTap:()=>openTab(i),
+            child:AnimatedContainer(
+              duration:const Duration(milliseconds:180),
+              padding:const EdgeInsets.symmetric(horizontal:12,vertical:12),
+              decoration:BoxDecoration(
+                borderRadius:BorderRadius.circular(15),
+                gradient:tab==i?const LinearGradient(colors:[Color(0xFF5E1BC9),Color(0xFFB100FF)]):null,
+                border:Border.all(color:tab==i?_purple.withValues(alpha:.65):Colors.transparent),
+              ),
+              child:Row(children:[Icon(tabs[i].$2,color:tab==i?Colors.white:_muted,size:21),const SizedBox(width:10),Expanded(child:Text(tabs[i].$1,style:TextStyle(color:tab==i?Colors.white:_muted,fontSize:13,fontWeight:FontWeight.w800)))]),
             ),
-            child:Row(children:[Icon(tabs[i].$2,color:tab==i?Colors.white:_muted,size:21),const SizedBox(width:10),Expanded(child:Text(tabs[i].$1,style:TextStyle(color:tab==i?Colors.white:_muted,fontSize:13,fontWeight:FontWeight.w800)))]),
           ),
         ),
       )),
-      const Spacer(),
+      const SizedBox(height:8),
       TextButton.icon(onPressed:widget.onLogout,icon:const Icon(Icons.logout_rounded,color:_muted),label:const Text('Çıkış',style:TextStyle(color:_muted,fontWeight:FontWeight.w700))),
     ]),
   );
@@ -494,7 +578,7 @@ class _AdminHomeState extends State<AdminHome> {
     child:Row(children:[
       Icon(tabs[tab].$2,color:_purple,size:23),const SizedBox(width:9),
       Expanded(child:Text(tabs[tab].$1,style:const TextStyle(fontSize:18,fontWeight:FontWeight.w900,color:Colors.white))),
-      _roundAction(Icons.refresh_rounded,tab==7?()=>loadReports():tab==8?loadAudit:tab==9?loadSystemHealth:tab==10?loadPushHistory:tab==11?()=>loadSecurityCenter():tab==12?()=>loadComplaints():tab==13?()=>loadCommunications():load),const SizedBox(width:8),_roundAction(Icons.logout_rounded,widget.onLogout),
+      _roundAction(Icons.refresh_rounded,tab==7?()=>loadReports():tab==8?loadAudit:tab==9?loadSystemHealth:tab==10?loadPushHistory:tab==11?()=>loadSecurityCenter():tab==12?()=>loadComplaints():tab==13?()=>loadCommunications():tab==14?()=>loadBusinessesAdmin():tab==15?()=>loadCampaignsAdmin():tab==16?()=>loadOfferRevenue():tab==17?()=>loadPremiumAdmin():load),const SizedBox(width:8),_roundAction(Icons.logout_rounded,widget.onLogout),
     ]),
   );
 
@@ -522,7 +606,7 @@ class _AdminHomeState extends State<AdminHome> {
       IconButton(
         tooltip:'Yenile',
         icon:const Icon(Icons.refresh_rounded,color:Colors.white),
-        onPressed:tab==7?()=>loadReports():tab==8?loadAudit:tab==9?loadSystemHealth:tab==10?loadPushHistory:tab==11?()=>loadSecurityCenter():tab==12?()=>loadComplaints():tab==13?()=>loadCommunications():load,
+        onPressed:tab==7?()=>loadReports():tab==8?loadAudit:tab==9?loadSystemHealth:tab==10?loadPushHistory:tab==11?()=>loadSecurityCenter():tab==12?()=>loadComplaints():tab==13?()=>loadCommunications():tab==14?()=>loadBusinessesAdmin():tab==15?()=>loadCampaignsAdmin():tab==16?()=>loadOfferRevenue():tab==17?()=>loadPremiumAdmin():load,
       ),
       const SizedBox(width:4),
     ],
@@ -622,7 +706,7 @@ class _AdminHomeState extends State<AdminHome> {
     child:Container(width:38,height:38,decoration:BoxDecoration(color:_card2,borderRadius:BorderRadius.circular(12),border:Border.all(color:_purple.withValues(alpha:.45))),child:Icon(icon,color:Colors.white,size:20)),
   );
 
-  Widget page(){switch(tab){case 1:return UsersPage(rows:users,open:openUser);case 2:return VehiclesPage(rows:vehicles,open:openVehicle);case 3:return QrPage(rows:qr,create:createQr,action:qrAction,itemPrintStatus:qrItemPrintStatus);case 4:return ModerationPage(rows:themes,removeBackground:removeBg,resetTheme:resetTheme);case 5:return AdminCorrectionRequestsPage(token:widget.token,admin:widget.admin);case 6:return AdminPromoPage(rows:promos,onCreate:createPromo,onSetActive:setPromoActive,onPush:pushPromo,onUploadImage:uploadPromoImage);case 7:return ReportsPage(data:reports,loading:reportLoading,error:reportError,days:reportDays,onDaysChanged:loadReports,onRefresh:()=>loadReports());case 8:return AuditLogPage(data:auditData,loading:auditLoading,error:auditError,onRefresh:loadAudit);case 9:return SystemHealthPage(data:systemHealth,loading:systemHealthLoading,error:systemHealthError,onRefresh:loadSystemHealth);case 10:return AdminPushPage(users:users,data:pushHistory,loading:pushHistoryLoading,error:pushHistoryError,onSend:sendAdminPush,onRefresh:loadPushHistory);case 11:return SecurityCenterPage(data:securityCenter,loading:securityCenterLoading,error:securityCenterError,hours:securityHours,onHoursChanged:loadSecurityCenter,onRefresh:()=>loadSecurityCenter());case 12:return ComplaintModerationPage(data:complaintData,loading:complaintLoading,error:complaintError,status:complaintStatus,onStatusChanged:loadComplaints,onOpen:openComplaint,onRefresh:()=>loadComplaints());case 13:return CommunicationOpsPage(data:communicationsData,loading:communicationsLoading,error:communicationsError,hours:communicationsHours,onHoursChanged:loadCommunications,onRefresh:()=>loadCommunications());default:return const SizedBox.shrink();}}
+  Widget page(){switch(tab){case 1:return UsersPage(rows:users,open:openUser);case 2:return VehiclesPage(rows:vehicles,open:openVehicle);case 3:return QrPage(rows:qr,create:createQr,action:qrAction,itemPrintStatus:qrItemPrintStatus);case 4:return ModerationPage(rows:themes,removeBackground:removeBg,resetTheme:resetTheme);case 5:return AdminCorrectionRequestsPage(token:widget.token,admin:widget.admin);case 6:return AdminPromoPage(rows:promos,onCreate:createPromo,onSetActive:setPromoActive,onPush:pushPromo,onUploadImage:uploadPromoImage);case 7:return ReportsPage(data:reports,loading:reportLoading,error:reportError,days:reportDays,onDaysChanged:loadReports,onRefresh:()=>loadReports());case 8:return AuditLogPage(data:auditData,loading:auditLoading,error:auditError,onRefresh:loadAudit);case 9:return SystemHealthPage(data:systemHealth,loading:systemHealthLoading,error:systemHealthError,onRefresh:loadSystemHealth);case 10:return AdminPushPage(users:users,data:pushHistory,loading:pushHistoryLoading,error:pushHistoryError,onSend:sendAdminPush,onRefresh:loadPushHistory);case 11:return SecurityCenterPage(data:securityCenter,loading:securityCenterLoading,error:securityCenterError,hours:securityHours,onHoursChanged:loadSecurityCenter,onRefresh:()=>loadSecurityCenter());case 12:return ComplaintModerationPage(data:complaintData,loading:complaintLoading,error:complaintError,status:complaintStatus,onStatusChanged:loadComplaints,onOpen:openComplaint,onRefresh:()=>loadComplaints());case 13:return CommunicationOpsPage(data:communicationsData,loading:communicationsLoading,error:communicationsError,hours:communicationsHours,onHoursChanged:loadCommunications,onRefresh:()=>loadCommunications());case 14:return AdminBusinessesPage(data:businessesAdminData,loading:businessesAdminLoading,error:businessesAdminError,status:businessesAdminStatus,onStatus:loadBusinessesAdmin,onUpdate:updateBusinessAdmin,onRefresh:()=>loadBusinessesAdmin());case 15:return AdminCampaignsPage(data:campaignsAdminData,loading:campaignsAdminLoading,error:campaignsAdminError,status:campaignsAdminStatus,onStatus:loadCampaignsAdmin,onUpdate:updateCampaignAdmin,onRefresh:()=>loadCampaignsAdmin());case 16:return AdminOfferRevenuePage(data:offerRevenueData,loading:offerRevenueLoading,error:offerRevenueError,days:offerRevenueDays,onDays:loadOfferRevenue,onRefresh:()=>loadOfferRevenue());case 17:return AdminPremiumPage(data:premiumAdminData,loading:premiumAdminLoading,error:premiumAdminError,filter:premiumAdminFilter,onFilter:loadPremiumAdmin,onAction:updatePremiumAdmin,onHistory:loadPremiumHistory,onRefresh:()=>loadPremiumAdmin());default:return const SizedBox.shrink();}}
 }
 
 Widget _brand({double fontSize=34})=>RichText(text:TextSpan(children:[
@@ -747,6 +831,10 @@ class Dashboard extends StatelessWidget{
       ('Güvenlik Merkezi','QR, giriş ve cihaz güvenliği',Icons.security_rounded,11),
       ('Şikâyetler','Sohbet şikâyetlerini incele ve çöz',Icons.report_problem_rounded,12),
       ('İletişim Denetimi','Mesaj, anonim oturum ve çağrı durumları',Icons.forum_rounded,13),
+      ('İşletmeler','Başvuru ve işletme yönetimi',Icons.storefront_rounded,14),
+      ('Kampanyalar','Fırsat onay ve düzenleme',Icons.campaign_rounded,15),
+      ('Fırsat & Gelir','Kullanım ve komisyon raporu',Icons.payments_rounded,16),
+      ('Premium Yönetimi','Premium ver, uzat veya iptal et',Icons.workspace_premium_rounded,17),
     ];
     return Wrap(spacing:gap,runSpacing:gap,children:data.map((x)=>SizedBox(width:itemWidth,height:compact?96:92,child:InkWell(borderRadius:BorderRadius.circular(17),onTap:()=>onOpenTab(x.$4),child:Container(padding:const EdgeInsets.symmetric(horizontal:12,vertical:11),decoration:_glowDecoration(radius:17),child:Row(children:[Container(width:44,height:44,decoration:BoxDecoration(shape:BoxShape.circle,color:_purple.withValues(alpha:.12),border:Border.all(color:_purple.withValues(alpha:.38))),child:Icon(x.$3,color:_purple,size:24)),const SizedBox(width:10),Expanded(child:Column(mainAxisAlignment:MainAxisAlignment.center,crossAxisAlignment:CrossAxisAlignment.start,children:[Text(x.$1,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Colors.white,fontSize:13.5,fontWeight:FontWeight.w900)),const SizedBox(height:3),Text(x.$2,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_muted,fontSize:11.5))])),const Icon(Icons.chevron_right_rounded,color:Color(0xFFC96CFF),size:24)]))))).toList());
   }
