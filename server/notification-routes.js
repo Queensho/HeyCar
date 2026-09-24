@@ -13,6 +13,11 @@ function normalizeToken(raw) {
   return String(raw || '').trim().toUpperCase();
 }
 
+function requestIp(req) {
+  const forwarded=String(req.headers?.['x-forwarded-for']||'').split(',')[0].trim();
+  return (forwarded||req.ip||req.socket?.remoteAddress||'').toString().slice(0,120);
+}
+
 const allowedTypes = new Set(['move_vehicle', 'lights_on', 'damage', 'message', 'call_request']);
 
 module.exports = function registerNotificationRoutes(app, pool) {
@@ -238,7 +243,7 @@ module.exports = function registerNotificationRoutes(app, pool) {
       const old = await pool.query(`SELECT id, active FROM owner_devices WHERE owner_id=$1 AND device_id=$2 LIMIT 1`, [ownerId, deviceId]);
       const isNew = old.rows.length === 0 || old.rows[0].active === false;
       const id = old.rows[0]?.id || crypto.randomUUID();
-      const ip = visitorKey(req);
+      const ip = requestIp(req);
       await pool.query(`INSERT INTO owner_devices(id, owner_id, device_id, device_name, last_ip) VALUES($1,$2,$3,$4,$5) ON CONFLICT(owner_id, device_id) DO UPDATE SET device_name=EXCLUDED.device_name, last_ip=EXCLUDED.last_ip, last_seen_at=NOW(), active=TRUE`, [id, ownerId, deviceId, deviceName, ip]);
       const p = await getPrivacy(ownerId);
       if (isNew && p.suspicious_login_alerts) await pool.query(`INSERT INTO owner_login_events(id, owner_id, device_name, ip_address) VALUES($1,$2,$3,$4)`, [crypto.randomUUID(), ownerId, deviceName, ip]);
