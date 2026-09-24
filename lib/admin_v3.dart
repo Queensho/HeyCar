@@ -189,6 +189,14 @@ class _AdminHomeState extends State<AdminHome> {
   bool securityCenterLoading=false;
   String? securityCenterError;
   int securityHours=24;
+  Map<String,dynamic> complaintData={};
+  bool complaintLoading=false;
+  String? complaintError;
+  String complaintStatus='pending';
+  Map<String,dynamic> communicationsData={};
+  bool communicationsLoading=false;
+  String? communicationsError;
+  int communicationsHours=24;
   final tabs=const [
     ('Genel Bakış',Icons.grid_view_rounded),
     ('Kullanıcılar',Icons.people_alt_rounded),
@@ -202,8 +210,10 @@ class _AdminHomeState extends State<AdminHome> {
     ('Sistem Durumu',Icons.monitor_heart_rounded),
     ('Bildirimler',Icons.notifications_active_rounded),
     ('Güvenlik Merkezi',Icons.security_rounded),
+    ('Şikâyetler',Icons.report_problem_rounded),
+    ('İletişim Denetimi',Icons.forum_rounded),
   ];
-  static const mobileTabIndexes=[0,1,2,3,10,11];
+  static const mobileTabIndexes=[0,3,12,13,10,11];
   Map<String,String> get headers=>{
     'Authorization':'Bearer ${widget.token}',
     'Content-Type':'application/json',
@@ -301,6 +311,53 @@ class _AdminHomeState extends State<AdminHome> {
     }
   }
 
+  Future<void> loadComplaints([String? status]) async {
+    final next=status??complaintStatus;
+    if(mounted)setState((){complaintStatus=next;complaintLoading=true;complaintError=null;});
+    try{
+      final d=await getJson('/api/admin/manage/moderation/reports?status=$next');
+      if(mounted)setState(()=>complaintData=d);
+    }catch(e){
+      if(mounted)setState(()=>complaintError=e.toString().replaceFirst('Exception: ',''));
+    }finally{
+      if(mounted)setState(()=>complaintLoading=false);
+    }
+  }
+
+  Future<void> openComplaint(Map<String,dynamic> row) async {
+    try{
+      final id=(row['id']??'').toString();
+      final d=await getJson('/api/admin/manage/moderation/reports/$id');
+      if(!mounted)return;
+      await Navigator.push(context,MaterialPageRoute(builder:(_)=>ComplaintDetailPage(
+        data:d,
+        onModerate:(status,note,closeConversation,blockSession)async{
+          await send('PATCH','/api/admin/manage/moderation/reports/$id',{
+            'status':status,
+            'adminNote':note,
+            'closeConversation':closeConversation,
+            'blockSession':blockSession,
+          });
+        },
+      )));
+      await loadComplaints();
+      if(communicationsData.isNotEmpty)await loadCommunications();
+    }catch(e){snack(e);}
+  }
+
+  Future<void> loadCommunications([int? hours]) async {
+    final next=hours??communicationsHours;
+    if(mounted)setState((){communicationsHours=next;communicationsLoading=true;communicationsError=null;});
+    try{
+      final d=await getJson('/api/admin/manage/communications?hours=$next');
+      if(mounted)setState(()=>communicationsData=d);
+    }catch(e){
+      if(mounted)setState(()=>communicationsError=e.toString().replaceFirst('Exception: ',''));
+    }finally{
+      if(mounted)setState(()=>communicationsLoading=false);
+    }
+  }
+
   Future<void> openUser(Map<String,dynamic> row) async {
     try{final d=await getJson('/api/admin/manage/users/${row['id']}');if(!mounted)return;await Navigator.push(context,MaterialPageRoute(builder:(_)=>UserDetail(data:d,changeStatus:(s)async{await send('PATCH','/api/admin/manage/users/${row['id']}/status',{'status':s});await load();})));}catch(e){snack(e);}
   }
@@ -366,6 +423,8 @@ class _AdminHomeState extends State<AdminHome> {
     if(index==9&&(systemHealth.isEmpty||systemHealthError!=null))loadSystemHealth();
     if(index==10&&(pushHistory.isEmpty||pushHistoryError!=null))loadPushHistory();
     if(index==11&&(securityCenter.isEmpty||securityCenterError!=null))loadSecurityCenter();
+    if(index==12&&(complaintData.isEmpty||complaintError!=null))loadComplaints();
+    if(index==13&&(communicationsData.isEmpty||communicationsError!=null))loadCommunications();
   }
 
   @override
@@ -430,7 +489,7 @@ class _AdminHomeState extends State<AdminHome> {
     child:Row(children:[
       Icon(tabs[tab].$2,color:_purple,size:23),const SizedBox(width:9),
       Expanded(child:Text(tabs[tab].$1,style:const TextStyle(fontSize:18,fontWeight:FontWeight.w900,color:Colors.white))),
-      _roundAction(Icons.refresh_rounded,tab==7?()=>loadReports():tab==8?loadAudit:tab==9?loadSystemHealth:tab==10?loadPushHistory:tab==11?()=>loadSecurityCenter():load),const SizedBox(width:8),_roundAction(Icons.logout_rounded,widget.onLogout),
+      _roundAction(Icons.refresh_rounded,tab==7?()=>loadReports():tab==8?loadAudit:tab==9?loadSystemHealth:tab==10?loadPushHistory:tab==11?()=>loadSecurityCenter():tab==12?()=>loadComplaints():tab==13?()=>loadCommunications():load),const SizedBox(width:8),_roundAction(Icons.logout_rounded,widget.onLogout),
     ]),
   );
 
@@ -442,7 +501,7 @@ class _AdminHomeState extends State<AdminHome> {
       decoration:BoxDecoration(color:const Color(0xFF060A18),border:Border(top:BorderSide(color:_purple.withValues(alpha:.28))),boxShadow:[BoxShadow(color:_purple.withValues(alpha:.12),blurRadius:22)]),
       child:Row(children:List.generate(mobileTabIndexes.length,(i){
         final realIndex=mobileTabIndexes[i],active=i==selected;
-        final label=realIndex==3?'QR':realIndex==10?'Bildirim':realIndex==11?'Güvenlik':tabs[realIndex].$1;
+        final label=realIndex==3?'QR':realIndex==10?'Bildirim':realIndex==11?'Güvenlik':realIndex==12?'Şikâyet':realIndex==13?'İletişim':tabs[realIndex].$1;
         return Expanded(child:InkWell(
           borderRadius:BorderRadius.circular(15),
           onTap:()=>openTab(realIndex),
@@ -462,7 +521,7 @@ class _AdminHomeState extends State<AdminHome> {
     child:Container(width:38,height:38,decoration:BoxDecoration(color:_card2,borderRadius:BorderRadius.circular(12),border:Border.all(color:_purple.withValues(alpha:.45))),child:Icon(icon,color:Colors.white,size:20)),
   );
 
-  Widget page(){switch(tab){case 1:return UsersPage(rows:users,open:openUser);case 2:return VehiclesPage(rows:vehicles,open:openVehicle);case 3:return QrPage(rows:qr,create:createQr,action:qrAction,itemPrintStatus:qrItemPrintStatus);case 4:return ModerationPage(rows:themes,removeBackground:removeBg,resetTheme:resetTheme);case 5:return AdminCorrectionRequestsPage(token:widget.token,admin:widget.admin);case 6:return AdminPromoPage(rows:promos,onCreate:createPromo,onSetActive:setPromoActive,onPush:pushPromo,onUploadImage:uploadPromoImage);case 7:return ReportsPage(data:reports,loading:reportLoading,error:reportError,days:reportDays,onDaysChanged:loadReports,onRefresh:()=>loadReports());case 8:return AuditLogPage(data:auditData,loading:auditLoading,error:auditError,onRefresh:loadAudit);case 9:return SystemHealthPage(data:systemHealth,loading:systemHealthLoading,error:systemHealthError,onRefresh:loadSystemHealth);case 10:return AdminPushPage(users:users,data:pushHistory,loading:pushHistoryLoading,error:pushHistoryError,onSend:sendAdminPush,onRefresh:loadPushHistory);case 11:return SecurityCenterPage(data:securityCenter,loading:securityCenterLoading,error:securityCenterError,hours:securityHours,onHoursChanged:loadSecurityCenter,onRefresh:()=>loadSecurityCenter());default:return const SizedBox.shrink();}}
+  Widget page(){switch(tab){case 1:return UsersPage(rows:users,open:openUser);case 2:return VehiclesPage(rows:vehicles,open:openVehicle);case 3:return QrPage(rows:qr,create:createQr,action:qrAction,itemPrintStatus:qrItemPrintStatus);case 4:return ModerationPage(rows:themes,removeBackground:removeBg,resetTheme:resetTheme);case 5:return AdminCorrectionRequestsPage(token:widget.token,admin:widget.admin);case 6:return AdminPromoPage(rows:promos,onCreate:createPromo,onSetActive:setPromoActive,onPush:pushPromo,onUploadImage:uploadPromoImage);case 7:return ReportsPage(data:reports,loading:reportLoading,error:reportError,days:reportDays,onDaysChanged:loadReports,onRefresh:()=>loadReports());case 8:return AuditLogPage(data:auditData,loading:auditLoading,error:auditError,onRefresh:loadAudit);case 9:return SystemHealthPage(data:systemHealth,loading:systemHealthLoading,error:systemHealthError,onRefresh:loadSystemHealth);case 10:return AdminPushPage(users:users,data:pushHistory,loading:pushHistoryLoading,error:pushHistoryError,onSend:sendAdminPush,onRefresh:loadPushHistory);case 11:return SecurityCenterPage(data:securityCenter,loading:securityCenterLoading,error:securityCenterError,hours:securityHours,onHoursChanged:loadSecurityCenter,onRefresh:()=>loadSecurityCenter());case 12:return ComplaintModerationPage(data:complaintData,loading:complaintLoading,error:complaintError,status:complaintStatus,onStatusChanged:loadComplaints,onOpen:openComplaint,onRefresh:()=>loadComplaints());case 13:return CommunicationOpsPage(data:communicationsData,loading:communicationsLoading,error:communicationsError,hours:communicationsHours,onHoursChanged:loadCommunications,onRefresh:()=>loadCommunications());default:return const SizedBox.shrink();}}
 }
 
 Widget _brand({double fontSize=34})=>RichText(text:TextSpan(children:[
@@ -585,6 +644,8 @@ class Dashboard extends StatelessWidget{
       ('Sistem Durumu','VPS, DB, push ve kaynak sağlığı',Icons.monitor_heart_rounded,9),
       ('Bildirimler','Tek kişi, grup veya herkese push gönder',Icons.notifications_active_rounded,10),
       ('Güvenlik Merkezi','QR, giriş ve cihaz güvenliği',Icons.security_rounded,11),
+      ('Şikâyetler','Sohbet şikâyetlerini incele ve çöz',Icons.report_problem_rounded,12),
+      ('İletişim Denetimi','Mesaj, anonim oturum ve çağrı durumları',Icons.forum_rounded,13),
     ];
     return Wrap(spacing:gap,runSpacing:gap,children:data.map((x)=>SizedBox(width:itemWidth,height:compact?96:92,child:InkWell(borderRadius:BorderRadius.circular(17),onTap:()=>onOpenTab(x.$4),child:Container(padding:const EdgeInsets.symmetric(horizontal:12,vertical:11),decoration:_glowDecoration(radius:17),child:Row(children:[Container(width:44,height:44,decoration:BoxDecoration(shape:BoxShape.circle,color:_purple.withValues(alpha:.12),border:Border.all(color:_purple.withValues(alpha:.38))),child:Icon(x.$3,color:_purple,size:24)),const SizedBox(width:10),Expanded(child:Column(mainAxisAlignment:MainAxisAlignment.center,crossAxisAlignment:CrossAxisAlignment.start,children:[Text(x.$1,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Colors.white,fontSize:13.5,fontWeight:FontWeight.w900)),const SizedBox(height:3),Text(x.$2,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_muted,fontSize:11.5))])),const Icon(Icons.chevron_right_rounded,color:Color(0xFFC96CFF),size:24)]))))).toList());
   }
