@@ -8,6 +8,7 @@ const { sendQrNotificationPush } = require('./notification-push-hook');
 const registerPushRoutes = require('./push-routes');
 const { createScanSession, validateScanSession } = require('./scan-session-service');
 const { moderateMessage } = require('./message-moderation');
+const { enforcePublicRequest } = require('./security-service');
 
 function normalizeToken(raw) {
   return String(raw || '').trim().toUpperCase();
@@ -167,6 +168,8 @@ module.exports = function registerNotificationRoutes(app, pool) {
     try {
       const qr = await activeQr(token);
       if (!qr) return res.status(404).json({ error: 'ACTIVE_QR_NOT_FOUND' });
+      const security = await enforcePublicRequest(pool, token, req);
+      if (!security.ok) return res.status(security.status).json({ error: security.error });
       await pool.query(`DELETE FROM qr_scan_sessions WHERE expires_at<=NOW()`);
       const session = await createScanSession(pool, qr);
       await recordQrScan(qr);
