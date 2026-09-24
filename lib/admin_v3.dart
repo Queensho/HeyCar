@@ -1019,7 +1019,7 @@ class _QrPageState extends State<QrPage>{
               width:19.3*PdfPageFormat.mm,
               height:22.9*PdfPageFormat.mm,
               child:pw.Column(children:[
-                pw.SizedBox(height:2.2*PdfPageFormat.mm),
+                pw.SizedBox(height:3.1*PdfPageFormat.mm),
                 pw.Center(
                   child:pw.SizedBox(
                     width:13.0*PdfPageFormat.mm,
@@ -1031,7 +1031,7 @@ class _QrPageState extends State<QrPage>{
                     ),
                   ),
                 ),
-                pw.SizedBox(height:1.15*PdfPageFormat.mm),
+                pw.SizedBox(height:.95*PdfPageFormat.mm),
                 pw.Center(
                   child:pw.Container(
                     width:15.8*PdfPageFormat.mm,
@@ -1136,7 +1136,7 @@ class _QrPageState extends State<QrPage>{
         child:Container(
           padding:EdgeInsets.fromLTRB(cardW*.035,cardH*.020,cardW*.035,cardH*.020),
           child:Column(children:[
-            SizedBox(height:cardH*.085),
+            SizedBox(height:cardH*.120),
             Center(child:SizedBox(
               width:cardW*.66,
               height:cardW*.66,
@@ -1159,7 +1159,7 @@ class _QrPageState extends State<QrPage>{
                 ]);
               }),
             )),
-            SizedBox(height:cardH*.050),
+            SizedBox(height:cardH*.040),
             Center(child:Container(
               width:cardW*.82,
               height:cardH*.095,
