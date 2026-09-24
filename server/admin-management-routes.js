@@ -220,6 +220,7 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
       await ensureQrItemPrintSchema(pool);
       let sql;
       if (status === 'ready') {
+        // Explicit reset is the only operation allowed to move a label backwards.
         sql = `UPDATE qr_tags
                   SET print_status='ready',
                       pdf_downloaded_at=NULL,
@@ -228,20 +229,22 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
                 WHERE token=ANY($1::text[])
                 RETURNING token,print_status,pdf_downloaded_at,sent_to_print_at,printed_at`;
       } else if (status === 'pdf_downloaded') {
+        // PDF download may only advance READY labels. Never downgrade
+        // sent_to_print or printed labels.
         sql = `UPDATE qr_tags
                   SET print_status='pdf_downloaded',
-                      pdf_downloaded_at=COALESCE(pdf_downloaded_at,NOW()),
-                      sent_to_print_at=NULL,
-                      printed_at=NULL
+                      pdf_downloaded_at=COALESCE(pdf_downloaded_at,NOW())
                 WHERE token=ANY($1::text[])
+                  AND print_status='ready'
                 RETURNING token,print_status,pdf_downloaded_at,sent_to_print_at,printed_at`;
       } else if (status === 'sent_to_print') {
+        // Sending to print may advance READY/PDF labels, but never downgrade PRINTED.
         sql = `UPDATE qr_tags
                   SET print_status='sent_to_print',
                       pdf_downloaded_at=COALESCE(pdf_downloaded_at,NOW()),
-                      sent_to_print_at=COALESCE(sent_to_print_at,NOW()),
-                      printed_at=NULL
+                      sent_to_print_at=COALESCE(sent_to_print_at,NOW())
                 WHERE token=ANY($1::text[])
+                  AND print_status IN ('ready','pdf_downloaded')
                 RETURNING token,print_status,pdf_downloaded_at,sent_to_print_at,printed_at`;
       } else {
         sql = `UPDATE qr_tags
