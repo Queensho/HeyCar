@@ -1413,7 +1413,7 @@ class SystemHealthPage extends StatelessWidget{
             const SizedBox(height:9),
             _healthResource(
               title:'Disk',
-              icon:Icons.hard_drive_rounded,
+              icon:Icons.sd_storage_rounded,
               value:_healthDouble(disk['usedPercent']),
               detail:'${_healthBytes(disk['usedBytes'])} / ${_healthBytes(disk['totalBytes'])} • boş ${_healthBytes(disk['freeBytes'])}',
             ),
