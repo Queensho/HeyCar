@@ -2464,6 +2464,9 @@ class SystemHealthPage extends StatelessWidget{
     final system=_healthMap(data['system']);
     final disk=_healthMap(data['disk']);
     final backup=_healthMap(data['backup']);
+    final reminders=_healthMap(data['reminders']);
+    final reminderRun=_healthMap(reminders['lastRun']);
+    final reminderTimer=_healthMap(reminders['timer']);
     final lastError=_healthMap(data['lastError']);
     final overall=(data['overall']??'unknown').toString();
     final overallColor=_healthStatusColor(overall);
@@ -2552,6 +2555,19 @@ class SystemHealthPage extends StatelessWidget{
                   ('Yaş',backup['ageHours']==null?'-':'${backup['ageHours']} saat'),
                   ('Dosya',_healthMap(backup['latest'])['name']?.toString()??'-'),
                   ('Boyut',_healthBytes(_healthMap(backup['latest'])['sizeBytes'])),
+                ],
+              )),
+              SizedBox(width:cardWidth,child:_healthCard(
+                title:'Araç Hatırlatma Scheduler',
+                icon:Icons.alarm_rounded,
+                status:(reminders['status']??'not_configured').toString(),
+                rows:[
+                  ('Timer',reminderTimer['active']==true&&reminderTimer['enabled']==true?'Aktif':'Kapalı'),
+                  ('Son çalışma',_adminDate(reminderRun['finished_at']??reminderRun['started_at'])),
+                  ('Sonuç',reminderRun.isEmpty?'-':reminderRun['status']=='success'?'Başarılı':reminderRun['status']=='failed'?'Başarısız':'Çalışıyor'),
+                  ('Bildirim',reminderRun.isEmpty?'-':'${reminderRun['created_notifications']??0} yeni • ${reminderRun['duplicate_skips']??0} tekrar engellendi'),
+                  ('Push',reminderRun.isEmpty?'-':'${reminderRun['push_delivered']??0}/${reminderRun['push_attempted']??0}'),
+                  ('Sonraki',_adminDate(reminders['nextRunAt'])),
                 ],
               )),
             ]),
