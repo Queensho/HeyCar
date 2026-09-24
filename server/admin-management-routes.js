@@ -4,6 +4,7 @@ const path = require('path');
 const { registerAdminCorrectionRoutes } = require('./correction-routes');
 const registerAdminReportRoutes = require('./admin-report-routes');
 const registerSystemHealthRoutes = require('./system-health-routes');
+const registerAdminCommunicationSecurityRoutes = require('./admin-communication-security-routes');
 const { writeAdminAudit, registerAdminAuditRoutes } = require('./admin-audit');
 
 function normalizeToken(raw) {
@@ -69,6 +70,7 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
   registerAdminCorrectionRoutes(app, pool, guard);
   registerAdminReportRoutes(app, pool, guard);
   registerSystemHealthRoutes(app, pool, guard);
+  registerAdminCommunicationSecurityRoutes(app, pool, guard);
   registerAdminAuditRoutes(app, pool, guard);
 
   app.get('/api/admin/manage/users/:userId', guard, async (req, res) => {
