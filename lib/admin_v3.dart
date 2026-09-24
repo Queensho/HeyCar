@@ -1384,6 +1384,523 @@ String _healthStatusLabel(String status)=>switch(status){
 };
 
 
+
+String _complaintStatusLabel(String value)=>switch(value){
+  'pending'=>'Bekliyor',
+  'in_review'=>'İncelemede',
+  'resolved'=>'Çözüldü',
+  'dismissed'=>'Reddedildi',
+  _=>value,
+};
+Color _complaintStatusColor(String value)=>switch(value){
+  'pending'=>Colors.redAccent,
+  'in_review'=>_amber,
+  'resolved'=>_green,
+  'dismissed'=>_muted,
+  _=>_purple,
+};
+String _reporterLabel(String value)=>switch(value){
+  'guest'=>'Anonim ziyaretçi',
+  'owner'=>'Araç sahibi',
+  'driver'=>'Aktif sürücü',
+  _=>value,
+};
+String _callStatusLabel(String value)=>switch(value){
+  'ringing'=>'Çalıyor',
+  'accepted'=>'Bağlandı',
+  'ended'=>'Tamamlandı',
+  'missed'=>'Cevapsız',
+  'rejected'=>'Reddedildi',
+  'cancelled'=>'Arayan iptal etti',
+  _=>value,
+};
+Color _callStatusColor(String value)=>switch(value){
+  'ringing'=>_amber,
+  'accepted'=>_blue,
+  'ended'=>_green,
+  'missed'||'rejected'||'cancelled'=>Colors.redAccent,
+  _=>_muted,
+};
+String _durationText(dynamic raw){
+  final seconds=int.tryParse((raw??'').toString());
+  if(seconds==null)return '-';
+  final m=seconds~/60,s=seconds%60;
+  return m>0?'${m}dk ${s}sn':'${s}sn';
+}
+
+class ComplaintModerationPage extends StatelessWidget{
+  const ComplaintModerationPage({
+    super.key,
+    required this.data,
+    required this.loading,
+    required this.error,
+    required this.status,
+    required this.onStatusChanged,
+    required this.onOpen,
+    required this.onRefresh,
+  });
+  final Map<String,dynamic> data;
+  final bool loading;
+  final String? error;
+  final String status;
+  final Future<void> Function(String) onStatusChanged;
+  final ValueChanged<Map<String,dynamic>> onOpen;
+  final Future<void> Function() onRefresh;
+
+  List<Map<String,dynamic>> get rows{
+    final raw=data['items'];
+    return raw is List?raw.whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).toList():[];
+  }
+
+  @override Widget build(BuildContext context){
+    if(loading&&data.isEmpty)return const Center(child:CircularProgressIndicator(color:_purple));
+    if(error!=null&&data.isEmpty)return Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
+      const Icon(Icons.error_outline_rounded,color:Colors.redAccent,size:34),
+      const SizedBox(height:10),
+      Text(error!,style:const TextStyle(color:_muted),textAlign:TextAlign.center),
+      const SizedBox(height:12),
+      FilledButton.icon(onPressed:onRefresh,icon:const Icon(Icons.refresh_rounded),label:const Text('Tekrar dene')),
+    ]));
+
+    final s=_healthMap(data['summary']);
+    return RefreshIndicator(
+      color:_purple,onRefresh:onRefresh,
+      child:LayoutBuilder(builder:(context,constraints){
+        final compact=constraints.maxWidth<760;
+        final pad=compact?12.0:18.0;
+        final contentWidth=constraints.maxWidth-pad*2;
+        final cols=compact?2:5;
+        final gap=9.0;
+        final metricWidth=(contentWidth-gap*(cols-1))/cols;
+        return ListView(
+          physics:const AlwaysScrollableScrollPhysics(),
+          padding:EdgeInsets.fromLTRB(pad,14,pad,28),
+          children:[
+            Container(
+              padding:const EdgeInsets.all(16),
+              decoration:BoxDecoration(
+                gradient:const LinearGradient(colors:[Color(0xFF160C24),Color(0xFF0A1227)]),
+                borderRadius:BorderRadius.circular(22),
+                border:Border.all(color:Colors.redAccent.withValues(alpha:.28)),
+              ),
+              child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                Row(children:[
+                  Container(width:46,height:46,decoration:BoxDecoration(color:Colors.redAccent.withValues(alpha:.12),shape:BoxShape.circle),child:const Icon(Icons.report_problem_rounded,color:Colors.redAccent,size:25)),
+                  const SizedBox(width:11),
+                  const Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                    Text('Şikâyet Moderasyonu',style:TextStyle(fontSize:21,fontWeight:FontWeight.w900)),
+                    SizedBox(height:2),
+                    Text('Şikâyet edilen sohbetleri incele, çöz veya reddet.',style:TextStyle(color:_muted,fontSize:12)),
+                  ])),
+                  if(loading)const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2,color:_purple)),
+                ]),
+                const SizedBox(height:14),
+                Wrap(spacing:7,runSpacing:7,children:[
+                  ChoiceChip(label:const Text('Bekliyor'),selected:status=='pending',onSelected:(_)=>onStatusChanged('pending')),
+                  ChoiceChip(label:const Text('İncelemede'),selected:status=='in_review',onSelected:(_)=>onStatusChanged('in_review')),
+                  ChoiceChip(label:const Text('Çözüldü'),selected:status=='resolved',onSelected:(_)=>onStatusChanged('resolved')),
+                  ChoiceChip(label:const Text('Reddedildi'),selected:status=='dismissed',onSelected:(_)=>onStatusChanged('dismissed')),
+                  ChoiceChip(label:const Text('Tümü'),selected:status=='all',onSelected:(_)=>onStatusChanged('all')),
+                ]),
+              ]),
+            ),
+            const SizedBox(height:12),
+            Wrap(spacing:gap,runSpacing:gap,children:[
+              SizedBox(width:metricWidth,height:90,child:_ReportMetricCard(value:'${s['pending']??0}',label:'Bekleyen',icon:Icons.report_gmailerrorred_rounded,color:Colors.redAccent)),
+              SizedBox(width:metricWidth,height:90,child:_ReportMetricCard(value:'${s['in_review']??0}',label:'İncelemede',icon:Icons.manage_search_rounded,color:_amber)),
+              SizedBox(width:metricWidth,height:90,child:_ReportMetricCard(value:'${s['resolved']??0}',label:'Çözüldü',icon:Icons.task_alt_rounded,color:_green)),
+              SizedBox(width:metricWidth,height:90,child:_ReportMetricCard(value:'${s['dismissed']??0}',label:'Reddedildi',icon:Icons.do_not_disturb_alt_rounded,color:_muted)),
+              SizedBox(width:metricWidth,height:90,child:_ReportMetricCard(value:'${s['today']??0}',label:'Bugün',icon:Icons.today_rounded,color:_blue)),
+            ]),
+            const SizedBox(height:13),
+            if(error!=null)Padding(padding:const EdgeInsets.only(bottom:10),child:Text(error!,style:const TextStyle(color:Colors.redAccent,fontSize:11.5))),
+            if(rows.isEmpty)
+              Container(
+                padding:const EdgeInsets.symmetric(vertical:48,horizontal:18),
+                decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(20),border:Border.all(color:_line)),
+                child:const Column(children:[
+                  Icon(Icons.mark_email_read_outlined,color:_green,size:42),
+                  SizedBox(height:10),
+                  Text('Bu filtrede şikâyet yok.',style:TextStyle(color:_muted,fontWeight:FontWeight.w700)),
+                ]),
+              )
+            else
+              ...rows.map((r)=>_reportCard(r)),
+          ],
+        );
+      }),
+    );
+  }
+
+  Widget _reportCard(Map<String,dynamic> r){
+    final st=(r['status']??'pending').toString();
+    final color=_complaintStatusColor(st);
+    final preview=(r['reported_message_preview']??'').toString();
+    return InkWell(
+      borderRadius:BorderRadius.circular(18),
+      onTap:()=>onOpen(r),
+      child:Container(
+        margin:const EdgeInsets.only(bottom:10),
+        padding:const EdgeInsets.all(13),
+        decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(18),border:Border.all(color:color.withValues(alpha:.30))),
+        child:Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          Container(width:42,height:42,decoration:BoxDecoration(color:color.withValues(alpha:.12),shape:BoxShape.circle),child:Icon(Icons.report_problem_rounded,color:color,size:21)),
+          const SizedBox(width:10),
+          Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+            Row(children:[
+              Expanded(child:Text((r['reason']??'Şikâyet').toString(),maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:13.5,fontWeight:FontWeight.w900))),
+              Container(padding:const EdgeInsets.symmetric(horizontal:8,vertical:4),decoration:BoxDecoration(color:color.withValues(alpha:.12),borderRadius:BorderRadius.circular(20)),child:Text(_complaintStatusLabel(st),style:TextStyle(color:color,fontSize:9.5,fontWeight:FontWeight.w900))),
+            ]),
+            const SizedBox(height:4),
+            Text('${r['plate']??'-'} • ${_reporterLabel((r['reporter_type']??'').toString())} • ${r['owner_name']??r['owner_phone']??'Araç sahibi'}',style:const TextStyle(color:Colors.white70,fontSize:11.5,fontWeight:FontWeight.w700)),
+            if(preview.isNotEmpty)...[
+              const SizedBox(height:5),
+              Container(width:double.infinity,padding:const EdgeInsets.all(9),decoration:BoxDecoration(color:_card2,borderRadius:BorderRadius.circular(10)),child:Text('“$preview”',maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_muted,fontSize:11.5,fontStyle:FontStyle.italic))),
+            ],
+            const SizedBox(height:6),
+            Wrap(spacing:8,runSpacing:4,children:[
+              Text('${r['message_count']??0} mesaj',style:const TextStyle(color:_muted,fontSize:10.5)),
+              Text('${r['report_count']??1} şikâyet',style:const TextStyle(color:_muted,fontSize:10.5)),
+              if((r['visitor_key']??'').toString().isNotEmpty)Text('Anonim: ${r['visitor_key']}',style:const TextStyle(color:_muted,fontSize:10.5)),
+              Text(_adminDate(r['created_at']),style:const TextStyle(color:_muted,fontSize:10.5)),
+            ]),
+          ])),
+          const SizedBox(width:6),
+          const Icon(Icons.chevron_right_rounded,color:Color(0xFFC879FF)),
+        ]),
+      ),
+    );
+  }
+}
+
+class ComplaintDetailPage extends StatefulWidget{
+  const ComplaintDetailPage({super.key,required this.data,required this.onModerate});
+  final Map<String,dynamic> data;
+  final Future<void> Function(String,String,bool,bool) onModerate;
+  @override State<ComplaintDetailPage> createState()=>_ComplaintDetailPageState();
+}
+
+class _ComplaintDetailPageState extends State<ComplaintDetailPage>{
+  late final TextEditingController note;
+  bool closeConversation=false;
+  bool blockSession=false;
+  bool busy=false;
+
+  Map<String,dynamic> get report=>_healthMap(widget.data['report']);
+  List<Map<String,dynamic>> list(String key){
+    final raw=widget.data[key];
+    return raw is List?raw.whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).toList():[];
+  }
+
+  @override void initState(){
+    super.initState();
+    note=TextEditingController(text:(report['admin_note']??'').toString());
+  }
+  @override void dispose(){note.dispose();super.dispose();}
+
+  Future<void> act(String status) async{
+    if(busy)return;
+    if(blockSession){
+      final ok=await showDialog<bool>(context:context,builder:(d)=>AlertDialog(
+        title:const Text('Anonim oturum engellensin mi?'),
+        content:const Text('Bu işlem mevcut QR tarama oturumunu engeller ve sohbeti kapatır. Yeni bir QR taramasında yeni anonim oturum oluşabilir.'),
+        actions:[
+          TextButton(onPressed:()=>Navigator.pop(d,false),child:const Text('Vazgeç')),
+          FilledButton(onPressed:()=>Navigator.pop(d,true),child:const Text('Engelle')),
+        ],
+      ));
+      if(ok!=true)return;
+    }
+    setState(()=>busy=true);
+    try{
+      await widget.onModerate(status,note.text.trim(),closeConversation||blockSession,blockSession);
+      if(mounted)Navigator.pop(context);
+    }catch(e){
+      if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString().replaceFirst('Exception: ',''))));
+    }finally{if(mounted)setState(()=>busy=false);}
+  }
+
+  @override Widget build(BuildContext context){
+    final transcript=list('transcript');
+    final related=list('relatedReports');
+    final vh=_healthMap(widget.data['visitorHistory']);
+    final visitorConversations=vh['conversations'] is List?(vh['conversations'] as List).whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).toList():<Map<String,dynamic>>[];
+    final visitorCalls=vh['calls'] is List?(vh['calls'] as List).whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).toList():<Map<String,dynamic>>[];
+    final reportedId=(report['message_id']??'').toString();
+    final st=(report['status']??'pending').toString();
+    final color=_complaintStatusColor(st);
+
+    return Scaffold(
+      backgroundColor:_bg,
+      appBar:AppBar(title:const Text('Şikâyet Detayı')),
+      body:ListView(padding:const EdgeInsets.all(14),children:[
+        Container(
+          padding:const EdgeInsets.all(15),
+          decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(20),border:Border.all(color:color.withValues(alpha:.35))),
+          child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+            Row(children:[
+              Container(width:42,height:42,decoration:BoxDecoration(color:color.withValues(alpha:.12),shape:BoxShape.circle),child:Icon(Icons.report_problem_rounded,color:color)),
+              const SizedBox(width:10),
+              Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                Text((report['reason']??'Şikâyet').toString(),style:const TextStyle(fontSize:17,fontWeight:FontWeight.w900)),
+                Text('${report['plate']??'-'} • ${_reporterLabel((report['reporter_type']??'').toString())}',style:const TextStyle(color:_muted,fontSize:11.5)),
+              ])),
+              Container(padding:const EdgeInsets.symmetric(horizontal:9,vertical:5),decoration:BoxDecoration(color:color.withValues(alpha:.12),borderRadius:BorderRadius.circular(20)),child:Text(_complaintStatusLabel(st),style:TextStyle(color:color,fontSize:10,fontWeight:FontWeight.w900))),
+            ]),
+            const SizedBox(height:10),
+            detail('Araç sahibi',report['owner_name']??report['owner_phone']),
+            detail('QR',report['qr_token']),
+            detail('Anonim oturum',report['visitor_key']),
+            detail('Sohbet durumu',report['conversation_status']),
+            detail('Şikâyet tarihi',_adminDate(report['created_at'])),
+            if((report['reviewed_by']??'').toString().isNotEmpty)detail('İnceleyen',report['reviewed_by']),
+          ]),
+        ),
+        const SizedBox(height:12),
+        _adminSection('Şikâyete Bağlı Sohbet',Icons.chat_rounded,
+          transcript.isEmpty?_adminEmpty('Bu sohbette mesaj bulunamadı.'):Column(children:transcript.map((m){
+            final sender=(m['sender']??'').toString();
+            final highlighted=(m['id']??'').toString()==reportedId;
+            final senderLabel=sender=='guest'?'Anonim ziyaretçi':sender=='driver'?'Sürücü':'Araç sahibi';
+            final senderColor=sender=='guest'?_pink:sender=='driver'?_blue:_green;
+            return Container(
+              width:double.infinity,
+              margin:const EdgeInsets.only(bottom:8),
+              padding:const EdgeInsets.all(11),
+              decoration:BoxDecoration(
+                color:highlighted?Colors.redAccent.withValues(alpha:.09):_card2,
+                borderRadius:BorderRadius.circular(14),
+                border:Border.all(color:highlighted?Colors.redAccent.withValues(alpha:.55):Colors.white.withValues(alpha:.05),width:highlighted?1.4:1),
+              ),
+              child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                Row(children:[
+                  Text(senderLabel,style:TextStyle(color:senderColor,fontSize:10.5,fontWeight:FontWeight.w900)),
+                  if(highlighted)...[const SizedBox(width:7),Container(padding:const EdgeInsets.symmetric(horizontal:6,vertical:2),decoration:BoxDecoration(color:Colors.redAccent.withValues(alpha:.14),borderRadius:BorderRadius.circular(10)),child:const Text('ŞİKÂYET EDİLEN',style:TextStyle(color:Colors.redAccent,fontSize:8,fontWeight:FontWeight.w900)))],
+                  const Spacer(),
+                  Text(_adminDate(m['created_at']),style:const TextStyle(color:_muted,fontSize:9.5)),
+                ]),
+                const SizedBox(height:5),
+                SelectableText((m['message']??'').toString(),style:const TextStyle(color:Colors.white,fontSize:12.5,height:1.4)),
+              ]),
+            );
+          }).toList()),
+        ),
+        _adminSection('Aynı Anonim Oturum',Icons.person_search_rounded,
+          (visitorConversations.isEmpty&&visitorCalls.isEmpty)
+            ? _adminEmpty('Bu anonim oturumla ilişkilendirilebilen başka kayıt yok.')
+            : Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                if(visitorConversations.isNotEmpty)...[
+                  const Text('Sohbet geçmişi',style:TextStyle(fontWeight:FontWeight.w900,fontSize:12.5)),
+                  const SizedBox(height:7),
+                  ...visitorConversations.map((x)=>_adminHistoryRow(
+                    icon:Icons.forum_outlined,
+                    title:'${x['plate']??'-'} • ${x['message_count']??0} mesaj',
+                    subtitle:'Durum: ${x['status']??'-'} • ${x['report_count']??0} şikâyet',
+                    trailing:_adminDate(x['created_at']),
+                    color:(int.tryParse((x['report_count']??0).toString())??0)>0?Colors.redAccent:_purple,
+                  )),
+                ],
+                if(visitorCalls.isNotEmpty)...[
+                  const SizedBox(height:6),
+                  const Text('Arama geçmişi',style:TextStyle(fontWeight:FontWeight.w900,fontSize:12.5)),
+                  const SizedBox(height:7),
+                  ...visitorCalls.map((x)=>_adminHistoryRow(
+                    icon:Icons.call_outlined,
+                    title:'${x['plate']??'-'} • ${_callStatusLabel((x['status']??'').toString())}',
+                    subtitle:'Hedef: ${x['recipient_type']=='driver'?'Sürücü':'Araç sahibi'}',
+                    trailing:_adminDate(x['created_at']),
+                    color:_callStatusColor((x['status']??'').toString()),
+                  )),
+                ],
+              ]),
+        ),
+        _adminSection('Diğer Şikâyetler',Icons.report_outlined,
+          related.length<=1?_adminEmpty('Bu sohbet için başka şikâyet yok.'):Column(children:related.where((x)=>(x['id']??'').toString()!=(report['id']??'').toString()).map((x)=>_adminHistoryRow(
+            icon:Icons.report_outlined,
+            title:(x['reason']??'Şikâyet').toString(),
+            subtitle:'${_reporterLabel((x['reporter_type']??'').toString())} • ${_complaintStatusLabel((x['status']??'').toString())}',
+            trailing:_adminDate(x['created_at']),
+            color:_complaintStatusColor((x['status']??'').toString()),
+          )).toList()),
+        ),
+        _adminSection('Moderasyon Kararı',Icons.gavel_rounded,Column(children:[
+          TextField(controller:note,maxLines:3,maxLength:1000,decoration:const InputDecoration(labelText:'Admin notu',alignLabelWithHint:true,prefixIcon:Icon(Icons.note_alt_outlined))),
+          SwitchListTile(
+            value:closeConversation||blockSession,
+            onChanged:blockSession?null:(v)=>setState(()=>closeConversation=v),
+            contentPadding:EdgeInsets.zero,
+            title:const Text('Sohbeti kapat',style:TextStyle(fontWeight:FontWeight.w800)),
+            subtitle:const Text('Bu konuşmaya yeni mesaj gönderilmesini durdurur.',style:TextStyle(color:_muted,fontSize:11)),
+          ),
+          SwitchListTile(
+            value:blockSession,
+            onChanged:(v)=>setState((){blockSession=v;if(v)closeConversation=true;}),
+            contentPadding:EdgeInsets.zero,
+            activeColor:Colors.redAccent,
+            title:const Text('Anonim oturumu engelle',style:TextStyle(fontWeight:FontWeight.w800)),
+            subtitle:const Text('Mevcut QR tarama oturumunu engeller. Ham ziyaretçi kimliği saklanmaz.',style:TextStyle(color:_muted,fontSize:11)),
+          ),
+          const SizedBox(height:7),
+          Wrap(spacing:8,runSpacing:8,children:[
+            OutlinedButton.icon(onPressed:busy?null:()=>act('in_review'),icon:const Icon(Icons.manage_search_rounded),label:const Text('İncelemeye Al')),
+            FilledButton.icon(onPressed:busy?null:()=>act('resolved'),style:FilledButton.styleFrom(backgroundColor:_green,foregroundColor:Colors.black),icon:const Icon(Icons.task_alt_rounded),label:const Text('Çözüldü')),
+            OutlinedButton.icon(onPressed:busy?null:()=>act('dismissed'),style:OutlinedButton.styleFrom(foregroundColor:Colors.redAccent),icon:const Icon(Icons.do_not_disturb_alt_rounded),label:const Text('Reddet')),
+          ]),
+        ])),
+      ]),
+    );
+  }
+}
+
+class CommunicationOpsPage extends StatefulWidget{
+  const CommunicationOpsPage({super.key,required this.data,required this.loading,required this.error,required this.hours,required this.onHoursChanged,required this.onRefresh});
+  final Map<String,dynamic> data;
+  final bool loading;
+  final String? error;
+  final int hours;
+  final Future<void> Function(int) onHoursChanged;
+  final Future<void> Function() onRefresh;
+  @override State<CommunicationOpsPage> createState()=>_CommunicationOpsPageState();
+}
+
+class _CommunicationOpsPageState extends State<CommunicationOpsPage>{
+  String view='calls';
+  String callFilter='all';
+
+  List<Map<String,dynamic>> list(String key){
+    final raw=widget.data[key];
+    return raw is List?raw.whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).toList():[];
+  }
+
+  @override Widget build(BuildContext context){
+    if(widget.loading&&widget.data.isEmpty)return const Center(child:CircularProgressIndicator(color:_purple));
+    if(widget.error!=null&&widget.data.isEmpty)return Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
+      const Icon(Icons.error_outline_rounded,color:Colors.redAccent,size:34),const SizedBox(height:10),
+      Text(widget.error!,style:const TextStyle(color:_muted),textAlign:TextAlign.center),const SizedBox(height:12),
+      FilledButton.icon(onPressed:widget.onRefresh,icon:const Icon(Icons.refresh_rounded),label:const Text('Tekrar dene')),
+    ]));
+
+    final summary=_healthMap(widget.data['summary']);
+    final cs=_healthMap(summary['calls']);
+    final ms=_healthMap(summary['conversations']);
+    final allCalls=list('calls');
+    final calls=allCalls.where((x){
+      final s=(x['status']??'').toString();
+      if(callFilter=='failed')return const ['missed','rejected','cancelled'].contains(s);
+      if(callFilter=='connected')return const ['accepted','ended'].contains(s);
+      if(callFilter=='ringing')return s=='ringing';
+      return true;
+    }).toList();
+    final conversations=list('conversations');
+    final visitors=list('visitors');
+
+    return RefreshIndicator(
+      color:_purple,onRefresh:widget.onRefresh,
+      child:LayoutBuilder(builder:(context,constraints){
+        final compact=constraints.maxWidth<760;
+        final pad=compact?12.0:18.0;
+        final width=constraints.maxWidth-pad*2;
+        final cols=compact?2:4;
+        final gap=9.0;
+        final metricWidth=(width-gap*(cols-1))/cols;
+        return ListView(
+          physics:const AlwaysScrollableScrollPhysics(),
+          padding:EdgeInsets.fromLTRB(pad,14,pad,28),
+          children:[
+            Container(
+              padding:const EdgeInsets.all(16),
+              decoration:BoxDecoration(gradient:const LinearGradient(colors:[Color(0xFF0A152C),Color(0xFF120A26)]),borderRadius:BorderRadius.circular(22),border:Border.all(color:_blue.withValues(alpha:.28))),
+              child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                Row(children:[
+                  Container(width:46,height:46,decoration:BoxDecoration(color:_blue.withValues(alpha:.12),shape:BoxShape.circle),child:const Icon(Icons.forum_rounded,color:_blue,size:25)),
+                  const SizedBox(width:11),
+                  const Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                    Text('Mesaj & Arama Denetimi',style:TextStyle(fontSize:21,fontWeight:FontWeight.w900)),
+                    SizedBox(height:2),
+                    Text('Sohbet metadata’sı, anonim oturumlar ve çağrı durumları.',style:TextStyle(color:_muted,fontSize:12)),
+                  ])),
+                  if(widget.loading)const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2,color:_purple)),
+                ]),
+                const SizedBox(height:13),
+                Wrap(spacing:7,runSpacing:7,children:[
+                  ChoiceChip(label:const Text('24 Saat'),selected:widget.hours==24,onSelected:(_)=>widget.onHoursChanged(24)),
+                  ChoiceChip(label:const Text('7 Gün'),selected:widget.hours==168,onSelected:(_)=>widget.onHoursChanged(168)),
+                  ChoiceChip(label:const Text('30 Gün'),selected:widget.hours==720,onSelected:(_)=>widget.onHoursChanged(720)),
+                ]),
+              ]),
+            ),
+            const SizedBox(height:12),
+            Wrap(spacing:gap,runSpacing:gap,children:[
+              SizedBox(width:metricWidth,height:90,child:_ReportMetricCard(value:'${cs['total']??0}',label:'Toplam arama',icon:Icons.call_rounded,color:_blue)),
+              SizedBox(width:metricWidth,height:90,child:_ReportMetricCard(value:'${cs['failed']??0}',label:'Başarısız arama',icon:Icons.phone_missed_rounded,color:Colors.redAccent)),
+              SizedBox(width:metricWidth,height:90,child:_ReportMetricCard(value:'${ms['messages']??0}',label:'Mesaj',icon:Icons.chat_bubble_rounded,color:_purple)),
+              SizedBox(width:metricWidth,height:90,child:_ReportMetricCard(value:'${ms['anonymousVisitors']??0}',label:'Anonim oturum',icon:Icons.person_search_rounded,color:_amber)),
+              SizedBox(width:metricWidth,height:90,child:_ReportMetricCard(value:'${ms['reported']??0}',label:'Şikâyetli sohbet',icon:Icons.report_problem_rounded,color:Colors.redAccent)),
+              SizedBox(width:metricWidth,height:90,child:_ReportMetricCard(value:'${ms['active']??0}',label:'Aktif sohbet',icon:Icons.forum_outlined,color:_green)),
+              SizedBox(width:metricWidth,height:90,child:_ReportMetricCard(value:'${cs['missed']??0}',label:'Cevapsız',icon:Icons.call_missed_rounded,color:_amber)),
+              SizedBox(width:metricWidth,height:90,child:_ReportMetricCard(value:'${cs['ended']??0}',label:'Tamamlanan',icon:Icons.call_end_rounded,color:_green)),
+            ]),
+            const SizedBox(height:12),
+            Wrap(spacing:7,runSpacing:7,children:[
+              ChoiceChip(label:const Text('Aramalar'),selected:view=='calls',onSelected:(_)=>setState(()=>view='calls')),
+              ChoiceChip(label:const Text('Sohbetler'),selected:view=='conversations',onSelected:(_)=>setState(()=>view='conversations')),
+              ChoiceChip(label:const Text('Anonim Oturumlar'),selected:view=='visitors',onSelected:(_)=>setState(()=>view='visitors')),
+            ]),
+            const SizedBox(height:10),
+            if(view=='calls')...[
+              Wrap(spacing:7,runSpacing:7,children:[
+                ChoiceChip(label:const Text('Tümü'),selected:callFilter=='all',onSelected:(_)=>setState(()=>callFilter='all')),
+                ChoiceChip(label:const Text('Başarısız'),selected:callFilter=='failed',onSelected:(_)=>setState(()=>callFilter='failed')),
+                ChoiceChip(label:const Text('Bağlanan'),selected:callFilter=='connected',onSelected:(_)=>setState(()=>callFilter='connected')),
+                ChoiceChip(label:const Text('Çalıyor'),selected:callFilter=='ringing',onSelected:(_)=>setState(()=>callFilter='ringing')),
+              ]),
+              const SizedBox(height:10),
+              Container(
+                padding:const EdgeInsets.all(11),
+                decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(15),border:Border.all(color:_line)),
+                child:const Row(children:[Icon(Icons.info_outline_rounded,color:_muted,size:17),SizedBox(width:7),Expanded(child:Text('Cepqar ses kaydı tutmaz. Bu ekran çağrı durum ve zaman metadata’sını gösterir.',style:TextStyle(color:_muted,fontSize:10.5)))]),
+              ),
+              const SizedBox(height:10),
+              if(calls.isEmpty)_adminEmpty('Bu filtrede çağrı kaydı yok.')
+              else ...calls.map((x){
+                final st=(x['status']??'').toString(),color=_callStatusColor(st);
+                return _adminHistoryRow(
+                  icon:const ['missed','rejected','cancelled'].contains(st)?Icons.phone_missed_rounded:Icons.call_rounded,
+                  title:'${x['plate']??'-'} • ${_callStatusLabel(st)}',
+                  subtitle:'Hedef: ${x['recipient_type']=='driver'?'Sürücü':'Araç sahibi'} • ${x['recipient_name']??x['recipient_phone']??'-'}${x['duration_seconds']!=null?' • Süre: ${_durationText(x['duration_seconds'])}':''}${(x['visitor_key']??'').toString().isNotEmpty?' • Anonim: ${x['visitor_key']}':''}',
+                  trailing:_adminDate(x['created_at']),
+                  color:color,
+                );
+              }),
+            ],
+            if(view=='conversations')...[
+              if(conversations.isEmpty)_adminEmpty('Bu dönemde sohbet yok.')
+              else ...conversations.map((x)=>_adminHistoryRow(
+                icon:(int.tryParse((x['report_count']??0).toString())??0)>0?Icons.report_problem_rounded:Icons.forum_outlined,
+                title:'${x['plate']??'-'} • ${x['message_count']??0} mesaj',
+                subtitle:'Durum: ${x['status']??'-'} • ${x['report_count']??0} şikâyet${(x['visitor_key']??'').toString().isNotEmpty?' • Anonim: ${x['visitor_key']}':''}',
+                trailing:_adminDate(x['last_message_at']??x['updated_at']),
+                color:(int.tryParse((x['report_count']??0).toString())??0)>0?Colors.redAccent:_purple,
+              )),
+            ],
+            if(view=='visitors')...[
+              if(visitors.isEmpty)_adminEmpty('Bu dönemde ilişkilendirilebilir anonim oturum yok.')
+              else ...visitors.map((x)=>_adminHistoryRow(
+                icon:Icons.person_search_rounded,
+                title:'Anonim ${x['visitor_key']??'-'}',
+                subtitle:'${x['conversation_count']??0} sohbet • ${x['message_count']??0} mesaj • ${x['call_count']??0} arama • ${x['failed_call_count']??0} başarısız • ${x['report_count']??0} şikâyet',
+                trailing:_adminDate(x['last_seen']),
+                color:(int.tryParse((x['report_count']??0).toString())??0)>0?Colors.redAccent:_amber,
+              )),
+            ],
+            if(widget.error!=null)Padding(padding:const EdgeInsets.only(top:10),child:Text(widget.error!,style:const TextStyle(color:Colors.redAccent,fontSize:11.5))),
+          ],
+        );
+      }),
+    );
+  }
+}
+
 class AdminPushPage extends StatefulWidget{
   const AdminPushPage({super.key,required this.users,required this.data,required this.loading,required this.error,required this.onSend,required this.onRefresh});
   final List<Map<String,dynamic>> users;
