@@ -153,43 +153,157 @@ module.exports=function registerVehicleReminderRoutes(app,pool){
   app.post('/api/internal/reminders/deliver',express.json(),async(req,res)=>{
     const secret=String(req.headers['x-reminder-secret']||'');
     if(!process.env.REMINDER_JOB_SECRET||secret!==process.env.REMINDER_JOB_SECRET)return res.status(403).json({error:'FORBIDDEN'});
+
+    const client=await pool.connect();
+    let runId=null;
+    let locked=false;
     try{
       await ensureSchema();
-      const r=await pool.query(
-        `SELECT vr.*,v.plate
+      const schema=await client.query("SELECT to_regclass('public.vehicle_reminder_job_runs') AS jobs,to_regclass('public.vehicle_reminder_deliveries') AS deliveries");
+      if(!schema.rows[0]?.jobs||!schema.rows[0]?.deliveries)return res.status(503).json({error:'REMINDER_JOB_MIGRATION_REQUIRED'});
+
+      const lock=await client.query('SELECT pg_try_advisory_lock($1) AS locked',[73194015]);
+      locked=lock.rows[0]?.locked===true;
+      if(!locked)return res.status(409).json({error:'REMINDER_JOB_ALREADY_RUNNING'});
+
+      const source=String(req.body?.source||'systemd').trim().slice(0,40)||'systemd';
+      const started=await client.query(
+        `INSERT INTO vehicle_reminder_job_runs(source,status)
+         VALUES($1,'running') RETURNING id,started_at`,
+        [source]
+      );
+      runId=started.rows[0].id;
+
+      const r=await client.query(
+        `SELECT vr.*,v.plate,
+                (vr.due_date - ((NOW() AT TIME ZONE 'Europe/Istanbul')::date))::int AS days_left
            FROM vehicle_reminders vr
            JOIN vehicles v ON v.id::text=vr.vehicle_id
            JOIN users u ON u.id::text=vr.owner_id
-          WHERE vr.enabled=TRUE AND COALESCE(u.premium,false)=TRUE AND (u.premium_expires_at IS NULL OR u.premium_expires_at>NOW())`
+          WHERE vr.enabled=TRUE
+            AND COALESCE(u.premium,false)=TRUE
+            AND (u.premium_expires_at IS NULL OR u.premium_expires_at>NOW())`
       );
-      const today=new Date();today.setHours(0,0,0,0);
-      let delivered=0;
+
+      let eligible=0,createdCount=0,duplicateSkips=0,pushAttempted=0,pushDelivered=0;
       for(const x of r.rows){
-        const d=new Date(`${String(x.due_date).slice(0,10)}T00:00:00`);
-        const daysLeft=Math.ceil((d-today)/86400000);
+        const daysLeft=Number(x.days_left);
         const m=meta[x.type]||{label:x.type,days:[7,1]};
         if(!(daysLeft<=0||m.days.includes(daysLeft)))continue;
+        eligible++;
         const milestone=daysLeft<=0?0:daysLeft;
-        const inserted=await pool.query(
-          `INSERT INTO vehicle_reminder_deliveries(vehicle_id,owner_id,reminder_type,due_date,milestone_days)
-           VALUES($1,$2,$3,$4,$5)
-           ON CONFLICT DO NOTHING RETURNING id`,
-          [x.vehicle_id,x.owner_id,x.type,x.due_date,milestone]
-        );
-        if(!inserted.rows.length)continue;
         const message=daysLeft<0
           ?`${m.label} süresi ${-daysLeft} gün önce doldu.`
           :daysLeft===0
             ?`${m.label} bugün sona eriyor.`
             :`${m.label} için ${daysLeft} gün kaldı.`;
-        await pool.query(
-          `INSERT INTO vehicle_notifications(vehicle_id,type,message,status,created_at)
-           VALUES($1,'message',$2,'new',NOW())`,
-          [x.vehicle_id,`Hatırlatma • ${x.plate}: ${message}`]
+        const fullMessage=`Hatırlatma • ${x.plate}: ${message}`;
+
+        const created=await client.query(
+          `WITH delivery AS (
+             INSERT INTO vehicle_reminder_deliveries(vehicle_id,owner_id,reminder_type,due_date,milestone_days)
+             VALUES($1,$2,$3,$4,$5)
+             ON CONFLICT(vehicle_id,reminder_type,due_date,milestone_days) DO NOTHING
+             RETURNING id
+           ),
+           notification AS (
+             INSERT INTO vehicle_notifications(vehicle_id,type,message,status,created_at)
+             SELECT $6::uuid,'message',$7,'new',NOW() FROM delivery
+             RETURNING id
+           ),
+           linked AS (
+             UPDATE vehicle_reminder_deliveries d
+                SET notification_id=n.id
+               FROM delivery dl CROSS JOIN notification n
+              WHERE d.id=dl.id
+             RETURNING d.id,n.id AS notification_id
+           )
+           SELECT id,notification_id FROM linked`,
+          [x.vehicle_id,x.owner_id,x.type,x.due_date,milestone,x.vehicle_id,fullMessage]
         );
-        delivered++;
+
+        if(!created.rows.length){
+          duplicateSkips++;
+          continue;
+        }
+
+        createdCount++;
+        const deliveryId=created.rows[0].id;
+        const notificationId=created.rows[0].notification_id;
+        const push=app.locals.heycarPush;
+        if(push&&typeof push.sendOwner==='function'){
+          try{
+            const out=await push.sendOwner(
+              String(x.owner_id),
+              {
+                type:'vehicle_reminder',
+                sourceType:'vehicle_reminder',
+                vehicleId:String(x.vehicle_id),
+                reminderType:String(x.type),
+                dueDate:String(x.due_date).slice(0,10),
+                milestoneDays:String(milestone),
+                notificationId:String(notificationId),
+              },
+              'Araç Hatırlatma',
+              fullMessage
+            );
+            const attempted=Number(out?.attempted||0);
+            const delivered=Number(out?.delivered||0);
+            pushAttempted+=attempted;
+            pushDelivered+=delivered;
+            await client.query(
+              `UPDATE vehicle_reminder_deliveries
+                  SET push_attempted=$2,push_delivered=$3,push_attempted_at=NOW(),
+                      push_error=CASE WHEN $2>0 AND $3=0 THEN 'FCM_DELIVERY_FAILED' ELSE NULL END
+                WHERE id=$1`,
+              [deliveryId,attempted,delivered]
+            );
+          }catch(pushError){
+            await client.query(
+              `UPDATE vehicle_reminder_deliveries
+                  SET push_attempted_at=NOW(),push_error=$2
+                WHERE id=$1`,
+              [deliveryId,String(pushError?.message||pushError).slice(0,800)]
+            );
+            console.error('vehicle reminder push',pushError);
+          }
+        }
       }
-      res.json({ok:true,delivered});
-    }catch(e){console.error('vehicle reminder deliver',e);res.status(500).json({error:'SERVER_ERROR'});}
+
+      const finished=await client.query(
+        `UPDATE vehicle_reminder_job_runs
+            SET status='success',finished_at=NOW(),eligible_count=$2,
+                created_notifications=$3,duplicate_skips=$4,
+                push_attempted=$5,push_delivered=$6,error=NULL
+          WHERE id=$1
+          RETURNING *`,
+        [runId,eligible,createdCount,duplicateSkips,pushAttempted,pushDelivered]
+      );
+      return res.json({
+        ok:true,
+        run:finished.rows[0],
+        delivered:createdCount,
+        duplicateSkips,
+        push:{attempted:pushAttempted,delivered:pushDelivered},
+      });
+    }catch(e){
+      if(runId){
+        try{
+          await client.query(
+            `UPDATE vehicle_reminder_job_runs
+                SET status='failed',finished_at=NOW(),error=$2
+              WHERE id=$1`,
+            [runId,String(e?.message||e).slice(0,1200)]
+          );
+        }catch(_){}
+      }
+      console.error('vehicle reminder deliver',e);
+      return res.status(500).json({error:'SERVER_ERROR'});
+    }finally{
+      if(locked){
+        try{await client.query('SELECT pg_advisory_unlock($1)',[73194015]);}catch(_){}
+      }
+      client.release();
+    }
   });
 };
