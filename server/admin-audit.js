@@ -112,14 +112,103 @@ function registerAdminAuditRoutes(app, pool, adminGuard) {
       const params = [];
       function add(value, clause) {
         params.push(value);
-        where.push(clause.replace('?', '$' + params.length));
+        where.push(clause.replace('?', '
+      const whereSql = where.length ? 'WHERE ' + where.join(' AND ') : '';
+      const countParams = params.slice();
+      const count = await pool.query(
+        'SELECT COUNT(*)::int AS n FROM admin_audit_log ' + whereSql,
+        countParams
+      );
+
+      params.push(limit);
+      const limitParam = '$' + params.length;
+      params.push(offset);
+      const offsetParam = '$' + params.length;
+
+      const rows = await pool.query(
+        `SELECT id,admin_id,admin_email,admin_name,action,target_type,target_id,target_label,
+                before_state,after_state,metadata,created_at
+           FROM admin_audit_log
+           ${whereSql}
+          ORDER BY created_at DESC
+          LIMIT ${limitParam} OFFSET ${offsetParam}`,
+        params
+      );
+
+      const facets = await pool.query(
+        `SELECT
+           ARRAY(SELECT DISTINCT action FROM admin_audit_log ORDER BY action) AS actions,
+           ARRAY(SELECT DISTINCT target_type FROM admin_audit_log ORDER BY target_type) AS target_types`
+      );
+
+      return res.json({
+        ok: true,
+        total: Number(count.rows[0]?.n || 0),
+        items: rows.rows,
+        actions: facets.rows[0]?.actions || [],
+        targetTypes: facets.rows[0]?.target_types || [],
+      });
+    } catch (e) {
+      console.error('admin audit list', e);
+      return res.status(500).json({ error: 'SERVER_ERROR' });
+    }
+  });
+}
+
+module.exports = { writeAdminAudit, registerAdminAuditRoutes };
+ + params.length));
       }
       if (action && action !== 'all') add(action, 'action=?');
       if (targetType && targetType !== 'all') add(targetType, 'target_type=?');
-      if (admin) add('%' + admin + '%', "(COALESCE(admin_name,'') ILIKE ? OR COALESCE(admin_email,'') ILIKE ?)");
+      if (admin) {
+        params.push('%' + admin + '%');
+        const p = '
+      const whereSql = where.length ? 'WHERE ' + where.join(' AND ') : '';
+      const countParams = params.slice();
+      const count = await pool.query(
+        'SELECT COUNT(*)::int AS n FROM admin_audit_log ' + whereSql,
+        countParams
+      );
 
-      // The admin search clause uses the same value twice.
-      if (admin) params.push(params[params.length - 1]);
+      params.push(limit);
+      const limitParam = '$' + params.length;
+      params.push(offset);
+      const offsetParam = '$' + params.length;
+
+      const rows = await pool.query(
+        `SELECT id,admin_id,admin_email,admin_name,action,target_type,target_id,target_label,
+                before_state,after_state,metadata,created_at
+           FROM admin_audit_log
+           ${whereSql}
+          ORDER BY created_at DESC
+          LIMIT ${limitParam} OFFSET ${offsetParam}`,
+        params
+      );
+
+      const facets = await pool.query(
+        `SELECT
+           ARRAY(SELECT DISTINCT action FROM admin_audit_log ORDER BY action) AS actions,
+           ARRAY(SELECT DISTINCT target_type FROM admin_audit_log ORDER BY target_type) AS target_types`
+      );
+
+      return res.json({
+        ok: true,
+        total: Number(count.rows[0]?.n || 0),
+        items: rows.rows,
+        actions: facets.rows[0]?.actions || [],
+        targetTypes: facets.rows[0]?.target_types || [],
+      });
+    } catch (e) {
+      console.error('admin audit list', e);
+      return res.status(500).json({ error: 'SERVER_ERROR' });
+    }
+  });
+}
+
+module.exports = { writeAdminAudit, registerAdminAuditRoutes };
+ + params.length;
+        where.push("(COALESCE(admin_name,'') ILIKE " + p + " OR COALESCE(admin_email,'') ILIKE " + p + ")");
+      }
 
       const whereSql = where.length ? 'WHERE ' + where.join(' AND ') : '';
       const countParams = params.slice();
