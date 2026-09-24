@@ -178,7 +178,7 @@ class _AdminSupportPageState extends State<AdminSupportPage>{
         ),
         const SizedBox(height:10),
         TextField(controller:reply,maxLines:5,maxLength:3000,decoration:const InputDecoration(labelText:'Admin cevabı',alignLabelWithHint:true,prefixIcon:Icon(Icons.reply_rounded))),
-        const Text('Yanıtlandı durumunda cevap zorunludur. Cevap kullanıcı uygulamasında görünür ve push bildirimi gönderilir.',style:TextStyle(color:_muted,fontSize:10.5)),
+        const Text('Cevap yazarsan talep otomatik Yanıtlandı olur; kullanıcı uygulamasında görünür ve push bildirimi gider.',style:TextStyle(color:_muted,fontSize:10.5)),
       ]))),
       actions:[
         TextButton(onPressed:busy?null:()=>Navigator.pop(d),child:const Text('Kapat')),
@@ -186,7 +186,9 @@ class _AdminSupportPageState extends State<AdminSupportPage>{
           onPressed:busy?null:()async{
             setD(()=>busy=true);
             try{
-              await update(id,next,reply.text.trim());
+              final replyText=reply.text.trim();
+              final effectiveStatus=replyText.isNotEmpty&&next!='resolved'?'answered':next;
+              await update(id,effectiveStatus,replyText);
               if(d.mounted)Navigator.pop(d);
             }catch(e){
               setD(()=>busy=false);
