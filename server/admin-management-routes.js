@@ -30,15 +30,6 @@ async function ensureQrItemPrintSchema(pool) {
       END IF;
     END $;
 
-    UPDATE qr_tags q
-       SET print_status = COALESCE(b.print_status,'ready'),
-           pdf_downloaded_at = COALESCE(q.pdf_downloaded_at,b.pdf_downloaded_at),
-           sent_to_print_at = COALESCE(q.sent_to_print_at,b.sent_to_print_at),
-           printed_at = COALESCE(q.printed_at,b.printed_at)
-      FROM qr_print_batches b
-     WHERE q.print_batch_id=b.id
-       AND q.print_status='ready'
-       AND COALESCE(b.print_status,'ready')<>'ready';
   `);
   qrItemPrintSchemaReady = true;
 }
