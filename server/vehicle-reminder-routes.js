@@ -51,7 +51,7 @@ module.exports=function registerVehicleReminderRoutes(app,pool){
   }
 
   async function premium(ownerId){
-    const r=await pool.query('SELECT COALESCE(premium,false) AS premium FROM users WHERE id::text=$1 LIMIT 1',[ownerId]);
+    const r=await pool.query('SELECT (COALESCE(premium,false)=TRUE AND (premium_expires_at IS NULL OR premium_expires_at>NOW())) AS premium FROM users WHERE id::text=$1 LIMIT 1',[ownerId]);
     return r.rows[0]?.premium===true;
   }
 
@@ -160,7 +160,7 @@ module.exports=function registerVehicleReminderRoutes(app,pool){
            FROM vehicle_reminders vr
            JOIN vehicles v ON v.id::text=vr.vehicle_id
            JOIN users u ON u.id::text=vr.owner_id
-          WHERE vr.enabled=TRUE AND COALESCE(u.premium,false)=TRUE`
+          WHERE vr.enabled=TRUE AND COALESCE(u.premium,false)=TRUE AND (u.premium_expires_at IS NULL OR u.premium_expires_at>NOW())`
       );
       const today=new Date();today.setHours(0,0,0,0);
       let delivered=0;
