@@ -51,7 +51,14 @@ class _AdminPremiumPricingCardState extends State<AdminPremiumPricingCard>{
     return n.toStringAsFixed(n%1==0?0:2).replaceAll('.',',');
   }
 
-  double? _parse(String v)=>double.tryParse(v.trim().replaceAll('.','').replaceAll(',','.'));
+  double? _parse(String v){
+    final raw=v.trim().replaceAll(' ','');
+    if(raw.isEmpty)return null;
+    if(raw.contains(',')){
+      return double.tryParse(raw.replaceAll('.','').replaceAll(',','.'));
+    }
+    return double.tryParse(raw);
+  }
 
   Future<void> save()async{
     final m=_parse(monthly.text),y=_parse(yearly.text);
