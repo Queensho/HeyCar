@@ -123,18 +123,15 @@ module.exports=function registerAdminBusinessPremiumRoutes(app,pool,adminGuard){
       const r=await pool.query(
         `SELECT c.*,b.name AS business_name,b.approval_status AS business_approval,b.is_active AS business_active,
                 b.logo_url AS business_logo,b.address AS business_address,
-                COUNT(DISTINCT red.id) FILTER(WHERE red.status='redeemed')::int AS redeemed_count,
-                COUNT(DISTINCT red.id) FILTER(WHERE red.status='pending')::int AS pending_redemptions,
-                COALESCE(SUM(red.platform_fee) FILTER(WHERE red.status='redeemed'),0)::numeric AS earned_platform_fee,
-                ROUND(AVG(rv.rating)::numeric,2) AS rating
+                (SELECT COUNT(*)::int FROM offer_redemptions red WHERE red.campaign_id=c.id AND red.status='redeemed') AS redeemed_count,
+                (SELECT COUNT(*)::int FROM offer_redemptions red WHERE red.campaign_id=c.id AND red.status='pending') AS pending_redemptions,
+                (SELECT COALESCE(SUM(red.platform_fee),0)::numeric FROM offer_redemptions red WHERE red.campaign_id=c.id AND red.status='redeemed') AS earned_platform_fee,
+                (SELECT ROUND(AVG(rv.rating)::numeric,2) FROM offer_reviews rv WHERE rv.campaign_id=c.id) AS rating
            FROM business_campaigns c
            JOIN businesses b ON b.id=c.business_id
-           LEFT JOIN offer_redemptions red ON red.campaign_id=c.id
-           LEFT JOIN offer_reviews rv ON rv.campaign_id=c.id
           WHERE ($1='all')
              OR ($1='inactive' AND c.is_active=FALSE)
              OR ($1 IN ('pending','approved','rejected') AND c.moderation_status=$1)
-          GROUP BY c.id,b.id
           ORDER BY CASE c.moderation_status WHEN 'pending' THEN 0 WHEN 'approved' THEN 1 ELSE 2 END,c.created_at DESC
           LIMIT 400`,
         [status]
@@ -223,14 +220,13 @@ module.exports=function registerAdminBusinessPremiumRoutes(app,pool,adminGuard){
     const days=[7,30,90,365].includes(Number(req.query?.days))?Number(req.query.days):30;
     try{
       const summary=await pool.query(
-        `SELECT COUNT(*) FILTER(WHERE r.status='redeemed')::int AS redeemed,
-                COUNT(*) FILTER(WHERE r.status='pending')::int AS pending,
-                COUNT(*) FILTER(WHERE r.status='cancelled')::int AS cancelled,
-                COALESCE(SUM(r.platform_fee) FILTER(WHERE r.status='redeemed'),0)::numeric AS platform_fees,
-                COUNT(DISTINCT c.business_id) FILTER(WHERE r.status='redeemed')::int AS businesses_with_usage
+        `SELECT COUNT(*) FILTER(WHERE r.status='redeemed' AND r.redeemed_at>=NOW()-($1::text||' days')::interval)::int AS redeemed,
+                COUNT(*) FILTER(WHERE r.status='pending' AND r.created_at>=NOW()-($1::text||' days')::interval)::int AS pending,
+                COUNT(*) FILTER(WHERE r.status='cancelled' AND r.created_at>=NOW()-($1::text||' days')::interval)::int AS cancelled,
+                COALESCE(SUM(r.platform_fee) FILTER(WHERE r.status='redeemed' AND r.redeemed_at>=NOW()-($1::text||' days')::interval),0)::numeric AS platform_fees,
+                COUNT(DISTINCT c.business_id) FILTER(WHERE r.status='redeemed' AND r.redeemed_at>=NOW()-($1::text||' days')::interval)::int AS businesses_with_usage
            FROM offer_redemptions r
-           JOIN business_campaigns c ON c.id=r.campaign_id
-          WHERE r.created_at>=NOW()-($1::text||' days')::interval`,
+           JOIN business_campaigns c ON c.id=r.campaign_id`,
         [days]
       );
       const daily=await pool.query(
@@ -255,7 +251,8 @@ module.exports=function registerAdminBusinessPremiumRoutes(app,pool,adminGuard){
            FROM businesses b
            LEFT JOIN business_campaigns c ON c.business_id=b.id
            LEFT JOIN offer_redemptions r ON r.campaign_id=c.id
-             AND r.created_at>=NOW()-($1::text||' days')::interval
+             AND ((r.status='redeemed' AND r.redeemed_at>=NOW()-($1::text||' days')::interval)
+               OR (r.status<>'redeemed' AND r.created_at>=NOW()-($1::text||' days')::interval))
           GROUP BY b.id
          HAVING COUNT(r.id)>0
           ORDER BY platform_fees DESC,redeemed DESC LIMIT 100`,
