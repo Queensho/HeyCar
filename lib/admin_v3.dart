@@ -1221,6 +1221,323 @@ Widget _adminField(TextEditingController c,String label,{int lines=1})=>TextFiel
 
 
 
+
+String _auditActionLabel(String action)=>switch(action){
+  'user.suspended'=>'Kullanıcı askıya alındı',
+  'user.activated'=>'Kullanıcı aktif edildi',
+  'qr.disabled'=>'QR kapatıldı',
+  'qr.enabled'=>'QR açıldı',
+  'qr.unbound'=>'QR araçtan ayrıldı',
+  'qr.batch_created'=>'QR baskı partisi oluşturuldu',
+  'qr.print_status_changed'=>'QR baskı durumu değişti',
+  'qr_batch.print_status_changed'=>'Baskı partisi durumu değişti',
+  'correction.resolved'=>'Talep çözüldü',
+  'correction.rejected'=>'Talep reddedildi',
+  'correction.review_started'=>'Talep incelemeye alındı',
+  'correction.reopened'=>'Talep yeniden açıldı',
+  'correction.qr_applied'=>'QR değişikliği uygulandı',
+  'moderation.background_removed'=>'Arka plan kaldırıldı',
+  'moderation.theme_reset'=>'Tema sıfırlandı',
+  'promo.created'=>'Promo oluşturuldu',
+  'promo.updated'=>'Promo güncellendi',
+  'promo.push_sent'=>'Promo bildirimi gönderildi',
+  'promo.deactivated'=>'Promo pasife alındı',
+  _=>action.replaceAll('.',' • '),
+};
+
+String _auditTargetLabel(String type)=>switch(type){
+  'user'=>'Kullanıcı',
+  'qr'=>'QR',
+  'qr_selection'=>'QR seçimi',
+  'qr_batch'=>'Baskı partisi',
+  'correction_request'=>'Düzeltme talebi',
+  'vehicle_theme'=>'Araç teması',
+  'promo'=>'Promo',
+  _=>type,
+};
+
+IconData _auditIcon(String action){
+  if(action.startsWith('user.'))return Icons.person_rounded;
+  if(action.startsWith('qr.'))return Icons.qr_code_2_rounded;
+  if(action.startsWith('qr_batch.'))return Icons.local_print_shop_rounded;
+  if(action.startsWith('correction.'))return Icons.support_agent_rounded;
+  if(action.startsWith('moderation.'))return Icons.shield_rounded;
+  if(action.startsWith('promo.'))return Icons.campaign_rounded;
+  return Icons.history_rounded;
+}
+
+Color _auditColor(String action){
+  if(action=='user.suspended'||action=='qr.disabled'||action=='correction.rejected')return Colors.redAccent;
+  if(action=='user.activated'||action=='qr.enabled'||action=='correction.resolved'||action=='correction.qr_applied')return _green;
+  if(action.startsWith('promo.'))return _pink;
+  if(action.startsWith('moderation.'))return _amber;
+  if(action.startsWith('qr'))return _purple;
+  return _blue;
+}
+
+Map<String,dynamic> _auditMap(dynamic raw)=>raw is Map?Map<String,dynamic>.from(raw):<String,dynamic>{};
+
+class AuditLogPage extends StatefulWidget{
+  const AuditLogPage({
+    super.key,
+    required this.data,
+    required this.loading,
+    required this.error,
+    required this.onRefresh,
+  });
+  final Map<String,dynamic> data;
+  final bool loading;
+  final String? error;
+  final Future<void> Function() onRefresh;
+
+  @override State<AuditLogPage> createState()=>_AuditLogPageState();
+}
+
+class _AuditLogPageState extends State<AuditLogPage>{
+  final search=TextEditingController();
+  String action='all';
+  String targetType='all';
+
+  @override void dispose(){search.dispose();super.dispose();}
+
+  List<Map<String,dynamic>> get rows{
+    final raw=widget.data['items'];
+    if(raw is! List)return[];
+    final q=search.text.trim().toLowerCase();
+    return raw.whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).where((e){
+      final a=(e['action']??'').toString();
+      final t=(e['target_type']??'').toString();
+      if(action!='all'&&a!=action)return false;
+      if(targetType!='all'&&t!=targetType)return false;
+      if(q.isEmpty)return true;
+      final hay=[
+        e['admin_name'],e['admin_email'],e['admin_id'],
+        e['target_label'],e['target_id'],e['action'],e['target_type'],
+      ].map((x)=>(x??'').toString().toLowerCase()).join(' ');
+      return hay.contains(q);
+    }).toList();
+  }
+
+  List<String> get actions{
+    final raw=widget.data['actions'];
+    final out=<String>{};
+    if(raw is List)out.addAll(raw.map((e)=>e.toString()).where((e)=>e.isNotEmpty));
+    final items=widget.data['items'];
+    if(items is List){
+      for(final x in items.whereType<Map>()){
+        final v=(x['action']??'').toString();
+        if(v.isNotEmpty)out.add(v);
+      }
+    }
+    final sorted=out.toList()..sort();
+    return ['all',...sorted];
+  }
+
+  List<String> get targetTypes{
+    final raw=widget.data['targetTypes'];
+    final out=<String>{};
+    if(raw is List)out.addAll(raw.map((e)=>e.toString()).where((e)=>e.isNotEmpty));
+    final items=widget.data['items'];
+    if(items is List){
+      for(final x in items.whereType<Map>()){
+        final v=(x['target_type']??'').toString();
+        if(v.isNotEmpty)out.add(v);
+      }
+    }
+    final sorted=out.toList()..sort();
+    return ['all',...sorted];
+  }
+
+  @override Widget build(BuildContext context){
+    if(widget.loading&&widget.data.isEmpty){
+      return const Center(child:CircularProgressIndicator(color:_purple));
+    }
+    if(widget.error!=null&&widget.data.isEmpty){
+      return Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
+        const Icon(Icons.error_outline_rounded,color:Colors.redAccent,size:34),
+        const SizedBox(height:10),
+        Text(widget.error!,textAlign:TextAlign.center,style:const TextStyle(color:_muted)),
+        const SizedBox(height:12),
+        FilledButton.icon(onPressed:widget.onRefresh,icon:const Icon(Icons.refresh_rounded),label:const Text('Tekrar dene')),
+      ]));
+    }
+
+    final summary=_auditMap(widget.data['summary']);
+    final filtered=rows;
+    final total=int.tryParse((widget.data['total']??filtered.length).toString())??filtered.length;
+
+    return RefreshIndicator(
+      color:_purple,
+      onRefresh:widget.onRefresh,
+      child:LayoutBuilder(builder:(context,constraints){
+        final compact=constraints.maxWidth<720;
+        final pad=compact?12.0:18.0;
+        return ListView(
+          physics:const AlwaysScrollableScrollPhysics(),
+          padding:EdgeInsets.fromLTRB(pad,14,pad,28),
+          children:[
+            Container(
+              padding:const EdgeInsets.all(16),
+              decoration:BoxDecoration(
+                gradient:const LinearGradient(colors:[Color(0xFF0B1230),Color(0xFF180A2A)]),
+                borderRadius:BorderRadius.circular(22),
+                border:Border.all(color:_purple.withValues(alpha:.42)),
+              ),
+              child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                Row(children:[
+                  Container(width:46,height:46,decoration:BoxDecoration(color:_purple.withValues(alpha:.14),shape:BoxShape.circle),child:const Icon(Icons.history_rounded,color:_purple,size:25)),
+                  const SizedBox(width:11),
+                  const Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                    Text('Admin İşlem Geçmişi',style:TextStyle(fontSize:21,fontWeight:FontWeight.w900)),
+                    SizedBox(height:2),
+                    Text('Hangi yönetici, neyi, ne zaman değiştirdi?',style:TextStyle(color:_muted,fontSize:12)),
+                  ])),
+                  if(widget.loading)const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2,color:_purple)),
+                ]),
+                const SizedBox(height:14),
+                Wrap(spacing:9,runSpacing:9,children:[
+                  _adminStat('$total','Toplam kayıt',Icons.history_toggle_off_rounded,color:_purple),
+                  _adminStat('${summary['today']??0}','Bugünkü işlem',Icons.today_rounded,color:_blue),
+                  _adminStat('${summary['admins_today']??0}','Bugün aktif admin',Icons.admin_panel_settings_rounded,color:_green),
+                  _adminStat('${summary['action_types']??0}','İşlem türü',Icons.category_rounded,color:_amber),
+                ]),
+              ]),
+            ),
+            const SizedBox(height:12),
+            Container(
+              padding:const EdgeInsets.all(12),
+              decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(18),border:Border.all(color:_line)),
+              child:Column(children:[
+                TextField(
+                  controller:search,
+                  onChanged:(_)=>setState((){}),
+                  decoration:const InputDecoration(
+                    labelText:'Admin, kullanıcı, QR veya talep ara',
+                    prefixIcon:Icon(Icons.search_rounded),
+                  ),
+                ),
+                const SizedBox(height:10),
+                LayoutBuilder(builder:(context,c){
+                  final narrow=c.maxWidth<600;
+                  final actionField=DropdownButtonFormField<String>(
+                    value:actions.contains(action)?action:'all',
+                    isExpanded:true,
+                    decoration:const InputDecoration(labelText:'İşlem türü'),
+                    items:actions.map((x)=>DropdownMenuItem(value:x,child:Text(x=='all'?'Tüm işlemler':_auditActionLabel(x),overflow:TextOverflow.ellipsis))).toList(),
+                    onChanged:(v)=>setState(()=>action=v??'all'),
+                  );
+                  final targetField=DropdownButtonFormField<String>(
+                    value:targetTypes.contains(targetType)?targetType:'all',
+                    isExpanded:true,
+                    decoration:const InputDecoration(labelText:'Hedef'),
+                    items:targetTypes.map((x)=>DropdownMenuItem(value:x,child:Text(x=='all'?'Tüm hedefler':_auditTargetLabel(x),overflow:TextOverflow.ellipsis))).toList(),
+                    onChanged:(v)=>setState(()=>targetType=v??'all'),
+                  );
+                  if(narrow)return Column(children:[actionField,const SizedBox(height:10),targetField]);
+                  return Row(children:[Expanded(child:actionField),const SizedBox(width:10),Expanded(child:targetField)]);
+                }),
+              ]),
+            ),
+            const SizedBox(height:12),
+            if(widget.error!=null)Padding(
+              padding:const EdgeInsets.only(bottom:10),
+              child:Text(widget.error!,style:const TextStyle(color:Colors.redAccent,fontSize:11.5)),
+            ),
+            if(filtered.isEmpty)
+              Container(
+                padding:const EdgeInsets.symmetric(vertical:48,horizontal:20),
+                decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(20),border:Border.all(color:_line)),
+                child:const Column(children:[
+                  Icon(Icons.history_toggle_off_rounded,color:_muted,size:42),
+                  SizedBox(height:10),
+                  Text('Bu filtrede işlem kaydı yok.',style:TextStyle(color:_muted,fontWeight:FontWeight.w700)),
+                ]),
+              )
+            else
+              ...filtered.map(_auditCard),
+          ],
+        );
+      }),
+    );
+  }
+
+  Widget _auditCard(Map<String,dynamic> row){
+    final actionCode=(row['action']??'').toString();
+    final color=_auditColor(actionCode);
+    final details=_auditMap(row['details']);
+    final before=_auditMap(details['before']);
+    final after=_auditMap(details['after']);
+    final metadata=_auditMap(details['metadata']);
+    final beforeStatus=(before['status']??before['print_status'])?.toString();
+    final afterStatus=(after['status']??after['print_status'])?.toString();
+    final adminName=(row['admin_name']??'').toString().trim();
+    final adminEmail=(row['admin_email']??'').toString().trim();
+    final adminId=(row['admin_id']??'').toString().trim();
+    final actor=adminName.isNotEmpty?adminName:adminEmail.isNotEmpty?adminEmail:adminId.isNotEmpty?adminId:'Admin';
+    final target=(row['target_label']??row['target_id']??'-').toString();
+    final note=(metadata['adminNote']??metadata['note']??'').toString();
+
+    return Container(
+      margin:const EdgeInsets.only(bottom:10),
+      decoration:BoxDecoration(
+        color:_card,
+        borderRadius:BorderRadius.circular(18),
+        border:Border.all(color:color.withValues(alpha:.30)),
+      ),
+      child:ExpansionTile(
+        tilePadding:const EdgeInsets.fromLTRB(13,8,12,8),
+        childrenPadding:const EdgeInsets.fromLTRB(14,0,14,14),
+        shape:const RoundedRectangleBorder(side:BorderSide.none),
+        collapsedShape:const RoundedRectangleBorder(side:BorderSide.none),
+        leading:Container(
+          width:42,height:42,
+          decoration:BoxDecoration(color:color.withValues(alpha:.13),shape:BoxShape.circle),
+          child:Icon(_auditIcon(actionCode),color:color,size:21),
+        ),
+        title:Text(_auditActionLabel(actionCode),style:const TextStyle(fontSize:13.5,fontWeight:FontWeight.w900)),
+        subtitle:Padding(
+          padding:const EdgeInsets.only(top:4),
+          child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+            Text('${_auditTargetLabel((row['target_type']??'').toString())}: $target',maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Colors.white70,fontSize:11.5,fontWeight:FontWeight.w700)),
+            const SizedBox(height:2),
+            Text('$actor • ${_adminDate(row['created_at'])}',maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_muted,fontSize:10.5)),
+          ]),
+        ),
+        children:[
+          Container(
+            width:double.infinity,
+            padding:const EdgeInsets.all(11),
+            decoration:BoxDecoration(color:_card2,borderRadius:BorderRadius.circular(13)),
+            child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+              _auditDetailLine('Admin',actor),
+              if(adminEmail.isNotEmpty&&adminEmail!=actor)_auditDetailLine('E-posta',adminEmail),
+              _auditDetailLine('Hedef',target),
+              if((row['target_id']??'').toString().isNotEmpty&&row['target_id'].toString()!=target)
+                _auditDetailLine('Hedef ID',row['target_id'].toString()),
+              _auditDetailLine('Zaman',_adminDate(row['created_at'])),
+              if(beforeStatus!=null||afterStatus!=null)
+                _auditDetailLine('Değişiklik','${beforeStatus??'-'} → ${afterStatus??'-'}'),
+              if(note.isNotEmpty)_auditDetailLine('Admin notu',note),
+              if(metadata['status']!=null)_auditDetailLine('Yeni durum',metadata['status'].toString()),
+              if(metadata['vehicleId']!=null)_auditDetailLine('Araç ID',metadata['vehicleId'].toString()),
+              if(metadata['qrToken']!=null)_auditDetailLine('QR',metadata['qrToken'].toString()),
+              if(row['ip_address']!=null)_auditDetailLine('IP',row['ip_address'].toString()),
+            ]),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _auditDetailLine(String label,String value)=>Padding(
+    padding:const EdgeInsets.only(bottom:6),
+    child:Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      SizedBox(width:92,child:Text(label,style:const TextStyle(color:_muted,fontSize:10.5,fontWeight:FontWeight.w700))),
+      Expanded(child:SelectableText(value,style:const TextStyle(color:Colors.white,fontSize:11.5,fontWeight:FontWeight.w700))),
+    ]),
+  );
+}
+
 int _reportInt(dynamic value)=>int.tryParse((value??'0').toString())??0;
 double _reportDouble(dynamic value)=>double.tryParse((value??'0').toString())??0;
 String _reportMoney(dynamic value){
