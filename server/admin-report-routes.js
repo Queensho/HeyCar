@@ -162,7 +162,7 @@ module.exports = function registerAdminReportRoutes(app, pool, adminGuard) {
 
       if (await tableExists(pool, 'businesses')) {
         const b = await pool.query(
-          "SELECT COUNT(*)::int AS total,COUNT(*) FILTER (WHERE is_active=TRUE)::int AS active FROM businesses"
+          "SELECT COUNT(*)::int AS total,COUNT(*) FILTER (WHERE is_active=TRUE AND approval_status='approved')::int AS active FROM businesses"
         );
         business.businesses = Number(b.rows[0]?.total || 0);
         business.activeBusinesses = Number(b.rows[0]?.active || 0);
@@ -171,7 +171,7 @@ module.exports = function registerAdminReportRoutes(app, pool, adminGuard) {
       if (await tableExists(pool, 'business_campaigns')) {
         const c = await pool.query(
           "SELECT COUNT(*)::int AS total," +
-          " COUNT(*) FILTER (WHERE is_active=TRUE AND starts_at<=NOW() AND ends_at>=NOW())::int AS live" +
+          " COUNT(*) FILTER (WHERE is_active=TRUE AND moderation_status='approved' AND starts_at<=NOW() AND ends_at>=NOW())::int AS live" +
           " FROM business_campaigns"
         );
         business.campaigns = Number(c.rows[0]?.total || 0);
