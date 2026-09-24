@@ -2,6 +2,7 @@ const {ownerId: authenticatedOwnerId}=require('./owner-auth-service');
 const {driverId: authenticatedDriverId}=require('./driver-auth-service');
 const { validateScanSession } = require('./scan-session-service');
 const registerPushRoutes = require('./push-routes');
+const {getAppSettings}=require('./app-settings-service');
 
 function normalizeToken(raw) {
   return String(raw || '').trim().toUpperCase();
@@ -97,6 +98,8 @@ module.exports = function registerCallRoutes(app, pool) {
 
   app.post('/api/public/calls', async (req, res) => {
     try {
+      const runtime=await getAppSettings(pool);
+      if(runtime.features?.calls===false)return res.status(503).json({error:'CALLS_FEATURE_DISABLED'});
       const token=normalizeToken(req.body&&(req.body.qrToken||req.body.token));
       if(!token)return res.status(400).json({error:'TOKEN_REQUIRED'});
 
