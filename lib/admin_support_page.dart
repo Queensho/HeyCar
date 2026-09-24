@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
@@ -66,7 +67,7 @@ class _AdminSupportPageState extends State<AdminSupportPage>{
   @override Widget build(BuildContext context){
     final s=_map(data['summary']),items=_list(data['items']);
     if(loading&&data.isEmpty)return const Center(child:CircularProgressIndicator(color:_purple));
-    return RefreshIndicator(color:_purple,onRefresh:load,child:LayoutBuilder(builder:(context,c){
+    return RefreshIndicator(color:_purple,onRefresh:()=>load(),child:LayoutBuilder(builder:(context,c){
       final compact=c.maxWidth<760,pad=compact?12.0:18.0,width=c.maxWidth-pad*2,cols=compact?2:5,gap=9.0,mw=(width-gap*(cols-1))/cols;
       return ListView(physics:const AlwaysScrollableScrollPhysics(),padding:EdgeInsets.fromLTRB(pad,14,pad,28),children:[
         Container(
@@ -134,6 +135,16 @@ class _AdminSupportPageState extends State<AdminSupportPage>{
   }
 
   Future<void> _open(BuildContext context,Map<String,dynamic> x)async{
+    Uint8List? attachmentBytes;
+    if((x['attachment_count']??0)!=0){
+      try{
+        final ar=await http.get(
+          Uri.parse('$_base/api/admin/manage/support-tickets/${x['id']}/attachment'),
+          headers:headers,
+        ).timeout(const Duration(seconds:15));
+        if(ar.statusCode>=200&&ar.statusCode<300)attachmentBytes=ar.bodyBytes;
+      }catch(_){}
+    }
     final reply=TextEditingController(text:(x['admin_reply']??'').toString());
     String next=(x['status']??'open').toString();
     final id=x['id'].toString();
@@ -148,7 +159,10 @@ class _AdminSupportPageState extends State<AdminSupportPage>{
         Container(width:double.infinity,padding:const EdgeInsets.all(12),decoration:BoxDecoration(color:_card2,borderRadius:BorderRadius.circular(14)),child:SelectableText((x['message']??'').toString(),style:const TextStyle(color:Colors.white,height:1.4))),
         if((x['attachment_count']??0)!=0)...[
           const SizedBox(height:12),
-          ClipRRect(borderRadius:BorderRadius.circular(14),child:Image.network('$_base/api/admin/manage/support-tickets/$id/attachment',headers:headers,height:260,width:double.infinity,fit:BoxFit.contain,errorBuilder:(_,__,___)=>Container(height:100,alignment:Alignment.center,color:_card2,child:const Text('Ekran görüntüsü yüklenemedi.',style:TextStyle(color:_muted))))),
+          if(attachmentBytes!=null)
+            ClipRRect(borderRadius:BorderRadius.circular(14),child:Image.memory(attachmentBytes,height:260,width:double.infinity,fit:BoxFit.contain))
+          else
+            Container(height:100,alignment:Alignment.center,color:_card2,child:const Text('Ekran görüntüsü yüklenemedi.',style:TextStyle(color:_muted))),
         ],
         const SizedBox(height:12),
         DropdownButtonFormField<String>(
