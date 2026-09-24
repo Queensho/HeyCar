@@ -5,54 +5,18 @@ let schemaReady = false;
 
 async function ensureSchema(pool) {
   if (schemaReady) return;
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS owner_security_settings (
-      owner_id TEXT PRIMARY KEY,
-      suspicious_login_alerts BOOLEAN NOT NULL DEFAULT TRUE,
-      qr_abuse_protection BOOLEAN NOT NULL DEFAULT TRUE,
-      auto_close_old_chats BOOLEAN NOT NULL DEFAULT TRUE,
-      security_code_version INTEGER NOT NULL DEFAULT 1,
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    );
-    CREATE TABLE IF NOT EXISTS owner_security_sessions (
-      id TEXT PRIMARY KEY,
-      owner_id TEXT NOT NULL,
-      device_id TEXT NOT NULL,
-      device_name TEXT NOT NULL DEFAULT 'Bilinmeyen cihaz',
-      user_agent TEXT,
-      ip_address TEXT,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      revoked_at TIMESTAMPTZ,
-      UNIQUE(owner_id, device_id)
-    );
-    CREATE TABLE IF NOT EXISTS owner_blocked_visitors (
-      owner_id TEXT NOT NULL,
-      visitor_key TEXT NOT NULL,
-      reason TEXT,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      PRIMARY KEY(owner_id, visitor_key)
-    );
-    CREATE TABLE IF NOT EXISTS qr_security_request_log (
-      id BIGSERIAL PRIMARY KEY,
-      owner_id TEXT NOT NULL,
-      qr_token TEXT NOT NULL,
-      visitor_key TEXT NOT NULL,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    );
-    CREATE INDEX IF NOT EXISTS idx_qr_security_request_log_recent
-      ON qr_security_request_log(owner_id, visitor_key, created_at DESC);
-    CREATE TABLE IF NOT EXISTS owner_security_events (
-      id TEXT PRIMARY KEY,
-      owner_id TEXT NOT NULL,
-      type TEXT NOT NULL,
-      detail TEXT,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      read_at TIMESTAMPTZ
-    );
-    ALTER TABLE qr_conversations ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active';
-    ALTER TABLE qr_conversations ADD COLUMN IF NOT EXISTS closed_at TIMESTAMPTZ;
+  const r=await pool.query(`
+    SELECT
+      to_regclass('public.owner_security_settings') AS settings,
+      to_regclass('public.owner_security_sessions') AS sessions,
+      to_regclass('public.owner_blocked_visitors') AS blocked,
+      to_regclass('public.qr_security_request_log') AS request_log,
+      to_regclass('public.owner_security_events') AS events
   `);
+  const row=r.rows[0]||{};
+  if(!row.settings||!row.sessions||!row.blocked||!row.request_log||!row.events){
+    throw new Error('SECURITY_SCHEMA_MIGRATION_REQUIRED');
+  }
   schemaReady = true;
 }
 
