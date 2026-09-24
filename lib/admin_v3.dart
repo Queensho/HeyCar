@@ -861,10 +861,14 @@ class _QrPageState extends State<QrPage>{
       return matchesSearch&&matchesBatch&&matchesPrint;
     }).toList();
 
-    final selectedRows=_selectedRows();
+    final selectedRows=_selectedRows().where((e)=>_printStatus(e)!='printed').toList();
     final exportRows=selectedRows.isNotEmpty?selectedRows:rows;
     final printableExportRows=exportRows.where((e)=>_printStatus(e)!='printed').toList();
-    final visibleTokens=rows.map(_tokenOf).where((e)=>e.isNotEmpty).toSet();
+    final visibleTokens=rows
+        .where((e)=>_printStatus(e)!='printed')
+        .map(_tokenOf)
+        .where((e)=>e.isNotEmpty)
+        .toSet();
     final selectedVisible=visibleTokens.where(selectedTokens.contains).length;
     final allVisible=visibleTokens.isNotEmpty&&selectedVisible==visibleTokens.length;
     final someVisible=selectedVisible>0&&!allVisible;
@@ -996,9 +1000,9 @@ class _QrPageState extends State<QrPage>{
             width:72,
             child:Row(children:[
               Checkbox(
-                value:selectedTokens.contains(_tokenOf(e)),
+                value:ps=='printed'?false:selectedTokens.contains(_tokenOf(e)),
                 activeColor:_purple,
-                onChanged:(v)=>setState((){
+                onChanged:ps=='printed'?null:(v)=>setState((){
                   final token=_tokenOf(e);
                   if(v==true){selectedTokens.add(token);}else{selectedTokens.remove(token);}
                 }),
