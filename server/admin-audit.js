@@ -1,3 +1,4 @@
+const { requestIp: trustedRequestIp } = require('./proxy-security');
 function firstNonEmpty(...values) {
   for (const value of values) {
     if (value == null) continue;
@@ -46,10 +47,6 @@ async function resolveAdmin(db, req) {
   return {id:id||null,email:email||null,name:name||null};
 }
 
-function requestIp(req) {
-  return firstNonEmpty(String(req.headers?.['x-forwarded-for']||'').split(',')[0],req.ip,req.socket?.remoteAddress);
-}
-
 async function writeAdminAudit(db, req, entry) {
   try {
     if (!await auditTableReady(db)) return false;
@@ -65,7 +62,7 @@ async function writeAdminAudit(db, req, entry) {
     };
     await db.query(
       "INSERT INTO admin_audit_logs (admin_id,admin_email,admin_name,action,target_type,target_id,target_label,details,ip_address,user_agent) VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10)",
-      [actor.id,actor.email,actor.name,action,targetType,entry?.targetId==null?null:String(entry.targetId).slice(0,250),entry?.targetLabel==null?null:String(entry.targetLabel).slice(0,500),JSON.stringify(details),requestIp(req),firstNonEmpty(req.headers?.['user-agent'])?.slice(0,600)||null]
+      [actor.id,actor.email,actor.name,action,targetType,entry?.targetId==null?null:String(entry.targetId).slice(0,250),entry?.targetLabel==null?null:String(entry.targetLabel).slice(0,500),JSON.stringify(details),trustedRequestIp(req),firstNonEmpty(req.headers?.['user-agent'])?.slice(0,600)||null]
     );
     return true;
   } catch(e) { console.error('admin audit write',e); return false; }
