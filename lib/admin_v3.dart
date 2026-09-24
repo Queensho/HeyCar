@@ -222,21 +222,21 @@ class _AdminHomeState extends State<AdminHome> {
     }catch(e){snack(e);}
   }
   Future<void> qrAction(String token,String action) async {try{await send('PATCH','/api/admin/manage/qr/$token',{'action':action});await load();}catch(e){snack(e);}}
-  Future<void> qrBatchStatus(List<String> batchIds,String status) async {
+  Future<void> qrItemPrintStatus(List<String> tokens,String status) async {
     try{
-      final ids=batchIds.where((e)=>e.isNotEmpty).toSet().toList();
-      for(final id in ids){
-        await send('PATCH','/api/admin/manage/qr/batches/$id/status',{'status':status});
-      }
+      final items=tokens.map((e)=>e.trim().toUpperCase()).where((e)=>e.isNotEmpty).toSet().toList();
+      if(items.isEmpty)return;
+      await send('PATCH','/api/admin/manage/qr/print-status',{'tokens':items,'status':status});
       await load();
-      if(mounted&&ids.isNotEmpty){
+      if(mounted){
         final label=switch(status){
+          'ready'=>'Hazır',
           'pdf_downloaded'=>'PDF Alındı',
           'sent_to_print'=>'Baskıya Gönderildi',
           'printed'=>'Basıldı',
           _=>status,
         };
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('${ids.length} baskı partisi • $label')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('${items.length} etiket • $label')));
       }
     }catch(e){snack(e);rethrow;}
   }
@@ -354,7 +354,7 @@ class _AdminHomeState extends State<AdminHome> {
     child:Container(width:38,height:38,decoration:BoxDecoration(color:_card2,borderRadius:BorderRadius.circular(12),border:Border.all(color:_purple.withValues(alpha:.45))),child:Icon(icon,color:Colors.white,size:20)),
   );
 
-  Widget page(){switch(tab){case 1:return UsersPage(rows:users,open:openUser);case 2:return VehiclesPage(rows:vehicles,open:openVehicle);case 3:return QrPage(rows:qr,create:createQr,action:qrAction,batchStatus:qrBatchStatus);case 4:return ModerationPage(rows:themes,removeBackground:removeBg,resetTheme:resetTheme);case 5:return AdminCorrectionRequestsPage(token:widget.token);case 6:return AdminPromoPage(rows:promos,onCreate:createPromo,onSetActive:setPromoActive,onPush:pushPromo,onUploadImage:uploadPromoImage);default:return const SizedBox.shrink();}}
+  Widget page(){switch(tab){case 1:return UsersPage(rows:users,open:openUser);case 2:return VehiclesPage(rows:vehicles,open:openVehicle);case 3:return QrPage(rows:qr,create:createQr,action:qrAction,itemPrintStatus:qrItemPrintStatus);case 4:return ModerationPage(rows:themes,removeBackground:removeBg,resetTheme:resetTheme);case 5:return AdminCorrectionRequestsPage(token:widget.token);case 6:return AdminPromoPage(rows:promos,onCreate:createPromo,onSetActive:setPromoActive,onPush:pushPromo,onUploadImage:uploadPromoImage);default:return const SizedBox.shrink();}}
 }
 
 Widget _brand({double fontSize=34})=>RichText(text:TextSpan(children:[
@@ -526,11 +526,11 @@ class VehiclesPage extends StatefulWidget{const VehiclesPage({super.key,required
 class _VehiclesPageState extends State<VehiclesPage>{final search=TextEditingController();@override Widget build(BuildContext context){final q=search.text.toLowerCase();final r=widget.rows.where((e)=>'${e['plate']} ${e['make']} ${e['model']}'.toLowerCase().contains(q)).toList();return listPage('Araçlar',search,()=>setState((){}),r.map((e)=>rowCard(Icons.directions_car,e['plate']?.toString()??'-','${e['make']??''} ${e['model']??''}',const Icon(Icons.chevron_right),()=>widget.open(e))).toList());}}
 
 class QrPage extends StatefulWidget{
-  const QrPage({super.key,required this.rows,required this.create,required this.action,required this.batchStatus});
+  const QrPage({super.key,required this.rows,required this.create,required this.action,required this.itemPrintStatus});
   final List<Map<String,dynamic>> rows;
   final Future<void> Function(int) create;
   final Future<void> Function(String,String) action;
-  final Future<void> Function(List<String>,String) batchStatus;
+  final Future<void> Function(List<String>,String) itemPrintStatus;
   @override State<QrPage> createState()=>_QrPageState();
 }
 
@@ -539,6 +539,7 @@ class _QrPageState extends State<QrPage>{
   final GlobalKey _stickerKey=GlobalKey();
   String batchFilter='all';
   String printFilter='all';
+  final Set<String> selectedTokens=<String>{};
 
   String publicUrl(String token)=>'$_publicBase?tag=${Uri.encodeQueryComponent(token)}';
 
@@ -549,8 +550,22 @@ class _QrPageState extends State<QrPage>{
   }
 
   String _printStatus(Map<String,dynamic> e){
+    final value=(e['print_status']??'').toString();
+    if(value.isNotEmpty)return value;
     if((e['batch_code']??'').toString().isEmpty)return 'legacy';
-    return (e['print_status']??'ready').toString();
+    return 'ready';
+  }
+
+  String _tokenOf(Map<String,dynamic> e)=>(e['token']??'').toString();
+
+  List<Map<String,dynamic>> _selectedRows(){
+    if(selectedTokens.isEmpty)return const <Map<String,dynamic>>[];
+    return widget.rows.where((e)=>selectedTokens.contains(_tokenOf(e))).toList();
+  }
+
+  Future<void> _applySelectedStatus(String status) async{
+    if(selectedTokens.isEmpty)return;
+    await widget.itemPrintStatus(selectedTokens.toList(),status);
   }
 
   String _printStatusLabel(String status)=>switch(status){
@@ -591,35 +606,81 @@ class _QrPageState extends State<QrPage>{
   Future<void> _exportPdf(List<Map<String,dynamic>> rows) async{
     if(rows.isEmpty)return;
     final doc=pw.Document();
-    const perPage=14;
-    final purple=PdfColor.fromHex('#7B22F2');
+    const perPage=16;
+    final purple=PdfColor.fromHex('#6E22D9');
     final lilac=PdfColor.fromHex('#F0E4FC');
-    final navy=PdfColor.fromHex('#060A18');
+    final muted=PdfColor.fromHex('#665D77');
     final templateData=await rootBundle.load('assets/Etiket.png');
     final template=pw.MemoryImage(templateData.buffer.asUint8List());
 
+    // A4 is 297 mm high. Eight 3.75 cm rows need 300 mm, so the physical
+    // slot is reduced by only 1% to 37.125 mm to keep 16 labels on one A4.
+    final labelWidth=100*PdfPageFormat.mm;
+    final labelHeight=PdfPageFormat.a4.height/8;
+
     pw.Widget labelCard(Map<String,dynamic> e){
-      final token=(e['token']??'').toString();
+      final token=_tokenOf(e);
       return pw.SizedBox(
-        width:100*PdfPageFormat.mm,
-        height:40*PdfPageFormat.mm,
+        width:labelWidth,
+        height:labelHeight,
         child:pw.Stack(children:[
-          // Use Etiket.png exactly as the 10 x 4 cm print template.
           pw.Positioned.fill(
             child:pw.Image(template,fit:pw.BoxFit.fill),
           ),
-
-          // Only place the live QR into the blank white QR area.
-          // Do not redraw a white card, title or label code over the template.
+          // Rebuild only the right QR card so the sample QR/text in Etiket.png
+          // is completely covered. Proportions match the reference label.
           pw.Positioned(
-            right:3.2*PdfPageFormat.mm,
-            top:6.2*PdfPageFormat.mm,
-            child:pw.BarcodeWidget(
-              barcode:pw.Barcode.qrCode(),
-              data:publicUrl(token),
-              width:27.6*PdfPageFormat.mm,
-              height:27.6*PdfPageFormat.mm,
-              drawText:false,
+            right:1.35*PdfPageFormat.mm,
+            top:1.15*PdfPageFormat.mm,
+            child:pw.Container(
+              width:31.2*PdfPageFormat.mm,
+              height:34.8*PdfPageFormat.mm,
+              padding:pw.EdgeInsets.fromLTRB(
+                1.55*PdfPageFormat.mm,
+                1.45*PdfPageFormat.mm,
+                1.55*PdfPageFormat.mm,
+                1.35*PdfPageFormat.mm,
+              ),
+              decoration:pw.BoxDecoration(
+                color:PdfColors.white,
+                border:pw.Border.all(color:PdfColor.fromHex('#D9D4E1'),width:.25),
+                borderRadius:pw.BorderRadius.circular(4.8*PdfPageFormat.mm),
+              ),
+              child:pw.Column(children:[
+                pw.SizedBox(
+                  width:25.8*PdfPageFormat.mm,
+                  height:25.8*PdfPageFormat.mm,
+                  child:pw.BarcodeWidget(
+                    barcode:pw.Barcode.qrCode(),
+                    data:publicUrl(token),
+                    drawText:false,
+                  ),
+                ),
+                pw.Spacer(),
+                pw.Container(
+                  width:double.infinity,
+                  height:5.25*PdfPageFormat.mm,
+                  alignment:pw.Alignment.center,
+                  padding:pw.EdgeInsets.symmetric(horizontal:1.1*PdfPageFormat.mm),
+                  decoration:pw.BoxDecoration(
+                    color:lilac,
+                    borderRadius:pw.BorderRadius.circular(2.7*PdfPageFormat.mm),
+                  ),
+                  child:pw.FittedBox(
+                    fit:pw.BoxFit.scaleDown,
+                    child:pw.RichText(text:pw.TextSpan(children:[
+                      pw.TextSpan(
+                        text:'Etiket Kodu: ',
+                        style:pw.TextStyle(color:muted,fontSize:5.5),
+                      ),
+                      pw.TextSpan(
+                        text:token,
+                        style:pw.TextStyle(color:purple,fontSize:7.2,fontWeight:pw.FontWeight.bold),
+                      ),
+                    ])),
+                  ),
+                ),
+              ]),
             ),
           ),
         ]),
@@ -631,22 +692,19 @@ class _QrPageState extends State<QrPage>{
       final pageItems=rows.sublist(start,end);
       doc.addPage(pw.Page(
         pageFormat:PdfPageFormat.a4,
-        margin:pw.EdgeInsets.symmetric(
-          horizontal:5*PdfPageFormat.mm,
-          vertical:8.5*PdfPageFormat.mm,
-        ),
+        margin:pw.EdgeInsets.symmetric(horizontal:5*PdfPageFormat.mm),
         build:(_){
           final slots=<pw.Widget>[];
-          for(var i=0;i<7;i++){
+          for(var i=0;i<8;i++){
             final leftIndex=i*2;
             final rightIndex=leftIndex+1;
             slots.add(pw.Row(children:[
               leftIndex<pageItems.length
                 ? labelCard(pageItems[leftIndex])
-                : pw.SizedBox(width:100*PdfPageFormat.mm,height:40*PdfPageFormat.mm),
+                : pw.SizedBox(width:labelWidth,height:labelHeight),
               rightIndex<pageItems.length
                 ? labelCard(pageItems[rightIndex])
-                : pw.SizedBox(width:100*PdfPageFormat.mm,height:40*PdfPageFormat.mm),
+                : pw.SizedBox(width:labelWidth,height:labelHeight),
             ]));
           }
           return pw.Column(children:slots);
@@ -658,11 +716,10 @@ class _QrPageState extends State<QrPage>{
     final suffix=batchFilter=='all'?'tum-qr':batchFilter.toLowerCase();
     await saveAdminFile(
       Uint8List.fromList(bytes),
-      'cepqar-baski-10x4cm-$suffix.pdf',
+      'cepqar-baski-10x3-75cm-16li-$suffix.pdf',
       'application/pdf',
     );
-    final batchIds=rows.map((e)=>(e['print_batch_id']??'').toString()).where((e)=>e.isNotEmpty).toSet().toList();
-    if(batchIds.isNotEmpty)await widget.batchStatus(batchIds,'pdf_downloaded');
+    await widget.itemPrintStatus(rows.map(_tokenOf).where((e)=>e.isNotEmpty).toList(),'pdf_downloaded');
   }
   Future<void> _downloadSticker(String token) async{
     try{
@@ -679,42 +736,66 @@ class _QrPageState extends State<QrPage>{
     }
   }
 
-  Widget _sticker(String token,String url)=>Container(
-    color:Colors.white,
-    padding:const EdgeInsets.fromLTRB(6,6,6,8),
-    child:Column(children:[
-      Expanded(child:LayoutBuilder(builder:(context,c){
-        final s=c.maxWidth<c.maxHeight?c.maxWidth:c.maxHeight;
-        final dot=s*.075;
-        final inset=s*.070;
-        return Center(child:SizedBox(width:s,height:s,child:Stack(children:[
-          Positioned.fill(child:QrImageView(
-            data:url,version:QrVersions.auto,padding:EdgeInsets.zero,backgroundColor:Colors.white,
-            eyeStyle:const QrEyeStyle(eyeShape:QrEyeShape.square,color:Colors.black),
-            dataModuleStyle:const QrDataModuleStyle(dataModuleShape:QrDataModuleShape.square,color:Colors.black),
-          )),
-          Positioned(left:inset,top:inset,width:dot,height:dot,child:_finderDot()),
-          Positioned(right:inset,top:inset,width:dot,height:dot,child:_finderDot()),
-          Positioned(left:inset,bottom:inset,width:dot,height:dot,child:_finderDot()),
-        ])));
-      })),
-      const SizedBox(height:4),
-      FractionallySizedBox(
-        widthFactor:.82,
+  Widget _sticker(String token,String url)=>LayoutBuilder(builder:(context,c){
+    final w=c.maxWidth;
+    final h=c.maxHeight;
+    final cardW=w*.312;
+    final cardH=h*.928;
+    return Stack(children:[
+      Positioned.fill(child:Image.asset('assets/Etiket.png',fit:BoxFit.fill)),
+      Positioned(
+        right:w*.0135,
+        top:h*.031,
+        width:cardW,
+        height:cardH,
         child:Container(
-          height:34,padding:const EdgeInsets.symmetric(horizontal:10),
-          decoration:BoxDecoration(color:const Color(0xFFF0E4FC),borderRadius:BorderRadius.circular(16)),
-          child:Center(child:FittedBox(
-            fit:BoxFit.scaleDown,
-            child:RichText(textAlign:TextAlign.center,text:TextSpan(children:[
-              const TextSpan(text:'Etiket Kodu:  ',style:TextStyle(color:Color(0xFF5A5570),fontSize:11,fontWeight:FontWeight.w500)),
-              TextSpan(text:token,style:const TextStyle(color:Color(0xFF5F2FBF),fontSize:15,fontWeight:FontWeight.w800)),
-            ])),
-          )),
+          padding:EdgeInsets.fromLTRB(cardW*.050,cardH*.040,cardW*.050,cardH*.038),
+          decoration:BoxDecoration(
+            color:Colors.white,
+            borderRadius:BorderRadius.circular(cardW*.15),
+            border:Border.all(color:const Color(0xFFD9D4E1),width:.7),
+          ),
+          child:Column(children:[
+            Expanded(child:LayoutBuilder(builder:(context,q){
+              final s=q.maxWidth<q.maxHeight?q.maxWidth:q.maxHeight;
+              final dot=s*.075;
+              final inset=s*.070;
+              return Center(child:SizedBox(width:s,height:s,child:Stack(children:[
+                Positioned.fill(child:QrImageView(
+                  data:url,
+                  version:QrVersions.auto,
+                  padding:EdgeInsets.zero,
+                  backgroundColor:Colors.white,
+                  eyeStyle:const QrEyeStyle(eyeShape:QrEyeShape.square,color:Colors.black),
+                  dataModuleStyle:const QrDataModuleStyle(dataModuleShape:QrDataModuleShape.square,color:Colors.black),
+                )),
+                Positioned(left:inset,top:inset,width:dot,height:dot,child:_finderDot()),
+                Positioned(right:inset,top:inset,width:dot,height:dot,child:_finderDot()),
+                Positioned(left:inset,bottom:inset,width:dot,height:dot,child:_finderDot()),
+              ])));
+            })),
+            SizedBox(height:cardH*.018),
+            Container(
+              width:double.infinity,
+              height:cardH*.155,
+              padding:EdgeInsets.symmetric(horizontal:cardW*.035),
+              decoration:BoxDecoration(
+                color:const Color(0xFFF0E4FC),
+                borderRadius:BorderRadius.circular(cardH*.08),
+              ),
+              child:Center(child:FittedBox(
+                fit:BoxFit.scaleDown,
+                child:RichText(textAlign:TextAlign.center,text:TextSpan(children:[
+                  const TextSpan(text:'Etiket Kodu: ',style:TextStyle(color:Color(0xFF665D77),fontSize:11,fontWeight:FontWeight.w600)),
+                  TextSpan(text:token,style:const TextStyle(color:Color(0xFF6E22D9),fontSize:15,fontWeight:FontWeight.w900)),
+                ])),
+              )),
+            ),
+          ]),
         ),
       ),
-    ]),
-  );
+    ]);
+  });
 
   Widget _finderDot()=>Container(
     decoration:BoxDecoration(color:const Color(0xFF8428FF),borderRadius:BorderRadius.circular(2.5),boxShadow:[BoxShadow(color:const Color(0xFF8428FF).withValues(alpha:.16),blurRadius:3)]),
@@ -735,7 +816,7 @@ class _QrPageState extends State<QrPage>{
           Text(token,style:const TextStyle(fontWeight:FontWeight.w800,color:_muted,fontSize:13)),
           if((e['batch_code']??'').toString().isNotEmpty)Text('${e['batch_code']} • Parti sıra ${e['batch_serial']??'-'}',style:const TextStyle(color:_muted,fontSize:11)),
           const SizedBox(height:12),
-          ConstrainedBox(constraints:const BoxConstraints(maxWidth:400),child:AspectRatio(aspectRatio:1,child:RepaintBoundary(key:_stickerKey,child:_sticker(token,url)))),
+          ConstrainedBox(constraints:const BoxConstraints(maxWidth:640),child:AspectRatio(aspectRatio:100/37.5,child:RepaintBoundary(key:_stickerKey,child:_sticker(token,url)))),
           const SizedBox(height:12),
           Row(children:[
             Expanded(child:OutlinedButton.icon(onPressed:()=>launchUrl(Uri.parse(url),mode:LaunchMode.externalApplication),icon:const Icon(Icons.open_in_new_rounded),label:const Text('QR sayfasını aç',textAlign:TextAlign.center))),
@@ -765,6 +846,13 @@ class _QrPageState extends State<QrPage>{
       return matchesSearch&&matchesBatch&&matchesPrint;
     }).toList();
 
+    final selectedRows=_selectedRows();
+    final exportRows=selectedRows.isNotEmpty?selectedRows:rows;
+    final visibleTokens=rows.map(_tokenOf).where((e)=>e.isNotEmpty).toSet();
+    final selectedVisible=visibleTokens.where(selectedTokens.contains).length;
+    final allVisible=visibleTokens.isNotEmpty&&selectedVisible==visibleTokens.length;
+    final someVisible=selectedVisible>0&&!allVisible;
+
     return ListView(padding:const EdgeInsets.fromLTRB(14,14,14,24),children:[
       Wrap(spacing:8,runSpacing:8,crossAxisAlignment:WrapCrossAlignment.center,children:[
         const Text('QR Yönetimi',style:TextStyle(fontSize:22,fontWeight:FontWeight.w900,color:Colors.white)),
@@ -778,8 +866,17 @@ class _QrPageState extends State<QrPage>{
           ],
           child:const Chip(avatar:Icon(Icons.add),label:Text('Yeni QR üret')),
         ),
-        OutlinedButton.icon(onPressed:rows.isEmpty?null:()=>_exportCsv(rows),icon:const Icon(Icons.table_view_rounded),label:const Text('CSV indir')),
-        FilledButton.icon(onPressed:rows.isEmpty?null:()=>_exportPdf(rows),style:FilledButton.styleFrom(backgroundColor:_purple),icon:const Icon(Icons.picture_as_pdf_rounded),label:const Text('Baskı PDF • 10×4 cm')),
+        OutlinedButton.icon(
+          onPressed:exportRows.isEmpty?null:()=>_exportCsv(exportRows),
+          icon:const Icon(Icons.table_view_rounded),
+          label:Text(selectedRows.isNotEmpty?'Seçilileri CSV (${selectedRows.length})':'CSV indir'),
+        ),
+        FilledButton.icon(
+          onPressed:exportRows.isEmpty?null:()=>_exportPdf(exportRows),
+          style:FilledButton.styleFrom(backgroundColor:_purple),
+          icon:const Icon(Icons.picture_as_pdf_rounded),
+          label:Text(selectedRows.isNotEmpty?'Seçilileri PDF (${selectedRows.length})':'Baskı PDF • A4 / 16 adet'),
+        ),
       ]),
       const SizedBox(height:12),
       Wrap(spacing:10,runSpacing:10,crossAxisAlignment:WrapCrossAlignment.center,children:[
@@ -805,11 +902,69 @@ class _QrPageState extends State<QrPage>{
         ChoiceChip(label:const Text('Baskıya Gönderildi'),selected:printFilter=='sent_to_print',onSelected:(_)=>setState(()=>printFilter='sent_to_print')),
         ChoiceChip(label:const Text('Basıldı'),selected:printFilter=='printed',onSelected:(_)=>setState(()=>printFilter='printed')),
       ]),
+      const SizedBox(height:12),
+      Container(
+        width:double.infinity,
+        padding:const EdgeInsets.symmetric(horizontal:12,vertical:10),
+        decoration:BoxDecoration(
+          color:_card,
+          borderRadius:BorderRadius.circular(16),
+          border:Border.all(color:selectedTokens.isEmpty?_line:_purple.withValues(alpha:.65)),
+        ),
+        child:Wrap(spacing:8,runSpacing:8,crossAxisAlignment:WrapCrossAlignment.center,children:[
+          Row(mainAxisSize:MainAxisSize.min,children:[
+            Checkbox(
+              tristate:true,
+              value:allVisible?true:someVisible?null:false,
+              activeColor:_purple,
+              onChanged:rows.isEmpty?null:(_){
+                setState((){
+                  if(allVisible){
+                    selectedTokens.removeAll(visibleTokens);
+                  }else{
+                    selectedTokens.addAll(visibleTokens);
+                  }
+                });
+              },
+            ),
+            Text(allVisible?'Görünenlerin tümü seçili':'Tümünü seç',style:const TextStyle(fontWeight:FontWeight.w800)),
+          ]),
+          Container(
+            padding:const EdgeInsets.symmetric(horizontal:10,vertical:7),
+            decoration:BoxDecoration(color:_purple.withValues(alpha:.12),borderRadius:BorderRadius.circular(12)),
+            child:Text('${selectedTokens.length} seçili',style:const TextStyle(color:Color(0xFFC879FF),fontWeight:FontWeight.w900)),
+          ),
+          OutlinedButton.icon(
+            onPressed:selectedTokens.isEmpty?null:()=>_applySelectedStatus('pdf_downloaded'),
+            icon:const Icon(Icons.picture_as_pdf_rounded,size:18),
+            label:const Text('PDF Alındı'),
+          ),
+          OutlinedButton.icon(
+            onPressed:selectedTokens.isEmpty?null:()=>_applySelectedStatus('sent_to_print'),
+            icon:const Icon(Icons.local_print_shop_outlined,size:18),
+            label:const Text('Baskıya Verildi'),
+          ),
+          FilledButton.icon(
+            onPressed:selectedTokens.isEmpty?null:()=>_applySelectedStatus('printed'),
+            style:FilledButton.styleFrom(backgroundColor:_green,foregroundColor:Colors.black),
+            icon:const Icon(Icons.check_circle_outline_rounded,size:18),
+            label:const Text('Baskı Yapıldı',style:TextStyle(fontWeight:FontWeight.w900)),
+          ),
+          TextButton.icon(
+            onPressed:selectedTokens.isEmpty?null:()=>_applySelectedStatus('ready'),
+            icon:const Icon(Icons.restart_alt_rounded,size:18),
+            label:const Text('Durumu Sıfırla'),
+          ),
+          if(selectedTokens.isNotEmpty)TextButton(
+            onPressed:()=>setState(()=>selectedTokens.clear()),
+            child:const Text('Seçimi Temizle'),
+          ),
+        ]),
+      ),
       const SizedBox(height:14),
       if(rows.isEmpty)Container(padding:const EdgeInsets.all(24),decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(18),border:Border.all(color:_line)),child:const Center(child:Text('Bu filtrede QR bulunamadı.',style:TextStyle(color:_muted))))
       else ...rows.map((e){
         final batch=(e['batch_code']??'').toString();
-        final batchId=(e['print_batch_id']??'').toString();
         final serial=e['serial_no']?.toString()??'-';
         final batchSerial=e['batch_serial']?.toString()??'-';
         final ps=_printStatus(e);
@@ -817,7 +972,20 @@ class _QrPageState extends State<QrPage>{
         final printedAt=DateTime.tryParse((e['printed_at']??'').toString())?.toLocal();
         final printedText=printedAt==null?'':' • ${printedAt.day.toString().padLeft(2,'0')}.${printedAt.month.toString().padLeft(2,'0')}.${printedAt.year}';
         return Card(elevation:0,child:Padding(padding:const EdgeInsets.symmetric(vertical:5),child:ListTile(
-          leading:const Icon(Icons.qr_code_2_rounded,color:_purple,size:34),
+          leading:SizedBox(
+            width:72,
+            child:Row(children:[
+              Checkbox(
+                value:selectedTokens.contains(_tokenOf(e)),
+                activeColor:_purple,
+                onChanged:(v)=>setState((){
+                  final token=_tokenOf(e);
+                  if(v==true){selectedTokens.add(token);}else{selectedTokens.remove(token);}
+                }),
+              ),
+              const Icon(Icons.qr_code_2_rounded,color:_purple,size:30),
+            ]),
+          ),
           title:Wrap(spacing:6,runSpacing:5,crossAxisAlignment:WrapCrossAlignment.center,children:[
             Text(e['token']?.toString()??'-',style:const TextStyle(fontWeight:FontWeight.w900)),
             if(batch.isNotEmpty)Container(padding:const EdgeInsets.symmetric(horizontal:7,vertical:3),decoration:BoxDecoration(color:_purple.withValues(alpha:.12),borderRadius:BorderRadius.circular(12)),child:Text(batch,style:const TextStyle(color:Color(0xFFC879FF),fontSize:9.5,fontWeight:FontWeight.w800))),
@@ -831,14 +999,16 @@ class _QrPageState extends State<QrPage>{
             PopupMenuButton<String>(
               onSelected:(a)async{
                 if(a.startsWith('print:')){
-                  if(batchId.isNotEmpty)await widget.batchStatus([batchId],a.substring(6));
+                  await widget.itemPrintStatus([_tokenOf(e)],a.substring(6));
                 }else{
-                  await widget.action(e['token'].toString(),a);
+                  await widget.action(_tokenOf(e),a);
                 }
               },
               itemBuilder:(_)=>[
-                if(batchId.isNotEmpty&&ps!='sent_to_print'&&ps!='printed')const PopupMenuItem(value:'print:sent_to_print',child:Text('Baskıya gönderildi işaretle')),
-                if(batchId.isNotEmpty&&ps!='printed')const PopupMenuItem(value:'print:printed',child:Text('Basıldı olarak işaretle')),
+                if(ps!='pdf_downloaded')const PopupMenuItem(value:'print:pdf_downloaded',child:Text('PDF alındı işaretle')),
+                if(ps!='sent_to_print')const PopupMenuItem(value:'print:sent_to_print',child:Text('Baskıya verildi işaretle')),
+                if(ps!='printed')const PopupMenuItem(value:'print:printed',child:Text('Baskı yapıldı işaretle')),
+                if(ps!='ready')const PopupMenuItem(value:'print:ready',child:Text('Baskı durumunu sıfırla')),
                 if(e['status']=='disabled')const PopupMenuItem(value:'enable',child:Text('Aktif et'))else const PopupMenuItem(value:'disable',child:Text('Devre dışı bırak')),
                 if(e['vehicle_id']!=null)const PopupMenuItem(value:'unbind',child:Text('Araçtan ayır')),
               ],
