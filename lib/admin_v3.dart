@@ -172,6 +172,10 @@ class _AdminHomeState extends State<AdminHome> {
   bool loading=true;
   String? error;
   List<Map<String,dynamic>> users=[],vehicles=[],qr=[],themes=[],promos=[];
+  Map<String,dynamic> reports={};
+  bool reportLoading=false;
+  String? reportError;
+  int reportDays=30;
   final tabs=const [
     ('Genel Bakış',Icons.grid_view_rounded),
     ('Kullanıcılar',Icons.people_alt_rounded),
@@ -180,8 +184,9 @@ class _AdminHomeState extends State<AdminHome> {
     ('Moderasyon',Icons.shield_rounded),
     ('Düzeltme Talepleri',Icons.support_agent_rounded),
     ('Promo & Duyurular',Icons.campaign_rounded),
+    ('Raporlama',Icons.insights_rounded),
   ];
-  static const mobileTabIndexes=[0,1,2,3,4,6];
+  static const mobileTabIndexes=[0,1,2,3,7,6];
   Map<String,String> get headers=>{'Authorization':'Bearer ${widget.token}','Content-Type':'application/json'};
 
   @override void initState(){super.initState();load();}
@@ -203,6 +208,19 @@ class _AdminHomeState extends State<AdminHome> {
     }catch(e){if(mounted)setState(()=>error=e.toString().replaceFirst('Exception: ',''));}finally{if(mounted)setState(()=>loading=false);}
   }
   void snack(Object e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString().replaceFirst('Exception: ',''))));}
+
+  Future<void> loadReports([int? days]) async {
+    final next=days??reportDays;
+    if(mounted)setState((){reportDays=next;reportLoading=true;reportError=null;});
+    try{
+      final d=await getJson('/api/admin/manage/reports?days=$next');
+      if(mounted)setState(()=>reports=d);
+    }catch(e){
+      if(mounted)setState(()=>reportError=e.toString().replaceFirst('Exception: ',''));
+    }finally{
+      if(mounted)setState(()=>reportLoading=false);
+    }
+  }
 
   Future<void> openUser(Map<String,dynamic> row) async {
     try{final d=await getJson('/api/admin/manage/users/${row['id']}');if(!mounted)return;await Navigator.push(context,MaterialPageRoute(builder:(_)=>UserDetail(data:d,changeStatus:(s)async{await send('PATCH','/api/admin/manage/users/${row['id']}/status',{'status':s});await load();})));}catch(e){snack(e);}
@@ -262,7 +280,10 @@ class _AdminHomeState extends State<AdminHome> {
   Future<void> setPromoActive(String id,bool active) async {try{await send('PATCH','/api/admin/manage/promos/$id',{'isActive':active});await load();}catch(e){snack(e);}}
   Future<void> pushPromo(String id) async {try{final d=await send('POST','/api/admin/manage/promos/$id/push');final p=d['push'];if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(p is Map?'Push: ${p['delivered']??0}/${p['attempted']??0} teslim edildi.':'Push gönderildi.')));await load();}catch(e){snack(e);}}
 
-  void openTab(int index)=>setState(()=>tab=index);
+  void openTab(int index){
+    setState(()=>tab=index);
+    if(index==7&&(reports.isEmpty||reportError!=null))loadReports();
+  }
 
   @override
   Widget build(BuildContext context){
@@ -326,7 +347,7 @@ class _AdminHomeState extends State<AdminHome> {
     child:Row(children:[
       Icon(tabs[tab].$2,color:_purple,size:23),const SizedBox(width:9),
       Expanded(child:Text(tabs[tab].$1,style:const TextStyle(fontSize:18,fontWeight:FontWeight.w900,color:Colors.white))),
-      _roundAction(Icons.refresh_rounded,load),const SizedBox(width:8),_roundAction(Icons.logout_rounded,widget.onLogout),
+      _roundAction(Icons.refresh_rounded,tab==7?()=>loadReports():load),const SizedBox(width:8),_roundAction(Icons.logout_rounded,widget.onLogout),
     ]),
   );
 
@@ -338,7 +359,7 @@ class _AdminHomeState extends State<AdminHome> {
       decoration:BoxDecoration(color:const Color(0xFF060A18),border:Border(top:BorderSide(color:_purple.withValues(alpha:.28))),boxShadow:[BoxShadow(color:_purple.withValues(alpha:.12),blurRadius:22)]),
       child:Row(children:List.generate(mobileTabIndexes.length,(i){
         final realIndex=mobileTabIndexes[i],active=i==selected;
-        final label=realIndex==3?'QR':realIndex==6?'Promolar':tabs[realIndex].$1;
+        final label=realIndex==3?'QR':realIndex==6?'Promolar':realIndex==7?'Rapor':tabs[realIndex].$1;
         return Expanded(child:InkWell(
           borderRadius:BorderRadius.circular(15),
           onTap:()=>openTab(realIndex),
@@ -358,7 +379,7 @@ class _AdminHomeState extends State<AdminHome> {
     child:Container(width:38,height:38,decoration:BoxDecoration(color:_card2,borderRadius:BorderRadius.circular(12),border:Border.all(color:_purple.withValues(alpha:.45))),child:Icon(icon,color:Colors.white,size:20)),
   );
 
-  Widget page(){switch(tab){case 1:return UsersPage(rows:users,open:openUser);case 2:return VehiclesPage(rows:vehicles,open:openVehicle);case 3:return QrPage(rows:qr,create:createQr,action:qrAction,itemPrintStatus:qrItemPrintStatus);case 4:return ModerationPage(rows:themes,removeBackground:removeBg,resetTheme:resetTheme);case 5:return AdminCorrectionRequestsPage(token:widget.token);case 6:return AdminPromoPage(rows:promos,onCreate:createPromo,onSetActive:setPromoActive,onPush:pushPromo,onUploadImage:uploadPromoImage);default:return const SizedBox.shrink();}}
+  Widget page(){switch(tab){case 1:return UsersPage(rows:users,open:openUser);case 2:return VehiclesPage(rows:vehicles,open:openVehicle);case 3:return QrPage(rows:qr,create:createQr,action:qrAction,itemPrintStatus:qrItemPrintStatus);case 4:return ModerationPage(rows:themes,removeBackground:removeBg,resetTheme:resetTheme);case 5:return AdminCorrectionRequestsPage(token:widget.token);case 6:return AdminPromoPage(rows:promos,onCreate:createPromo,onSetActive:setPromoActive,onPush:pushPromo,onUploadImage:uploadPromoImage);case 7:return ReportsPage(data:reports,loading:reportLoading,error:reportError,days:reportDays,onDaysChanged:loadReports,onRefresh:()=>loadReports());default:return const SizedBox.shrink();}}
 }
 
 Widget _brand({double fontSize=34})=>RichText(text:TextSpan(children:[
@@ -476,6 +497,7 @@ class Dashboard extends StatelessWidget{
       ('Moderasyon','İçerikleri kontrol et',Icons.shield_rounded,4),
       ('Düzeltme Talepleri','Gelen talepleri incele',Icons.support_agent_rounded,5),
       ('Promo & Duyurular','Kampanya ve duyurular',Icons.campaign_rounded,6),
+      ('Raporlama','Kullanım ve performans analizi',Icons.insights_rounded,7),
     ];
     return Wrap(spacing:gap,runSpacing:gap,children:data.map((x)=>SizedBox(width:itemWidth,height:compact?96:92,child:InkWell(borderRadius:BorderRadius.circular(17),onTap:()=>onOpenTab(x.$4),child:Container(padding:const EdgeInsets.symmetric(horizontal:12,vertical:11),decoration:_glowDecoration(radius:17),child:Row(children:[Container(width:44,height:44,decoration:BoxDecoration(shape:BoxShape.circle,color:_purple.withValues(alpha:.12),border:Border.all(color:_purple.withValues(alpha:.38))),child:Icon(x.$3,color:_purple,size:24)),const SizedBox(width:10),Expanded(child:Column(mainAxisAlignment:MainAxisAlignment.center,crossAxisAlignment:CrossAxisAlignment.start,children:[Text(x.$1,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Colors.white,fontSize:13.5,fontWeight:FontWeight.w900)),const SizedBox(height:3),Text(x.$2,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_muted,fontSize:11.5))])),const Icon(Icons.chevron_right_rounded,color:Color(0xFFC96CFF),size:24)]))))).toList());
   }
