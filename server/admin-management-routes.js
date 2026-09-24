@@ -754,6 +754,14 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
         } catch (_) {}
       }
       await pool.query('UPDATE vehicle_public_themes SET background_path=NULL,updated_at=NOW() WHERE vehicle_id=$1', [vehicleId]);
+      await writeAdminAudit(pool, req, {
+        action: 'moderation.background_removed',
+        targetType: 'vehicle_theme',
+        targetId: vehicleId,
+        targetLabel: vehicleId,
+        before: existing.rows[0] || null,
+        after: { background_path: null },
+      });
       res.json({ ok: true });
     } catch (e) {
       console.error(e);
@@ -772,6 +780,13 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
          RETURNING *`,
         [vehicleId]
       );
+      await writeAdminAudit(pool, req, {
+        action: 'moderation.theme_reset',
+        targetType: 'vehicle_theme',
+        targetId: vehicleId,
+        targetLabel: vehicleId,
+        after: r.rows[0],
+      });
       res.json({ ok: true, theme: r.rows[0] });
     } catch (e) {
       console.error(e);
@@ -971,6 +986,14 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
         const refreshed = await pool.query('SELECT * FROM admin_promos WHERE id=$1', [row.id]);
         row = refreshed.rows[0] || row;
       }
+      await writeAdminAudit(pool, req, {
+        action: 'promo.created',
+        targetType: 'promo',
+        targetId: row.id,
+        targetLabel: row.title,
+        after: promoPayload(row),
+        metadata: { push: pushResult },
+      });
       return res.status(201).json({ ok: true, promo: promoPayload(row), push: pushResult });
     } catch (e) {
       console.error('admin promo create', e);
@@ -1011,6 +1034,14 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
           b.isActive === undefined ? old.is_active : b.isActive === true
         ]
       );
+      await writeAdminAudit(pool, req, {
+        action: 'promo.updated',
+        targetType: 'promo',
+        targetId: r.rows[0].id,
+        targetLabel: r.rows[0].title,
+        before: promoPayload(old),
+        after: promoPayload(r.rows[0]),
+      });
       return res.json({ ok: true, promo: promoPayload(r.rows[0]) });
     } catch (e) {
       console.error('admin promo update', e);
@@ -1024,6 +1055,13 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
       const r = await pool.query('SELECT * FROM admin_promos WHERE id=$1 LIMIT 1', [req.params.id]);
       if (!r.rows.length) return res.status(404).json({ error: 'PROMO_NOT_FOUND' });
       const push = await sendPromoOwnerPush(r.rows[0]);
+      await writeAdminAudit(pool, req, {
+        action: 'promo.push_sent',
+        targetType: 'promo',
+        targetId: r.rows[0].id,
+        targetLabel: r.rows[0].title,
+        metadata: { push },
+      });
       return res.json({ ok: true, push });
     } catch (e) {
       console.error('admin promo push', e);
@@ -1039,6 +1077,13 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
         [req.params.id]
       );
       if (!r.rows.length) return res.status(404).json({ error: 'PROMO_NOT_FOUND' });
+      await writeAdminAudit(pool, req, {
+        action: 'promo.deactivated',
+        targetType: 'promo',
+        targetId: req.params.id,
+        targetLabel: req.params.id,
+        after: { is_active: false },
+      });
       return res.json({ ok: true });
     } catch (e) {
       return res.status(500).json({ error: 'SERVER_ERROR' });
