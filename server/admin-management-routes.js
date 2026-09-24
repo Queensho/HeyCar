@@ -95,6 +95,8 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
                   ELSE NULL
                 END AS serial_no,
                 b.batch_code,b.created_at AS batch_created_at,
+                b.print_status,b.pdf_downloaded_at,b.pdf_downloaded_by,
+                b.sent_to_print_at,b.sent_to_print_by,b.printed_at,b.printed_by,
                 v.plate,v.make,v.model,u.id AS owner_id,u.display_name AS owner_name
          FROM qr_tags q
          LEFT JOIN qr_print_batches b ON b.id=q.print_batch_id
@@ -115,6 +117,8 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
     try {
       const r = await pool.query(
         `SELECT b.id,b.batch_no,b.batch_code,b.item_count,b.created_by,b.created_at,
+                b.print_status,b.pdf_downloaded_at,b.pdf_downloaded_by,
+                b.sent_to_print_at,b.sent_to_print_by,b.printed_at,b.printed_by,
                 COUNT(q.id)::int AS current_item_count,
                 COUNT(q.id) FILTER (WHERE q.status='active')::int AS active_count,
                 COUNT(q.id) FILTER (WHERE q.status='unassigned')::int AS unassigned_count,
@@ -128,6 +132,59 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
     } catch (e) {
       console.error(e);
       res.status(500).json({ error: 'SERVER_ERROR' });
+    }
+  });
+  app.patch('/api/admin/manage/qr/batches/:batchId/status', guard, async (req, res) => {
+    const batchId = String(req.params.batchId || '').trim();
+    const status = String((req.body || {}).status || '').trim();
+    const allowed = ['pdf_downloaded','sent_to_print','printed'];
+    if (!allowed.includes(status)) return res.status(400).json({ error: 'INVALID_PRINT_STATUS' });
+
+    const rank = { ready: 0, pdf_downloaded: 1, sent_to_print: 2, printed: 3 };
+    try {
+      const current = await pool.query(
+        `SELECT id,batch_code,print_status FROM qr_print_batches WHERE id::text=$1 LIMIT 1`,
+        [batchId]
+      );
+      if (!current.rows.length) return res.status(404).json({ error: 'PRINT_BATCH_NOT_FOUND' });
+
+      const oldStatus = String(current.rows[0].print_status || 'ready');
+      if (rank[status] <= rank[oldStatus]) {
+        const unchanged = await pool.query('SELECT * FROM qr_print_batches WHERE id=$1', [batchId]);
+        return res.json({ ok: true, batch: unchanged.rows[0], unchanged: true });
+      }
+
+      const actor = String(req.user?.id || req.admin?.id || req.user?.email || 'admin');
+      const sets = ['print_status=$2'];
+      const values = [batchId, status];
+      if (status === 'pdf_downloaded') {
+        sets.push('pdf_downloaded_at=COALESCE(pdf_downloaded_at,NOW())');
+        sets.push('pdf_downloaded_by=COALESCE(pdf_downloaded_by,$3)');
+        values.push(actor);
+      } else if (status === 'sent_to_print') {
+        sets.push('pdf_downloaded_at=COALESCE(pdf_downloaded_at,NOW())');
+        sets.push('pdf_downloaded_by=COALESCE(pdf_downloaded_by,$3)');
+        sets.push('sent_to_print_at=COALESCE(sent_to_print_at,NOW())');
+        sets.push('sent_to_print_by=COALESCE(sent_to_print_by,$3)');
+        values.push(actor);
+      } else if (status === 'printed') {
+        sets.push('pdf_downloaded_at=COALESCE(pdf_downloaded_at,NOW())');
+        sets.push('pdf_downloaded_by=COALESCE(pdf_downloaded_by,$3)');
+        sets.push('sent_to_print_at=COALESCE(sent_to_print_at,NOW())');
+        sets.push('sent_to_print_by=COALESCE(sent_to_print_by,$3)');
+        sets.push('printed_at=COALESCE(printed_at,NOW())');
+        sets.push('printed_by=COALESCE(printed_by,$3)');
+        values.push(actor);
+      }
+
+      const r = await pool.query(
+        `UPDATE qr_print_batches SET ${sets.join(',')} WHERE id=$1 RETURNING *`,
+        values
+      );
+      return res.json({ ok: true, batch: r.rows[0] });
+    } catch (e) {
+      console.error('qr print status update', e);
+      return res.status(500).json({ error: 'SERVER_ERROR' });
     }
   });
   app.post('/api/admin/manage/qr', guard, async (req, res) => {
