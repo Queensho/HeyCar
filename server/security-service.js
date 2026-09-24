@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const {logSecurityEvent}=require('./security-event-log');
 
 let schemaReady = false;
 
@@ -78,12 +79,18 @@ async function enforcePublicRequest(pool, token, req, explicitVisitor) {
   const key = visitorKey(req, explicitVisitor);
   const settings = await getSettings(pool, ownerId);
   const blocked = await pool.query(`SELECT 1 FROM owner_blocked_visitors WHERE owner_id=$1 AND visitor_key=$2 LIMIT 1`, [ownerId, key]);
-  if (blocked.rows.length) return { ok: false, status: 403, error: 'VISITOR_BLOCKED', ownerId, visitorKey: key };
+  if (blocked.rows.length) {
+    await logSecurityEvent(pool,req,{eventType:'blocked_visitor_attempt',ownerId,subject:key,detail:{qrToken:String(token||'').trim().toUpperCase()}});
+    return { ok: false, status: 403, error: 'VISITOR_BLOCKED', ownerId, visitorKey: key };
+  }
   if (!settings.qr_abuse_protection) return { ok: true, ownerId, visitorKey: key };
 
   await pool.query(`DELETE FROM qr_security_request_log WHERE created_at < NOW() - INTERVAL '1 day'`);
   const c = await pool.query(`SELECT COUNT(*)::int AS n FROM qr_security_request_log WHERE owner_id=$1 AND visitor_key=$2 AND created_at > NOW() - INTERVAL '1 minute'`, [ownerId, key]);
-  if ((c.rows[0]?.n || 0) >= 10) return { ok: false, status: 429, error: 'TOO_MANY_REQUESTS', ownerId, visitorKey: key };
+  if ((c.rows[0]?.n || 0) >= 10) {
+    await logSecurityEvent(pool,req,{eventType:'qr_rate_limited',ownerId,subject:key,detail:{qrToken:String(token||'').trim().toUpperCase(),requestCount:Number(c.rows[0]?.n||0)}});
+    return { ok: false, status: 429, error: 'TOO_MANY_REQUESTS', ownerId, visitorKey: key };
+  }
   await pool.query(`INSERT INTO qr_security_request_log(owner_id, qr_token, visitor_key) VALUES($1,$2,$3)`, [ownerId, String(token || '').trim().toUpperCase(), key]);
   return { ok: true, ownerId, visitorKey: key };
 }
@@ -114,6 +121,7 @@ async function registerSession(pool, ownerId, deviceId, deviceName, req) {
   `, [id, ownerId, deviceId, deviceName || 'Bu cihaz', String(req.headers['user-agent'] || '').slice(0,500), visitorKey(req)]);
   if (isNewDevice && settings.suspicious_login_alerts) {
     await pool.query(`INSERT INTO owner_security_events(id, owner_id, type, detail) VALUES($1,$2,'new_device_login',$3)`, [crypto.randomUUID(), ownerId, deviceName || 'Yeni cihaz']);
+    await logSecurityEvent(pool,req,{eventType:'new_device_login',ownerId,subject:deviceId,detail:{deviceName:deviceName||'Yeni cihaz'}});
   }
   return { id, isNewDevice, suspiciousAlert: Boolean(isNewDevice && settings.suspicious_login_alerts) };
 }
