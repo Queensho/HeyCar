@@ -545,6 +545,11 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
 
     try {
       await ensureQrItemPrintSchema(pool);
+      const before = await pool.query(
+        `SELECT token,status,print_status,vehicle_id,pdf_downloaded_at,sent_to_print_at,printed_at
+           FROM qr_tags WHERE token=ANY($1::text[])`,
+        [tokens]
+      );
       let sql;
       if (status === 'ready') {
         // Explicit reset is the only operation allowed to move a label backwards.
@@ -583,6 +588,17 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
                 RETURNING token,print_status,pdf_downloaded_at,sent_to_print_at,printed_at`;
       }
       const r = await pool.query(sql, [tokens]);
+      if ((r.rowCount || 0) > 0) {
+        await writeAdminAudit(pool, req, {
+          action: 'qr.print_status_changed',
+          targetType: 'qr_selection',
+          targetId: null,
+          targetLabel: (r.rowCount || 0) + ' QR • ' + status,
+          before: before.rows,
+          after: r.rows,
+          metadata: { status, tokens: r.rows.map(x => x.token) },
+        });
+      }
       return res.json({ ok: true, count: r.rowCount || 0, items: r.rows });
     } catch (e) {
       console.error('qr item print status update', e);
