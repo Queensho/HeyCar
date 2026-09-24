@@ -2495,6 +2495,12 @@ String _auditActionLabel(String action)=>switch(action){
   'correction.review_started'=>'Talep incelemeye alındı',
   'correction.reopened'=>'Talep yeniden açıldı',
   'correction.qr_applied'=>'QR değişikliği uygulandı',
+  'complaint.in_review'=>'Şikâyet incelemeye alındı',
+  'complaint.resolved'=>'Şikâyet çözüldü',
+  'complaint.dismissed'=>'Şikâyet reddedildi',
+  'complaint.reopened'=>'Şikâyet yeniden açıldı',
+  'complaint.session_blocked'=>'Anonim oturum engellendi',
+  'complaint.conversation_closed'=>'Şikâyetli sohbet kapatıldı',
   'moderation.background_removed'=>'Arka plan kaldırıldı',
   'moderation.theme_reset'=>'Tema sıfırlandı',
   'promo.created'=>'Promo oluşturuldu',
@@ -2510,6 +2516,8 @@ String _auditTargetLabel(String type)=>switch(type){
   'qr_selection'=>'QR seçimi',
   'qr_batch'=>'Baskı partisi',
   'correction_request'=>'Düzeltme talebi',
+  'message_report'=>'Mesaj şikâyeti',
+  'conversation'=>'Sohbet',
   'vehicle_theme'=>'Araç teması',
   'promo'=>'Promo',
   _=>type,
@@ -2520,14 +2528,16 @@ IconData _auditIcon(String action){
   if(action.startsWith('qr.'))return Icons.qr_code_2_rounded;
   if(action.startsWith('qr_batch.'))return Icons.local_print_shop_rounded;
   if(action.startsWith('correction.'))return Icons.support_agent_rounded;
+  if(action.startsWith('complaint.'))return Icons.report_problem_rounded;
   if(action.startsWith('moderation.'))return Icons.shield_rounded;
   if(action.startsWith('promo.'))return Icons.campaign_rounded;
   return Icons.history_rounded;
 }
 
 Color _auditColor(String action){
-  if(action=='user.suspended'||action=='qr.disabled'||action=='correction.rejected')return Colors.redAccent;
-  if(action=='user.activated'||action=='qr.enabled'||action=='correction.resolved'||action=='correction.qr_applied')return _green;
+  if(action=='user.suspended'||action=='qr.disabled'||action=='correction.rejected'||action=='complaint.dismissed'||action=='complaint.session_blocked')return Colors.redAccent;
+  if(action=='user.activated'||action=='qr.enabled'||action=='correction.resolved'||action=='correction.qr_applied'||action=='complaint.resolved')return _green;
+  if(action=='complaint.in_review'||action=='complaint.conversation_closed')return _amber;
   if(action.startsWith('promo.'))return _pink;
   if(action.startsWith('moderation.'))return _amber;
   if(action.startsWith('qr'))return _purple;
