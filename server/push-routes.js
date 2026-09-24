@@ -31,6 +31,19 @@ module.exports=function registerPushRoutes(app,pool){
     delete app.locals.heycarPush;
   }
   let ready=false;
+  const health={
+    registeredAt:new Date().toISOString(),
+    lastAttemptAt:null,
+    lastSuccessAt:null,
+    lastFailureAt:null,
+    lastAttempted:0,
+    lastDelivered:0,
+    lastError:null,
+  };
+  const markFailure=(e)=>{
+    health.lastFailureAt=new Date().toISOString();
+    health.lastError=String(e?.message||e||'Push error').slice(0,800);
+  };
   async function schema(){
     if(ready)return;
     const check=await pool.query("SELECT to_regclass('public.owner_push_tokens') AS owner_tokens, to_regclass('public.driver_push_tokens') AS driver_tokens");
@@ -45,15 +58,29 @@ module.exports=function registerPushRoutes(app,pool){
   app.delete('/api/driver/push-token',async(req,res)=>{try{const driver=authenticatedDriverId(req);const device=String(req.query?.deviceId||req.body?.deviceId||'').trim();if(!driver)return res.status(401).json({error:'DRIVER_REQUIRED'});if(!device)return res.status(400).json({error:'DEVICE_REQUIRED'});await schema();await pool.query('UPDATE driver_push_tokens SET active=FALSE,updated_at=NOW() WHERE driver_id=$1 AND device_id=$2',[driver,device]);return res.json({ok:true});}catch(e){console.error('driver push token deactivate',e);return res.status(500).json({error:'SERVER_ERROR'});}});
 
   async function sendFrom(table,idColumn,userId,data,title,body){
+    health.lastAttemptAt=new Date().toISOString();
+    health.lastError=null;
     await schema();
-    const sa=serviceAccount();const key=await accessToken();
-    if(!key||!sa){console.warn('Firebase service account missing; push skipped');return {attempted:0,delivered:0};}
+    let sa,key;
+    try{
+      sa=serviceAccount();
+      key=await accessToken();
+    }catch(e){
+      markFailure(e);
+      throw e;
+    }
+    if(!key||!sa){
+      markFailure('Firebase service account missing');
+      console.warn('Firebase service account missing; push skipped');
+      health.lastAttempted=0;health.lastDelivered=0;
+      return {attempted:0,delivered:0};
+    }
     const project=sa.project_id;
     const rows=(await pool.query(
       `SELECT DISTINCT ON (fcm_token) id,fcm_token FROM ${table} WHERE ${idColumn}=$1 AND active=TRUE ORDER BY fcm_token,updated_at DESC`,
       [String(userId)]
     )).rows;
-    if(!rows.length)return {attempted:0,delivered:0};
+    if(!rows.length){health.lastAttempted=0;health.lastDelivered=0;return {attempted:0,delivered:0};}
 
     const callEvent=data.type==='incoming_call'||data.type==='incoming_call_cancelled';
     const fcmData=Object.fromEntries(Object.entries({...data,title,body}).map(([k,v])=>[k,String(v??'')]));
@@ -98,12 +125,21 @@ module.exports=function registerPushRoutes(app,pool){
     }));
 
     const delivered=results.filter(Boolean).length;
+    health.lastAttempted=rows.length;
+    health.lastDelivered=delivered;
+    if(delivered>0){
+      health.lastSuccessAt=new Date().toISOString();
+      health.lastError=null;
+    }else if(rows.length>0){
+      markFailure('FCM delivery failed for all active tokens');
+    }
     return {attempted:rows.length,delivered};
   }
   const sendOwner=(owner,data,title,body)=>sendFrom('owner_push_tokens','owner_id',owner,data,title,body);
   const sendDriver=(driver,data,title,body)=>sendFrom('driver_push_tokens','driver_id',driver,data,title,body);
   const send=sendOwner;
-  app.locals.heycarPush={send,sendOwner,sendDriver};
+  const getHealth=()=>({...health});
+  app.locals.heycarPush={send,sendOwner,sendDriver,getHealth,health};
   console.log('Cepqar push service registered');
   return app.locals.heycarPush;
 };
