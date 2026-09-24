@@ -14,6 +14,14 @@ const MIME_EXT={
   'image/webp':'webp',
 };
 
+function validImageBytes(mime,bytes){
+  if(!Buffer.isBuffer(bytes)||bytes.length<12)return false;
+  if(mime==='image/jpeg')return bytes[0]===0xff&&bytes[1]===0xd8&&bytes[2]===0xff;
+  if(mime==='image/png')return bytes.subarray(0,8).equals(Buffer.from([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a]));
+  if(mime==='image/webp')return bytes.subarray(0,4).toString('ascii')==='RIFF'&&bytes.subarray(8,12).toString('ascii')==='WEBP';
+  return false;
+}
+
 function clean(v,max=2000){return String(v==null?'':v).trim().slice(0,max);}
 function adminActor(req){return clean(req.headers?.['x-admin-email']||req.headers?.['x-admin-name']||req.headers?.['x-admin-id']||'admin',240);}
 function safeAttachmentName(raw){
@@ -90,6 +98,7 @@ module.exports=function registerSupportRoutes(app,pool,adminGuard){
       const bytes=Buffer.isBuffer(req.body)?req.body:Buffer.from(req.body||[]);
       if(!bytes.length)return res.status(400).json({error:'EMPTY_IMAGE'});
       if(bytes.length>5*1024*1024)return res.status(413).json({error:'IMAGE_TOO_LARGE'});
+      if(!validImageBytes(mime,bytes))return res.status(400).json({error:'INVALID_IMAGE'});
       try{
         const ticket=await ticketForOwner(ticketId,ownerId);
         if(!ticket)return res.status(404).json({error:'TICKET_NOT_FOUND'});
@@ -97,7 +106,7 @@ module.exports=function registerSupportRoutes(app,pool,adminGuard){
         if(existing.rows.length)return res.status(409).json({error:'ATTACHMENT_ALREADY_EXISTS'});
         const fileName=crypto.randomUUID()+'.'+ext;
         const filePath=path.join(uploadDir,fileName);
-        await fs.promises.writeFile(filePath,bytes,{flag:'wx'});
+        await fs.promises.writeFile(filePath,bytes,{flag:'wx',mode:0o640});
         try{
           const saved=await pool.query(
             `INSERT INTO support_ticket_attachments(ticket_id,owner_id,file_name,mime_type,size_bytes)
@@ -197,6 +206,7 @@ module.exports=function registerSupportRoutes(app,pool,adminGuard){
       const before=await pool.query('SELECT * FROM support_tickets WHERE id::text=$1 LIMIT 1',[id]);
       if(!before.rows.length)return res.status(404).json({error:'TICKET_NOT_FOUND'});
       const actor=adminActor(req);
+      const publishReply=(status==='answered'||status==='resolved')&&reply.length>0;
       const q=await pool.query(
         `UPDATE support_tickets
             SET status=$2,
@@ -207,7 +217,7 @@ module.exports=function registerSupportRoutes(app,pool,adminGuard){
                 updated_at=NOW()
           WHERE id::text=$1
           RETURNING *`,
-        [id,status,reply.length>0,reply||null,actor]
+        [id,status,publishReply,reply||null,actor]
       );
       const updated=q.rows[0];
       await writeAdminAudit(pool,req,{
@@ -215,8 +225,8 @@ module.exports=function registerSupportRoutes(app,pool,adminGuard){
         targetType:'support_ticket',
         targetId:id,
         targetLabel:'Destek #'+id,
-        before:before.rows[0],
-        after:updated,
+        before:{status:before.rows[0].status,hadReply:Boolean(before.rows[0].admin_reply)},
+        after:{status:updated.status,hadReply:Boolean(updated.admin_reply)},
       });
 
       if((status==='answered'||status==='resolved')&&app.locals.heycarPush?.sendOwner){
