@@ -986,20 +986,20 @@ class _QrPageState extends State<QrPage>{
       return;
     }
     final doc=pw.Document();
-    const perPage=16;
+    const perPage=40;
     final purple=PdfColor.fromHex('#6E22D9');
     final lilac=PdfColor.fromHex('#F0E4FC');
     final muted=PdfColor.fromHex('#665D77');
-    final templateData=await rootBundle.load('assets/Etiket.png');
+    final templateData=await rootBundle.load('assets/Etiket2.png');
     final template=pw.MemoryImage(templateData.buffer.asUint8List());
 
-    // 16-up A4 safe print layout:
-    // 5 mm left/right margins leave exactly 200 mm for two 100 mm columns.
-    // 3 mm top/bottom margins protect the first/last row from common printer
-    // non-printable areas. The remaining 291 mm is split into 8 equal rows.
-    final labelWidth=100*PdfPageFormat.mm;
-    final pageTopBottomMargin=3*PdfPageFormat.mm;
-    final labelHeight=(PdfPageFormat.a4.height-(pageTopBottomMargin*2))/8;
+    // 40-up A4 layout for the new Etiket2 artwork.
+    // Each label keeps the artwork's native ratio at 50 x 25.5 mm.
+    // A4: 4 columns x 10 rows = 40 labels, centered on the page.
+    final labelWidth=50*PdfPageFormat.mm;
+    final labelHeight=25.5*PdfPageFormat.mm;
+    final pageHorizontalMargin=(PdfPageFormat.a4.width-(labelWidth*4))/2;
+    final pageVerticalMargin=(PdfPageFormat.a4.height-(labelHeight*10))/2;
 
     pw.Widget labelCard(Map<String,dynamic> e){
       final token=_tokenOf(e);
@@ -1010,55 +1010,44 @@ class _QrPageState extends State<QrPage>{
           pw.Positioned.fill(
             child:pw.Image(template,fit:pw.BoxFit.fill),
           ),
-          // Rebuild only the right QR card so the sample QR/text in Etiket.png
-          // is completely covered. Proportions match the reference label.
+          // Etiket2 already contains the white QR panel. Place the generated
+          // QR inside that blank area and keep the label code directly below it.
           pw.Positioned(
-            right:1.35*PdfPageFormat.mm,
+            right:1.0*PdfPageFormat.mm,
             top:1.15*PdfPageFormat.mm,
-            child:pw.Container(
-              width:31.2*PdfPageFormat.mm,
-              height:34.8*PdfPageFormat.mm,
-              padding:pw.EdgeInsets.fromLTRB(
-                1.55*PdfPageFormat.mm,
-                1.45*PdfPageFormat.mm,
-                1.55*PdfPageFormat.mm,
-                1.35*PdfPageFormat.mm,
-              ),
-              decoration:pw.BoxDecoration(
-                color:PdfColors.white,
-                border:pw.Border.all(color:PdfColor.fromHex('#D9D4E1'),width:.25),
-                borderRadius:pw.BorderRadius.circular(4.8*PdfPageFormat.mm),
-              ),
+            child:pw.SizedBox(
+              width:19.3*PdfPageFormat.mm,
+              height:22.9*PdfPageFormat.mm,
               child:pw.Column(children:[
                 pw.SizedBox(
-                  width:25.8*PdfPageFormat.mm,
-                  height:25.8*PdfPageFormat.mm,
+                  width:17.4*PdfPageFormat.mm,
+                  height:17.4*PdfPageFormat.mm,
                   child:pw.BarcodeWidget(
                     barcode:pw.Barcode.qrCode(),
                     data:publicUrl(token),
                     drawText:false,
                   ),
                 ),
-                pw.Spacer(),
+                pw.SizedBox(height:.45*PdfPageFormat.mm),
                 pw.Container(
-                  width:double.infinity,
-                  height:5.25*PdfPageFormat.mm,
+                  width:18.8*PdfPageFormat.mm,
+                  height:3.9*PdfPageFormat.mm,
                   alignment:pw.Alignment.center,
-                  padding:pw.EdgeInsets.symmetric(horizontal:1.1*PdfPageFormat.mm),
+                  padding:pw.EdgeInsets.symmetric(horizontal:.55*PdfPageFormat.mm),
                   decoration:pw.BoxDecoration(
                     color:lilac,
-                    borderRadius:pw.BorderRadius.circular(2.7*PdfPageFormat.mm),
+                    borderRadius:pw.BorderRadius.circular(1.7*PdfPageFormat.mm),
                   ),
                   child:pw.FittedBox(
                     fit:pw.BoxFit.scaleDown,
                     child:pw.RichText(text:pw.TextSpan(children:[
                       pw.TextSpan(
                         text:'Etiket Kodu: ',
-                        style:pw.TextStyle(color:muted,fontSize:5.5),
+                        style:pw.TextStyle(color:muted,fontSize:4.2),
                       ),
                       pw.TextSpan(
                         text:token,
-                        style:pw.TextStyle(color:purple,fontSize:7.2,fontWeight:pw.FontWeight.bold),
+                        style:pw.TextStyle(color:purple,fontSize:5.6,fontWeight:pw.FontWeight.bold),
                       ),
                     ])),
                   ),
@@ -1076,22 +1065,20 @@ class _QrPageState extends State<QrPage>{
       doc.addPage(pw.Page(
         pageFormat:PdfPageFormat.a4,
         margin:pw.EdgeInsets.symmetric(
-          horizontal:5*PdfPageFormat.mm,
-          vertical:pageTopBottomMargin,
+          horizontal:pageHorizontalMargin,
+          vertical:pageVerticalMargin,
         ),
         build:(_){
           final slots=<pw.Widget>[];
-          for(var i=0;i<8;i++){
-            final leftIndex=i*2;
-            final rightIndex=leftIndex+1;
-            slots.add(pw.Row(children:[
-              leftIndex<pageItems.length
-                ? labelCard(pageItems[leftIndex])
-                : pw.SizedBox(width:labelWidth,height:labelHeight),
-              rightIndex<pageItems.length
-                ? labelCard(pageItems[rightIndex])
-                : pw.SizedBox(width:labelWidth,height:labelHeight),
-            ]));
+          for(var row=0;row<10;row++){
+            final cells=<pw.Widget>[];
+            for(var col=0;col<4;col++){
+              final index=(row*4)+col;
+              cells.add(index<pageItems.length
+                ? labelCard(pageItems[index])
+                : pw.SizedBox(width:labelWidth,height:labelHeight));
+            }
+            slots.add(pw.Row(children:cells));
           }
           return pw.Column(children:slots);
         },
@@ -1102,7 +1089,7 @@ class _QrPageState extends State<QrPage>{
     final suffix=batchFilter=='all'?'tum-qr':batchFilter.toLowerCase();
     await saveAdminFile(
       Uint8List.fromList(bytes),
-      'cepqar-baski-a4-16li-guvenli-$suffix.pdf',
+      'cepqar-baski-a4-40li-$suffix.pdf',
       'application/pdf',
     );
     final newlyDownloaded=printableRows
@@ -1132,22 +1119,17 @@ class _QrPageState extends State<QrPage>{
   Widget _sticker(String token,String url)=>LayoutBuilder(builder:(context,c){
     final w=c.maxWidth;
     final h=c.maxHeight;
-    final cardW=w*.312;
-    final cardH=h*.928;
+    final cardW=w*.382;
+    final cardH=h*.860;
     return Stack(children:[
-      Positioned.fill(child:Image.asset('assets/Etiket.png',fit:BoxFit.fill)),
+      Positioned.fill(child:Image.asset('assets/Etiket2.png',fit:BoxFit.fill)),
       Positioned(
-        right:w*.0135,
-        top:h*.031,
+        right:w*.020,
+        top:h*.058,
         width:cardW,
         height:cardH,
         child:Container(
-          padding:EdgeInsets.fromLTRB(cardW*.050,cardH*.040,cardW*.050,cardH*.038),
-          decoration:BoxDecoration(
-            color:Colors.white,
-            borderRadius:BorderRadius.circular(cardW*.15),
-            border:Border.all(color:const Color(0xFFD9D4E1),width:.7),
-          ),
+          padding:EdgeInsets.fromLTRB(cardW*.035,cardH*.020,cardW*.035,cardH*.020),
           child:Column(children:[
             Expanded(child:LayoutBuilder(builder:(context,q){
               final s=q.maxWidth<q.maxHeight?q.maxWidth:q.maxHeight;
@@ -1209,7 +1191,7 @@ class _QrPageState extends State<QrPage>{
           Text(token,style:const TextStyle(fontWeight:FontWeight.w800,color:_muted,fontSize:13)),
           if((e['batch_code']??'').toString().isNotEmpty)Text('${e['batch_code']} • Parti sıra ${e['batch_serial']??'-'}',style:const TextStyle(color:_muted,fontSize:11)),
           const SizedBox(height:12),
-          ConstrainedBox(constraints:const BoxConstraints(maxWidth:640),child:AspectRatio(aspectRatio:100/37.5,child:RepaintBoundary(key:_stickerKey,child:_sticker(token,url)))),
+          ConstrainedBox(constraints:const BoxConstraints(maxWidth:640),child:AspectRatio(aspectRatio:50/25.5,child:RepaintBoundary(key:_stickerKey,child:_sticker(token,url)))),
           const SizedBox(height:12),
           Row(children:[
             Expanded(child:OutlinedButton.icon(onPressed:()=>launchUrl(Uri.parse(url),mode:LaunchMode.externalApplication),icon:const Icon(Icons.open_in_new_rounded),label:const Text('QR sayfasını aç',textAlign:TextAlign.center))),
