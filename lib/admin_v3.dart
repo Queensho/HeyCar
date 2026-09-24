@@ -13,6 +13,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'admin_requests_page.dart';
 import 'admin_download.dart';
 import 'admin_commerce_pages.dart';
+import 'admin_support_page.dart';
 
 const _navy = Color(0xFF060A18);
 const _purple = Color(0xFFB100FF);
@@ -233,6 +234,7 @@ class _AdminHomeState extends State<AdminHome> {
     ('Kampanyalar',Icons.campaign_rounded),
     ('Fırsat & Gelir',Icons.payments_rounded),
     ('Premium Yönetimi',Icons.workspace_premium_rounded),
+    ('Destek Talepleri',Icons.support_agent_rounded),
   ];
   Map<String,String> get headers=>{
     'Authorization':'Bearer ${widget.token}',
@@ -578,7 +580,7 @@ class _AdminHomeState extends State<AdminHome> {
     child:Row(children:[
       Icon(tabs[tab].$2,color:_purple,size:23),const SizedBox(width:9),
       Expanded(child:Text(tabs[tab].$1,style:const TextStyle(fontSize:18,fontWeight:FontWeight.w900,color:Colors.white))),
-      _roundAction(Icons.refresh_rounded,tab==7?()=>loadReports():tab==8?loadAudit:tab==9?loadSystemHealth:tab==10?loadPushHistory:tab==11?()=>loadSecurityCenter():tab==12?()=>loadComplaints():tab==13?()=>loadCommunications():tab==14?()=>loadBusinessesAdmin():tab==15?()=>loadCampaignsAdmin():tab==16?()=>loadOfferRevenue():tab==17?()=>loadPremiumAdmin():load),const SizedBox(width:8),_roundAction(Icons.logout_rounded,widget.onLogout),
+      _roundAction(Icons.refresh_rounded,tab==18?null:tab==7?()=>loadReports():tab==8?loadAudit:tab==9?loadSystemHealth:tab==10?loadPushHistory:tab==11?()=>loadSecurityCenter():tab==12?()=>loadComplaints():tab==13?()=>loadCommunications():tab==14?()=>loadBusinessesAdmin():tab==15?()=>loadCampaignsAdmin():tab==16?()=>loadOfferRevenue():tab==17?()=>loadPremiumAdmin():load),const SizedBox(width:8),_roundAction(Icons.logout_rounded,widget.onLogout),
     ]),
   );
 
@@ -606,7 +608,7 @@ class _AdminHomeState extends State<AdminHome> {
       IconButton(
         tooltip:'Yenile',
         icon:const Icon(Icons.refresh_rounded,color:Colors.white),
-        onPressed:tab==7?()=>loadReports():tab==8?loadAudit:tab==9?loadSystemHealth:tab==10?loadPushHistory:tab==11?()=>loadSecurityCenter():tab==12?()=>loadComplaints():tab==13?()=>loadCommunications():tab==14?()=>loadBusinessesAdmin():tab==15?()=>loadCampaignsAdmin():tab==16?()=>loadOfferRevenue():tab==17?()=>loadPremiumAdmin():load,
+        onPressed:tab==18?null:tab==7?()=>loadReports():tab==8?loadAudit:tab==9?loadSystemHealth:tab==10?loadPushHistory:tab==11?()=>loadSecurityCenter():tab==12?()=>loadComplaints():tab==13?()=>loadCommunications():tab==14?()=>loadBusinessesAdmin():tab==15?()=>loadCampaignsAdmin():tab==16?()=>loadOfferRevenue():tab==17?()=>loadPremiumAdmin():load,
       ),
       const SizedBox(width:4),
     ],
@@ -706,7 +708,7 @@ class _AdminHomeState extends State<AdminHome> {
     child:Container(width:38,height:38,decoration:BoxDecoration(color:_card2,borderRadius:BorderRadius.circular(12),border:Border.all(color:_purple.withValues(alpha:.45))),child:Icon(icon,color:Colors.white,size:20)),
   );
 
-  Widget page(){switch(tab){case 1:return UsersPage(rows:users,open:openUser);case 2:return VehiclesPage(rows:vehicles,open:openVehicle);case 3:return QrPage(rows:qr,create:createQr,action:qrAction,itemPrintStatus:qrItemPrintStatus);case 4:return ModerationPage(rows:themes,removeBackground:removeBg,resetTheme:resetTheme);case 5:return AdminCorrectionRequestsPage(token:widget.token,admin:widget.admin);case 6:return AdminPromoPage(rows:promos,onCreate:createPromo,onSetActive:setPromoActive,onPush:pushPromo,onUploadImage:uploadPromoImage);case 7:return ReportsPage(data:reports,loading:reportLoading,error:reportError,days:reportDays,onDaysChanged:loadReports,onRefresh:()=>loadReports());case 8:return AuditLogPage(data:auditData,loading:auditLoading,error:auditError,onRefresh:loadAudit);case 9:return SystemHealthPage(data:systemHealth,loading:systemHealthLoading,error:systemHealthError,onRefresh:loadSystemHealth);case 10:return AdminPushPage(users:users,data:pushHistory,loading:pushHistoryLoading,error:pushHistoryError,onSend:sendAdminPush,onRefresh:loadPushHistory);case 11:return SecurityCenterPage(data:securityCenter,loading:securityCenterLoading,error:securityCenterError,hours:securityHours,onHoursChanged:loadSecurityCenter,onRefresh:()=>loadSecurityCenter());case 12:return ComplaintModerationPage(data:complaintData,loading:complaintLoading,error:complaintError,status:complaintStatus,onStatusChanged:loadComplaints,onOpen:openComplaint,onRefresh:()=>loadComplaints());case 13:return CommunicationOpsPage(data:communicationsData,loading:communicationsLoading,error:communicationsError,hours:communicationsHours,onHoursChanged:loadCommunications,onRefresh:()=>loadCommunications());case 14:return AdminBusinessesPage(data:businessesAdminData,loading:businessesAdminLoading,error:businessesAdminError,status:businessesAdminStatus,onStatus:loadBusinessesAdmin,onUpdate:updateBusinessAdmin,onRefresh:()=>loadBusinessesAdmin());case 15:return AdminCampaignsPage(data:campaignsAdminData,loading:campaignsAdminLoading,error:campaignsAdminError,status:campaignsAdminStatus,onStatus:loadCampaignsAdmin,onUpdate:updateCampaignAdmin,onRefresh:()=>loadCampaignsAdmin());case 16:return AdminOfferRevenuePage(data:offerRevenueData,loading:offerRevenueLoading,error:offerRevenueError,days:offerRevenueDays,onDays:loadOfferRevenue,onRefresh:()=>loadOfferRevenue());case 17:return AdminPremiumPage(data:premiumAdminData,loading:premiumAdminLoading,error:premiumAdminError,filter:premiumAdminFilter,onFilter:loadPremiumAdmin,onAction:updatePremiumAdmin,onHistory:loadPremiumHistory,onRefresh:()=>loadPremiumAdmin());default:return const SizedBox.shrink();}}
+  Widget page(){switch(tab){case 1:return UsersPage(rows:users,open:openUser);case 2:return VehiclesPage(rows:vehicles,open:openVehicle);case 3:return QrPage(rows:qr,create:createQr,action:qrAction,itemPrintStatus:qrItemPrintStatus);case 4:return ModerationPage(rows:themes,removeBackground:removeBg,resetTheme:resetTheme);case 5:return AdminCorrectionRequestsPage(token:widget.token,admin:widget.admin);case 6:return AdminPromoPage(rows:promos,onCreate:createPromo,onSetActive:setPromoActive,onPush:pushPromo,onUploadImage:uploadPromoImage);case 7:return ReportsPage(data:reports,loading:reportLoading,error:reportError,days:reportDays,onDaysChanged:loadReports,onRefresh:()=>loadReports());case 8:return AuditLogPage(data:auditData,loading:auditLoading,error:auditError,onRefresh:loadAudit);case 9:return SystemHealthPage(data:systemHealth,loading:systemHealthLoading,error:systemHealthError,onRefresh:loadSystemHealth);case 10:return AdminPushPage(users:users,data:pushHistory,loading:pushHistoryLoading,error:pushHistoryError,onSend:sendAdminPush,onRefresh:loadPushHistory);case 11:return SecurityCenterPage(data:securityCenter,loading:securityCenterLoading,error:securityCenterError,hours:securityHours,onHoursChanged:loadSecurityCenter,onRefresh:()=>loadSecurityCenter());case 12:return ComplaintModerationPage(data:complaintData,loading:complaintLoading,error:complaintError,status:complaintStatus,onStatusChanged:loadComplaints,onOpen:openComplaint,onRefresh:()=>loadComplaints());case 13:return CommunicationOpsPage(data:communicationsData,loading:communicationsLoading,error:communicationsError,hours:communicationsHours,onHoursChanged:loadCommunications,onRefresh:()=>loadCommunications());case 14:return AdminBusinessesPage(data:businessesAdminData,loading:businessesAdminLoading,error:businessesAdminError,status:businessesAdminStatus,onStatus:loadBusinessesAdmin,onUpdate:updateBusinessAdmin,onRefresh:()=>loadBusinessesAdmin());case 15:return AdminCampaignsPage(data:campaignsAdminData,loading:campaignsAdminLoading,error:campaignsAdminError,status:campaignsAdminStatus,onStatus:loadCampaignsAdmin,onUpdate:updateCampaignAdmin,onRefresh:()=>loadCampaignsAdmin());case 16:return AdminOfferRevenuePage(data:offerRevenueData,loading:offerRevenueLoading,error:offerRevenueError,days:offerRevenueDays,onDays:loadOfferRevenue,onRefresh:()=>loadOfferRevenue());case 17:return AdminPremiumPage(data:premiumAdminData,loading:premiumAdminLoading,error:premiumAdminError,filter:premiumAdminFilter,onFilter:loadPremiumAdmin,onAction:updatePremiumAdmin,onHistory:loadPremiumHistory,onRefresh:()=>loadPremiumAdmin());case 18:return AdminSupportPage(token:widget.token,admin:widget.admin);default:return const SizedBox.shrink();}}
 }
 
 Widget _brand({double fontSize=34})=>RichText(text:TextSpan(children:[
@@ -835,6 +837,7 @@ class Dashboard extends StatelessWidget{
       ('Kampanyalar','Fırsat onay ve düzenleme',Icons.campaign_rounded,15),
       ('Fırsat & Gelir','Kullanım ve komisyon raporu',Icons.payments_rounded,16),
       ('Premium Yönetimi','Premium ver, uzat veya iptal et',Icons.workspace_premium_rounded,17),
+      ('Destek Talepleri','Kullanıcı sorunlarını yanıtla ve çöz',Icons.support_agent_rounded,18),
     ];
     return Wrap(spacing:gap,runSpacing:gap,children:data.map((x)=>SizedBox(width:itemWidth,height:compact?96:92,child:InkWell(borderRadius:BorderRadius.circular(17),onTap:()=>onOpenTab(x.$4),child:Container(padding:const EdgeInsets.symmetric(horizontal:12,vertical:11),decoration:_glowDecoration(radius:17),child:Row(children:[Container(width:44,height:44,decoration:BoxDecoration(shape:BoxShape.circle,color:_purple.withValues(alpha:.12),border:Border.all(color:_purple.withValues(alpha:.38))),child:Icon(x.$3,color:_purple,size:24)),const SizedBox(width:10),Expanded(child:Column(mainAxisAlignment:MainAxisAlignment.center,crossAxisAlignment:CrossAxisAlignment.start,children:[Text(x.$1,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Colors.white,fontSize:13.5,fontWeight:FontWeight.w900)),const SizedBox(height:3),Text(x.$2,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_muted,fontSize:11.5))])),const Icon(Icons.chevron_right_rounded,color:Color(0xFFC96CFF),size:24)]))))).toList());
   }
@@ -2725,6 +2728,10 @@ String _auditActionLabel(String action)=>switch(action){
   'premium.extended'=>'Premium uzatıldı',
   'premium.cancelled'=>'Premium iptal edildi',
   'premium.adjusted'=>'Premium ayarlandı',
+  'support.in_review'=>'Destek talebi incelemeye alındı',
+  'support.answered'=>'Destek talebi yanıtlandı',
+  'support.resolved'=>'Destek talebi çözüldü',
+  'support.reopened'=>'Destek talebi yeniden açıldı',
   _=>action.replaceAll('.',' • '),
 };
 
@@ -2740,6 +2747,7 @@ String _auditTargetLabel(String type)=>switch(type){
   'promo'=>'Promo',
   'business'=>'İşletme',
   'business_campaign'=>'Kampanya',
+  'support_ticket'=>'Destek talebi',
   _=>type,
 };
 
@@ -2754,6 +2762,7 @@ IconData _auditIcon(String action){
   if(action.startsWith('business.'))return Icons.storefront_rounded;
   if(action.startsWith('campaign.'))return Icons.local_offer_rounded;
   if(action.startsWith('premium.'))return Icons.workspace_premium_rounded;
+  if(action.startsWith('support.'))return Icons.support_agent_rounded;
   return Icons.history_rounded;
 }
 
@@ -2764,6 +2773,9 @@ Color _auditColor(String action){
   if(action.startsWith('promo.'))return _pink;
   if(action=='business.rejected'||action=='business.deactivated'||action=='campaign.rejected'||action=='campaign.unpublished'||action=='premium.cancelled')return Colors.redAccent;
   if(action=='business.approved'||action=='business.activated'||action=='campaign.approved'||action=='premium.activated'||action=='premium.extended')return _green;
+  if(action=='support.resolved')return _green;
+  if(action=='support.answered')return _blue;
+  if(action=='support.in_review'||action=='support.reopened')return _amber;
   if(action.startsWith('business.')||action.startsWith('campaign.')||action.startsWith('premium.'))return _amber;
   if(action.startsWith('moderation.'))return _amber;
   if(action.startsWith('qr'))return _purple;
