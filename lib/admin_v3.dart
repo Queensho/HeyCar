@@ -1322,6 +1322,356 @@ String _healthStatusLabel(String status)=>switch(status){
   _=>status.isEmpty?'-':status,
 };
 
+
+class AdminPushPage extends StatefulWidget{
+  const AdminPushPage({super.key,required this.users,required this.data,required this.loading,required this.error,required this.onSend,required this.onRefresh});
+  final List<Map<String,dynamic>> users;
+  final Map<String,dynamic> data;
+  final bool loading;
+  final String? error;
+  final Future<Map<String,dynamic>> Function(Map<String,dynamic>) onSend;
+  final Future<void> Function() onRefresh;
+  @override State<AdminPushPage> createState()=>_AdminPushPageState();
+}
+
+class _AdminPushPageState extends State<AdminPushPage>{
+  final title=TextEditingController();
+  final body=TextEditingController();
+  final search=TextEditingController();
+  String mode='single';
+  String segment='active';
+  String? singleId;
+  final Set<String> selected=<String>{};
+  bool sending=false;
+
+  @override void dispose(){title.dispose();body.dispose();search.dispose();super.dispose();}
+
+  List<Map<String,dynamic>> get userRows{
+    final q=search.text.trim().toLowerCase();
+    final rows=widget.users.where((u)=>(u['role']??'').toString()!='admin').where((u){
+      if(q.isEmpty)return true;
+      return '${u['display_name']??''} ${u['phone']??''} ${u['email']??''}'.toLowerCase().contains(q);
+    }).toList();
+    return rows.take(60).toList();
+  }
+
+  String userLabel(Map<String,dynamic> u){
+    final name=(u['display_name']??'İsimsiz').toString();
+    final phone=(u['phone']??u['email']??'').toString();
+    return phone.isEmpty?name:'$name • $phone';
+  }
+
+  Future<void> sendPush() async{
+    if(sending)return;
+    final t=title.text.trim(),b=body.text.trim();
+    if(t.isEmpty||b.isEmpty){_msg('Başlık ve mesaj zorunlu.');return;}
+    List<String> ids=[];
+    if(mode=='single'){
+      if(singleId==null){_msg('Bir kullanıcı seç.');return;}
+      ids=[singleId!];
+    }else if(mode=='users'){
+      if(selected.isEmpty){_msg('En az bir kullanıcı seç.');return;}
+      ids=selected.toList();
+    }
+    final targetText=switch(mode){
+      'single'=>'1 kullanıcı',
+      'users'=>'${ids.length} seçili kullanıcı',
+      'segment'=>switch(segment){'premium'=>'Premium kullanıcılar','standard'=>'Standart kullanıcılar','suspended'=>'Askıdaki kullanıcılar',_=>'Aktif kullanıcılar'},
+      _=>'Tüm aktif kullanıcılar',
+    };
+    final ok=await showDialog<bool>(context:context,builder:(d)=>AlertDialog(
+      title:const Text('Push gönderilsin mi?'),
+      content:Text('$targetText\n\n$t\n$b'),
+      actions:[
+        TextButton(onPressed:()=>Navigator.pop(d,false),child:const Text('Vazgeç')),
+        FilledButton(onPressed:()=>Navigator.pop(d,true),child:const Text('Gönder')),
+      ],
+    ));
+    if(ok!=true)return;
+    setState(()=>sending=true);
+    try{
+      final r=await widget.onSend({'mode':mode,'segment':segment,'userIds':ids,'title':t,'body':b});
+      _msg('${r['targeted']??0} kullanıcı hedeflendi • ${r['delivered']??0}/${r['attempted']??0} teslim');
+      title.clear();body.clear();
+    }catch(e){_msg(e.toString().replaceFirst('Exception: ',''));}
+    finally{if(mounted)setState(()=>sending=false);}
+  }
+
+  void _msg(String s){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(s)));}
+
+  @override Widget build(BuildContext context){
+    final history=(widget.data['items'] is List)?(widget.data['items'] as List).whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).toList():<Map<String,dynamic>>[];
+    return RefreshIndicator(
+      color:_purple,onRefresh:widget.onRefresh,
+      child:LayoutBuilder(builder:(context,constraints){
+        final compact=constraints.maxWidth<760;
+        final pad=compact?12.0:18.0;
+        return ListView(
+          physics:const AlwaysScrollableScrollPhysics(),
+          padding:EdgeInsets.fromLTRB(pad,14,pad,28),
+          children:[
+            Container(
+              padding:const EdgeInsets.all(16),
+              decoration:BoxDecoration(
+                gradient:const LinearGradient(colors:[Color(0xFF10152D),Color(0xFF190923)]),
+                borderRadius:BorderRadius.circular(22),
+                border:Border.all(color:_purple.withValues(alpha:.42)),
+              ),
+              child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                Row(children:[
+                  Container(width:46,height:46,decoration:BoxDecoration(color:_purple.withValues(alpha:.14),shape:BoxShape.circle),child:const Icon(Icons.notifications_active_rounded,color:_purple,size:25)),
+                  const SizedBox(width:11),
+                  const Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                    Text('Bildirim Yönetimi',style:TextStyle(fontSize:21,fontWeight:FontWeight.w900)),
+                    SizedBox(height:2),
+                    Text('Tek kullanıcıya, seçili gruba veya tüm kullanıcılara push gönder.',style:TextStyle(color:_muted,fontSize:12)),
+                  ])),
+                  if(widget.loading)const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2,color:_purple)),
+                ]),
+                const SizedBox(height:14),
+                Wrap(spacing:7,runSpacing:7,children:[
+                  ChoiceChip(label:const Text('Tek kullanıcı'),selected:mode=='single',onSelected:(_)=>setState(()=>mode='single')),
+                  ChoiceChip(label:const Text('Seçili grup'),selected:mode=='users',onSelected:(_)=>setState(()=>mode='users')),
+                  ChoiceChip(label:const Text('Kullanıcı grubu'),selected:mode=='segment',onSelected:(_)=>setState(()=>mode='segment')),
+                  ChoiceChip(label:const Text('Tüm kullanıcılar'),selected:mode=='all',onSelected:(_)=>setState(()=>mode='all')),
+                ]),
+              ]),
+            ),
+            const SizedBox(height:12),
+            Container(
+              padding:const EdgeInsets.all(14),
+              decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(20),border:Border.all(color:_line)),
+              child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                if(mode=='single')DropdownButtonFormField<String>(
+                  value:singleId,
+                  isExpanded:true,
+                  decoration:const InputDecoration(labelText:'Kullanıcı seç',prefixIcon:Icon(Icons.person_search_rounded)),
+                  items:widget.users.where((u)=>(u['role']??'').toString()!='admin').map((u)=>DropdownMenuItem<String>(
+                    value:(u['id']??'').toString(),
+                    child:Text(userLabel(u),overflow:TextOverflow.ellipsis),
+                  )).toList(),
+                  onChanged:(v)=>setState(()=>singleId=v),
+                ),
+                if(mode=='segment')DropdownButtonFormField<String>(
+                  value:segment,
+                  decoration:const InputDecoration(labelText:'Grup'),
+                  items:const[
+                    DropdownMenuItem(value:'active',child:Text('Tüm aktif kullanıcılar')),
+                    DropdownMenuItem(value:'premium',child:Text('Premium kullanıcılar')),
+                    DropdownMenuItem(value:'standard',child:Text('Standart kullanıcılar')),
+                    DropdownMenuItem(value:'suspended',child:Text('Askıdaki kullanıcılar')),
+                  ],
+                  onChanged:(v)=>setState(()=>segment=v??'active'),
+                ),
+                if(mode=='users')...[
+                  TextField(controller:search,onChanged:(_)=>setState((){}),decoration:const InputDecoration(labelText:'Kullanıcı ara',prefixIcon:Icon(Icons.search_rounded))),
+                  const SizedBox(height:8),
+                  Container(
+                    constraints:const BoxConstraints(maxHeight:300),
+                    decoration:BoxDecoration(color:_card2,borderRadius:BorderRadius.circular(14),border:Border.all(color:Colors.white.withValues(alpha:.05))),
+                    child:ListView(
+                      shrinkWrap:true,
+                      children:userRows.map((u){
+                        final id=(u['id']??'').toString();
+                        return CheckboxListTile(
+                          dense:true,
+                          value:selected.contains(id),
+                          activeColor:_purple,
+                          title:Text(userLabel(u),maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:12.5,fontWeight:FontWeight.w800)),
+                          subtitle:Text((u['premium']==true?'Premium':'Standart')+' • '+(u['status']??'-').toString(),style:const TextStyle(color:_muted,fontSize:10.5)),
+                          onChanged:(v)=>setState((){if(v==true){selected.add(id);}else{selected.remove(id);}}),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  const SizedBox(height:7),
+                  Text('${selected.length} kullanıcı seçili',style:const TextStyle(color:Color(0xFFC879FF),fontSize:11.5,fontWeight:FontWeight.w800)),
+                ],
+                if(mode=='all')Container(
+                  padding:const EdgeInsets.all(12),
+                  decoration:BoxDecoration(color:_amber.withValues(alpha:.08),borderRadius:BorderRadius.circular(14),border:Border.all(color:_amber.withValues(alpha:.30))),
+                  child:const Row(children:[Icon(Icons.warning_amber_rounded,color:_amber),SizedBox(width:8),Expanded(child:Text('Bildirim tüm aktif uygulama kullanıcılarına gönderilecek.',style:TextStyle(color:_muted,fontSize:11.5)))]),
+                ),
+                const SizedBox(height:12),
+                TextField(controller:title,maxLength:90,decoration:const InputDecoration(labelText:'Bildirim başlığı',prefixIcon:Icon(Icons.title_rounded))),
+                const SizedBox(height:8),
+                TextField(controller:body,maxLength:400,maxLines:4,decoration:const InputDecoration(labelText:'Mesaj',alignLabelWithHint:true,prefixIcon:Icon(Icons.message_rounded))),
+                const SizedBox(height:10),
+                SizedBox(width:double.infinity,height:48,child:FilledButton.icon(
+                  onPressed:sending?null:sendPush,
+                  icon:sending?const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)):const Icon(Icons.send_rounded),
+                  label:Text(sending?'Gönderiliyor...':'Push Gönder',style:const TextStyle(fontWeight:FontWeight.w900)),
+                )),
+              ]),
+            ),
+            const SizedBox(height:14),
+            const _ReportSectionTitle(title:'Gönderim Geçmişi',subtitle:'Son admin push gönderimleri',icon:Icons.history_rounded),
+            const SizedBox(height:10),
+            if(widget.error!=null)Text(widget.error!,style:const TextStyle(color:Colors.redAccent,fontSize:11.5)),
+            if(history.isEmpty)_adminEmpty('Henüz admin push gönderimi yok.')
+            else ...history.map((h){
+              final delivered=int.tryParse((h['delivered_count']??'0').toString())??0;
+              final attempted=int.tryParse((h['attempted_count']??'0').toString())??0;
+              final targeted=int.tryParse((h['targeted_count']??'0').toString())??0;
+              return Container(
+                margin:const EdgeInsets.only(bottom:9),padding:const EdgeInsets.all(12),
+                decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(17),border:Border.all(color:_line)),
+                child:Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                  Container(width:38,height:38,decoration:BoxDecoration(color:_purple.withValues(alpha:.13),shape:BoxShape.circle),child:const Icon(Icons.notifications_rounded,color:_purple,size:20)),
+                  const SizedBox(width:10),
+                  Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                    Text((h['title']??'-').toString(),style:const TextStyle(fontSize:13,fontWeight:FontWeight.w900)),
+                    const SizedBox(height:3),
+                    Text((h['body']??'').toString(),maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_muted,fontSize:11)),
+                    const SizedBox(height:6),
+                    Text('$targeted hedef • $delivered/$attempted teslim • ${_adminDate(h['created_at'])}',style:const TextStyle(color:Color(0xFFC879FF),fontSize:10.5,fontWeight:FontWeight.w800)),
+                  ])),
+                ]),
+              );
+            }),
+          ],
+        );
+      }),
+    );
+  }
+}
+
+String _securityEventLabel(String type)=>switch(type){
+  'qr_rate_limited'=>'QR rate-limit',
+  'blocked_visitor_attempt'=>'Engellenen ziyaretçi denemesi',
+  'failed_login'=>'Başarısız giriş',
+  'new_device_login'=>'Yeni cihaz girişi',
+  'recovery_rate_limited'=>'Kurtarma rate-limit',
+  _=>type,
+};
+Color _securityEventColor(String type)=>switch(type){
+  'qr_rate_limited'||'recovery_rate_limited'=>_amber,
+  'blocked_visitor_attempt'||'failed_login'=>Colors.redAccent,
+  'new_device_login'=>_blue,
+  _=>_purple,
+};
+
+class SecurityCenterPage extends StatelessWidget{
+  const SecurityCenterPage({super.key,required this.data,required this.loading,required this.error,required this.hours,required this.onHoursChanged,required this.onRefresh});
+  final Map<String,dynamic> data;
+  final bool loading;
+  final String? error;
+  final int hours;
+  final Future<void> Function(int) onHoursChanged;
+  final Future<void> Function() onRefresh;
+
+  List<Map<String,dynamic>> list(String key){
+    final raw=data[key];
+    return raw is List?raw.whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).toList():[];
+  }
+
+  @override Widget build(BuildContext context){
+    if(loading&&data.isEmpty)return const Center(child:CircularProgressIndicator(color:_purple));
+    if(error!=null&&data.isEmpty)return Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
+      const Icon(Icons.error_outline_rounded,color:Colors.redAccent,size:34),const SizedBox(height:10),
+      Text(error!,style:const TextStyle(color:_muted),textAlign:TextAlign.center),const SizedBox(height:12),
+      FilledButton.icon(onPressed:onRefresh,icon:const Icon(Icons.refresh_rounded),label:const Text('Tekrar dene')),
+    ]));
+    final summary=_healthMap(data['summary']);
+    final events=list('events'),blocked=list('blockedVisitors'),excessive=list('excessiveQr'),recovery=list('recoveryAttempts'),newDevices=list('newDevices');
+    return RefreshIndicator(
+      color:_purple,onRefresh:onRefresh,
+      child:LayoutBuilder(builder:(context,constraints){
+        final compact=constraints.maxWidth<760;
+        final pad=compact?12.0:18.0;
+        final width=constraints.maxWidth-pad*2;
+        final cols=constraints.maxWidth>=1000?3:compact?2:3;
+        final gap=10.0;
+        final metricWidth=(width-gap*(cols-1))/cols;
+        return ListView(
+          physics:const AlwaysScrollableScrollPhysics(),
+          padding:EdgeInsets.fromLTRB(pad,14,pad,28),
+          children:[
+            Container(
+              padding:const EdgeInsets.all(16),
+              decoration:BoxDecoration(gradient:const LinearGradient(colors:[Color(0xFF0D1530),Color(0xFF1B081D)]),borderRadius:BorderRadius.circular(22),border:Border.all(color:Colors.redAccent.withValues(alpha:.28))),
+              child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                Row(children:[
+                  Container(width:46,height:46,decoration:BoxDecoration(color:Colors.redAccent.withValues(alpha:.11),shape:BoxShape.circle),child:const Icon(Icons.security_rounded,color:Colors.redAccent,size:25)),
+                  const SizedBox(width:11),
+                  const Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                    Text('Güvenlik Merkezi',style:TextStyle(fontSize:21,fontWeight:FontWeight.w900)),
+                    SizedBox(height:2),
+                    Text('QR kötüye kullanım, giriş ve cihaz olaylarını tek yerden izle.',style:TextStyle(color:_muted,fontSize:12)),
+                  ])),
+                  if(loading)const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2,color:_purple)),
+                ]),
+                const SizedBox(height:13),
+                Wrap(spacing:7,runSpacing:7,children:[
+                  ChoiceChip(label:const Text('24 Saat'),selected:hours==24,onSelected:(_)=>onHoursChanged(24)),
+                  ChoiceChip(label:const Text('7 Gün'),selected:hours==168,onSelected:(_)=>onHoursChanged(168)),
+                  ChoiceChip(label:const Text('30 Gün'),selected:hours==720,onSelected:(_)=>onHoursChanged(720)),
+                ]),
+              ]),
+            ),
+            const SizedBox(height:12),
+            Wrap(spacing:gap,runSpacing:gap,children:[
+              SizedBox(width:metricWidth,height:94,child:_ReportMetricCard(value:'${summary['qrRateLimits']??0}',label:'QR rate-limit',icon:Icons.speed_rounded,color:_amber)),
+              SizedBox(width:metricWidth,height:94,child:_ReportMetricCard(value:'${summary['blockedAttempts']??0}',label:'Engelli ziyaretçi denemesi',icon:Icons.block_rounded,color:Colors.redAccent)),
+              SizedBox(width:metricWidth,height:94,child:_ReportMetricCard(value:'${summary['failedLogins']??0}',label:'Başarısız giriş',icon:Icons.lock_person_rounded,color:Colors.redAccent)),
+              SizedBox(width:metricWidth,height:94,child:_ReportMetricCard(value:'${summary['newDevices']??0}',label:'Yeni cihaz girişi',icon:Icons.phonelink_lock_rounded,color:_blue)),
+              SizedBox(width:metricWidth,height:94,child:_ReportMetricCard(value:'${summary['blockedVisitors']??0}',label:'Engellenen ziyaretçi',icon:Icons.person_off_rounded,color:_purple)),
+              SizedBox(width:metricWidth,height:94,child:_ReportMetricCard(value:'${summary['excessiveQrBursts']??0}',label:'Yoğun QR tarama kümesi',icon:Icons.qr_code_scanner_rounded,color:_amber)),
+            ]),
+            const SizedBox(height:14),
+            _securitySection('Güvenlik Olayları','Rate-limit, başarısız giriş ve yeni cihaz olayları',Icons.warning_amber_rounded,
+              events.isEmpty?_adminEmpty('Bu dönemde güvenlik olayı yok.'):Column(children:events.map((e){
+                final type=(e['event_type']??'').toString(),color=_securityEventColor(type);
+                final owner=(e['owner_name']??e['owner_phone']??'Bilinmeyen kullanıcı').toString();
+                final detail=_healthMap(e['detail']);
+                final extra=detail.entries.map((x)=>'${x.key}: ${x.value}').join(' • ');
+                return _adminHistoryRow(icon:Icons.shield_outlined,title:_securityEventLabel(type),subtitle:'$owner${(e['subject']??'').toString().isNotEmpty?' • ${e['subject']}':''}${extra.isNotEmpty?' • $extra':''}',trailing:_adminDate(e['created_at']),color:color);
+              }).toList()),
+            ),
+            _securitySection('Aşırı QR Taramaları','Dakika içinde 8+ güvenlik isteği oluşturan ziyaretçiler',Icons.qr_code_scanner_rounded,
+              excessive.isEmpty?_adminEmpty('Yoğun QR taraması tespit edilmedi.'):Column(children:excessive.map((e)=>_adminHistoryRow(
+                icon:Icons.speed_rounded,title:'${e['request_count']??0} istek • QR ${e['qr_token']??'-'}',
+                subtitle:'Ziyaretçi: ${e['visitor_key']??'-'} • Owner: ${e['owner_id']??'-'}',
+                trailing:_adminDate(e['last_at']),color:_amber,
+              )).toList()),
+            ),
+            _securitySection('Engellenen Ziyaretçiler','Araç sahiplerinin engellediği ziyaretçiler',Icons.person_off_rounded,
+              blocked.isEmpty?_adminEmpty('Engellenen ziyaretçi yok.'):Column(children:blocked.map((e)=>_adminHistoryRow(
+                icon:Icons.block_rounded,title:(e['owner_name']??e['owner_phone']??'Kullanıcı').toString(),
+                subtitle:'Ziyaretçi: ${e['visitor_key']??'-'}${(e['reason']??'').toString().isNotEmpty?' • ${e['reason']}':''}',
+                trailing:_adminDate(e['created_at']),color:Colors.redAccent,
+              )).toList()),
+            ),
+            _securitySection('Başarısız Kurtarma / Rate Limit','Şifre kurtarma denemeleri',Icons.password_rounded,
+              recovery.isEmpty?_adminEmpty('Aktif başarısız kurtarma kaydı yok.'):Column(children:recovery.map((e)=>_adminHistoryRow(
+                icon:Icons.password_rounded,title:'${e['failed_count']??0} başarısız deneme',
+                subtitle:'Telefon: ${e['phone']??'-'}${e['blocked_until']!=null?' • Bloklu: ${_adminDate(e['blocked_until'])}':''}',
+                trailing:_adminDate(e['window_started_at']),color:_amber,
+              )).toList()),
+            ),
+            _securitySection('Yeni Cihaz Girişleri','Kullanıcı hesabında ilk kez görülen cihazlar',Icons.devices_rounded,
+              newDevices.isEmpty?_adminEmpty('Bu dönemde yeni cihaz girişi yok.'):Column(children:newDevices.map((e)=>_adminHistoryRow(
+                icon:Icons.phonelink_lock_rounded,title:(e['owner_name']??e['owner_phone']??'Kullanıcı').toString(),
+                subtitle:(e['detail']??'Yeni cihaz').toString(),trailing:_adminDate(e['created_at']),color:_blue,
+              )).toList()),
+            ),
+            if(error!=null)Text(error!,style:const TextStyle(color:Colors.redAccent,fontSize:11.5)),
+          ],
+        );
+      }),
+    );
+  }
+
+  Widget _securitySection(String title,String subtitle,IconData icon,Widget child)=>Container(
+    margin:const EdgeInsets.only(bottom:12),padding:const EdgeInsets.all(14),
+    decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(20),border:Border.all(color:_line)),
+    child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      Row(children:[Icon(icon,color:_purple,size:22),const SizedBox(width:8),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(title,style:const TextStyle(fontSize:16,fontWeight:FontWeight.w900)),Text(subtitle,style:const TextStyle(color:_muted,fontSize:10.5))]))]),
+      const SizedBox(height:11),child,
+    ]),
+  );
+}
+
 class SystemHealthPage extends StatelessWidget{
   const SystemHealthPage({super.key,required this.data,required this.loading,required this.error,required this.onRefresh});
   final Map<String,dynamic> data;
