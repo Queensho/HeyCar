@@ -19,7 +19,7 @@ class _AdminPremiumPricingCardState extends State<AdminPremiumPricingCard>{
   String? error;
 
   Map<String,String> get headers=>{
-    'Authorization':'Bearer \${widget.token}',
+    'Authorization':'Bearer ${widget.token}',
     'Content-Type':'application/json',
     if((widget.admin?['id']??'').toString().isNotEmpty)'X-Admin-Id':(widget.admin?['id']??'').toString(),
     if((widget.admin?['email']??'').toString().isNotEmpty)'X-Admin-Email':(widget.admin?['email']??'').toString(),
