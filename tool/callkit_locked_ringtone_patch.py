@@ -165,7 +165,7 @@ new_play = """    private fun playSound(data: Bundle?) {
         if (sound.isNotEmpty() && !sound.equals("system_ringtone_default", true)) {
             val resId = context.resources.getIdentifier(sound, "raw", context.packageName)
             if (resId != 0) {
-                val rawUri = Uri.parse("android.resource://\${context.packageName}/$resId")
+                val rawUri = Uri.parse("android.resource://${context.packageName}/$resId")
                 try {
                     mediaPlayer = MediaPlayer().apply {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
