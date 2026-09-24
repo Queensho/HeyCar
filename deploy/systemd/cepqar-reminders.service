@@ -1,0 +1,14 @@
+[Unit]
+Description=Cepqar vehicle reminder delivery
+After=network-online.target heycar.service
+Wants=network-online.target
+Requires=heycar.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/heycar/reminder-job.env
+ExecStart=/usr/bin/curl --fail-with-body --silent --show-error --max-time 120 --retry 2 --retry-delay 5 -X POST http://127.0.0.1:8090/api/internal/reminders/deliver -H "X-Reminder-Secret: ${REMINDER_JOB_SECRET}" -H "Content-Type: application/json" --data "{"source":"systemd"}"
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
