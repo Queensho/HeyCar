@@ -26,6 +26,14 @@ class _PremiumPageState extends State<PremiumPage>{
     (Icons.notifications_active_rounded,'Gelişmiş Hatırlatmalar','Muayene, sigorta ve bakım takibi.'),
     (Icons.dark_mode_rounded,'Rahatsız Etmeyin','İstediğin zaman bildirimleri sessize al.'),
   ];
+  String get yearlyNote{
+    final cfg=runtimeConfig;
+    if(cfg==null||cfg.monthlyPrice<=0)return '/ yıl';
+    final fullYear=cfg.monthlyPrice*12;
+    final saving=((fullYear-cfg.yearlyPrice)/fullYear*100);
+    if(saving<=0)return '/ yıl';
+    return '/ yıl  •  %${saving.round()} tasarruf';
+  }
   @override Widget build(BuildContext context)=>Scaffold(
     backgroundColor:_bg,
     appBar:AppBar(backgroundColor:_bg,surfaceTintColor:_bg,foregroundColor:Colors.white,elevation:0,title:const Text('Cepqar Premium',style:TextStyle(fontSize:19,fontWeight:FontWeight.w900))),
@@ -45,7 +53,7 @@ class _PremiumPageState extends State<PremiumPage>{
       Row(children:[
         Expanded(child:_Plan(selected:!yearly,title:'Aylık',price:runtimeConfig?.monthlyPriceText??'₺49,99',note:'/ ay',onTap:()=>setState(()=>yearly=false))),
         const SizedBox(width:10),
-        Expanded(child:_Plan(selected:yearly,title:'Yıllık',price:runtimeConfig?.yearlyPriceText??'₺499,99',note:'/ yıl  •  %17 tasarruf',onTap:()=>setState(()=>yearly=true))),
+        Expanded(child:_Plan(selected:yearly,title:'Yıllık',price:runtimeConfig?.yearlyPriceText??'₺499,99',note:yearlyNote,onTap:()=>setState(()=>yearly=true))),
       ]),
       const SizedBox(height:12),
       SizedBox(height:52,child:FilledButton.icon(
