@@ -19,7 +19,6 @@ class _AdminSettingsPageState extends State<AdminSettingsPage>{
   final androidVersion=TextEditingController(),iosVersion=TextEditingController();
   final androidUrl=TextEditingController(),iosUrl=TextEditingController();
   final fee=TextEditingController(),qrMax=TextEditingController(),qrWindow=TextEditingController();
-  final monthlyPrice=TextEditingController(),yearlyPrice=TextEditingController();
   Map<String,bool> features={'offers':true,'messages':true,'calls':true,'parking':true,'premium':true,'business':true};
 
   Map<String,String> get headers=>{
@@ -32,7 +31,7 @@ class _AdminSettingsPageState extends State<AdminSettingsPage>{
 
   @override void initState(){super.initState();load();}
   @override void dispose(){
-    for(final c in [maintenanceTitle,maintenanceMessage,androidVersion,iosVersion,androidUrl,iosUrl,fee,qrMax,qrWindow,monthlyPrice,yearlyPrice]){c.dispose();}
+    for(final c in [maintenanceTitle,maintenanceMessage,androidVersion,iosVersion,androidUrl,iosUrl,fee,qrMax,qrWindow]){c.dispose();}
     super.dispose();
   }
 
@@ -48,7 +47,6 @@ class _AdminSettingsPageState extends State<AdminSettingsPage>{
       androidVersion.text=(s['min_android_version']??'1.0.0').toString();iosVersion.text=(s['min_ios_version']??'1.0.0').toString();
       androidUrl.text=(s['android_store_url']??'').toString();iosUrl.text=(s['ios_store_url']??'').toString();
       fee.text=(s['default_platform_fee']??'20').toString();qrMax.text=(s['qr_rate_limit_max']??'10').toString();qrWindow.text=(s['qr_rate_limit_window_seconds']??'60').toString();
-      monthlyPrice.text=(s['premium_monthly_price_text']??'₺49,99').toString();yearlyPrice.text=(s['premium_yearly_price_text']??'₺499,99').toString();
       final raw=s['features'];if(raw is Map){for(final k in features.keys.toList()){features[k]=raw[k]!=false;}}
       if(mounted)setState((){});
     }catch(e){if(mounted)setState(()=>error=e.toString().replaceFirst('Exception: ',''));}
@@ -68,7 +66,6 @@ class _AdminSettingsPageState extends State<AdminSettingsPage>{
         'forceUpdateAndroid':forceAndroid,'forceUpdateIos':forceIos,
         'androidStoreUrl':androidUrl.text.trim(),'iosStoreUrl':iosUrl.text.trim(),
         'defaultPlatformFee':feeValue,'qrRateLimitMax':maxValue,'qrRateLimitWindowSeconds':windowValue,
-        'premiumMonthlyPriceText':monthlyPrice.text.trim(),'premiumYearlyPriceText':yearlyPrice.text.trim(),
         'features':features,
       });
       final r=await http.patch(Uri.parse('$_base/api/admin/manage/app-settings'),headers:headers,body:body);
@@ -115,11 +112,19 @@ class _AdminSettingsPageState extends State<AdminSettingsPage>{
           Text('Örnek: \${qrMax.text} istek / \${qrWindow.text} saniye / ziyaretçi',style:const TextStyle(color:_muted,fontSize:10.5)),
         ]),
         const SizedBox(height:10),
-        _section('Premium Fiyat Metinleri',Icons.workspace_premium_rounded,[
-          Row(children:[Expanded(child:_field(monthlyPrice,'Aylık')),const SizedBox(width:8),Expanded(child:_field(yearlyPrice,'Yıllık'))]),
-          const SizedBox(height:7),
-          const Text('Google Play Billing bağlanınca gerçek mağaza fiyatı esas alınmalıdır.',style:TextStyle(color:_muted,fontSize:10.5)),
-        ]),
+        Container(
+          padding:const EdgeInsets.all(14),
+          decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(19),border:Border.all(color:_line)),
+          child:const Row(children:[
+            Icon(Icons.workspace_premium_rounded,color:_purple,size:20),
+            SizedBox(width:9),
+            Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+              Text('Premium Fiyatlandırma',style:TextStyle(color:Colors.white,fontSize:14,fontWeight:FontWeight.w900)),
+              SizedBox(height:3),
+              Text('Aylık ve yıllık fiyatları Premium Yönetimi ekranından değiştirebilirsin.',style:TextStyle(color:_muted,fontSize:10.5)),
+            ])),
+          ]),
+        ),
         const SizedBox(height:10),
         _section('Özellik Anahtarları',Icons.tune_rounded,[
           _feature('offers','Fırsatlar',Icons.local_offer_rounded),
