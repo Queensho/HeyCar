@@ -2696,6 +2696,19 @@ String _auditActionLabel(String action)=>switch(action){
   'promo.updated'=>'Promo güncellendi',
   'promo.push_sent'=>'Promo bildirimi gönderildi',
   'promo.deactivated'=>'Promo pasife alındı',
+  'business.approved'=>'İşletme onaylandı',
+  'business.rejected'=>'İşletme reddedildi',
+  'business.deactivated'=>'İşletme pasife alındı',
+  'business.activated'=>'İşletme aktif edildi',
+  'business.updated'=>'İşletme bilgileri güncellendi',
+  'campaign.approved'=>'Kampanya onaylandı',
+  'campaign.rejected'=>'Kampanya reddedildi',
+  'campaign.unpublished'=>'Kampanya yayından kaldırıldı',
+  'campaign.updated'=>'Kampanya güncellendi',
+  'premium.activated'=>'Premium verildi',
+  'premium.extended'=>'Premium uzatıldı',
+  'premium.cancelled'=>'Premium iptal edildi',
+  'premium.adjusted'=>'Premium ayarlandı',
   _=>action.replaceAll('.',' • '),
 };
 
@@ -2709,6 +2722,8 @@ String _auditTargetLabel(String type)=>switch(type){
   'conversation'=>'Sohbet',
   'vehicle_theme'=>'Araç teması',
   'promo'=>'Promo',
+  'business'=>'İşletme',
+  'business_campaign'=>'Kampanya',
   _=>type,
 };
 
@@ -2720,6 +2735,9 @@ IconData _auditIcon(String action){
   if(action.startsWith('complaint.'))return Icons.report_problem_rounded;
   if(action.startsWith('moderation.'))return Icons.shield_rounded;
   if(action.startsWith('promo.'))return Icons.campaign_rounded;
+  if(action.startsWith('business.'))return Icons.storefront_rounded;
+  if(action.startsWith('campaign.'))return Icons.local_offer_rounded;
+  if(action.startsWith('premium.'))return Icons.workspace_premium_rounded;
   return Icons.history_rounded;
 }
 
@@ -2728,6 +2746,9 @@ Color _auditColor(String action){
   if(action=='user.activated'||action=='qr.enabled'||action=='correction.resolved'||action=='correction.qr_applied'||action=='complaint.resolved')return _green;
   if(action=='complaint.in_review'||action=='complaint.conversation_closed')return _amber;
   if(action.startsWith('promo.'))return _pink;
+  if(action=='business.rejected'||action=='business.deactivated'||action=='campaign.rejected'||action=='campaign.unpublished'||action=='premium.cancelled')return Colors.redAccent;
+  if(action=='business.approved'||action=='business.activated'||action=='campaign.approved'||action=='premium.activated'||action=='premium.extended')return _green;
+  if(action.startsWith('business.')||action.startsWith('campaign.')||action.startsWith('premium.'))return _amber;
   if(action.startsWith('moderation.'))return _amber;
   if(action.startsWith('qr'))return _purple;
   return _blue;
