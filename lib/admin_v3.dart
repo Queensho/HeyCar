@@ -1377,7 +1377,7 @@ class _AdminPushPageState extends State<AdminPushPage>{
       'single'=>'1 kullanıcı',
       'users'=>'${ids.length} seçili kullanıcı',
       'segment'=>switch(segment){'premium'=>'Premium kullanıcılar','standard'=>'Standart kullanıcılar','suspended'=>'Askıdaki kullanıcılar',_=>'Aktif kullanıcılar'},
-      _=>'Tüm aktif kullanıcılar',
+      _=>'Tüm kullanıcılar',
     };
     final ok=await showDialog<bool>(context:context,builder:(d)=>AlertDialog(
       title:const Text('Push gönderilsin mi?'),
@@ -1490,7 +1490,7 @@ class _AdminPushPageState extends State<AdminPushPage>{
                 if(mode=='all')Container(
                   padding:const EdgeInsets.all(12),
                   decoration:BoxDecoration(color:_amber.withValues(alpha:.08),borderRadius:BorderRadius.circular(14),border:Border.all(color:_amber.withValues(alpha:.30))),
-                  child:const Row(children:[Icon(Icons.warning_amber_rounded,color:_amber),SizedBox(width:8),Expanded(child:Text('Bildirim tüm aktif uygulama kullanıcılarına gönderilecek.',style:TextStyle(color:_muted,fontSize:11.5)))]),
+                  child:const Row(children:[Icon(Icons.warning_amber_rounded,color:_amber),SizedBox(width:8),Expanded(child:Text('Bildirim admin dışındaki tüm kullanıcı hesaplarına gönderilecek.',style:TextStyle(color:_muted,fontSize:11.5)))]),
                 ),
                 const SizedBox(height:12),
                 TextField(controller:title,maxLength:90,decoration:const InputDecoration(labelText:'Bildirim başlığı',prefixIcon:Icon(Icons.title_rounded))),
