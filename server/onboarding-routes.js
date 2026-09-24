@@ -1,6 +1,6 @@
+const { requestIp } = require('./proxy-security');
 const {issueTokens}=require('./owner-auth-service');
 const LEGAL_VERSION='1.0';
-function requestIp(req){return String(req.headers['x-forwarded-for']||req.socket?.remoteAddress||'').split(',')[0].trim().slice(0,120);}
 function normalizeTrMobile(raw) {
   let digits = String(raw || '').replace(/\D/g, '');
   if (digits.startsWith('90') && digits.length === 12) {
