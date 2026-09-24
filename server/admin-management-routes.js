@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { registerAdminCorrectionRoutes } = require('./correction-routes');
+const registerAdminReportRoutes = require('./admin-report-routes');
 
 function normalizeToken(raw) {
   return String(raw || '').trim().toUpperCase();
@@ -64,6 +65,7 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
     return res.sendFile(path.join(promoUploadDir, name));
   });
   registerAdminCorrectionRoutes(app, pool, guard);
+  registerAdminReportRoutes(app, pool, guard);
 
   app.get('/api/admin/manage/users/:userId', guard, async (req, res) => {
     const userId = String(req.params.userId || '').trim();
