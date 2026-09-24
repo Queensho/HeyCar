@@ -1,8 +1,15 @@
 const {ownerId: authenticatedOwnerId}=require('./owner-auth-service');
 const express = require('express');
+const {getAppSettings}=require('./app-settings-service');
 module.exports = function registerParkingRoutes(app, pool) {
   const geoCache = new Map();
+  async function parkingEnabled(res){
+    const runtime=await getAppSettings(pool);
+    if(runtime.features?.parking===false){res.status(503).json({error:'PARKING_FEATURE_DISABLED'});return false;}
+    return true;
+  }
   app.get('/api/parking/nearby', async (req, res) => {
+    if(!await parkingEnabled(res))return;
     const lat = Number(req.query.lat), lon = Number(req.query.lon);
     if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 85 || Math.abs(lon) > 180)
       return res.status(400).json({ error: 'INVALID_LOCATION' });
@@ -81,6 +88,7 @@ module.exports = function registerParkingRoutes(app, pool) {
   }
   app.get('/api/vehicles/:vehicleId/parking', async (req, res) => {
     try {
+      if(!await parkingEnabled(res))return;
       const v = await owns(req, res); if (!v) return;
       const r = await pool.query(`SELECT ${fields} FROM vehicle_parking_locations WHERE vehicle_id=$1 AND owner_id=$2 LIMIT 1`, [v, owner(req)]);
       res.json({ ok: true, parking: r.rows[0] || null });
@@ -88,6 +96,7 @@ module.exports = function registerParkingRoutes(app, pool) {
   });
   app.put('/api/vehicles/:vehicleId/parking', express.json(), async (req, res) => {
     try {
+      if(!await parkingEnabled(res))return;
       const v = await owns(req, res); if (!v) return;
       const body = req.body || {};
       const area = String(body.area || '').trim().slice(0, 40), floor = String(body.floor || '').trim().slice(0, 20);
@@ -122,6 +131,7 @@ module.exports = function registerParkingRoutes(app, pool) {
   });
   app.delete('/api/vehicles/:vehicleId/parking', async (req, res) => {
     try {
+      if(!await parkingEnabled(res))return;
       const v = await owns(req, res); if (!v) return;
       await pool.query('DELETE FROM vehicle_parking_locations WHERE vehicle_id=$1 AND owner_id=$2', [v, owner(req)]);
       res.json({ ok: true });
