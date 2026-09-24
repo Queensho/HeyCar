@@ -1,6 +1,7 @@
 const { requestIp } = require('./proxy-security');
 const crypto = require('crypto');
 const {logSecurityEvent}=require('./security-event-log');
+const {getAppSettings}=require('./app-settings-service');
 
 let schemaReady = false;
 
@@ -53,9 +54,18 @@ async function enforcePublicRequest(pool, token, req, explicitVisitor) {
   if (!settings.qr_abuse_protection) return { ok: true, ownerId, visitorKey: key };
 
   await pool.query(`DELETE FROM qr_security_request_log WHERE created_at < NOW() - INTERVAL '1 day'`);
-  const c = await pool.query(`SELECT COUNT(*)::int AS n FROM qr_security_request_log WHERE owner_id=$1 AND visitor_key=$2 AND created_at > NOW() - INTERVAL '1 minute'`, [ownerId, key]);
-  if ((c.rows[0]?.n || 0) >= 10) {
-    await logSecurityEvent(pool,req,{eventType:'qr_rate_limited',ownerId,subject:key,detail:{qrToken:String(token||'').trim().toUpperCase(),requestCount:Number(c.rows[0]?.n||0)}});
+  const runtime=await getAppSettings(pool);
+  const maxRequests=Math.max(1,Number(runtime.qr_rate_limit_max||10));
+  const windowSeconds=Math.max(1,Number(runtime.qr_rate_limit_window_seconds||60));
+  const c = await pool.query(
+    `SELECT COUNT(*)::int AS n
+       FROM qr_security_request_log
+      WHERE owner_id=$1 AND visitor_key=$2
+        AND created_at > NOW() - ($3::int * INTERVAL '1 second')`,
+    [ownerId,key,windowSeconds]
+  );
+  if ((c.rows[0]?.n || 0) >= maxRequests) {
+    await logSecurityEvent(pool,req,{eventType:'qr_rate_limited',ownerId,subject:key,detail:{qrToken:String(token||'').trim().toUpperCase(),requestCount:Number(c.rows[0]?.n||0),limit:maxRequests,windowSeconds}});
     return { ok: false, status: 429, error: 'TOO_MANY_REQUESTS', ownerId, visitorKey: key };
   }
   await pool.query(`INSERT INTO qr_security_request_log(owner_id, qr_token, visitor_key) VALUES($1,$2,$3)`, [ownerId, String(token || '').trim().toUpperCase(), key]);
