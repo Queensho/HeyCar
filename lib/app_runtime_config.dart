@@ -13,6 +13,9 @@ class RuntimeAppConfig {
     required this.minimumVersion,
     required this.forceUpdate,
     required this.storeUrl,
+    required this.monthlyPrice,
+    required this.yearlyPrice,
+    required this.currency,
     required this.monthlyPriceText,
     required this.yearlyPriceText,
     required this.features,
@@ -25,6 +28,9 @@ class RuntimeAppConfig {
   final String minimumVersion;
   final bool forceUpdate;
   final String storeUrl;
+  final double monthlyPrice;
+  final double yearlyPrice;
+  final String currency;
   final String monthlyPriceText;
   final String yearlyPriceText;
   final Map<String,bool> features;
@@ -96,6 +102,9 @@ class RuntimeConfigService {
       minimumVersion:(pconf['minimum']??'0.0.0').toString(),
       forceUpdate:!kIsWeb&&pconf['forceUpdate']==true,
       storeUrl:(pconf['storeUrl']??'').toString(),
+      monthlyPrice:premium['monthlyPrice'] is num?(premium['monthlyPrice'] as num).toDouble():double.tryParse((premium['monthlyPrice']??'49.99').toString())??49.99,
+      yearlyPrice:premium['yearlyPrice'] is num?(premium['yearlyPrice'] as num).toDouble():double.tryParse((premium['yearlyPrice']??'499.99').toString())??499.99,
+      currency:(premium['currency']??'TRY').toString(),
       monthlyPriceText:(premium['monthlyPriceText']??'₺49,99').toString(),
       yearlyPriceText:(premium['yearlyPriceText']??'₺499,99').toString(),
       features:features,
