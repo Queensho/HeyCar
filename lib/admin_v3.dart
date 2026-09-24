@@ -208,7 +208,11 @@ class _AdminHomeState extends State<AdminHome> {
     try{final d=await getJson('/api/admin/manage/users/${row['id']}');if(!mounted)return;await Navigator.push(context,MaterialPageRoute(builder:(_)=>UserDetail(data:d,changeStatus:(s)async{await send('PATCH','/api/admin/manage/users/${row['id']}/status',{'status':s});await load();})));}catch(e){snack(e);}
   }
   Future<void> openVehicle(Map<String,dynamic> row) async {
-    try{final d=await getJson('/api/admin/manage/vehicles/${row['id']}');if(!mounted)return;await Navigator.push(context,MaterialPageRoute(builder:(_)=>VehicleDetail(vehicle:Map<String,dynamic>.from(d['vehicle'] as Map))));}catch(e){snack(e);}
+    try{
+      final d=await getJson('/api/admin/manage/vehicles/'+row['id'].toString());
+      if(!mounted)return;
+      await Navigator.push(context,MaterialPageRoute(builder:(_)=>VehicleDetail(data:d)));
+    }catch(e){snack(e);}
   }
   Future<void> createQr(int count) async {
     try{
@@ -1168,9 +1172,352 @@ class _AdminPromoPageState extends State<AdminPromoPage>{
 }
 Widget _adminField(TextEditingController c,String label,{int lines=1})=>TextField(controller:c,maxLines:lines,decoration:InputDecoration(labelText:label,border:const OutlineInputBorder()));
 
-class UserDetail extends StatefulWidget{const UserDetail({super.key,required this.data,required this.changeStatus});final Map<String,dynamic> data;final Future<void> Function(String) changeStatus;@override State<UserDetail> createState()=>_UserDetailState();}
-class _UserDetailState extends State<UserDetail>{bool busy=false;@override Widget build(BuildContext context){final u=Map<String,dynamic>.from(widget.data['user'] as Map);final vs=_list({'items':widget.data['vehicles']??[]});final active=u['status']=='active';return Scaffold(appBar:AppBar(title:const Text('Kullanıcı Detayı')),body:ListView(padding:const EdgeInsets.all(20),children:[detail('Ad Soyad',u['display_name']),detail('Telefon',u['phone']),detail('E-posta',u['email']),detail('Durum',u['status']),const SizedBox(height:10),FilledButton(onPressed:busy?null:()async{setState(()=>busy=true);await widget.changeStatus(active?'suspended':'active');if(mounted)Navigator.pop(context);},child:Text(active?'Kullanıcıyı askıya al':'Kullanıcıyı aktif et')),const SizedBox(height:20),const Text('Araçları',style:TextStyle(fontSize:20,fontWeight:FontWeight.w900)),...vs.map((v)=>detail(v['plate']?.toString()??'-','${v['make']??''} ${v['model']??''} • QR: ${v['qr_token']??'-'}'))]));}}
-class VehicleDetail extends StatelessWidget{const VehicleDetail({super.key,required this.vehicle});final Map<String,dynamic> vehicle;@override Widget build(BuildContext context)=>Scaffold(appBar:AppBar(title:const Text('Araç Detayı')),body:ListView(padding:const EdgeInsets.all(20),children:[detail('Plaka',vehicle['plate']),detail('Araç','${vehicle['make']??''} ${vehicle['model']??''}'),detail('Renk',vehicle['color']),detail('Sahibi',vehicle['owner_name']),detail('Telefon',vehicle['owner_phone']),detail('E-posta',vehicle['owner_email']),detail('QR',vehicle['qr_token']),detail('QR durumu',vehicle['qr_status']),detail('Tema',vehicle['preset']??'classic'),detail('Public mesaj',vehicle['public_message']??'Varsayılan'),detail('Arka plan',vehicle['background_path']??'Yok')]));}
+
+String _adminDate(dynamic raw){
+  final d=DateTime.tryParse(raw?.toString()??'')?.toLocal();
+  if(d==null)return '-';
+  return '${d.day.toString().padLeft(2,'0')}.${d.month.toString().padLeft(2,'0')}.${d.year} ${d.hour.toString().padLeft(2,'0')}:${d.minute.toString().padLeft(2,'0')}';
+}
+
+String _adminMoney(dynamic raw){
+  final n=double.tryParse((raw??'0').toString())??0;
+  return '₺${n.toStringAsFixed(n.truncateToDouble()==n?0:2)}';
+}
+
+Widget _adminSection(String title,IconData icon,Widget child)=>Container(
+  width:double.infinity,
+  margin:const EdgeInsets.only(bottom:12),
+  padding:const EdgeInsets.all(14),
+  decoration:BoxDecoration(
+    color:_card,
+    borderRadius:BorderRadius.circular(20),
+    border:Border.all(color:_line),
+  ),
+  child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+    Row(children:[Icon(icon,color:_purple,size:22),const SizedBox(width:8),Text(title,style:const TextStyle(fontSize:17,fontWeight:FontWeight.w900))]),
+    const SizedBox(height:12),
+    child,
+  ]),
+);
+
+Widget _adminStat(String value,String label,IconData icon,{Color color=_purple})=>Container(
+  width:150,
+  padding:const EdgeInsets.all(12),
+  decoration:BoxDecoration(
+    color:_card2,
+    borderRadius:BorderRadius.circular(16),
+    border:Border.all(color:color.withValues(alpha:.35)),
+  ),
+  child:Row(children:[
+    Container(width:38,height:38,decoration:BoxDecoration(color:color.withValues(alpha:.14),shape:BoxShape.circle),child:Icon(icon,color:color,size:20)),
+    const SizedBox(width:9),
+    Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      Text(value,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:17,fontWeight:FontWeight.w900)),
+      Text(label,maxLines:2,style:const TextStyle(color:_muted,fontSize:10.5,fontWeight:FontWeight.w700)),
+    ])),
+  ]),
+);
+
+Widget _adminEmpty(String text)=>Padding(
+  padding:const EdgeInsets.symmetric(vertical:10),
+  child:Text(text,style:const TextStyle(color:_muted,fontSize:12.5)),
+);
+
+Widget _adminHistoryRow({
+  required IconData icon,
+  required String title,
+  required String subtitle,
+  String? trailing,
+  Color color=_purple,
+})=>Container(
+  margin:const EdgeInsets.only(bottom:8),
+  padding:const EdgeInsets.all(11),
+  decoration:BoxDecoration(color:_card2,borderRadius:BorderRadius.circular(14),border:Border.all(color:Colors.white.withValues(alpha:.05))),
+  child:Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
+    Container(width:34,height:34,decoration:BoxDecoration(color:color.withValues(alpha:.13),shape:BoxShape.circle),child:Icon(icon,color:color,size:18)),
+    const SizedBox(width:10),
+    Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      Text(title,style:const TextStyle(fontWeight:FontWeight.w900,fontSize:12.5)),
+      const SizedBox(height:2),
+      Text(subtitle,style:const TextStyle(color:_muted,fontSize:11.5,height:1.3)),
+    ])),
+    if(trailing!=null)...[const SizedBox(width:8),Text(trailing,style:const TextStyle(color:_muted,fontSize:10.5,fontWeight:FontWeight.w700))],
+  ]),
+);
+
+class UserDetail extends StatefulWidget{
+  const UserDetail({super.key,required this.data,required this.changeStatus});
+  final Map<String,dynamic> data;
+  final Future<void> Function(String) changeStatus;
+  @override State<UserDetail> createState()=>_UserDetailState();
+}
+
+class _UserDetailState extends State<UserDetail>{
+  bool busy=false;
+
+  @override Widget build(BuildContext context){
+    final u=Map<String,dynamic>.from(widget.data['user'] as Map? ?? const{});
+    final stats=Map<String,dynamic>.from(widget.data['stats'] as Map? ?? const{});
+    final vehicles=_list({'items':widget.data['vehicles']??[]});
+    final sessions=_list({'items':widget.data['securitySessions']??[]});
+    final devices=_list({'items':widget.data['devices']??[]});
+    final loginEvents=_list({'items':widget.data['loginEvents']??[]});
+    final complaints=_list({'items':widget.data['complaints']??[]});
+    final qrUsage=_list({'items':widget.data['qrUsage']??[]});
+    final active=u['status']=='active';
+    final premium=u['premium']==true;
+
+    return Scaffold(
+      appBar:AppBar(title:const Text('Kullanıcı Detayı')),
+      body:ListView(padding:const EdgeInsets.all(14),children:[
+        Container(
+          padding:const EdgeInsets.all(16),
+          decoration:BoxDecoration(
+            gradient:const LinearGradient(colors:[Color(0xFF121831),Color(0xFF160A28)]),
+            borderRadius:BorderRadius.circular(22),
+            border:Border.all(color:_purple.withValues(alpha:.45)),
+          ),
+          child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+            Row(children:[
+              CircleAvatar(radius:26,backgroundColor:_purple.withValues(alpha:.18),child:const Icon(Icons.person_rounded,color:_purple,size:28)),
+              const SizedBox(width:12),
+              Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                Text((u['display_name']??'İsimsiz').toString(),style:const TextStyle(fontSize:20,fontWeight:FontWeight.w900)),
+                Text((u['phone']??u['email']??'-').toString(),style:const TextStyle(color:_muted,fontSize:12)),
+              ])),
+              Container(
+                padding:const EdgeInsets.symmetric(horizontal:10,vertical:6),
+                decoration:BoxDecoration(color:(premium?_purple:_muted).withValues(alpha:.14),borderRadius:BorderRadius.circular(20)),
+                child:Text(premium?'PREMIUM':'STANDART',style:TextStyle(color:premium?const Color(0xFFC879FF):_muted,fontSize:10,fontWeight:FontWeight.w900)),
+              ),
+            ]),
+            const SizedBox(height:14),
+            Wrap(spacing:8,runSpacing:8,children:[
+              _adminStat('${stats['vehicleCount']??vehicles.length}','Kayıtlı araç',Icons.directions_car_rounded,color:_blue),
+              _adminStat('${stats['activeSessionCount']??0}','Aktif oturum',Icons.lock_open_rounded,color:_green),
+              _adminStat('${stats['deviceCount']??0}','Cihaz',Icons.smartphone_rounded,color:_purple),
+              _adminStat('${stats['complaintCount']??complaints.length}','Şikâyet',Icons.report_gmailerrorred_rounded,color:Colors.redAccent),
+            ]),
+            const SizedBox(height:12),
+            detail('Son giriş',_adminDate(stats['lastLoginAt'])),
+            detail('Kayıt tarihi',_adminDate(u['created_at'])),
+            detail('Durum',u['status']),
+            detail('E-posta',u['email']),
+          ]),
+        ),
+        const SizedBox(height:12),
+
+        _adminSection('Araçlar',Icons.directions_car_filled_rounded,
+          vehicles.isEmpty?_adminEmpty('Kayıtlı araç yok.'):Column(children:vehicles.map((v)=>_adminHistoryRow(
+            icon:Icons.directions_car_rounded,
+            title:(v['plate']??'-').toString(),
+            subtitle:'${v['make']??''} ${v['model']??''} • QR: ${v['qr_token']??'-'}',
+            trailing:_adminDate(v['created_at']),
+            color:_blue,
+          )).toList()),
+        ),
+
+        _adminSection('Aktif Oturumlar & Cihazlar',Icons.devices_rounded,
+          sessions.isEmpty&&devices.isEmpty
+            ? _adminEmpty('Kayıtlı oturum veya cihaz bilgisi yok.')
+            : Column(children:[
+                ...sessions.map((s)=>_adminHistoryRow(
+                  icon:s['active']==true?Icons.verified_user_rounded:Icons.no_accounts_rounded,
+                  title:(s['device_name']??'Bilinmeyen cihaz').toString(),
+                  subtitle:'${s['ip_address']??'-'} • Son görülme: ${_adminDate(s['last_seen_at'])}${s['revoked_at']!=null?' • Oturum kapalı':''}',
+                  trailing:s['active']==true?'Aktif':'Kapalı',
+                  color:s['active']==true?_green:_muted,
+                )),
+                ...devices.where((d)=>!sessions.any((s)=>s['device_id']==d['device_id'])).map((d)=>_adminHistoryRow(
+                  icon:Icons.smartphone_rounded,
+                  title:(d['device_name']??'Cihaz').toString(),
+                  subtitle:'${d['last_ip']??'-'} • İlk: ${_adminDate(d['first_seen_at'])} • Son: ${_adminDate(d['last_seen_at'])}',
+                  trailing:d['active']==true?'Aktif':'Pasif',
+                  color:d['active']==true?_blue:_muted,
+                )),
+              ]),
+        ),
+
+        _adminSection('Son Girişler',Icons.login_rounded,
+          loginEvents.isEmpty?_adminEmpty('Giriş geçmişi yok.'):Column(children:loginEvents.map((e)=>_adminHistoryRow(
+            icon:Icons.login_rounded,
+            title:(e['device_name']??'Cihaz').toString(),
+            subtitle:'IP: ${e['ip_address']??'-'}',
+            trailing:_adminDate(e['created_at']),
+            color:_blue,
+          )).toList()),
+        ),
+
+        _adminSection('Şikâyetler',Icons.report_problem_rounded,
+          complaints.isEmpty?_adminEmpty('Bu kullanıcıyla ilişkili şikâyet yok.'):Column(children:complaints.map((e)=>_adminHistoryRow(
+            icon:Icons.report_gmailerrorred_rounded,
+            title:(e['reason']??'Şikâyet').toString(),
+            subtitle:'${e['plate']??'Araç bilinmiyor'} • Bildiren: ${e['reporter_type']??'-'}',
+            trailing:_adminDate(e['created_at']),
+            color:Colors.redAccent,
+          )).toList()),
+        ),
+
+        _adminSection('QR Kullanım Geçmişi',Icons.qr_code_scanner_rounded,
+          qrUsage.isEmpty?_adminEmpty('QR kullanım kaydı yok.'):Column(children:qrUsage.map((e)=>_adminHistoryRow(
+            icon:Icons.qr_code_2_rounded,
+            title:'${e['plate']??'-'} • ${e['type']??'QR'}',
+            subtitle:'QR: ${e['qr_token']??'-'} • Durum: ${e['status']??'-'}${(e['message']??'').toString().isNotEmpty?' • ${e['message']}':''}',
+            trailing:_adminDate(e['created_at']),
+            color:_purple,
+          )).toList()),
+        ),
+
+        FilledButton.icon(
+          onPressed:busy?null:()async{
+            setState(()=>busy=true);
+            await widget.changeStatus(active?'suspended':'active');
+            if(mounted)Navigator.pop(context);
+          },
+          icon:Icon(active?Icons.pause_circle_outline_rounded:Icons.check_circle_outline_rounded),
+          label:Text(active?'Kullanıcıyı askıya al':'Kullanıcıyı aktif et'),
+        ),
+      ]),
+    );
+  }
+}
+
+class VehicleDetail extends StatelessWidget{
+  const VehicleDetail({super.key,required this.data});
+  final Map<String,dynamic> data;
+
+  @override Widget build(BuildContext context){
+    final v=Map<String,dynamic>.from(data['vehicle'] as Map? ?? const{});
+    final stats=Map<String,dynamic>.from(data['stats'] as Map? ?? const{});
+    final state=data['maintenanceState'] is Map?Map<String,dynamic>.from(data['maintenanceState'] as Map):<String,dynamic>{};
+    final maintenance=_list({'items':data['maintenanceRecords']??[]});
+    final parking=data['parking'] is Map?Map<String,dynamic>.from(data['parking'] as Map):<String,dynamic>{};
+    final notifications=_list({'items':data['notifications']??[]});
+    final offers=_list({'items':data['offerRedemptions']??[]});
+    final activeDriver=data['activeDriver'] is Map?Map<String,dynamic>.from(data['activeDriver'] as Map):<String,dynamic>{};
+    final drivers=_list({'items':data['drivers']??[]});
+
+    final parkingTitle=(parking['parking_name']??'').toString().trim().isNotEmpty
+      ? parking['parking_name'].toString()
+      : [parking['area'],parking['floor'],parking['spot']].where((x)=>(x??'').toString().trim().isNotEmpty).join(' • ');
+
+    return Scaffold(
+      appBar:AppBar(title:Text((v['plate']??'Araç Detayı').toString())),
+      body:ListView(padding:const EdgeInsets.all(14),children:[
+        Container(
+          padding:const EdgeInsets.all(16),
+          decoration:BoxDecoration(
+            gradient:const LinearGradient(colors:[Color(0xFF10172D),Color(0xFF160A28)]),
+            borderRadius:BorderRadius.circular(22),
+            border:Border.all(color:_purple.withValues(alpha:.45)),
+          ),
+          child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+            Row(children:[
+              CircleAvatar(radius:26,backgroundColor:_purple.withValues(alpha:.16),child:const Icon(Icons.directions_car_filled_rounded,color:_purple,size:28)),
+              const SizedBox(width:12),
+              Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                Text((v['plate']??'-').toString(),style:const TextStyle(fontSize:22,fontWeight:FontWeight.w900)),
+                Text('${v['make']??''} ${v['model']??''} • ${v['color']??'-'}',style:const TextStyle(color:_muted,fontSize:12)),
+              ])),
+              if(v['owner_premium']==true)Container(
+                padding:const EdgeInsets.symmetric(horizontal:9,vertical:5),
+                decoration:BoxDecoration(color:_purple.withValues(alpha:.15),borderRadius:BorderRadius.circular(18)),
+                child:const Text('PREMIUM',style:TextStyle(color:Color(0xFFC879FF),fontSize:10,fontWeight:FontWeight.w900)),
+              ),
+            ]),
+            const SizedBox(height:14),
+            Wrap(spacing:8,runSpacing:8,children:[
+              _adminStat('${state['current_km']??0} km','Güncel km',Icons.speed_rounded,color:_amber),
+              _adminStat('${stats['maintenanceCount']??maintenance.length}','Bakım kaydı',Icons.build_circle_outlined,color:_blue),
+              _adminStat('${stats['notificationCount']??notifications.length}','Bildirim',Icons.notifications_active_outlined,color:_purple),
+              _adminStat('${stats['offerUsageCount']??offers.length}','Fırsat kullanımı',Icons.local_offer_outlined,color:_green),
+            ]),
+            const SizedBox(height:12),
+            detail('Araç sahibi',v['owner_name']),
+            detail('Telefon',v['owner_phone']),
+            detail('E-posta',v['owner_email']),
+            detail('QR',v['qr_token']),
+            detail('QR durumu',v['qr_status']),
+            detail('QR aktivasyon',_adminDate(v['activated_at'])),
+          ]),
+        ),
+        const SizedBox(height:12),
+
+        _adminSection('Aktif Sürücü',Icons.person_pin_circle_rounded,
+          activeDriver.isEmpty
+            ? _adminEmpty('Şu anda aktif sürücü yok.')
+            : Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                _adminHistoryRow(
+                  icon:Icons.person_rounded,
+                  title:(activeDriver['driver_name']??'Sürücü').toString(),
+                  subtitle:'${activeDriver['driver_phone']??'-'} • ${activeDriver['driver_email']??'-'}',
+                  trailing:activeDriver['active_until']==null?'Süresiz':_adminDate(activeDriver['active_until']),
+                  color:_green,
+                ),
+                if(drivers.length>1)Text('Toplam kayıtlı sürücü: ${drivers.length}',style:const TextStyle(color:_muted,fontSize:11.5)),
+              ]),
+        ),
+
+        _adminSection('Bakım Kayıtları',Icons.build_rounded,
+          maintenance.isEmpty?_adminEmpty('Bakım kaydı yok.'):Column(children:maintenance.map((m){
+            final items=m['items'] is List?(m['items'] as List).map((x)=>x.toString()).join(', '):(m['items']??'').toString();
+            return _adminHistoryRow(
+              icon:Icons.build_circle_outlined,
+              title:'${m['mileage']??0} km • ${_adminMoney(m['total_cost'])}',
+              subtitle:'${items.isEmpty?'Bakım':items}${(m['notes']??'').toString().isNotEmpty?' • ${m['notes']}':''}${m['next_service_km']!=null?' • Sonraki: ${m['next_service_km']} km':''}',
+              trailing:_adminDate(m['service_date']),
+              color:_blue,
+            );
+          }).toList()),
+        ),
+
+        _adminSection('Park Kaydı',Icons.local_parking_rounded,
+          parking.isEmpty
+            ? _adminEmpty('Aktif park kaydı yok.')
+            : Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                _adminHistoryRow(
+                  icon:Icons.location_on_rounded,
+                  title:parkingTitle.isEmpty?'Park konumu':parkingTitle,
+                  subtitle:'${parking['note']??''}${parking['latitude']!=null&&parking['longitude']!=null?' • ${parking['latitude']}, ${parking['longitude']}':''}',
+                  trailing:_adminDate(parking['started_at']??parking['created_at']),
+                  color:_amber,
+                ),
+              ]),
+        ),
+
+        _adminSection('Bildirim Geçmişi',Icons.notifications_rounded,
+          notifications.isEmpty?_adminEmpty('Bildirim geçmişi yok.'):Column(children:notifications.map((n)=>_adminHistoryRow(
+            icon:Icons.notifications_none_rounded,
+            title:(n['type']??'Bildirim').toString(),
+            subtitle:'${n['message']??''}${n['qr_token']!=null?' • QR: ${n['qr_token']}':''} • Durum: ${n['status']??'-'}',
+            trailing:_adminDate(n['created_at']),
+            color:n['status']=='resolved'?_green:_purple,
+          )).toList()),
+        ),
+
+        _adminSection('Fırsat Kullanımları',Icons.local_offer_rounded,
+          offers.isEmpty?_adminEmpty('Bu plakayla fırsat kullanımı yok.'):Column(children:offers.map((o)=>_adminHistoryRow(
+            icon:Icons.confirmation_number_outlined,
+            title:(o['campaign_title']??'Fırsat').toString(),
+            subtitle:'${o['business_name']??'İşletme'} • Kod: ${o['usage_code']??'-'} • Durum: ${o['status']??'-'}',
+            trailing:_adminDate(o['redeemed_at']??o['created_at']),
+            color:o['status']=='redeemed'?_green:_amber,
+          )).toList()),
+        ),
+
+        _adminSection('Kayıtlı Sürücüler',Icons.group_rounded,
+          drivers.isEmpty?_adminEmpty('Kayıtlı sürücü yok.'):Column(children:drivers.map((d)=>_adminHistoryRow(
+            icon:Icons.person_outline_rounded,
+            title:(d['driver_name']??'Sürücü').toString(),
+            subtitle:'${d['phone']??'-'} • ${d['email']??'-'}',
+            trailing:d['active']==true?'Aktif':'Kayıtlı',
+            color:d['active']==true?_green:_muted,
+          )).toList()),
+        ),
+      ]),
+    );
+  }
+}
 
 Widget detail(String title,Object? value)=>Container(margin:const EdgeInsets.only(bottom:9),padding:const EdgeInsets.all(15),decoration:BoxDecoration(color:_card2,borderRadius:BorderRadius.circular(16),border:Border.all(color:_line)),child:Row(children:[SizedBox(width:120,child:Text(title,style:const TextStyle(color:_muted))),Expanded(child:Text(value?.toString()??'-',style:const TextStyle(fontWeight:FontWeight.w800)))]));
 Widget listPage(String title,TextEditingController s,VoidCallback refresh,List<Widget> children)=>ListView(padding:const EdgeInsets.fromLTRB(14,14,14,24),children:[Text(title,style:const TextStyle(fontSize:22,fontWeight:FontWeight.w900,color:Colors.white)),const SizedBox(height:12),TextField(controller:s,onChanged:(_)=>refresh(),decoration:InputDecoration(prefixIcon:const Icon(Icons.search),hintText:'$title içinde ara',filled:true,fillColor:_card2,border:const OutlineInputBorder(borderSide:BorderSide.none))),const SizedBox(height:14),...children]);
