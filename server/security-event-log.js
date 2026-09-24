@@ -1,8 +1,4 @@
-function requestIp(req){
-  const forwarded=String(req?.headers?.['x-forwarded-for']||'').split(',')[0].trim();
-  return (forwarded||req?.ip||req?.socket?.remoteAddress||'').toString().slice(0,120)||null;
-}
-
+const { requestIp } = require('./proxy-security');
 async function tableReady(pool){
   const r=await pool.query("SELECT to_regclass('public.admin_security_events') AS name");
   return Boolean(r.rows[0]?.name);
