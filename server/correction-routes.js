@@ -1,4 +1,5 @@
 const {ownerId: authenticatedOwnerId}=require('./owner-auth-service');
+const { writeAdminAudit } = require('./admin-audit');
 function clean(value, max = 500) {
   return String(value == null ? '' : value).trim().slice(0, max);
 }
@@ -111,6 +112,11 @@ function registerAdminCorrectionRoutes(app, pool, guard) {
       return res.status(400).json({ error: 'INVALID_STATUS' });
     }
     try {
+      const before = await pool.query(
+        'SELECT * FROM correction_requests WHERE id=$1 LIMIT 1',
+        [req.params.id]
+      );
+      if (!before.rows.length) return res.status(404).json({ error: 'REQUEST_NOT_FOUND' });
       const r = await pool.query(
         `UPDATE correction_requests
          SET status=$1, admin_note=$2, updated_at=NOW(),
@@ -119,7 +125,22 @@ function registerAdminCorrectionRoutes(app, pool, guard) {
          RETURNING *`,
         [status, adminNote || null, req.params.id]
       );
-      if (!r.rows.length) return res.status(404).json({ error: 'REQUEST_NOT_FOUND' });
+      const action = status === 'resolved'
+        ? 'correction.resolved'
+        : status === 'rejected'
+          ? 'correction.rejected'
+          : status === 'in_review'
+            ? 'correction.review_started'
+            : 'correction.reopened';
+      await writeAdminAudit(pool, req, {
+        action,
+        targetType: 'correction_request',
+        targetId: r.rows[0].id,
+        targetLabel: r.rows[0].qr_token || r.rows[0].request_type || String(r.rows[0].id),
+        before: before.rows[0],
+        after: r.rows[0],
+        metadata: { adminNote: adminNote || null },
+      });
       return res.json({ ok: true, request: r.rows[0] });
     } catch (e) {
       console.error('admin correction request update error', e);
@@ -190,6 +211,19 @@ function registerAdminCorrectionRoutes(app, pool, guard) {
         [row.id, clean(req.body.adminNote, 1000)]
       );
       await client.query('COMMIT');
+      await writeAdminAudit(pool, req, {
+        action: 'correction.qr_applied',
+        targetType: 'correction_request',
+        targetId: updated.rows[0].id,
+        targetLabel: row.qr_token,
+        before: row,
+        after: updated.rows[0],
+        metadata: {
+          vehicleId: row.vehicle_id,
+          qrToken: row.qr_token,
+          ownerId: row.owner_id,
+        },
+      });
       return res.json({ ok: true, request: updated.rows[0], qrApplied: true });
     } catch (e) {
       await client.query('ROLLBACK');
