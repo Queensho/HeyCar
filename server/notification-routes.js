@@ -10,6 +10,7 @@ const { createScanSession, validateScanSession } = require('./scan-session-servi
 const { moderateMessage } = require('./message-moderation');
 const { enforcePublicRequest } = require('./security-service');
 const { configureTrustedProxy, requestIp } = require('./proxy-security');
+const {getAppSettings}=require('./app-settings-service');
 
 function normalizeToken(raw) {
   return String(raw || '').trim().toUpperCase();
@@ -334,6 +335,9 @@ module.exports = function registerNotificationRoutes(app, pool) {
   app.post('/api/qr/:token/notifications', async (req, res) => {
     const token = normalizeToken(req.params.token);
     const type = String(req.body?.type || '').trim();
+    const runtime=await getAppSettings(pool);
+    if(type==='message'&&runtime.features?.messages===false)return res.status(503).json({error:'MESSAGES_FEATURE_DISABLED'});
+    if(type==='call_request'&&runtime.features?.calls===false)return res.status(503).json({error:'CALLS_FEATURE_DISABLED'});
     const message = String(req.body?.message || '').trim().slice(0, 500);
     const photoPath = String(req.body?.photo_path || req.body?.photoUrl || '').trim().slice(0, 500) || null;
     const latitude = req.body?.latitude == null ? null : Number(req.body.latitude);
