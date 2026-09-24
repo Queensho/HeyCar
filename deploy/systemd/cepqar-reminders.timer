@@ -1,0 +1,12 @@
+[Unit]
+Description=Run Cepqar vehicle reminders every day
+
+[Timer]
+# 05:05 UTC = 08:05 Türkiye (UTC+3)
+OnCalendar=*-*-* 05:05:00 UTC
+Persistent=true
+AccuracySec=1min
+Unit=cepqar-reminders.service
+
+[Install]
+WantedBy=timers.target
