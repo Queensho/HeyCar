@@ -11,6 +11,9 @@ const DEFAULTS={
   default_platform_fee:20,
   qr_rate_limit_max:10,
   qr_rate_limit_window_seconds:60,
+  premium_monthly_price:49.99,
+  premium_yearly_price:499.99,
+  premium_currency:'TRY',
   premium_monthly_price_text:'₺49,99',
   premium_yearly_price_text:'₺499,99',
   features:{offers:true,messages:true,calls:true,parking:true,premium:true,business:true},
@@ -25,6 +28,9 @@ function normalize(row){
   r.default_platform_fee=Number(r.default_platform_fee||0);
   r.qr_rate_limit_max=Math.max(1,Number(r.qr_rate_limit_max||10));
   r.qr_rate_limit_window_seconds=Math.max(1,Number(r.qr_rate_limit_window_seconds||60));
+  r.premium_monthly_price=Math.max(0,Number(r.premium_monthly_price??49.99));
+  r.premium_yearly_price=Math.max(0,Number(r.premium_yearly_price??499.99));
+  r.premium_currency=String(r.premium_currency||'TRY').trim().toUpperCase()||'TRY';
   r.features={...DEFAULTS.features,...(r.features&&typeof r.features==='object'?r.features:{})};
   return r;
 }
@@ -65,6 +71,9 @@ function publicConfig(settings){
       },
     },
     premium:{
+      monthlyPrice:Number(s.premium_monthly_price||0),
+      yearlyPrice:Number(s.premium_yearly_price||0),
+      currency:String(s.premium_currency||'TRY'),
       monthlyPriceText:String(s.premium_monthly_price_text||''),
       yearlyPriceText:String(s.premium_yearly_price_text||''),
     },
