@@ -7,6 +7,7 @@ const registerSystemHealthRoutes = require('./system-health-routes');
 const registerAdminCommunicationSecurityRoutes = require('./admin-communication-security-routes');
 const registerAdminModerationOpsRoutes = require('./admin-moderation-ops-routes');
 const { writeAdminAudit, registerAdminAuditRoutes } = require('./admin-audit');
+const { configureTrustedProxy } = require('./proxy-security');
 
 function normalizeToken(raw) {
   return String(raw || '').trim().toUpperCase();
@@ -56,6 +57,7 @@ async function safeOne(pool, tableName, sql, params = []) {
 }
 
 module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
+  configureTrustedProxy(app);
   const guard = typeof adminGuard === 'function'
     ? adminGuard
     : (_req, res) => res.status(500).json({ error: 'ADMIN_GUARD_NOT_CONFIGURED' });
