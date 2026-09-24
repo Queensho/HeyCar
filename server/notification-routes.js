@@ -23,6 +23,21 @@ module.exports = function registerNotificationRoutes(app, pool) {
   app.use('/uploads/notification-photos', express.static(uploadDir, { maxAge: '7d' }));
 
   let schemaReady = false;
+  let scanHistoryReady;
+
+  async function recordQrScan(qr) {
+    if (scanHistoryReady == null) {
+      const check = await pool.query("SELECT to_regclass('public.qr_scan_history') AS name");
+      scanHistoryReady = Boolean(check.rows[0]?.name);
+    }
+    if (!scanHistoryReady) return;
+    await pool.query(
+      `INSERT INTO qr_scan_history(qr_token,vehicle_id,owner_id)
+       VALUES($1,$2,$3)`,
+      [qr.token, qr.vehicle_id, String(qr.owner_id)]
+    );
+  }
+
   async function ensurePrivacySchema() {
     if (schemaReady) return;
     await pool.query(`
@@ -149,6 +164,7 @@ module.exports = function registerNotificationRoutes(app, pool) {
       if (!qr) return res.status(404).json({ error: 'ACTIVE_QR_NOT_FOUND' });
       await pool.query(`DELETE FROM qr_scan_sessions WHERE expires_at<=NOW()`);
       const session = await createScanSession(pool, qr);
+      await recordQrScan(qr);
       res.set('Cache-Control', 'no-store');
       return res.status(201).json({ ok: true, scanToken: session.token, expiresInSeconds: session.expiresInSeconds });
     } catch (e) { console.error(e); return res.status(500).json({ error: 'SERVER_ERROR' }); }
