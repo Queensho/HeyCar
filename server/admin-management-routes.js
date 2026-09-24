@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { registerAdminCorrectionRoutes } = require('./correction-routes');
 const registerAdminReportRoutes = require('./admin-report-routes');
+const { writeAdminAudit, registerAdminAuditRoutes } = require('./admin-audit');
 
 function normalizeToken(raw) {
   return String(raw || '').trim().toUpperCase();
@@ -66,6 +67,7 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
   });
   registerAdminCorrectionRoutes(app, pool, guard);
   registerAdminReportRoutes(app, pool, guard);
+  registerAdminAuditRoutes(app, pool, guard);
 
   app.get('/api/admin/manage/users/:userId', guard, async (req, res) => {
     const userId = String(req.params.userId || '').trim();
