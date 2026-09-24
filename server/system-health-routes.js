@@ -265,8 +265,11 @@ module.exports = function registerSystemHealthRoutes(app, pool, adminGuard) {
       metrics.cpuLoadPercent >= 90 ||
       (disk.usedPercent != null && disk.usedPercent >= 85) ||
       firebase.status === 'warning' ||
+      firebase.status === 'not_configured' ||
+      postgres.status === 'slow' ||
       backup.status === 'stale' ||
-      backup.status === 'missing'
+      backup.status === 'missing' ||
+      backup.status === 'not_configured'
     );
 
     return res.json({
