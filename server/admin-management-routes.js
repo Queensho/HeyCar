@@ -244,12 +244,25 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
     try {
       const status = String(req.body.status || '');
       if (!['active', 'suspended'].includes(status)) return res.status(400).json({ error: 'INVALID_STATUS' });
+      const before = await pool.query(
+        `SELECT id,email,phone,display_name,role,status,created_at
+           FROM users WHERE id=$1 AND role<>'admin' LIMIT 1`,
+        [req.params.userId]
+      );
+      if (!before.rows.length) return res.status(404).json({ error: 'USER_NOT_FOUND' });
       const r = await pool.query(
         `UPDATE users SET status=$1 WHERE id=$2 AND role<>'admin'
          RETURNING id,email,phone,display_name,role,status,created_at`,
         [status, req.params.userId]
       );
-      if (!r.rows.length) return res.status(404).json({ error: 'USER_NOT_FOUND' });
+      await writeAdminAudit(pool, req, {
+        action: status === 'suspended' ? 'user.suspended' : 'user.activated',
+        targetType: 'user',
+        targetId: r.rows[0].id,
+        targetLabel: r.rows[0].display_name || r.rows[0].email || r.rows[0].phone || String(r.rows[0].id),
+        before: before.rows[0],
+        after: r.rows[0],
+      });
       res.json({ ok: true, user: r.rows[0] });
     } catch (e) {
       console.error(e);
