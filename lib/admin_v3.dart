@@ -1240,6 +1240,275 @@ Widget _adminField(TextEditingController c,String label,{int lines=1})=>TextFiel
 
 
 
+
+Map<String,dynamic> _healthMap(dynamic raw)=>raw is Map?Map<String,dynamic>.from(raw):<String,dynamic>{};
+double _healthDouble(dynamic raw)=>raw is num?raw.toDouble():double.tryParse((raw??'0').toString())??0;
+String _healthBytes(dynamic raw){
+  final n=_healthDouble(raw);
+  if(n<=0)return '0 B';
+  const units=['B','KB','MB','GB','TB'];
+  var v=n;var i=0;
+  while(v>=1024&&i<units.length-1){v/=1024;i++;}
+  return '${v.toStringAsFixed(i==0?0:v>=100?0:v>=10?1:2)} ${units[i]}';
+}
+String _healthDuration(dynamic raw){
+  var s=int.tryParse((raw??'0').toString())??0;
+  final d=s~/86400;s%=86400;final h=s~/3600;s%=3600;final m=s~/60;
+  if(d>0)return '${d}g ${h}s';
+  if(h>0)return '${h}s ${m}dk';
+  return '${m}dk';
+}
+Color _healthStatusColor(String status)=>switch(status){
+  'healthy'||'up'||'ready'=>_green,
+  'warning'||'slow'||'stale'||'missing'=>_amber,
+  'critical'||'down'=>Colors.redAccent,
+  _=>_muted,
+};
+String _healthStatusLabel(String status)=>switch(status){
+  'healthy'=>'Sağlıklı',
+  'up'=>'Çalışıyor',
+  'ready'=>'Hazır',
+  'warning'=>'Uyarı',
+  'slow'=>'Yavaş',
+  'stale'=>'Yedek eski',
+  'missing'=>'Yedek yok',
+  'not_configured'=>'Yapılandırılmadı',
+  'critical'=>'Kritik',
+  'down'=>'Kapalı',
+  _=>status.isEmpty?'-':status,
+};
+
+class SystemHealthPage extends StatelessWidget{
+  const SystemHealthPage({super.key,required this.data,required this.loading,required this.error,required this.onRefresh});
+  final Map<String,dynamic> data;
+  final bool loading;
+  final String? error;
+  final Future<void> Function() onRefresh;
+
+  @override Widget build(BuildContext context){
+    if(loading&&data.isEmpty)return const Center(child:CircularProgressIndicator(color:_purple));
+    if(error!=null&&data.isEmpty){
+      return Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
+        const Icon(Icons.error_outline_rounded,color:Colors.redAccent,size:34),
+        const SizedBox(height:10),
+        Text(error!,style:const TextStyle(color:_muted),textAlign:TextAlign.center),
+        const SizedBox(height:12),
+        FilledButton.icon(onPressed:onRefresh,icon:const Icon(Icons.refresh_rounded),label:const Text('Tekrar dene')),
+      ]));
+    }
+
+    final api=_healthMap(data['api']);
+    final db=_healthMap(data['postgres']);
+    final firebase=_healthMap(data['firebase']);
+    final system=_healthMap(data['system']);
+    final disk=_healthMap(data['disk']);
+    final backup=_healthMap(data['backup']);
+    final lastError=_healthMap(data['lastError']);
+    final overall=(data['overall']??'unknown').toString();
+    final overallColor=_healthStatusColor(overall);
+    final recent=(data['recentErrors'] is List)
+      ? (data['recentErrors'] as List).whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).toList()
+      : <Map<String,dynamic>>[];
+
+    return RefreshIndicator(
+      color:_purple,
+      onRefresh:onRefresh,
+      child:LayoutBuilder(builder:(context,constraints){
+        final compact=constraints.maxWidth<760;
+        final pad=compact?12.0:18.0;
+        final contentWidth=constraints.maxWidth-(pad*2);
+        final cols=constraints.maxWidth>=980?2:1;
+        final gap=12.0;
+        final cardWidth=(contentWidth-gap*(cols-1))/cols;
+        return ListView(
+          physics:const AlwaysScrollableScrollPhysics(),
+          padding:EdgeInsets.fromLTRB(pad,14,pad,28),
+          children:[
+            Container(
+              padding:const EdgeInsets.all(16),
+              decoration:BoxDecoration(
+                gradient:const LinearGradient(colors:[Color(0xFF0B1230),Color(0xFF160925)]),
+                borderRadius:BorderRadius.circular(22),
+                border:Border.all(color:overallColor.withValues(alpha:.42)),
+                boxShadow:[BoxShadow(color:overallColor.withValues(alpha:.08),blurRadius:22)],
+              ),
+              child:Row(children:[
+                Container(width:50,height:50,decoration:BoxDecoration(color:overallColor.withValues(alpha:.14),shape:BoxShape.circle),child:Icon(Icons.monitor_heart_rounded,color:overallColor,size:27)),
+                const SizedBox(width:12),
+                Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                  const Text('Sistem Durumu',style:TextStyle(fontSize:21,fontWeight:FontWeight.w900)),
+                  const SizedBox(height:3),
+                  Text('Genel durum: ${_healthStatusLabel(overall)}',style:TextStyle(color:overallColor,fontSize:12.5,fontWeight:FontWeight.w900)),
+                  const SizedBox(height:2),
+                  Text('Son kontrol: ${_adminDate(data['requestedAt'])}',style:const TextStyle(color:_muted,fontSize:10.5)),
+                ])),
+                if(loading)const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2,color:_purple)),
+              ]),
+            ),
+            const SizedBox(height:12),
+            Wrap(spacing:gap,runSpacing:gap,children:[
+              SizedBox(width:cardWidth,child:_healthCard(
+                title:'VPS / API',
+                icon:Icons.dns_rounded,
+                status:(api['status']??'down').toString(),
+                rows:[
+                  ('Uptime',_healthDuration(api['uptimeSeconds'])),
+                  ('Node',api['node']?.toString()??'-'),
+                  ('PID',api['pid']?.toString()??'-'),
+                  ('Başlangıç',_adminDate(api['startedAt'])),
+                ],
+              )),
+              SizedBox(width:cardWidth,child:_healthCard(
+                title:'PostgreSQL',
+                icon:Icons.storage_rounded,
+                status:(db['status']??'down').toString(),
+                rows:[
+                  ('Gecikme','${db['latencyMs']??'-'} ms'),
+                  ('Veritabanı',db['database']?.toString()??'-'),
+                  ('Boyut',_healthBytes(db['databaseSizeBytes'])),
+                  ('Sunucu saati',_adminDate(db['serverTime'])),
+                ],
+              )),
+              SizedBox(width:cardWidth,child:_healthCard(
+                title:'Firebase Push',
+                icon:Icons.notifications_active_rounded,
+                status:(firebase['status']??'not_configured').toString(),
+                rows:[
+                  ('Servis',firebase['registered']==true?'Kayıtlı':'Kapalı'),
+                  ('Owner token','${firebase['activeOwnerTokens']??0}'),
+                  ('Sürücü token','${firebase['activeDriverTokens']??0}'),
+                  ('Son teslim','${firebase['lastDelivered']??0}/${firebase['lastAttempted']??0}'),
+                  ('Son başarı',_adminDate(firebase['lastSuccessAt'])),
+                ],
+              )),
+              SizedBox(width:cardWidth,child:_healthCard(
+                title:'Backup',
+                icon:Icons.backup_rounded,
+                status:(backup['status']??'not_configured').toString(),
+                rows:[
+                  ('Klasör',backup['directory']?.toString()??'Yapılandırılmadı'),
+                  ('Son yedek',_adminDate(_healthMap(backup['latest'])['modifiedAt'])),
+                  ('Yaş',backup['ageHours']==null?'-':'${backup['ageHours']} saat'),
+                  ('Dosya',_healthMap(backup['latest'])['name']?.toString()??'-'),
+                  ('Boyut',_healthBytes(_healthMap(backup['latest'])['sizeBytes'])),
+                ],
+              )),
+            ]),
+            const SizedBox(height:14),
+            const _ReportSectionTitle(title:'Kaynak Kullanımı',subtitle:'VPS kaynaklarının anlık kullanımı',icon:Icons.speed_rounded),
+            const SizedBox(height:10),
+            _healthResource(
+              title:'CPU',
+              icon:Icons.memory_rounded,
+              value:_healthDouble(system['cpuLoadPercent']),
+              detail:'${system['cpuCores']??'-'} çekirdek • Load 1m: ${system['load1']??'-'}',
+            ),
+            const SizedBox(height:9),
+            _healthResource(
+              title:'RAM',
+              icon:Icons.developer_board_rounded,
+              value:_healthDouble(system['memoryUsedPercent']),
+              detail:'${_healthBytes(system['usedMemoryBytes'])} / ${_healthBytes(system['totalMemoryBytes'])}',
+            ),
+            const SizedBox(height:9),
+            _healthResource(
+              title:'Disk',
+              icon:Icons.hard_drive_rounded,
+              value:_healthDouble(disk['usedPercent']),
+              detail:'${_healthBytes(disk['usedBytes'])} / ${_healthBytes(disk['totalBytes'])} • boş ${_healthBytes(disk['freeBytes'])}',
+            ),
+            const SizedBox(height:14),
+            const _ReportSectionTitle(title:'Son Hata',subtitle:'Bu servis başlangıcından beri yakalanan backend hataları',icon:Icons.bug_report_rounded),
+            const SizedBox(height:10),
+            Container(
+              padding:const EdgeInsets.all(14),
+              decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(18),border:Border.all(color:lastError.isEmpty?_line:Colors.redAccent.withValues(alpha:.35))),
+              child:lastError.isEmpty
+                ? const Row(children:[Icon(Icons.check_circle_rounded,color:_green),SizedBox(width:9),Expanded(child:Text('Bu servis başlangıcından beri yakalanmış runtime hata yok.',style:TextStyle(color:_muted,fontSize:12)))])
+                : Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                    Text(lastError['message']?.toString()??'-',style:const TextStyle(color:Colors.white,fontSize:12,height:1.35,fontWeight:FontWeight.w700)),
+                    const SizedBox(height:7),
+                    Text(_adminDate(lastError['at']),style:const TextStyle(color:_muted,fontSize:10.5)),
+                  ]),
+            ),
+            if(recent.length>1)...[
+              const SizedBox(height:10),
+              Container(
+                padding:const EdgeInsets.all(12),
+                decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(18),border:Border.all(color:_line)),
+                child:ExpansionTile(
+                  tilePadding:EdgeInsets.zero,
+                  childrenPadding:const EdgeInsets.only(top:6),
+                  title:Text('Son ${recent.length} hata',style:const TextStyle(fontSize:13,fontWeight:FontWeight.w900)),
+                  children:recent.skip(1).map((e)=>Padding(
+                    padding:const EdgeInsets.only(bottom:9),
+                    child:Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                      const Icon(Icons.error_outline_rounded,color:Colors.redAccent,size:16),
+                      const SizedBox(width:7),
+                      Expanded(child:Text(e['message']?.toString()??'-',style:const TextStyle(color:Colors.white70,fontSize:10.5,height:1.35))),
+                      const SizedBox(width:8),
+                      Text(_adminDate(e['at']),style:const TextStyle(color:_muted,fontSize:9)),
+                    ]),
+                  )).toList(),
+                ),
+              ),
+            ],
+            if(error!=null)...[
+              const SizedBox(height:10),
+              Text(error!,style:const TextStyle(color:Colors.redAccent,fontSize:11.5)),
+            ],
+          ],
+        );
+      }),
+    );
+  }
+
+  Widget _healthCard({required String title,required IconData icon,required String status,required List<(String,String)> rows}){
+    final color=_healthStatusColor(status);
+    return Container(
+      constraints:const BoxConstraints(minHeight:190),
+      padding:const EdgeInsets.all(14),
+      decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(20),border:Border.all(color:color.withValues(alpha:.30))),
+      child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        Row(children:[
+          Container(width:40,height:40,decoration:BoxDecoration(color:color.withValues(alpha:.13),shape:BoxShape.circle),child:Icon(icon,color:color,size:21)),
+          const SizedBox(width:9),
+          Expanded(child:Text(title,style:const TextStyle(fontSize:15,fontWeight:FontWeight.w900))),
+          Container(padding:const EdgeInsets.symmetric(horizontal:9,vertical:5),decoration:BoxDecoration(color:color.withValues(alpha:.12),borderRadius:BorderRadius.circular(20),border:Border.all(color:color.withValues(alpha:.32))),child:Text(_healthStatusLabel(status),style:TextStyle(color:color,fontSize:9.5,fontWeight:FontWeight.w900))),
+        ]),
+        const SizedBox(height:11),
+        ...rows.map((r)=>Padding(
+          padding:const EdgeInsets.only(bottom:7),
+          child:Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
+            SizedBox(width:96,child:Text(r.$1,style:const TextStyle(color:_muted,fontSize:10.5,fontWeight:FontWeight.w700))),
+            Expanded(child:Text(r.$2,maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Colors.white,fontSize:11.5,fontWeight:FontWeight.w800))),
+          ]),
+        )),
+      ]),
+    );
+  }
+
+  Widget _healthResource({required String title,required IconData icon,required double value,required String detail}){
+    final v=value.clamp(0.0,100.0);
+    final color=v>=90?Colors.redAccent:v>=75?_amber:_green;
+    return Container(
+      padding:const EdgeInsets.all(13),
+      decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(17),border:Border.all(color:_line)),
+      child:Row(children:[
+        Container(width:42,height:42,decoration:BoxDecoration(color:color.withValues(alpha:.12),shape:BoxShape.circle),child:Icon(icon,color:color,size:21)),
+        const SizedBox(width:10),
+        Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          Row(children:[Text(title,style:const TextStyle(fontSize:13,fontWeight:FontWeight.w900)),const Spacer(),Text('${value.toStringAsFixed(1)}%',style:TextStyle(color:color,fontSize:12,fontWeight:FontWeight.w900))]),
+          const SizedBox(height:6),
+          ClipRRect(borderRadius:BorderRadius.circular(8),child:LinearProgressIndicator(value:v/100,minHeight:7,backgroundColor:Colors.white.withValues(alpha:.06),valueColor:AlwaysStoppedAnimation(color))),
+          const SizedBox(height:5),
+          Text(detail,style:const TextStyle(color:_muted,fontSize:10.5)),
+        ])),
+      ]),
+    );
+  }
+}
+
 String _auditActionLabel(String action)=>switch(action){
   'user.suspended'=>'Kullanıcı askıya alındı',
   'user.activated'=>'Kullanıcı aktif edildi',
