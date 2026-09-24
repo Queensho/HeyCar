@@ -10,27 +10,16 @@ function normalizeToken(raw) {
 let qrItemPrintSchemaReady = false;
 async function ensureQrItemPrintSchema(pool) {
   if (qrItemPrintSchemaReady) return;
-  await pool.query(`
-    ALTER TABLE qr_tags
-      ADD COLUMN IF NOT EXISTS print_status TEXT NOT NULL DEFAULT 'ready';
-    ALTER TABLE qr_tags
-      ADD COLUMN IF NOT EXISTS pdf_downloaded_at TIMESTAMPTZ;
-    ALTER TABLE qr_tags
-      ADD COLUMN IF NOT EXISTS sent_to_print_at TIMESTAMPTZ;
-    ALTER TABLE qr_tags
-      ADD COLUMN IF NOT EXISTS printed_at TIMESTAMPTZ;
-
-    DO $qr$ BEGIN
-      IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint WHERE conname='qr_tags_print_status_check'
-      ) THEN
-        ALTER TABLE qr_tags
-          ADD CONSTRAINT qr_tags_print_status_check
-          CHECK (print_status IN ('ready','pdf_downloaded','sent_to_print','printed'));
-      END IF;
-    END $qr$;
-
+  const r = await pool.query(`
+    SELECT COUNT(*)::int AS n
+      FROM information_schema.columns
+     WHERE table_schema='public'
+       AND table_name='qr_tags'
+       AND column_name IN ('print_status','pdf_downloaded_at','sent_to_print_at','printed_at')
   `);
+  if (Number(r.rows[0]?.n || 0) < 4) {
+    throw new Error('QR_ITEM_PRINT_MIGRATION_REQUIRED');
+  }
   qrItemPrintSchemaReady = true;
 }
 
