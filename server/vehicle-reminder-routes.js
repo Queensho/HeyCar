@@ -109,6 +109,28 @@ module.exports=function registerVehicleReminderRoutes(app,pool){
     }catch(e){console.error('vehicle reminder save',e);res.status(500).json({error:'SERVER_ERROR'});}
   });
 
+  // Backward-compatible endpoint used by existing mobile builds.
+  app.put('/api/vehicles/:vehicleId/reminders/:type',express.json(),async(req,res)=>{
+    try{
+      await ensureSchema();
+      const v=await owned(req,res);if(!v)return;
+      const o=owner(req);
+      if(!await premium(o))return res.status(403).json({error:'PREMIUM_REQUIRED'});
+      const type=normalizeType(req.params.type);
+      const dueDate=String(req.body.dueDate||'').slice(0,10);
+      if(!meta[type]||!/^\d{4}-\d{2}-\d{2}$/.test(dueDate))return res.status(400).json({error:'INVALID_REMINDER'});
+      await pool.query(
+        `INSERT INTO vehicle_reminders(vehicle_id,owner_id,type,due_date,enabled,updated_at)
+         VALUES($1,$2,$3,$4,TRUE,NOW())
+         ON CONFLICT(owner_id,vehicle_id,type)
+         DO UPDATE SET due_date=EXCLUDED.due_date,enabled=TRUE,updated_at=NOW()`,
+        [String(v.id),o,type,dueDate]
+      );
+      res.json({ok:true,type,dueDate});
+    }catch(e){console.error('vehicle reminder save compat',e);res.status(500).json({error:'SERVER_ERROR'});}
+  });
+
+
   app.delete('/api/vehicles/:vehicleId/reminders/:type',async(req,res)=>{
     try{
       await ensureSchema();
