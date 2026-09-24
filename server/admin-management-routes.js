@@ -7,6 +7,7 @@ const registerSystemHealthRoutes = require('./system-health-routes');
 const registerAdminCommunicationSecurityRoutes = require('./admin-communication-security-routes');
 const registerAdminModerationOpsRoutes = require('./admin-moderation-ops-routes');
 const registerAdminBusinessPremiumRoutes = require('./admin-business-premium-routes');
+const registerSupportRoutes = require('./support-routes');
 const { writeAdminAudit, registerAdminAuditRoutes } = require('./admin-audit');
 const { configureTrustedProxy } = require('./proxy-security');
 
@@ -77,6 +78,7 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
   registerAdminCommunicationSecurityRoutes(app, pool, guard);
   registerAdminModerationOpsRoutes(app, pool, guard);
   registerAdminBusinessPremiumRoutes(app, pool, guard);
+  registerSupportRoutes(app, pool, guard);
   registerAdminAuditRoutes(app, pool, guard);
 
   app.get('/api/admin/manage/users/:userId', guard, async (req, res) => {
