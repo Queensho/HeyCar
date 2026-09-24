@@ -1195,6 +1195,463 @@ class _AdminPromoPageState extends State<AdminPromoPage>{
 Widget _adminField(TextEditingController c,String label,{int lines=1})=>TextField(controller:c,maxLines:lines,decoration:InputDecoration(labelText:label,border:const OutlineInputBorder()));
 
 
+
+int _reportInt(dynamic value)=>int.tryParse((value??'0').toString())??0;
+double _reportDouble(dynamic value)=>double.tryParse((value??'0').toString())??0;
+String _reportMoney(dynamic value){
+  final n=_reportDouble(value);
+  return '₺${n.toStringAsFixed(n.truncateToDouble()==n?0:2)}';
+}
+String _reportDay(dynamic raw){
+  final s=(raw??'').toString();
+  final p=s.split('-');
+  if(p.length==3)return '${p[2]}.${p[1]}';
+  return s;
+}
+List<Map<String,dynamic>> _reportRows(dynamic raw){
+  if(raw is! List)return <Map<String,dynamic>>[];
+  return raw.whereType<Map>().map((x)=>Map<String,dynamic>.from(x)).toList();
+}
+
+class ReportsPage extends StatelessWidget{
+  const ReportsPage({
+    super.key,
+    required this.data,
+    required this.loading,
+    required this.error,
+    required this.days,
+    required this.onDaysChanged,
+    required this.onRefresh,
+  });
+  final Map<String,dynamic> data;
+  final bool loading;
+  final String? error;
+  final int days;
+  final Future<void> Function(int) onDaysChanged;
+  final VoidCallback onRefresh;
+
+  @override Widget build(BuildContext context){
+    if(loading&&data.isEmpty){
+      return const Center(child:CircularProgressIndicator(color:_purple));
+    }
+    if(error!=null&&data.isEmpty){
+      return Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
+        const Icon(Icons.error_outline_rounded,color:Colors.redAccent,size:34),
+        const SizedBox(height:10),
+        Text(error!,textAlign:TextAlign.center,style:const TextStyle(color:_muted)),
+        const SizedBox(height:12),
+        FilledButton.icon(onPressed:onRefresh,icon:const Icon(Icons.refresh_rounded),label:const Text('Tekrar dene')),
+      ]));
+    }
+
+    final summary=Map<String,dynamic>.from(data['summary'] as Map? ?? const{});
+    final business=Map<String,dynamic>.from(data['business'] as Map? ?? const{});
+    final daily=_reportRows(data['daily']);
+    final topBusinesses=_reportRows(data['topBusinesses']);
+    final topCampaigns=_reportRows(data['topCampaigns']);
+    final periodLabel=days==7?'Son 7 gün':days==90?'Son 90 gün':'Son 30 gün';
+
+    return RefreshIndicator(
+      onRefresh:()async=>onRefresh(),
+      color:_purple,
+      child:LayoutBuilder(builder:(context,constraints){
+        final compact=constraints.maxWidth<760;
+        final pad=compact?12.0:18.0;
+        final contentWidth=constraints.maxWidth-(pad*2);
+        final metricCols=constraints.maxWidth>=1100?4:compact?2:3;
+        final metricGap=10.0;
+        final metricWidth=(contentWidth-(metricGap*(metricCols-1)))/metricCols;
+        final chartCols=constraints.maxWidth>=1000?2:1;
+        final chartGap=12.0;
+        final chartWidth=(contentWidth-(chartGap*(chartCols-1)))/chartCols;
+
+        final metrics=<({String value,String label,IconData icon,Color color})>[
+          (value:'${_reportInt(summary['dailyActiveUsers'])}',label:'Bugün aktif kullanıcı',icon:Icons.bolt_rounded,color:_green),
+          (value:'${_reportInt(summary['weeklyActiveUsers'])}',label:'7 günlük aktif kullanıcı',icon:Icons.groups_rounded,color:_blue),
+          (value:'${_reportInt(summary['qrScans'])}',label:'QR tarama • $periodLabel',icon:Icons.qr_code_scanner_rounded,color:_purple),
+          (value:'${_reportInt(summary['notifications'])}',label:'Bildirim • $periodLabel',icon:Icons.notifications_active_rounded,color:_pink),
+          (value:'${_reportInt(summary['calls'])}',label:'Arama • $periodLabel',icon:Icons.call_rounded,color:_amber),
+          (value:'${_reportInt(summary['messages'])}',label:'Mesaj • $periodLabel',icon:Icons.chat_bubble_rounded,color:_blue),
+          (value:'${_reportInt(summary['registrations'])}',label:'Yeni kayıt • $periodLabel',icon:Icons.person_add_alt_1_rounded,color:_green),
+          (value:'${_reportInt(summary['offerRedeemed'])}',label:'Kullanılan fırsat • $periodLabel',icon:Icons.local_offer_rounded,color:_purple),
+        ];
+
+        return ListView(
+          physics:const AlwaysScrollableScrollPhysics(),
+          padding:EdgeInsets.fromLTRB(pad,14,pad,28),
+          children:[
+            Container(
+              padding:const EdgeInsets.all(16),
+              decoration:BoxDecoration(
+                gradient:const LinearGradient(colors:[Color(0xFF0B1230),Color(0xFF170A2B)]),
+                borderRadius:BorderRadius.circular(22),
+                border:Border.all(color:_purple.withValues(alpha:.40)),
+                boxShadow:[BoxShadow(color:_purple.withValues(alpha:.10),blurRadius:24)],
+              ),
+              child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                Row(children:[
+                  Container(width:46,height:46,decoration:BoxDecoration(color:_purple.withValues(alpha:.14),shape:BoxShape.circle),child:const Icon(Icons.insights_rounded,color:_purple,size:25)),
+                  const SizedBox(width:11),
+                  const Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                    Text('Raporlama & Analitik',style:TextStyle(fontSize:21,fontWeight:FontWeight.w900)),
+                    SizedBox(height:2),
+                    Text('Kullanım, iletişim ve fırsat performansını tek ekranda izle.',style:TextStyle(color:_muted,fontSize:12)),
+                  ])),
+                  if(loading)const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2,color:_purple)),
+                ]),
+                const SizedBox(height:14),
+                Wrap(spacing:7,runSpacing:7,children:[
+                  ChoiceChip(label:const Text('7 Gün'),selected:days==7,onSelected:(_)=>onDaysChanged(7)),
+                  ChoiceChip(label:const Text('30 Gün'),selected:days==30,onSelected:(_)=>onDaysChanged(30)),
+                  ChoiceChip(label:const Text('90 Gün'),selected:days==90,onSelected:(_)=>onDaysChanged(90)),
+                ]),
+                if(error!=null)...[
+                  const SizedBox(height:10),
+                  Text(error!,style:const TextStyle(color:Colors.redAccent,fontSize:11.5)),
+                ],
+              ]),
+            ),
+            const SizedBox(height:12),
+
+            Wrap(
+              spacing:metricGap,
+              runSpacing:metricGap,
+              children:metrics.map((m)=>SizedBox(
+                width:metricWidth,
+                height:94,
+                child:_ReportMetricCard(value:m.value,label:m.label,icon:m.icon,color:m.color),
+              )).toList(),
+            ),
+            const SizedBox(height:14),
+
+            const _ReportSectionTitle(
+              title:'Kullanım Trendleri',
+              subtitle:'Gün bazında gerçek sistem olayları',
+              icon:Icons.timeline_rounded,
+            ),
+            const SizedBox(height:10),
+            Wrap(spacing:chartGap,runSpacing:chartGap,children:[
+              SizedBox(width:chartWidth,child:_ReportChartCard(
+                title:'Aktif kullanıcı',
+                subtitle:'Oturum ve cihaz son görülme kayıtlarına göre',
+                rows:daily,
+                series:const[
+                  _ReportSeries(keyName:'activeUsers',label:'Aktif kullanıcı',color:_green),
+                ],
+              )),
+              SizedBox(width:chartWidth,child:_ReportChartCard(
+                title:'QR tarama & bildirim',
+                subtitle:'QR okutma ve araç bildirimleri',
+                rows:daily,
+                series:const[
+                  _ReportSeries(keyName:'qrScans',label:'QR tarama',color:_purple),
+                  _ReportSeries(keyName:'notifications',label:'Bildirim',color:_pink),
+                ],
+              )),
+              SizedBox(width:chartWidth,child:_ReportChartCard(
+                title:'Arama & mesaj',
+                subtitle:'Anonim arama ve sohbet trafiği',
+                rows:daily,
+                series:const[
+                  _ReportSeries(keyName:'calls',label:'Arama',color:_amber),
+                  _ReportSeries(keyName:'messages',label:'Mesaj',color:_blue),
+                ],
+              )),
+              SizedBox(width:chartWidth,child:_ReportChartCard(
+                title:'Yeni kayıtlar',
+                subtitle:'Yeni kullanıcı hesapları',
+                rows:daily,
+                series:const[
+                  _ReportSeries(keyName:'registrations',label:'Yeni kayıt',color:_green),
+                ],
+              )),
+              SizedBox(width:chartWidth,child:_ReportChartCard(
+                title:'Fırsat kullanımı',
+                subtitle:'Kod oluşturma ve doğrulanmış kullanım',
+                rows:daily,
+                series:const[
+                  _ReportSeries(keyName:'offerRequests',label:'Kod oluşturuldu',color:_amber),
+                  _ReportSeries(keyName:'offerRedeemed',label:'Kullanıldı',color:_green),
+                ],
+              )),
+            ]),
+            const SizedBox(height:16),
+
+            const _ReportSectionTitle(
+              title:'İşletme & Fırsat Performansı',
+              subtitle:'Aktif işletmeler, kampanyalar ve kullanım sonuçları',
+              icon:Icons.storefront_rounded,
+            ),
+            const SizedBox(height:10),
+            Wrap(spacing:metricGap,runSpacing:metricGap,children:[
+              SizedBox(width:metricWidth,height:94,child:_ReportMetricCard(value:'${_reportInt(business['activeBusinesses'])}/${_reportInt(business['businesses'])}',label:'Aktif / toplam işletme',icon:Icons.storefront_rounded,color:_blue)),
+              SizedBox(width:metricWidth,height:94,child:_ReportMetricCard(value:'${_reportInt(business['liveCampaigns'])}/${_reportInt(business['campaigns'])}',label:'Canlı / toplam kampanya',icon:Icons.campaign_rounded,color:_purple)),
+              SizedBox(width:metricWidth,height:94,child:_ReportMetricCard(value:'${_reportInt(business['redeemedRedemptions'])}',label:'Doğrulanmış kullanım',icon:Icons.verified_rounded,color:_green)),
+              SizedBox(width:metricWidth,height:94,child:_ReportMetricCard(value:_reportMoney(business['platformFees']),label:'Platform ücreti • $periodLabel',icon:Icons.payments_rounded,color:_amber)),
+              SizedBox(width:metricWidth,height:94,child:_ReportMetricCard(value:business['averageRating']==null?'-':'${business['averageRating']}',label:'Ortalama değerlendirme',icon:Icons.star_rounded,color:_amber)),
+              SizedBox(width:metricWidth,height:94,child:_ReportMetricCard(value:'${_reportInt(business['pendingRedemptions'])}',label:'Bekleyen kullanım',icon:Icons.hourglass_top_rounded,color:_pink)),
+            ]),
+            const SizedBox(height:12),
+
+            Wrap(spacing:chartGap,runSpacing:chartGap,children:[
+              SizedBox(width:chartWidth,child:_ReportRankingCard(
+                title:'En iyi işletmeler',
+                subtitle:'Doğrulanmış fırsat kullanımına göre',
+                rows:topBusinesses,
+                nameKey:'name',
+                valueKey:'redeemed',
+                secondaryBuilder:(r)=>'${_reportInt(r['redeemed'])} kullanım • ${_reportInt(r['requests'])} talep • ${_reportMoney(r['platform_fees'])}',
+                emptyText:'Henüz işletme kullanım verisi yok.',
+              )),
+              SizedBox(width:chartWidth,child:_ReportRankingCard(
+                title:'En iyi fırsatlar',
+                subtitle:'Doğrulanmış kullanıma göre kampanyalar',
+                rows:topCampaigns,
+                nameKey:'title',
+                valueKey:'redeemed',
+                secondaryBuilder:(r)=>'${r['business_name']??'-'} • ${_reportInt(r['redeemed'])}/${_reportInt(r['requests'])} kullanım',
+                emptyText:'Henüz fırsat kullanım verisi yok.',
+              )),
+            ]),
+            const SizedBox(height:12),
+            Container(
+              padding:const EdgeInsets.all(12),
+              decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(16),border:Border.all(color:_line)),
+              child:const Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                Icon(Icons.info_outline_rounded,color:_muted,size:18),
+                SizedBox(width:8),
+                Expanded(child:Text(
+                  'QR tarama grafiği, tarama geçmişi sistemi etkinleştirildikten sonraki gerçek okutma kayıtlarını gösterir. Aktif kullanıcı metriği oturum ve cihaz son görülme verilerinden hesaplanır.',
+                  style:TextStyle(color:_muted,fontSize:11.5,height:1.4),
+                )),
+              ]),
+            ),
+          ],
+        );
+      }),
+    );
+  }
+}
+
+class _ReportMetricCard extends StatelessWidget{
+  const _ReportMetricCard({required this.value,required this.label,required this.icon,required this.color});
+  final String value,label;
+  final IconData icon;
+  final Color color;
+
+  @override Widget build(BuildContext context)=>Container(
+    padding:const EdgeInsets.all(12),
+    decoration:BoxDecoration(
+      color:_card,
+      borderRadius:BorderRadius.circular(18),
+      border:Border.all(color:color.withValues(alpha:.32)),
+      boxShadow:[BoxShadow(color:color.withValues(alpha:.06),blurRadius:16)],
+    ),
+    child:Row(children:[
+      Container(width:42,height:42,decoration:BoxDecoration(color:color.withValues(alpha:.13),shape:BoxShape.circle),child:Icon(icon,color:color,size:22)),
+      const SizedBox(width:10),
+      Expanded(child:Column(mainAxisAlignment:MainAxisAlignment.center,crossAxisAlignment:CrossAxisAlignment.start,children:[
+        Text(value,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:21,fontWeight:FontWeight.w900)),
+        const SizedBox(height:2),
+        Text(label,maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_muted,fontSize:10.5,fontWeight:FontWeight.w700)),
+      ])),
+    ]),
+  );
+}
+
+class _ReportSectionTitle extends StatelessWidget{
+  const _ReportSectionTitle({required this.title,required this.subtitle,required this.icon});
+  final String title,subtitle;
+  final IconData icon;
+
+  @override Widget build(BuildContext context)=>Row(children:[
+    Container(width:39,height:39,decoration:BoxDecoration(color:_purple.withValues(alpha:.12),shape:BoxShape.circle),child:Icon(icon,color:_purple,size:21)),
+    const SizedBox(width:9),
+    Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      Text(title,style:const TextStyle(fontSize:18,fontWeight:FontWeight.w900)),
+      Text(subtitle,style:const TextStyle(color:_muted,fontSize:11.5)),
+    ])),
+  ]);
+}
+
+class _ReportSeries{
+  const _ReportSeries({required this.keyName,required this.label,required this.color});
+  final String keyName,label;
+  final Color color;
+}
+
+class _ReportChartCard extends StatelessWidget{
+  const _ReportChartCard({required this.title,required this.subtitle,required this.rows,required this.series});
+  final String title,subtitle;
+  final List<Map<String,dynamic>> rows;
+  final List<_ReportSeries> series;
+
+  bool get hasData=>rows.any((r)=>series.any((s)=>_reportDouble(r[s.keyName])>0));
+
+  @override Widget build(BuildContext context)=>Container(
+    height:292,
+    padding:const EdgeInsets.all(14),
+    decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(20),border:Border.all(color:_line)),
+    child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      Text(title,style:const TextStyle(fontSize:15.5,fontWeight:FontWeight.w900)),
+      const SizedBox(height:2),
+      Text(subtitle,style:const TextStyle(color:_muted,fontSize:10.5)),
+      const SizedBox(height:8),
+      Wrap(spacing:10,runSpacing:4,children:series.map((s)=>Row(mainAxisSize:MainAxisSize.min,children:[
+        Container(width:8,height:8,decoration:BoxDecoration(color:s.color,shape:BoxShape.circle)),
+        const SizedBox(width:4),
+        Text(s.label,style:const TextStyle(color:_muted,fontSize:10.5,fontWeight:FontWeight.w700)),
+      ])).toList()),
+      const SizedBox(height:8),
+      Expanded(
+        child:hasData
+          ? CustomPaint(
+              painter:_ReportLinePainter(rows:rows,series:series),
+              child:const SizedBox.expand(),
+            )
+          : const Center(child:Text('Bu dönemde veri yok',style:TextStyle(color:_muted,fontSize:12))),
+      ),
+    ]),
+  );
+}
+
+class _ReportLinePainter extends CustomPainter{
+  const _ReportLinePainter({required this.rows,required this.series});
+  final List<Map<String,dynamic>> rows;
+  final List<_ReportSeries> series;
+
+  @override void paint(Canvas canvas,Size size){
+    if(rows.isEmpty||series.isEmpty)return;
+    const left=34.0,right=8.0,top=8.0,bottom=25.0;
+    final w=size.width-left-right;
+    final h=size.height-top-bottom;
+    if(w<=0||h<=0)return;
+
+    double maxValue=0;
+    for(final row in rows){
+      for(final s in series){
+        final v=_reportDouble(row[s.keyName]);
+        if(v>maxValue)maxValue=v;
+      }
+    }
+    if(maxValue<=0)maxValue=1;
+    final roundedMax=maxValue<=5?5.0:(maxValue/5).ceil()*5.0;
+
+    final gridPaint=Paint()..color=Colors.white.withValues(alpha:.07)..strokeWidth=1;
+    for(var i=0;i<=4;i++){
+      final y=top+h*(i/4);
+      canvas.drawLine(Offset(left,y),Offset(left+w,y),gridPaint);
+      final value=roundedMax*(1-(i/4));
+      _paintChartText(canvas,value>=1000?'${(value/1000).toStringAsFixed(value>=10000?0:1)}K':'${value.round()}',Offset(0,y-7),const Color(0xFF7E879F),9.5);
+    }
+
+    final step=rows.length<=1?0:w/(rows.length-1);
+    for(final s in series){
+      final path=Path();
+      final linePaint=Paint()..color=s.color..style=PaintingStyle.stroke..strokeWidth=2.2..strokeCap=StrokeCap.round..strokeJoin=StrokeJoin.round;
+      final glow=Paint()..color=s.color.withValues(alpha:.16)..style=PaintingStyle.stroke..strokeWidth=6..maskFilter=const MaskFilter.blur(BlurStyle.normal,4);
+      for(var i=0;i<rows.length;i++){
+        final v=_reportDouble(rows[i][s.keyName]);
+        final x=left+(step*i);
+        final y=top+h-(v/roundedMax*h);
+        if(i==0){path.moveTo(x,y);}else{path.lineTo(x,y);}
+      }
+      canvas.drawPath(path,glow);
+      canvas.drawPath(path,linePaint);
+      if(rows.length<=30){
+        final dot=Paint()..color=s.color;
+        for(var i=0;i<rows.length;i++){
+          final v=_reportDouble(rows[i][s.keyName]);
+          final x=left+(step*i);
+          final y=top+h-(v/roundedMax*h);
+          canvas.drawCircle(Offset(x,y),2.2,dot);
+        }
+      }
+    }
+
+    final indexes=<int>{0,rows.length~/2,rows.length-1}.toList()..sort();
+    for(final i in indexes){
+      if(i<0||i>=rows.length)continue;
+      final label=_reportDay(rows[i]['day']);
+      final x=left+(step*i);
+      final tp=TextPainter(
+        text:TextSpan(text:label,style:const TextStyle(color:Color(0xFF7E879F),fontSize:9.5)),
+        textDirection:TextDirection.ltr,
+      )..layout();
+      final dx=(x-tp.width/2).clamp(left,left+w-tp.width);
+      tp.paint(canvas,Offset(dx,top+h+7));
+    }
+  }
+
+  void _paintChartText(Canvas canvas,String text,Offset offset,Color color,double size){
+    final tp=TextPainter(text:TextSpan(text:text,style:TextStyle(color:color,fontSize:size)),textDirection:TextDirection.ltr)..layout();
+    tp.paint(canvas,offset);
+  }
+
+  @override bool shouldRepaint(covariant _ReportLinePainter oldDelegate)=>oldDelegate.rows!=rows||oldDelegate.series!=series;
+}
+
+class _ReportRankingCard extends StatelessWidget{
+  const _ReportRankingCard({
+    required this.title,
+    required this.subtitle,
+    required this.rows,
+    required this.nameKey,
+    required this.valueKey,
+    required this.secondaryBuilder,
+    required this.emptyText,
+  });
+  final String title,subtitle,nameKey,valueKey,emptyText;
+  final List<Map<String,dynamic>> rows;
+  final String Function(Map<String,dynamic>) secondaryBuilder;
+
+  @override Widget build(BuildContext context){
+    final maxValue=rows.fold<int>(0,(m,r){
+      final v=_reportInt(r[valueKey]);
+      return v>m?v:m;
+    });
+    return Container(
+      constraints:const BoxConstraints(minHeight:260),
+      padding:const EdgeInsets.all(14),
+      decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(20),border:Border.all(color:_line)),
+      child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        Text(title,style:const TextStyle(fontSize:15.5,fontWeight:FontWeight.w900)),
+        const SizedBox(height:2),
+        Text(subtitle,style:const TextStyle(color:_muted,fontSize:10.5)),
+        const SizedBox(height:12),
+        if(rows.isEmpty)Padding(padding:const EdgeInsets.symmetric(vertical:42),child:Center(child:Text(emptyText,style:const TextStyle(color:_muted,fontSize:12))))
+        else ...rows.asMap().entries.map((entry){
+          final i=entry.key;
+          final r=entry.value;
+          final value=_reportInt(r[valueKey]);
+          final fraction=maxValue<=0?0.0:(value/maxValue).clamp(0.0,1.0);
+          return Padding(
+            padding:const EdgeInsets.only(bottom:11),
+            child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+              Row(children:[
+                Container(width:23,height:23,alignment:Alignment.center,decoration:BoxDecoration(color:_purple.withValues(alpha:.13),borderRadius:BorderRadius.circular(7)),child:Text('${i+1}',style:const TextStyle(color:Color(0xFFC879FF),fontSize:10,fontWeight:FontWeight.w900))),
+                const SizedBox(width:8),
+                Expanded(child:Text((r[nameKey]??'-').toString(),maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:12.5,fontWeight:FontWeight.w900))),
+                Text('$value',style:const TextStyle(fontSize:12,fontWeight:FontWeight.w900,color:_green)),
+              ]),
+              const SizedBox(height:4),
+              Padding(padding:const EdgeInsets.only(left:31),child:Text(secondaryBuilder(r),maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_muted,fontSize:10.5))),
+              const SizedBox(height:6),
+              Padding(
+                padding:const EdgeInsets.only(left:31),
+                child:ClipRRect(
+                  borderRadius:BorderRadius.circular(8),
+                  child:LinearProgressIndicator(value:fraction,minHeight:6,backgroundColor:Colors.white.withValues(alpha:.06),valueColor:const AlwaysStoppedAnimation(_purple)),
+                ),
+              ),
+            ]),
+          );
+        }),
+      ]),
+    );
+  }
+}
+
 String _adminDate(dynamic raw){
   final d=DateTime.tryParse(raw?.toString()??'')?.toLocal();
   if(d==null)return '-';
