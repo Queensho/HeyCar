@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'admin_premium_pricing.dart';
 
 const _bg=Color(0xFF060A18),_card=Color(0xFF0C1226),_card2=Color(0xFF111A31),_line=Color(0xFF242D49),_muted=Color(0xFF8993AD),_purple=Color(0xFFA72BFF),_green=Color(0xFF28F39A),_blue=Color(0xFF499DFF),_amber=Color(0xFFFFBF55);
 
@@ -81,10 +82,11 @@ class AdminOfferRevenuePage extends StatelessWidget{
 }
 
 class AdminPremiumPage extends StatelessWidget{
-  const AdminPremiumPage({super.key,required this.data,required this.loading,required this.error,required this.filter,required this.onFilter,required this.onAction,required this.onHistory,required this.onRefresh});
-  final Map<String,dynamic> data;final bool loading;final String? error;final String filter;final Future<void> Function(String) onFilter;final Future<void> Function(String,Map<String,dynamic>) onAction;final Future<List<Map<String,dynamic>>> Function(String) onHistory;final Future<void> Function() onRefresh;
+  const AdminPremiumPage({super.key,required this.data,required this.loading,required this.error,required this.filter,required this.onFilter,required this.onAction,required this.onHistory,required this.onRefresh,required this.token,required this.admin});
+  final Map<String,dynamic> data;final bool loading;final String? error;final String filter;final Future<void> Function(String) onFilter;final Future<void> Function(String,Map<String,dynamic>) onAction;final Future<List<Map<String,dynamic>>> Function(String) onHistory;final Future<void> Function() onRefresh;final String token;final Map<String,dynamic>? admin;
   @override Widget build(BuildContext context){final s=_map(data['summary']),items=_list(data['items']);if(loading&&data.isEmpty)return const Center(child:CircularProgressIndicator(color:_purple));return RefreshIndicator(color:_purple,onRefresh:onRefresh,child:LayoutBuilder(builder:(context,c){final compact=c.maxWidth<760,pad=compact?12.0:18.0,width=c.maxWidth-pad*2,cols=compact?2:4,gap=9.0,mw=(width-gap*(cols-1))/cols;return ListView(physics:const AlwaysScrollableScrollPhysics(),padding:EdgeInsets.fromLTRB(pad,14,pad,28),children:[
-    _hero('Premium Yönetimi','Premium ver, süre belirle, uzat/iptal et ve geçmişi incele.',Icons.workspace_premium_rounded,_amber),const SizedBox(height:11),
+    _hero('Premium Yönetimi','Premium fiyatını değiştir, Premium ver, süre belirle, uzat/iptal et ve geçmişi incele.',Icons.workspace_premium_rounded,_amber),const SizedBox(height:11),
+    AdminPremiumPricingCard(token:token,admin:admin),const SizedBox(height:11),
     Wrap(spacing:gap,runSpacing:gap,children:[SizedBox(width:mw,child:_metric((s['total']??0).toString(),'Toplam',Icons.people_rounded,_blue)),SizedBox(width:mw,child:_metric((s['premium']??0).toString(),'Aktif Premium',Icons.workspace_premium_rounded,_amber)),SizedBox(width:mw,child:_metric((s['expired']??0).toString(),'Süresi Dolmuş',Icons.timer_off_rounded,Colors.redAccent)),SizedBox(width:mw,child:_metric((s['standard']??0).toString(),'Standart',Icons.person_outline_rounded,_muted))]),const SizedBox(height:11),
     Wrap(spacing:7,runSpacing:7,children:[for(final x in const [('all','Tümü'),('premium','Premium'),('expired','Süresi Dolmuş'),('standard','Standart')])ChoiceChip(label:Text(x.$2),selected:filter==x.$1,onSelected:(_)=>onFilter(x.$1))]),const SizedBox(height:9),
     if(items.isEmpty)_empty('Bu filtrede kullanıcı yok.')else ...items.map((u)=>_user(context,u)),if(error!=null)Text(error!,style:const TextStyle(color:Colors.redAccent)),
