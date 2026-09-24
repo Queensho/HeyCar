@@ -613,20 +613,21 @@ class _QrPageState extends State<QrPage>{
           pw.Positioned(
             right:1.6*PdfPageFormat.mm,
             top:1.4*PdfPageFormat.mm,
-            width:30.8*PdfPageFormat.mm,
-            height:37.2*PdfPageFormat.mm,
-            child:pw.Container(
-              padding:pw.EdgeInsets.fromLTRB(
-                2.2*PdfPageFormat.mm,
-                1.8*PdfPageFormat.mm,
-                2.2*PdfPageFormat.mm,
-                1.5*PdfPageFormat.mm,
-              ),
-              decoration:pw.BoxDecoration(
-                color:PdfColors.white,
-                borderRadius:pw.BorderRadius.circular(4.2*PdfPageFormat.mm),
-              ),
-              child:pw.Column(children:[
+            child:pw.SizedBox(
+              width:30.8*PdfPageFormat.mm,
+              height:37.2*PdfPageFormat.mm,
+              child:pw.Container(
+                padding:pw.EdgeInsets.fromLTRB(
+                  2.2*PdfPageFormat.mm,
+                  1.8*PdfPageFormat.mm,
+                  2.2*PdfPageFormat.mm,
+                  1.5*PdfPageFormat.mm,
+                ),
+                decoration:pw.BoxDecoration(
+                  color:PdfColors.white,
+                  borderRadius:pw.BorderRadius.circular(4.2*PdfPageFormat.mm),
+                ),
+                child:pw.Column(children:[
                 pw.Expanded(
                   child:pw.Center(child:pw.BarcodeWidget(
                     barcode:pw.Barcode.qrCode(),
@@ -666,6 +667,7 @@ class _QrPageState extends State<QrPage>{
                   ),
                 ),
               ]),
+              ),
             ),
           ),
         ]),
