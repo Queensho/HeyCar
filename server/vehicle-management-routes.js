@@ -6,7 +6,7 @@ module.exports = function registerVehicleManagementRoutes(app, pool) {
     const owner = ownerId(req);
     if (!owner) return res.status(401).json({ error: 'OWNER_REQUIRED' });
     try {
-      const user = await pool.query(`SELECT COALESCE(premium,false) AS premium FROM users WHERE id::text=$1 LIMIT 1`, [owner]);
+      const user = await pool.query(`SELECT (COALESCE(premium,false)=TRUE AND (premium_expires_at IS NULL OR premium_expires_at>NOW())) AS premium FROM users WHERE id::text=$1 LIMIT 1`, [owner]);
       if (!user.rows.length) return res.status(404).json({ error: 'OWNER_NOT_FOUND' });
       const premium = user.rows[0].premium === true;
       const vehicles = await pool.query(`
@@ -38,7 +38,7 @@ module.exports = function registerVehicleManagementRoutes(app, pool) {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      const user = await client.query(`SELECT COALESCE(premium,false) AS premium FROM users WHERE id::text=$1 LIMIT 1 FOR UPDATE`, [owner]);
+      const user = await client.query(`SELECT (COALESCE(premium,false)=TRUE AND (premium_expires_at IS NULL OR premium_expires_at>NOW())) AS premium FROM users WHERE id::text=$1 LIMIT 1 FOR UPDATE`, [owner]);
       if (!user.rows.length) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'OWNER_NOT_FOUND' }); }
       const premium = user.rows[0].premium === true;
       const limit = premium ? 3 : 1;
