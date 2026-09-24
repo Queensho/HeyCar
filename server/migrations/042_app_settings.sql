@@ -14,8 +14,8 @@ CREATE TABLE IF NOT EXISTS app_settings (
   default_platform_fee NUMERIC(12,2) NOT NULL DEFAULT 20.00 CHECK(default_platform_fee>=0),
   qr_rate_limit_max INTEGER NOT NULL DEFAULT 10 CHECK(qr_rate_limit_max BETWEEN 1 AND 10000),
   qr_rate_limit_window_seconds INTEGER NOT NULL DEFAULT 60 CHECK(qr_rate_limit_window_seconds BETWEEN 1 AND 86400),
-  premium_monthly_price_text TEXT NOT NULL DEFAULT '₺99,99 / ay',
-  premium_yearly_price_text TEXT NOT NULL DEFAULT '₺799,99 / yıl',
+  premium_monthly_price_text TEXT NOT NULL DEFAULT '₺49,99',
+  premium_yearly_price_text TEXT NOT NULL DEFAULT '₺499,99',
   features JSONB NOT NULL DEFAULT '{"offers":true,"messages":true,"calls":true,"parking":true,"premium":true,"business":true}'::jsonb,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_by TEXT
