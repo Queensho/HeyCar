@@ -727,7 +727,14 @@ class _QrPageState extends State<QrPage>{
       'cepqar-baski-10x3-75cm-16li-$suffix.pdf',
       'application/pdf',
     );
-    await widget.itemPrintStatus(printableRows.map(_tokenOf).where((e)=>e.isNotEmpty).toList(),'pdf_downloaded');
+    final newlyDownloaded=printableRows
+        .where((e)=>_printStatus(e)=='ready')
+        .map(_tokenOf)
+        .where((e)=>e.isNotEmpty)
+        .toList();
+    if(newlyDownloaded.isNotEmpty){
+      await widget.itemPrintStatus(newlyDownloaded,'pdf_downloaded');
+    }
   }
   Future<void> _downloadSticker(String token) async{
     try{
