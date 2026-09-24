@@ -76,7 +76,8 @@ async function ownerForQr(pool, token) {
 async function enforcePublicRequest(pool, token, req, explicitVisitor) {
   const ownerId = await ownerForQr(pool, token);
   if (!ownerId) return { ok: true, ownerId: null, visitorKey: visitorKey(req, explicitVisitor) };
-  const key = visitorKey(req, explicitVisitor);
+  const rawKey = visitorKey(req, explicitVisitor);
+  const key = crypto.createHash('sha256').update(rawKey).digest('hex');
   const settings = await getSettings(pool, ownerId);
   const blocked = await pool.query(`SELECT 1 FROM owner_blocked_visitors WHERE owner_id=$1 AND visitor_key=$2 LIMIT 1`, [ownerId, key]);
   if (blocked.rows.length) {
