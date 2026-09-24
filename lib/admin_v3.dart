@@ -604,7 +604,15 @@ class _QrPageState extends State<QrPage>{
   }
 
   Future<void> _exportPdf(List<Map<String,dynamic>> rows) async{
-    if(rows.isEmpty)return;
+    final printableRows=rows.where((e)=>_printStatus(e)!='printed').toList();
+    if(printableRows.isEmpty){
+      if(mounted){
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content:Text('Seçilen QR’lerin tamamı daha önce basılmış. PDF oluşturulmadı.')),
+        );
+      }
+      return;
+    }
     final doc=pw.Document();
     const perPage=16;
     final purple=PdfColor.fromHex('#6E22D9');
@@ -687,9 +695,9 @@ class _QrPageState extends State<QrPage>{
       );
     }
 
-    for(var start=0;start<rows.length;start+=perPage){
-      final end=(start+perPage<rows.length)?start+perPage:rows.length;
-      final pageItems=rows.sublist(start,end);
+    for(var start=0;start<printableRows.length;start+=perPage){
+      final end=(start+perPage<printableRows.length)?start+perPage:printableRows.length;
+      final pageItems=printableRows.sublist(start,end);
       doc.addPage(pw.Page(
         pageFormat:PdfPageFormat.a4,
         margin:pw.EdgeInsets.symmetric(horizontal:5*PdfPageFormat.mm),
@@ -719,7 +727,7 @@ class _QrPageState extends State<QrPage>{
       'cepqar-baski-10x3-75cm-16li-$suffix.pdf',
       'application/pdf',
     );
-    await widget.itemPrintStatus(rows.map(_tokenOf).where((e)=>e.isNotEmpty).toList(),'pdf_downloaded');
+    await widget.itemPrintStatus(printableRows.map(_tokenOf).where((e)=>e.isNotEmpty).toList(),'pdf_downloaded');
   }
   Future<void> _downloadSticker(String token) async{
     try{
@@ -848,6 +856,7 @@ class _QrPageState extends State<QrPage>{
 
     final selectedRows=_selectedRows();
     final exportRows=selectedRows.isNotEmpty?selectedRows:rows;
+    final printableExportRows=exportRows.where((e)=>_printStatus(e)!='printed').toList();
     final visibleTokens=rows.map(_tokenOf).where((e)=>e.isNotEmpty).toSet();
     final selectedVisible=visibleTokens.where(selectedTokens.contains).length;
     final allVisible=visibleTokens.isNotEmpty&&selectedVisible==visibleTokens.length;
@@ -872,10 +881,14 @@ class _QrPageState extends State<QrPage>{
           label:Text(selectedRows.isNotEmpty?'Seçilileri CSV (${selectedRows.length})':'CSV indir'),
         ),
         FilledButton.icon(
-          onPressed:exportRows.isEmpty?null:()=>_exportPdf(exportRows),
+          onPressed:printableExportRows.isEmpty?null:()=>_exportPdf(exportRows),
           style:FilledButton.styleFrom(backgroundColor:_purple),
           icon:const Icon(Icons.picture_as_pdf_rounded),
-          label:Text(selectedRows.isNotEmpty?'Seçilileri PDF (${selectedRows.length})':'Baskı PDF • A4 / 16 adet'),
+          label:Text(
+            selectedRows.isNotEmpty
+              ? 'Seçilileri PDF (${printableExportRows.length})'
+              : 'Baskı PDF • ${printableExportRows.length} basılmamış',
+          ),
         ),
       ]),
       const SizedBox(height:12),
