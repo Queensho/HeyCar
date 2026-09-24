@@ -704,7 +704,7 @@ class _AdminHomeState extends State<AdminHome> {
   );
 
   Widget _roundAction(IconData icon,VoidCallback? onTap)=>Opacity(
-    opacity:onTap==null?.42:1,
+    opacity:onTap==null ? .42 : 1.0,
     child:InkWell(
       onTap:onTap,borderRadius:BorderRadius.circular(12),
       child:Container(width:38,height:38,decoration:BoxDecoration(color:_card2,borderRadius:BorderRadius.circular(12),border:Border.all(color:_purple.withValues(alpha:.45))),child:Icon(icon,color:Colors.white,size:20)),
