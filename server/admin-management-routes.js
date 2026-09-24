@@ -6,6 +6,7 @@ const registerAdminReportRoutes = require('./admin-report-routes');
 const registerSystemHealthRoutes = require('./system-health-routes');
 const registerAdminCommunicationSecurityRoutes = require('./admin-communication-security-routes');
 const registerAdminModerationOpsRoutes = require('./admin-moderation-ops-routes');
+const registerAdminBusinessPremiumRoutes = require('./admin-business-premium-routes');
 const { writeAdminAudit, registerAdminAuditRoutes } = require('./admin-audit');
 const { configureTrustedProxy } = require('./proxy-security');
 
@@ -75,13 +76,16 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
   registerSystemHealthRoutes(app, pool, guard);
   registerAdminCommunicationSecurityRoutes(app, pool, guard);
   registerAdminModerationOpsRoutes(app, pool, guard);
+  registerAdminBusinessPremiumRoutes(app, pool, guard);
   registerAdminAuditRoutes(app, pool, guard);
 
   app.get('/api/admin/manage/users/:userId', guard, async (req, res) => {
     const userId = String(req.params.userId || '').trim();
     try {
       const user = await pool.query(
-        `SELECT id,email,phone,display_name,role,status,COALESCE(premium,false) AS premium,created_at
+        `SELECT id,email,phone,display_name,role,status,
+                (COALESCE(premium,false)=TRUE AND (premium_expires_at IS NULL OR premium_expires_at>NOW())) AS premium,
+                COALESCE(premium,false) AS premium_flag,premium_expires_at,created_at
            FROM users WHERE id::text=$1 LIMIT 1`,
         [userId]
       );
@@ -284,7 +288,7 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
       const r = await pool.query(
         `SELECT v.id,v.owner_id,v.plate,v.make,v.model,v.color,v.created_at,
                 u.display_name AS owner_name,u.email AS owner_email,u.phone AS owner_phone,u.status AS owner_status,
-                COALESCE(u.premium,false) AS owner_premium,
+                (COALESCE(u.premium,false)=TRUE AND (u.premium_expires_at IS NULL OR u.premium_expires_at>NOW())) AS owner_premium,
                 q.token AS qr_token,q.status AS qr_status,q.activated_at,
                 t.preset,t.accent_color,t.background_path,t.public_message,t.overlay_strength,t.updated_at AS theme_updated_at
            FROM vehicles v
