@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:image_picker/image_picker.dart';
@@ -552,86 +553,78 @@ class _QrPageState extends State<QrPage>{
     final purple=PdfColor.fromHex('#7B22F2');
     final lilac=PdfColor.fromHex('#F0E4FC');
     final navy=PdfColor.fromHex('#060A18');
-    final muted=PdfColor.fromHex('#B6B8C8');
+    final templateData=await rootBundle.load('assets/Etiket.png');
+    final template=pw.MemoryImage(templateData.buffer.asUint8List());
 
     pw.Widget labelCard(Map<String,dynamic> e){
       final token=(e['token']??'').toString();
-      final batch=(e['batch_code']??'').toString();
       return pw.Container(
         width:100*PdfPageFormat.mm,
         height:40*PdfPageFormat.mm,
         decoration:pw.BoxDecoration(
-          color:navy,
-          border:pw.Border.all(color:purple,width:.55),
+          border:pw.Border.all(color:PdfColor.fromHex('#B9A8D8'),width:.35),
         ),
-        child:pw.Row(children:[
-          pw.Expanded(
-            child:pw.Padding(
-              padding:pw.EdgeInsets.fromLTRB(5*PdfPageFormat.mm,3.5*PdfPageFormat.mm,3*PdfPageFormat.mm,3*PdfPageFormat.mm),
-              child:pw.Column(crossAxisAlignment:pw.CrossAxisAlignment.start,children:[
-                pw.RichText(text:pw.TextSpan(children:[
-                  pw.TextSpan(text:'Cep',style:pw.TextStyle(color:PdfColors.white,fontSize:24,fontWeight:pw.FontWeight.bold)),
-                  pw.TextSpan(text:'Qar',style:pw.TextStyle(color:purple,fontSize:24,fontWeight:pw.FontWeight.bold)),
-                ])),
-                pw.SizedBox(height:1.2*PdfPageFormat.mm),
-                pw.RichText(text:pw.TextSpan(children:[
-                  pw.TextSpan(text:'ARAC SAHIBINE ',style:pw.TextStyle(color:PdfColors.white,fontSize:9.2,fontWeight:pw.FontWeight.bold,letterSpacing:.7)),
-                  pw.TextSpan(text:'ULAS',style:pw.TextStyle(color:purple,fontSize:9.2,fontWeight:pw.FontWeight.bold,letterSpacing:.7)),
-                ])),
-                pw.SizedBox(height:1.2*PdfPageFormat.mm),
-                pw.Container(width:10*PdfPageFormat.mm,height:.8*PdfPageFormat.mm,color:purple),
-                pw.SizedBox(height:1.6*PdfPageFormat.mm),
-                pw.Text('QR kodu okutarak aracin sahibine anonim mesaj birak.',style:pw.TextStyle(color:muted,fontSize:7.2,lineSpacing:1.2)),
-                pw.Spacer(),
-                pw.Row(children:[
-                  pw.Text('GUVENLI',style:pw.TextStyle(color:PdfColors.white,fontSize:6.3,fontWeight:pw.FontWeight.bold)),
-                  pw.SizedBox(width:5*PdfPageFormat.mm),
-                  pw.Text('GIZLI',style:pw.TextStyle(color:PdfColors.white,fontSize:6.3,fontWeight:pw.FontWeight.bold)),
-                  pw.SizedBox(width:5*PdfPageFormat.mm),
-                  pw.Text('HIZLI',style:pw.TextStyle(color:PdfColors.white,fontSize:6.3,fontWeight:pw.FontWeight.bold)),
-                ]),
-                if(batch.isNotEmpty)...[
-                  pw.SizedBox(height:.8*PdfPageFormat.mm),
-                  pw.Text(batch,style:pw.TextStyle(color:purple,fontSize:5.3)),
-                ],
+        child:pw.Stack(children:[
+          pw.Positioned.fill(child:pw.Image(template,fit:pw.BoxFit.fill)),
+
+          // Dynamic QR card: covers any sample QR/text in the template.
+          pw.Positioned(
+            right:1.6*PdfPageFormat.mm,
+            top:1.4*PdfPageFormat.mm,
+            width:30.8*PdfPageFormat.mm,
+            height:37.2*PdfPageFormat.mm,
+            child:pw.Container(
+              padding:pw.EdgeInsets.fromLTRB(
+                2.2*PdfPageFormat.mm,
+                1.8*PdfPageFormat.mm,
+                2.2*PdfPageFormat.mm,
+                1.5*PdfPageFormat.mm,
+              ),
+              decoration:pw.BoxDecoration(
+                color:PdfColors.white,
+                borderRadius:pw.BorderRadius.circular(4.2*PdfPageFormat.mm),
+              ),
+              child:pw.Column(children:[
+                pw.Expanded(
+                  child:pw.Center(child:pw.BarcodeWidget(
+                    barcode:pw.Barcode.qrCode(),
+                    data:publicUrl(token),
+                    width:24.5*PdfPageFormat.mm,
+                    height:24.5*PdfPageFormat.mm,
+                    drawText:false,
+                  )),
+                ),
+                pw.SizedBox(height:.7*PdfPageFormat.mm),
+                pw.Text(
+                  'QR KODU OKUT',
+                  style:pw.TextStyle(color:navy,fontSize:6.5,fontWeight:pw.FontWeight.bold),
+                ),
+                pw.SizedBox(height:.8*PdfPageFormat.mm),
+                pw.Container(
+                  width:double.infinity,
+                  height:5.8*PdfPageFormat.mm,
+                  decoration:pw.BoxDecoration(
+                    color:lilac,
+                    borderRadius:pw.BorderRadius.circular(2.9*PdfPageFormat.mm),
+                  ),
+                  alignment:pw.Alignment.center,
+                  padding:pw.EdgeInsets.symmetric(horizontal:1.3*PdfPageFormat.mm),
+                  child:pw.FittedBox(
+                    fit:pw.BoxFit.scaleDown,
+                    child:pw.RichText(text:pw.TextSpan(children:[
+                      pw.TextSpan(
+                        text:'Etiket Kodu: ',
+                        style:pw.TextStyle(color:PdfColor.fromHex('#5A5570'),fontSize:5.6),
+                      ),
+                      pw.TextSpan(
+                        text:token,
+                        style:pw.TextStyle(color:purple,fontSize:7.0,fontWeight:pw.FontWeight.bold),
+                      ),
+                    ])),
+                  ),
+                ),
               ]),
             ),
-          ),
-          pw.Container(
-            width:38*PdfPageFormat.mm,
-            height:36*PdfPageFormat.mm,
-            margin:pw.EdgeInsets.all(2*PdfPageFormat.mm),
-            padding:pw.EdgeInsets.fromLTRB(2.5*PdfPageFormat.mm,2*PdfPageFormat.mm,2.5*PdfPageFormat.mm,2*PdfPageFormat.mm),
-            decoration:pw.BoxDecoration(
-              color:PdfColors.white,
-              borderRadius:pw.BorderRadius.circular(4*PdfPageFormat.mm),
-            ),
-            child:pw.Column(children:[
-              pw.Expanded(child:pw.Center(child:pw.BarcodeWidget(
-                barcode:pw.Barcode.qrCode(),
-                data:publicUrl(token),
-                width:25.5*PdfPageFormat.mm,
-                height:25.5*PdfPageFormat.mm,
-                drawText:false,
-              ))),
-              pw.SizedBox(height:.6*PdfPageFormat.mm),
-              pw.Text('QR KODU OKUT',style:pw.TextStyle(color:navy,fontSize:6.2,fontWeight:pw.FontWeight.bold)),
-              pw.SizedBox(height:.8*PdfPageFormat.mm),
-              pw.Container(
-                width:double.infinity,
-                height:5.5*PdfPageFormat.mm,
-                decoration:pw.BoxDecoration(color:lilac,borderRadius:pw.BorderRadius.circular(2.75*PdfPageFormat.mm)),
-                alignment:pw.Alignment.center,
-                padding:pw.EdgeInsets.symmetric(horizontal:1.5*PdfPageFormat.mm),
-                child:pw.FittedBox(
-                  fit:pw.BoxFit.scaleDown,
-                  child:pw.RichText(text:pw.TextSpan(children:[
-                    pw.TextSpan(text:'Etiket Kodu: ',style:pw.TextStyle(color:PdfColor.fromHex('#5A5570'),fontSize:5.7)),
-                    pw.TextSpan(text:token,style:pw.TextStyle(color:purple,fontSize:7.1,fontWeight:pw.FontWeight.bold)),
-                  ])),
-                ),
-              ),
-            ]),
           ),
         ]),
       );
@@ -652,8 +645,12 @@ class _QrPageState extends State<QrPage>{
             final leftIndex=i*2;
             final rightIndex=leftIndex+1;
             slots.add(pw.Row(children:[
-              leftIndex<pageItems.length?labelCard(pageItems[leftIndex]):pw.SizedBox(width:100*PdfPageFormat.mm,height:40*PdfPageFormat.mm),
-              rightIndex<pageItems.length?labelCard(pageItems[rightIndex]):pw.SizedBox(width:100*PdfPageFormat.mm,height:40*PdfPageFormat.mm),
+              leftIndex<pageItems.length
+                ? labelCard(pageItems[leftIndex])
+                : pw.SizedBox(width:100*PdfPageFormat.mm,height:40*PdfPageFormat.mm),
+              rightIndex<pageItems.length
+                ? labelCard(pageItems[rightIndex])
+                : pw.SizedBox(width:100*PdfPageFormat.mm,height:40*PdfPageFormat.mm),
             ]));
           }
           return pw.Column(children:slots);
@@ -663,7 +660,11 @@ class _QrPageState extends State<QrPage>{
 
     final bytes=await doc.save();
     final suffix=batchFilter=='all'?'tum-qr':batchFilter.toLowerCase();
-    await saveAdminFile(Uint8List.fromList(bytes),'cepqar-baski-10x4cm-$suffix.pdf','application/pdf');
+    await saveAdminFile(
+      Uint8List.fromList(bytes),
+      'cepqar-baski-10x4cm-$suffix.pdf',
+      'application/pdf',
+    );
   }
   Future<void> _downloadSticker(String token) async{
     try{
