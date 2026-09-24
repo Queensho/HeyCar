@@ -23,6 +23,23 @@ async function ensureQrItemPrintSchema(pool) {
   qrItemPrintSchemaReady = true;
 }
 
+
+async function tableExists(pool, tableName) {
+  const r = await pool.query('SELECT to_regclass($1) AS name', ['public.' + tableName]);
+  return Boolean(r.rows[0]?.name);
+}
+
+async function safeRows(pool, tableName, sql, params = []) {
+  if (!await tableExists(pool, tableName)) return [];
+  const r = await pool.query(sql, params);
+  return r.rows;
+}
+
+async function safeOne(pool, tableName, sql, params = []) {
+  const rows = await safeRows(pool, tableName, sql, params);
+  return rows[0] || null;
+}
+
 module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
   const guard = typeof adminGuard === 'function'
     ? adminGuard
@@ -39,25 +56,129 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
   registerAdminCorrectionRoutes(app, pool, guard);
 
   app.get('/api/admin/manage/users/:userId', guard, async (req, res) => {
+    const userId = String(req.params.userId || '').trim();
     try {
       const user = await pool.query(
-        'SELECT id,email,phone,display_name,role,status,created_at FROM users WHERE id=$1 LIMIT 1',
-        [req.params.userId]
+        `SELECT id,email,phone,display_name,role,status,COALESCE(premium,false) AS premium,created_at
+           FROM users WHERE id::text=$1 LIMIT 1`,
+        [userId]
       );
       if (!user.rows.length) return res.status(404).json({ error: 'USER_NOT_FOUND' });
+
       const vehicles = await pool.query(
         `SELECT v.id,v.owner_id,v.plate,v.make,v.model,v.color,v.created_at,
-                q.token AS qr_token,q.status AS qr_status,
-                t.preset,t.accent_color,t.background_path,t.public_message,t.overlay_strength
-         FROM vehicles v
-         LEFT JOIN qr_tags q ON q.vehicle_id=v.id
-         LEFT JOIN vehicle_public_themes t ON t.vehicle_id=v.id
-         WHERE v.owner_id=$1 ORDER BY v.created_at DESC`,
-        [req.params.userId]
+                q.token AS qr_token,q.status AS qr_status,q.activated_at
+           FROM vehicles v
+           LEFT JOIN LATERAL (
+             SELECT token,status,activated_at
+               FROM qr_tags
+              WHERE vehicle_id::text=v.id::text
+              ORDER BY activated_at DESC NULLS LAST
+              LIMIT 1
+           ) q ON TRUE
+          WHERE v.owner_id::text=$1
+          ORDER BY v.created_at DESC`,
+        [userId]
       );
-      res.json({ ok: true, user: user.rows[0], vehicles: vehicles.rows });
+
+      const securitySessions = await safeRows(
+        pool,
+        'owner_security_sessions',
+        `SELECT id,device_id,device_name,user_agent,ip_address,created_at,last_seen_at,revoked_at,
+                (revoked_at IS NULL) AS active
+           FROM owner_security_sessions
+          WHERE owner_id::text=$1
+          ORDER BY last_seen_at DESC
+          LIMIT 30`,
+        [userId]
+      );
+
+      const devices = await safeRows(
+        pool,
+        'owner_devices',
+        `SELECT id,device_id,device_name,last_ip,first_seen_at,last_seen_at,active
+           FROM owner_devices
+          WHERE owner_id::text=$1
+          ORDER BY last_seen_at DESC
+          LIMIT 30`,
+        [userId]
+      );
+
+      const loginEvents = await safeRows(
+        pool,
+        'owner_login_events',
+        `SELECT id,device_name,ip_address,created_at,read_at
+           FROM owner_login_events
+          WHERE owner_id::text=$1
+          ORDER BY created_at DESC
+          LIMIT 20`,
+        [userId]
+      );
+
+      let complaintCount = 0;
+      let complaints = [];
+      if (await tableExists(pool, 'message_reports')) {
+        const reports = await pool.query(
+          `SELECT r.id,r.reporter_type,r.reason,r.created_at,
+                  c.id AS conversation_id,c.vehicle_id,
+                  v.plate
+             FROM message_reports r
+             LEFT JOIN qr_conversations c ON c.id=r.conversation_id
+             LEFT JOIN vehicles v ON v.id::text=c.vehicle_id::text
+             LEFT JOIN vehicle_notifications n ON n.id::text=c.notification_id::text
+            WHERE v.owner_id::text=$1 OR n.recipient_user_id::text=$1
+            ORDER BY r.created_at DESC
+            LIMIT 50`,
+          [userId]
+        );
+        complaints = reports.rows;
+        complaintCount = complaints.length;
+      }
+
+      const qrUsage = await safeRows(
+        pool,
+        'vehicle_notifications',
+        `SELECT n.id,n.qr_token,n.type,n.status,n.message,n.created_at,n.read_at,n.resolved_at,
+                v.id AS vehicle_id,v.plate
+           FROM vehicle_notifications n
+           JOIN vehicles v ON v.id::text=n.vehicle_id::text
+          WHERE v.owner_id::text=$1 OR n.recipient_user_id::text=$1
+          ORDER BY n.created_at DESC
+          LIMIT 50`,
+        [userId]
+      );
+
+      const lastSeenCandidates = [
+        ...securitySessions.map(x => x.last_seen_at),
+        ...devices.map(x => x.last_seen_at),
+        ...loginEvents.map(x => x.created_at),
+      ].filter(Boolean).map(x => new Date(x)).filter(x => !Number.isNaN(x.getTime()));
+      lastSeenCandidates.sort((a,b) => b.getTime() - a.getTime());
+      const activeSessionCount = securitySessions.filter(x => x.active === true).length;
+
+      return res.json({
+        ok: true,
+        user: user.rows[0],
+        stats: {
+          vehicleCount: vehicles.rows.length,
+          complaintCount,
+          activeSessionCount,
+          deviceCount: new Set([
+            ...securitySessions.map(x => String(x.device_id || '')).filter(Boolean),
+            ...devices.map(x => String(x.device_id || '')).filter(Boolean),
+          ]).size,
+          lastLoginAt: lastSeenCandidates[0]?.toISOString() || null,
+          qrUsageCount: qrUsage.length,
+        },
+        vehicles: vehicles.rows,
+        securitySessions,
+        devices,
+        loginEvents,
+        complaints,
+        qrUsage,
+      });
     } catch (e) {
-      console.error(e);
+      console.error('admin user detail', e);
       res.status(500).json({ error: 'SERVER_ERROR' });
     }
   });
@@ -80,23 +201,133 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
   });
 
   app.get('/api/admin/manage/vehicles/:vehicleId', guard, async (req, res) => {
+    const vehicleId = String(req.params.vehicleId || '').trim();
     try {
       const r = await pool.query(
         `SELECT v.id,v.owner_id,v.plate,v.make,v.model,v.color,v.created_at,
                 u.display_name AS owner_name,u.email AS owner_email,u.phone AS owner_phone,u.status AS owner_status,
+                COALESCE(u.premium,false) AS owner_premium,
                 q.token AS qr_token,q.status AS qr_status,q.activated_at,
                 t.preset,t.accent_color,t.background_path,t.public_message,t.overlay_strength,t.updated_at AS theme_updated_at
-         FROM vehicles v
-         LEFT JOIN users u ON u.id=v.owner_id
-         LEFT JOIN qr_tags q ON q.vehicle_id=v.id
-         LEFT JOIN vehicle_public_themes t ON t.vehicle_id=v.id
-         WHERE v.id=$1 LIMIT 1`,
-        [req.params.vehicleId]
+           FROM vehicles v
+           LEFT JOIN users u ON u.id::text=v.owner_id::text
+           LEFT JOIN LATERAL (
+             SELECT token,status,activated_at
+               FROM qr_tags
+              WHERE vehicle_id::text=v.id::text
+              ORDER BY activated_at DESC NULLS LAST
+              LIMIT 1
+           ) q ON TRUE
+           LEFT JOIN vehicle_public_themes t ON t.vehicle_id::text=v.id::text
+          WHERE v.id::text=$1 LIMIT 1`,
+        [vehicleId]
       );
       if (!r.rows.length) return res.status(404).json({ error: 'VEHICLE_NOT_FOUND' });
-      res.json({ ok: true, vehicle: r.rows[0] });
+      const vehicle = r.rows[0];
+
+      const maintenanceState = await safeOne(
+        pool,
+        'vehicle_maintenance_state',
+        `SELECT current_km,updated_at FROM vehicle_maintenance_state WHERE vehicle_id::text=$1 LIMIT 1`,
+        [vehicleId]
+      );
+      const maintenanceRecords = await safeRows(
+        pool,
+        'vehicle_maintenance_records',
+        `SELECT id,service_date,mileage,items,notes,total_cost,invoice_url,next_service_km,created_at,updated_at
+           FROM vehicle_maintenance_records
+          WHERE vehicle_id::text=$1
+          ORDER BY service_date DESC,mileage DESC
+          LIMIT 30`,
+        [vehicleId]
+      );
+
+      const parking = await safeOne(
+        pool,
+        'vehicle_parking_locations',
+        `SELECT area,floor,spot,note,parking_name,latitude,longitude,osm_id,started_at,created_at,updated_at
+           FROM vehicle_parking_locations
+          WHERE vehicle_id::text=$1
+          LIMIT 1`,
+        [vehicleId]
+      );
+
+      const notifications = await safeRows(
+        pool,
+        'vehicle_notifications',
+        `SELECT id,qr_token,type,message,status,created_at,read_at,resolved_at,arriving_at,recipient_user_id
+           FROM vehicle_notifications
+          WHERE vehicle_id::text=$1
+          ORDER BY created_at DESC
+          LIMIT 50`,
+        [vehicleId]
+      );
+
+      const offerRedemptions = await safeRows(
+        pool,
+        'offer_redemptions',
+        `SELECT r.id,r.campaign_id,r.plate,r.usage_code,r.status,r.created_at,r.redeemed_at,
+                c.title AS campaign_title,
+                b.name AS business_name
+           FROM offer_redemptions r
+           LEFT JOIN business_campaigns c ON c.id=r.campaign_id
+           LEFT JOIN businesses b ON b.id=c.business_id
+          WHERE UPPER(REPLACE(r.plate,' ',''))=UPPER(REPLACE($1,' ',''))
+          ORDER BY r.created_at DESC
+          LIMIT 30`,
+        [vehicle.plate || '']
+      );
+
+      const activeDriver = await safeOne(
+        pool,
+        'vehicle_active_drivers',
+        `SELECT a.driver_name,a.driver_user_id,a.active_until,a.updated_at,
+                u.phone AS driver_phone,u.email AS driver_email,u.status AS driver_status
+           FROM vehicle_active_drivers a
+           LEFT JOIN users u ON u.id::text=a.driver_user_id::text
+          WHERE a.vehicle_id::text=$1
+            AND (a.active_until IS NULL OR a.active_until>NOW())
+          LIMIT 1`,
+        [vehicleId]
+      );
+
+      const drivers = await safeRows(
+        pool,
+        'vehicle_drivers',
+        `SELECT d.driver_user_id,d.driver_name,d.created_at,
+                u.phone,u.email,u.status,
+                (a.driver_user_id::text=d.driver_user_id::text AND (a.active_until IS NULL OR a.active_until>NOW())) AS active,
+                a.active_until
+           FROM vehicle_drivers d
+           LEFT JOIN users u ON u.id::text=d.driver_user_id::text
+           LEFT JOIN vehicle_active_drivers a ON a.vehicle_id::text=d.vehicle_id::text
+          WHERE d.vehicle_id::text=$1
+          ORDER BY d.created_at DESC
+          LIMIT 30`,
+        [vehicleId]
+      );
+
+      return res.json({
+        ok: true,
+        vehicle,
+        stats: {
+          maintenanceCount: maintenanceRecords.length,
+          notificationCount: notifications.length,
+          offerUsageCount: offerRedemptions.length,
+          driverCount: drivers.length,
+          hasActiveDriver: Boolean(activeDriver),
+          hasParking: Boolean(parking),
+        },
+        maintenanceState,
+        maintenanceRecords,
+        parking,
+        notifications,
+        offerRedemptions,
+        activeDriver,
+        drivers,
+      });
     } catch (e) {
-      console.error(e);
+      console.error('admin vehicle detail', e);
       res.status(500).json({ error: 'SERVER_ERROR' });
     }
   });
