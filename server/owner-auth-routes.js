@@ -1,6 +1,7 @@
 const {issueTokens,rotateRefresh,revokeRefresh,ownerId:authenticatedOwnerId}=require('./owner-auth-service');
 const {issueRecoveryCode,recoverPassword,verifyPassword,deleteAccount}=require('./account-lifecycle-service');
 const {logSecurityEvent}=require('./security-event-log');
+const { configureTrustedProxy } = require('./proxy-security');
 function normalizeTrMobile(raw) {
   let digits = String(raw || '').replace(/\D/g, '');
   if (digits.startsWith('90') && digits.length === 12) digits = digits.slice(2);
@@ -10,6 +11,7 @@ function normalizeTrMobile(raw) {
 }
 
 module.exports = function registerOwnerAuthRoutes(app, pool) {
+  configureTrustedProxy(app);
   app.post('/api/owner/login-phone', async (req, res) => {
     const phone = normalizeTrMobile(req.body.phone);
     const password = String(req.body.password || '');
