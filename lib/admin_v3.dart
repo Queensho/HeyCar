@@ -176,6 +176,9 @@ class _AdminHomeState extends State<AdminHome> {
   bool reportLoading=false;
   String? reportError;
   int reportDays=30;
+  Map<String,dynamic> auditData={};
+  bool auditLoading=false;
+  String? auditError;
   final tabs=const [
     ('Genel Bakış',Icons.grid_view_rounded),
     ('Kullanıcılar',Icons.people_alt_rounded),
@@ -185,6 +188,7 @@ class _AdminHomeState extends State<AdminHome> {
     ('Düzeltme Talepleri',Icons.support_agent_rounded),
     ('Promo & Duyurular',Icons.campaign_rounded),
     ('Raporlama',Icons.insights_rounded),
+    ('İşlem Geçmişi',Icons.history_rounded),
   ];
   static const mobileTabIndexes=[0,1,2,3,7,6];
   Map<String,String> get headers=>{'Authorization':'Bearer ${widget.token}','Content-Type':'application/json'};
@@ -219,6 +223,18 @@ class _AdminHomeState extends State<AdminHome> {
       if(mounted)setState(()=>reportError=e.toString().replaceFirst('Exception: ',''));
     }finally{
       if(mounted)setState(()=>reportLoading=false);
+    }
+  }
+
+  Future<void> loadAudit() async {
+    if(mounted)setState((){auditLoading=true;auditError=null;});
+    try{
+      final d=await getJson('/api/admin/manage/audit?limit=200');
+      if(mounted)setState(()=>auditData=d);
+    }catch(e){
+      if(mounted)setState(()=>auditError=e.toString().replaceFirst('Exception: ',''));
+    }finally{
+      if(mounted)setState(()=>auditLoading=false);
     }
   }
 
@@ -283,6 +299,7 @@ class _AdminHomeState extends State<AdminHome> {
   void openTab(int index){
     setState(()=>tab=index);
     if(index==7&&(reports.isEmpty||reportError!=null))loadReports();
+    if(index==8&&(auditData.isEmpty||auditError!=null))loadAudit();
   }
 
   @override
@@ -347,7 +364,7 @@ class _AdminHomeState extends State<AdminHome> {
     child:Row(children:[
       Icon(tabs[tab].$2,color:_purple,size:23),const SizedBox(width:9),
       Expanded(child:Text(tabs[tab].$1,style:const TextStyle(fontSize:18,fontWeight:FontWeight.w900,color:Colors.white))),
-      _roundAction(Icons.refresh_rounded,tab==7?()=>loadReports():load),const SizedBox(width:8),_roundAction(Icons.logout_rounded,widget.onLogout),
+      _roundAction(Icons.refresh_rounded,tab==7?()=>loadReports():tab==8?loadAudit:load),const SizedBox(width:8),_roundAction(Icons.logout_rounded,widget.onLogout),
     ]),
   );
 
@@ -379,7 +396,7 @@ class _AdminHomeState extends State<AdminHome> {
     child:Container(width:38,height:38,decoration:BoxDecoration(color:_card2,borderRadius:BorderRadius.circular(12),border:Border.all(color:_purple.withValues(alpha:.45))),child:Icon(icon,color:Colors.white,size:20)),
   );
 
-  Widget page(){switch(tab){case 1:return UsersPage(rows:users,open:openUser);case 2:return VehiclesPage(rows:vehicles,open:openVehicle);case 3:return QrPage(rows:qr,create:createQr,action:qrAction,itemPrintStatus:qrItemPrintStatus);case 4:return ModerationPage(rows:themes,removeBackground:removeBg,resetTheme:resetTheme);case 5:return AdminCorrectionRequestsPage(token:widget.token);case 6:return AdminPromoPage(rows:promos,onCreate:createPromo,onSetActive:setPromoActive,onPush:pushPromo,onUploadImage:uploadPromoImage);case 7:return ReportsPage(data:reports,loading:reportLoading,error:reportError,days:reportDays,onDaysChanged:loadReports,onRefresh:()=>loadReports());default:return const SizedBox.shrink();}}
+  Widget page(){switch(tab){case 1:return UsersPage(rows:users,open:openUser);case 2:return VehiclesPage(rows:vehicles,open:openVehicle);case 3:return QrPage(rows:qr,create:createQr,action:qrAction,itemPrintStatus:qrItemPrintStatus);case 4:return ModerationPage(rows:themes,removeBackground:removeBg,resetTheme:resetTheme);case 5:return AdminCorrectionRequestsPage(token:widget.token);case 6:return AdminPromoPage(rows:promos,onCreate:createPromo,onSetActive:setPromoActive,onPush:pushPromo,onUploadImage:uploadPromoImage);case 7:return ReportsPage(data:reports,loading:reportLoading,error:reportError,days:reportDays,onDaysChanged:loadReports,onRefresh:()=>loadReports());case 8:return AuditLogPage(data:auditData,loading:auditLoading,error:auditError,onRefresh:loadAudit);default:return const SizedBox.shrink();}}
 }
 
 Widget _brand({double fontSize=34})=>RichText(text:TextSpan(children:[
@@ -498,6 +515,7 @@ class Dashboard extends StatelessWidget{
       ('Düzeltme Talepleri','Gelen talepleri incele',Icons.support_agent_rounded,5),
       ('Promo & Duyurular','Kampanya ve duyurular',Icons.campaign_rounded,6),
       ('Raporlama','Kullanım ve performans analizi',Icons.insights_rounded,7),
+      ('İşlem Geçmişi','Admin işlemlerini denetle',Icons.history_rounded,8),
     ];
     return Wrap(spacing:gap,runSpacing:gap,children:data.map((x)=>SizedBox(width:itemWidth,height:compact?96:92,child:InkWell(borderRadius:BorderRadius.circular(17),onTap:()=>onOpenTab(x.$4),child:Container(padding:const EdgeInsets.symmetric(horizontal:12,vertical:11),decoration:_glowDecoration(radius:17),child:Row(children:[Container(width:44,height:44,decoration:BoxDecoration(shape:BoxShape.circle,color:_purple.withValues(alpha:.12),border:Border.all(color:_purple.withValues(alpha:.38))),child:Icon(x.$3,color:_purple,size:24)),const SizedBox(width:10),Expanded(child:Column(mainAxisAlignment:MainAxisAlignment.center,crossAxisAlignment:CrossAxisAlignment.start,children:[Text(x.$1,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Colors.white,fontSize:13.5,fontWeight:FontWeight.w900)),const SizedBox(height:3),Text(x.$2,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_muted,fontSize:11.5))])),const Icon(Icons.chevron_right_rounded,color:Color(0xFFC96CFF),size:24)]))))).toList());
   }
