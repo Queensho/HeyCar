@@ -9,19 +9,16 @@ const registerPushRoutes = require('./push-routes');
 const { createScanSession, validateScanSession } = require('./scan-session-service');
 const { moderateMessage } = require('./message-moderation');
 const { enforcePublicRequest } = require('./security-service');
+const { configureTrustedProxy, requestIp } = require('./proxy-security');
 
 function normalizeToken(raw) {
   return String(raw || '').trim().toUpperCase();
 }
 
-function requestIp(req) {
-  const forwarded=String(req.headers?.['x-forwarded-for']||'').split(',')[0].trim();
-  return (forwarded||req.ip||req.socket?.remoteAddress||'').toString().slice(0,120);
-}
-
 const allowedTypes = new Set(['move_vehicle', 'lights_on', 'damage', 'message', 'call_request']);
 
 module.exports = function registerNotificationRoutes(app, pool) {
+  configureTrustedProxy(app);
   const pushService=registerPushRoutes(app, pool);
   registerConversationRoutes(app, pool);
   const uploadDir = path.join(__dirname, 'uploads', 'notification-photos');
