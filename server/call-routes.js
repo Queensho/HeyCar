@@ -137,10 +137,10 @@ module.exports = function registerCallRoutes(app, pool) {
       if(busy.rows.length)return res.status(409).json({error:'OWNER_BUSY'});
 
       const created=await pool.query(
-        `INSERT INTO anonymous_calls(qr_token,vehicle_id,owner_id,recipient_user_id,recipient_type)
-         VALUES($1,$2,$3,$4,$5)
+        `INSERT INTO anonymous_calls(qr_token,vehicle_id,owner_id,recipient_user_id,recipient_type,scan_session_hash)
+         VALUES($1,$2,$3,$4,$5,$6)
          RETURNING id,visitor_token,status,expires_at,recipient_type`,
-        [token,vehicle.vehicle_id,vehicle.owner_id,recipientId,recipientType]
+        [token,vehicle.vehicle_id,vehicle.owner_id,recipientId,recipientType,scan.token_hash||null]
       );
       const call=created.rows[0];
 
