@@ -1019,37 +1019,42 @@ class _QrPageState extends State<QrPage>{
               width:19.3*PdfPageFormat.mm,
               height:22.9*PdfPageFormat.mm,
               child:pw.Column(children:[
-                pw.SizedBox(
-                  width:17.4*PdfPageFormat.mm,
-                  height:17.4*PdfPageFormat.mm,
-                  child:pw.BarcodeWidget(
-                    barcode:pw.Barcode.qrCode(),
-                    data:publicUrl(token),
-                    drawText:false,
+                pw.SizedBox(height:1.55*PdfPageFormat.mm),
+                pw.Center(
+                  child:pw.SizedBox(
+                    width:15.0*PdfPageFormat.mm,
+                    height:15.0*PdfPageFormat.mm,
+                    child:pw.BarcodeWidget(
+                      barcode:pw.Barcode.qrCode(),
+                      data:publicUrl(token),
+                      drawText:false,
+                    ),
                   ),
                 ),
-                pw.SizedBox(height:.45*PdfPageFormat.mm),
-                pw.Container(
-                  width:18.8*PdfPageFormat.mm,
-                  height:3.9*PdfPageFormat.mm,
-                  alignment:pw.Alignment.center,
-                  padding:pw.EdgeInsets.symmetric(horizontal:.55*PdfPageFormat.mm),
-                  decoration:pw.BoxDecoration(
-                    color:lilac,
-                    borderRadius:pw.BorderRadius.circular(1.7*PdfPageFormat.mm),
-                  ),
-                  child:pw.FittedBox(
-                    fit:pw.BoxFit.scaleDown,
-                    child:pw.RichText(text:pw.TextSpan(children:[
-                      pw.TextSpan(
-                        text:'Etiket Kodu: ',
-                        style:pw.TextStyle(color:muted,fontSize:4.2),
-                      ),
-                      pw.TextSpan(
-                        text:token,
-                        style:pw.TextStyle(color:purple,fontSize:5.6,fontWeight:pw.FontWeight.bold),
-                      ),
-                    ])),
+                pw.SizedBox(height:.85*PdfPageFormat.mm),
+                pw.Center(
+                  child:pw.Container(
+                    width:17.5*PdfPageFormat.mm,
+                    height:3.0*PdfPageFormat.mm,
+                    alignment:pw.Alignment.center,
+                    padding:pw.EdgeInsets.symmetric(horizontal:.45*PdfPageFormat.mm),
+                    decoration:pw.BoxDecoration(
+                      color:lilac,
+                      borderRadius:pw.BorderRadius.circular(1.4*PdfPageFormat.mm),
+                    ),
+                    child:pw.FittedBox(
+                      fit:pw.BoxFit.scaleDown,
+                      child:pw.RichText(text:pw.TextSpan(children:[
+                        pw.TextSpan(
+                          text:'Etiket Kodu: ',
+                          style:pw.TextStyle(color:muted,fontSize:3.4),
+                        ),
+                        pw.TextSpan(
+                          text:token,
+                          style:pw.TextStyle(color:purple,fontSize:4.5,fontWeight:pw.FontWeight.bold),
+                        ),
+                      ])),
+                    ),
                   ),
                 ),
               ]),
@@ -1131,41 +1136,46 @@ class _QrPageState extends State<QrPage>{
         child:Container(
           padding:EdgeInsets.fromLTRB(cardW*.035,cardH*.020,cardW*.035,cardH*.020),
           child:Column(children:[
-            Expanded(child:LayoutBuilder(builder:(context,q){
-              final s=q.maxWidth<q.maxHeight?q.maxWidth:q.maxHeight;
-              final dot=s*.075;
-              final inset=s*.070;
-              return Center(child:SizedBox(width:s,height:s,child:Stack(children:[
-                Positioned.fill(child:QrImageView(
-                  data:url,
-                  version:QrVersions.auto,
-                  padding:EdgeInsets.zero,
-                  backgroundColor:Colors.white,
-                  eyeStyle:const QrEyeStyle(eyeShape:QrEyeShape.square,color:Colors.black),
-                  dataModuleStyle:const QrDataModuleStyle(dataModuleShape:QrDataModuleShape.square,color:Colors.black),
-                )),
-                Positioned(left:inset,top:inset,width:dot,height:dot,child:_finderDot()),
-                Positioned(right:inset,top:inset,width:dot,height:dot,child:_finderDot()),
-                Positioned(left:inset,bottom:inset,width:dot,height:dot,child:_finderDot()),
-              ])));
-            })),
-            SizedBox(height:cardH*.018),
-            Container(
-              width:double.infinity,
-              height:cardH*.155,
-              padding:EdgeInsets.symmetric(horizontal:cardW*.035),
+            SizedBox(height:cardH*.065),
+            Center(child:SizedBox(
+              width:cardW*.78,
+              height:cardW*.78,
+              child:LayoutBuilder(builder:(context,q){
+                final s=q.maxWidth<q.maxHeight?q.maxWidth:q.maxHeight;
+                final dot=s*.075;
+                final inset=s*.070;
+                return Stack(children:[
+                  Positioned.fill(child:QrImageView(
+                    data:url,
+                    version:QrVersions.auto,
+                    padding:EdgeInsets.zero,
+                    backgroundColor:Colors.white,
+                    eyeStyle:const QrEyeStyle(eyeShape:QrEyeShape.square,color:Colors.black),
+                    dataModuleStyle:const QrDataModuleStyle(dataModuleShape:QrDataModuleShape.square,color:Colors.black),
+                  )),
+                  Positioned(left:inset,top:inset,width:dot,height:dot,child:_finderDot()),
+                  Positioned(right:inset,top:inset,width:dot,height:dot,child:_finderDot()),
+                  Positioned(left:inset,bottom:inset,width:dot,height:dot,child:_finderDot()),
+                ]);
+              }),
+            )),
+            SizedBox(height:cardH*.038),
+            Center(child:Container(
+              width:cardW*.90,
+              height:cardH*.125,
+              padding:EdgeInsets.symmetric(horizontal:cardW*.025),
               decoration:BoxDecoration(
                 color:const Color(0xFFF0E4FC),
-                borderRadius:BorderRadius.circular(cardH*.08),
+                borderRadius:BorderRadius.circular(cardH*.06),
               ),
               child:Center(child:FittedBox(
                 fit:BoxFit.scaleDown,
                 child:RichText(textAlign:TextAlign.center,text:TextSpan(children:[
-                  const TextSpan(text:'Etiket Kodu: ',style:TextStyle(color:Color(0xFF665D77),fontSize:11,fontWeight:FontWeight.w600)),
-                  TextSpan(text:token,style:const TextStyle(color:Color(0xFF6E22D9),fontSize:15,fontWeight:FontWeight.w900)),
+                  const TextSpan(text:'Etiket Kodu: ',style:TextStyle(color:Color(0xFF665D77),fontSize:8.5,fontWeight:FontWeight.w600)),
+                  TextSpan(text:token,style:const TextStyle(color:Color(0xFF6E22D9),fontSize:11.5,fontWeight:FontWeight.w900)),
                 ])),
               )),
-            ),
+            )),
           ]),
         ),
       ),
