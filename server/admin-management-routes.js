@@ -7,6 +7,42 @@ function normalizeToken(raw) {
   return String(raw || '').trim().toUpperCase();
 }
 
+let qrItemPrintSchemaReady = false;
+async function ensureQrItemPrintSchema(pool) {
+  if (qrItemPrintSchemaReady) return;
+  await pool.query(`
+    ALTER TABLE qr_tags
+      ADD COLUMN IF NOT EXISTS print_status TEXT NOT NULL DEFAULT 'ready';
+    ALTER TABLE qr_tags
+      ADD COLUMN IF NOT EXISTS pdf_downloaded_at TIMESTAMPTZ;
+    ALTER TABLE qr_tags
+      ADD COLUMN IF NOT EXISTS sent_to_print_at TIMESTAMPTZ;
+    ALTER TABLE qr_tags
+      ADD COLUMN IF NOT EXISTS printed_at TIMESTAMPTZ;
+
+    DO $ BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname='qr_tags_print_status_check'
+      ) THEN
+        ALTER TABLE qr_tags
+          ADD CONSTRAINT qr_tags_print_status_check
+          CHECK (print_status IN ('ready','pdf_downloaded','sent_to_print','printed'));
+      END IF;
+    END $;
+
+    UPDATE qr_tags q
+       SET print_status = COALESCE(b.print_status,'ready'),
+           pdf_downloaded_at = COALESCE(q.pdf_downloaded_at,b.pdf_downloaded_at),
+           sent_to_print_at = COALESCE(q.sent_to_print_at,b.sent_to_print_at),
+           printed_at = COALESCE(q.printed_at,b.printed_at)
+      FROM qr_print_batches b
+     WHERE q.print_batch_id=b.id
+       AND q.print_status='ready'
+       AND COALESCE(b.print_status,'ready')<>'ready';
+  `);
+  qrItemPrintSchemaReady = true;
+}
+
 module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
   const guard = typeof adminGuard === 'function'
     ? adminGuard
@@ -87,6 +123,7 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
 
   app.get('/api/admin/manage/qr', guard, async (_req, res) => {
     try {
+      await ensureQrItemPrintSchema(pool);
       const r = await pool.query(
         `SELECT q.id,q.token,q.status,q.vehicle_id,q.activated_at,
                 q.batch_serial,q.print_batch_id,
@@ -95,8 +132,12 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
                   ELSE NULL
                 END AS serial_no,
                 b.batch_code,b.created_at AS batch_created_at,
-                b.print_status,b.pdf_downloaded_at,b.pdf_downloaded_by,
-                b.sent_to_print_at,b.sent_to_print_by,b.printed_at,b.printed_by,
+                q.print_status,
+                q.pdf_downloaded_at,q.sent_to_print_at,q.printed_at,
+                b.print_status AS batch_print_status,
+                b.pdf_downloaded_at AS batch_pdf_downloaded_at,b.pdf_downloaded_by,
+                b.sent_to_print_at AS batch_sent_to_print_at,b.sent_to_print_by,
+                b.printed_at AS batch_printed_at,b.printed_by,
                 v.plate,v.make,v.model,u.id AS owner_id,u.display_name AS owner_name
          FROM qr_tags q
          LEFT JOIN qr_print_batches b ON b.id=q.print_batch_id
@@ -187,6 +228,58 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
       return res.status(500).json({ error: 'SERVER_ERROR' });
     }
   });
+  app.patch('/api/admin/manage/qr/print-status', guard, async (req, res) => {
+    const rawTokens = Array.isArray(req.body?.tokens) ? req.body.tokens : [];
+    const tokens = [...new Set(rawTokens.map(normalizeToken).filter(Boolean))].slice(0, 1000);
+    const status = String(req.body?.status || '').trim();
+    const allowed = ['ready','pdf_downloaded','sent_to_print','printed'];
+    if (!tokens.length) return res.status(400).json({ error: 'QR_TOKENS_REQUIRED' });
+    if (!allowed.includes(status)) return res.status(400).json({ error: 'INVALID_PRINT_STATUS' });
+
+    try {
+      await ensureQrItemPrintSchema(pool);
+      let sql;
+      if (status === 'ready') {
+        sql = `UPDATE qr_tags
+                  SET print_status='ready',
+                      pdf_downloaded_at=NULL,
+                      sent_to_print_at=NULL,
+                      printed_at=NULL
+                WHERE token=ANY($1::text[])
+                RETURNING token,print_status,pdf_downloaded_at,sent_to_print_at,printed_at`;
+      } else if (status === 'pdf_downloaded') {
+        sql = `UPDATE qr_tags
+                  SET print_status='pdf_downloaded',
+                      pdf_downloaded_at=COALESCE(pdf_downloaded_at,NOW()),
+                      sent_to_print_at=NULL,
+                      printed_at=NULL
+                WHERE token=ANY($1::text[])
+                RETURNING token,print_status,pdf_downloaded_at,sent_to_print_at,printed_at`;
+      } else if (status === 'sent_to_print') {
+        sql = `UPDATE qr_tags
+                  SET print_status='sent_to_print',
+                      pdf_downloaded_at=COALESCE(pdf_downloaded_at,NOW()),
+                      sent_to_print_at=COALESCE(sent_to_print_at,NOW()),
+                      printed_at=NULL
+                WHERE token=ANY($1::text[])
+                RETURNING token,print_status,pdf_downloaded_at,sent_to_print_at,printed_at`;
+      } else {
+        sql = `UPDATE qr_tags
+                  SET print_status='printed',
+                      pdf_downloaded_at=COALESCE(pdf_downloaded_at,NOW()),
+                      sent_to_print_at=COALESCE(sent_to_print_at,NOW()),
+                      printed_at=COALESCE(printed_at,NOW())
+                WHERE token=ANY($1::text[])
+                RETURNING token,print_status,pdf_downloaded_at,sent_to_print_at,printed_at`;
+      }
+      const r = await pool.query(sql, [tokens]);
+      return res.json({ ok: true, count: r.rowCount || 0, items: r.rows });
+    } catch (e) {
+      console.error('qr item print status update', e);
+      return res.status(500).json({ error: 'SERVER_ERROR' });
+    }
+  });
+
   app.post('/api/admin/manage/qr', guard, async (req, res) => {
     const count = Math.max(1, Math.min(100, Number(req.body.count || 1)));
     const client = await pool.connect();
