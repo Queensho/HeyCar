@@ -1,15 +1,15 @@
 from pathlib import Path
 
-candidates = sorted(
+sound_candidates = sorted(
     Path.home().glob(
         ".pub-cache/hosted/pub.dev/flutter_callkit_incoming-*/android/src/main/kotlin/"
         "com/hiennv/flutter_callkit_incoming/CallkitSoundPlayerManager.kt"
     )
 )
-if not candidates:
+if not sound_candidates:
     raise SystemExit("flutter_callkit_incoming CallkitSoundPlayerManager.kt not found")
 
-p = candidates[-1]
+p = sound_candidates[-1]
 text = p.read_text(encoding="utf-8")
 
 def replace_once(old: str, new: str, label: str) -> None:
@@ -34,8 +34,42 @@ replace_once(
 )
 replace_once(
     "    private var ringtone: Ringtone? = null\n",
-    "    private var ringtone: Ringtone? = null\n    private var mediaPlayer: MediaPlayer? = null\n",
-    "MediaPlayer field",
+    """    private var ringtone: Ringtone? = null
+    private var mediaPlayer: MediaPlayer? = null
+    private val audioFocusListener = AudioManager.OnAudioFocusChangeListener { }
+    private var previousAudioMode: Int? = null
+
+    private fun requestRingtoneAudioFocus() {
+        try {
+            audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+            previousAudioMode = audioManager?.mode
+            audioManager?.mode = AudioManager.MODE_RINGTONE
+            @Suppress("DEPRECATION")
+            audioManager?.requestAudioFocus(
+                audioFocusListener,
+                AudioManager.STREAM_RING,
+                AudioManager.AUDIOFOCUS_GAIN_TRANSIENT
+            )
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun releaseRingtoneAudioFocus() {
+        try {
+            @Suppress("DEPRECATION")
+            audioManager?.abandonAudioFocus(audioFocusListener)
+            val previous = previousAudioMode
+            if (previous != null && audioManager?.mode == AudioManager.MODE_RINGTONE) {
+                audioManager?.mode = previous
+            }
+        } catch (_: Exception) {
+        } finally {
+            previousAudioMode = null
+        }
+    }
+""",
+    "MediaPlayer and audio focus fields",
 )
 
 replace_once(
@@ -48,44 +82,28 @@ replace_once(
     }""",
 """    inner class ScreenOffCallkitIncomingBroadcastReceiver : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            // Some OEMs (notably Xiaomi/HyperOS) emit ACTION_SCREEN_OFF again while
-            // presenting a full-screen incoming-call activity. Stopping here can mute
-            // the ringtone immediately on an already locked device. Accept/decline,
-            // timeout and explicit call end already stop the player, so keep ringing.
+            // Xiaomi/HyperOS may emit ACTION_SCREEN_OFF again while the incoming
+            // full-screen activity is being presented. Do not stop the ringtone here.
+            // Accept/decline, timeout and explicit call end already stop playback.
         }
     }""",
     "locked-screen screen-off guard",
 )
 
-replace_once(
-"""        ringtone?.stop()
+stop_old = """        ringtone?.stop()
         vibrator?.cancel()
         ringtone = null
-        vibrator = null""",
-"""        ringtone?.stop()
+        vibrator = null"""
+stop_new = """        ringtone?.stop()
         try { mediaPlayer?.stop() } catch (_: Exception) {}
         mediaPlayer?.release()
+        releaseRingtoneAudioFocus()
         vibrator?.cancel()
         ringtone = null
         mediaPlayer = null
-        vibrator = null""",
-    "stop MediaPlayer",
-)
-
-replace_once(
-"""        ringtone?.stop()
-        vibrator?.cancel()
-        ringtone = null
-        vibrator = null""",
-"""        ringtone?.stop()
-        try { mediaPlayer?.stop() } catch (_: Exception) {}
-        mediaPlayer?.release()
-        vibrator?.cancel()
-        ringtone = null
-        mediaPlayer = null
-        vibrator = null""",
-    "destroy MediaPlayer",
-)
+        vibrator = null"""
+replace_once(stop_old, stop_new, "stop MediaPlayer and focus")
+replace_once(stop_old, stop_new, "destroy MediaPlayer and focus")
 
 replace_once(
 """    private fun prepare() {
@@ -97,9 +115,10 @@ replace_once(
         try { mediaPlayer?.stop() } catch (_: Exception) {}
         mediaPlayer?.release()
         mediaPlayer = null
+        releaseRingtoneAudioFocus()
         vibrator?.cancel()
     }""",
-    "prepare MediaPlayer",
+    "prepare MediaPlayer and focus",
 )
 
 old_play = """    private fun playSound(data: Bundle?) {
@@ -139,13 +158,14 @@ new_play = """    private fun playSound(data: Bundle?) {
             ""
         )?.trim().orEmpty()
 
-        // Cepqar ships its own ringtone under res/raw. Prefer MediaPlayer for app
-        // resources so we can hold a partial wake lock while the screen is locked.
-        // The plugin's RingtoneManager path remains as a fallback for system tones.
+        requestRingtoneAudioFocus()
+
+        // Prefer the packaged Cepqar ringtone under res/raw and loop it using
+        // STREAM_RING. Keep RingtoneManager as a fallback for OEM-specific cases.
         if (sound.isNotEmpty() && !sound.equals("system_ringtone_default", true)) {
             val resId = context.resources.getIdentifier(sound, "raw", context.packageName)
             if (resId != 0) {
-                val rawUri = Uri.parse("android.resource://${context.packageName}/$resId")
+                val rawUri = Uri.parse("android.resource://\${context.packageName}/$resId")
                 try {
                     mediaPlayer = MediaPlayer().apply {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
@@ -163,6 +183,7 @@ new_play = """    private fun playSound(data: Bundle?) {
                         setWakeMode(context, PowerManager.PARTIAL_WAKE_LOCK)
                         setDataSource(context, rawUri)
                         isLooping = true
+                        setVolume(1.0f, 1.0f)
                         prepare()
                         start()
                     }
@@ -200,6 +221,28 @@ new_play = """    private fun playSound(data: Bundle?) {
         }
     }"""
 
-replace_once(old_play, new_play, "wake-lock ringtone player")
+replace_once(old_play, new_play, "wake-lock ringtone player with ring audio focus")
 p.write_text(text, encoding="utf-8")
 print(f"Cepqar CallKit ringtone patch applied: {p}")
+
+notification_candidates = sorted(
+    Path.home().glob(
+        ".pub-cache/hosted/pub.dev/flutter_callkit_incoming-*/android/src/main/kotlin/"
+        "com/hiennv/flutter_callkit_incoming/CallkitNotificationManager.kt"
+    )
+)
+if not notification_candidates:
+    raise SystemExit("flutter_callkit_incoming CallkitNotificationManager.kt not found")
+
+np = notification_candidates[-1]
+notification_text = np.read_text(encoding="utf-8")
+old_channel = 'const val NOTIFICATION_CHANNEL_ID_INCOMING = "callkit_incoming_channel_id_v2"'
+new_channel = 'const val NOTIFICATION_CHANNEL_ID_INCOMING = "cepqar_callkit_incoming_channel_v7"'
+if old_channel in notification_text:
+    notification_text = notification_text.replace(old_channel, new_channel, 1)
+    np.write_text(notification_text, encoding="utf-8")
+    print(f"Fresh Cepqar CallKit channel id applied: {np}")
+elif new_channel in notification_text:
+    print("Fresh Cepqar CallKit channel id: already patched")
+else:
+    raise SystemExit(f"Incoming CallKit channel id block not found in {np}")
