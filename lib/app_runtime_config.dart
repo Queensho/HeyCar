@@ -96,8 +96,8 @@ class RuntimeConfigService {
       minimumVersion:(pconf['minimum']??'0.0.0').toString(),
       forceUpdate:!kIsWeb&&pconf['forceUpdate']==true,
       storeUrl:(pconf['storeUrl']??'').toString(),
-      monthlyPriceText:(premium['monthlyPriceText']??'₺99,99 / ay').toString(),
-      yearlyPriceText:(premium['yearlyPriceText']??'₺799,99 / yıl').toString(),
+      monthlyPriceText:(premium['monthlyPriceText']??'₺49,99').toString(),
+      yearlyPriceText:(premium['yearlyPriceText']??'₺499,99').toString(),
       features:features,
       currentVersion:current,
     );
