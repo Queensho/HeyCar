@@ -7,6 +7,8 @@ import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 import 'admin_requests_page.dart';
 import 'admin_download.dart';
 
@@ -207,7 +209,17 @@ class _AdminHomeState extends State<AdminHome> {
   Future<void> openVehicle(Map<String,dynamic> row) async {
     try{final d=await getJson('/api/admin/manage/vehicles/${row['id']}');if(!mounted)return;await Navigator.push(context,MaterialPageRoute(builder:(_)=>VehicleDetail(vehicle:Map<String,dynamic>.from(d['vehicle'] as Map))));}catch(e){snack(e);}
   }
-  Future<void> createQr(int count) async {try{await send('POST','/api/admin/manage/qr',{'count':count});await load();}catch(e){snack(e);}}
+  Future<void> createQr(int count) async {
+    try{
+      final d=await send('POST','/api/admin/manage/qr',{'count':count});
+      final batch=d['batch'];
+      await load();
+      if(mounted&&batch is Map){
+        final code=(batch['batchCode']??'').toString();
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('$count QR üretildi • $code')));
+      }
+    }catch(e){snack(e);}
+  }
   Future<void> qrAction(String token,String action) async {try{await send('PATCH','/api/admin/manage/qr/$token',{'action':action});await load();}catch(e){snack(e);}}
   Future<void> removeBg(String id) async {try{await send('DELETE','/api/admin/manage/moderation/themes/$id/background');await load();}catch(e){snack(e);}}
   Future<void> resetTheme(String id) async {try{await send('POST','/api/admin/manage/moderation/themes/$id/reset');await load();}catch(e){snack(e);}}
@@ -496,13 +508,104 @@ class _VehiclesPageState extends State<VehiclesPage>{final search=TextEditingCon
 
 class QrPage extends StatefulWidget{
   const QrPage({super.key,required this.rows,required this.create,required this.action});
-  final List<Map<String,dynamic>> rows;final Future<void> Function(int) create;final Future<void> Function(String,String) action;
+  final List<Map<String,dynamic>> rows;
+  final Future<void> Function(int) create;
+  final Future<void> Function(String,String) action;
   @override State<QrPage> createState()=>_QrPageState();
 }
+
 class _QrPageState extends State<QrPage>{
   final search=TextEditingController();
   final GlobalKey _stickerKey=GlobalKey();
+  String batchFilter='all';
+
   String publicUrl(String token)=>'$_publicBase?tag=${Uri.encodeQueryComponent(token)}';
+
+  List<String> get batchCodes{
+    final values=widget.rows.map((e)=>(e['batch_code']??'').toString()).where((e)=>e.isNotEmpty).toSet().toList();
+    values.sort((a,b)=>b.compareTo(a));
+    return values;
+  }
+
+  String _csvCell(Object? value){
+    final s=(value??'').toString().replaceAll('"','""');
+    return '"$s"';
+  }
+
+  Future<void> _exportCsv(List<Map<String,dynamic>> rows) async{
+    if(rows.isEmpty)return;
+    final out=<String>[
+      ['Etiket Kodu','Seri No','Baskı Partisi','Parti Sırası','Durum','Plaka','Araç Sahibi','Aktivasyon','QR Linki'].map(_csvCell).join(','),
+      ...rows.map((e)=>[
+        e['token'],e['serial_no'],e['batch_code'],e['batch_serial'],e['status'],e['plate'],e['owner_name'],e['activated_at'],publicUrl((e['token']??'').toString())
+      ].map(_csvCell).join(',')),
+    ];
+    final bytes=Uint8List.fromList(utf8.encode('\uFEFF${out.join('\n')}'));
+    final suffix=batchFilter=='all'?'tum-qr':batchFilter.toLowerCase();
+    await saveAdminFile(bytes,'cepqar-$suffix.csv','text/csv;charset=utf-8');
+  }
+
+  Future<void> _exportPdf(List<Map<String,dynamic>> rows) async{
+    if(rows.isEmpty)return;
+    final doc=pw.Document();
+    const perPage=8;
+    final purple=PdfColor.fromHex('#6D28D9');
+    final lilac=PdfColor.fromHex('#F0E4FC');
+    final dark=PdfColor.fromHex('#151126');
+
+    for(var start=0;start<rows.length;start+=perPage){
+      final end=(start+perPage<rows.length)?start+perPage:rows.length;
+      final pageItems=rows.sublist(start,end);
+      doc.addPage(pw.Page(
+        pageFormat:PdfPageFormat.a4,
+        margin:pw.EdgeInsets.all(8*PdfPageFormat.mm),
+        build:(_)=>pw.Wrap(
+          spacing:4*PdfPageFormat.mm,
+          runSpacing:4*PdfPageFormat.mm,
+          children:pageItems.map((e){
+            final token=(e['token']??'').toString();
+            final batch=(e['batch_code']??'Eski / Partisiz').toString();
+            return pw.Container(
+              width:93*PdfPageFormat.mm,
+              height:62*PdfPageFormat.mm,
+              padding:pw.EdgeInsets.all(4*PdfPageFormat.mm),
+              decoration:pw.BoxDecoration(
+                color:PdfColors.white,
+                border:pw.Border.all(color:PdfColor.fromHex('#D9D4E5'),width:.6),
+                borderRadius:pw.BorderRadius.circular(3*PdfPageFormat.mm),
+              ),
+              child:pw.Column(children:[
+                pw.Expanded(child:pw.Center(child:pw.BarcodeWidget(
+                  barcode:pw.Barcode.qrCode(),
+                  data:publicUrl(token),
+                  width:42*PdfPageFormat.mm,
+                  height:42*PdfPageFormat.mm,
+                  drawText:false,
+                ))),
+                pw.SizedBox(height:1.5*PdfPageFormat.mm),
+                pw.Container(
+                  height:8*PdfPageFormat.mm,
+                  padding:pw.EdgeInsets.symmetric(horizontal:4*PdfPageFormat.mm),
+                  decoration:pw.BoxDecoration(color:lilac,borderRadius:pw.BorderRadius.circular(4*PdfPageFormat.mm)),
+                  alignment:pw.Alignment.center,
+                  child:pw.Row(mainAxisSize:pw.MainAxisSize.min,children:[
+                    pw.Text('Etiket Kodu: ',style:pw.TextStyle(fontSize:8,color:dark)),
+                    pw.Text(token,style:pw.TextStyle(fontSize:10,fontWeight:pw.FontWeight.bold,color:purple)),
+                  ]),
+                ),
+                pw.SizedBox(height:1*PdfPageFormat.mm),
+                pw.Text('Parti: $batch',style:pw.TextStyle(fontSize:6.5,color:PdfColors.grey700)),
+              ]),
+            );
+          }).toList(),
+        ),
+      ));
+    }
+
+    final bytes=await doc.save();
+    final suffix=batchFilter=='all'?'tum-qr':batchFilter.toLowerCase();
+    await saveAdminFile(Uint8List.fromList(bytes),'cepqar-baski-$suffix.pdf','application/pdf');
+  }
 
   Future<void> _downloadSticker(String token) async{
     try{
@@ -529,10 +632,7 @@ class _QrPageState extends State<QrPage>{
         final inset=s*.070;
         return Center(child:SizedBox(width:s,height:s,child:Stack(children:[
           Positioned.fill(child:QrImageView(
-            data:url,
-            version:QrVersions.auto,
-            padding:EdgeInsets.zero,
-            backgroundColor:Colors.white,
+            data:url,version:QrVersions.auto,padding:EdgeInsets.zero,backgroundColor:Colors.white,
             eyeStyle:const QrEyeStyle(eyeShape:QrEyeShape.square,color:Colors.black),
             dataModuleStyle:const QrDataModuleStyle(dataModuleShape:QrDataModuleShape.square,color:Colors.black),
           )),
@@ -545,39 +645,26 @@ class _QrPageState extends State<QrPage>{
       FractionallySizedBox(
         widthFactor:.82,
         child:Container(
-          height:34,
-          padding:const EdgeInsets.symmetric(horizontal:10),
-          decoration:BoxDecoration(
-            color:const Color(0xFFF0E4FC),
-            borderRadius:BorderRadius.circular(16),
-          ),
-          child:Center(
-            child:FittedBox(
-              fit:BoxFit.scaleDown,
-              child:RichText(
-                textAlign:TextAlign.center,
-                text:TextSpan(children:[
-                  const TextSpan(text:'Etiket Kodu:  ',style:TextStyle(color:Color(0xFF5A5570),fontSize:11,fontWeight:FontWeight.w500)),
-                  TextSpan(text:token,style:const TextStyle(color:Color(0xFF5F2FBF),fontSize:15,fontWeight:FontWeight.w800)),
-                ]),
-              ),
-            ),
-          ),
+          height:34,padding:const EdgeInsets.symmetric(horizontal:10),
+          decoration:BoxDecoration(color:const Color(0xFFF0E4FC),borderRadius:BorderRadius.circular(16)),
+          child:Center(child:FittedBox(
+            fit:BoxFit.scaleDown,
+            child:RichText(textAlign:TextAlign.center,text:TextSpan(children:[
+              const TextSpan(text:'Etiket Kodu:  ',style:TextStyle(color:Color(0xFF5A5570),fontSize:11,fontWeight:FontWeight.w500)),
+              TextSpan(text:token,style:const TextStyle(color:Color(0xFF5F2FBF),fontSize:15,fontWeight:FontWeight.w800)),
+            ])),
+          )),
         ),
       ),
     ]),
   );
 
   Widget _finderDot()=>Container(
-    decoration:BoxDecoration(
-      color:const Color(0xFF8428FF),
-      borderRadius:BorderRadius.circular(2.5),
-      boxShadow:[BoxShadow(color:const Color(0xFF8428FF).withValues(alpha:.16),blurRadius:3)],
-    ),
+    decoration:BoxDecoration(color:const Color(0xFF8428FF),borderRadius:BorderRadius.circular(2.5),boxShadow:[BoxShadow(color:const Color(0xFF8428FF).withValues(alpha:.16),blurRadius:3)]),
   );
 
   Future<void> showQr(Map<String,dynamic> e) async{
-    final token=e['token']?.toString()??''; if(token.isEmpty)return;
+    final token=e['token']?.toString()??'';if(token.isEmpty)return;
     final url=publicUrl(token);
     if(!mounted)return;
     await showDialog(context:context,builder:(ctx)=>Dialog(
@@ -589,25 +676,14 @@ class _QrPageState extends State<QrPage>{
           const Text('QR Etiketi',style:TextStyle(fontSize:22,fontWeight:FontWeight.w900,color:Colors.white)),
           const SizedBox(height:4),
           Text(token,style:const TextStyle(fontWeight:FontWeight.w800,color:_muted,fontSize:13)),
-          const SizedBox(height:14),
-          ConstrainedBox(
-            constraints:const BoxConstraints(maxWidth:400),
-            child:AspectRatio(aspectRatio:1,child:RepaintBoundary(key:_stickerKey,child:_sticker(token,url))),
-          ),
+          if((e['batch_code']??'').toString().isNotEmpty)Text('${e['batch_code']} • Parti sıra ${e['batch_serial']??'-'}',style:const TextStyle(color:_muted,fontSize:11)),
+          const SizedBox(height:12),
+          ConstrainedBox(constraints:const BoxConstraints(maxWidth:400),child:AspectRatio(aspectRatio:1,child:RepaintBoundary(key:_stickerKey,child:_sticker(token,url)))),
           const SizedBox(height:12),
           Row(children:[
-            Expanded(child:OutlinedButton.icon(
-              onPressed:()=>launchUrl(Uri.parse(url),mode:LaunchMode.externalApplication),
-              icon:const Icon(Icons.open_in_new_rounded),
-              label:const Text('QR sayfasını aç',textAlign:TextAlign.center),
-            )),
+            Expanded(child:OutlinedButton.icon(onPressed:()=>launchUrl(Uri.parse(url),mode:LaunchMode.externalApplication),icon:const Icon(Icons.open_in_new_rounded),label:const Text('QR sayfasını aç',textAlign:TextAlign.center))),
             const SizedBox(width:10),
-            Expanded(child:FilledButton.icon(
-              style:FilledButton.styleFrom(backgroundColor:_purple,foregroundColor:Colors.white),
-              onPressed:()=>_downloadSticker(token),
-              icon:const Icon(Icons.download_rounded),
-              label:const Text('Etiket PNG indir',textAlign:TextAlign.center),
-            )),
+            Expanded(child:FilledButton.icon(style:FilledButton.styleFrom(backgroundColor:_purple,foregroundColor:Colors.white),onPressed:()=>_downloadSticker(token),icon:const Icon(Icons.download_rounded),label:const Text('Etiket PNG indir',textAlign:TextAlign.center))),
           ]),
         ])),
       ),
@@ -616,25 +692,67 @@ class _QrPageState extends State<QrPage>{
 
   @override Widget build(BuildContext context){
     final q=search.text.toLowerCase();
-    final r=widget.rows.where((e)=>'${e['token']} ${e['plate']} ${e['owner_name']}'.toLowerCase().contains(q)).toList();
-    return ListView(padding:const EdgeInsets.all(22),children:[
-      Row(children:[const Expanded(child:Text('QR Yönetimi',style:TextStyle(fontSize:22,fontWeight:FontWeight.w900,color:Colors.white))),PopupMenuButton<int>(onSelected:widget.create,itemBuilder:(_)=>const[PopupMenuItem(value:1,child:Text('1 QR üret')),PopupMenuItem(value:10,child:Text('10 QR üret')),PopupMenuItem(value:50,child:Text('50 QR üret'))],child:const Chip(avatar:Icon(Icons.add),label:Text('Yeni QR üret')))]),
+    final batches=batchCodes;
+    final rows=widget.rows.where((e){
+      final text='${e['token']} ${e['plate']} ${e['owner_name']} ${e['batch_code']}'.toLowerCase();
+      final matchesSearch=text.contains(q);
+      final matchesBatch=batchFilter=='all'||(batchFilter=='legacy'&&(e['batch_code']??'').toString().isEmpty)||(e['batch_code']??'').toString()==batchFilter;
+      return matchesSearch&&matchesBatch;
+    }).toList();
+
+    return ListView(padding:const EdgeInsets.fromLTRB(14,14,14,24),children:[
+      Wrap(spacing:8,runSpacing:8,crossAxisAlignment:WrapCrossAlignment.center,children:[
+        const Text('QR Yönetimi',style:TextStyle(fontSize:22,fontWeight:FontWeight.w900,color:Colors.white)),
+        PopupMenuButton<int>(
+          onSelected:widget.create,
+          itemBuilder:(_)=>const[
+            PopupMenuItem(value:1,child:Text('1 QR üret')),
+            PopupMenuItem(value:10,child:Text('10 QR üret')),
+            PopupMenuItem(value:50,child:Text('50 QR üret')),
+            PopupMenuItem(value:100,child:Text('100 QR üret')),
+          ],
+          child:const Chip(avatar:Icon(Icons.add),label:Text('Yeni QR üret')),
+        ),
+        OutlinedButton.icon(onPressed:rows.isEmpty?null:()=>_exportCsv(rows),icon:const Icon(Icons.table_view_rounded),label:const Text('CSV indir')),
+        FilledButton.icon(onPressed:rows.isEmpty?null:()=>_exportPdf(rows),style:FilledButton.styleFrom(backgroundColor:_purple),icon:const Icon(Icons.picture_as_pdf_rounded),label:const Text('Baskı PDF')),
+      ]),
+      const SizedBox(height:12),
+      Wrap(spacing:10,runSpacing:10,crossAxisAlignment:WrapCrossAlignment.center,children:[
+        SizedBox(width:280,child:TextField(controller:search,onChanged:(_)=>setState((){}),decoration:const InputDecoration(prefixIcon:Icon(Icons.search),hintText:'Kod, plaka, kullanıcı veya parti ara',filled:true,fillColor:_card2,border:OutlineInputBorder(borderSide:BorderSide.none)))),
+        SizedBox(width:250,child:DropdownButtonFormField<String>(
+          value:batchFilter,
+          isExpanded:true,
+          decoration:const InputDecoration(labelText:'Baskı partisi'),
+          items:[
+            const DropdownMenuItem(value:'all',child:Text('Tüm partiler')),
+            const DropdownMenuItem(value:'legacy',child:Text('Eski / Partisiz')),
+            ...batches.map((b)=>DropdownMenuItem(value:b,child:Text(b))),
+          ],
+          onChanged:(v)=>setState(()=>batchFilter=v??'all'),
+        )),
+        Text('${rows.length} QR • ${batches.length} baskı partisi',style:const TextStyle(color:_muted,fontSize:12,fontWeight:FontWeight.w700)),
+      ]),
       const SizedBox(height:14),
-      TextField(controller:search,onChanged:(_)=>setState((){}),decoration:const InputDecoration(prefixIcon:Icon(Icons.search),hintText:'Token, plaka veya kullanıcı ara',filled:true,fillColor:_card2,border:OutlineInputBorder(borderSide:BorderSide.none))),
-      const SizedBox(height:14),
-      ...r.map((e)=>Card(elevation:0,child:Padding(padding:const EdgeInsets.symmetric(vertical:6),child:ListTile(
-        leading:const Icon(Icons.qr_code_2_rounded,color:_purple,size:34),
-        title:Text(e['token']?.toString()??'-',style:const TextStyle(fontWeight:FontWeight.w900)),
-        subtitle:Text('${e['plate']??'Bağlı araç yok'} • ${e['owner_name']??''}'),
-        onTap:()=>showQr(e),
-        trailing:Wrap(spacing:4,children:[
-          IconButton(tooltip:'QR Etiketi',onPressed:()=>showQr(e),icon:const Icon(Icons.image_outlined,color:_purple)),
-          PopupMenuButton<String>(onSelected:(a)=>widget.action(e['token'].toString(),a),itemBuilder:(_)=>[
-            if(e['status']=='disabled')const PopupMenuItem(value:'enable',child:Text('Aktif et'))else const PopupMenuItem(value:'disable',child:Text('Devre dışı bırak')),
-            if(e['vehicle_id']!=null)const PopupMenuItem(value:'unbind',child:Text('Araçtan ayır')),
+      if(rows.isEmpty)Container(padding:const EdgeInsets.all(24),decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(18),border:Border.all(color:_line)),child:const Center(child:Text('Bu filtrede QR bulunamadı.',style:TextStyle(color:_muted))))
+      else ...rows.map((e){
+        final batch=(e['batch_code']??'').toString();
+        final serial=e['serial_no']?.toString()??'-';
+        final batchSerial=e['batch_serial']?.toString()??'-';
+        return Card(elevation:0,child:Padding(padding:const EdgeInsets.symmetric(vertical:5),child:ListTile(
+          leading:const Icon(Icons.qr_code_2_rounded,color:_purple,size:34),
+          title:Row(children:[Expanded(child:Text(e['token']?.toString()??'-',style:const TextStyle(fontWeight:FontWeight.w900))),if(batch.isNotEmpty)Container(padding:const EdgeInsets.symmetric(horizontal:7,vertical:3),decoration:BoxDecoration(color:_purple.withValues(alpha:.12),borderRadius:BorderRadius.circular(12)),child:Text(batch,style:const TextStyle(color:Color(0xFFC879FF),fontSize:9.5,fontWeight:FontWeight.w800)))]),
+          subtitle:Text('${e['plate']??'Bağlı araç yok'} • ${e['owner_name']??''}\nSeri #$serial • ${batch.isEmpty?'Eski / Partisiz':'Parti sıra $batchSerial'}'),
+          isThreeLine:true,
+          onTap:()=>showQr(e),
+          trailing:Wrap(spacing:4,children:[
+            IconButton(tooltip:'QR Etiketi',onPressed:()=>showQr(e),icon:const Icon(Icons.image_outlined,color:_purple)),
+            PopupMenuButton<String>(onSelected:(a)=>widget.action(e['token'].toString(),a),itemBuilder:(_)=>[
+              if(e['status']=='disabled')const PopupMenuItem(value:'enable',child:Text('Aktif et'))else const PopupMenuItem(value:'disable',child:Text('Devre dışı bırak')),
+              if(e['vehicle_id']!=null)const PopupMenuItem(value:'unbind',child:Text('Araçtan ayır')),
+            ]),
           ]),
-        ]),
-      )))),
+        )));
+      }),
     ]);
   }
 }
