@@ -68,6 +68,14 @@ CREATE INDEX IF NOT EXISTS idx_admin_audit_logs_target
   ON public.admin_audit_logs(target_type, target_id, created_at DESC);
 
 GRANT SELECT,INSERT ON TABLE public.admin_audit_logs TO heycar_user;
-GRANT USAGE,SELECT ON SEQUENCE public.admin_audit_logs_id_seq TO heycar_user;
+
+DO $
+BEGIN
+  IF to_regclass('public.admin_audit_logs_id_seq') IS NOT NULL THEN
+    GRANT USAGE,SELECT ON SEQUENCE public.admin_audit_logs_id_seq TO heycar_user;
+  ELSIF to_regclass('public.admin_audit_log_id_seq') IS NOT NULL THEN
+    GRANT USAGE,SELECT ON SEQUENCE public.admin_audit_log_id_seq TO heycar_user;
+  END IF;
+END $;
 
 COMMIT;
