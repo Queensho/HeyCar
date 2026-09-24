@@ -216,7 +216,7 @@ module.exports=function registerVehicleReminderRoutes(app,pool){
                 SET notification_id=n.id
                FROM delivery dl CROSS JOIN notification n
               WHERE d.id=dl.id
-             RETURNING d.id,n.id AS notification_id
+             RETURNING d.id,d.notification_id
            )
            SELECT id,notification_id FROM linked`,
           [x.vehicle_id,x.owner_id,x.type,x.due_date,milestone,x.vehicle_id,fullMessage]
