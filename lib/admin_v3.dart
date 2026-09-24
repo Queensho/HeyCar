@@ -191,7 +191,14 @@ class _AdminHomeState extends State<AdminHome> {
     ('İşlem Geçmişi',Icons.history_rounded),
   ];
   static const mobileTabIndexes=[0,1,2,3,7,6];
-  Map<String,String> get headers=>{'Authorization':'Bearer ${widget.token}','Content-Type':'application/json'};
+  Map<String,String> get headers=>{
+    'Authorization':'Bearer ${widget.token}',
+    'Content-Type':'application/json',
+    if((widget.admin?['id']??'').toString().isNotEmpty)'X-Admin-Id':(widget.admin?['id']??'').toString(),
+    if((widget.admin?['email']??'').toString().isNotEmpty)'X-Admin-Email':(widget.admin?['email']??'').toString(),
+    if((widget.admin?['display_name']??widget.admin?['displayName']??widget.admin?['name']??'').toString().isNotEmpty)
+      'X-Admin-Name':(widget.admin?['display_name']??widget.admin?['displayName']??widget.admin?['name']??'').toString(),
+  };
 
   @override void initState(){super.initState();load();}
 
@@ -396,7 +403,7 @@ class _AdminHomeState extends State<AdminHome> {
     child:Container(width:38,height:38,decoration:BoxDecoration(color:_card2,borderRadius:BorderRadius.circular(12),border:Border.all(color:_purple.withValues(alpha:.45))),child:Icon(icon,color:Colors.white,size:20)),
   );
 
-  Widget page(){switch(tab){case 1:return UsersPage(rows:users,open:openUser);case 2:return VehiclesPage(rows:vehicles,open:openVehicle);case 3:return QrPage(rows:qr,create:createQr,action:qrAction,itemPrintStatus:qrItemPrintStatus);case 4:return ModerationPage(rows:themes,removeBackground:removeBg,resetTheme:resetTheme);case 5:return AdminCorrectionRequestsPage(token:widget.token);case 6:return AdminPromoPage(rows:promos,onCreate:createPromo,onSetActive:setPromoActive,onPush:pushPromo,onUploadImage:uploadPromoImage);case 7:return ReportsPage(data:reports,loading:reportLoading,error:reportError,days:reportDays,onDaysChanged:loadReports,onRefresh:()=>loadReports());case 8:return AuditLogPage(data:auditData,loading:auditLoading,error:auditError,onRefresh:loadAudit);default:return const SizedBox.shrink();}}
+  Widget page(){switch(tab){case 1:return UsersPage(rows:users,open:openUser);case 2:return VehiclesPage(rows:vehicles,open:openVehicle);case 3:return QrPage(rows:qr,create:createQr,action:qrAction,itemPrintStatus:qrItemPrintStatus);case 4:return ModerationPage(rows:themes,removeBackground:removeBg,resetTheme:resetTheme);case 5:return AdminCorrectionRequestsPage(token:widget.token,admin:widget.admin);case 6:return AdminPromoPage(rows:promos,onCreate:createPromo,onSetActive:setPromoActive,onPush:pushPromo,onUploadImage:uploadPromoImage);case 7:return ReportsPage(data:reports,loading:reportLoading,error:reportError,days:reportDays,onDaysChanged:loadReports,onRefresh:()=>loadReports());case 8:return AuditLogPage(data:auditData,loading:auditLoading,error:auditError,onRefresh:loadAudit);default:return const SizedBox.shrink();}}
 }
 
 Widget _brand({double fontSize=34})=>RichText(text:TextSpan(children:[
