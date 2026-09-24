@@ -4,6 +4,7 @@ import 'owner_qr_dialog.dart';
 import 'owner_settings_detail.dart';
 import 'premium_page.dart';
 import 'legal_pages.dart';
+import 'support_ticket_page.dart';
 
 const _bg = Color(0xFF07111F);
 const _panel = Color(0xFF111A31);
@@ -231,6 +232,14 @@ class OwnerSettingsPage extends StatelessWidget {
                     title: 'Yasal ve gizlilik',
                     subtitle: 'Kullanım Şartları ve KVKK aydınlatma metni',
                     onTap: () => _push(context, const LegalCenterPage()),
+                  ),
+                  const SizedBox(height: 8),
+                  _SettingsTile(
+                    icon: Icons.support_agent_rounded,
+                    iconColor: const Color(0xFF4AB8FF),
+                    title: 'Destek Talepleri',
+                    subtitle: 'Sorun bildir, ekran görüntüsü ekle ve yanıtları takip et',
+                    onTap: () => _push(context, const SupportTicketPage()),
                   ),
                   const SizedBox(height: 14),
                   _QrPromo(onTap: onOpenQr ?? () => showOwnerQrDialog(context)),
