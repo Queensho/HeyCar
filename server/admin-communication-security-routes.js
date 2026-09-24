@@ -62,7 +62,8 @@ module.exports=function registerAdminCommunicationSecurityRoutes(app,pool,adminG
         if(segment==='active')q+=' AND u.status=\'active\'';
         if(segment==='suspended')q+=' AND u.status<>\'active\'';
       }else{
-        q+=' AND u.status=\'active\'';
+        // "all" means every non-admin account. Use the "active" segment when
+        // the admin intentionally wants only active accounts.
       }
       q+=' ORDER BY u.id::text';
       const targets=(await pool.query(q,params)).rows.map(x=>String(x.id));
