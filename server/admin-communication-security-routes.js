@@ -179,7 +179,7 @@ module.exports=function registerAdminCommunicationSecurityRoutes(app,pool,adminG
           qrRateLimits:countType('qr_rate_limited'),
           blockedAttempts:countType('blocked_visitor_attempt'),
           failedLogins:countType('failed_login'),
-          newDevices:countType('new_device_login')+legacyNewDevices.length,
+          newDevices:countType('new_device_login')>0?countType('new_device_login'):legacyNewDevices.length,
           recoveryRateLimits:countType('recovery_rate_limited'),
           blockedVisitors:blocked.length,
           excessiveQrBursts:excessive.length,
