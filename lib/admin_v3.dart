@@ -600,74 +600,26 @@ class _QrPageState extends State<QrPage>{
 
     pw.Widget labelCard(Map<String,dynamic> e){
       final token=(e['token']??'').toString();
-      return pw.Container(
+      return pw.SizedBox(
         width:100*PdfPageFormat.mm,
         height:40*PdfPageFormat.mm,
-        decoration:pw.BoxDecoration(
-          border:pw.Border.all(color:PdfColor.fromHex('#B9A8D8'),width:.35),
-        ),
         child:pw.Stack(children:[
-          pw.Positioned.fill(child:pw.Image(template,fit:pw.BoxFit.fill)),
+          // Use Etiket.png exactly as the 10 x 4 cm print template.
+          pw.Positioned.fill(
+            child:pw.Image(template,fit:pw.BoxFit.fill),
+          ),
 
-          // Dynamic QR card: covers any sample QR/text in the template.
+          // Only place the live QR into the blank white QR area.
+          // Do not redraw a white card, title or label code over the template.
           pw.Positioned(
-            right:1.6*PdfPageFormat.mm,
-            top:1.4*PdfPageFormat.mm,
-            child:pw.SizedBox(
-              width:30.8*PdfPageFormat.mm,
-              height:37.2*PdfPageFormat.mm,
-              child:pw.Container(
-                padding:pw.EdgeInsets.fromLTRB(
-                  2.2*PdfPageFormat.mm,
-                  1.8*PdfPageFormat.mm,
-                  2.2*PdfPageFormat.mm,
-                  1.5*PdfPageFormat.mm,
-                ),
-                decoration:pw.BoxDecoration(
-                  color:PdfColors.white,
-                  borderRadius:pw.BorderRadius.circular(4.2*PdfPageFormat.mm),
-                ),
-                child:pw.Column(children:[
-                pw.Expanded(
-                  child:pw.Center(child:pw.BarcodeWidget(
-                    barcode:pw.Barcode.qrCode(),
-                    data:publicUrl(token),
-                    width:24.5*PdfPageFormat.mm,
-                    height:24.5*PdfPageFormat.mm,
-                    drawText:false,
-                  )),
-                ),
-                pw.SizedBox(height:.7*PdfPageFormat.mm),
-                pw.Text(
-                  'QR KODU OKUT',
-                  style:pw.TextStyle(color:navy,fontSize:6.5,fontWeight:pw.FontWeight.bold),
-                ),
-                pw.SizedBox(height:.8*PdfPageFormat.mm),
-                pw.Container(
-                  width:double.infinity,
-                  height:5.8*PdfPageFormat.mm,
-                  decoration:pw.BoxDecoration(
-                    color:lilac,
-                    borderRadius:pw.BorderRadius.circular(2.9*PdfPageFormat.mm),
-                  ),
-                  alignment:pw.Alignment.center,
-                  padding:pw.EdgeInsets.symmetric(horizontal:1.3*PdfPageFormat.mm),
-                  child:pw.FittedBox(
-                    fit:pw.BoxFit.scaleDown,
-                    child:pw.RichText(text:pw.TextSpan(children:[
-                      pw.TextSpan(
-                        text:'Etiket Kodu: ',
-                        style:pw.TextStyle(color:PdfColor.fromHex('#5A5570'),fontSize:5.6),
-                      ),
-                      pw.TextSpan(
-                        text:token,
-                        style:pw.TextStyle(color:purple,fontSize:7.0,fontWeight:pw.FontWeight.bold),
-                      ),
-                    ])),
-                  ),
-                ),
-              ]),
-              ),
+            right:3.2*PdfPageFormat.mm,
+            top:6.2*PdfPageFormat.mm,
+            child:pw.BarcodeWidget(
+              barcode:pw.Barcode.qrCode(),
+              data:publicUrl(token),
+              width:27.6*PdfPageFormat.mm,
+              height:27.6*PdfPageFormat.mm,
+              drawText:false,
             ),
           ),
         ]),
