@@ -161,7 +161,24 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
 
       let qrUsage = [];
       let qrUsageCount = 0;
-      if (await tableExists(pool, 'vehicle_notifications')) {
+      if (await tableExists(pool, 'qr_scan_history')) {
+        const usage = await pool.query(
+          `SELECT h.id,h.qr_token,h.vehicle_id,h.created_at,v.plate,
+                  'scan'::text AS type,'scanned'::text AS status,''::text AS message
+             FROM qr_scan_history h
+             JOIN vehicles v ON v.id::text=h.vehicle_id::text
+            WHERE h.owner_id::text=$1
+            ORDER BY h.created_at DESC
+            LIMIT 50`,
+          [userId]
+        );
+        qrUsage = usage.rows;
+        const count = await pool.query(
+          `SELECT COUNT(*)::int AS n FROM qr_scan_history WHERE owner_id::text=$1`,
+          [userId]
+        );
+        qrUsageCount = Number(count.rows[0]?.n || 0);
+      } else if (await tableExists(pool, 'vehicle_notifications')) {
         const recipientWhere = hasRecipientUser ? ' OR n.recipient_user_id::text=$1' : '';
         const usage = await pool.query(
           `SELECT n.id,n.qr_token,n.type,n.status,n.message,n.created_at,n.read_at,n.resolved_at,
