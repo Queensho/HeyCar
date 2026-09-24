@@ -38,8 +38,8 @@ class _RealQrScanPageState extends State<RealQrScanPage> {
   Future<void> _useToken(String raw) async {
     if (busy) return;
     final token = QrBackend.normalizeToken(raw);
-    if (token.isEmpty || !token.startsWith('HC-')) {
-      setState(() => error = 'Geçerli bir HeyCar QR kodu gir.');
+    if (token.isEmpty || !QrBackend.isValidToken(token)) {
+      setState(() => error = 'Geçerli bir Cepqar QR kodu gir.');
       return;
     }
     setState(() {
@@ -446,7 +446,7 @@ class _ManualPanel extends StatelessWidget {
             autocorrect: false,
             style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
             decoration: InputDecoration(
-              hintText: 'HC-XXXXXXXXXX',
+              hintText: 'CP-QAR-01',
               hintStyle: const TextStyle(color: Color(0xFF6F7891)),
               prefixIcon: const Icon(Icons.qr_code_scanner_rounded, color: Colors.white70),
               filled: true,
