@@ -182,6 +182,13 @@ class _AdminHomeState extends State<AdminHome> {
   Map<String,dynamic> systemHealth={};
   bool systemHealthLoading=false;
   String? systemHealthError;
+  Map<String,dynamic> pushHistory={};
+  bool pushHistoryLoading=false;
+  String? pushHistoryError;
+  Map<String,dynamic> securityCenter={};
+  bool securityCenterLoading=false;
+  String? securityCenterError;
+  int securityHours=24;
   final tabs=const [
     ('Genel Bakış',Icons.grid_view_rounded),
     ('Kullanıcılar',Icons.people_alt_rounded),
@@ -193,8 +200,10 @@ class _AdminHomeState extends State<AdminHome> {
     ('Raporlama',Icons.insights_rounded),
     ('İşlem Geçmişi',Icons.history_rounded),
     ('Sistem Durumu',Icons.monitor_heart_rounded),
+    ('Bildirimler',Icons.notifications_active_rounded),
+    ('Güvenlik Merkezi',Icons.security_rounded),
   ];
-  static const mobileTabIndexes=[0,1,2,3,7,9];
+  static const mobileTabIndexes=[0,1,2,3,10,11];
   Map<String,String> get headers=>{
     'Authorization':'Bearer ${widget.token}',
     'Content-Type':'application/json',
@@ -261,6 +270,37 @@ class _AdminHomeState extends State<AdminHome> {
     }
   }
 
+  Future<void> loadPushHistory() async {
+    if(mounted)setState((){pushHistoryLoading=true;pushHistoryError=null;});
+    try{
+      final d=await getJson('/api/admin/manage/push-history?limit=60');
+      if(mounted)setState(()=>pushHistory=d);
+    }catch(e){
+      if(mounted)setState(()=>pushHistoryError=e.toString().replaceFirst('Exception: ',''));
+    }finally{
+      if(mounted)setState(()=>pushHistoryLoading=false);
+    }
+  }
+
+  Future<Map<String,dynamic>> sendAdminPush(Map<String,dynamic> payload) async {
+    final d=await send('POST','/api/admin/manage/push',payload);
+    await loadPushHistory();
+    return d;
+  }
+
+  Future<void> loadSecurityCenter([int? hours]) async {
+    final next=hours??securityHours;
+    if(mounted)setState((){securityHours=next;securityCenterLoading=true;securityCenterError=null;});
+    try{
+      final d=await getJson('/api/admin/manage/security-center?hours=$next');
+      if(mounted)setState(()=>securityCenter=d);
+    }catch(e){
+      if(mounted)setState(()=>securityCenterError=e.toString().replaceFirst('Exception: ',''));
+    }finally{
+      if(mounted)setState(()=>securityCenterLoading=false);
+    }
+  }
+
   Future<void> openUser(Map<String,dynamic> row) async {
     try{final d=await getJson('/api/admin/manage/users/${row['id']}');if(!mounted)return;await Navigator.push(context,MaterialPageRoute(builder:(_)=>UserDetail(data:d,changeStatus:(s)async{await send('PATCH','/api/admin/manage/users/${row['id']}/status',{'status':s});await load();})));}catch(e){snack(e);}
   }
@@ -324,6 +364,8 @@ class _AdminHomeState extends State<AdminHome> {
     if(index==7&&(reports.isEmpty||reportError!=null))loadReports();
     if(index==8&&(auditData.isEmpty||auditError!=null))loadAudit();
     if(index==9&&(systemHealth.isEmpty||systemHealthError!=null))loadSystemHealth();
+    if(index==10&&(pushHistory.isEmpty||pushHistoryError!=null))loadPushHistory();
+    if(index==11&&(securityCenter.isEmpty||securityCenterError!=null))loadSecurityCenter();
   }
 
   @override
@@ -388,7 +430,7 @@ class _AdminHomeState extends State<AdminHome> {
     child:Row(children:[
       Icon(tabs[tab].$2,color:_purple,size:23),const SizedBox(width:9),
       Expanded(child:Text(tabs[tab].$1,style:const TextStyle(fontSize:18,fontWeight:FontWeight.w900,color:Colors.white))),
-      _roundAction(Icons.refresh_rounded,tab==7?()=>loadReports():tab==8?loadAudit:tab==9?loadSystemHealth:load),const SizedBox(width:8),_roundAction(Icons.logout_rounded,widget.onLogout),
+      _roundAction(Icons.refresh_rounded,tab==7?()=>loadReports():tab==8?loadAudit:tab==9?loadSystemHealth:tab==10?loadPushHistory:tab==11?()=>loadSecurityCenter():load),const SizedBox(width:8),_roundAction(Icons.logout_rounded,widget.onLogout),
     ]),
   );
 
@@ -400,7 +442,7 @@ class _AdminHomeState extends State<AdminHome> {
       decoration:BoxDecoration(color:const Color(0xFF060A18),border:Border(top:BorderSide(color:_purple.withValues(alpha:.28))),boxShadow:[BoxShadow(color:_purple.withValues(alpha:.12),blurRadius:22)]),
       child:Row(children:List.generate(mobileTabIndexes.length,(i){
         final realIndex=mobileTabIndexes[i],active=i==selected;
-        final label=realIndex==3?'QR':realIndex==6?'Promolar':realIndex==7?'Rapor':realIndex==9?'Sistem':tabs[realIndex].$1;
+        final label=realIndex==3?'QR':realIndex==10?'Bildirim':realIndex==11?'Güvenlik':tabs[realIndex].$1;
         return Expanded(child:InkWell(
           borderRadius:BorderRadius.circular(15),
           onTap:()=>openTab(realIndex),
@@ -420,7 +462,7 @@ class _AdminHomeState extends State<AdminHome> {
     child:Container(width:38,height:38,decoration:BoxDecoration(color:_card2,borderRadius:BorderRadius.circular(12),border:Border.all(color:_purple.withValues(alpha:.45))),child:Icon(icon,color:Colors.white,size:20)),
   );
 
-  Widget page(){switch(tab){case 1:return UsersPage(rows:users,open:openUser);case 2:return VehiclesPage(rows:vehicles,open:openVehicle);case 3:return QrPage(rows:qr,create:createQr,action:qrAction,itemPrintStatus:qrItemPrintStatus);case 4:return ModerationPage(rows:themes,removeBackground:removeBg,resetTheme:resetTheme);case 5:return AdminCorrectionRequestsPage(token:widget.token,admin:widget.admin);case 6:return AdminPromoPage(rows:promos,onCreate:createPromo,onSetActive:setPromoActive,onPush:pushPromo,onUploadImage:uploadPromoImage);case 7:return ReportsPage(data:reports,loading:reportLoading,error:reportError,days:reportDays,onDaysChanged:loadReports,onRefresh:()=>loadReports());case 8:return AuditLogPage(data:auditData,loading:auditLoading,error:auditError,onRefresh:loadAudit);case 9:return SystemHealthPage(data:systemHealth,loading:systemHealthLoading,error:systemHealthError,onRefresh:loadSystemHealth);default:return const SizedBox.shrink();}}
+  Widget page(){switch(tab){case 1:return UsersPage(rows:users,open:openUser);case 2:return VehiclesPage(rows:vehicles,open:openVehicle);case 3:return QrPage(rows:qr,create:createQr,action:qrAction,itemPrintStatus:qrItemPrintStatus);case 4:return ModerationPage(rows:themes,removeBackground:removeBg,resetTheme:resetTheme);case 5:return AdminCorrectionRequestsPage(token:widget.token,admin:widget.admin);case 6:return AdminPromoPage(rows:promos,onCreate:createPromo,onSetActive:setPromoActive,onPush:pushPromo,onUploadImage:uploadPromoImage);case 7:return ReportsPage(data:reports,loading:reportLoading,error:reportError,days:reportDays,onDaysChanged:loadReports,onRefresh:()=>loadReports());case 8:return AuditLogPage(data:auditData,loading:auditLoading,error:auditError,onRefresh:loadAudit);case 9:return SystemHealthPage(data:systemHealth,loading:systemHealthLoading,error:systemHealthError,onRefresh:loadSystemHealth);case 10:return AdminPushPage(users:users,data:pushHistory,loading:pushHistoryLoading,error:pushHistoryError,onSend:sendAdminPush,onRefresh:loadPushHistory);case 11:return SecurityCenterPage(data:securityCenter,loading:securityCenterLoading,error:securityCenterError,hours:securityHours,onHoursChanged:loadSecurityCenter,onRefresh:()=>loadSecurityCenter());default:return const SizedBox.shrink();}}
 }
 
 Widget _brand({double fontSize=34})=>RichText(text:TextSpan(children:[
@@ -541,6 +583,8 @@ class Dashboard extends StatelessWidget{
       ('Raporlama','Kullanım ve performans analizi',Icons.insights_rounded,7),
       ('İşlem Geçmişi','Admin işlemlerini denetle',Icons.history_rounded,8),
       ('Sistem Durumu','VPS, DB, push ve kaynak sağlığı',Icons.monitor_heart_rounded,9),
+      ('Bildirimler','Tek kişi, grup veya herkese push gönder',Icons.notifications_active_rounded,10),
+      ('Güvenlik Merkezi','QR, giriş ve cihaz güvenliği',Icons.security_rounded,11),
     ];
     return Wrap(spacing:gap,runSpacing:gap,children:data.map((x)=>SizedBox(width:itemWidth,height:compact?96:92,child:InkWell(borderRadius:BorderRadius.circular(17),onTap:()=>onOpenTab(x.$4),child:Container(padding:const EdgeInsets.symmetric(horizontal:12,vertical:11),decoration:_glowDecoration(radius:17),child:Row(children:[Container(width:44,height:44,decoration:BoxDecoration(shape:BoxShape.circle,color:_purple.withValues(alpha:.12),border:Border.all(color:_purple.withValues(alpha:.38))),child:Icon(x.$3,color:_purple,size:24)),const SizedBox(width:10),Expanded(child:Column(mainAxisAlignment:MainAxisAlignment.center,crossAxisAlignment:CrossAxisAlignment.start,children:[Text(x.$1,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Colors.white,fontSize:13.5,fontWeight:FontWeight.w900)),const SizedBox(height:3),Text(x.$2,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_muted,fontSize:11.5))])),const Icon(Icons.chevron_right_rounded,color:Color(0xFFC96CFF),size:24)]))))).toList());
   }
