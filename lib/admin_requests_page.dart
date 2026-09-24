@@ -11,8 +11,9 @@ const _muted = Color(0xFFA9AFC4);
 const _line = Color(0xFF4A236C);
 
 class AdminCorrectionRequestsPage extends StatefulWidget {
-  const AdminCorrectionRequestsPage({super.key, required this.token});
+  const AdminCorrectionRequestsPage({super.key, required this.token, this.admin});
   final String token;
+  final Map<String,dynamic>? admin;
 
   @override
   State<AdminCorrectionRequestsPage> createState() => _AdminCorrectionRequestsPageState();
@@ -27,6 +28,12 @@ class _AdminCorrectionRequestsPageState extends State<AdminCorrectionRequestsPag
   Map<String, String> get headers => {
         'Authorization': 'Bearer ${widget.token}',
         'Content-Type': 'application/json',
+        if ((widget.admin?['id'] ?? '').toString().isNotEmpty)
+          'X-Admin-Id': (widget.admin?['id'] ?? '').toString(),
+        if ((widget.admin?['email'] ?? '').toString().isNotEmpty)
+          'X-Admin-Email': (widget.admin?['email'] ?? '').toString(),
+        if ((widget.admin?['display_name'] ?? widget.admin?['displayName'] ?? widget.admin?['name'] ?? '').toString().isNotEmpty)
+          'X-Admin-Name': (widget.admin?['display_name'] ?? widget.admin?['displayName'] ?? widget.admin?['name'] ?? '').toString(),
       };
 
   @override
