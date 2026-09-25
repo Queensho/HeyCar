@@ -8,43 +8,32 @@ function firstNonEmpty(...values) {
   return null;
 }
 
-function decodeJwtPayload(req) {
-  try {
-    const raw = String(req.headers?.authorization || '').trim();
-    if (!raw.toLowerCase().startsWith('bearer ')) return {};
-    const token = raw.slice(7).trim();
-    const parts = token.split('.');
-    if (parts.length < 2) return {};
-    const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-    const padded = payload + '='.repeat((4 - payload.length % 4) % 4);
-    const parsed = JSON.parse(Buffer.from(padded, 'base64').toString('utf8'));
-    return parsed && typeof parsed === 'object' ? parsed : {};
-  } catch (_) { return {}; }
-}
-
 async function auditTableReady(db) {
   const r = await db.query("SELECT to_regclass('public.admin_audit_logs') AS name");
   return Boolean(r.rows[0]?.name);
 }
 
 async function resolveAdmin(db, req) {
-  const source = req.admin || req.user || req.auth || req.adminUser || {};
-  const jwt = decodeJwtPayload(req);
-  let id = firstNonEmpty(source.id,source.userId,source.user_id,source.sub,jwt.id,jwt.userId,jwt.user_id,jwt.sub,req.headers?.['x-admin-id']);
-  let email = firstNonEmpty(source.email,jwt.email,req.headers?.['x-admin-email']);
-  let name = firstNonEmpty(source.display_name,source.displayName,source.name,jwt.display_name,jwt.displayName,jwt.name,req.headers?.['x-admin-name']);
-  if (id) {
-    try {
-      const r = await db.query("SELECT id::text AS id,email,display_name FROM users WHERE id::text=$1 AND role='admin' LIMIT 1",[id]);
-      if (r.rows.length) { id=String(r.rows[0].id||id); email=firstNonEmpty(r.rows[0].email,email); name=firstNonEmpty(r.rows[0].display_name,name); }
-    } catch (_) {}
-  } else if (email) {
-    try {
-      const r = await db.query("SELECT id::text AS id,email,display_name FROM users WHERE LOWER(email)=LOWER($1) AND role='admin' LIMIT 1",[email]);
-      if (r.rows.length) { id=String(r.rows[0].id||''); email=firstNonEmpty(r.rows[0].email,email); name=firstNonEmpty(r.rows[0].display_name,name); }
-    } catch (_) {}
+  // Audit identity must come only from the verified admin guard. Never trust
+  // Authorization payload decoding or x-admin-* headers for attribution.
+  const source = req.admin || req.user || {};
+  const id = firstNonEmpty(source.id,source.userId,source.user_id,source.sub);
+  if (!id) return {id:null,email:null,name:null};
+
+  try {
+    const r = await db.query(
+      "SELECT id::text AS id,email,display_name FROM users WHERE id::text=$1 AND role='admin' AND status='active' LIMIT 1",
+      [id]
+    );
+    if (!r.rows.length) return {id:null,email:null,name:null};
+    return {
+      id:String(r.rows[0].id),
+      email:firstNonEmpty(r.rows[0].email),
+      name:firstNonEmpty(r.rows[0].display_name),
+    };
+  } catch (_) {
+    return {id:null,email:null,name:null};
   }
-  return {id:id||null,email:email||null,name:name||null};
 }
 
 async function writeAdminAudit(db, req, entry) {
