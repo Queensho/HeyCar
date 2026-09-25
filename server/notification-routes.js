@@ -9,7 +9,7 @@ const registerPushRoutes = require('./push-routes');
 const { hashScanToken, createScanSession, validateScanSession } = require('./scan-session-service');
 const registerQrSecurityRoutes = require('./qr-security-routes');
 const { moderateMessage } = require('./message-moderation');
-const { enforcePublicRequest } = require('./security-service');
+const { enforcePublicRequest, blockVisitorSession } = require('./security-service');
 const { configureTrustedProxy, requestIp } = require('./proxy-security');
 const {getAppSettings}=require('./app-settings-service');
 
@@ -157,8 +157,8 @@ module.exports = function registerNotificationRoutes(app, pool) {
       const security = await enforcePublicRequest(pool, token, req);
       if (!security.ok) return res.status(security.status).json({ error: security.error });
       await pool.query(`DELETE FROM qr_scan_sessions WHERE expires_at<=NOW()`);
-      const session = await createScanSession(pool, qr);
-      await qrSecurity.recordScan({qr,req,scanSessionHash:hashScanToken(session.token)});
+      const session = await createScanSession(pool, qr, security.visitorKey);
+      await qrSecurity.recordScan({qr,req,scanSessionHash:hashScanToken(session.token),visitorKey:security.visitorKey});
       res.set('Cache-Control', 'no-store');
       return res.status(201).json({ ok: true, scanToken: session.token, expiresInSeconds: session.expiresInSeconds });
     } catch (e) { console.error(e); return res.status(500).json({ error: 'SERVER_ERROR' }); }
@@ -290,12 +290,13 @@ module.exports = function registerNotificationRoutes(app, pool) {
     if (!ownerId) return res.status(401).json({ error: 'OWNER_REQUIRED' });
     try {
       await ensurePrivacySchema();
-      const c = await pool.query(`SELECT c.guest_token FROM qr_conversations c JOIN vehicles v ON v.id=c.vehicle_id WHERE c.id=$1 AND v.owner_id=$2 LIMIT 1`, [String(req.params.id), ownerId]);
+      const c = await pool.query(`SELECT c.scan_session_hash FROM qr_conversations c JOIN vehicles v ON v.id=c.vehicle_id WHERE c.id=$1 AND v.owner_id=$2 LIMIT 1`, [String(req.params.id), ownerId]);
       if (!c.rows.length) return res.status(404).json({ error: 'NOT_FOUND' });
-      const key = String(c.rows[0].guest_token || '').trim();
-      if (!key) return res.status(400).json({ error: 'VISITOR_NOT_FOUND' });
-      await pool.query(`INSERT INTO owner_blocked_visitors(owner_id, visitor_key) VALUES($1,$2) ON CONFLICT(owner_id, visitor_key) DO NOTHING`, [ownerId, key]);
-      return res.json({ ok: true });
+      const scanHash=String(c.rows[0].scan_session_hash||'').trim();
+      if(!scanHash)return res.status(400).json({error:'VISITOR_NOT_FOUND'});
+      const blocked=await blockVisitorSession(pool,ownerId,scanHash,'owner_block');
+      if(!blocked.ok)return res.status(400).json({error:blocked.error||'VISITOR_NOT_FOUND'});
+      return res.json({ ok: true, persistent: !blocked.sessionOnly });
     } catch (e) { console.error(e); return res.status(500).json({ error: 'SERVER_ERROR' }); }
   });
 

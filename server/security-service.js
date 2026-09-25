@@ -30,9 +30,67 @@ async function getSettings(pool, ownerId) {
 }
 
 function visitorKey(req, explicit) {
-  return String(explicit || req.headers['x-guest-token'] || requestIp(req) || 'anonymous')
+  return String(explicit || requestIp(req) || 'anonymous')
     .trim()
     .slice(0, 200) || 'anonymous';
+}
+
+function normalizeIp(raw) {
+  let ip=String(raw||'').trim();
+  if(ip.startsWith('::ffff:'))ip=ip.slice(7);
+  if(ip.includes(','))ip=ip.split(',')[0].trim();
+  return ip;
+}
+
+function publicVisitorKey(req) {
+  const ip=normalizeIp(requestIp(req));
+  const material=ip||'anonymous';
+  const salt=String(
+    process.env.QR_SECURITY_HASH_SALT||
+    process.env.OWNER_AUTH_SECRET||
+    process.env.SESSION_SECRET||
+    ''
+  );
+  if(!salt)throw new Error('QR_VISITOR_HASH_SECRET_REQUIRED');
+  return crypto.createHash('sha256').update(`${salt}|${material}`).digest('hex');
+}
+
+async function blockVisitorSession(pool, ownerId, scanSessionHash, reason='owner_block') {
+  await ensureSchema(pool);
+  const owner=String(ownerId||'').trim();
+  const scanHash=String(scanSessionHash||'').trim();
+  if(!owner||!scanHash)return {ok:false,error:'VISITOR_IDENTITY_REQUIRED'};
+
+  const identity=await pool.query(
+    `SELECT COALESCE(
+       (SELECT visitor_key FROM qr_scan_sessions
+         WHERE token_hash=$2 AND owner_id=$1 AND visitor_key IS NOT NULL LIMIT 1),
+       (SELECT visitor_hash FROM qr_scan_history
+         WHERE scan_session_hash=$2 AND owner_id=$1 AND visitor_hash IS NOT NULL
+         ORDER BY created_at DESC LIMIT 1)
+     ) AS visitor_key`,
+    [owner,scanHash]
+  );
+  const stableKey=String(identity.rows[0]?.visitor_key||'').trim();
+
+  await pool.query(
+    `UPDATE qr_scan_sessions
+        SET blocked=TRUE
+      WHERE owner_id=$1
+        AND (token_hash=$2 OR ($3<>'' AND visitor_key=$3))
+        AND expires_at>NOW()`,
+    [owner,scanHash,stableKey]
+  );
+
+  if(!stableKey)return {ok:true,visitorKey:null,sessionOnly:true};
+  await pool.query(
+    `INSERT INTO owner_blocked_visitors(owner_id,visitor_key,reason)
+     VALUES($1,$2,$3)
+     ON CONFLICT(owner_id,visitor_key)
+     DO UPDATE SET reason=COALESCE(EXCLUDED.reason,owner_blocked_visitors.reason)`,
+    [owner,stableKey,String(reason||'owner_block').slice(0,120)]
+  );
+  return {ok:true,visitorKey:stableKey,sessionOnly:false};
 }
 
 async function ownerForQr(pool, token) {
@@ -40,11 +98,10 @@ async function ownerForQr(pool, token) {
   return r.rows[0]?.owner_id ? String(r.rows[0].owner_id) : null;
 }
 
-async function enforcePublicRequest(pool, token, req, explicitVisitor) {
+async function enforcePublicRequest(pool, token, req, _explicitVisitor) {
+  const key=publicVisitorKey(req);
   const ownerId = await ownerForQr(pool, token);
-  if (!ownerId) return { ok: true, ownerId: null, visitorKey: visitorKey(req, explicitVisitor) };
-  const rawKey = visitorKey(req, explicitVisitor);
-  const key = crypto.createHash('sha256').update(rawKey).digest('hex');
+  if (!ownerId) return { ok: true, ownerId: null, visitorKey: key };
   const settings = await getSettings(pool, ownerId);
   const blocked = await pool.query(`SELECT 1 FROM owner_blocked_visitors WHERE owner_id=$1 AND visitor_key=$2 LIMIT 1`, [ownerId, key]);
   if (blocked.rows.length) {
@@ -103,4 +160,4 @@ async function registerSession(pool, ownerId, deviceId, deviceName, req) {
   return { id, isNewDevice, suspiciousAlert: Boolean(isNewDevice && settings.suspicious_login_alerts) };
 }
 
-module.exports = { ensureSchema, getSettings, visitorKey, ownerForQr, enforcePublicRequest, cleanupOldChats, registerSession };
+module.exports = { ensureSchema, getSettings, visitorKey, publicVisitorKey, blockVisitorSession, ownerForQr, enforcePublicRequest, cleanupOldChats, registerSession };

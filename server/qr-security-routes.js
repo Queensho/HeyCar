@@ -1,6 +1,6 @@
-const crypto=require('crypto');
 const {ownerId:authenticatedOwnerId}=require('./owner-auth-service');
 const {requestIp}=require('./proxy-security');
+const {publicVisitorKey}=require('./security-service');
 
 module.exports=function registerQrSecurityRoutes(app,pool,pushService){
   let ready=false;
@@ -65,12 +65,6 @@ module.exports=function registerQrSecurityRoutes(app,pool,pushService){
     return true;
   }
 
-  function visitorHash(ip){
-    if(!ip)return null;
-    const salt=String(process.env.QR_SECURITY_HASH_SALT||process.env.OWNER_AUTH_SECRET||process.env.SESSION_SECRET||'cepqar-qr-security');
-    return crypto.createHash('sha256').update(`${salt}|${ip}`).digest('hex');
-  }
-
   async function lookupIp(ip){
     if(!isPublicIp(ip))return null;
     const cached=geoCache.get(ip);
@@ -116,10 +110,10 @@ module.exports=function registerQrSecurityRoutes(app,pool,pushService){
     }catch(_){return true;}
   }
 
-  async function recordScan({qr,req,scanSessionHash}){
+  async function recordScan({qr,req,scanSessionHash,visitorKey=null}){
     await ensureSchema();
     const ip=normalizeIp(requestIp(req));
-    const hash=visitorHash(ip);
+    const hash=visitorKey||publicVisitorKey(req);
     const loc=headerLocation(req);
     const ins=await pool.query(
       `INSERT INTO qr_scan_history(

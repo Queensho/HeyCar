@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const { hashScanToken, validateScanSession } = require('./scan-session-service');
 const { moderateMessage } = require('./message-moderation');
 const {getAppSettings}=require('./app-settings-service');
+const {blockVisitorSession}=require('./security-service');
 
 module.exports = function registerConversationRoutes(app, pool) {
   async function messagesEnabled(res){
@@ -156,6 +157,14 @@ module.exports = function registerConversationRoutes(app, pool) {
   app.post('/api/owner/conversations/:id/block', async (req,res) => {
     const ownerId=authenticatedOwnerId(req); const id=String(req.params.id||'').trim();
     if(!ownerId)return res.status(401).json({error:'OWNER_REQUIRED'});
-    try{await ensureStatusColumns();const c=await pool.query(`SELECT c.id,c.status,c.scan_session_hash FROM qr_conversations c JOIN vehicles v ON v.id=c.vehicle_id WHERE c.id=$1 AND v.owner_id=$2 LIMIT 1`,[id,ownerId]);if(!c.rows.length)return res.status(404).json({error:'NOT_FOUND'});await pool.query(`UPDATE qr_conversations SET status='blocked',closed_at=COALESCE(closed_at,NOW()),updated_at=NOW() WHERE id=$1`,[id]);const h=String(c.rows[0].scan_session_hash||'');if(h){await pool.query(`UPDATE qr_scan_sessions SET blocked=TRUE WHERE token_hash=$1 AND owner_id=$2`,[h,ownerId]);await pool.query(`INSERT INTO owner_blocked_visitors(owner_id,visitor_key) VALUES($1,$2) ON CONFLICT(owner_id,visitor_key) DO NOTHING`,[ownerId,h]);}return res.json({ok:true,status:'blocked'});}catch(e){console.error(e);return res.status(500).json({error:'SERVER_ERROR'});}
+    try{
+      await ensureStatusColumns();
+      const c=await pool.query(`SELECT c.id,c.status,c.scan_session_hash FROM qr_conversations c JOIN vehicles v ON v.id=c.vehicle_id WHERE c.id=$1 AND v.owner_id=$2 LIMIT 1`,[id,ownerId]);
+      if(!c.rows.length)return res.status(404).json({error:'NOT_FOUND'});
+      await pool.query(`UPDATE qr_conversations SET status='blocked',closed_at=COALESCE(closed_at,NOW()),updated_at=NOW() WHERE id=$1`,[id]);
+      const h=String(c.rows[0].scan_session_hash||'');
+      const blocked=h?await blockVisitorSession(pool,ownerId,h,'conversation_block'):{ok:true,sessionOnly:true};
+      return res.json({ok:true,status:'blocked',persistent:!blocked.sessionOnly});
+    }catch(e){console.error(e);return res.status(500).json({error:'SERVER_ERROR'});}
   });
 };
