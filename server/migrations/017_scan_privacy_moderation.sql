@@ -22,13 +22,13 @@ CREATE TABLE IF NOT EXISTS message_reports (
 CREATE INDEX IF NOT EXISTS idx_message_reports_created ON message_reports(created_at DESC);
 
 -- Remove legacy browser identifiers. New scan sessions never store IP, UA or raw browser tokens.
-DO $
+DO $matrix$
 BEGIN
   IF to_regclass('public.qr_request_log') IS NOT NULL THEN
     EXECUTE 'TRUNCATE TABLE public.qr_request_log';
   END IF;
-END
-$;
+END;
+$matrix$;
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.qr_scan_sessions TO heycar_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.message_reports TO heycar_user;
