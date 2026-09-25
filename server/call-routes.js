@@ -19,35 +19,39 @@ module.exports = function registerCallRoutes(app, pool) {
     const push=pushService||app.locals.heycarPush;
     if(!push){
       console.error('Call push skipped',{reason:'PUSH_SERVICE_MISSING',callId:String(data.callId||''),recipientId:String(recipientId||''),recipientType});
-      return {owner:{attempted:0,delivered:0},driver:null};
+      return {owner:null,driver:null};
     }
 
-    const ownerTarget=String(ownerId||recipientId||'');
-    const ownerSender=push.sendOwner||push.send;
-    const ownerResult=ownerTarget&&ownerSender
-      ? await ownerSender(ownerTarget,{...data,recipientType:'owner'},title,body)
-      : {attempted:0,delivered:0};
-
+    const target=String(recipientId||'');
+    let ownerResult=null;
     let driverResult=null;
-    if(recipientType==='driver'&&String(recipientId)!==ownerTarget&&push.sendDriver){
-      driverResult=await push.sendDriver(
-        String(recipientId),
-        {...data,recipientType:'driver'},
-        title,
-        body,
-      );
+
+    if(recipientType==='driver'){
+      if(typeof push.sendDriver!=='function'){
+        console.error('Call push skipped',{reason:'DRIVER_SENDER_MISSING',callId:String(data.callId||''),recipientId:target});
+        return {owner:null,driver:null};
+      }
+      driverResult=await push.sendDriver(target,{...data,recipientType:'driver'},title,body);
+    }else{
+      const ownerTarget=target||String(ownerId||'');
+      const ownerSender=push.sendOwner||push.send;
+      if(!ownerTarget||typeof ownerSender!=='function'){
+        console.error('Call push skipped',{reason:'OWNER_SENDER_MISSING',callId:String(data.callId||''),recipientId:ownerTarget});
+        return {owner:null,driver:null};
+      }
+      ownerResult=await ownerSender(ownerTarget,{...data,recipientType:'owner'},title,body);
     }
 
     console.log('Call push delivery',{
       callId:String(data.callId||''),
-      ownerId:ownerTarget,
-      owner:ownerResult||null,
-      recipientId:String(recipientId||''),
+      ownerId:String(ownerId||''),
+      recipientId:target,
       recipientType,
+      owner:ownerResult,
       driver:driverResult,
     });
 
-    return {owner:ownerResult||{attempted:0,delivered:0},driver:driverResult};
+    return {owner:ownerResult,driver:driverResult};
   }
 
   async function incomingFor(recipientId, recipientType) {

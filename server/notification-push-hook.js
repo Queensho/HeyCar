@@ -38,10 +38,11 @@ async function sendQrNotificationPush({ app, push: providedPush, qr, type, messa
     };
     const body=message||titles[type]||'Aracınız için yeni bir bildirim var';
     const routedRecipient=String(recipientUserId||ownerId);
+    const recipientType=routedRecipient&&routedRecipient!==ownerId?'driver':'owner';
     const payload={
       type:type==='message'?'message':'vehicle_notification',
       sourceType:type,
-      recipientType:'owner',
+      recipientType,
       notificationId:String(notificationId),
       vehicleId:String(qr.vehicle_id),
       qrToken:String(token),
@@ -51,35 +52,31 @@ async function sendQrNotificationPush({ app, push: providedPush, qr, type, messa
       sentAt:String(Date.now())
     };
 
-    const ownerSender=push.sendOwner||push.send;
-    if(typeof ownerSender!=='function'){
-      console.error('QR push skipped',{reason:'OWNER_SENDER_MISSING',type,ownerId,notificationId:String(notificationId)});
-      return {attempted:0,delivered:0,skipped:'OWNER_SENDER_MISSING'};
-    }
-
     const notificationTitle=plate?`Cepqar • ${plate.toUpperCase()}`:'Cepqar';
-    const ownerResult=await ownerSender(
-      ownerId,
-      payload,
-      notificationTitle,
-      body,
-    );
-
+    let ownerResult=null;
     let driverResult=null;
-    if(routedRecipient&&routedRecipient!==ownerId&&push.sendDriver){
-      driverResult=await push.sendDriver(
-        routedRecipient,
-        {...payload,recipientType:'driver'},
-        notificationTitle,
-        body,
-      );
+
+    if(recipientType==='driver'){
+      if(typeof push.sendDriver!=='function'){
+        console.error('QR push skipped',{reason:'DRIVER_SENDER_MISSING',type,routedRecipient,notificationId:String(notificationId)});
+        return {attempted:0,delivered:0,skipped:'DRIVER_SENDER_MISSING'};
+      }
+      driverResult=await push.sendDriver(routedRecipient,payload,notificationTitle,body);
+    }else{
+      const ownerSender=push.sendOwner||push.send;
+      if(typeof ownerSender!=='function'){
+        console.error('QR push skipped',{reason:'OWNER_SENDER_MISSING',type,ownerId,notificationId:String(notificationId)});
+        return {attempted:0,delivered:0,skipped:'OWNER_SENDER_MISSING'};
+      }
+      ownerResult=await ownerSender(ownerId,payload,notificationTitle,body);
     }
 
     console.log('QR push delivery',{
       type,
       ownerId,
-      owner:ownerResult||null,
       routedRecipient,
+      recipientType,
+      owner:ownerResult,
       driver:driverResult,
       notificationId:String(notificationId),
     });
