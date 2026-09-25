@@ -311,6 +311,8 @@ module.exports = function registerNotificationRoutes(app, pool) {
         if (!qr) return res.status(404).json({ error: 'ACTIVE_QR_NOT_FOUND' });
         const guard = await guardPublicRequest(req, token, qr);
         if (!guard.ok) return res.status(guard.status).json({ error: guard.error });
+        const security = await enforcePublicRequest(pool, token, req);
+        if (!security.ok) return res.status(security.status).json({ error: security.error });
         if (!Buffer.isBuffer(req.body) || req.body.length === 0) return res.status(400).json({ error: 'IMAGE_REQUIRED' });
         const type = String(req.headers['content-type'] || '').split(';')[0];
         const ext = type === 'image/png' ? '.png' : type === 'image/webp' ? '.webp' : '.jpg';
@@ -342,8 +344,6 @@ module.exports = function registerNotificationRoutes(app, pool) {
       if (!qr) return res.status(404).json({ error: 'ACTIVE_QR_NOT_FOUND' });
       const guard = await guardPublicRequest(req, token, qr);
       if (!guard.ok) return res.status(guard.status).json({ error: guard.error });
-      const security = await enforcePublicRequest(pool, token, req);
-      if (!security.ok) return res.status(security.status).json({ error: security.error });
       const security = await enforcePublicRequest(pool, token, req);
       if (!security.ok) return res.status(security.status).json({ error: security.error });
       await ensurePrivacySchema();
