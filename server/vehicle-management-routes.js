@@ -2,6 +2,44 @@ const {ownerId: authenticatedOwnerId}=require('./owner-auth-service');
 module.exports = function registerVehicleManagementRoutes(app, pool) {
   const ownerId = (req) => authenticatedOwnerId(req);
 
+  async function tableExists(db,table){
+    const r=await db.query('SELECT to_regclass($1) AS t',['public.'+table]);
+    return Boolean(r.rows[0]?.t);
+  }
+
+  async function deleteVehicleRows(db,table,vehicleId,castText=false){
+    if(!await tableExists(db,table))return 0;
+    const sql=castText
+      ? `DELETE FROM ${table} WHERE vehicle_id::text=$1`
+      : `DELETE FROM ${table} WHERE vehicle_id=$1`;
+    const r=await db.query(sql,[vehicleId]);
+    return r.rowCount||0;
+  }
+
+  async function cleanupVehicleDependents(db,vehicleId){
+    const removed={};
+    for(const table of [
+      'vehicle_maintenance_state',
+      'vehicle_maintenance_records',
+      'vehicle_maintenance_shares',
+      'vehicle_reminders',
+      'vehicle_reminder_deliveries',
+      'vehicle_reminder_delivery_claims',
+      'vehicle_parking_locations',
+    ]){
+      removed[table]=await deleteVehicleRows(db,table,vehicleId,true);
+    }
+    for(const table of [
+      'vehicle_active_drivers',
+      'vehicle_drivers',
+      'vehicle_driver_invites',
+      'anonymous_calls',
+    ]){
+      removed[table]=await deleteVehicleRows(db,table,vehicleId,true);
+    }
+    return removed;
+  }
+
   app.get('/api/owner/vehicles', async (req, res) => {
     const owner = ownerId(req);
     if (!owner) return res.status(401).json({ error: 'OWNER_REQUIRED' });
@@ -107,12 +145,56 @@ module.exports = function registerVehicleManagementRoutes(app, pool) {
 
 
   app.delete('/api/owner/vehicles/:vehicleId', async (req,res)=>{
-    const owner=ownerId(req), vehicleId=String(req.params.vehicleId||'').trim(); if(!owner)return res.status(401).json({error:'OWNER_REQUIRED'});
-    const client=await pool.connect();try{await client.query('BEGIN');const v=await client.query('SELECT id FROM vehicles WHERE id::text=$1 AND owner_id::text=$2 FOR UPDATE',[vehicleId,owner]);if(!v.rows.length){await client.query('ROLLBACK');return res.status(404).json({error:'VEHICLE_NOT_FOUND'});}
-      await client.query("UPDATE qr_tags SET status='revoked' WHERE vehicle_id=$1 AND status='active'",[vehicleId]);
-      await client.query("UPDATE vehicle_transfers SET status='cancelled' WHERE vehicle_id=$1 AND status='pending'",[vehicleId]);
-      await client.query('DELETE FROM vehicles WHERE id=$1',[vehicleId]);await client.query('COMMIT');return res.json({ok:true,qrRevoked:true});
-    }catch(e){await client.query('ROLLBACK').catch(()=>{});console.error('vehicle remove',e);return res.status(500).json({error:'SERVER_ERROR'});}finally{client.release();}
+    const owner=ownerId(req), vehicleId=String(req.params.vehicleId||'').trim();
+    if(!owner)return res.status(401).json({error:'OWNER_REQUIRED'});
+    const client=await pool.connect();
+    try{
+      await client.query('BEGIN');
+      const v=await client.query(
+        'SELECT id FROM vehicles WHERE id::text=$1 AND owner_id::text=$2 FOR UPDATE',
+        [vehicleId,owner]
+      );
+      if(!v.rows.length){
+        await client.query('ROLLBACK');
+        return res.status(404).json({error:'VEHICLE_NOT_FOUND'});
+      }
+
+      // Keep the physical QR token for audit/print history, but detach it from the
+      // deleted vehicle and make it unusable until an admin explicitly resets it.
+      await client.query(
+        "UPDATE qr_tags SET vehicle_id=NULL,status='revoked',activated_at=NULL WHERE vehicle_id::text=$1",
+        [vehicleId]
+      );
+
+      if(await tableExists(client,'vehicle_transfers')){
+        await client.query(
+          "UPDATE vehicle_transfers SET status='cancelled' WHERE vehicle_id::text=$1 AND status='pending'",
+          [vehicleId]
+        );
+      }
+
+      const removed=await cleanupVehicleDependents(client,vehicleId);
+
+      // FK-backed vehicle data (notifications, conversations, scan sessions/history,
+      // park notes, themes, transfers) is removed by ON DELETE CASCADE.
+      const deleted=await client.query(
+        'DELETE FROM vehicles WHERE id::text=$1 AND owner_id::text=$2 RETURNING id',
+        [vehicleId,owner]
+      );
+      if(!deleted.rows.length){
+        await client.query('ROLLBACK');
+        return res.status(404).json({error:'VEHICLE_NOT_FOUND'});
+      }
+
+      await client.query('COMMIT');
+      return res.json({ok:true,qrRevoked:true,dependentsRemoved:removed});
+    }catch(e){
+      await client.query('ROLLBACK').catch(()=>{});
+      console.error('vehicle remove',e);
+      return res.status(500).json({error:'SERVER_ERROR'});
+    }finally{
+      client.release();
+    }
   });
 
   app.post('/api/owner/vehicles/:vehicleId/transfer',async(req,res)=>{

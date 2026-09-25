@@ -135,6 +135,9 @@ async function deleteAccount(pool,userId,{mode}){
 
     if(vehicleIds.length){
       const arr=vehicleIds;
+      if(await tableExists(c,'qr_tags')){
+        await c.query("UPDATE qr_tags SET vehicle_id=NULL,status='revoked',activated_at=NULL WHERE vehicle_id::text=ANY($1::text[])",[arr]);
+      }
       await deleteWhere(c,'vehicle_maintenance_state','vehicle_id=ANY($1::text[])',[arr]);
       await deleteWhere(c,'vehicle_maintenance_records','vehicle_id=ANY($1::text[])',[arr]);
       await deleteWhere(c,'vehicle_maintenance_shares','vehicle_id=ANY($1::text[])',[arr]);
