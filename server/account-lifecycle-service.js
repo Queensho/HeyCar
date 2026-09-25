@@ -145,8 +145,8 @@ async function deleteAccount(pool,userId,{mode}){
       await deleteWhere(c,'vehicle_reminder_deliveries','vehicle_id=ANY($1::text[])',[arr]);
       await deleteWhere(c,'vehicle_reminder_delivery_claims','vehicle_id=ANY($1::text[])',[arr]);
       await deleteWhere(c,'vehicle_parking_locations','vehicle_id=ANY($1::text[])',[arr]);
-      await deleteWhere(c,'vehicle_active_drivers','vehicle_id=ANY($1::text[])',[arr]);
-      await deleteWhere(c,'vehicle_drivers','vehicle_id=ANY($1::text[])',[arr]);
+      await deleteWhere(c,'vehicle_active_drivers','vehicle_id::text=ANY($1::text[])',[arr]);
+      await deleteWhere(c,'vehicle_drivers','vehicle_id::text=ANY($1::text[])',[arr]);
       await deleteWhere(c,'vehicle_driver_invites','vehicle_id::text=ANY($1::text[])',[arr]);
       await deleteWhere(c,'anonymous_calls','vehicle_id::text=ANY($1::text[])',[arr]);
       await c.query('DELETE FROM vehicles WHERE id::text=ANY($1::text[])',[arr]);

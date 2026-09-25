@@ -1,7 +1,14 @@
 const {ownerId:authenticatedOwnerId}=require('./owner-auth-service');
 module.exports = function registerActiveDriverRoutes(app, pool) {
   async function schema() {
-    await pool.query(`CREATE TABLE IF NOT EXISTS vehicle_active_drivers (vehicle_id TEXT PRIMARY KEY, owner_id TEXT NOT NULL, driver_name TEXT NOT NULL, active_until TIMESTAMPTZ, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS vehicle_active_drivers (
+      vehicle_id UUID PRIMARY KEY REFERENCES vehicles(id) ON DELETE CASCADE,
+      owner_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      driver_name TEXT NOT NULL,
+      active_until TIMESTAMPTZ,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      driver_user_id UUID REFERENCES users(id) ON DELETE CASCADE
+    )`);
   }
   async function ownedVehicle(ownerId, vehicleId) {
     const r=await pool.query(`SELECT id FROM vehicles WHERE id=$1 AND owner_id=$2 LIMIT 1`,[vehicleId,ownerId]); return r.rows[0];
