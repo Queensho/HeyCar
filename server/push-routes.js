@@ -19,7 +19,7 @@ async function accessToken(){
   const unsigned=`${b64({alg:'RS256',typ:'JWT'})}.${b64({iss:sa.client_email,scope:'https://www.googleapis.com/auth/firebase.messaging',aud:'https://oauth2.googleapis.com/token',iat:now,exp:now+3600})}`;
   const sig=crypto.sign('RSA-SHA256',Buffer.from(unsigned),sa.private_key).toString('base64url');
   const r=await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams({grant_type:'urn:ietf:params:oauth:grant-type:jwt-bearer',assertion:`${unsigned}.${sig}`})});
-  if(!r.ok){const detail=await r.text();throw new Error(`FCM_AUTH_${r.status}: ${detail}`);}
+  if(!r.ok){await r.text().catch(()=>null);throw new Error(`FCM_AUTH_${r.status}`);}
   return (await r.json()).access_token;
 }
 
@@ -113,8 +113,17 @@ module.exports=function registerPushRoutes(app,pool){
         const r=await fetch(endpoint,{method:'POST',headers:{authorization:`Bearer ${key}`,'content-type':'application/json'},body:JSON.stringify({message})});
         if(r.ok)return true;
         const detail=await r.text();
-        console.error('FCM send',r.status,detail);
-        if(r.status===404||detail.includes('UNREGISTERED')||detail.includes('NotRegistered')){
+        let errorCode='';
+        try{
+          const parsed=JSON.parse(detail);
+          errorCode=String(
+            parsed?.error?.details?.find?.(x=>x&&typeof x==='object'&&x.errorCode)?.errorCode||
+            parsed?.error?.status||
+            ''
+          );
+        }catch(_){}
+        console.error('FCM send',{status:r.status,code:errorCode||'FCM_ERROR'});
+        if(r.status===404||errorCode==='UNREGISTERED'||errorCode==='NotRegistered'||detail.includes('UNREGISTERED')||detail.includes('NotRegistered')){
           await pool.query(`UPDATE ${table} SET active=FALSE,updated_at=NOW() WHERE id=$1`,[row.id]).catch(()=>{});
         }
         return false;
