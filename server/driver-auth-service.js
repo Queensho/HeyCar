@@ -3,8 +3,10 @@ const ACCESS_TTL_SECONDS=15*60;
 const REFRESH_TTL_DAYS=30;
 
 function secret(){
-  const s=process.env.DRIVER_AUTH_SECRET||process.env.OWNER_AUTH_SECRET||'';
-  if(s.length<32)throw new Error('DRIVER_AUTH_SECRET or OWNER_AUTH_SECRET must be at least 32 characters');
+  const s=String(process.env.DRIVER_AUTH_SECRET||'');
+  if(s.length<32)throw new Error('DRIVER_AUTH_SECRET must be at least 32 characters');
+  const owner=String(process.env.OWNER_AUTH_SECRET||'');
+  if(owner&&s===owner)throw new Error('DRIVER_AUTH_SECRET must be different from OWNER_AUTH_SECRET');
   return s;
 }
 function b64(v){return Buffer.from(v).toString('base64url');}
