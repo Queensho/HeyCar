@@ -37,4 +37,87 @@ void _limit()=>showDialog<void>(context:context,builder:(c)=>AlertDialog(backgro
 @override Widget build(BuildContext context){final top=MediaQuery.paddingOf(context).top;return Scaffold(backgroundColor:_bg,body:RefreshIndicator(onRefresh:_load,color:_purple,child:ListView(padding:EdgeInsets.fromLTRB(14,top+14,14,26),children:[Row(children:[Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('Araçlarım',style:TextStyle(color:_text,fontSize:28,fontWeight:FontWeight.w900)),const SizedBox(height:4),Text('Kayıtlı araçlarını yönet.',style:TextStyle(color:_muted,fontSize:13))])),FilledButton.icon(onPressed:loading?null:_add,style:FilledButton.styleFrom(backgroundColor:_purple,foregroundColor:Colors.white),icon:const Icon(Icons.add),label:const Text('Yeni Araç')),const SizedBox(width:6),IconButton(onPressed:loading?null:_acceptTransfer,tooltip:'Araç Devral',icon:const Icon(Icons.move_down_rounded,color:_purple))]),const SizedBox(height:12),Container(padding:const EdgeInsets.all(13),decoration:BoxDecoration(color:_panel,borderRadius:BorderRadius.circular(15),border:Border.all(color:premium?_gold:_line)),child:Text(premium?'Premium • ${vehicles.length}/3 araç':'Standart • ${vehicles.length}/1 araç',style:TextStyle(color:premium?_gold:_muted,fontWeight:FontWeight.w800))),const SizedBox(height:14),if(loading)const Center(child:Padding(padding:EdgeInsets.all(36),child:CircularProgressIndicator(color:_purple)))else if(error!=null)Center(child:Text(error!,style:TextStyle(color:_muted)))else ...vehicles.map((v)=>Padding(padding:const EdgeInsets.only(bottom:12),child:_Card(v:v,selected:'${v['id']}'==selected,open:()=>_open(v),select:()=>_select(v),qr:()=>_qr(v),transfer:()=>_transfer(v),remove:()=>_remove(v)))),if(!loading&&vehicles.length<limit)OutlinedButton.icon(onPressed:_add,icon:const Icon(Icons.add_circle_outline),label:Text(premium?'Yeni araç ekle • ${limit-vehicles.length} hakkın kaldı':'Yeni araç ekle')),const SizedBox(height:16),const ActiveDriverCard(),const SizedBox(height:14),Container(padding:const EdgeInsets.all(15),decoration:BoxDecoration(color:_panel,borderRadius:BorderRadius.circular(20),border:Border.all(color:_line)),child:Text('Her aracın QR’ı, bildirimleri, bakım, sigorta, kasko ve park bilgileri birbirinden ayrıdır.',style:TextStyle(color:_muted,height:1.4)))])));}}
 class _Card extends StatelessWidget{const _Card({required this.v,required this.selected,required this.open,required this.select,required this.qr,required this.transfer,required this.remove});final Map<String,dynamic> v;final bool selected;final VoidCallback open,select,qr,transfer,remove;@override Widget build(BuildContext context){final make='${v['make']??''}',model='${v['model']??''}',hasQr='${v['qr_token']??''}'.trim().isNotEmpty,logo=VehicleApi.brandLogoUrl(make);return Container(padding:const EdgeInsets.all(14),decoration:BoxDecoration(color:_panel,borderRadius:BorderRadius.circular(22),border:Border.all(color:selected?_purple:_line,width:selected?1.6:1)),child:Column(children:[InkWell(onTap:open,child:Row(children:[Container(width:68,height:60,padding:const EdgeInsets.all(10),decoration:BoxDecoration(color:_bg,borderRadius:BorderRadius.circular(16)),child:logo==null?const Icon(Icons.directions_car_filled_rounded,color:_purple,size:32):Image.network(logo,errorBuilder:(_,__,___)=>const Icon(Icons.directions_car_filled_rounded,color:_purple))),const SizedBox(width:13),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(model.isEmpty?make:'$make $model',style:TextStyle(color:_text,fontSize:16,fontWeight:FontWeight.w900)),Text('${v['plate']??''}',style:TextStyle(color:_muted,fontSize:14,fontWeight:FontWeight.w800)),if(selected)const Padding(padding:EdgeInsets.only(top:4),child:Text('Seçili araç',style:TextStyle(color:_purple,fontSize:11,fontWeight:FontWeight.w900)))])),Icon(Icons.chevron_right,color:_muted)])),const SizedBox(height:12),Row(children:[Expanded(child:OutlinedButton.icon(onPressed:selected?null:select,icon:Icon(selected?Icons.check_circle:Icons.swap_horiz),label:Text(selected?'Seçili':'Bu aracı seç'))),const SizedBox(width:8),Expanded(child:FilledButton.icon(onPressed:qr,style:FilledButton.styleFrom(backgroundColor:hasQr?_green:_purple,foregroundColor:Colors.white),icon:Icon(hasQr?Icons.check_circle_rounded:Icons.qr_code_scanner),label:Text(hasQr?'QR Aktif':'QR Aktif Et')))]),const SizedBox(height:8),Row(children:[Expanded(child:TextButton.icon(onPressed:transfer,icon:const Icon(Icons.swap_horiz_rounded),label:const Text('Satış / Devir'))),Expanded(child:TextButton.icon(onPressed:remove,style:TextButton.styleFrom(foregroundColor:Colors.redAccent),icon:const Icon(Icons.delete_outline_rounded),label:const Text('Aracı Kaldır')))])]));}}
 class _Form{const _Form(this.plate,this.make,this.model);final String plate,make,model;}
-class _Dialog extends StatefulWidget{const _Dialog();@override State<_Dialog> createState()=>_D();}class _D extends State<_Dialog>{final p=TextEditingController();String? make,model;List<String> makes=[],models=[];bool loading=true;@override void initState(){super.initState();VehicleApi.getMakes().then((x){if(mounted)setState((){makes=x;loading=false;});});}@override Widget build(BuildContext c)=>AlertDialog(backgroundColor:_panel,title:Text('Yeni Araç',style:TextStyle(color:_text)),content:Column(mainAxisSize:MainAxisSize.min,children:[TextField(controller:p,style:TextStyle(color:_text),decoration:const InputDecoration(labelText:'Plaka')),const SizedBox(height:10),if(loading)const CircularProgressIndicator()else DropdownButtonFormField<String>(dropdownColor:_panel,items:makes.map((x)=>DropdownMenuItem(value:x,child:Text(x))).toList(),onChanged:(x)async{make=x;models=await VehicleApi.getModels(x!);if(mounted)setState((){});},decoration:const InputDecoration(labelText:'Marka')),const SizedBox(height:10),DropdownButtonFormField<String>(dropdownColor:_panel,items:models.map((x)=>DropdownMenuItem(value:x,child:Text(x))).toList(),onChanged:(x)=>model=x,decoration:const InputDecoration(labelText:'Model'))]),actions:[FilledButton(onPressed:(){if(p.text.trim().isNotEmpty&&make!=null)Navigator.pop(c,_Form(p.text.trim().toUpperCase(),make!,model??''));},child:const Text('Aracı Ekle'))]);}
+class _Dialog extends StatefulWidget{const _Dialog();@override State<_Dialog> createState()=>_D();}
+class _D extends State<_Dialog>{
+ final p=TextEditingController();
+ String? make,model;
+ List<String> makes=[],models=[];
+ bool loading=true,loadingModels=false;
+ int _modelRequest=0;
+
+ @override void initState(){
+  super.initState();
+  VehicleApi.getMakes().then((x){
+   if(mounted)setState((){makes=x.toSet().toList();loading=false;});
+  });
+ }
+
+ Future<void> _changeMake(String? value)async{
+  if(value==null)return;
+  final request=++_modelRequest;
+  setState((){
+   make=value;
+   model=null;
+   models=[];
+   loadingModels=true;
+  });
+  final result=await VehicleApi.getModels(value);
+  if(!mounted||request!=_modelRequest||make!=value)return;
+  final unique=<String,String>{};
+  for(final item in result){
+   final clean=item.trim();
+   if(clean.isNotEmpty)unique.putIfAbsent(clean.toLowerCase(),()=>clean);
+  }
+  setState((){
+   models=unique.values.toList();
+   model=null;
+   loadingModels=false;
+  });
+ }
+
+ @override Widget build(BuildContext c){
+  final safeModel=model!=null&&models.where((x)=>x==model).length==1?model:null;
+  return AlertDialog(
+   backgroundColor:_panel,
+   title:Text('Yeni Araç',style:TextStyle(color:_text)),
+   content:SingleChildScrollView(
+    child:Column(mainAxisSize:MainAxisSize.min,children:[
+     TextField(controller:p,style:TextStyle(color:_text),decoration:const InputDecoration(labelText:'Plaka')),
+     const SizedBox(height:10),
+     if(loading)
+      const Padding(padding:EdgeInsets.all(12),child:CircularProgressIndicator())
+     else
+      DropdownButtonFormField<String>(
+       value:make!=null&&makes.where((x)=>x==make).length==1?make:null,
+       isExpanded:true,
+       dropdownColor:_panel,
+       items:makes.map((x)=>DropdownMenuItem(value:x,child:Text(x,overflow:TextOverflow.ellipsis))).toList(),
+       onChanged:_changeMake,
+       decoration:const InputDecoration(labelText:'Marka'),
+      ),
+     const SizedBox(height:10),
+     if(loadingModels)
+      const Padding(padding:EdgeInsets.symmetric(vertical:12),child:LinearProgressIndicator())
+     else
+      DropdownButtonFormField<String>(
+       key:ValueKey('model-${make??'none'}'),
+       value:safeModel,
+       isExpanded:true,
+       dropdownColor:_panel,
+       items:models.map((x)=>DropdownMenuItem(value:x,child:Text(x,overflow:TextOverflow.ellipsis))).toList(),
+       onChanged:models.isEmpty?null:(x)=>setState(()=>model=x),
+       decoration:InputDecoration(labelText:'Model',hintText:make==null?'Önce marka seç':'Model seç'),
+      ),
+    ]),
+   ),
+   actions:[
+    FilledButton(
+     onPressed:(){
+      if(p.text.trim().isNotEmpty&&make!=null)Navigator.pop(c,_Form(p.text.trim().toUpperCase(),make!,safeModel??''));
+     },
+     child:const Text('Aracı Ekle'),
+    ),
+   ],
+  );
+ }
+}

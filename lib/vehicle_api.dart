@@ -151,7 +151,13 @@ class VehicleApi {
           .map((e) => e['Model_Name']?.toString().trim() ?? '')
           .where((e) => e.isNotEmpty)
           .toList();
-      final merged = <String>{...fallback, ...apiModels}.toList()
+      final unique = <String, String>{};
+      for (final item in [...fallback, ...apiModels]) {
+        final cleanItem = item.trim();
+        if (cleanItem.isEmpty) continue;
+        unique.putIfAbsent(cleanItem.toLowerCase(), () => cleanItem);
+      }
+      final merged = unique.values.toList()
         ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
       return merged;
     } catch (_) {
