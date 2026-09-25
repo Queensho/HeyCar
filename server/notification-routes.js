@@ -342,6 +342,10 @@ module.exports = function registerNotificationRoutes(app, pool) {
       if (!qr) return res.status(404).json({ error: 'ACTIVE_QR_NOT_FOUND' });
       const guard = await guardPublicRequest(req, token, qr);
       if (!guard.ok) return res.status(guard.status).json({ error: guard.error });
+      const security = await enforcePublicRequest(pool, token, req);
+      if (!security.ok) return res.status(security.status).json({ error: security.error });
+      const security = await enforcePublicRequest(pool, token, req);
+      if (!security.ok) return res.status(security.status).json({ error: security.error });
       await ensurePrivacySchema();
       const publicStatusToken = crypto.randomUUID();
       const result = await pool.query(`INSERT INTO vehicle_notifications (vehicle_id, qr_token, type, message, photo_path, latitude, longitude, public_status_token) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id, type, message, photo_path, latitude, longitude, status, created_at, recipient_user_id`, [qr.vehicle_id, token, type, message, photoPath, latitude, longitude, publicStatusToken]);

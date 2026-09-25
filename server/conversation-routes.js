@@ -3,7 +3,7 @@ const crypto = require('crypto');
 const { hashScanToken, validateScanSession } = require('./scan-session-service');
 const { moderateMessage } = require('./message-moderation');
 const {getAppSettings}=require('./app-settings-service');
-const {blockVisitorSession}=require('./security-service');
+const {blockVisitorSession,enforcePublicRequest}=require('./security-service');
 
 module.exports = function registerConversationRoutes(app, pool) {
   async function messagesEnabled(res){
@@ -36,6 +36,8 @@ module.exports = function registerConversationRoutes(app, pool) {
       await ensureStatusColumns();
       const scan = await scanContext(req, token);
       if (!scan) return res.status(401).json({ error: 'SCAN_SESSION_REQUIRED' });
+      const security=await enforcePublicRequest(pool,token,req);
+      if(!security.ok)return res.status(security.status).json({error:security.error});
       const q = await pool.query(`SELECT n.id,n.vehicle_id FROM vehicle_notifications n WHERE n.id=$1 AND n.qr_token=$2 AND n.vehicle_id=$3 LIMIT 1`, [notificationId, token, scan.session.vehicle_id]);
       if (!q.rows.length) return res.status(404).json({ error: 'NOT_FOUND' });
 
@@ -95,6 +97,8 @@ module.exports = function registerConversationRoutes(app, pool) {
       await ensureStatusColumns();
       const scan = await scanContext(req, token);
       if (!scan) return res.status(401).json({ error: 'SCAN_SESSION_REQUIRED' });
+      const security=await enforcePublicRequest(pool,token,req);
+      if(!security.ok)return res.status(security.status).json({error:security.error});
       await expireConversation(id);
       const c = await pool.query(`SELECT id,status,expires_at FROM qr_conversations WHERE id=$1 AND qr_token=$2 AND scan_session_hash=$3 LIMIT 1`, [id, token, scan.hash]);
       if (!c.rows.length) return res.status(404).json({ error: 'NOT_FOUND' });
