@@ -10,6 +10,7 @@ class OwnerShortcutDefinition {
 const ownerShortcutCatalog=<OwnerShortcutDefinition>[
   OwnerShortcutDefinition(id:'offers',title:'Cepqar Fırsatlar',subtitle:'Yakındaki kampanyalar',icon:Icons.local_offer_rounded,action:'offers'),
   OwnerShortcutDefinition(id:'qr',title:'QR Kodum',subtitle:'İndir / Paylaş',icon:Icons.qr_code_scanner_rounded,action:'qr'),
+  OwnerShortcutDefinition(id:'qr_security',title:'QR Güvenliği',subtitle:'Okutma ve güvenlik',icon:Icons.shield_outlined,action:'qr_security'),
   OwnerShortcutDefinition(id:'vehicle',title:'Araç Bilgilerim',subtitle:'Düzenle',icon:Icons.directions_car_filled_rounded,action:'vehicles'),
   OwnerShortcutDefinition(id:'parking',title:'Park Yerim',subtitle:'Kaydet / Gör',icon:Icons.local_parking_rounded,action:'parking'),
   OwnerShortcutDefinition(id:'notifications',title:'Bildirimler',subtitle:'Tümünü Gör',icon:Icons.notifications_rounded,action:'notifications'),
@@ -20,5 +21,6 @@ const ownerShortcutCatalog=<OwnerShortcutDefinition>[
   OwnerShortcutDefinition(id:'settings',title:'Ayarlar',subtitle:'Uygulama ayarları',icon:Icons.settings_rounded,action:'settings'),
 ];
 
-const defaultOwnerShortcutIds=['qr','vehicle'];
+const fixedOwnerShortcutIds=['qr','qr_security'];
+const defaultOwnerShortcutIds=['qr','qr_security','vehicle'];
 const maxOwnerShortcuts=4;
