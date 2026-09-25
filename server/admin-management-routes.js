@@ -83,6 +83,47 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
   registerAppSettingsRoutes(app, pool, guard);
   registerAdminAuditRoutes(app, pool, guard);
 
+  app.get('/api/admin/manage/users', guard, async (_req, res) => {
+    try {
+      const r = await pool.query(
+        `SELECT id,email,phone,display_name,role,status,
+                (COALESCE(premium,false)=TRUE AND (premium_expires_at IS NULL OR premium_expires_at>NOW())) AS premium,
+                premium_expires_at,created_at
+           FROM users
+          ORDER BY created_at DESC`
+      );
+      return res.json({ok:true,items:r.rows});
+    } catch (e) {
+      console.error('admin users list', e);
+      return res.status(500).json({error:'SERVER_ERROR'});
+    }
+  });
+
+  app.get('/api/admin/manage/vehicles', guard, async (_req, res) => {
+    try {
+      const r = await pool.query(
+        `SELECT v.id,v.owner_id,v.plate,v.make,v.model,v.color,v.created_at,
+                u.display_name AS owner_name,u.email AS owner_email,u.phone AS owner_phone,u.status AS owner_status,
+                (COALESCE(u.premium,false)=TRUE AND (u.premium_expires_at IS NULL OR u.premium_expires_at>NOW())) AS owner_premium,
+                q.token AS qr_token,q.status AS qr_status,q.activated_at
+           FROM vehicles v
+           LEFT JOIN users u ON u.id=v.owner_id
+           LEFT JOIN LATERAL (
+             SELECT token,status,activated_at
+               FROM qr_tags
+              WHERE vehicle_id=v.id
+              ORDER BY activated_at DESC NULLS LAST
+              LIMIT 1
+           ) q ON TRUE
+          ORDER BY v.created_at DESC`
+      );
+      return res.json({ok:true,items:r.rows});
+    } catch (e) {
+      console.error('admin vehicles list', e);
+      return res.status(500).json({error:'SERVER_ERROR'});
+    }
+  });
+
   app.get('/api/admin/manage/users/:userId', guard, async (req, res) => {
     const userId = String(req.params.userId || '').trim();
     try {

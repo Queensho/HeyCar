@@ -261,7 +261,7 @@ class _AdminHomeState extends State<AdminHome> {
   Future<void> load() async {
     setState((){loading=true;error=null;});
     try{
-      final r=await Future.wait([getJson('/api/admin/users'),getJson('/api/admin/vehicles'),getJson('/api/admin/manage/qr'),getJson('/api/admin/manage/moderation/themes'),getJson('/api/admin/manage/promos')]);
+      final r=await Future.wait([getJson('/api/admin/manage/users'),getJson('/api/admin/manage/vehicles'),getJson('/api/admin/manage/qr'),getJson('/api/admin/manage/moderation/themes'),getJson('/api/admin/manage/promos')]);
       if(!mounted)return; setState((){users=_list(r[0]);vehicles=_list(r[1]);qr=_list(r[2]);themes=_list(r[3]);promos=_list(r[4]);});
     }catch(e){if(mounted)setState(()=>error=e.toString().replaceFirst('Exception: ',''));}finally{if(mounted)setState(()=>loading=false);}
   }
