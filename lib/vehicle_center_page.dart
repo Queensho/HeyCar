@@ -11,6 +11,7 @@ import 'upcoming_maintenance_page.dart';
 import 'maintenance_share_page.dart';
 import 'parking_location_card.dart';
 import 'vehicle_reminders_page.dart';
+import 'qr_security_page.dart';
 import 'cepqar_theme.dart';
 import 'owner_auth.dart';
 
@@ -161,6 +162,12 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
     context,
     MaterialPageRoute(builder: (_) => VehicleRemindersPage(vehicleId: vid)),
   ).then((_) => load());
+  void qrSecurity() => Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => QrSecurityPage(vehicleId: vid, plate: _plate),
+    ),
+  );
   Future<void> qr() async {
     if (qrBusy || editing) return;
     QrDraft.vehicleId = vid;
@@ -944,6 +951,15 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
                         title: 'Araç Hatırlatmaları',
                         subtitle: 'Muayene, sigorta, kasko ve bakım',
                         tap: reminders,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _surface(
+                      _row(
+                        icon: Icons.shield_outlined,
+                        title: 'QR Güvenliği',
+                        subtitle: 'Okutma geçmişi, bölge ve şüpheli hareketler',
+                        tap: qrSecurity,
                       ),
                     ),
                   ] else if (_tab == 1) ...[

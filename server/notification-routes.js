@@ -6,7 +6,8 @@ const crypto = require('crypto');
 const registerConversationRoutes = require('./conversation-routes');
 const { sendQrNotificationPush } = require('./notification-push-hook');
 const registerPushRoutes = require('./push-routes');
-const { createScanSession, validateScanSession } = require('./scan-session-service');
+const { hashScanToken, createScanSession, validateScanSession } = require('./scan-session-service');
+const registerQrSecurityRoutes = require('./qr-security-routes');
 const { moderateMessage } = require('./message-moderation');
 const { enforcePublicRequest } = require('./security-service');
 const { configureTrustedProxy, requestIp } = require('./proxy-security');
@@ -21,26 +22,13 @@ const allowedTypes = new Set(['move_vehicle', 'lights_on', 'damage', 'message', 
 module.exports = function registerNotificationRoutes(app, pool) {
   configureTrustedProxy(app);
   const pushService=registerPushRoutes(app, pool);
+  const qrSecurity=registerQrSecurityRoutes(app, pool, pushService);
   registerConversationRoutes(app, pool);
   const uploadDir = path.join(__dirname, 'uploads', 'notification-photos');
   fs.mkdirSync(uploadDir, { recursive: true });
   app.use('/uploads/notification-photos', express.static(uploadDir, { maxAge: '7d' }));
 
   let schemaReady = false;
-  let scanHistoryReady;
-
-  async function recordQrScan(qr) {
-    if (scanHistoryReady == null) {
-      const check = await pool.query("SELECT to_regclass('public.qr_scan_history') AS name");
-      scanHistoryReady = Boolean(check.rows[0]?.name);
-    }
-    if (!scanHistoryReady) return;
-    await pool.query(
-      `INSERT INTO qr_scan_history(qr_token,vehicle_id,owner_id)
-       VALUES($1,$2,$3)`,
-      [qr.token, qr.vehicle_id, String(qr.owner_id)]
-    );
-  }
 
   async function ensurePrivacySchema() {
     if (schemaReady) return;
@@ -170,7 +158,7 @@ module.exports = function registerNotificationRoutes(app, pool) {
       if (!security.ok) return res.status(security.status).json({ error: security.error });
       await pool.query(`DELETE FROM qr_scan_sessions WHERE expires_at<=NOW()`);
       const session = await createScanSession(pool, qr);
-      await recordQrScan(qr);
+      await qrSecurity.recordScan({qr,req,scanSessionHash:hashScanToken(session.token)});
       res.set('Cache-Control', 'no-store');
       return res.status(201).json({ ok: true, scanToken: session.token, expiresInSeconds: session.expiresInSeconds });
     } catch (e) { console.error(e); return res.status(500).json({ error: 'SERVER_ERROR' }); }
