@@ -48,7 +48,45 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
   @override Widget build(BuildContext context){
     final source=liveOffers;
     final visible=category=='Tümü'?source:source.where((o)=>o.categories.any((x)=>x.toLowerCase()==category.toLowerCase())).toList();
-    return Scaffold(backgroundColor:CepqarTheme.bg,appBar:AppBar(backgroundColor:CepqarTheme.bg,foregroundColor:CepqarTheme.text,elevation:0,titleSpacing:0,title:Row(mainAxisSize:MainAxisSize.min,children:[Image.asset('assets/Logoqr.png',height:25),const SizedBox(width:5),Flexible(child:Text('Fırsatlar',maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:CepqarTheme.text,fontSize:19,fontWeight:FontWeight.w900)))]),actions:[ConstrainedBox(constraints:const BoxConstraints(maxWidth:116),child:Container(margin:const EdgeInsets.only(right:8,top:8,bottom:8),padding:const EdgeInsets.symmetric(horizontal:8),decoration:BoxDecoration(border:Border.all(color:CepqarTheme.purple.withValues(alpha:.45)),borderRadius:BorderRadius.circular(20)),child:const Row(mainAxisSize:MainAxisSize.min,children:[Icon(Icons.location_on_rounded,color:CepqarTheme.purple,size:16),SizedBox(width:3),Flexible(child:Text('İstanbul',maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(fontSize:12,fontWeight:FontWeight.w800))),Icon(Icons.keyboard_arrow_down_rounded,size:17)])))],body:ListView(padding:const EdgeInsets.fromLTRB(16,4,16,30),children:[
+    return Scaffold(
+      backgroundColor:CepqarTheme.bg,
+      appBar:AppBar(
+        backgroundColor:CepqarTheme.bg,
+        foregroundColor:CepqarTheme.text,
+        elevation:0,
+        titleSpacing:0,
+        title:Row(
+          mainAxisSize:MainAxisSize.min,
+          children:[
+            Image.asset('assets/Logoqr.png',height:25),
+            const SizedBox(width:5),
+            Flexible(child:Text('Fırsatlar',maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:CepqarTheme.text,fontSize:19,fontWeight:FontWeight.w900))),
+          ],
+        ),
+        actions:[
+          ConstrainedBox(
+            constraints:const BoxConstraints(maxWidth:116),
+            child:Container(
+              margin:const EdgeInsets.only(right:8,top:8,bottom:8),
+              padding:const EdgeInsets.symmetric(horizontal:8),
+              decoration:BoxDecoration(
+                border:Border.all(color:CepqarTheme.purple.withValues(alpha:.45)),
+                borderRadius:BorderRadius.circular(20),
+              ),
+              child:const Row(
+                mainAxisSize:MainAxisSize.min,
+                children:[
+                  Icon(Icons.location_on_rounded,color:CepqarTheme.purple,size:16),
+                  SizedBox(width:3),
+                  Flexible(child:Text('İstanbul',maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(fontSize:12,fontWeight:FontWeight.w800))),
+                  Icon(Icons.keyboard_arrow_down_rounded,size:17),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+      body:ListView(padding:const EdgeInsets.fromLTRB(16,4,16,30),children:[
       Text('Yakınındaki araç fırsatlarını keşfet',textAlign:TextAlign.center,style:TextStyle(color:CepqarTheme.muted,fontSize:13)),const SizedBox(height:4),
       Text('Oto yıkama • Detailing • Lastik • Otopark • Servis • Akaryakıt',textAlign:TextAlign.center,style:TextStyle(color:CepqarTheme.muted,fontSize:10.5)),const SizedBox(height:16),
       SizedBox(height:68,child:ListView.separated(scrollDirection:Axis.horizontal,itemCount:categories.length,separatorBuilder:(_,__)=>const SizedBox(width:8),itemBuilder:(_,i){final x=categories[i],a=x==category;final icon=x=='Tümü'?Icons.grid_view_rounded:offers.firstWhere((o)=>o.category==x).icon;return InkWell(onTap:()=>setState(()=>category=x),borderRadius:BorderRadius.circular(18),child:AnimatedContainer(duration:const Duration(milliseconds:180),width:78,padding:const EdgeInsets.all(6),decoration:BoxDecoration(gradient:a?const LinearGradient(colors:[Color(0xFF713BFF),Color(0xFF8A45FF)]):null,color:a?null:CepqarTheme.panel,borderRadius:BorderRadius.circular(16),border:Border.all(color:a?CepqarTheme.purple:CepqarTheme.line)),child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[Icon(icon,color:a?Colors.white:CepqarTheme.purple,size:21),const SizedBox(height:4),Text(x,textAlign:TextAlign.center,maxLines:1,style:TextStyle(color:a?Colors.white:CepqarTheme.text,fontSize:9,fontWeight:FontWeight.w800))]))); })),const SizedBox(height:16),
