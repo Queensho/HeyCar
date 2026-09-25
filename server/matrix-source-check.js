@@ -98,4 +98,10 @@ if(!admin.includes('serial_no')){
   throw new Error('QR_SERIAL_TRACKING_MISSING');
 }
 
+rejectText(
+  'business-routes.js',
+  "cepqar-business-v1",
+  'HARDCODED_BUSINESS_PASSWORD_SALT_REINTRODUCED'
+);
+
 console.log('MATRIX_SOURCE_INVARIANTS_OK');
