@@ -33,6 +33,13 @@ async function clearPrivateVehicleHistory(db,vehicleId){
     removed.scanSessions=r.rowCount||0;
   }
 
+  // Maintenance records stay with the vehicle, but a public share link was
+  // created by the previous owner and must not survive a transfer.
+  if(await tableExists(db,'vehicle_maintenance_shares')){
+    const r=await db.query('DELETE FROM vehicle_maintenance_shares WHERE vehicle_id::text=$1',[id]);
+    removed.maintenanceShares=r.rowCount||0;
+  }
+
   // Parking information belongs to the person who parked the car, not the next
   // owner. QR scan history and maintenance history deliberately remain.
   if(await tableExists(db,'vehicle_park_notes')){

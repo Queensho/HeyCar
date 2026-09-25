@@ -16,8 +16,8 @@ module.exports=function registerVehicleReminderRoutes(app,pool){
     await pool.query(`
       CREATE TABLE IF NOT EXISTS vehicle_reminders (
         id BIGSERIAL PRIMARY KEY,
-        owner_id TEXT NOT NULL,
-        vehicle_id TEXT NOT NULL,
+        owner_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        vehicle_id UUID NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
         type TEXT NOT NULL,
         due_date DATE NOT NULL,
         enabled BOOLEAN NOT NULL DEFAULT TRUE,
@@ -43,8 +43,8 @@ module.exports=function registerVehicleReminderRoutes(app,pool){
          SET enabled=FALSE,
              updated_at=NOW()
         FROM vehicles v
-       WHERE v.id::text=vr.vehicle_id
-         AND vr.owner_id IS DISTINCT FROM v.owner_id::text
+       WHERE v.id=vr.vehicle_id
+         AND vr.owner_id IS DISTINCT FROM v.owner_id
          AND vr.enabled=TRUE;
 
       -- If a previous deployment already removed the old global unique constraint,
@@ -179,9 +179,9 @@ module.exports=function registerVehicleReminderRoutes(app,pool){
       const r=await pool.query(
         `SELECT vr.*,vr.type AS reminder_type,v.plate
            FROM vehicle_reminders vr
-           JOIN vehicles v ON v.id::text=vr.vehicle_id
+           JOIN vehicles v ON v.id=vr.vehicle_id
           WHERE vr.owner_id=$1 AND vr.enabled=TRUE
-            AND v.owner_id::text=vr.owner_id`,
+            AND v.owner_id=vr.owner_id`,
         [o]
       );
       const today=new Date();today.setHours(0,0,0,0);
@@ -224,10 +224,10 @@ module.exports=function registerVehicleReminderRoutes(app,pool){
         `SELECT vr.*,v.plate,
                 (vr.due_date - ((NOW() AT TIME ZONE 'Europe/Istanbul')::date))::int AS days_left
            FROM vehicle_reminders vr
-           JOIN vehicles v ON v.id::text=vr.vehicle_id
-           JOIN users u ON u.id::text=vr.owner_id
+           JOIN vehicles v ON v.id=vr.vehicle_id
+           JOIN users u ON u.id=vr.owner_id
           WHERE vr.enabled=TRUE
-            AND v.owner_id::text=vr.owner_id
+            AND v.owner_id=vr.owner_id
             AND COALESCE(u.premium,false)=TRUE
             AND (u.premium_expires_at IS NULL OR u.premium_expires_at>NOW())`
       );
