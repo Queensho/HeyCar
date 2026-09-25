@@ -110,4 +110,10 @@ rejectText(
   'RAW_FCM_ERROR_BODY_LOGGING_REINTRODUCED'
 );
 
+requireText(
+  'vehicle-reminder-routes.js',
+  'crypto.timingSafeEqual(supplied,target)',
+  'REMINDER_JOB_SECRET_NOT_TIMING_SAFE'
+);
+
 console.log('MATRIX_SOURCE_INVARIANTS_OK');
