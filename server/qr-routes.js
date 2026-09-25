@@ -11,7 +11,7 @@ const registerDriverRoutes = require('./driver-routes');
 const registerDndRoutes = require('./dnd-routes');
 const registerMaintenanceRoutes = require('./maintenance-routes');
 const registerMaintenanceShareRoutes = require('./maintenance-share-routes');
-const registerVehicleReminderRoutes = require('./vehicle-reminder-routes');
+const registerVehicleReminderRoutes = require('./reminder-routes');
 const registerParkingRoutes = require('./parking-routes');
 const registerVehicleManagementRoutes = require('./vehicle-management-routes');
 function normalizeToken(raw){return String(raw||'').trim().toUpperCase();}
