@@ -58,6 +58,21 @@ BEGIN
     RAISE EXCEPTION 'MISSING_ONE_ACTIVE_QR_INDEX';
   END IF;
 
+  IF to_regclass('public.uq_qr_tags_serial_no') IS NULL THEN
+    RAISE EXCEPTION 'MISSING_QR_SERIAL_UNIQUE_INDEX';
+  END IF;
+
+  SELECT COUNT(*) INTO bad_count
+    FROM information_schema.columns
+   WHERE table_schema='public'
+     AND table_name='qr_tags'
+     AND column_name='serial_no'
+     AND data_type='bigint';
+
+  IF bad_count <> 1 THEN
+    RAISE EXCEPTION 'QR_SERIAL_COLUMN_INVALID';
+  END IF;
+
   IF to_regclass('public.vehicle_transfers_one_pending_per_vehicle') IS NULL THEN
     RAISE EXCEPTION 'MISSING_ONE_PENDING_TRANSFER_INDEX';
   END IF;

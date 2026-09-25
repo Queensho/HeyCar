@@ -75,6 +75,10 @@ jobs:
         working-directory: server
         run: node matrix-auth-check.js
 
+      - name: Verify Matrix source invariants
+        working-directory: server
+        run: node matrix-source-check.js
+
       - name: Create application database role
         shell: bash
         run: |
