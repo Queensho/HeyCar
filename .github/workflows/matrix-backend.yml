@@ -117,3 +117,28 @@ jobs:
           test "$ok" -eq 1
           grep -q '"service":"heycar-api"' /tmp/health.json
           echo "MATRIX_BACKEND_HEALTH_OK"
+
+          assert_status() {
+            expected="$1"
+            shift
+            got=$(curl -sS -o /tmp/matrix-response.json -w '%{http_code}' "$@")
+            if [ "$got" != "$expected" ]; then
+              echo "Expected HTTP $expected, got $got for: $*"
+              cat /tmp/matrix-response.json || true
+              exit 1
+            fi
+          }
+
+          # Role/auth boundary smoke tests. These routes must fail closed before
+          # looking up or mutating any caller-supplied resource identifier.
+          assert_status 401 http://127.0.0.1:8090/api/owner/vehicles
+          assert_status 401 http://127.0.0.1:8090/api/driver/vehicles
+          assert_status 401 http://127.0.0.1:8090/api/admin/manage/system-health
+          assert_status 401 -X POST -H 'Content-Type: application/json' \
+            -d '{"code":"AABBCCDDEEFF0011"}' \
+            http://127.0.0.1:8090/api/owner/vehicle-transfers/accept
+          assert_status 401 -X POST -H 'Content-Type: application/json' \
+            -d '{"token":"MATRIXTEST","vehicleId":"00000000-0000-4000-8000-000000000001"}' \
+            http://127.0.0.1:8090/api/qr/activate
+
+          echo "MATRIX_AUTH_BOUNDARIES_OK"
