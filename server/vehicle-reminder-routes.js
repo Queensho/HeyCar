@@ -1,4 +1,5 @@
 const express=require('express');
+const crypto=require('crypto');
 const {ownerId:authenticatedOwnerId}=require('./owner-auth-service');
 
 module.exports=function registerVehicleReminderRoutes(app,pool){
@@ -198,7 +199,12 @@ module.exports=function registerVehicleReminderRoutes(app,pool){
 
   app.post('/api/internal/reminders/deliver',express.json(),async(req,res)=>{
     const secret=String(req.headers['x-reminder-secret']||'');
-    if(!process.env.REMINDER_JOB_SECRET||secret!==process.env.REMINDER_JOB_SECRET)return res.status(403).json({error:'FORBIDDEN'});
+    const expected=String(process.env.REMINDER_JOB_SECRET||'');
+    const supplied=Buffer.from(secret);
+    const target=Buffer.from(expected);
+    if(!expected||supplied.length!==target.length||!crypto.timingSafeEqual(supplied,target)){
+      return res.status(403).json({error:'FORBIDDEN'});
+    }
 
     const client=await pool.connect();
     let runId=null;
