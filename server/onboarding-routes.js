@@ -42,10 +42,10 @@ module.exports = function registerOnboardingRoutes(app, pool) {
       await client.query('BEGIN');
 
       if (!transferCode) {
-        const normalizedPlate = plate.replace(/\s+/g, '');
+        const normalizedPlate = plate.replace(/\s+/g, '').toUpperCase();
         await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [normalizedPlate]);
         const plateExists = await client.query(
-          "SELECT 1 FROM vehicles WHERE UPPER(REPLACE(plate,' ',''))=UPPER($1) LIMIT 1",
+          "SELECT 1 FROM vehicles WHERE regexp_replace(UPPER(plate),'[[:space:]]+','','g')=$1 LIMIT 1",
           [normalizedPlate]
         );
         if (plateExists.rows.length) {

@@ -82,13 +82,23 @@ module.exports = function registerVehicleManagementRoutes(app, pool) {
       const limit = premium ? 3 : 1;
       const count = await client.query(`SELECT COUNT(*)::int AS n FROM vehicles WHERE owner_id::text=$1`, [owner]);
       if ((count.rows[0]?.n || 0) >= limit) { await client.query('ROLLBACK'); return res.status(403).json({ error:'VEHICLE_LIMIT_REACHED', limit, premium }); }
-      const duplicate = await client.query(`SELECT 1 FROM vehicles WHERE UPPER(REPLACE(plate,' ',''))=UPPER(REPLACE($1,' ','')) LIMIT 1`, [plate]);
+      const normalizedPlate=plate.replace(/\s+/g,'').toUpperCase();
+      await client.query('SELECT pg_advisory_xact_lock(hashtext($1))',[normalizedPlate]);
+      const duplicate = await client.query(
+        `SELECT 1 FROM vehicles
+          WHERE regexp_replace(UPPER(plate),'[[:space:]]+','','g')=$1
+          LIMIT 1`,
+        [normalizedPlate]
+      );
       if (duplicate.rows.length) { await client.query('ROLLBACK'); return res.status(409).json({ error:'PLATE_EXISTS' }); }
       const created = await client.query(`INSERT INTO vehicles(owner_id,plate,make,model,color) VALUES($1,$2,$3,$4,$5) RETURNING id,plate,make,model,color,created_at`, [owner,plate,make,model || null,color || null]);
       await client.query('COMMIT');
       return res.status(201).json({ ok:true, vehicle:created.rows[0], limit, premium });
     } catch (e) {
-      await client.query('ROLLBACK');
+      await client.query('ROLLBACK').catch(()=>{});
+      if(e?.code==='23505'&&String(e?.constraint||'').includes('vehicles_plate_normalized')){
+        return res.status(409).json({error:'PLATE_EXISTS'});
+      }
       console.error('owner vehicle create error', e);
       return res.status(500).json({ error:'SERVER_ERROR' });
     } finally { client.release(); }
@@ -120,10 +130,11 @@ module.exports = function registerVehicleManagementRoutes(app, pool) {
         return res.status(403).json({ error: 'FORBIDDEN' });
       }
       // Serialize edits that request the same normalized plate.
-      await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [plate.replace(/ /g, '')]);
+      const normalizedPlate=plate.replace(/\s+/g,'').toUpperCase();
+      await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [normalizedPlate]);
       const duplicate = await client.query(
-        "SELECT 1 FROM vehicles WHERE UPPER(REPLACE(plate,' ',''))=UPPER(REPLACE($1,' ','')) AND id::text<>$2 LIMIT 1",
-        [plate, vehicleId]);
+        "SELECT 1 FROM vehicles WHERE regexp_replace(UPPER(plate),'[[:space:]]+','','g')=$1 AND id::text<>$2 LIMIT 1",
+        [normalizedPlate, vehicleId]);
       if (duplicate.rows.length) {
         await client.query('ROLLBACK');
         return res.status(409).json({ error: 'PLATE_EXISTS' });
