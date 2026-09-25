@@ -1,0 +1,16 @@
+[Unit]
+Description=Cepqar API
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=tayfun
+WorkingDirectory=/opt/heycar
+EnvironmentFile=/opt/heycar/.env
+EnvironmentFile=-/etc/heycar/reminder-job.env
+ExecStart=/usr/bin/node /opt/heycar/server.js
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
