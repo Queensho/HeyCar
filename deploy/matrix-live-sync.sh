@@ -14,6 +14,10 @@ ROLLBACK_ARMED=0
 MIGRATION_053_APPLIED=0
 MIGRATION_054_APPLIED=0
 SUCCESS=0
+STAGE="init"
+LOG="/tmp/matrix-live-sync-$RUN_ID.log"
+exec > >(tee -a "$LOG") 2>&1
+echo "Matrix log: $LOG"
 
 FILES=(
   server.js
@@ -38,8 +42,16 @@ FILES=(
   vehicle-transfer-service.js
 )
 
-fail(){ echo "MATRIX_SYNC_ERROR: $*" >&2; exit 1; }
+fail(){ echo "MATRIX_SYNC_ERROR stage=$STAGE: $*" >&2; exit 1; }
 db_scalar(){ sudo -u postgres psql -d "$DB" -Atqc "$1"; }
+env_value(){
+  local key="$1" line value
+  line="$(grep -E "^${key}=" "$ROOT/.env" 2>/dev/null | tail -1 || true)"
+  value="${line#*=}"
+  value="${value%\"}"; value="${value#\"}"
+  value="${value%\'}"; value="${value#\'}"
+  printf '%s' "$value"
+}
 
 cleanup() {
   rm -rf "$TMP" 2>/dev/null || true
@@ -102,12 +114,13 @@ rollback_all() {
 on_error() {
   local rc=$?
   if [ "$ROLLBACK_ARMED" -eq 1 ]; then
-    rollback_all "command failed with exit $rc"
+    rollback_all "stage=$STAGE command failed with exit $rc"
   fi
   exit "$rc"
 }
 trap on_error ERR
 
+STAGE="precheck"
 echo "=== MATRIX LIVE SYNC PRECHECK ==="
 echo "Commit: $COMMIT"
 
@@ -135,8 +148,32 @@ if [ "$LEGACY_COUNT" -gt 0 ]; then
   fi
 fi
 
+echo "=== RUNTIME ENV PRECHECK ==="
+JWT_VALUE="$(env_value JWT_SECRET)"
+OWNER_VALUE="$(env_value OWNER_AUTH_SECRET)"
+DRIVER_VALUE="$(env_value DRIVER_AUTH_SECRET)"
+DATABASE_URL_VALUE="$(env_value DATABASE_URL)"
+DB_HOST_VALUE="$(env_value DB_HOST)"
+DB_NAME_VALUE="$(env_value DB_NAME)"
+DB_USER_VALUE="$(env_value DB_USER)"
+DB_PASSWORD_VALUE="$(env_value DB_PASSWORD)"
+
+[ "${#JWT_VALUE}" -ge 32 ] || fail "JWT_SECRET eksik/kisa"
+[ "${#OWNER_VALUE}" -ge 32 ] || fail "OWNER_AUTH_SECRET eksik/kisa"
+[ "${#DRIVER_VALUE}" -ge 32 ] || fail "DRIVER_AUTH_SECRET eksik/kisa"
+[ "$OWNER_VALUE" != "$DRIVER_VALUE" ] || fail "DRIVER_AUTH_SECRET OWNER_AUTH_SECRET ile ayni"
+
+if [ -z "$DATABASE_URL_VALUE" ]; then
+  [ -n "$DB_HOST_VALUE" ] || fail "DB_HOST eksik"
+  [ -n "$DB_NAME_VALUE" ] || fail "DB_NAME eksik"
+  [ -n "$DB_USER_VALUE" ] || fail "DB_USER eksik"
+  [ -n "$DB_PASSWORD_VALUE" ] || fail "DB_PASSWORD eksik"
+fi
+echo "RUNTIME_ENV_OK"
+
 mkdir -p "$BACKUP" || fail "backup klasoru olusturulamadi"
 
+STAGE="download_syntax"
 echo "=== DOWNLOAD + SYNTAX ==="
 for f in "${FILES[@]}"; do
   curl -fsSL "$BASE/$f" -o "$TMP/$f" || fail "indirilemedi: $f"
@@ -148,6 +185,7 @@ for m in 053_admin_audit_canonical.sql 054_qr_opaque_tokens.sql; do
 done
 curl -fsSL "$BASE/matrix-schema-check.sql" -o "$TMP/matrix-schema-check.sql" || fail "matrix schema check indirilemedi"
 
+STAGE="code_backup"
 echo "=== CODE BACKUP ==="
 for f in "${FILES[@]}"; do
   if [ -f "$ROOT/$f" ]; then
@@ -167,6 +205,7 @@ ROLLBACK_ARMED=1
 sudo systemctl stop heycar
 echo "Service stopped for consistent migration state."
 
+STAGE="database_prestate"
 echo "=== DATABASE PRESTATE ==="
 AUDIT_PLURAL_EXISTS="$(db_scalar "SELECT CASE WHEN to_regclass('public.admin_audit_logs') IS NULL THEN 0 ELSE 1 END")"
 AUDIT_SINGULAR_EXISTS="$(db_scalar "SELECT CASE WHEN to_regclass('public.admin_audit_log') IS NULL THEN 0 ELSE 1 END")"
@@ -245,23 +284,28 @@ fi
 
 echo "Rollback plan: $ROLLBACK_SQL"
 
+STAGE="migrations"
 echo "=== MIGRATIONS ==="
 sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$TMP/053_admin_audit_canonical.sql"
 MIGRATION_053_APPLIED=1
 sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$TMP/054_qr_opaque_tokens.sql"
 MIGRATION_054_APPLIED=1
 
+STAGE="schema_verify"
 echo "=== LIVE SCHEMA VERIFY ==="
 sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$TMP/matrix-schema-check.sql"
 
+STAGE="install"
 echo "=== INSTALL ==="
 for f in "${FILES[@]}"; do
   sudo install -m 644 "$TMP/$f" "$ROOT/$f"
 done
 sudo rm -f "$ROOT/reminder-routes.js"
 
+STAGE="service_start"
 sudo systemctl start heycar
 
+STAGE="health"
 echo "=== HEALTH ==="
 HTTP="000"
 HEALTH_OK=0
@@ -283,6 +327,7 @@ if [ "$HEALTH_OK" -ne 1 ] || ! sudo systemctl is-active --quiet heycar; then
   exit 3
 fi
 
+STAGE="auth_smoke"
 echo "=== AUTH BOUNDARY SMOKE ==="
 OWNER_HTTP="$(curl -sS -o "$TMP/owner-auth.json" -w '%{http_code}' http://127.0.0.1:8090/api/owner/vehicles || true)"
 ADMIN_HTTP="$(curl -sS -o "$TMP/admin-auth.json" -w '%{http_code}' http://127.0.0.1:8090/api/admin/manage/system-health || true)"
@@ -298,11 +343,13 @@ fi
 ROLLBACK_ARMED=0
 SUCCESS=1
 
+STAGE="complete"
 echo "=== SERVICE ==="
 sudo systemctl is-active heycar
 echo "MATRIX_LIVE_SYNC_OK"
 echo "Target commit: $COMMIT"
 echo "Backup retained at: $BACKUP"
+echo "Deploy log: $LOG"
 
 echo "=== LAST LOG ==="
 sudo journalctl -u heycar -n 35 --no-pager
