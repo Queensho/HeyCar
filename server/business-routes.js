@@ -7,11 +7,21 @@ module.exports=function registerBusinessRoutes(app,pool){
  const passwordHash=s=>{
   const salt=crypto.randomBytes(16).toString('base64url');
   const digest=crypto.scryptSync(String(s),salt,64).toString('hex');
-  return `scrypt${salt}${digest}`;
+  return 'scrypt_v2:'+salt+':'+digest;
  };
  const verifyPassword=(stored,plain)=>{
   const value=String(stored||'');
-  if(value.startsWith('scrypt
+  if(value.startsWith('scrypt_v2:')){
+   const parts=value.split(':');
+   if(parts.length!==3)return {ok:false,legacy:false};
+   const expected=Buffer.from(parts[2],'hex');
+   const actual=crypto.scryptSync(String(plain),parts[1],64);
+   return {ok:expected.length===actual.length&&crypto.timingSafeEqual(expected,actual),legacy:false};
+  }
+  const expected=Buffer.from(value,'hex');
+  const actual=Buffer.from(legacyPassword(plain),'hex');
+  return {ok:expected.length===actual.length&&crypto.timingSafeEqual(expected,actual),legacy:true};
+ };
  const token=()=>crypto.randomBytes(32).toString('hex');
  const fs=require('fs'),path=require('path');
  const uploadDir=process.env.BUSINESS_UPLOAD_DIR||'/opt/heycar/uploads/business';try{fs.mkdirSync(uploadDir,{recursive:true});}catch(e){console.error('upload dir',e);}
