@@ -20,7 +20,7 @@ class _PublicQrEntryScreenState extends State<PublicQrEntryScreen> {
   final scaffoldKey = GlobalKey<ScaffoldState>();
   bool scanning = false, consumed = false;
   @override void dispose(){code.dispose();super.dispose();}
-  String _normalize(String raw){final value=raw.trim();if(value.isEmpty)return '';try{final uri=Uri.parse(value);final tag=uri.queryParameters['tag'];if(tag!=null&&tag.isNotEmpty)return tag.toUpperCase();}catch(_){}final match=RegExp(r'HC-[A-Z0-9-]+',caseSensitive:false).firstMatch(value);return(match?.group(0)??value).trim().toUpperCase();}
+  String _normalize(String raw){final value=raw.trim();if(value.isEmpty)return '';try{final uri=Uri.parse(value);final tag=uri.queryParameters['tag'];if(tag!=null&&tag.isNotEmpty)return tag.toUpperCase();}catch(_){}final match=RegExp(r'(?:CP-QAR-[A-Z0-9]+|HC-[A-Z0-9-]+)',caseSensitive:false).firstMatch(value);return(match?.group(0)??value).trim().toUpperCase();}
   void _open(String raw){final token=_normalize(raw);if(token.isEmpty)return;html.window.location.assign(Uri.base.replace(queryParameters:{'tag':token}).toString());}
   void _openPage(Widget page){Navigator.of(context).pop();Navigator.of(context).push(MaterialPageRoute(builder:(_)=>page));}
 

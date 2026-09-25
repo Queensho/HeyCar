@@ -490,11 +490,7 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
       await ensureQrItemPrintSchema(pool);
       const r = await pool.query(
         `SELECT q.id,q.token,q.status,q.vehicle_id,q.activated_at,
-                q.batch_serial,q.print_batch_id,
-                CASE
-                  WHEN q.token ~ '^CP-QAR-[0-9]+$' THEN SUBSTRING(q.token FROM 8)::int
-                  ELSE NULL
-                END AS serial_no,
+                q.batch_serial,q.print_batch_id,q.serial_no,
                 b.batch_code,b.created_at AS batch_created_at,
                 q.print_status,
                 q.pdf_downloaded_at,q.sent_to_print_at,q.printed_at,
@@ -507,9 +503,7 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
          LEFT JOIN qr_print_batches b ON b.id=q.print_batch_id
          LEFT JOIN vehicles v ON v.id=q.vehicle_id
          LEFT JOIN users u ON u.id=v.owner_id
-         ORDER BY
-           CASE WHEN q.token ~ '^CP-QAR-[0-9]+$' THEN SUBSTRING(q.token FROM 8)::int ELSE NULL END DESC NULLS LAST,
-           q.token ASC`
+         ORDER BY q.serial_no DESC NULLS LAST,q.token ASC`
       );
       res.json({ ok: true, items: r.rows });
     } catch (e) {
@@ -683,7 +677,7 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
       await client.query('LOCK TABLE qr_tags IN SHARE ROW EXCLUSIVE MODE');
 
       const nextResult = await client.query(
-        "SELECT COALESCE(MAX(SUBSTRING(token FROM 8)::int),0)+1 AS next_no FROM qr_tags WHERE token ~ '^CP-QAR-[0-9]+$'"
+        'SELECT COALESCE(MAX(serial_no),0)+1 AS next_no FROM qr_tags'
       );
       let nextNo = Number(nextResult.rows[0]?.next_no || 1);
 
@@ -701,12 +695,16 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
       const items = [];
       for (let i = 0; i < count; i++) {
         const serialNo = nextNo++;
-        const token = 'CP-QAR-' + String(serialNo).padStart(2, '0');
+        const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        const random = crypto.randomBytes(16);
+        let suffix = '';
+        for (const byte of random) suffix += alphabet[byte & 31];
+        const token = 'CP-QAR-' + suffix;
         const r = await client.query(
-          `INSERT INTO qr_tags(token,status,print_batch_id,batch_serial)
-           VALUES($1,'unassigned',$2,$3)
-           RETURNING id,token,status,print_batch_id,batch_serial`,
-          [token,batch.id,i+1]
+          `INSERT INTO qr_tags(token,status,print_batch_id,batch_serial,serial_no)
+           VALUES($1,'unassigned',$2,$3,$4)
+           RETURNING id,token,status,print_batch_id,batch_serial,serial_no`,
+          [token,batch.id,i+1,serialNo]
         );
         items.push({ ...r.rows[0], serial_no: serialNo, batch_code: batchCode });
       }
