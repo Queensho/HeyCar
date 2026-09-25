@@ -6,6 +6,7 @@ import 'qr_backend.dart';
 import 'qr_activation.dart';
 import 'onboarding_backend.dart';
 import 'maintenance_page.dart';
+import 'maintenance_detail_page.dart';
 import 'upcoming_maintenance_page.dart';
 import 'maintenance_share_page.dart';
 import 'parking_location_card.dart';
@@ -129,6 +130,18 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
       builder: (_) => MaintenancePage(plate: _plate, title: _title),
     ),
   ).then((_) => load());
+
+  void maintenanceDetail(Map record) {
+    QrDraft.vehicleId = vid;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MaintenanceDetailPage(
+          record: Map<String, dynamic>.from(record),
+        ),
+      ),
+    ).then((_) => load());
+  }
   void upcomingPage() => Navigator.push(
     context,
     MaterialPageRoute(
@@ -974,7 +987,7 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
                                 subtitle: r['items'] is List
                                     ? (r['items'] as List).join(' • ')
                                     : 'Bakım kaydı',
-                                tap: maintenance,
+                                tap: () => maintenanceDetail(r),
                               ),
                             )
                             .toList(),
