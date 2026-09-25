@@ -34,11 +34,28 @@ app.use(cors({
 
 app.use(express.json({limit:'1mb'}));
 
-const pool=new Pool(
-  process.env.DATABASE_URL
-    ? {connectionString:process.env.DATABASE_URL}
-    : {}
-);
+function databaseConfig(){
+  const url=String(process.env.DATABASE_URL||'').trim();
+  if(url)return {connectionString:url};
+
+  const host=String(process.env.DB_HOST||process.env.PGHOST||'').trim();
+  const database=String(process.env.DB_NAME||process.env.PGDATABASE||'').trim();
+  const user=String(process.env.DB_USER||process.env.PGUSER||'').trim();
+  const password=String(process.env.DB_PASSWORD||process.env.PGPASSWORD||'');
+  const portRaw=String(process.env.DB_PORT||process.env.PGPORT||'5432').trim();
+  const port=Number(portRaw);
+
+  if(!host||!database||!user||!password){
+    throw new Error('DATABASE_CONFIG_REQUIRED');
+  }
+  if(!Number.isInteger(port)||port<1||port>65535){
+    throw new Error('DATABASE_PORT_INVALID');
+  }
+
+  return {host,port,database,user,password};
+}
+
+const pool=new Pool(databaseConfig());
 app.locals.heycarPool=pool;
 
 app.get('/health',async(_req,res)=>{
