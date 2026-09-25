@@ -37,15 +37,15 @@ module.exports=function registerVehicleReminderRoutes(app,pool){
         END IF;
       END $$;
       UPDATE vehicle_reminders SET type='kasko' WHERE type='casco';
-      -- Repair legacy reminder rows created before owner-scoped reminders.
-      -- A historical UNIQUE(vehicle_id, reminder_type) constraint can leave a row
-      -- attached to an old owner and block updates for the vehicle's current owner.
+      -- A reminder belongs to the owner who created it. If the vehicle has since
+      -- changed owner, fail closed: keep provenance but disable the stale reminder.
       UPDATE vehicle_reminders vr
-         SET owner_id=v.owner_id::text,
+         SET enabled=FALSE,
              updated_at=NOW()
         FROM vehicles v
        WHERE v.id::text=vr.vehicle_id
-         AND vr.owner_id IS DISTINCT FROM v.owner_id::text;
+         AND vr.owner_id IS DISTINCT FROM v.owner_id::text
+         AND vr.enabled=TRUE;
 
       -- If a previous deployment already removed the old global unique constraint,
       -- keep only the newest owner-scoped row before rebuilding the canonical index.
@@ -180,7 +180,8 @@ module.exports=function registerVehicleReminderRoutes(app,pool){
         `SELECT vr.*,vr.type AS reminder_type,v.plate
            FROM vehicle_reminders vr
            JOIN vehicles v ON v.id::text=vr.vehicle_id
-          WHERE vr.owner_id=$1 AND vr.enabled=TRUE`,
+          WHERE vr.owner_id=$1 AND vr.enabled=TRUE
+            AND v.owner_id::text=vr.owner_id`,
         [o]
       );
       const today=new Date();today.setHours(0,0,0,0);
@@ -226,6 +227,7 @@ module.exports=function registerVehicleReminderRoutes(app,pool){
            JOIN vehicles v ON v.id::text=vr.vehicle_id
            JOIN users u ON u.id::text=vr.owner_id
           WHERE vr.enabled=TRUE
+            AND v.owner_id::text=vr.owner_id
             AND COALESCE(u.premium,false)=TRUE
             AND (u.premium_expires_at IS NULL OR u.premium_expires_at>NOW())`
       );

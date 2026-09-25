@@ -92,6 +92,7 @@ module.exports = function registerOnboardingRoutes(app, pool) {
         await client.query('DELETE FROM vehicle_active_drivers WHERE vehicle_id::text=$1::text',[t.vehicle_id]);
         await client.query('DELETE FROM vehicle_drivers WHERE vehicle_id::text=$1::text',[t.vehicle_id]);
         await client.query("UPDATE vehicle_driver_invites SET expires_at=LEAST(expires_at,NOW()) WHERE vehicle_id::text=$1::text AND accepted_at IS NULL",[t.vehicle_id]);
+        await client.query("UPDATE vehicle_reminders SET enabled=FALSE,updated_at=NOW() WHERE vehicle_id::text=$1::text AND enabled=TRUE",[t.vehicle_id]);
         await client.query('UPDATE vehicles SET owner_id=$1 WHERE id=$2',[user.id,t.vehicle_id]);
         await client.query("UPDATE vehicle_transfers SET status='accepted',accepted_by=$1,accepted_at=now() WHERE id=$2",[user.id,t.id]);
         vehicleResult={rows:[{id:t.vehicle_id,owner_id:user.id,plate:t.plate,make:t.make,model:t.model,color:t.color}]};
