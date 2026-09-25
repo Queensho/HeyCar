@@ -91,6 +91,7 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
     final now = DateTime.now();
     final d = await showDatePicker(
       context: context,
+      locale: const Locale('tr', 'TR'),
       initialDate: current ?? now.add(const Duration(days: 30)),
       firstDate: DateTime(now.year - 2),
       lastDate: DateTime(now.year + 10),
