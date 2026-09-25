@@ -1,6 +1,6 @@
 const { requestIp } = require('./proxy-security');
 const {issueTokens}=require('./owner-auth-service');
-const {clearPrivateVehicleHistory}=require('./vehicle-transfer-privacy');
+const {finalizeVehicleTransfer}=require('./vehicle-transfer-service');
 const LEGAL_VERSION='1.0';
 function normalizeTrMobile(raw) {
   let digits = String(raw || '').replace(/\D/g, '');
@@ -90,13 +90,7 @@ module.exports = function registerOnboardingRoutes(app, pool) {
         if(!tr.rows.length){await client.query('ROLLBACK');return res.status(404).json({error:'TRANSFER_NOT_FOUND'});}
         const t=tr.rows[0];
         if(t.status!=='pending'||new Date(t.expires_at)<=new Date()){if(t.status==='pending')await client.query("UPDATE vehicle_transfers SET status='expired' WHERE id=$1",[t.id]);await client.query('COMMIT');return res.status(410).json({error:'TRANSFER_EXPIRED'});}
-        await client.query('DELETE FROM vehicle_active_drivers WHERE vehicle_id::text=$1::text',[t.vehicle_id]);
-        await client.query('DELETE FROM vehicle_drivers WHERE vehicle_id::text=$1::text',[t.vehicle_id]);
-        await client.query("UPDATE vehicle_driver_invites SET expires_at=LEAST(expires_at,NOW()) WHERE vehicle_id::text=$1::text AND accepted_at IS NULL",[t.vehicle_id]);
-        await client.query("UPDATE vehicle_reminders SET enabled=FALSE,updated_at=NOW() WHERE vehicle_id::text=$1::text AND enabled=TRUE",[t.vehicle_id]);
-        await clearPrivateVehicleHistory(client,t.vehicle_id);
-        await client.query('UPDATE vehicles SET owner_id=$1 WHERE id=$2',[user.id,t.vehicle_id]);
-        await client.query("UPDATE vehicle_transfers SET status='accepted',accepted_by=$1,accepted_at=now() WHERE id=$2",[user.id,t.id]);
+        await finalizeVehicleTransfer(client,{vehicleId:t.vehicle_id,transferId:t.id,newOwnerId:user.id});
         vehicleResult={rows:[{id:t.vehicle_id,owner_id:user.id,plate:t.plate,make:t.make,model:t.model,color:t.color}]};
       } else {
         vehicleResult = await client.query(
