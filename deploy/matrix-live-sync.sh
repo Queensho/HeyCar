@@ -7,6 +7,7 @@ DB="${HEYCAR_DB:-heycar_db}"
 RUN_ID="$(date +%Y%m%d%H%M%S)_$$"
 BACKUP="$ROOT/matrix-sync-backup-$RUN_ID"
 TMP="$(mktemp -d)"
+chmod 755 "$TMP"
 BASE="https://raw.githubusercontent.com/Queensho/HeyCar/$COMMIT/server"
 ROLLBACK_SQL="$BACKUP/db-rollback.sql"
 QR_ROLLBACK_TABLE="_matrix_sync_qr_backup_$RUN_ID"
@@ -182,8 +183,10 @@ done
 
 for m in 053_admin_audit_canonical.sql 054_qr_opaque_tokens.sql; do
   curl -fsSL "$BASE/migrations/$m" -o "$TMP/$m" || fail "migration indirilemedi: $m"
+  chmod 644 "$TMP/$m"
 done
 curl -fsSL "$BASE/matrix-schema-check.sql" -o "$TMP/matrix-schema-check.sql" || fail "matrix schema check indirilemedi"
+chmod 644 "$TMP/matrix-schema-check.sql"
 
 STAGE="code_backup"
 echo "=== CODE BACKUP ==="
