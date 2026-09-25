@@ -47,6 +47,29 @@ module.exports = function registerReminderRoutes(app, pool) {
         END LOOP;
       END $$;
       UPDATE vehicle_reminders SET type='kasko' WHERE type='casco';
+      -- Repair legacy reminder rows created before owner-scoped reminders.
+      -- A historical UNIQUE(vehicle_id, reminder_type) constraint can leave a row
+      -- attached to an old owner and block updates for the vehicle's current owner.
+      UPDATE vehicle_reminders vr
+         SET owner_id=v.owner_id::text,
+             updated_at=NOW()
+        FROM vehicles v
+       WHERE v.id::text=vr.vehicle_id
+         AND vr.owner_id IS DISTINCT FROM v.owner_id::text;
+
+      -- If a previous deployment already removed the old global unique constraint,
+      -- keep only the newest owner-scoped row before rebuilding the canonical index.
+      DELETE FROM vehicle_reminders older
+       USING vehicle_reminders newer
+       WHERE older.owner_id=newer.owner_id
+         AND older.vehicle_id=newer.vehicle_id
+         AND older.type=newer.type
+         AND (older.updated_at,older.id)<(newer.updated_at,newer.id);
+
+      ALTER TABLE vehicle_reminders
+        DROP CONSTRAINT IF EXISTS vehicle_reminders_vehicle_id_reminder_type_key;
+      ALTER TABLE vehicle_reminders
+        DROP CONSTRAINT IF EXISTS vehicle_reminders_vehicle_id_type_key;
       CREATE UNIQUE INDEX IF NOT EXISTS uq_vehicle_reminders_owner_vehicle_type
         ON vehicle_reminders(owner_id,vehicle_id,type);
       CREATE INDEX IF NOT EXISTS idx_vehicle_reminders_due
