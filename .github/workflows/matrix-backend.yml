@@ -5,11 +5,13 @@ on:
     branches: [main]
     paths:
       - 'server/**'
+      - 'deploy/matrix-live-sync.sh'
       - '.github/workflows/matrix-backend.yml'
   pull_request:
     branches: [main]
     paths:
       - 'server/**'
+      - 'deploy/matrix-live-sync.sh'
       - '.github/workflows/matrix-backend.yml'
   workflow_dispatch:
 
@@ -70,6 +72,14 @@ jobs:
             echo "node --check $file"
             node --check "$file"
           done < <(find server -maxdepth 1 -type f -name '*.js' -print0 | sort -z)
+
+      - name: Syntax-check guarded live sync
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n deploy/matrix-live-sync.sh
+          grep -q 'DB ROLLBACK' deploy/matrix-live-sync.sh
+          grep -q 'matrix-schema-check.sql' deploy/matrix-live-sync.sh
 
       - name: Verify token role isolation
         working-directory: server
