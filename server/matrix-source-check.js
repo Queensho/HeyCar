@@ -77,15 +77,14 @@ requireText(
 );
 
 const pushHook=read('notification-push-hook.js');
-if(!pushHook.includes("if(recipientType==='driver')")){
+if(!pushHook.includes("if(recipientType==='driver'){")){
   throw new Error('ACTIVE_RECIPIENT_ROUTING_MISSING');
 }
-const driverBranch=pushHook.slice(
-  pushHook.indexOf("if(recipientType==='driver')"),
-  pushHook.indexOf("console.log('QR push delivery'")
-);
-if(driverBranch.includes('ownerSender(ownerId')){
-  throw new Error('DRIVER_NOTIFICATION_DUAL_PUSH_REINTRODUCED');
+if(!pushHook.includes('driverResult=await push.sendDriver(routedRecipient,payload,notificationTitle,body);')){
+  throw new Error('DRIVER_PUSH_BRANCH_MISSING');
+}
+if(!pushHook.includes("}else{\n      const ownerSender=push.sendOwner||push.send;")){
+  throw new Error('OWNER_PUSH_ELSE_BRANCH_MISSING');
 }
 
 const admin=read('admin-management-routes.js');
