@@ -3,7 +3,11 @@ const {getAppSettings}=require('./app-settings-service');
 const {ownerId:authenticatedOwnerId}=require('./owner-auth-service');
 module.exports=function registerBusinessRoutes(app,pool){
  const hash=s=>crypto.createHash('sha256').update(String(s)).digest('hex');
- const legacyPassword=s=>crypto.scryptSync(String(s),String(process.env.BUSINESS_PASSWORD_SALT||'cepqar-business-v1'),64).toString('hex');
+ const legacyPassword=s=>{
+  const salt=String(process.env.BUSINESS_PASSWORD_SALT||'');
+  if(salt.length<16)throw new Error('BUSINESS_PASSWORD_SALT_REQUIRED_FOR_LEGACY_HASH');
+  return crypto.scryptSync(String(s),salt,64).toString('hex');
+ };
  const passwordHash=s=>{
   const salt=crypto.randomBytes(16).toString('base64url');
   const digest=crypto.scryptSync(String(s),salt,64).toString('hex');
