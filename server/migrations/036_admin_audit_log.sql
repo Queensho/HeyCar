@@ -69,13 +69,14 @@ CREATE INDEX IF NOT EXISTS idx_admin_audit_logs_target
 
 GRANT SELECT,INSERT ON TABLE public.admin_audit_logs TO heycar_user;
 
-DO $
+DO $matrix$
 BEGIN
   IF to_regclass('public.admin_audit_logs_id_seq') IS NOT NULL THEN
     GRANT USAGE,SELECT ON SEQUENCE public.admin_audit_logs_id_seq TO heycar_user;
   ELSIF to_regclass('public.admin_audit_log_id_seq') IS NOT NULL THEN
     GRANT USAGE,SELECT ON SEQUENCE public.admin_audit_log_id_seq TO heycar_user;
   END IF;
-END $;
+END;
+$matrix$;
 
 COMMIT;
