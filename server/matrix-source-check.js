@@ -104,4 +104,10 @@ rejectText(
   'HARDCODED_BUSINESS_PASSWORD_SALT_REINTRODUCED'
 );
 
+rejectText(
+  'push-routes.js',
+  "console.error('FCM send',r.status,detail)",
+  'RAW_FCM_ERROR_BODY_LOGGING_REINTRODUCED'
+);
+
 console.log('MATRIX_SOURCE_INVARIANTS_OK');
