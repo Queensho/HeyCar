@@ -71,6 +71,10 @@ jobs:
             node --check "$file"
           done < <(find server -maxdepth 1 -type f -name '*.js' -print0 | sort -z)
 
+      - name: Verify token role isolation
+        working-directory: server
+        run: node matrix-auth-check.js
+
       - name: Create application database role
         shell: bash
         run: |
