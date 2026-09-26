@@ -88,6 +88,15 @@ async function run(){
     await client.query('SELECT pg_advisory_lock($1)',[73194016]);
     await ensureTracking(client);
 
+    const trackingState=await client.query('SELECT COUNT(*)::int AS n FROM public.schema_migrations');
+    const trackedCount=Number(trackingState.rows[0]?.n||0);
+    if(!baselineTarget&&trackedCount===0){
+      const existingCore=await client.query("SELECT to_regclass('public.users') IS NOT NULL AS users");
+      if(existingCore.rows[0]?.users){
+        throw new Error('EXISTING_SCHEMA_REQUIRES_EXPLICIT_BASELINE');
+      }
+    }
+
     if(baselineTarget){
       await baseline(client,files,baselineTarget);
     }
