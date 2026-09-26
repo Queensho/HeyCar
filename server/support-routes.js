@@ -23,7 +23,7 @@ function validImageBytes(mime,bytes){
 }
 
 function clean(v,max=2000){return String(v==null?'':v).trim().slice(0,max);}
-function adminActor(req){return clean(req.headers?.['x-admin-email']||req.headers?.['x-admin-name']||req.headers?.['x-admin-id']||'admin',240);}
+function adminActor(req){const a=req.admin||req.user||{};return clean(a.email||a.display_name||a.name||a.id||'admin',240);}
 function safeAttachmentName(raw){
   const name=path.basename(String(raw||''));
   return /^[a-f0-9-]+\.(jpg|jpeg|png|webp)$/i.test(name)?name:null;
