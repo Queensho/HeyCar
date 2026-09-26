@@ -282,14 +282,26 @@ push_ui = r"""
     border: 0; background: transparent; color: #8e98ad;
     width: 28px; height: 28px; font-size: 22px; line-height: 24px; padding: 0;
   }
+  #cepqar-push-banner .steps {
+    margin-top: 7px; display: grid; gap: 4px;
+    font-size: 11px; line-height: 1.25; color: #d9deea;
+  }
+  #cepqar-push-banner .steps span {
+    display: flex; align-items: flex-start; gap: 6px;
+  }
+  #cepqar-push-banner .steps b { color: #fff; }
 </style>
 <div id="cepqar-push-banner" role="region" aria-label="Cepqar bildirimleri">
   <img src="icons/cepqar-192.png" alt="">
   <div class="copy">
-    <div class="title">Cepqar bildirimlerini aç</div>
-    <div class="sub" id="cepqar-push-subtitle">QR mesajları ve araç bildirimleri anında gelsin.</div>
+    <div class="title">Bildirimleri eksiksiz aç</div>
+    <div class="sub" id="cepqar-push-subtitle">Uygulama kapalıyken de bildirim almak için iki izin gerekiyor.</div>
+    <div class="steps" id="cepqar-push-steps">
+      <span><b>1.</b> Cepqar bildirim iznine <b>İzin ver</b>.</span>
+      <span><b>2.</b> Telefon ayarlarında Cepqar/Chrome için <b>arka planı kısıtlama</b>.</span>
+    </div>
   </div>
-  <button id="cepqar-push-enable" type="button">Aç</button>
+  <button id="cepqar-push-enable" type="button">Başlat</button>
   <button id="cepqar-push-close" type="button" aria-label="Kapat">×</button>
 </div>
 <script>
@@ -465,8 +477,10 @@ push_ui = r"""
       data: { url: '/HeyCar/owner/', type: 'push_ready' }
     });
 
-    subtitle.textContent = 'Bildirimler açık.';
-    banner.style.display = 'none';
+    subtitle.textContent = '1/2 tamamlandı. Şimdi telefon ayarlarında Cepqar/Chrome için arka plan kısıtlamasını kaldır.';
+    enableButton.textContent = 'Tamam';
+    enableButton.disabled = false;
+    enableButton.onclick = function () { banner.style.display = 'none'; };
     return true;
   }
 
@@ -489,10 +503,10 @@ push_ui = r"""
 
     if (!standalone()) return false;
     if (Notification.permission === 'denied') {
-      subtitle.textContent = 'Bildirim izni tarayıcı ayarlarından kapalı.';
+      subtitle.textContent = '1/2 Bildirim izni kapalı. Tarayıcı ayarlarından Cepqar bildirimlerine izin ver.';
       enableButton.style.display = 'none';
     } else {
-      subtitle.textContent = 'QR mesajları ve araç bildirimleri anında gelsin.';
+      subtitle.textContent = 'Uygulama kapalıyken de bildirim almak için iki izin gerekiyor.';
       enableButton.style.display = '';
     }
     banner.style.display = 'flex';
@@ -501,7 +515,7 @@ push_ui = r"""
 
   enableButton.addEventListener('click', async function () {
     enableButton.disabled = true;
-    subtitle.textContent = 'Bildirimler açılıyor…';
+    subtitle.textContent = '1/2 Bildirim izni açılıyor…';
     try {
       var ok = await subscribeNow();
       if (!ok) subtitle.textContent = 'Bildirim izni verilmedi.';
