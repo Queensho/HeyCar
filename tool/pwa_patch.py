@@ -274,7 +274,7 @@ push_ui = r"""
   #cepqar-push-banner .copy { min-width: 0; flex: 1 1 auto; }
   #cepqar-push-banner .title { font-size: 14px; font-weight: 800; margin-bottom: 3px; }
   #cepqar-push-banner .sub { font-size: 11.5px; line-height: 1.2; color: #b8c0d4; }
-  #cepqar-push-enable, #cepqar-push-test {
+  #cepqar-push-enable {
     border: 0; border-radius: 11px; padding: 10px 13px;
     background: #6E22D9; color: #fff; font-weight: 800; font-size: 13px; white-space: nowrap;
   }
@@ -290,7 +290,6 @@ push_ui = r"""
     <div class="sub" id="cepqar-push-subtitle">QR mesajları ve araç bildirimleri anında gelsin.</div>
   </div>
   <button id="cepqar-push-enable" type="button">Aç</button>
-  <button id="cepqar-push-test" type="button" style="display:none">Test</button>
   <button id="cepqar-push-close" type="button" aria-label="Kapat">×</button>
 </div>
 <script>
@@ -300,7 +299,6 @@ push_ui = r"""
   var authRole = 'owner';
   var banner = document.getElementById('cepqar-push-banner');
   var enableButton = document.getElementById('cepqar-push-enable');
-  var testButton = document.getElementById('cepqar-push-test');
   var closeButton = document.getElementById('cepqar-push-close');
   var subtitle = document.getElementById('cepqar-push-subtitle');
 
@@ -398,10 +396,20 @@ push_ui = r"""
 
     localStorage.setItem('cepqar_fcm_web_token', token);
     localStorage.setItem('cepqar_web_push_enabled', '1');
-    enableButton.style.display = 'none';
-    testButton.style.display = '';
-    subtitle.textContent = 'Bildirimler açık. Cihaz bildirimini test edebilirsiniz.';
-    banner.style.display = 'flex';
+
+    // Verify the browser can actually display a notification without asking
+    // the user to run a separate test step.
+    await registration.showNotification('Cepqar bildirimleri açık', {
+      body: 'Araç bildirimleri artık bu cihazda gösterilecek.',
+      icon: 'icons/cepqar-192.png',
+      badge: 'icons/cepqar-192.png',
+      tag: 'cepqar-push-ready',
+      renotify: false,
+      data: { url: '/HeyCar/owner/', type: 'push_ready' }
+    });
+
+    subtitle.textContent = 'Bildirimler açık.';
+    banner.style.display = 'none';
     return true;
   }
 
@@ -413,7 +421,13 @@ push_ui = r"""
 
     if (Notification.permission === 'granted') {
       try { return await subscribeNow(); }
-      catch (error) { console.warn('Cepqar FCM web refresh:', error); }
+      catch (error) {
+        console.warn('Cepqar FCM web refresh:', error);
+        if (standalone()) {
+          subtitle.textContent = 'Bildirimler yeniden bağlanıyor…';
+          banner.style.display = 'flex';
+        }
+      }
     }
 
     if (!standalone()) return false;
@@ -428,33 +442,9 @@ push_ui = r"""
     return false;
   };
 
-  testButton.addEventListener('click', async function () {
-    testButton.disabled = true;
-    subtitle.textContent = 'Test bildirimi hazırlanıyor…';
-    try {
-      var registration = await navigator.serviceWorker.ready;
-      await registration.showNotification('Cepqar test bildirimi', {
-        body: 'Bildirim sistemi cihazınızda çalışıyor.',
-        icon: 'icons/cepqar-192.png',
-        badge: 'icons/cepqar-192.png',
-        tag: 'cepqar-local-test-' + Date.now(),
-        renotify: true,
-        vibrate: [200, 100, 200],
-        data: { url: '/HeyCar/owner/', type: 'local_test' }
-      });
-      subtitle.textContent = 'Test bildirimi gönderildi.';
-    } catch (error) {
-      var detail = String((error && (error.name || error.message)) || 'UNKNOWN')
-        .replace(/[^A-Za-z0-9_ .:\/-]/g, '').slice(0,100);
-      subtitle.textContent = 'Test bildirimi hatası: ' + detail;
-    } finally {
-      testButton.disabled = false;
-    }
-  });
-
   enableButton.addEventListener('click', async function () {
     enableButton.disabled = true;
-    subtitle.textContent = 'Firebase bildirim servisi hazırlanıyor…';
+    subtitle.textContent = 'Bildirimler açılıyor…';
     try {
       var ok = await subscribeNow();
       if (!ok) subtitle.textContent = 'Bildirim izni verilmedi.';
@@ -472,13 +462,13 @@ push_ui = r"""
       if (code.indexOf('FCM_WEB_SAVE_401') >= 0) {
         subtitle.textContent = 'Oturum yenileniyor. Cepqar’ı kapatıp tekrar açın.';
       } else if (code.indexOf('FCM_WEB_SAVE_') >= 0) {
-        subtitle.textContent = 'Bildirim anahtarı sunucuya kaydedilemedi.';
+        subtitle.textContent = 'Bildirimler açılamadı. Tekrar deneyin.';
       } else if (code.indexOf('permission-blocked') >= 0 || Notification.permission === 'denied') {
         subtitle.textContent = 'Bildirim izni cihaz ayarlarından kapalı.';
       } else if (code.indexOf('AbortError') >= 0 || code.indexOf('DOM_20') >= 0) {
-        subtitle.textContent = 'Push servisi yanıt vermedi (AbortError). Chrome ve Google Play Hizmetleri kontrol edilmeli.';
+        subtitle.textContent = 'Telefon bildirim servisini engelliyor. Cihaz ayarlarını kontrol edin.';
       } else {
-        subtitle.textContent = 'Firebase bildirim hatası: ' + code;
+        subtitle.textContent = 'Bildirimler açılamadı (' + code + ').';
       }
     } finally {
       enableButton.disabled = false;
