@@ -90,6 +90,26 @@ requireText(
   'LEGACY_QR_SAFE_ROTATION_MISSING'
 );
 
+
+for(const file of [
+  'app-settings-routes.js',
+  'support-routes.js',
+  'admin-moderation-ops-routes.js',
+  'admin-communication-security-routes.js',
+  'admin-business-premium-routes.js',
+]){
+  rejectText(
+    file,
+    "req.headers?.['x-admin",
+    'SPOOFABLE_ADMIN_ACTOR_REINTRODUCED: '+file
+  );
+}
+requireText(
+  'admin-management-routes.js',
+  'promoMetricLimiter',
+  'PROMO_METRIC_RATE_LIMIT_MISSING'
+);
+
 requireText(
   'security-service.js',
   'const key=publicVisitorKey(req);',
