@@ -49,6 +49,17 @@ requireText(
 );
 
 requireText(
+  'notification-routes.js',
+  'RETURNING id, type, message, photo_path, latitude, longitude, status, created_at, recipient_user_id',
+  'NOTIFICATION_RECIPIENT_NOT_PERSISTED'
+);
+requireText(
+  'migrations/055_vehicle_notification_recipient_column.sql',
+  'vehicle_notifications_recipient_fk',
+  'NOTIFICATION_RECIPIENT_MIGRATION_MISSING'
+);
+
+requireText(
   'active-driver-routes.js',
   'if(!await ownedVehicle(ownerId,req.params.vehicleId))return res.status(404).json({error:\'NOT_FOUND\'});',
   'ACTIVE_DRIVER_DELETE_OWNERSHIP_GUARD_MISSING'
