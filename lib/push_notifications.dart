@@ -295,6 +295,17 @@ class PushNotifications{
         }
       }
 
+      const nativeTokenBindingVersion='native_push_binding_v10';
+      final boundVersion=prefs.getString('native_push_binding_version')??'';
+      if(boundVersion!=nativeTokenBindingVersion){
+        try{
+          await FirebaseMessaging.instance.deleteToken().timeout(const Duration(seconds:10));
+          await Future<void>.delayed(const Duration(milliseconds:500));
+        }catch(e){
+          debugPrint('FCM token reset skipped: $e');
+        }
+      }
+
       final token=await FirebaseMessaging.instance.getToken().timeout(const Duration(seconds:20));
       if(token==null||token.trim().isEmpty)throw HttpException('FCM token is empty');
 
@@ -322,6 +333,7 @@ class PushNotifications{
       }
 
       await prefs.setBool('push_token_registered',true);
+      await prefs.setString('native_push_binding_version','native_push_binding_v10');
       await prefs.setString('push_token_last_registered_at',DateTime.now().toUtc().toIso8601String());
       await prefs.setString('push_token_last_error','');
       _tokenRetryAttempt=0;
