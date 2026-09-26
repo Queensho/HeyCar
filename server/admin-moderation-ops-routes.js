@@ -18,7 +18,8 @@ function maskKey(raw){
   return s.slice(0,6)+'••••'+s.slice(-4);
 }
 function actorLabel(req){
-  return String(req.headers?.['x-admin-email']||req.headers?.['x-admin-name']||req.headers?.['x-admin-id']||'admin').slice(0,240);
+  const a=req.admin||req.user||{};
+  return String(a.email||a.display_name||a.name||a.id||'admin').slice(0,240);
 }
 
 module.exports=function registerAdminModerationOpsRoutes(app,pool,adminGuard){
