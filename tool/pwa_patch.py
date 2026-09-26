@@ -333,7 +333,15 @@ push_ui = r"""
       registration = await navigator.serviceWorker.register('cepqar-sw.js', { scope: './' });
     }
     if (registration.waiting) registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-    await navigator.serviceWorker.ready;
+
+    // Always use the active registration returned by ready. A registration
+    // object captured while the worker is installing/waiting can make
+    // PushManager.subscribe() fail with AbortError on Chromium Android.
+    registration = await navigator.serviceWorker.ready;
+    if (!registration.active) {
+      await new Promise(function (resolve) { setTimeout(resolve, 500); });
+      registration = await navigator.serviceWorker.ready;
+    }
 
     var subscription = await registration.pushManager.getSubscription();
     if (!subscription) {
@@ -346,8 +354,12 @@ push_ui = r"""
       } catch (firstError) {
         console.warn('Cepqar push subscribe first attempt:', firstError);
         await registration.update().catch(function () {});
-        await new Promise(function (resolve) { setTimeout(resolve, 900); });
+        await new Promise(function (resolve) { setTimeout(resolve, 1200); });
         registration = await navigator.serviceWorker.ready;
+        if (!registration.active) {
+          await new Promise(function (resolve) { setTimeout(resolve, 600); });
+          registration = await navigator.serviceWorker.ready;
+        }
         subscription = await registration.pushManager.getSubscription();
         if (!subscription) subscription = await registration.pushManager.subscribe(options);
       }
