@@ -625,11 +625,9 @@ index.write_text(html, encoding="utf-8")
 
 # Network-first/pass-through worker: gives the installable app its own service
 # worker without caching Flutter bundles, so deploy cache-busting keeps working.
-sw = """const VERSION = 'cepqar-pwa-v10-click-open';
+sw = """const VERSION = 'cepqar-pwa-v11-click-openwindow';
 
 self.addEventListener('notificationclick', (event) => {
-  // Own the click before Firebase's compat worker installs its handler.
-  // This avoids a second listener swallowing the PWA navigation.
   if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
   event.notification.close();
 
@@ -637,12 +635,9 @@ self.addEventListener('notificationclick', (event) => {
   const target = new URL(rawTarget, self.location.origin).href;
 
   event.waitUntil((async () => {
+    // First focus an existing Cepqar PWA window if one exists.
     const windows = await clients.matchAll({ type: 'window', includeUncontrolled: true });
-
-    // Prefer an existing Cepqar owner window, not just the first client.
-    let fallback = null;
     for (const client of windows) {
-      if (!fallback) fallback = client;
       try {
         const url = new URL(client.url);
         if (url.origin === self.location.origin && url.pathname.startsWith('/HeyCar/owner/')) {
@@ -655,15 +650,14 @@ self.addEventListener('notificationclick', (event) => {
       } catch (_) {}
     }
 
-    if (fallback && 'navigate' in fallback) {
-      try { await fallback.navigate(target); } catch (_) {}
-      if ('focus' in fallback) await fallback.focus();
-      return;
-    }
-
+    // Do not hijack an unrelated GitHub Pages window. Open the PWA target
+    // directly; notificationclick is a user activation and openWindow is allowed.
     if (clients.openWindow) {
       const opened = await clients.openWindow(target);
-      if (opened && 'focus' in opened) await opened.focus();
+      if (opened && 'focus' in opened) {
+        try { await opened.focus(); } catch (_) {}
+      }
+      return;
     }
   })());
 });
