@@ -54,6 +54,26 @@ module.exports=function registerPushRoutes(app,pool){
     ready=true;
   }
 
+  const webReceiptSecret=String(process.env.JWT_SECRET||process.env.OWNER_AUTH_SECRET||'');
+  const webReceiptSig=(id)=>crypto.createHmac('sha256',webReceiptSecret).update(String(id)).digest('base64url');
+
+  app.post('/api/push/web-receipt',(req,res)=>{
+    try{
+      const id=String(req.body?.id||'').trim();
+      const sig=String(req.body?.sig||'').trim();
+      const stage=String(req.body?.stage||'received').trim().slice(0,40);
+      if(!id||!sig||!webReceiptSecret)return res.status(400).json({error:'INVALID_RECEIPT'});
+      const expected=webReceiptSig(id);
+      const a=Buffer.from(sig),b=Buffer.from(expected);
+      if(a.length!==b.length||!crypto.timingSafeEqual(a,b))return res.status(401).json({error:'INVALID_RECEIPT'});
+      console.log('WEB_PUSH_RECEIPT',{id,stage,at:new Date().toISOString()});
+      return res.json({ok:true});
+    }catch(e){
+      console.error('web push receipt',e);
+      return res.status(500).json({error:'SERVER_ERROR'});
+    }
+  });
+
   app.post('/api/owner/push-token',async(req,res)=>{try{const owner=authenticatedOwnerId(req);const token=String(req.body?.token||'').trim();const device=String(req.body?.deviceId||'').trim();const platform=String(req.body?.platform||'android').trim();if(!owner)return res.status(401).json({error:'OWNER_REQUIRED'});if(!token||!device)return res.status(400).json({error:'REQUIRED_FIELDS_MISSING'});await schema();await pool.query(`INSERT INTO owner_push_tokens(owner_id,device_id,fcm_token,platform) VALUES($1,$2,$3,$4) ON CONFLICT(owner_id,device_id) DO UPDATE SET fcm_token=EXCLUDED.fcm_token,platform=EXCLUDED.platform,active=TRUE,updated_at=NOW()`,[owner,device,token,platform]);await pool.query('UPDATE owner_push_tokens SET active=FALSE,updated_at=NOW() WHERE owner_id=$1 AND fcm_token=$2 AND device_id<>$3',[owner,token,device]);return res.json({ok:true});}catch(e){console.error('push token',e);return res.status(500).json({error:'SERVER_ERROR'});}});
 
   app.post('/api/driver/push-token',async(req,res)=>{try{const driver=authenticatedDriverId(req);const token=String(req.body?.token||'').trim();const device=String(req.body?.deviceId||'').trim();const platform=String(req.body?.platform||'android').trim();if(!driver)return res.status(401).json({error:'DRIVER_REQUIRED'});if(!token||!device)return res.status(400).json({error:'REQUIRED_FIELDS_MISSING'});await schema();await pool.query(`INSERT INTO driver_push_tokens(driver_id,device_id,fcm_token,platform) VALUES($1,$2,$3,$4) ON CONFLICT(driver_id,device_id) DO UPDATE SET fcm_token=EXCLUDED.fcm_token,platform=EXCLUDED.platform,active=TRUE,updated_at=NOW()`,[driver,device,token,platform]);await pool.query('UPDATE driver_push_tokens SET active=FALSE,updated_at=NOW() WHERE driver_id=$1 AND fcm_token=$2 AND device_id<>$3',[driver,token,device]);return res.json({ok:true});}catch(e){console.error('driver push token',e);return res.status(500).json({error:'SERVER_ERROR'});}});
@@ -102,6 +122,12 @@ module.exports=function registerPushRoutes(app,pool){
       const message={token:row.fcm_token,data:fcmData};
 
       if(isWeb){
+        const webReceiptId=crypto.randomUUID();
+        message.data={
+          ...fcmData,
+          webReceiptId,
+          webReceiptSig:webReceiptSig(webReceiptId)
+        };
         const tag=String(data.notificationId||data.messageId||data.callId||data.eventId||Date.now());
         message.notification={title,body};
         message.webpush={
