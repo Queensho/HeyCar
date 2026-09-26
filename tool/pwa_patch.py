@@ -76,7 +76,7 @@ manifest = {
 
 html = index.read_text(encoding="utf-8")
 meta = f"""
-  <meta name="theme-color" content="#6E22D9">
+  <meta name="theme-color" content="#07101F">
   <meta name="application-name" content="Cepqar">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -88,6 +88,28 @@ meta = f"""
 """
 if 'name="apple-mobile-web-app-capable"' not in html:
     html = html.replace("</head>", meta + "</head>", 1)
+
+# Paint the iOS standalone safe area with Cepqar's dark background. This is
+# visual-only; do not touch the PWA notification/service-worker behaviour.
+safe_area_style = """
+<style id="cepqar-ios-safe-area">
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100%;
+    min-height: 100%;
+    background: #07101F !important;
+  }
+  body, flutter-view, flt-glass-pane, flt-scene-host {
+    background: #07101F !important;
+  }
+  @supports (padding-top: env(safe-area-inset-top)) {
+    html { background: #07101F !important; }
+  }
+</style>
+"""
+if 'id="cepqar-ios-safe-area"' not in html:
+    html = html.replace("</head>", safe_area_style + "</head>", 1)
 
 # Ensure iOS safe-area support without disturbing Flutter's existing viewport.
 html = html.replace(
