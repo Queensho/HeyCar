@@ -325,13 +325,29 @@ push_ui = r"""
     if (permission !== 'granted') permission = await Notification.requestPermission();
     if (permission !== 'granted') return false;
 
-    var registration = await navigator.serviceWorker.ready;
+    var registration = await navigator.serviceWorker.getRegistration('./');
+    if (!registration) {
+      registration = await navigator.serviceWorker.register('cepqar-sw.js', { scope: './' });
+    }
+    if (registration.waiting) registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+    await navigator.serviceWorker.ready;
+
     var subscription = await registration.pushManager.getSubscription();
     if (!subscription) {
-      subscription = await registration.pushManager.subscribe({
+      var options = {
         userVisibleOnly: true,
         applicationServerKey: base64UrlToUint8Array(config.publicKey)
-      });
+      };
+      try {
+        subscription = await registration.pushManager.subscribe(options);
+      } catch (firstError) {
+        console.warn('Cepqar push subscribe first attempt:', firstError);
+        await registration.update().catch(function () {});
+        await new Promise(function (resolve) { setTimeout(resolve, 900); });
+        registration = await navigator.serviceWorker.ready;
+        subscription = await registration.pushManager.getSubscription();
+        if (!subscription) subscription = await registration.pushManager.subscribe(options);
+      }
     }
 
     var endpoint = authRole === 'driver'
@@ -382,7 +398,16 @@ push_ui = r"""
       if (!ok) subtitle.textContent = 'Bildirim izni verilmedi.';
     } catch (error) {
       console.warn('Cepqar web push:', error);
-      subtitle.textContent = 'Bildirimler açılamadı. Tekrar deneyin.';
+      var code = String(error && (error.message || error.name) || '');
+      if (code.indexOf('WEB_PUSH_SAVE_401') >= 0) {
+        subtitle.textContent = 'Oturum yenileniyor. Cepqar’ı kapatıp tekrar açın.';
+      } else if (code.indexOf('WEB_PUSH_SAVE_') >= 0) {
+        subtitle.textContent = 'Sunucu aboneliği kaydedemedi. Tekrar deneyin.';
+      } else if (code.indexOf('NotAllowed') >= 0 || Notification.permission === 'denied') {
+        subtitle.textContent = 'Bildirim izni cihaz ayarlarından kapalı.';
+      } else {
+        subtitle.textContent = 'Bildirim servisine bağlanılamadı. Tekrar deneyin.';
+      }
     } finally {
       enableButton.disabled = false;
     }
@@ -414,6 +439,9 @@ index.write_text(html, encoding="utf-8")
 # worker without caching Flutter bundles, so deploy cache-busting keeps working.
 sw = """const VERSION = 'cepqar-pwa-v2';
 self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
+});
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
