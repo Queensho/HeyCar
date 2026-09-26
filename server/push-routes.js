@@ -79,7 +79,7 @@ module.exports=function registerPushRoutes(app,pool){
     }
     const project=sa.project_id;
     const rows=(await pool.query(
-      `SELECT DISTINCT ON (fcm_token) id,fcm_token FROM ${table} WHERE ${idColumn}=$1 AND active=TRUE ORDER BY fcm_token,updated_at DESC`,
+      `SELECT DISTINCT ON (fcm_token) id,fcm_token,platform FROM ${table} WHERE ${idColumn}=$1 AND active=TRUE ORDER BY fcm_token,updated_at DESC`,
       [String(userId)]
     )).rows;
     if(!rows.length){health.lastAttempted=0;health.lastDelivered=0;return {attempted:0,delivered:0};}
@@ -89,6 +89,8 @@ module.exports=function registerPushRoutes(app,pool){
     const endpoint=`https://fcm.googleapis.com/v1/projects/${project}/messages:send`;
 
     const results=await Promise.all(rows.map(async row=>{
+      const platform=String(row.platform||'android').toLowerCase();
+      const isWeb=platform==='web';
       const android={priority:'HIGH'};
       if(callEvent){
         android.ttl=data.type==='incoming_call'?'45s':'15s';
@@ -96,20 +98,39 @@ module.exports=function registerPushRoutes(app,pool){
       }else{
         android.ttl='120s';
       }
-      const message={token:row.fcm_token,data:fcmData,android};
-      if(!callEvent){
-        const sourceType=String(data.sourceType||data.type||'system');
-        android.collapse_key='cepqar_'+sourceType;
-        const tag=String(data.notificationId||data.messageId||data.eventId||Date.now());
-        message.notification={title,body};
-        message.android.notification={
-          channel_id:'cepqar_notifications_v9',
-          sound:'bildirim',
-          tag:'cepqar_'+tag,
-          notification_priority:'PRIORITY_MAX',
-          default_vibrate_timings:true,
-          visibility:'PUBLIC'
+
+      const message={token:row.fcm_token,data:fcmData};
+
+      if(isWeb){
+        const tag=String(data.notificationId||data.messageId||data.callId||data.eventId||Date.now());
+        message.webpush={
+          headers:{Urgency:'high'},
+          notification:{
+            title,
+            body,
+            icon:'https://queensho.github.io/HeyCar/owner/icons/cepqar-192.png',
+            badge:'https://queensho.github.io/HeyCar/owner/icons/cepqar-192.png',
+            tag:'cepqar_'+tag,
+            renotify:true
+          },
+          fcm_options:{link:'https://queensho.github.io/HeyCar/owner/'}
         };
+      }else{
+        message.android=android;
+        if(!callEvent){
+          const sourceType=String(data.sourceType||data.type||'system');
+          android.collapse_key='cepqar_'+sourceType;
+          const tag=String(data.notificationId||data.messageId||data.eventId||Date.now());
+          message.notification={title,body};
+          message.android.notification={
+            channel_id:'cepqar_notifications_v9',
+            sound:'bildirim',
+            tag:'cepqar_'+tag,
+            notification_priority:'PRIORITY_MAX',
+            default_vibrate_timings:true,
+            visibility:'PUBLIC'
+          };
+        }
       }
       try{
         const r=await fetch(endpoint,{method:'POST',headers:{authorization:`Bearer ${key}`,'content-type':'application/json'},body:JSON.stringify({message})});
