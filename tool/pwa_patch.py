@@ -423,14 +423,23 @@ push_ui = r"""
       if (!ok) subtitle.textContent = 'Bildirim izni verilmedi.';
     } catch (error) {
       console.warn('Cepqar FCM web:', error);
-      var code = String((error && (error.code || error.name || error.message)) || 'UNKNOWN')
-        .replace(/[^A-Za-z0-9_ .:\/-]/g, '').slice(0,100);
+      var rawCode = '';
+      if (error) {
+        if (typeof error.code === 'string' && error.code) rawCode = error.code;
+        else if (typeof error.name === 'string' && error.name) rawCode = error.name;
+        else if (typeof error.message === 'string' && error.message) rawCode = error.message;
+        else if (error.code != null) rawCode = 'DOM_' + String(error.code);
+      }
+      var code = String(rawCode || 'UNKNOWN')
+        .replace(/[^A-Za-z0-9_ .:\/-]/g, '').slice(0,120);
       if (code.indexOf('FCM_WEB_SAVE_401') >= 0) {
         subtitle.textContent = 'Oturum yenileniyor. Cepqar’ı kapatıp tekrar açın.';
       } else if (code.indexOf('FCM_WEB_SAVE_') >= 0) {
         subtitle.textContent = 'Bildirim anahtarı sunucuya kaydedilemedi.';
       } else if (code.indexOf('permission-blocked') >= 0 || Notification.permission === 'denied') {
         subtitle.textContent = 'Bildirim izni cihaz ayarlarından kapalı.';
+      } else if (code.indexOf('AbortError') >= 0 || code.indexOf('DOM_20') >= 0) {
+        subtitle.textContent = 'Push servisi yanıt vermedi (AbortError). Chrome ve Google Play Hizmetleri kontrol edilmeli.';
       } else {
         subtitle.textContent = 'Firebase bildirim hatası: ' + code;
       }
