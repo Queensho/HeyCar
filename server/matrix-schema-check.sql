@@ -123,6 +123,15 @@ BEGIN
     RAISE EXCEPTION 'MISSING_MATRIX_FOREIGN_KEYS: expected 12, found %', bad_count;
   END IF;
 
+  IF NOT has_table_privilege('heycar_user','public.owner_web_push_subscriptions','SELECT')
+     OR NOT has_table_privilege('heycar_user','public.owner_web_push_subscriptions','INSERT')
+     OR NOT has_table_privilege('heycar_user','public.owner_web_push_subscriptions','UPDATE')
+     OR NOT has_table_privilege('heycar_user','public.driver_web_push_subscriptions','SELECT')
+     OR NOT has_table_privilege('heycar_user','public.driver_web_push_subscriptions','INSERT')
+     OR NOT has_table_privilege('heycar_user','public.driver_web_push_subscriptions','UPDATE') THEN
+    RAISE EXCEPTION 'WEB_PUSH_SUBSCRIPTION_PRIVILEGES_MISSING';
+  END IF;
+
   IF has_table_privilege('heycar_user','public.admin_audit_logs','UPDATE')
      OR has_table_privilege('heycar_user','public.admin_audit_logs','DELETE')
      OR has_table_privilege('heycar_user','public.admin_audit_logs','TRUNCATE') THEN
