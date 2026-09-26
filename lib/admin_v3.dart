@@ -986,20 +986,20 @@ class _QrPageState extends State<QrPage>{
       return;
     }
     final doc=pw.Document();
-    const perPage=27;
+    const perPage=18;
     final purple=PdfColor.fromHex('#6E22D9');
     final lilac=PdfColor.fromHex('#F0E4FC');
     final muted=PdfColor.fromHex('#665D77');
-    final templateData=await rootBundle.load('assets/Etiket2.png');
+    final templateData=await rootBundle.load('assets/Etiket3.png');
     final template=pw.MemoryImage(templateData.buffer.asUint8List());
 
-    // 27-up A4 layout for the Etiket2 artwork.
-    // Keep the exact artwork ratio at 60 x 30.6 mm.
-    // A4: 3 columns x 9 rows = 27 labels, centered on the page.
-    final labelWidth=60*PdfPageFormat.mm;
-    final labelHeight=30.6*PdfPageFormat.mm;
+    // REAL PRINT SIZE — do not derive this from source image pixels.
+    // Every printed label is exactly 55 x 46 mm (5.5 x 4.6 cm).
+    // A4: 3 columns x 6 rows = 18 labels, centered at 100% / Actual Size.
+    final labelWidth=55*PdfPageFormat.mm;
+    final labelHeight=46*PdfPageFormat.mm;
     final pageHorizontalMargin=(PdfPageFormat.a4.width-(labelWidth*3))/2;
-    final pageVerticalMargin=(PdfPageFormat.a4.height-(labelHeight*9))/2;
+    final pageVerticalMargin=(PdfPageFormat.a4.height-(labelHeight*6))/2;
 
     pw.Widget labelCard(Map<String,dynamic> e){
       final token=_tokenOf(e);
@@ -1010,20 +1010,20 @@ class _QrPageState extends State<QrPage>{
           pw.Positioned.fill(
             child:pw.Image(template,fit:pw.BoxFit.fill),
           ),
-          // Etiket2 already contains the white QR panel. Place the generated
-          // QR inside that blank area and keep the label code directly below it.
+          // Etiket3 is the only active admin label template. Overlay QR/code
+          // proportionally; the physical label box itself stays exactly 55 x 46 mm.
           pw.Positioned(
-            right:1.2*PdfPageFormat.mm,
-            top:1.38*PdfPageFormat.mm,
+            right:1.1*PdfPageFormat.mm,
+            top:2.668*PdfPageFormat.mm,
             child:pw.SizedBox(
-              width:23.16*PdfPageFormat.mm,
-              height:27.48*PdfPageFormat.mm,
+              width:21.01*PdfPageFormat.mm,
+              height:39.56*PdfPageFormat.mm,
               child:pw.Column(children:[
-                pw.SizedBox(height:3.24*PdfPageFormat.mm),
+                pw.SizedBox(height:4.154*PdfPageFormat.mm),
                 pw.Center(
                   child:pw.SizedBox(
-                    width:16.8*PdfPageFormat.mm,
-                    height:16.8*PdfPageFormat.mm,
+                    width:14.707*PdfPageFormat.mm,
+                    height:14.707*PdfPageFormat.mm,
                     child:pw.BarcodeWidget(
                       barcode:pw.Barcode.qrCode(),
                       data:publicUrl(token),
@@ -1031,11 +1031,11 @@ class _QrPageState extends State<QrPage>{
                     ),
                   ),
                 ),
-                pw.SizedBox(height:1.2*PdfPageFormat.mm),
+                pw.SizedBox(height:1.662*PdfPageFormat.mm),
                 pw.Center(
                   child:pw.Container(
-                    width:19.8*PdfPageFormat.mm,
-                    height:3.24*PdfPageFormat.mm,
+                    width:17.859*PdfPageFormat.mm,
+                    height:4.154*PdfPageFormat.mm,
                     alignment:pw.Alignment.center,
                     padding:pw.EdgeInsets.symmetric(horizontal:.384*PdfPageFormat.mm),
                     decoration:pw.BoxDecoration(
@@ -1075,7 +1075,7 @@ class _QrPageState extends State<QrPage>{
         ),
         build:(_){
           final slots=<pw.Widget>[];
-          for(var row=0;row<9;row++){
+          for(var row=0;row<6;row++){
             final cells=<pw.Widget>[];
             for(var col=0;col<3;col++){
               final index=(row*3)+col;
@@ -1094,7 +1094,7 @@ class _QrPageState extends State<QrPage>{
     final suffix=batchFilter=='all'?'tum-qr':batchFilter.toLowerCase();
     await saveAdminFile(
       Uint8List.fromList(bytes),
-      'cepqar-baski-a4-27li-$suffix.pdf',
+      'cepqar-baski-a4-18li-55x46mm-$suffix.pdf',
       'application/pdf',
     );
     final newlyDownloaded=printableRows
@@ -1127,7 +1127,7 @@ class _QrPageState extends State<QrPage>{
     final cardW=w*.382;
     final cardH=h*.860;
     return Stack(children:[
-      Positioned.fill(child:Image.asset('assets/Etiket2.png',fit:BoxFit.fill)),
+      Positioned.fill(child:Image.asset('assets/Etiket3.png',fit:BoxFit.fill)),
       Positioned(
         right:w*.020,
         top:h*.058,
@@ -1201,7 +1201,9 @@ class _QrPageState extends State<QrPage>{
           Text(token,style:const TextStyle(fontWeight:FontWeight.w800,color:_muted,fontSize:13)),
           if((e['batch_code']??'').toString().isNotEmpty)Text('${e['batch_code']} • Parti sıra ${e['batch_serial']??'-'}',style:const TextStyle(color:_muted,fontSize:11)),
           const SizedBox(height:12),
-          ConstrainedBox(constraints:const BoxConstraints(maxWidth:640),child:AspectRatio(aspectRatio:60/30.6,child:RepaintBoundary(key:_stickerKey,child:_sticker(token,url)))),
+          SizedBox(width:324.75,height:271.75,child:RepaintBoundary(key:_stickerKey,child:_sticker(token,url))),
+          const SizedBox(height:7),
+          const Text('Baskı ölçüsü: 55 × 46 mm (5.5 × 4.6 cm) • PDF: %100 / Actual Size',textAlign:TextAlign.center,style:TextStyle(color:_muted,fontSize:11,fontWeight:FontWeight.w700)),
           const SizedBox(height:12),
           Row(children:[
             Expanded(child:OutlinedButton.icon(onPressed:()=>launchUrl(Uri.parse(url),mode:LaunchMode.externalApplication),icon:const Icon(Icons.open_in_new_rounded),label:const Text('QR sayfasını aç',textAlign:TextAlign.center))),
