@@ -360,12 +360,12 @@ push_ui = r"""
 
     var registration = await navigator.serviceWorker.getRegistration('./');
     if (!registration) {
-      registration = await navigator.serviceWorker.register('cepqar-sw.js', { scope: './' });
+      registration = await navigator.serviceWorker.register('firebase-messaging-sw.js', { scope: './' });
     }
     registration = await navigator.serviceWorker.ready;
 
     var fcm = ensureFirebase();
-    var tokenVersion = 'cepqar-fcm-sw-v8-stable-retry';
+    var tokenVersion = 'cepqar-fcm-sw-v9-canonical-worker';
     var savedTokenVersion = localStorage.getItem('cepqar_fcm_token_version') || '';
 
     // Run destructive migration only once. If Chrome's push backend is
@@ -515,20 +515,37 @@ registration = """
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function () {
-      navigator.serviceWorker.register('cepqar-sw.js', { scope: './' })
+      navigator.serviceWorker.register('firebase-messaging-sw.js', { scope: './' })
         .catch(function (error) { console.warn('Cepqar PWA service worker:', error); });
     });
   }
 </script>
 """
-if "cepqar-sw.js" not in html:
+if "firebase-messaging-sw.js" not in html:
     html = html.replace("</body>", install_ui + push_ui + registration + "</body>", 1)
 
 index.write_text(html, encoding="utf-8")
 
 # Network-first/pass-through worker: gives the installable app its own service
 # worker without caching Flutter bundles, so deploy cache-busting keeps working.
-sw = """const VERSION = 'cepqar-pwa-v5';
+sw = """const VERSION = 'cepqar-pwa-v9';
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || '/HeyCar/owner/';
+  event.waitUntil((async () => {
+    const windows = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const client of windows) {
+      if ('focus' in client) {
+        await client.focus();
+        if ('navigate' in client) await client.navigate(target);
+        return;
+      }
+    }
+    if (clients.openWindow) await clients.openWindow(target);
+  })());
+});
+
 importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js');
 
@@ -542,6 +559,7 @@ firebase.initializeApp({
 });
 
 const messaging = firebase.messaging();
+
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
@@ -573,23 +591,7 @@ messaging.onBackgroundMessage((payload) => {
   };
   return self.registration.showNotification(title, options);
 });
-
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  const target = (event.notification.data && event.notification.data.url) || '/HeyCar/owner/';
-  event.waitUntil((async () => {
-    const windows = await clients.matchAll({ type: 'window', includeUncontrolled: true });
-    for (const client of windows) {
-      if ('focus' in client) {
-        await client.focus();
-        if ('navigate' in client) await client.navigate(target);
-        return;
-      }
-    }
-    if (clients.openWindow) await clients.openWindow(target);
-  })());
-});
 """
-(build / "cepqar-sw.js").write_text(sw, encoding="utf-8")
+(build / "firebase-messaging-sw.js").write_text(sw, encoding="utf-8")
 
 print(f"Cepqar PWA ready: base={base_path}, manifest={build/'manifest.json'}")
