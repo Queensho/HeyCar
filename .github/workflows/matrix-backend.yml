@@ -170,10 +170,11 @@ jobs:
           QR_TOKEN="MATRIXNOTIFY"
 
           psql -h 127.0.0.1 -U postgres -d heycar_matrix -v ON_ERROR_STOP=1 <<SQL
-          INSERT INTO users(id,email,display_name,password_hash,role,status,premium)
+          INSERT INTO users(id,email,phone,display_name,password_hash,role,status,premium)
           VALUES(
             '$OWNER_ID',
             'matrix-notify@test.local',
+            '+905551234567',
             'Matrix Notify',
             crypt('MatrixPass123!',gen_salt('bf',12)),
             'user',
@@ -231,3 +232,60 @@ jobs:
           grep -q '"recipient_user_id"' /tmp/matrix-notification.json
 
           echo "MATRIX_NOTIFICATION_RECIPIENT_ROUTING_OK"
+
+          # CORS must fail closed for unknown browser origins while preserving
+          # the canonical GitHub Pages origin used by the public/admin web apps.
+          cors_allowed=$(curl -sS -o /tmp/cors-allowed.json -w '%{http_code}'             -H 'Origin: https://queensho.github.io'             http://127.0.0.1:8090/health)
+          test "$cors_allowed" = "200"
+
+          cors_denied=$(curl -sS -o /tmp/cors-denied.json -w '%{http_code}'             -H 'Origin: https://evil.example'             http://127.0.0.1:8090/health)
+          test "$cors_denied" = "403"
+          grep -q '"CORS_ORIGIN_DENIED"' /tmp/cors-denied.json
+          echo "MATRIX_CORS_FAIL_CLOSED_OK"
+
+          # Owner login must not reveal whether a valid phone exists, and must
+          # throttle repeated password guessing from one source address.
+          owner_known=$(curl -sS -o /tmp/owner-known.json -w '%{http_code}'             -X POST -H 'Content-Type: application/json'             -d '{"phone":"+905551234567","password":"WrongPass123!"}'             http://127.0.0.1:8090/api/owner/login-phone)
+          owner_missing=$(curl -sS -o /tmp/owner-missing.json -w '%{http_code}'             -X POST -H 'Content-Type: application/json'             -d '{"phone":"+905559999999","password":"WrongPass123!"}'             http://127.0.0.1:8090/api/owner/login-phone)
+          test "$owner_known" = "401"
+          test "$owner_missing" = "401"
+          grep -q '"INVALID_CREDENTIALS"' /tmp/owner-known.json
+          grep -q '"INVALID_CREDENTIALS"' /tmp/owner-missing.json
+
+          for i in $(seq 1 8); do
+            code=$(curl -sS -o /tmp/owner-rate.json -w '%{http_code}'               -X POST -H 'Content-Type: application/json'               -d '{"phone":"+905559999999","password":"WrongPass123!"}'               http://127.0.0.1:8090/api/owner/login-phone)
+            test "$code" = "401"
+          done
+          owner_limited=$(curl -sS -o /tmp/owner-limited.json -w '%{http_code}'             -X POST -H 'Content-Type: application/json'             -d '{"phone":"+905559999999","password":"WrongPass123!"}'             http://127.0.0.1:8090/api/owner/login-phone)
+          test "$owner_limited" = "429"
+          grep -q '"TOO_MANY_ATTEMPTS"' /tmp/owner-limited.json
+          echo "MATRIX_OWNER_LOGIN_HARDENING_OK"
+
+          # Driver password login has an independent limiter.
+          for i in $(seq 1 10); do
+            code=$(curl -sS -o /tmp/driver-rate.json -w '%{http_code}'               -X POST -H 'Content-Type: application/json'               -d '{"phone":"+905558888888","password":"WrongPass123!"}'               http://127.0.0.1:8090/api/driver/login-phone)
+            test "$code" = "401"
+          done
+          driver_limited=$(curl -sS -o /tmp/driver-limited.json -w '%{http_code}'             -X POST -H 'Content-Type: application/json'             -d '{"phone":"+905558888888","password":"WrongPass123!"}'             http://127.0.0.1:8090/api/driver/login-phone)
+          test "$driver_limited" = "429"
+          grep -q '"TOO_MANY_ATTEMPTS"' /tmp/driver-limited.json
+          echo "MATRIX_DRIVER_LOGIN_RATE_LIMIT_OK"
+
+          # Public QR resolution must throttle enumeration attempts.
+          for i in $(seq 1 30); do
+            code=$(curl -sS -o /tmp/qr-resolve.json -w '%{http_code}'               "http://127.0.0.1:8090/api/qr/$QR_TOKEN")
+            test "$code" = "200"
+          done
+          qr_resolve_limited=$(curl -sS -o /tmp/qr-resolve-limited.json -w '%{http_code}'             "http://127.0.0.1:8090/api/qr/$QR_TOKEN")
+          test "$qr_resolve_limited" = "429"
+          echo "MATRIX_PUBLIC_QR_RESOLVE_RATE_LIMIT_OK"
+
+          # Invalid tokens previously bypassed owner-scoped QR abuse controls.
+          # Route-level scan-session throttling must stop bulk token probing.
+          for i in $(seq 1 20); do
+            code=$(curl -sS -o /tmp/qr-session-probe.json -w '%{http_code}'               -X POST -H 'Content-Type: application/json' -d '{}'               "http://127.0.0.1:8090/api/qr/MISSING$i/session")
+            test "$code" = "404"
+          done
+          qr_session_limited=$(curl -sS -o /tmp/qr-session-limited.json -w '%{http_code}'             -X POST -H 'Content-Type: application/json' -d '{}'             "http://127.0.0.1:8090/api/qr/MISSING21/session")
+          test "$qr_session_limited" = "429"
+          echo "MATRIX_QR_SESSION_PROBE_RATE_LIMIT_OK"
