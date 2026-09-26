@@ -18,14 +18,22 @@ configureTrustedProxy(app);
 app.disable('x-powered-by');
 app.use(helmet());
 
-const allowedOrigins=String(process.env.CORS_ORIGINS||'')
+const defaultBrowserOrigins=[
+  'https://queensho.github.io',
+  'https://cepqar.com',
+  'https://www.cepqar.com',
+];
+const configuredOrigins=String(process.env.CORS_ORIGINS||'')
   .split(',')
   .map(x=>x.trim())
   .filter(Boolean);
+const allowedOrigins=configuredOrigins.length?configuredOrigins:defaultBrowserOrigins;
 
 app.use(cors({
   origin(origin,callback){
-    if(!origin||allowedOrigins.length===0||allowedOrigins.includes(origin)){
+    // Native/mobile clients normally send no Origin header; browser clients
+    // must match the configured/default allow-list.
+    if(!origin||allowedOrigins.includes(origin)){
       return callback(null,true);
     }
     return callback(new Error('CORS_ORIGIN_DENIED'));
