@@ -123,24 +123,17 @@ module.exports=function registerPushRoutes(app,pool){
 
       if(isWeb){
         const webReceiptId=crypto.randomUUID();
+        // Data-only is intentional for PWA: the service worker owns display
+        // and can confirm that Chrome actually delivered the background push.
         message.data={
           ...fcmData,
           webReceiptId,
-          webReceiptSig:webReceiptSig(webReceiptId)
+          webReceiptSig:webReceiptSig(webReceiptId),
+          title:String(title||'Cepqar'),
+          body:String(body||'Yeni bir bildiriminiz var.')
         };
-        const tag=String(data.notificationId||data.messageId||data.callId||data.eventId||Date.now());
-        message.notification={title,body};
         message.webpush={
-          headers:{Urgency:'high'},
-          notification:{
-            title,
-            body,
-            icon:'https://queensho.github.io/HeyCar/owner/icons/cepqar-192.png',
-            badge:'https://queensho.github.io/HeyCar/owner/icons/cepqar-192.png',
-            tag:'cepqar_'+tag,
-            renotify:true
-          },
-          fcm_options:{link:'https://queensho.github.io/HeyCar/owner/'}
+          headers:{Urgency:'high',TTL:'120'}
         };
       }else{
         message.android=android;
