@@ -258,6 +258,8 @@ install_ui = r"""
 """
 
 push_ui = r"""
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js"></script>
 <style>
   #cepqar-push-banner {
     position: fixed; z-index: 2147483645;
@@ -300,83 +302,91 @@ push_ui = r"""
   var closeButton = document.getElementById('cepqar-push-close');
   var subtitle = document.getElementById('cepqar-push-subtitle');
 
+  var firebaseConfig = {
+    apiKey: "AIzaSyDgb-J_Ep-63EQM7U5OI_Y-pfEbJxUnD-M",
+    authDomain: "cepqar.firebaseapp.com",
+    projectId: "cepqar",
+    storageBucket: "cepqar.firebasestorage.app",
+    messagingSenderId: "1003508989542",
+    appId: "1:1003508989542:web:8b202856b0e298db43b7a7",
+    measurementId: "G-174BCF3CR2"
+  };
+  var firebaseVapidKey = "BE0f7fqD5JQfay85f32TtpWfAn6ronMccihvbHD9bSEzy-PV0joBE0smgWg-Pxh4gg3tcKOdR3SDxA5_cnDhGCw";
+  var messaging = null;
+
   function standalone() {
     return window.matchMedia('(display-mode: standalone)').matches ||
            window.navigator.standalone === true;
   }
 
-  function base64UrlToUint8Array(value) {
-    var padding = '='.repeat((4 - value.length % 4) % 4);
-    var base64 = (value + padding).replace(/-/g, '+').replace(/_/g, '/');
-    var raw = window.atob(base64);
-    var output = new Uint8Array(raw.length);
-    for (var i = 0; i < raw.length; ++i) output[i] = raw.charCodeAt(i);
-    return output;
+  function ensureFirebase() {
+    if (!window.firebase || !firebase.messaging) throw new Error('FIREBASE_SDK_NOT_READY');
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    if (!messaging) {
+      messaging = firebase.messaging();
+      messaging.onMessage(function (payload) {
+        var title = (payload.notification && payload.notification.title) || (payload.data && payload.data.title) || 'Cepqar';
+        var body = (payload.notification && payload.notification.body) || (payload.data && payload.data.body) || 'Yeni bir bildiriminiz var.';
+        navigator.serviceWorker.ready.then(function (registration) {
+          registration.showNotification(title, {
+            body: body,
+            icon: 'icons/cepqar-192.png',
+            badge: 'icons/cepqar-192.png',
+            data: Object.assign({}, payload.data || {}, { url: '/HeyCar/owner/' })
+          });
+        }).catch(function () {});
+      });
+    }
+    return messaging;
+  }
+
+  function deviceId() {
+    var key = 'cepqar_web_device_id';
+    var current = localStorage.getItem(key);
+    if (current) return current;
+    current = (window.crypto && crypto.randomUUID)
+      ? 'web-' + crypto.randomUUID()
+      : 'web-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+    localStorage.setItem(key, current);
+    return current;
   }
 
   async function subscribeNow() {
-    if (!authToken || !('serviceWorker' in navigator) || !('PushManager' in window)) return false;
+    if (!authToken || !('serviceWorker' in navigator) || !('Notification' in window)) return false;
 
-    // Mobile browsers require the permission prompt to stay inside the direct
-    // user gesture. Ask before any network await so the click is not lost.
     var permission = Notification.permission;
     if (permission !== 'granted') permission = await Notification.requestPermission();
     if (permission !== 'granted') return false;
-
-    var configResponse = await fetch(api + '/api/push/web/config', { cache: 'no-store' });
-    if (!configResponse.ok) throw new Error('WEB_PUSH_CONFIG_' + configResponse.status);
-    var config = await configResponse.json();
-    if (!config.enabled || !config.publicKey) throw new Error('WEB_PUSH_NOT_CONFIGURED');
 
     var registration = await navigator.serviceWorker.getRegistration('./');
     if (!registration) {
       registration = await navigator.serviceWorker.register('cepqar-sw.js', { scope: './' });
     }
-    if (registration.waiting) registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-
-    // Always use the active registration returned by ready. A registration
-    // object captured while the worker is installing/waiting can make
-    // PushManager.subscribe() fail with AbortError on Chromium Android.
     registration = await navigator.serviceWorker.ready;
-    if (!registration.active) {
-      await new Promise(function (resolve) { setTimeout(resolve, 500); });
-      registration = await navigator.serviceWorker.ready;
-    }
 
-    var subscription = await registration.pushManager.getSubscription();
-    if (!subscription) {
-      var options = {
-        userVisibleOnly: true,
-        applicationServerKey: base64UrlToUint8Array(config.publicKey)
-      };
-      try {
-        subscription = await registration.pushManager.subscribe(options);
-      } catch (firstError) {
-        console.warn('Cepqar push subscribe first attempt:', firstError);
-        await registration.update().catch(function () {});
-        await new Promise(function (resolve) { setTimeout(resolve, 1200); });
-        registration = await navigator.serviceWorker.ready;
-        if (!registration.active) {
-          await new Promise(function (resolve) { setTimeout(resolve, 600); });
-          registration = await navigator.serviceWorker.ready;
-        }
-        subscription = await registration.pushManager.getSubscription();
-        if (!subscription) subscription = await registration.pushManager.subscribe(options);
-      }
-    }
+    var fcm = ensureFirebase();
+    var token = await fcm.getToken({
+      vapidKey: firebaseVapidKey,
+      serviceWorkerRegistration: registration
+    });
+    if (!token) throw new Error('FCM_WEB_TOKEN_EMPTY');
 
-    var endpoint = authRole === 'driver'
-      ? '/api/driver/web-push-subscription'
-      : '/api/owner/web-push-subscription';
+    var endpoint = authRole === 'driver' ? '/api/driver/push-token' : '/api/owner/push-token';
     var save = await fetch(api + endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer ' + authToken
       },
-      body: JSON.stringify(subscription.toJSON())
+      body: JSON.stringify({
+        token: token,
+        deviceId: deviceId(),
+        platform: 'web'
+      })
     });
-    if (!save.ok) throw new Error('WEB_PUSH_SAVE_' + save.status);
+    if (!save.ok) throw new Error('FCM_WEB_SAVE_' + save.status);
+
+    localStorage.setItem('cepqar_fcm_web_token', token);
     localStorage.setItem('cepqar_web_push_enabled', '1');
     banner.style.display = 'none';
     return true;
@@ -386,11 +396,11 @@ push_ui = r"""
     authToken = String(token || '');
     authRole = role === 'driver' ? 'driver' : 'owner';
     if (!authToken) return false;
-    if (!('Notification' in window) || !('PushManager' in window) || !('serviceWorker' in navigator)) return false;
+    if (!('Notification' in window) || !('serviceWorker' in navigator)) return false;
 
     if (Notification.permission === 'granted') {
       try { return await subscribeNow(); }
-      catch (error) { console.warn('Cepqar web push refresh:', error); }
+      catch (error) { console.warn('Cepqar FCM web refresh:', error); }
     }
 
     if (!standalone()) return false;
@@ -407,22 +417,22 @@ push_ui = r"""
 
   enableButton.addEventListener('click', async function () {
     enableButton.disabled = true;
-    subtitle.textContent = 'Bildirim izni hazırlanıyor…';
+    subtitle.textContent = 'Firebase bildirim servisi hazırlanıyor…';
     try {
       var ok = await subscribeNow();
       if (!ok) subtitle.textContent = 'Bildirim izni verilmedi.';
     } catch (error) {
-      console.warn('Cepqar web push:', error);
-      var code = String(error && (error.message || error.name) || '');
-      if (code.indexOf('WEB_PUSH_SAVE_401') >= 0) {
+      console.warn('Cepqar FCM web:', error);
+      var code = String((error && (error.code || error.name || error.message)) || 'UNKNOWN')
+        .replace(/[^A-Za-z0-9_ .:\/-]/g, '').slice(0,100);
+      if (code.indexOf('FCM_WEB_SAVE_401') >= 0) {
         subtitle.textContent = 'Oturum yenileniyor. Cepqar’ı kapatıp tekrar açın.';
-      } else if (code.indexOf('WEB_PUSH_SAVE_') >= 0) {
-        subtitle.textContent = 'Sunucu aboneliği kaydedemedi. Tekrar deneyin.';
-      } else if (code.indexOf('NotAllowed') >= 0 || Notification.permission === 'denied') {
+      } else if (code.indexOf('FCM_WEB_SAVE_') >= 0) {
+        subtitle.textContent = 'Bildirim anahtarı sunucuya kaydedilemedi.';
+      } else if (code.indexOf('permission-blocked') >= 0 || Notification.permission === 'denied') {
         subtitle.textContent = 'Bildirim izni cihaz ayarlarından kapalı.';
       } else {
-        var detail = String((error && (error.name || error.message)) || 'UNKNOWN').replace(/[^A-Za-z0-9_ .:-]/g, '').slice(0,80);
-        subtitle.textContent = 'Bildirim servisi hatası: ' + detail;
+        subtitle.textContent = 'Firebase bildirim hatası: ' + code;
       }
     } finally {
       enableButton.disabled = false;
@@ -453,7 +463,21 @@ index.write_text(html, encoding="utf-8")
 
 # Network-first/pass-through worker: gives the installable app its own service
 # worker without caching Flutter bundles, so deploy cache-busting keeps working.
-sw = """const VERSION = 'cepqar-pwa-v2';
+sw = """const VERSION = 'cepqar-pwa-v3';
+importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js');
+
+firebase.initializeApp({
+  apiKey: "AIzaSyDgb-J_Ep-63EQM7U5OI_Y-pfEbJxUnD-M",
+  authDomain: "cepqar.firebaseapp.com",
+  projectId: "cepqar",
+  storageBucket: "cepqar.firebasestorage.app",
+  messagingSenderId: "1003508989542",
+  appId: "1:1003508989542:web:8b202856b0e298db43b7a7"
+});
+
+const messaging = firebase.messaging();
+
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
@@ -469,28 +493,29 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   event.respondWith(fetch(event.request));
 });
-self.addEventListener('push', (event) => {
-  var payload = {};
-  try { payload = event.data ? event.data.json() : {}; } catch (_) {}
-  var data = payload.data || {};
-  var title = payload.title || 'Cepqar';
-  var options = {
-    body: payload.body || 'Yeni bir bildiriminiz var.',
-    icon: payload.icon || 'icons/cepqar-192.png',
-    badge: payload.badge || 'icons/cepqar-192.png',
-    data: { ...data, url: payload.url || '/HeyCar/owner/' },
+
+messaging.onBackgroundMessage((payload) => {
+  const data = payload.data || {};
+  const notification = payload.notification || {};
+  const title = notification.title || data.title || 'Cepqar';
+  const options = {
+    body: notification.body || data.body || data.message || 'Yeni bir bildiriminiz var.',
+    icon: '/HeyCar/owner/icons/cepqar-192.png',
+    badge: '/HeyCar/owner/icons/cepqar-192.png',
+    data: { ...data, url: '/HeyCar/owner/' },
     tag: data.notificationId ? 'cepqar-' + data.notificationId : undefined,
     renotify: true,
     vibrate: [200, 100, 200]
   };
-  event.waitUntil(self.registration.showNotification(title, options));
+  return self.registration.showNotification(title, options);
 });
+
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  var target = (event.notification.data && event.notification.data.url) || '/HeyCar/owner/';
+  const target = (event.notification.data && event.notification.data.url) || '/HeyCar/owner/';
   event.waitUntil((async () => {
-    var windows = await clients.matchAll({ type: 'window', includeUncontrolled: true });
-    for (var client of windows) {
+    const windows = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const client of windows) {
       if ('focus' in client) {
         await client.focus();
         if ('navigate' in client) await client.navigate(target);
