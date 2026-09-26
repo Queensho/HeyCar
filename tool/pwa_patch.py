@@ -631,7 +631,24 @@ messaging.onBackgroundMessage((payload) => {
     renotify: true,
     vibrate: [200, 100, 200]
   };
-  return self.registration.showNotification(title, options);
+
+  const tasks = [];
+  if (data.webReceiptId && data.webReceiptSig) {
+    tasks.push(
+      fetch('https://heycar-api-185-165-46-213.nip.io/api/push/web-receipt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: data.webReceiptId,
+          sig: data.webReceiptSig,
+          stage: 'background_handler'
+        }),
+        keepalive: true
+      }).catch(() => null)
+    );
+  }
+  tasks.push(self.registration.showNotification(title, options));
+  return Promise.all(tasks);
 });
 """
 (build / "firebase-messaging-sw.js").write_text(sw, encoding="utf-8")
