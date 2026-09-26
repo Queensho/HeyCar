@@ -374,7 +374,12 @@ push_ui = r"""
     var savedTokenVersion = localStorage.getItem('cepqar_fcm_token_version') || '';
     if (savedTokenVersion !== tokenVersion) {
       try { await fcm.deleteToken(); } catch (_) {}
+      try {
+        var oldSubscription = await registration.pushManager.getSubscription();
+        if (oldSubscription) await oldSubscription.unsubscribe();
+      } catch (_) {}
       try { await registration.update(); } catch (_) {}
+      await new Promise(function (resolve) { setTimeout(resolve, 400); });
       registration = await navigator.serviceWorker.ready;
     }
 
@@ -477,8 +482,8 @@ push_ui = r"""
       var rawCode = '';
       if (error) {
         if (typeof error.code === 'string' && error.code) rawCode = error.code;
-        else if (typeof error.name === 'string' && error.name) rawCode = error.name;
         else if (typeof error.message === 'string' && error.message) rawCode = error.message;
+        else if (typeof error.name === 'string' && error.name) rawCode = error.name;
         else if (error.code != null) rawCode = 'DOM_' + String(error.code);
       }
       var code = String(rawCode || 'UNKNOWN')
