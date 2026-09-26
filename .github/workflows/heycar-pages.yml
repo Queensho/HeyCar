@@ -95,6 +95,29 @@ jobs:
         run: |
           flutter build web --release --target lib/web_main.dart --base-href "/HeyCar/isletme/" --pwa-strategy=none
           rm -f build/web/flutter_service_worker.js build/web/version.json
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          version=os.environ.get('GITHUB_SHA','dev')[:12]
+          index=Path('build/web/index.html')
+          html=index.read_text()
+          html=html.replace('src="flutter_bootstrap.js"', f'src="flutter_bootstrap.js?v={version}"')
+          html=html.replace(
+              '<meta charset="UTF-8">',
+              '<meta charset="UTF-8">\n'
+              '  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">\n'
+              '  <meta http-equiv="Pragma" content="no-cache">\n'
+              '  <meta http-equiv="Expires" content="0">',
+              1,
+          )
+          index.write_text(html)
+
+          bootstrap=Path('build/web/flutter_bootstrap.js')
+          js=bootstrap.read_text().replace('"main.dart.js"', f'"main.dart.js?v={version}"')
+          bootstrap.write_text(js)
+          print(f'Business cache bust version: {version}')
+          PY
           mkdir -p deploy/isletme
           cp -R build/web/. deploy/isletme/
 
@@ -102,6 +125,29 @@ jobs:
         run: |
           flutter build web --release --target lib/entry_theme_live.dart --base-href "/HeyCar/owner/" --pwa-strategy=none
           rm -f build/web/flutter_service_worker.js build/web/version.json
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          version=os.environ.get('GITHUB_SHA','dev')[:12]
+          index=Path('build/web/index.html')
+          html=index.read_text()
+          html=html.replace('src="flutter_bootstrap.js"', f'src="flutter_bootstrap.js?v={version}"')
+          html=html.replace(
+              '<meta charset="UTF-8">',
+              '<meta charset="UTF-8">\n'
+              '  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">\n'
+              '  <meta http-equiv="Pragma" content="no-cache">\n'
+              '  <meta http-equiv="Expires" content="0">',
+              1,
+          )
+          index.write_text(html)
+
+          bootstrap=Path('build/web/flutter_bootstrap.js')
+          js=bootstrap.read_text().replace('"main.dart.js"', f'"main.dart.js?v={version}"')
+          bootstrap.write_text(js)
+          print(f'Owner preview cache bust version: {version}')
+          PY
           mkdir -p deploy/owner
           cp -R build/web/. deploy/owner/
 
