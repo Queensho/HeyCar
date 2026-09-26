@@ -257,6 +257,144 @@ install_ui = r"""
 </script>
 """
 
+push_ui = r"""
+<style>
+  #cepqar-push-banner {
+    position: fixed; z-index: 2147483645;
+    top: max(10px, env(safe-area-inset-top)); left: 12px; right: 12px;
+    display: none; align-items: center; gap: 10px;
+    padding: 10px 10px 10px 12px; border-radius: 16px;
+    background: rgba(7,16,31,.97); border: 1px solid rgba(124,77,255,.45);
+    box-shadow: 0 10px 30px rgba(0,0,0,.28); color: #fff;
+    font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+  }
+  #cepqar-push-banner img { width: 42px; height: 42px; border-radius: 11px; flex: 0 0 auto; }
+  #cepqar-push-banner .copy { min-width: 0; flex: 1 1 auto; }
+  #cepqar-push-banner .title { font-size: 14px; font-weight: 800; margin-bottom: 3px; }
+  #cepqar-push-banner .sub { font-size: 11.5px; line-height: 1.2; color: #b8c0d4; }
+  #cepqar-push-enable {
+    border: 0; border-radius: 11px; padding: 10px 13px;
+    background: #6E22D9; color: #fff; font-weight: 800; font-size: 13px; white-space: nowrap;
+  }
+  #cepqar-push-close {
+    border: 0; background: transparent; color: #8e98ad;
+    width: 28px; height: 28px; font-size: 22px; line-height: 24px; padding: 0;
+  }
+</style>
+<div id="cepqar-push-banner" role="region" aria-label="Cepqar bildirimleri">
+  <img src="icons/cepqar-192.png" alt="">
+  <div class="copy">
+    <div class="title">Cepqar bildirimlerini aç</div>
+    <div class="sub" id="cepqar-push-subtitle">QR mesajları ve araç bildirimleri anında gelsin.</div>
+  </div>
+  <button id="cepqar-push-enable" type="button">Aç</button>
+  <button id="cepqar-push-close" type="button" aria-label="Kapat">×</button>
+</div>
+<script>
+(function () {
+  var api = 'https://heycar-api-185-165-46-213.nip.io';
+  var authToken = '';
+  var authRole = 'owner';
+  var banner = document.getElementById('cepqar-push-banner');
+  var enableButton = document.getElementById('cepqar-push-enable');
+  var closeButton = document.getElementById('cepqar-push-close');
+  var subtitle = document.getElementById('cepqar-push-subtitle');
+
+  function standalone() {
+    return window.matchMedia('(display-mode: standalone)').matches ||
+           window.navigator.standalone === true;
+  }
+
+  function base64UrlToUint8Array(value) {
+    var padding = '='.repeat((4 - value.length % 4) % 4);
+    var base64 = (value + padding).replace(/-/g, '+').replace(/_/g, '/');
+    var raw = window.atob(base64);
+    var output = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; ++i) output[i] = raw.charCodeAt(i);
+    return output;
+  }
+
+  async function subscribeNow() {
+    if (!authToken || !('serviceWorker' in navigator) || !('PushManager' in window)) return false;
+    var configResponse = await fetch(api + '/api/push/web/config', { cache: 'no-store' });
+    if (!configResponse.ok) throw new Error('WEB_PUSH_CONFIG_' + configResponse.status);
+    var config = await configResponse.json();
+    if (!config.enabled || !config.publicKey) throw new Error('WEB_PUSH_NOT_CONFIGURED');
+
+    var permission = Notification.permission;
+    if (permission !== 'granted') permission = await Notification.requestPermission();
+    if (permission !== 'granted') return false;
+
+    var registration = await navigator.serviceWorker.ready;
+    var subscription = await registration.pushManager.getSubscription();
+    if (!subscription) {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: base64UrlToUint8Array(config.publicKey)
+      });
+    }
+
+    var endpoint = authRole === 'driver'
+      ? '/api/driver/web-push-subscription'
+      : '/api/owner/web-push-subscription';
+    var save = await fetch(api + endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + authToken
+      },
+      body: JSON.stringify(subscription.toJSON())
+    });
+    if (!save.ok) throw new Error('WEB_PUSH_SAVE_' + save.status);
+    localStorage.setItem('cepqar_web_push_enabled', '1');
+    banner.style.display = 'none';
+    return true;
+  }
+
+  window.cepqarEnableWebPush = async function (token, role) {
+    authToken = String(token || '');
+    authRole = role === 'driver' ? 'driver' : 'owner';
+    if (!authToken) return false;
+    if (!('Notification' in window) || !('PushManager' in window) || !('serviceWorker' in navigator)) return false;
+
+    if (Notification.permission === 'granted') {
+      try { return await subscribeNow(); }
+      catch (error) { console.warn('Cepqar web push refresh:', error); }
+    }
+
+    if (!standalone()) return false;
+    if (Notification.permission === 'denied') {
+      subtitle.textContent = 'Bildirim izni tarayıcı ayarlarından kapalı.';
+      enableButton.style.display = 'none';
+    } else {
+      subtitle.textContent = 'QR mesajları ve araç bildirimleri anında gelsin.';
+      enableButton.style.display = '';
+    }
+    banner.style.display = 'flex';
+    return false;
+  };
+
+  enableButton.addEventListener('click', async function () {
+    enableButton.disabled = true;
+    subtitle.textContent = 'Bildirim izni hazırlanıyor…';
+    try {
+      var ok = await subscribeNow();
+      if (!ok) subtitle.textContent = 'Bildirim izni verilmedi.';
+    } catch (error) {
+      console.warn('Cepqar web push:', error);
+      subtitle.textContent = 'Bildirimler açılamadı. Tekrar deneyin.';
+    } finally {
+      enableButton.disabled = false;
+    }
+  });
+
+  closeButton.addEventListener('click', function () {
+    banner.style.display = 'none';
+  });
+})();
+</script>
+"""
+
 registration = """
 <script>
   if ('serviceWorker' in navigator) {
@@ -268,13 +406,13 @@ registration = """
 </script>
 """
 if "cepqar-sw.js" not in html:
-    html = html.replace("</body>", install_ui + registration + "</body>", 1)
+    html = html.replace("</body>", install_ui + push_ui + registration + "</body>", 1)
 
 index.write_text(html, encoding="utf-8")
 
 # Network-first/pass-through worker: gives the installable app its own service
 # worker without caching Flutter bundles, so deploy cache-busting keeps working.
-sw = """const VERSION = 'cepqar-pwa-v1';
+sw = """const VERSION = 'cepqar-pwa-v2';
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
@@ -286,6 +424,37 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   event.respondWith(fetch(event.request));
+});
+self.addEventListener('push', (event) => {
+  var payload = {};
+  try { payload = event.data ? event.data.json() : {}; } catch (_) {}
+  var data = payload.data || {};
+  var title = payload.title || 'Cepqar';
+  var options = {
+    body: payload.body || 'Yeni bir bildiriminiz var.',
+    icon: payload.icon || 'icons/cepqar-192.png',
+    badge: payload.badge || 'icons/cepqar-192.png',
+    data: { ...data, url: payload.url || '/HeyCar/owner/' },
+    tag: data.notificationId ? 'cepqar-' + data.notificationId : undefined,
+    renotify: true,
+    vibrate: [200, 100, 200]
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  var target = (event.notification.data && event.notification.data.url) || '/HeyCar/owner/';
+  event.waitUntil((async () => {
+    var windows = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (var client of windows) {
+      if ('focus' in client) {
+        await client.focus();
+        if ('navigate' in client) await client.navigate(target);
+        return;
+      }
+    }
+    if (clients.openWindow) await clients.openWindow(target);
+  })());
 });
 """
 (build / "cepqar-sw.js").write_text(sw, encoding="utf-8")
