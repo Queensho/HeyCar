@@ -160,3 +160,74 @@ jobs:
             http://127.0.0.1:8090/api/qr/activate
 
           echo "MATRIX_AUTH_BOUNDARIES_OK"
+
+          # Real public QR notification round-trip. This catches schema drift
+          # where application code returns/routes recipient_user_id but a fresh
+          # migration chain forgot to create the column.
+          OWNER_ID="00000000-0000-4000-8000-000000000111"
+          VEHICLE_ID="00000000-0000-4000-8000-000000000222"
+          QR_ID="00000000-0000-4000-8000-000000000333"
+          QR_TOKEN="MATRIXNOTIFY"
+
+          psql -h 127.0.0.1 -U postgres -d heycar_matrix -v ON_ERROR_STOP=1 <<SQL
+          INSERT INTO users(id,email,display_name,password_hash,role,status,premium)
+          VALUES(
+            '$OWNER_ID',
+            'matrix-notify@test.local',
+            'Matrix Notify',
+            crypt('MatrixPass123!',gen_salt('bf',12)),
+            'user',
+            'active',
+            false
+          );
+
+          INSERT INTO vehicles(id,owner_id,plate,make,model,color)
+          VALUES(
+            '$VEHICLE_ID',
+            '$OWNER_ID',
+            '34MTR999',
+            'Matrix',
+            'Notify',
+            'Test'
+          );
+
+          INSERT INTO qr_tags(id,token,vehicle_id,status,activated_at)
+          VALUES(
+            '$QR_ID',
+            '$QR_TOKEN',
+            '$VEHICLE_ID',
+            'active',
+            now()
+          );
+          SQL
+
+          session_code=$(curl -sS -o /tmp/matrix-session.json -w '%{http_code}' \
+            -X POST -H 'Content-Type: application/json' -d '{}' \
+            "http://127.0.0.1:8090/api/qr/$QR_TOKEN/session")
+          if [ "$session_code" != "201" ]; then
+            echo "Expected scan session HTTP 201, got $session_code"
+            cat /tmp/matrix-session.json || true
+            exit 1
+          fi
+
+          scan_token=$(node -e "const fs=require('fs');const x=JSON.parse(fs.readFileSync('/tmp/matrix-session.json','utf8'));if(!x.scanToken)process.exit(1);process.stdout.write(x.scanToken)")
+          test -n "$scan_token"
+
+          notify_code=$(curl -sS -o /tmp/matrix-notification.json -w '%{http_code}' \
+            -X POST \
+            -H 'Content-Type: application/json' \
+            -H "X-Scan-Token: $scan_token" \
+            -d '{"type":"lights_on","message":"Matrix notification recipient routing test"}' \
+            "http://127.0.0.1:8090/api/qr/$QR_TOKEN/notifications")
+          if [ "$notify_code" != "201" ]; then
+            echo "Expected notification HTTP 201, got $notify_code"
+            cat /tmp/matrix-notification.json || true
+            exit 1
+          fi
+
+          routed_recipient=$(psql -h 127.0.0.1 -U postgres -d heycar_matrix -Atqc \
+            "SELECT recipient_user_id::text FROM vehicle_notifications WHERE qr_token='$QR_TOKEN' ORDER BY created_at DESC LIMIT 1")
+          test "$routed_recipient" = "$OWNER_ID"
+          grep -q '"recipient_user_id"' /tmp/matrix-notification.json
+
+          echo "MATRIX_NOTIFICATION_RECIPIENT_ROUTING_OK"
