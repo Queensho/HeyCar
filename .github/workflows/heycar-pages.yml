@@ -148,6 +148,8 @@ jobs:
           bootstrap.write_text(js)
           print(f'Owner preview cache bust version: {version}')
           PY
+          python3 -m pip install --quiet pillow
+          python3 tool/pwa_patch.py build/web /HeyCar/owner/
           mkdir -p deploy/owner
           cp -R build/web/. deploy/owner/
 
