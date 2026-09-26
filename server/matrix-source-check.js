@@ -42,6 +42,17 @@ if(fs.existsSync('reminder-routes.js')){
   throw new Error('LEGACY_REMINDER_ENTRYPOINT_PRESENT');
 }
 
+requireText(
+  'migrate.js',
+  'MIGRATION_CHECKSUM_MISMATCH',
+  'MIGRATION_CHECKSUM_GUARD_MISSING'
+);
+requireText(
+  'migrate.js',
+  'schema_migrations',
+  'MIGRATION_TRACKING_TABLE_MISSING'
+);
+
 
 requireText(
   'owner-auth-routes.js',
