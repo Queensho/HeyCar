@@ -316,14 +316,17 @@ push_ui = r"""
 
   async function subscribeNow() {
     if (!authToken || !('serviceWorker' in navigator) || !('PushManager' in window)) return false;
+
+    // Mobile browsers require the permission prompt to stay inside the direct
+    // user gesture. Ask before any network await so the click is not lost.
+    var permission = Notification.permission;
+    if (permission !== 'granted') permission = await Notification.requestPermission();
+    if (permission !== 'granted') return false;
+
     var configResponse = await fetch(api + '/api/push/web/config', { cache: 'no-store' });
     if (!configResponse.ok) throw new Error('WEB_PUSH_CONFIG_' + configResponse.status);
     var config = await configResponse.json();
     if (!config.enabled || !config.publicKey) throw new Error('WEB_PUSH_NOT_CONFIGURED');
-
-    var permission = Notification.permission;
-    if (permission !== 'granted') permission = await Notification.requestPermission();
-    if (permission !== 'granted') return false;
 
     var registration = await navigator.serviceWorker.getRegistration('./');
     if (!registration) {
@@ -406,7 +409,8 @@ push_ui = r"""
       } else if (code.indexOf('NotAllowed') >= 0 || Notification.permission === 'denied') {
         subtitle.textContent = 'Bildirim izni cihaz ayarlarından kapalı.';
       } else {
-        subtitle.textContent = 'Bildirim servisine bağlanılamadı. Tekrar deneyin.';
+        var detail = String((error && (error.name || error.message)) || 'UNKNOWN').replace(/[^A-Za-z0-9_ .:-]/g, '').slice(0,80);
+        subtitle.textContent = 'Bildirim servisi hatası: ' + detail;
       }
     } finally {
       enableButton.disabled = false;
