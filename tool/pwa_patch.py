@@ -365,25 +365,48 @@ push_ui = r"""
     registration = await navigator.serviceWorker.ready;
 
     var fcm = ensureFirebase();
-    var tokenVersion = 'cepqar-fcm-sw-v7-firebase-vapid';
+    var tokenVersion = 'cepqar-fcm-sw-v8-stable-retry';
     var savedTokenVersion = localStorage.getItem('cepqar_fcm_token_version') || '';
+
+    // Run destructive migration only once. If Chrome's push backend is
+    // temporarily unavailable, repeated button taps must not keep deleting the
+    // browser subscription and make recovery harder.
     if (savedTokenVersion !== tokenVersion) {
+      localStorage.setItem('cepqar_fcm_token_version', tokenVersion);
       try { await fcm.deleteToken(); } catch (_) {}
       try {
         var oldSubscription = await registration.pushManager.getSubscription();
         if (oldSubscription) await oldSubscription.unsubscribe();
       } catch (_) {}
       try { await registration.update(); } catch (_) {}
-      await new Promise(function (resolve) { setTimeout(resolve, 400); });
+      await new Promise(function (resolve) { setTimeout(resolve, 700); });
       registration = await navigator.serviceWorker.ready;
     }
 
-    var token = await fcm.getToken({
-      vapidKey: firebaseVapidKey,
-      serviceWorkerRegistration: registration
-    });
-    localStorage.setItem('cepqar_fcm_token_version', tokenVersion);
-    if (!token) throw new Error('FCM_WEB_TOKEN_EMPTY');
+    var token = '';
+    var lastTokenError = null;
+    var retryDelays = [0, 1200, 3000, 6000];
+    for (var attempt = 0; attempt < retryDelays.length; attempt++) {
+      if (retryDelays[attempt]) {
+        await new Promise(function (resolve) { setTimeout(resolve, retryDelays[attempt]); });
+      }
+      try {
+        registration = await navigator.serviceWorker.ready;
+        token = await fcm.getToken({
+          vapidKey: firebaseVapidKey,
+          serviceWorkerRegistration: registration
+        });
+        if (token) break;
+      } catch (error) {
+        lastTokenError = error;
+        console.warn('Cepqar FCM getToken attempt ' + (attempt + 1), error);
+        try { await registration.update(); } catch (_) {}
+      }
+    }
+    if (!token) {
+      if (lastTokenError) throw lastTokenError;
+      throw new Error('FCM_WEB_TOKEN_EMPTY');
+    }
 
     var endpoint = authRole === 'driver' ? '/api/driver/push-token' : '/api/owner/push-token';
     var save = await fetch(api + endpoint, {
