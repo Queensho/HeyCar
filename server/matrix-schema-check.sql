@@ -43,11 +43,23 @@ BEGIN
        OR (table_name='vehicle_maintenance_records' AND column_name IN ('vehicle_id','owner_id'))
        OR (table_name='vehicle_reminders' AND column_name IN ('vehicle_id','owner_id'))
        OR (table_name='vehicle_parking_locations' AND column_name IN ('vehicle_id','owner_id'))
+       OR (table_name='vehicle_notifications' AND column_name='recipient_user_id')
      )
      AND data_type <> 'uuid';
 
   IF bad_count > 0 THEN
     RAISE EXCEPTION 'NON_UUID_RELATION_COLUMNS: %', bad_count;
+  END IF;
+
+  SELECT COUNT(*) INTO bad_count
+    FROM information_schema.columns
+   WHERE table_schema='public'
+     AND table_name='vehicle_notifications'
+     AND column_name='recipient_user_id'
+     AND data_type='uuid';
+
+  IF bad_count <> 1 THEN
+    RAISE EXCEPTION 'VEHICLE_NOTIFICATION_RECIPIENT_COLUMN_INVALID';
   END IF;
 
   IF to_regclass('public.vehicles_plate_normalized_unique') IS NULL THEN
@@ -90,11 +102,12 @@ BEGIN
      'maintenance_records_vehicle_fk',
      'vehicle_reminders_vehicle_fk',
      'parking_locations_vehicle_fk',
-     'anonymous_calls_vehicle_fk'
+     'anonymous_calls_vehicle_fk',
+     'vehicle_notifications_recipient_fk'
    );
 
-  IF bad_count <> 11 THEN
-    RAISE EXCEPTION 'MISSING_MATRIX_FOREIGN_KEYS: expected 11, found %', bad_count;
+  IF bad_count <> 12 THEN
+    RAISE EXCEPTION 'MISSING_MATRIX_FOREIGN_KEYS: expected 12, found %', bad_count;
   END IF;
 
   IF has_table_privilege('heycar_user','public.admin_audit_logs','UPDATE')
