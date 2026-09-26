@@ -179,7 +179,7 @@ jobs:
           if 'com.google.firebase.messaging.default_notification_icon' not in text:
             text=text.replace('</application>','''        <meta-data\n            android:name="com.google.firebase.messaging.default_notification_icon"\n            android:resource="@drawable/ic_stat_cepqar" />\n    </application>''')
           if 'com.google.firebase.messaging.default_notification_channel_id' not in text:
-            text=text.replace('</application>','''        <meta-data\n            android:name="com.google.firebase.messaging.default_notification_channel_id"\n            android:value="cepqar_notifications_v9" />\n    </application>''')
+            text=text.replace('</application>','''        <meta-data\n            android:name="com.google.firebase.messaging.default_notification_channel_id"\n            android:value="cepqar_notifications_v10" />\n    </application>''')
           if 'com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver' not in text:
             text=text.replace('</application>','''        <receiver\n            android:exported="false"\n            android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver" />\n    </application>''')
           if 'com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver' not in text:
