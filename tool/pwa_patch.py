@@ -290,19 +290,84 @@ push_ui = r"""
     display: flex; align-items: flex-start; gap: 6px;
   }
   #cepqar-push-banner .steps b { color: #fff; }
+
+  #cepqar-push-setup {
+    position: fixed; z-index: 2147483646; inset: 0; display: none;
+    align-items: flex-end; justify-content: center;
+    background: rgba(0,0,0,.62);
+    font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+  }
+  #cepqar-push-setup .sheet {
+    width: min(100%, 520px); max-height: 92vh; overflow: auto;
+    border-radius: 24px 24px 0 0; background: #08111f; color: #fff;
+    border: 1px solid rgba(124,77,255,.38); border-bottom: 0;
+    padding: 18px 18px calc(20px + env(safe-area-inset-bottom));
+    box-shadow: 0 -18px 44px rgba(0,0,0,.42);
+  }
+  #cepqar-push-setup .handle {
+    width: 42px; height: 4px; border-radius: 8px; background: #3a4353;
+    margin: 0 auto 18px;
+  }
+  #cepqar-push-setup .setup-head { display: flex; align-items: center; gap: 12px; }
+  #cepqar-push-setup .setup-head img { width: 52px; height: 52px; border-radius: 14px; }
+  #cepqar-push-setup .setup-title { font-size: 19px; font-weight: 850; }
+  #cepqar-push-setup .setup-sub { color: #aeb8ca; font-size: 13px; line-height: 1.4; margin-top: 3px; }
+  #cepqar-push-setup .progress { display: flex; gap: 6px; margin: 18px 0; }
+  #cepqar-push-setup .progress i { height: 4px; flex: 1; border-radius: 6px; background: #263143; }
+  #cepqar-push-setup .progress i.on { background: #7c4dff; }
+  #cepqar-push-setup .card {
+    border-radius: 18px; border: 1px solid #263247; background: #0d1828;
+    padding: 15px; margin: 10px 0;
+  }
+  #cepqar-push-setup .card strong { display: block; font-size: 15px; margin-bottom: 7px; }
+  #cepqar-push-setup .card p { margin: 0; color: #c2c9d6; font-size: 13px; line-height: 1.45; }
+  #cepqar-push-setup .path {
+    margin-top: 10px; padding: 10px 11px; border-radius: 12px;
+    background: #101f33; color: #fff; font-size: 12px; line-height: 1.4;
+  }
+  #cepqar-push-setup .primary, #cepqar-push-setup .secondary {
+    width: 100%; border: 0; border-radius: 14px; padding: 14px 16px;
+    font-size: 14px; font-weight: 800; margin-top: 10px;
+  }
+  #cepqar-push-setup .primary { background: #6E22D9; color: #fff; }
+  #cepqar-push-setup .secondary { background: #172337; color: #dce3ee; }
+  #cepqar-push-setup .tiny { color: #8f9bad; font-size: 11px; line-height: 1.35; margin-top: 11px; }
 </style>
 <div id="cepqar-push-banner" role="region" aria-label="Cepqar bildirimleri">
   <img src="icons/cepqar-192.png" alt="">
   <div class="copy">
     <div class="title">Bildirimleri eksiksiz aç</div>
-    <div class="sub" id="cepqar-push-subtitle">Uygulama kapalıyken de bildirim almak için iki izin gerekiyor.</div>
+    <div class="sub" id="cepqar-push-subtitle">Sesli ve üstten bildirim için 3 kısa adımı tamamla.</div>
     <div class="steps" id="cepqar-push-steps">
-      <span><b>1.</b> Cepqar bildirim iznine <b>İzin ver</b>.</span>
-      <span><b>2.</b> Telefon ayarlarında Cepqar/Chrome için <b>arka planı kısıtlama</b>.</span>
+      <span><b>1.</b> Bildirim iznini aç.</span>
+      <span><b>2.</b> Ses + yüzen bildirimi aç.</span>
+      <span><b>3.</b> Pil kısıtlamasını kaldır.</span>
     </div>
   </div>
   <button id="cepqar-push-enable" type="button">Başlat</button>
   <button id="cepqar-push-close" type="button" aria-label="Kapat">×</button>
+</div>
+
+<div id="cepqar-push-setup" role="dialog" aria-modal="true" aria-label="Cepqar bildirim kurulumu">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="setup-head">
+      <img src="icons/cepqar-192.png" alt="">
+      <div>
+        <div class="setup-title" id="cepqar-setup-title">Bildirim kurulumu</div>
+        <div class="setup-sub" id="cepqar-setup-sub">Cepqar'ın uygulama kapalıyken de sesli bildirim göndermesi için son ayarları tamamla.</div>
+      </div>
+    </div>
+    <div class="progress"><i id="cepqar-step-1" class="on"></i><i id="cepqar-step-2"></i><i id="cepqar-step-3"></i></div>
+    <div class="card">
+      <strong id="cepqar-setup-card-title">1. Bildirim izni</strong>
+      <p id="cepqar-setup-card-text">Önce Cepqar'ın bildirim göndermesine izin ver.</p>
+      <div class="path" id="cepqar-setup-path">Bu izin Cepqar içinden açılır.</div>
+    </div>
+    <button class="primary" id="cepqar-setup-action" type="button">İzin ver</button>
+    <button class="secondary" id="cepqar-setup-next" type="button" style="display:none">Devam et</button>
+    <div class="tiny" id="cepqar-setup-note">Telefon modeli ve Android sürümüne göre ayar adları küçük farklılık gösterebilir.</div>
+  </div>
 </div>
 <script>
 (function () {
@@ -313,6 +378,100 @@ push_ui = r"""
   var enableButton = document.getElementById('cepqar-push-enable');
   var closeButton = document.getElementById('cepqar-push-close');
   var subtitle = document.getElementById('cepqar-push-subtitle');
+  var setupSheet = document.getElementById('cepqar-push-setup');
+  var setupTitle = document.getElementById('cepqar-setup-title');
+  var setupSub = document.getElementById('cepqar-setup-sub');
+  var setupCardTitle = document.getElementById('cepqar-setup-card-title');
+  var setupCardText = document.getElementById('cepqar-setup-card-text');
+  var setupPath = document.getElementById('cepqar-setup-path');
+  var setupAction = document.getElementById('cepqar-setup-action');
+  var setupNext = document.getElementById('cepqar-setup-next');
+  var setupNote = document.getElementById('cepqar-setup-note');
+  var setupStep = 1;
+
+  function isAndroid() { return /Android/i.test(navigator.userAgent || ''); }
+  function isXiaomi() { return /Xiaomi|Redmi|POCO|MIUI/i.test(navigator.userAgent || ''); }
+
+  function setProgress(step) {
+    setupStep = step;
+    for (var i = 1; i <= 3; i++) {
+      var el = document.getElementById('cepqar-step-' + i);
+      if (el) el.className = i <= step ? 'on' : '';
+    }
+  }
+
+  function openAndroidIntent(intentUrl) {
+    try {
+      var a = document.createElement('a');
+      a.href = intentUrl;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function () { try { a.remove(); } catch (_) {} }, 500);
+      return true;
+    } catch (_) { return false; }
+  }
+
+  function showSetup(step) {
+    if (!standalone() || !isAndroid()) return;
+    setProgress(step);
+    setupSheet.style.display = 'flex';
+    setupNext.style.display = 'none';
+    setupAction.style.display = '';
+
+    if (step === 1) {
+      setupTitle.textContent = 'Bildirim kurulumu';
+      setupSub.textContent = 'Cepqar bildirimlerini uygulama gibi kullanmak için 3 kısa adım.';
+      setupCardTitle.textContent = '1. Bildirim izni';
+      setupCardText.textContent = 'Android bildirim iznini aç. Bu izin olmadan Cepqar bildirim gönderemez.';
+      setupPath.textContent = 'Cepqar > Bildirimlere izin ver';
+      setupAction.textContent = Notification.permission === 'granted' ? 'İzin açık • Devam et' : 'İzin ver';
+      setupAction.onclick = async function () {
+        if (Notification.permission !== 'granted') {
+          try { await Notification.requestPermission(); } catch (_) {}
+        }
+        if (Notification.permission === 'granted') showSetup(2);
+      };
+    } else if (step === 2) {
+      setupTitle.textContent = 'Ses ve üstten bildirim';
+      setupSub.textContent = 'Bildirim geldiğinde ses çalsın ve ekranın üstünde görünsün.';
+      setupCardTitle.textContent = '2. Ses + Yüzen bildirim';
+      setupCardText.textContent = isXiaomi()
+        ? 'Cepqar/Chrome bildirimlerinde Ses, Titreşim, Yüzen bildirimler ve Kilit ekranı bildirimlerini aç.'
+        : 'Cepqar/Chrome bildirimlerinde Ses ve Açılır/Yüzen bildirimleri aç.';
+      setupPath.textContent = isXiaomi()
+        ? 'Ayarlar > Bildirimler ve durum çubuğu > Uygulama bildirimleri > Cepqar/Chrome'
+        : 'Ayarlar > Bildirimler > Uygulama bildirimleri > Cepqar/Chrome';
+      setupAction.textContent = 'Bildirim ayarını aç';
+      setupAction.onclick = function () {
+        openAndroidIntent('intent:#Intent;action=android.settings.NOTIFICATION_SETTINGS;end');
+        setupNext.style.display = '';
+      };
+      setupNext.textContent = 'Yaptım • Devam et';
+      setupNext.onclick = function () { showSetup(3); };
+    } else {
+      setupTitle.textContent = 'Arka planda çalışsın';
+      setupSub.textContent = 'Cepqar kapalıyken bildirimlerin gecikmemesi için son adım.';
+      setupCardTitle.textContent = '3. Pil kısıtlamasını kaldır';
+      setupCardText.textContent = isXiaomi()
+        ? 'Cepqar/Chrome için Pil tasarrufu ayarını “Kısıtlama yok” yap.'
+        : 'Cepqar/Chrome için arka plan veya pil optimizasyonu kısıtlamasını kaldır.';
+      setupPath.textContent = isXiaomi()
+        ? 'Ayarlar > Uygulamalar > Cepqar/Chrome > Pil tasarrufu > Kısıtlama yok'
+        : 'Ayarlar > Uygulamalar > Cepqar/Chrome > Pil > Kısıtlanmamış';
+      setupAction.textContent = 'Pil ayarını aç';
+      setupAction.onclick = function () {
+        openAndroidIntent('intent:#Intent;action=android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS;end');
+        setupNext.style.display = '';
+      };
+      setupNext.textContent = 'Kurulumu tamamla';
+      setupNext.onclick = function () {
+        try { localStorage.setItem('cepqar_push_onboarding_done_v1', '1'); } catch (_) {}
+        setupSheet.style.display = 'none';
+        banner.style.display = 'none';
+      };
+    }
+  }
 
   var firebaseConfig = {
     apiKey: "AIzaSyDgb-J_Ep-63EQM7U5OI_Y-pfEbJxUnD-M",
@@ -532,10 +691,13 @@ push_ui = r"""
       data: { url: '/HeyCar/owner/', type: 'push_ready' }
     });
 
-    subtitle.textContent = '1/2 tamamlandı. Şimdi telefon ayarlarında Cepqar/Chrome için arka plan kısıtlamasını kaldır.';
-    enableButton.textContent = 'Tamam';
+    subtitle.textContent = 'Bildirim izni açık. Ses ve arka plan ayarlarını tamamla.';
+    enableButton.textContent = 'Devam et';
     enableButton.disabled = false;
-    enableButton.onclick = function () { banner.style.display = 'none'; };
+    enableButton.onclick = function () { showSetup(2); };
+    try {
+      if (localStorage.getItem('cepqar_push_onboarding_done_v1') !== '1') showSetup(2);
+    } catch (_) { showSetup(2); }
     return true;
   }
 
@@ -546,7 +708,13 @@ push_ui = r"""
     if (!('Notification' in window) || !('serviceWorker' in navigator)) return false;
 
     if (Notification.permission === 'granted') {
-      try { return await subscribeNow(); }
+      try {
+        var result = await subscribeNow();
+        try {
+          if (result && localStorage.getItem('cepqar_push_onboarding_done_v1') !== '1') showSetup(2);
+        } catch (_) {}
+        return result;
+      }
       catch (error) {
         console.warn('Cepqar FCM web refresh:', error);
         if (standalone()) {
