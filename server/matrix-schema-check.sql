@@ -85,6 +85,53 @@ BEGIN
     RAISE EXCEPTION 'QR_SERIAL_COLUMN_INVALID';
   END IF;
 
+  SELECT COUNT(*) INTO bad_count
+    FROM public.qr_tags
+   WHERE token ~ '^CP-QAR-[0-9]+
+    RAISE EXCEPTION 'MISSING_ONE_PENDING_TRANSFER_INDEX';
+  END IF;
+
+  SELECT COUNT(*) INTO bad_count
+    FROM pg_constraint
+   WHERE conname IN (
+     'vehicle_drivers_vehicle_fk',
+     'vehicle_drivers_owner_fk',
+     'vehicle_drivers_driver_fk',
+     'vehicle_driver_invites_vehicle_fk',
+     'vehicle_driver_invites_owner_fk',
+     'vehicle_active_drivers_vehicle_fk',
+     'vehicle_active_drivers_owner_fk',
+     'maintenance_records_vehicle_fk',
+     'vehicle_reminders_vehicle_fk',
+     'parking_locations_vehicle_fk',
+     'anonymous_calls_vehicle_fk',
+     'vehicle_notifications_recipient_fk'
+   );
+
+  IF bad_count <> 12 THEN
+    RAISE EXCEPTION 'MISSING_MATRIX_FOREIGN_KEYS: expected 12, found %', bad_count;
+  END IF;
+
+  IF has_table_privilege('heycar_user','public.admin_audit_logs','UPDATE')
+     OR has_table_privilege('heycar_user','public.admin_audit_logs','DELETE')
+     OR has_table_privilege('heycar_user','public.admin_audit_logs','TRUNCATE') THEN
+    RAISE EXCEPTION 'ADMIN_AUDIT_LOG_NOT_APPEND_ONLY';
+  END IF;
+END
+$$;
+
+SELECT 'MATRIX_SCHEMA_OK' AS result;
+
+     AND status='unassigned'
+     AND print_status='ready'
+     AND pdf_downloaded_at IS NULL
+     AND sent_to_print_at IS NULL
+     AND printed_at IS NULL;
+
+  IF bad_count > 0 THEN
+    RAISE EXCEPTION 'UNEXPOSED_SEQUENTIAL_QR_TOKENS_REMAIN: %', bad_count;
+  END IF;
+
   IF to_regclass('public.vehicle_transfers_one_pending_per_vehicle') IS NULL THEN
     RAISE EXCEPTION 'MISSING_ONE_PENDING_TRANSFER_INDEX';
   END IF;
