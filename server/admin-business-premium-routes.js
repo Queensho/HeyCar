@@ -5,10 +5,11 @@ async function tableExists(pool,name){
   return Boolean(r.rows[0]?.name);
 }
 function actor(req){
+  const a=req.admin||req.user||{};
   return {
-    id:String(req.headers?.['x-admin-id']||'').trim()||null,
-    email:String(req.headers?.['x-admin-email']||'').trim()||null,
-    name:String(req.headers?.['x-admin-name']||'').trim()||null,
+    id:String(a.id||'').trim()||null,
+    email:String(a.email||'').trim()||null,
+    name:String(a.display_name||a.name||'').trim()||null,
   };
 }
 function num(v){
