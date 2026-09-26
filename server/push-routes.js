@@ -2,6 +2,7 @@ const {ownerId: authenticatedOwnerId}=require('./owner-auth-service');
 const {driverId: authenticatedDriverId}=require('./driver-auth-service');
 const crypto=require('crypto');
 const fs=require('fs');
+const registerWebPush=require('./web-push-service');
 
 function serviceAccount(){
   const raw=process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
@@ -30,6 +31,7 @@ module.exports=function registerPushRoutes(app,pool){
     console.warn('Replacing invalid Cepqar push service instance');
     delete app.locals.heycarPush;
   }
+  const webPush=registerWebPush(app,pool);
   let ready=false;
   const health={
     registeredAt:new Date().toISOString(),
@@ -144,8 +146,26 @@ module.exports=function registerPushRoutes(app,pool){
     }
     return {attempted:rows.length,delivered};
   }
-  const sendOwner=(owner,data,title,body)=>sendFrom('owner_push_tokens','owner_id',owner,data,title,body);
-  const sendDriver=(driver,data,title,body)=>sendFrom('driver_push_tokens','driver_id',driver,data,title,body);
+  async function combine(nativePromise,webPromise){
+    const [nativeResult,webResult]=await Promise.all([
+      nativePromise.catch(e=>{console.error('Native push send',e);return {attempted:0,delivered:0};}),
+      webPromise.catch(e=>{console.error('Web push send',e);return {attempted:0,delivered:0};}),
+    ]);
+    return {
+      attempted:Number(nativeResult?.attempted||0)+Number(webResult?.attempted||0),
+      delivered:Number(nativeResult?.delivered||0)+Number(webResult?.delivered||0),
+      native:nativeResult,
+      web:webResult,
+    };
+  }
+  const sendOwner=(owner,data,title,body)=>combine(
+    sendFrom('owner_push_tokens','owner_id',owner,data,title,body),
+    webPush.sendOwner(owner,data,title,body)
+  );
+  const sendDriver=(driver,data,title,body)=>combine(
+    sendFrom('driver_push_tokens','driver_id',driver,data,title,body),
+    webPush.sendDriver(driver,data,title,body)
+  );
   const send=sendOwner;
   const getHealth=()=>({...health});
   app.locals.heycarPush={send,sendOwner,sendDriver,getHealth,health};
