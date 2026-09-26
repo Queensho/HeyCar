@@ -19,6 +19,7 @@ QR_ROLLBACK_TABLE="_matrix_sync_qr_backup_$RUN_ID"
 ROLLBACK_ARMED=0
 MIGRATION_053_APPLIED=0
 MIGRATION_054_APPLIED=0
+MIGRATION_057_APPLIED=0
 SUCCESS=0
 STAGE="init"
 LOG="/tmp/matrix-live-sync-$RUN_ID.log"
@@ -26,6 +27,7 @@ exec > >(tee -a "$LOG") 2>&1
 echo "Matrix log: $LOG"
 
 FILES=(
+  package.json
   server.js
   admin-auth-routes.js
   admin-audit.js
@@ -46,6 +48,7 @@ FILES=(
   onboarding-routes.js
   owner-auth-routes.js
   push-routes.js
+  web-push-service.js
   qr-routes.js
   qr-security-routes.js
   security-service.js
@@ -94,7 +97,7 @@ rollback_all() {
   echo "Reason: $reason"
   sudo systemctl stop heycar >/dev/null 2>&1 || true
 
-  if [ "$MIGRATION_053_APPLIED" -eq 1 ] || [ "$MIGRATION_054_APPLIED" -eq 1 ]; then
+  if [ "$MIGRATION_053_APPLIED" -eq 1 ] || [ "$MIGRATION_054_APPLIED" -eq 1 ] || [ "$MIGRATION_057_APPLIED" -eq 1 ]; then
     if [ -s "$ROLLBACK_SQL" ]; then
       sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$ROLLBACK_SQL"
       DB_ROLLBACK_RC=$?
@@ -194,7 +197,7 @@ for f in "${FILES[@]}"; do
   node --check "$TMP/$f" || fail "syntax hatasi: $f"
 done
 
-for m in 053_admin_audit_canonical.sql 054_qr_opaque_tokens.sql; do
+for m in 053_admin_audit_canonical.sql 054_qr_opaque_tokens.sql 057_web_push_subscriptions.sql; do
   fetch_https "$BASE/migrations/$m" -o "$TMP/$m" || fail "migration indirilemedi: $m"
   chmod 644 "$TMP/$m"
 done
@@ -306,6 +309,8 @@ sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$TMP/053_admin_audit_canon
 MIGRATION_053_APPLIED=1
 sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$TMP/054_qr_opaque_tokens.sql"
 MIGRATION_054_APPLIED=1
+sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$TMP/057_web_push_subscriptions.sql"
+MIGRATION_057_APPLIED=1
 
 STAGE="schema_verify"
 echo "=== LIVE SCHEMA VERIFY ==="
@@ -317,6 +322,10 @@ for f in "${FILES[@]}"; do
   sudo install -m 644 "$TMP/$f" "$ROOT/$f"
 done
 sudo rm -f "$ROOT/reminder-routes.js"
+
+STAGE="dependencies"
+echo "=== DEPENDENCIES ==="
+(cd "$ROOT" && npm install --omit=dev --ignore-scripts --no-audit --no-fund)
 
 STAGE="service_start"
 sudo systemctl start heycar
