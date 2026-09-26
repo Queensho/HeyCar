@@ -1003,12 +1003,12 @@ class _QrPageState extends State<QrPage>{
 
     // Shared Etiket3 overlay geometry. Values are proportions of the final
     // 55 x 46 mm label so preview/PNG/PDF stay aligned.
-    const qrLeftRatio=.605;
-    const qrTopRatio=.155;
-    const qrSizeWidthRatio=.285;
-    const codeLeftRatio=.565;
-    const codeTopRatio=.515;
-    const codeWidthRatio=.365;
+    const qrLeftRatio=.585;
+    const qrTopRatio=.125;
+    const qrSizeWidthRatio=.315;
+    const codeLeftRatio=.555;
+    const codeTopRatio=.505;
+    const codeWidthRatio=.385;
     const codeHeightRatio=.085;
 
     pw.Widget labelCard(Map<String,dynamic> e){
@@ -1125,7 +1125,7 @@ class _QrPageState extends State<QrPage>{
   Widget _sticker(String token,String url)=>LayoutBuilder(builder:(context,c){
     final w=c.maxWidth;
     final h=c.maxHeight;
-    final qrSize=w*.285;
+    final qrSize=w*.315;
     return Stack(children:[
       Positioned.fill(
         child:Image.asset(
@@ -1135,8 +1135,8 @@ class _QrPageState extends State<QrPage>{
         ),
       ),
       Positioned(
-        left:w*.605,
-        top:h*.155,
+        left:w*.585,
+        top:h*.125,
         width:qrSize,
         height:qrSize,
         child:LayoutBuilder(builder:(context,q){
@@ -1159,9 +1159,9 @@ class _QrPageState extends State<QrPage>{
         }),
       ),
       Positioned(
-        left:w*.565,
-        top:h*.515,
-        width:w*.365,
+        left:w*.555,
+        top:h*.505,
+        width:w*.385,
         height:h*.085,
         child:Container(
           padding:EdgeInsets.symmetric(horizontal:w*.008),
