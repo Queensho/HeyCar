@@ -102,14 +102,22 @@ jobs:
           $$;
           SQL
 
-      - name: Apply complete migration chain from scratch
+      - name: Apply tracked migration chain from scratch
+        working-directory: server
+        run: npm run migrate
+
+      - name: Verify tracked migration rerun is idempotent
+        working-directory: server
+        run: npm run migrate
+
+      - name: Verify migration tracking count
         shell: bash
         run: |
           set -euo pipefail
-          while IFS= read -r -d '' migration; do
-            echo "=== APPLY $migration ==="
-            psql -h 127.0.0.1 -U postgres -d heycar_matrix -v ON_ERROR_STOP=1 -f "$migration"
-          done < <(find server/migrations -maxdepth 1 -type f -name '*.sql' -print0 | sort -z)
+          expected=$(find server/migrations -maxdepth 1 -type f -name '*.sql' | wc -l | tr -d ' ')
+          actual=$(psql -h 127.0.0.1 -U postgres -d heycar_matrix -Atqc "SELECT COUNT(*) FROM public.schema_migrations")
+          test "$actual" = "$expected"
+          echo "MATRIX_MIGRATION_TRACKING_OK count=$actual"
 
       - name: Verify Matrix schema invariants
         run: psql -h 127.0.0.1 -U postgres -d heycar_matrix -v ON_ERROR_STOP=1 -f server/matrix-schema-check.sql
