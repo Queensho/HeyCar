@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-COMMIT="${MATRIX_COMMIT:-60c40e4d0c27d38ee4b248746f6abc5d97a5fe4b}"
+COMMIT="${MATRIX_COMMIT:-}"
+if [[ ! "$COMMIT" =~ ^[0-9a-fA-F]{40}$ ]]; then
+  echo "MATRIX_COMMIT must be an exact 40-character Git commit SHA; branch/tag names are refused." >&2
+  exit 2
+fi
+COMMIT="${COMMIT,,}"
 ROOT="/opt/heycar"
 DB="${HEYCAR_DB:-heycar_db}"
 RUN_ID="$(date +%Y%m%d%H%M%S)_$$"
@@ -25,14 +30,21 @@ FILES=(
   admin-auth-routes.js
   admin-audit.js
   admin-management-routes.js
+  app-settings-routes.js
+  admin-business-premium-routes.js
+  admin-communication-security-routes.js
+  admin-moderation-ops-routes.js
+  support-routes.js
   active-driver-routes.js
   business-routes.js
   call-routes.js
   driver-auth-service.js
+  driver-routes.js
   maintenance-routes.js
   notification-push-hook.js
   notification-routes.js
   onboarding-routes.js
+  owner-auth-routes.js
   push-routes.js
   qr-routes.js
   qr-security-routes.js
@@ -44,6 +56,7 @@ FILES=(
 )
 
 fail(){ echo "MATRIX_SYNC_ERROR stage=$STAGE: $*" >&2; exit 1; }
+fetch_https(){ curl --proto '=https' --tlsv1.2 -fsSL "$@"; }
 db_scalar(){ sudo -u postgres psql -d "$DB" -Atqc "$1"; }
 env_value(){
   local key="$1" line value
@@ -177,15 +190,15 @@ mkdir -p "$BACKUP" || fail "backup klasoru olusturulamadi"
 STAGE="download_syntax"
 echo "=== DOWNLOAD + SYNTAX ==="
 for f in "${FILES[@]}"; do
-  curl -fsSL "$BASE/$f" -o "$TMP/$f" || fail "indirilemedi: $f"
+  fetch_https "$BASE/$f" -o "$TMP/$f" || fail "indirilemedi: $f"
   node --check "$TMP/$f" || fail "syntax hatasi: $f"
 done
 
 for m in 053_admin_audit_canonical.sql 054_qr_opaque_tokens.sql; do
-  curl -fsSL "$BASE/migrations/$m" -o "$TMP/$m" || fail "migration indirilemedi: $m"
+  fetch_https "$BASE/migrations/$m" -o "$TMP/$m" || fail "migration indirilemedi: $m"
   chmod 644 "$TMP/$m"
 done
-curl -fsSL "$BASE/matrix-schema-check.sql" -o "$TMP/matrix-schema-check.sql" || fail "matrix schema check indirilemedi"
+fetch_https "$BASE/matrix-schema-check.sql" -o "$TMP/matrix-schema-check.sql" || fail "matrix schema check indirilemedi"
 chmod 644 "$TMP/matrix-schema-check.sql"
 
 STAGE="code_backup"
