@@ -359,8 +359,36 @@ push_ui = r"""
     if (permission !== 'granted') return false;
 
     var registration = await navigator.serviceWorker.getRegistration('./');
+    var expectedWorker = new URL('firebase-messaging-sw.js', location.href).href;
+    var currentWorkerUrl = registration && (
+      (registration.active && registration.active.scriptURL) ||
+      (registration.waiting && registration.waiting.scriptURL) ||
+      (registration.installing && registration.installing.scriptURL)
+    );
+
+    // Important migration: users who installed Cepqar before the Firebase
+    // worker rename can still be controlled by the old cepqar-sw.js.
+    // getRegistration() alone reuses that registration, so background FCM
+    // never reaches firebase-messaging-sw.js after the PWA is closed.
+    if (registration && currentWorkerUrl && currentWorkerUrl !== expectedWorker) {
+      try { await registration.unregister(); } catch (_) {}
+      registration = null;
+    }
+
     if (!registration) {
-      registration = await navigator.serviceWorker.register('firebase-messaging-sw.js', { scope: './' });
+      registration = await navigator.serviceWorker.register(
+        'firebase-messaging-sw.js',
+        { scope: './', updateViaCache: 'none' }
+      );
+    } else {
+      registration = await navigator.serviceWorker.register(
+        'firebase-messaging-sw.js',
+        { scope: './', updateViaCache: 'none' }
+      );
+    }
+
+    if (registration.waiting) {
+      registration.waiting.postMessage({ type: 'SKIP_WAITING' });
     }
     registration = await navigator.serviceWorker.ready;
 
@@ -515,7 +543,7 @@ registration = """
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function () {
-      navigator.serviceWorker.register('firebase-messaging-sw.js', { scope: './' })
+      navigator.serviceWorker.register('firebase-messaging-sw.js', { scope: './', updateViaCache: 'none' })
         .catch(function (error) { console.warn('Cepqar PWA service worker:', error); });
     });
   }
