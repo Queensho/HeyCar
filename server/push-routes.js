@@ -107,6 +107,8 @@ module.exports=function registerPushRoutes(app,pool){
         message.webpush={
           headers:{Urgency:'high'},
           notification:{
+            title,
+            body,
             icon:'https://queensho.github.io/HeyCar/owner/icons/cepqar-192.png',
             badge:'https://queensho.github.io/HeyCar/owner/icons/cepqar-192.png',
             tag:'cepqar_'+tag,
