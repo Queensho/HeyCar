@@ -102,17 +102,12 @@ module.exports=function registerPushRoutes(app,pool){
       const message={token:row.fcm_token,data:fcmData};
 
       if(isWeb){
-        const tag=String(data.notificationId||data.messageId||data.callId||data.eventId||Date.now());
+        // Use a data-only FCM web message so our installed PWA service worker
+        // is the single source of truth for background notification display.
+        // A notification payload can be auto-rendered by FCM and may bypass or
+        // conflict with the custom worker on some Chromium/PWA combinations.
         message.webpush={
           headers:{Urgency:'high'},
-          notification:{
-            title,
-            body,
-            icon:'https://queensho.github.io/HeyCar/owner/icons/cepqar-192.png',
-            badge:'https://queensho.github.io/HeyCar/owner/icons/cepqar-192.png',
-            tag:'cepqar_'+tag,
-            renotify:true
-          },
           fcm_options:{link:'https://queensho.github.io/HeyCar/owner/'}
         };
       }else{
@@ -134,7 +129,10 @@ module.exports=function registerPushRoutes(app,pool){
       }
       try{
         const r=await fetch(endpoint,{method:'POST',headers:{authorization:`Bearer ${key}`,'content-type':'application/json'},body:JSON.stringify({message})});
-        if(r.ok)return true;
+        if(r.ok){
+          console.log('FCM delivery accepted',{platform,isWeb,userId:String(userId),type:String(data.type||'')});
+          return true;
+        }
         const detail=await r.text();
         let errorCode='';
         try{
