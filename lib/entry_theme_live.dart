@@ -28,6 +28,7 @@ import 'driver_auth.dart';
 import 'crash_reporting.dart';
 import 'app_runtime_config.dart';
 import 'app_access_gate.dart';
+import 'web_push_bridge.dart';
 
 final GlobalKey<NavigatorState> cepqarNavigatorKey=GlobalKey<NavigatorState>();
 Future<void> main()async{
@@ -142,7 +143,18 @@ Future<void> _restoreSession()async{
 Future<void> _routePush(Map<String,dynamic> d)async{if(!mounted||restoring)return;final prefs=await SharedPreferences.getInstance();final activeDriverId=driverId.isNotEmpty?driverId:((prefs.getBool('driver_logged_in')??false)?(prefs.getString('driver_user_id')??''):'');if(!hasSession&&activeDriverId.isEmpty)return;final type='${d['type']??''}';final nav=cepqarNavigatorKey.currentState;if(nav==null){Future.delayed(const Duration(milliseconds:250),()=>_routePush(d));return;}final notificationId='${d['notificationId']??''}',vehicleId='${d['vehicleId']??''}',plate='${d['plate']??QrDraft.plate}';await prefs.remove('pending_push_navigation');if(!hasSession&&activeDriverId.isNotEmpty){if(type=='incoming_call'||type=='call_request'){final expected='${d['callId']??''}';final call=await AnonymousCallApi.driverIncoming();if(call==null)return;final id='${call['id']??''}';if(id.isEmpty||(expected.isNotEmpty&&id!=expected))return;final autoAccept='${d['autoAccept']??''}'=='1'||(prefs.getString('pending_incoming_call_auto_accept')??'')==id;await prefs.remove('pending_incoming_call_id');if(autoAccept)await prefs.remove('pending_incoming_call_auto_accept');nav.push(MaterialPageRoute(fullscreenDialog:true,builder:(_)=>OwnerCallPage(call:call,autoAccept:autoAccept,driverMode:true)));return;}if(type=='message'&&notificationId.isNotEmpty){nav.push(MaterialPageRoute(builder:(_)=>DriverChatPage(userId:activeDriverId,notificationId:notificationId,plate:plate)));}else{nav.push(MaterialPageRoute(builder:(_)=>DriverHomePage(userId:activeDriverId,initialTab:1)));}return;}if(type=='incoming_call'||type=='call_request'){final expected='${d['callId']??''}';final call=await AnonymousCallApi.incoming();if(call==null)return;final id='${call['id']??''}';if(id.isEmpty||(expected.isNotEmpty&&id!=expected))return;final autoAccept='${d['autoAccept']??''}'=='1'||(prefs.getString('pending_incoming_call_auto_accept')??'')==id;await prefs.remove('pending_incoming_call_id');if(autoAccept)await prefs.remove('pending_incoming_call_auto_accept');nav.push(MaterialPageRoute(fullscreenDialog:true,builder:(_)=>OwnerCallPage(call:call,autoAccept:autoAccept)));return;}if(type=='message'&&notificationId.isNotEmpty){nav.push(MaterialPageRoute(builder:(_)=>OwnerChatPage(notificationId:notificationId,plate:plate)));}else if(type=='qr_security_alert'&&vehicleId.isNotEmpty){nav.push(MaterialPageRoute(builder:(_)=>QrSecurityPage(vehicleId:vehicleId,plate:plate)));}else{nav.push(MaterialPageRoute(builder:(_)=>OwnerNotificationsPage(vehicleId:vehicleId,plate:plate)));}}
 Future<void> _openPendingPush()async{final prefs=await SharedPreferences.getInstance();final raw=prefs.getString('pending_push_navigation');if(raw==null||raw.isEmpty){final callId=prefs.getString('pending_incoming_call_id')??'';if(callId.isNotEmpty)await _routePush({'type':'incoming_call','callId':callId,'recipientType':driverId.isNotEmpty?'driver':'owner'});return;}Map<String,dynamic> d={};try{d=Map<String,dynamic>.from(jsonDecode(raw));}catch(_){await prefs.remove('pending_push_navigation');return;}await _routePush(d);}
 void _registerPushLater(){
-  if(kIsWeb)return;
+  if(kIsWeb){
+    Future<void>(() async{
+      try{
+        if(OwnerAuth.accessToken.isNotEmpty){
+          await WebPushBridge.enable(OwnerAuth.accessToken,'owner');
+        }else if(DriverAuth.accessToken.isNotEmpty){
+          await WebPushBridge.enable(DriverAuth.accessToken,'driver');
+        }
+      }catch(e){debugPrint('Web push registration bridge failed: $e');}
+    });
+    return;
+  }
   Future<void>(() async{
     try{await PushNotifications.registerToken();}
     catch(e){debugPrint('Push registration failed: $e');}
