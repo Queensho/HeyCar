@@ -625,21 +625,46 @@ index.write_text(html, encoding="utf-8")
 
 # Network-first/pass-through worker: gives the installable app its own service
 # worker without caching Flutter bundles, so deploy cache-busting keeps working.
-sw = """const VERSION = 'cepqar-pwa-v9';
+sw = """const VERSION = 'cepqar-pwa-v10-click-open';
 
 self.addEventListener('notificationclick', (event) => {
+  // Own the click before Firebase's compat worker installs its handler.
+  // This avoids a second listener swallowing the PWA navigation.
+  if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
   event.notification.close();
-  const target = (event.notification.data && event.notification.data.url) || '/HeyCar/owner/';
+
+  const rawTarget = (event.notification.data && event.notification.data.url) || '/HeyCar/owner/';
+  const target = new URL(rawTarget, self.location.origin).href;
+
   event.waitUntil((async () => {
     const windows = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+
+    // Prefer an existing Cepqar owner window, not just the first client.
+    let fallback = null;
     for (const client of windows) {
-      if ('focus' in client) {
-        await client.focus();
-        if ('navigate' in client) await client.navigate(target);
-        return;
-      }
+      if (!fallback) fallback = client;
+      try {
+        const url = new URL(client.url);
+        if (url.origin === self.location.origin && url.pathname.startsWith('/HeyCar/owner/')) {
+          if ('navigate' in client && client.url !== target) {
+            try { await client.navigate(target); } catch (_) {}
+          }
+          if ('focus' in client) await client.focus();
+          return;
+        }
+      } catch (_) {}
     }
-    if (clients.openWindow) await clients.openWindow(target);
+
+    if (fallback && 'navigate' in fallback) {
+      try { await fallback.navigate(target); } catch (_) {}
+      if ('focus' in fallback) await fallback.focus();
+      return;
+    }
+
+    if (clients.openWindow) {
+      const opened = await clients.openWindow(target);
+      if (opened && 'focus' in opened) await opened.focus();
+    }
   })());
 });
 
