@@ -194,7 +194,9 @@ STAGE="download_syntax"
 echo "=== DOWNLOAD + SYNTAX ==="
 for f in "${FILES[@]}"; do
   fetch_https "$BASE/$f" -o "$TMP/$f" || fail "indirilemedi: $f"
-  node --check "$TMP/$f" || fail "syntax hatasi: $f"
+  if [[ "$f" == *.js ]]; then
+    node --check "$TMP/$f" || fail "syntax hatasi: $f"
+  fi
 done
 
 for m in 053_admin_audit_canonical.sql 054_qr_opaque_tokens.sql 057_web_push_subscriptions.sql; do
