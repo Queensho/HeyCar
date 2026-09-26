@@ -90,7 +90,8 @@ class _PasswordOwnerLoginScreenState extends State<PasswordOwnerLoginScreen> {
 
       final code = data is Map ? data['error']?.toString() ?? '' : '';
       final message = switch (code) {
-        'USER_NOT_FOUND' => 'Bu telefon numarasıyla kayıtlı hesap bulunamadı.',
+        'USER_NOT_FOUND' => 'Telefon numarası veya şifre hatalı.',
+        'INVALID_CREDENTIALS' => 'Telefon numarası veya şifre hatalı.',
         'USER_SUSPENDED' => 'Bu hesap şu anda kullanıma kapalı.',
         'PASSWORD_INVALID' => 'Telefon numarası veya şifre hatalı.',
         'INVALID_PHONE' => 'Geçerli bir cep telefonu numarası gir.',
