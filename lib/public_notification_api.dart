@@ -68,8 +68,8 @@ class PublicNotificationApi {
     html.window.sessionStorage.remove(_scanExpiryStorageKey());
   }
 
-  static String? savedConversationId() => html.window.localStorage[_conversationStorageKey()];
-  static void saveConversationId(String id) { if (id.isNotEmpty) html.window.localStorage[_conversationStorageKey()] = id; }
+  static String? savedConversationId() => html.window.sessionStorage[_conversationStorageKey()];
+  static void saveConversationId(String id) { if (id.isNotEmpty) html.window.sessionStorage[_conversationStorageKey()] = id; }
 
   static String backendTypeFor(String label) {
     switch (label) {
@@ -139,8 +139,48 @@ class PublicNotificationApi {
   }
 
   static void _watchForOwnerReply(String conversationId,String token){_replyWatch?.cancel();var busy=false;var failures=0;Future<void> check()async{if(busy)return;busy=true;try{final messages=await fetchConversation(conversationId);failures=0;if(messages.any((m)=>m['sender']?.toString()=='owner')){_replyWatch?.cancel();final next=Uri.base.replace(queryParameters:{...Uri.base.queryParameters,'tag':token,'chat':conversationId});html.window.location.href=next.toString();}}catch(_){failures++;if(failures>=10)_replyWatch?.cancel();}finally{busy=false;}}check();_replyWatch=Timer.periodic(const Duration(seconds:3),(_)=>check());}
-  static Future<List<Map<String,dynamic>>> fetchConversation(String conversationId)async{final token=currentToken();final r=await http.get(Uri.parse('${PublicThemeBackend.baseUrl}/api/qr/${Uri.encodeComponent(token)}/conversations/${Uri.encodeComponent(conversationId)}'),headers:await scanHeaders()).timeout(const Duration(seconds:15));if(r.statusCode<200||r.statusCode>=300)throw Exception('CHAT_LOAD_FAILED');final data=jsonDecode(r.body)as Map<String,dynamic>;final list=data['messages'];if(list is! List)return[];return list.whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).toList();}
-  static Future<void> sendChatMessage(String conversationId,String message)async{final token=currentToken();final text=message.trim();if(text.isEmpty)return;final r=await http.post(Uri.parse('${PublicThemeBackend.baseUrl}/api/qr/${Uri.encodeComponent(token)}/conversations/${Uri.encodeComponent(conversationId)}/messages'),headers:await scanHeaders(json:true),body:jsonEncode({'message':text})).timeout(const Duration(seconds:15));if(r.statusCode<200||r.statusCode>=300){final d=jsonDecode(r.body);if(d is Map&&d['error']=='MESSAGE_NOT_ALLOWED')throw Exception('MESSAGE_NOT_ALLOWED');throw Exception('CHAT_SEND_FAILED');}}
-  static Future<void> reportConversation(String conversationId,{String reason='uygunsuz_icerik'})async{final token=currentToken();final r=await http.post(Uri.parse('${PublicThemeBackend.baseUrl}/api/qr/${Uri.encodeComponent(token)}/conversations/${Uri.encodeComponent(conversationId)}/report'),headers:await scanHeaders(json:true),body:jsonEncode({'reason':reason})).timeout(const Duration(seconds:15));if(r.statusCode<200||r.statusCode>=300)throw Exception('REPORT_FAILED');}
+  static Future<List<Map<String,dynamic>>> fetchConversation(String conversationId)async{
+    final token=currentToken();
+    final uri=Uri.parse('${PublicThemeBackend.baseUrl}/api/qr/${Uri.encodeComponent(token)}/conversations/${Uri.encodeComponent(conversationId)}');
+    var r=await http.get(uri,headers:await scanHeaders()).timeout(const Duration(seconds:15));
+    if(r.statusCode==401){
+      _clearScanToken();
+      r=await http.get(uri,headers:await scanHeaders()).timeout(const Duration(seconds:15));
+    }
+    if(r.statusCode<200||r.statusCode>=300)throw Exception('CHAT_LOAD_FAILED');
+    final data=jsonDecode(r.body)as Map<String,dynamic>;
+    final list=data['messages'];
+    if(list is! List)return[];
+    return list.whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).toList();
+  }
+  static Future<void> sendChatMessage(String conversationId,String message)async{
+    final token=currentToken();
+    final text=message.trim();
+    if(text.isEmpty)return;
+    final uri=Uri.parse('${PublicThemeBackend.baseUrl}/api/qr/${Uri.encodeComponent(token)}/conversations/${Uri.encodeComponent(conversationId)}/messages');
+    final body=jsonEncode({'message':text});
+    var r=await http.post(uri,headers:await scanHeaders(json:true),body:body).timeout(const Duration(seconds:15));
+    if(r.statusCode==401){
+      _clearScanToken();
+      r=await http.post(uri,headers:await scanHeaders(json:true),body:body).timeout(const Duration(seconds:15));
+    }
+    if(r.statusCode<200||r.statusCode>=300){
+      dynamic d;
+      try{d=jsonDecode(r.body);}catch(_){}
+      if(d is Map&&d['error']=='MESSAGE_NOT_ALLOWED')throw Exception('MESSAGE_NOT_ALLOWED');
+      throw Exception('CHAT_SEND_FAILED');
+    }
+  }
+  static Future<void> reportConversation(String conversationId,{String reason='uygunsuz_icerik'})async{
+    final token=currentToken();
+    final uri=Uri.parse('${PublicThemeBackend.baseUrl}/api/qr/${Uri.encodeComponent(token)}/conversations/${Uri.encodeComponent(conversationId)}/report');
+    final body=jsonEncode({'reason':reason});
+    var r=await http.post(uri,headers:await scanHeaders(json:true),body:body).timeout(const Duration(seconds:15));
+    if(r.statusCode==401){
+      _clearScanToken();
+      r=await http.post(uri,headers:await scanHeaders(json:true),body:body).timeout(const Duration(seconds:15));
+    }
+    if(r.statusCode<200||r.statusCode>=300)throw Exception('REPORT_FAILED');
+  }
   static Future<void> sendCallRequest()async{final token=currentToken();if(token.isEmpty)throw Exception('QR_TOKEN_MISSING');final next=Uri.base.replace(queryParameters:{...Uri.base.queryParameters,'tag':token,'call':'1'});html.window.location.href=next.toString();}
 }
