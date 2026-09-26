@@ -12,9 +12,72 @@ function rejectText(name,needle,label){
   if(text.includes(needle))throw new Error(label||(`FORBIDDEN: ${name} -> ${needle}`));
 }
 
+
+const migrationFiles=fs.readdirSync('migrations')
+  .filter(name=>/^\d{3}_.+\.sql$/.test(name))
+  .sort();
+const migrationGroups=new Map();
+for(const name of migrationFiles){
+  const prefix=name.slice(0,3);
+  const list=migrationGroups.get(prefix)||[];
+  list.push(name);
+  migrationGroups.set(prefix,list);
+}
+const allowedLegacyDuplicateMigrations=new Map([
+  ['014',['014_maintenance_shares.sql','014_vehicle_reminders.sql']],
+  ['015',['015_vehicle_parking_locations.sql','015_vehicle_reminder_deliveries.sql']],
+  ['036',['036_admin_audit_log.sql','036_admin_audit_logs.sql']],
+  ['041',['041_fix_vehicle_reminder_ownership.sql','041_support_tickets.sql']],
+  ['053',['053_admin_audit_canonical.sql','053_vehicle_relation_fk_hardening.sql']],
+]);
+for(const [prefix,names] of migrationGroups){
+  if(names.length<2)continue;
+  const expected=allowedLegacyDuplicateMigrations.get(prefix);
+  if(!expected||JSON.stringify(names)!==JSON.stringify(expected)){
+    throw new Error(`UNAPPROVED_DUPLICATE_MIGRATION_PREFIX_${prefix}: ${names.join(',')}`);
+  }
+}
+
 if(fs.existsSync('reminder-routes.js')){
   throw new Error('LEGACY_REMINDER_ENTRYPOINT_PRESENT');
 }
+
+
+requireText(
+  'owner-auth-routes.js',
+  "const loginLimiter=rateLimit({",
+  'OWNER_LOGIN_RATE_LIMIT_MISSING'
+);
+requireText(
+  'owner-auth-routes.js',
+  "return res.status(401).json({ error: 'INVALID_CREDENTIALS' });",
+  'OWNER_LOGIN_ENUMERATION_GUARD_MISSING'
+);
+requireText(
+  'driver-routes.js',
+  "const loginLimiter=rateLimit({",
+  'DRIVER_LOGIN_RATE_LIMIT_MISSING'
+);
+requireText(
+  'qr-routes.js',
+  "publicResolveLimiter",
+  'PUBLIC_QR_RESOLVE_RATE_LIMIT_MISSING'
+);
+requireText(
+  'notification-routes.js',
+  "scanSessionLimiter",
+  'QR_SCAN_SESSION_RATE_LIMIT_MISSING'
+);
+requireText(
+  'server.js',
+  "'https://queensho.github.io'",
+  'SAFE_DEFAULT_CORS_ORIGIN_MISSING'
+);
+requireText(
+  'migrations/056_rotate_unexposed_legacy_qr_tokens.sql',
+  "gen_random_bytes(10)",
+  'LEGACY_QR_SAFE_ROTATION_MISSING'
+);
 
 requireText(
   'security-service.js',
