@@ -2,6 +2,7 @@ const {issueTokens,rotateRefresh,revokeRefresh,ownerId:authenticatedOwnerId}=req
 const {issueRecoveryCode,recoverPassword,verifyPassword,deleteAccount}=require('./account-lifecycle-service');
 const {logSecurityEvent}=require('./security-event-log');
 const { configureTrustedProxy } = require('./proxy-security');
+const rateLimit=require('express-rate-limit');
 function normalizeTrMobile(raw) {
   let digits = String(raw || '').replace(/\D/g, '');
   if (digits.startsWith('90') && digits.length === 12) digits = digits.slice(2);
@@ -12,7 +13,15 @@ function normalizeTrMobile(raw) {
 
 module.exports = function registerOwnerAuthRoutes(app, pool) {
   configureTrustedProxy(app);
-  app.post('/api/owner/login-phone', async (req, res) => {
+  const loginLimiter=rateLimit({
+    windowMs:15*60*1000,
+    limit:10,
+    standardHeaders:'draft-7',
+    legacyHeaders:false,
+    skipSuccessfulRequests:true,
+    message:{error:'TOO_MANY_ATTEMPTS'},
+  });
+  app.post('/api/owner/login-phone', loginLimiter, async (req, res) => {
     const phone = normalizeTrMobile(req.body.phone);
     const password = String(req.body.password || '');
 
@@ -37,8 +46,7 @@ module.exports = function registerOwnerAuthRoutes(app, pool) {
           subject:phone,
           detail:{reason:exists.rows.length?'password_invalid':'user_not_found'}
         });
-        if (!exists.rows.length) return res.status(404).json({ error: 'USER_NOT_FOUND' });
-        return res.status(401).json({ error: 'PASSWORD_INVALID' });
+        return res.status(401).json({ error: 'INVALID_CREDENTIALS' });
       }
 
       const user = userResult.rows[0];
