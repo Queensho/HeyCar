@@ -501,21 +501,7 @@ index.write_text(html, encoding="utf-8")
 
 # Network-first/pass-through worker: gives the installable app its own service
 # worker without caching Flutter bundles, so deploy cache-busting keeps working.
-sw = """const VERSION = 'cepqar-pwa-v3';
-importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js');
-
-firebase.initializeApp({
-  apiKey: "AIzaSyDgb-J_Ep-63EQM7U5OI_Y-pfEbJxUnD-M",
-  authDomain: "cepqar.firebaseapp.com",
-  projectId: "cepqar",
-  storageBucket: "cepqar.firebasestorage.app",
-  messagingSenderId: "1003508989542",
-  appId: "1:1003508989542:web:8b202856b0e298db43b7a7"
-});
-
-const messaging = firebase.messaging();
-
+sw = """const VERSION = 'cepqar-pwa-v4';
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
@@ -532,20 +518,23 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(fetch(event.request));
 });
 
-messaging.onBackgroundMessage((payload) => {
+self.addEventListener('push', (event) => {
+  let payload = {};
+  try { payload = event.data ? event.data.json() : {}; } catch (_) {}
   const data = payload.data || {};
   const notification = payload.notification || {};
   const title = notification.title || data.title || 'Cepqar';
+  const body = notification.body || data.body || data.message || 'Yeni bir bildiriminiz var.';
   const options = {
-    body: notification.body || data.body || data.message || 'Yeni bir bildiriminiz var.',
+    body,
     icon: '/HeyCar/owner/icons/cepqar-192.png',
     badge: '/HeyCar/owner/icons/cepqar-192.png',
     data: { ...data, url: '/HeyCar/owner/' },
-    tag: data.notificationId ? 'cepqar-' + data.notificationId : undefined,
+    tag: data.notificationId ? 'cepqar-' + data.notificationId : 'cepqar-' + String(data.type || 'push'),
     renotify: true,
     vibrate: [200, 100, 200]
   };
-  return self.registration.showNotification(title, options);
+  event.waitUntil(self.registration.showNotification(title, options));
 });
 
 self.addEventListener('notificationclick', (event) => {
