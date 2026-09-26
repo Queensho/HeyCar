@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const rateLimit = require('express-rate-limit');
 const { registerAdminCorrectionRoutes } = require('./correction-routes');
 const registerAdminReportRoutes = require('./admin-report-routes');
 const registerSystemHealthRoutes = require('./system-health-routes');
@@ -66,6 +67,13 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
     : (_req, res) => res.status(500).json({ error: 'ADMIN_GUARD_NOT_CONFIGURED' });
   const uploadDir = path.join(__dirname, 'uploads', 'public-themes');
   const promoUploadDir = process.env.PROMO_UPLOAD_DIR || '/opt/heycar/uploads/promos';
+  const promoMetricLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    limit: 60,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: { error: 'TOO_MANY_REQUESTS' },
+  });
   try { fs.mkdirSync(promoUploadDir, { recursive: true }); } catch (e) { console.error('promo upload dir', e); }
 
   app.get('/uploads/promos/:name', (req, res) => {
@@ -951,7 +959,7 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
     }
   });
 
-  app.post('/api/promos/:id/view', async (req, res) => {
+  app.post('/api/promos/:id/view', promoMetricLimiter, async (req, res) => {
     try {
       await ensurePromoSchema();
       await pool.query('UPDATE admin_promos SET view_count=view_count+1 WHERE id=$1', [req.params.id]);
@@ -961,7 +969,7 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
     }
   });
 
-  app.post('/api/promos/:id/click', async (req, res) => {
+  app.post('/api/promos/:id/click', promoMetricLimiter, async (req, res) => {
     try {
       await ensurePromoSchema();
       await pool.query('UPDATE admin_promos SET click_count=click_count+1 WHERE id=$1', [req.params.id]);
