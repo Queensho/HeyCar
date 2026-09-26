@@ -367,10 +367,18 @@ push_ui = r"""
     registration = await navigator.serviceWorker.ready;
 
     var fcm = ensureFirebase();
+    var tokenVersion = 'cepqar-fcm-sw-v5';
+    var savedTokenVersion = localStorage.getItem('cepqar_fcm_token_version') || '';
+    if (savedTokenVersion !== tokenVersion) {
+      try { await fcm.deleteToken(); } catch (_) {}
+      try { await registration.update(); } catch (_) {}
+      registration = await navigator.serviceWorker.ready;
+    }
     var token = await fcm.getToken({
       vapidKey: firebaseVapidKey,
       serviceWorkerRegistration: registration
     });
+    localStorage.setItem('cepqar_fcm_token_version', tokenVersion);
     if (!token) throw new Error('FCM_WEB_TOKEN_EMPTY');
 
     var endpoint = authRole === 'driver' ? '/api/driver/push-token' : '/api/owner/push-token';
@@ -501,7 +509,20 @@ index.write_text(html, encoding="utf-8")
 
 # Network-first/pass-through worker: gives the installable app its own service
 # worker without caching Flutter bundles, so deploy cache-busting keeps working.
-sw = """const VERSION = 'cepqar-pwa-v4';
+sw = """const VERSION = 'cepqar-pwa-v5';
+importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js');
+
+firebase.initializeApp({
+  apiKey: "AIzaSyDgb-J_Ep-63EQM7U5OI_Y-pfEbJxUnD-M",
+  authDomain: "cepqar.firebaseapp.com",
+  projectId: "cepqar",
+  storageBucket: "cepqar.firebasestorage.app",
+  messagingSenderId: "1003508989542",
+  appId: "1:1003508989542:web:8b202856b0e298db43b7a7"
+});
+
+const messaging = firebase.messaging();
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
@@ -518,15 +539,12 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(fetch(event.request));
 });
 
-self.addEventListener('push', (event) => {
-  let payload = {};
-  try { payload = event.data ? event.data.json() : {}; } catch (_) {}
+messaging.onBackgroundMessage((payload) => {
   const data = payload.data || {};
   const notification = payload.notification || {};
   const title = notification.title || data.title || 'Cepqar';
-  const body = notification.body || data.body || data.message || 'Yeni bir bildiriminiz var.';
   const options = {
-    body,
+    body: notification.body || data.body || data.message || 'Yeni bir bildiriminiz var.',
     icon: '/HeyCar/owner/icons/cepqar-192.png',
     badge: '/HeyCar/owner/icons/cepqar-192.png',
     data: { ...data, url: '/HeyCar/owner/' },
@@ -534,7 +552,7 @@ self.addEventListener('push', (event) => {
     renotify: true,
     vibrate: [200, 100, 200]
   };
-  event.waitUntil(self.registration.showNotification(title, options));
+  return self.registration.showNotification(title, options);
 });
 
 self.addEventListener('notificationclick', (event) => {
