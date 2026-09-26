@@ -30,4 +30,7 @@ CREATE TABLE IF NOT EXISTS public.driver_web_push_subscriptions (
 CREATE INDEX IF NOT EXISTS idx_driver_web_push_active
   ON public.driver_web_push_subscriptions(driver_id, active, updated_at DESC);
 
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.owner_web_push_subscriptions TO heycar_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.driver_web_push_subscriptions TO heycar_user;
+
 COMMIT;
