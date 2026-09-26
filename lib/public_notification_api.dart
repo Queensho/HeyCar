@@ -68,8 +68,14 @@ class PublicNotificationApi {
     html.window.sessionStorage.remove(_scanExpiryStorageKey());
   }
 
-  static String? savedConversationId() => html.window.sessionStorage[_conversationStorageKey()];
-  static void saveConversationId(String id) { if (id.isNotEmpty) html.window.sessionStorage[_conversationStorageKey()] = id; }
+  static String? savedConversationId() {
+    html.window.localStorage.remove(_conversationStorageKey());
+    return html.window.sessionStorage[_conversationStorageKey()];
+  }
+  static void saveConversationId(String id) {
+    html.window.localStorage.remove(_conversationStorageKey());
+    if (id.isNotEmpty) html.window.sessionStorage[_conversationStorageKey()] = id;
+  }
 
   static String backendTypeFor(String label) {
     switch (label) {
