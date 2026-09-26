@@ -9,7 +9,8 @@ function clean(v,max=500){
 function validVersion(v){return /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(String(v||''));}
 function bool(v){return v===true||v==='true';}
 function actor(req){
-  return clean(req.headers?.['x-admin-email']||req.headers?.['x-admin-name']||req.headers?.['x-admin-id']||'admin',240);
+  const a=req.admin||req.user||{};
+  return clean(a.email||a.display_name||a.name||a.id||'admin',240);
 }
 function formatTry(value){
   const n=Number(value);
