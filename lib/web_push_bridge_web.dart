@@ -1,12 +1,13 @@
-import 'dart:js' as js;
-import 'dart:js_util' as js_util;
+import 'dart:js_interop';
+
+@JS('cepqarEnableWebPush')
+external JSPromise<JSAny?> _cepqarEnableWebPush(JSString accessToken,JSString role);
 
 class WebPushBridge {
   static Future<void> enable(String accessToken,String role) async {
     if(accessToken.trim().isEmpty)return;
     try{
-      final result=js.context.callMethod('cepqarEnableWebPush',[accessToken,role]);
-      if(result!=null)await js_util.promiseToFuture<Object?>(result);
+      await _cepqarEnableWebPush(accessToken.toJS,role.toJS).toDart;
     }catch(_){}
   }
 }
