@@ -3,6 +3,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const rateLimit = require('express-rate-limit');
 const registerConversationRoutes = require('./conversation-routes');
 const { sendQrNotificationPush } = require('./notification-push-hook');
 const registerPushRoutes = require('./push-routes');
@@ -21,6 +22,13 @@ const allowedTypes = new Set(['move_vehicle', 'lights_on', 'damage', 'message', 
 
 module.exports = function registerNotificationRoutes(app, pool) {
   configureTrustedProxy(app);
+  const scanSessionLimiter=rateLimit({
+    windowMs:60*1000,
+    limit:20,
+    standardHeaders:'draft-7',
+    legacyHeaders:false,
+    message:{error:'TOO_MANY_REQUESTS'},
+  });
   const pushService=registerPushRoutes(app, pool);
   const qrSecurity=registerQrSecurityRoutes(app, pool, pushService);
   registerConversationRoutes(app, pool);
@@ -148,7 +156,7 @@ module.exports = function registerNotificationRoutes(app, pool) {
     return { ok: true, session };
   }
 
-  app.post('/api/qr/:token/session', async (req, res) => {
+  app.post('/api/qr/:token/session', scanSessionLimiter, async (req, res) => {
     const token = normalizeToken(req.params.token);
     if (!token) return res.status(400).json({ error: 'TOKEN_REQUIRED' });
     try {
