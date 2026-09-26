@@ -326,6 +326,16 @@ push_ui = r"""
   var firebaseVapidKey = "BE0f7fqD5JQfay85f32TtpWfAn6ronMccihvbHD9bSEzy-PV0joBE0smgWg-Pxh4gg3tcKOdR3SDxA5_cnDhGCw";
   var messaging = null;
 
+  async function resolveVapidKey() {
+    try {
+      var r = await fetch(api + '/api/push/web/config', { cache: 'no-store' });
+      if (!r.ok) return firebaseVapidKey;
+      var j = await r.json();
+      if (j && j.enabled && j.publicKey) return String(j.publicKey);
+    } catch (_) {}
+    return firebaseVapidKey;
+  }
+
   function standalone() {
     return window.matchMedia('(display-mode: standalone)').matches ||
            window.navigator.standalone === true;
@@ -405,7 +415,8 @@ push_ui = r"""
     registration = await navigator.serviceWorker.ready;
 
     var fcm = ensureFirebase();
-    var tokenVersion = 'cepqar-fcm-sw-v11-refresh-unregistered';
+    var activeVapidKey = await resolveVapidKey();
+    var tokenVersion = 'cepqar-fcm-sw-v12-dual-webpush';
     var savedTokenVersion = localStorage.getItem('cepqar_fcm_token_version') || '';
 
     // Run destructive migration only once. If Chrome's push backend is
@@ -433,7 +444,7 @@ push_ui = r"""
       try {
         registration = await navigator.serviceWorker.ready;
         token = await fcm.getToken({
-          vapidKey: firebaseVapidKey,
+          vapidKey: activeVapidKey,
           serviceWorkerRegistration: registration
         });
         if (token) break;
@@ -478,7 +489,7 @@ push_ui = r"""
         await new Promise(function (resolve) { setTimeout(resolve, 900); });
         registration = await navigator.serviceWorker.ready;
         token = await fcm.getToken({
-          vapidKey: firebaseVapidKey,
+          vapidKey: activeVapidKey,
           serviceWorkerRegistration: registration
         });
         if (!token) throw new Error('FCM_WEB_TOKEN_REFRESH_EMPTY');
@@ -486,6 +497,26 @@ push_ui = r"""
       }
     }
     if (!save.ok) throw new Error('FCM_WEB_SAVE_' + save.status);
+
+    try {
+      var browserSubscription = await registration.pushManager.getSubscription();
+      if (browserSubscription) {
+        var subJson = browserSubscription.toJSON();
+        var directEndpoint = authRole === 'driver'
+          ? '/api/driver/web-push-subscription'
+          : '/api/owner/web-push-subscription';
+        await fetch(api + directEndpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + authToken
+          },
+          body: JSON.stringify(subJson)
+        });
+      }
+    } catch (directError) {
+      console.warn('Cepqar direct Web Push subscription:', directError);
+    }
 
     localStorage.setItem('cepqar_fcm_web_token', token);
     localStorage.setItem('cepqar_web_push_enabled', '1');
@@ -649,8 +680,10 @@ self.addEventListener('push', (event) => {
       (payload && payload.data) ||
       (payload && payload.message && payload.message.data) ||
       {};
+
+    const tasks = [];
     if (data.webReceiptId && data.webReceiptSig) {
-      event.waitUntil(
+      tasks.push(
         fetch('https://heycar-api-185-165-46-213.nip.io/api/push/web-receipt', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -663,6 +696,21 @@ self.addEventListener('push', (event) => {
         }).catch(() => null)
       );
     }
+
+    // Standards Web Push fallback sent by our backend.
+    if (payload && payload.title && !payload.from && !payload.message) {
+      tasks.push(self.registration.showNotification(String(payload.title || 'Cepqar'), {
+        body: String(payload.body || 'Yeni bir bildiriminiz var.'),
+        icon: payload.icon || '/HeyCar/owner/icons/cepqar-192.png',
+        badge: payload.badge || '/HeyCar/owner/icons/cepqar-192.png',
+        data: Object.assign({}, payload.data || {}, { url: payload.url || '/HeyCar/owner/' }),
+        tag: 'cepqar-direct-' + String((payload.data && (payload.data.notificationId || payload.data.eventId)) || Date.now()),
+        renotify: true,
+        vibrate: [200, 100, 200]
+      }));
+    }
+
+    if (tasks.length) event.waitUntil(Promise.all(tasks));
   } catch (_) {}
 });
 
