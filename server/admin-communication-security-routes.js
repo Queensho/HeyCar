@@ -11,9 +11,10 @@ function maskVisitor(raw){
   return s.slice(0,5)+'••••'+s.slice(-3);
 }
 function adminActor(req){
+  const a=req.admin||req.user||{};
   return {
-    id:String(req.headers?.['x-admin-id']||'').trim()||null,
-    email:String(req.headers?.['x-admin-email']||'').trim()||null,
+    id:String(a.id||'').trim()||null,
+    email:String(a.email||'').trim()||null,
   };
 }
 
