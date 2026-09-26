@@ -15,7 +15,7 @@ import 'owner_auth.dart';
 import 'driver_auth.dart';
 
 const _apiBase='https://heycar-api-185-165-46-213.nip.io';
-const _generalChannel='cepqar_notifications_v9';
+const _generalChannel='cepqar_notifications_v10';
 const _callChannel='cepqar_calls_v7';
 const _callAcceptAction='cepqar_accept_call';
 const _callDeclineAction='cepqar_decline_call';
