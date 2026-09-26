@@ -405,7 +405,7 @@ push_ui = r"""
     registration = await navigator.serviceWorker.ready;
 
     var fcm = ensureFirebase();
-    var tokenVersion = 'cepqar-fcm-sw-v9-canonical-worker';
+    var tokenVersion = 'cepqar-fcm-sw-v11-refresh-unregistered';
     var savedTokenVersion = localStorage.getItem('cepqar_fcm_token_version') || '';
 
     // Run destructive migration only once. If Chrome's push backend is
@@ -449,18 +449,42 @@ push_ui = r"""
     }
 
     var endpoint = authRole === 'driver' ? '/api/driver/push-token' : '/api/owner/push-token';
-    var save = await fetch(api + endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + authToken
-      },
-      body: JSON.stringify({
-        token: token,
-        deviceId: deviceId(),
-        platform: 'web'
-      })
-    });
+    async function saveWebToken(value) {
+      return fetch(api + endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + authToken
+        },
+        body: JSON.stringify({
+          token: value,
+          deviceId: deviceId(),
+          platform: 'web'
+        })
+      });
+    }
+
+    var save = await saveWebToken(token);
+    if (save.status === 409) {
+      var stale = {};
+      try { stale = await save.json(); } catch (_) {}
+      if (stale && stale.error === 'WEB_TOKEN_STALE') {
+        try { await fcm.deleteToken(); } catch (_) {}
+        try {
+          var staleSubscription = await registration.pushManager.getSubscription();
+          if (staleSubscription) await staleSubscription.unsubscribe();
+        } catch (_) {}
+        try { await registration.update(); } catch (_) {}
+        await new Promise(function (resolve) { setTimeout(resolve, 900); });
+        registration = await navigator.serviceWorker.ready;
+        token = await fcm.getToken({
+          vapidKey: firebaseVapidKey,
+          serviceWorkerRegistration: registration
+        });
+        if (!token) throw new Error('FCM_WEB_TOKEN_REFRESH_EMPTY');
+        save = await saveWebToken(token);
+      }
+    }
     if (!save.ok) throw new Error('FCM_WEB_SAVE_' + save.status);
 
     localStorage.setItem('cepqar_fcm_web_token', token);
