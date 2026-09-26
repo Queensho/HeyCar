@@ -642,6 +642,30 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(fetch(event.request));
 });
 
+self.addEventListener('push', (event) => {
+  try {
+    const payload = event.data ? event.data.json() : {};
+    const data =
+      (payload && payload.data) ||
+      (payload && payload.message && payload.message.data) ||
+      {};
+    if (data.webReceiptId && data.webReceiptSig) {
+      event.waitUntil(
+        fetch('https://heycar-api-185-165-46-213.nip.io/api/push/web-receipt', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: data.webReceiptId,
+            sig: data.webReceiptSig,
+            stage: 'raw_push_event'
+          }),
+          keepalive: true
+        }).catch(() => null)
+      );
+    }
+  } catch (_) {}
+});
+
 messaging.onBackgroundMessage((payload) => {
   const data = payload.data || {};
   const notification = payload.notification || {};
