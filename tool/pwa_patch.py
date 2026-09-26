@@ -311,6 +311,7 @@ push_ui = r"""
     appId: "1:1003508989542:web:8b202856b0e298db43b7a7",
     measurementId: "G-174BCF3CR2"
   };
+  var firebaseVapidKey = "BE0f7fqD5JQfay85f32TtpWfAn6ronMccihvbHD9bSEzy-PV0joBE0smgWg-Pxh4gg3tcKOdR3SDxA5_cnDhGCw";
   var messaging = null;
 
   function standalone() {
@@ -363,14 +364,8 @@ push_ui = r"""
     }
     registration = await navigator.serviceWorker.ready;
 
-    var configResponse = await fetch(api + '/api/push/web/config', { cache: 'no-store' });
-    if (!configResponse.ok) throw new Error('WEB_PUSH_CONFIG_' + configResponse.status);
-    var webConfig = await configResponse.json();
-    if (!webConfig.enabled || !webConfig.publicKey) throw new Error('WEB_PUSH_NOT_CONFIGURED');
-    var vapidKey = String(webConfig.publicKey);
-
     var fcm = ensureFirebase();
-    var tokenVersion = 'cepqar-fcm-sw-v6-shared-vapid';
+    var tokenVersion = 'cepqar-fcm-sw-v7-firebase-vapid';
     var savedTokenVersion = localStorage.getItem('cepqar_fcm_token_version') || '';
     if (savedTokenVersion !== tokenVersion) {
       try { await fcm.deleteToken(); } catch (_) {}
@@ -384,7 +379,7 @@ push_ui = r"""
     }
 
     var token = await fcm.getToken({
-      vapidKey: vapidKey,
+      vapidKey: firebaseVapidKey,
       serviceWorkerRegistration: registration
     });
     localStorage.setItem('cepqar_fcm_token_version', tokenVersion);
@@ -404,24 +399,6 @@ push_ui = r"""
       })
     });
     if (!save.ok) throw new Error('FCM_WEB_SAVE_' + save.status);
-
-    // FCM getToken() creates the browser PushSubscription. Save that exact
-    // subscription too, so Cepqar can deliver directly with the same imported
-    // VAPID key pair instead of depending only on FCM background delivery.
-    var browserSubscription = await registration.pushManager.getSubscription();
-    if (!browserSubscription) throw new Error('WEB_PUSH_SUBSCRIPTION_MISSING');
-    var rawEndpoint = authRole === 'driver'
-      ? '/api/driver/web-push-subscription'
-      : '/api/owner/web-push-subscription';
-    var rawSave = await fetch(api + rawEndpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + authToken
-      },
-      body: JSON.stringify(browserSubscription.toJSON())
-    });
-    if (!rawSave.ok) throw new Error('WEB_PUSH_SAVE_' + rawSave.status);
 
     localStorage.setItem('cepqar_fcm_web_token', token);
     localStorage.setItem('cepqar_web_push_enabled', '1');
@@ -495,7 +472,7 @@ push_ui = r"""
       } else if (code.indexOf('permission-blocked') >= 0 || Notification.permission === 'denied') {
         subtitle.textContent = 'Bildirim izni cihaz ayarlarından kapalı.';
       } else if (code.indexOf('AbortError') >= 0 || code.indexOf('DOM_20') >= 0) {
-        subtitle.textContent = 'Telefon bildirim servisini engelliyor. Cihaz ayarlarını kontrol edin.';
+        subtitle.textContent = 'Bildirim servisi bağlantısı yenilenemedi. Tekrar deneyin.';
       } else {
         subtitle.textContent = 'Bildirimler açılamadı (' + code + ').';
       }
