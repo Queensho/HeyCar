@@ -61,6 +61,13 @@ class PublicNotificationApi {
     return {if(json)'Content-Type':'application/json','x-scan-token':scan};
   }
 
+  static void _clearScanToken() {
+    _scanToken=null;
+    _scanTokenFuture=null;
+    html.window.sessionStorage.remove(_scanStorageKey());
+    html.window.sessionStorage.remove(_scanExpiryStorageKey());
+  }
+
   static String? savedConversationId() => html.window.localStorage[_conversationStorageKey()];
   static void saveConversationId(String id) { if (id.isNotEmpty) html.window.localStorage[_conversationStorageKey()] = id; }
 
@@ -92,7 +99,13 @@ class PublicNotificationApi {
   static Future<String> send({required String typeLabel,required String message}) async {
     final token=currentToken(); if(token.isEmpty)throw Exception('QR_TOKEN_MISSING');
     final type=backendTypeFor(typeLabel);
-    final response=await http.post(Uri.parse('${PublicThemeBackend.baseUrl}/api/qr/${Uri.encodeComponent(token)}/notifications'),headers:await scanHeaders(json:true),body:jsonEncode({'type':type,'message':message.trim(),if(photoUrl!=null)'photoUrl':photoUrl,if(latitude!=null)'latitude':latitude,if(longitude!=null)'longitude':longitude})).timeout(const Duration(seconds:15));
+    final uri=Uri.parse('${PublicThemeBackend.baseUrl}/api/qr/${Uri.encodeComponent(token)}/notifications');
+    final body=jsonEncode({'type':type,'message':message.trim(),if(photoUrl!=null)'photoUrl':photoUrl,if(latitude!=null)'latitude':latitude,if(longitude!=null)'longitude':longitude});
+    var response=await http.post(uri,headers:await scanHeaders(json:true),body:body).timeout(const Duration(seconds:15));
+    if(response.statusCode==401){
+      _clearScanToken();
+      response=await http.post(uri,headers:await scanHeaders(json:true),body:body).timeout(const Duration(seconds:15));
+    }
     if(response.statusCode<200||response.statusCode>=300)throw Exception('NOTIFICATION_SEND_FAILED_${response.statusCode}');
     final notificationData=jsonDecode(response.body) as Map<String,dynamic>; final notification=notificationData['notification']; final notificationId=notification is Map?notification['id']?.toString()??'':'';
     if(notificationId.isEmpty)throw Exception('NOTIFICATION_ID_MISSING');
