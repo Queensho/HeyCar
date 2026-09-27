@@ -20,6 +20,7 @@ ROLLBACK_ARMED=0
 MIGRATION_053_APPLIED=0
 MIGRATION_054_APPLIED=0
 MIGRATION_057_APPLIED=0
+MIGRATION_058_APPLIED=0
 SUCCESS=0
 STAGE="init"
 LOG="/tmp/matrix-live-sync-$RUN_ID.log"
@@ -97,7 +98,7 @@ rollback_all() {
   echo "Reason: $reason"
   sudo systemctl stop heycar >/dev/null 2>&1 || true
 
-  if [ "$MIGRATION_053_APPLIED" -eq 1 ] || [ "$MIGRATION_054_APPLIED" -eq 1 ] || [ "$MIGRATION_057_APPLIED" -eq 1 ]; then
+  if [ "$MIGRATION_053_APPLIED" -eq 1 ] || [ "$MIGRATION_054_APPLIED" -eq 1 ] || [ "$MIGRATION_057_APPLIED" -eq 1 ] || [ "$MIGRATION_058_APPLIED" -eq 1 ]; then
     if [ -s "$ROLLBACK_SQL" ]; then
       sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$ROLLBACK_SQL"
       DB_ROLLBACK_RC=$?
@@ -232,6 +233,9 @@ AUDIT_PLURAL_EXISTS="$(db_scalar "SELECT CASE WHEN to_regclass('public.admin_aud
 AUDIT_SINGULAR_EXISTS="$(db_scalar "SELECT CASE WHEN to_regclass('public.admin_audit_log') IS NULL THEN 0 ELSE 1 END")"
 QR_SERIAL_EXISTS="$(db_scalar "SELECT CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='qr_tags' AND column_name='serial_no') THEN 1 ELSE 0 END")"
 QR_INDEX_EXISTS="$(db_scalar "SELECT CASE WHEN to_regclass('public.uq_qr_tags_serial_no') IS NULL THEN 0 ELSE 1 END")"
+QR_SCAN_SECRET_EXISTS="$(db_scalar "SELECT CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='qr_tags' AND column_name='scan_secret') THEN 1 ELSE 0 END")"
+QR_PROXIMITY_TABLE_EXISTS="$(db_scalar "SELECT CASE WHEN to_regclass('public.qr_proximity_proofs') IS NULL THEN 0 ELSE 1 END")"
+QR_SCAN_SECRET_INDEX_EXISTS="$(db_scalar "SELECT CASE WHEN to_regclass('public.qr_tags_scan_secret_unique') IS NULL THEN 0 ELSE 1 END")"
 
 if [ "$QR_SERIAL_EXISTS" -eq 1 ]; then
   sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -c     "CREATE UNLOGGED TABLE public.$QR_ROLLBACK_TABLE AS SELECT id FROM public.qr_tags WHERE serial_no IS NULL AND token ~ '^CP-QAR-[0-9]+$';"
@@ -300,6 +304,16 @@ fi
     echo "DROP TABLE IF EXISTS public.$QR_ROLLBACK_TABLE;"
   fi
 
+  if [ "$QR_PROXIMITY_TABLE_EXISTS" -eq 0 ]; then
+    echo "DROP TABLE IF EXISTS public.qr_proximity_proofs CASCADE;"
+  fi
+  if [ "$QR_SCAN_SECRET_INDEX_EXISTS" -eq 0 ]; then
+    echo "DROP INDEX IF EXISTS public.qr_tags_scan_secret_unique;"
+  fi
+  if [ "$QR_SCAN_SECRET_EXISTS" -eq 0 ]; then
+    echo "ALTER TABLE public.qr_tags DROP COLUMN IF EXISTS scan_secret;"
+  fi
+
   echo "COMMIT;"
 } > "$ROLLBACK_SQL"
 
@@ -313,6 +327,8 @@ sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$TMP/054_qr_opaque_tokens.
 MIGRATION_054_APPLIED=1
 sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$TMP/057_web_push_subscriptions.sql"
 MIGRATION_057_APPLIED=1
+sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$TMP/058_qr_proximity_security.sql"
+MIGRATION_058_APPLIED=1
 
 STAGE="schema_verify"
 echo "=== LIVE SCHEMA VERIFY ==="
