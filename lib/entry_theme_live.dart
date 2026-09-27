@@ -120,6 +120,7 @@ Future<void> _restoreSession()async{
       QrDraft.make=prefs.getString('owner_make')??'';
       QrDraft.model=prefs.getString('owner_model')??'';
       QrDraft.token=prefs.getString('owner_qr_token')??'';
+      QrDraft.scanSecret=prefs.getString('owner_qr_scan_secret')??'';
       QrDraft.ownerName=OnboardingDraft.displayName.isEmpty?'Cepqar Kullanıcısı':OnboardingDraft.displayName;
     }
 
