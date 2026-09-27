@@ -56,7 +56,7 @@ module.exports = function registerOwnerAuthRoutes(app, pool) {
 
       const vehiclesResult = await pool.query(
         `SELECT v.id, v.owner_id, v.plate, v.make, v.model, v.color, v.created_at,
-                q.token AS qr_token, q.status AS qr_status
+                q.token AS qr_token, q.status AS qr_status, q.scan_secret AS qr_scan_secret
          FROM vehicles v
          LEFT JOIN qr_tags q ON q.vehicle_id = v.id
          WHERE v.owner_id = $1
