@@ -199,7 +199,7 @@ for f in "${FILES[@]}"; do
   fi
 done
 
-for m in 053_admin_audit_canonical.sql 054_qr_opaque_tokens.sql 057_web_push_subscriptions.sql; do
+for m in 053_admin_audit_canonical.sql 054_qr_opaque_tokens.sql 057_web_push_subscriptions.sql 058_qr_proximity_security.sql; do
   fetch_https "$BASE/migrations/$m" -o "$TMP/$m" || fail "migration indirilemedi: $m"
   chmod 644 "$TMP/$m"
 done
