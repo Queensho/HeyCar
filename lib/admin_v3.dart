@@ -913,7 +913,12 @@ class _QrPageState extends State<QrPage>{
   String printFilter='all';
   final Set<String> selectedTokens=<String>{};
 
-  String publicUrl(String token)=>'$_publicBase?tag=${Uri.encodeQueryComponent(token)}';
+  String publicUrl(String token){
+    final match=widget.rows.where((e)=>(e['token']??'').toString()==token).cast<Map<String,dynamic>>().toList();
+    final secret=match.isEmpty?'':(match.first['scan_secret']??'').toString().trim();
+    final base='$_publicBase?tag=${Uri.encodeQueryComponent(token)}';
+    return secret.isEmpty?base:'$base&s=${Uri.encodeQueryComponent(secret)}';
+  }
 
   List<String> get batchCodes{
     final values=widget.rows.map((e)=>(e['batch_code']??'').toString()).where((e)=>e.isNotEmpty).toSet().toList();
