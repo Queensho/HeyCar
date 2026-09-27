@@ -497,7 +497,7 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
     try {
       await ensureQrItemPrintSchema(pool);
       const r = await pool.query(
-        `SELECT q.id,q.token,q.status,q.vehicle_id,q.activated_at,
+        `SELECT q.id,q.token,q.scan_secret,q.status,q.vehicle_id,q.activated_at,
                 q.batch_serial,q.print_batch_id,q.serial_no,
                 b.batch_code,b.created_at AS batch_created_at,
                 q.print_status,
