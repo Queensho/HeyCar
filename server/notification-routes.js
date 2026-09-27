@@ -137,7 +137,7 @@ module.exports = function registerNotificationRoutes(app, pool) {
 
   async function activeQr(token) {
     const r = await pool.query(
-      `SELECT q.token, q.vehicle_id, v.owner_id, v.plate
+      `SELECT q.token, q.vehicle_id, q.scan_secret, v.owner_id, v.plate
        FROM qr_tags q
        JOIN vehicles v ON v.id = q.vehicle_id
        WHERE q.token = $1 AND q.status = 'active'
@@ -156,6 +156,33 @@ module.exports = function registerNotificationRoutes(app, pool) {
     return { ok: true, session };
   }
 
+  function proximityVisitorKey(req) {
+    const raw=String(req.headers['x-proximity-device']||'').trim().slice(0,200);
+    if(!raw)return '';
+    const salt=String(process.env.QR_SECURITY_HASH_SALT||process.env.OWNER_AUTH_SECRET||process.env.SESSION_SECRET||'');
+    if(!salt)throw new Error('QR_VISITOR_HASH_SECRET_REQUIRED');
+    return crypto.createHash('sha256').update(`${salt}|proximity|${raw}`).digest('hex');
+  }
+
+  function finiteCoord(value,min,max){
+    const n=Number(value);
+    return Number.isFinite(n)&&n>=min&&n<=max?n:null;
+  }
+
+  function distanceMeters(lat1,lng1,lat2,lng2){
+    const r=6371000;
+    const rad=x=>x*Math.PI/180;
+    const dLat=rad(lat2-lat1),dLng=rad(lng2-lng1);
+    const a=Math.sin(dLat/2)**2+Math.cos(rad(lat1))*Math.cos(rad(lat2))*Math.sin(dLng/2)**2;
+    return 2*r*Math.asin(Math.min(1,Math.sqrt(a)));
+  }
+
+  function secretMatches(expected,provided){
+    const a=Buffer.from(String(expected||''),'utf8');
+    const b=Buffer.from(String(provided||''),'utf8');
+    return a.length>0&&a.length===b.length&&crypto.timingSafeEqual(a,b);
+  }
+
   app.post('/api/qr/:token/session', scanSessionLimiter, async (req, res) => {
     const token = normalizeToken(req.params.token);
     if (!token) return res.status(400).json({ error: 'TOKEN_REQUIRED' });
@@ -164,11 +191,67 @@ module.exports = function registerNotificationRoutes(app, pool) {
       if (!qr) return res.status(404).json({ error: 'ACTIVE_QR_NOT_FOUND' });
       const security = await enforcePublicRequest(pool, token, req);
       if (!security.ok) return res.status(security.status).json({ error: security.error });
+
+      const deviceKey=proximityVisitorKey(req);
+      const proof=String(req.body?.scanSecret||req.body?.s||'').trim();
+      const lat=finiteCoord(req.body?.latitude,-90,90);
+      const lng=finiteCoord(req.body?.longitude,-180,180);
+      const accuracyRaw=Number(req.body?.accuracy);
+      const accuracy=Number.isFinite(accuracyRaw)&&accuracyRaw>=0?accuracyRaw:null;
+      const validQrProof=proof.length>0&&secretMatches(qr.scan_secret,proof);
+
       await pool.query(`DELETE FROM qr_scan_sessions WHERE expires_at<=NOW()`);
+      await pool.query(`DELETE FROM qr_proximity_proofs WHERE expires_at<=NOW()`);
+
+      if(proof.length>0&&!validQrProof){
+        return res.status(403).json({error:'QR_SCAN_PROOF_INVALID'});
+      }
+
+      if(validQrProof){
+        if(!deviceKey)return res.status(400).json({error:'PROXIMITY_DEVICE_REQUIRED'});
+        if(lat==null||lng==null)return res.status(428).json({error:'LOCATION_REQUIRED'});
+        if(accuracy==null||accuracy>75)return res.status(422).json({error:'LOCATION_ACCURACY_TOO_LOW'});
+        await pool.query(
+          `INSERT INTO qr_proximity_proofs(qr_token,vehicle_id,owner_id,visitor_key,origin_lat,origin_lng,origin_accuracy,verified_at,expires_at,last_verified_at)
+           VALUES($1,$2,$3,$4,$5,$6,$7,NOW(),NOW()+INTERVAL '1 day',NOW())
+           ON CONFLICT(qr_token,visitor_key)
+           DO UPDATE SET vehicle_id=EXCLUDED.vehicle_id,owner_id=EXCLUDED.owner_id,origin_lat=EXCLUDED.origin_lat,origin_lng=EXCLUDED.origin_lng,
+                         origin_accuracy=EXCLUDED.origin_accuracy,verified_at=NOW(),expires_at=NOW()+INTERVAL '1 day',last_verified_at=NOW()`,
+          [token,qr.vehicle_id,String(qr.owner_id),deviceKey,lat,lng,accuracy]
+        );
+      }else if(deviceKey){
+        const p=await pool.query(
+          `SELECT origin_lat,origin_lng,origin_accuracy,verified_at,expires_at
+             FROM qr_proximity_proofs
+            WHERE qr_token=$1 AND visitor_key=$2 AND expires_at>NOW()
+            LIMIT 1`,
+          [token,deviceKey]
+        );
+        if(p.rows.length){
+          const age=Date.now()-new Date(p.rows[0].verified_at).getTime();
+          if(age>=30*60*1000){
+            if(lat==null||lng==null)return res.status(428).json({error:'LOCATION_REQUIRED'});
+            if(accuracy==null||accuracy>75)return res.status(422).json({error:'LOCATION_ACCURACY_TOO_LOW'});
+            const meters=distanceMeters(Number(p.rows[0].origin_lat),Number(p.rows[0].origin_lng),lat,lng);
+            if(meters>50)return res.status(403).json({error:'VEHICLE_NOT_NEARBY',distanceMeters:Math.round(meters),maxDistanceMeters:50});
+            await pool.query(
+              `UPDATE qr_proximity_proofs SET last_verified_at=NOW() WHERE qr_token=$1 AND visitor_key=$2`,
+              [token,deviceKey]
+            );
+          }
+        }
+      }
+
       const session = await createScanSession(pool, qr, security.visitorKey);
       await qrSecurity.recordScan({qr,req,scanSessionHash:hashScanToken(session.token),visitorKey:security.visitorKey});
       res.set('Cache-Control', 'no-store');
-      return res.status(201).json({ ok: true, scanToken: session.token, expiresInSeconds: session.expiresInSeconds });
+      return res.status(201).json({
+        ok:true,
+        scanToken:session.token,
+        expiresInSeconds:session.expiresInSeconds,
+        proximityVerified:validQrProof,
+        proximityExpiresInSeconds:validQrProof?86400:null
+      });
     } catch (e) { console.error(e); return res.status(500).json({ error: 'SERVER_ERROR' }); }
   });
 
