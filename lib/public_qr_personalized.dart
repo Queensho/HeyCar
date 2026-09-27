@@ -562,11 +562,17 @@ class _MessageComposerState extends State<_MessageComposer> {
         context,
         MaterialPageRoute(builder: (_) => _SentScreen(plate: widget.plate, notificationId: PublicNotificationApi.lastNotificationId ?? '', statusToken: PublicNotificationApi.lastStatusToken ?? '')),
       );
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Mesaj gönderilemedi. Tekrar dene.')),
-      );
+      final raw=e.toString();
+      final text=raw.contains('VEHICLE_NOT_NEARBY')
+          ? 'Araç yanında değilsiniz. Güvenlik nedeniyle işlem gönderilmedi.'
+          : raw.contains('LOCATION_ACCURACY_TOO_LOW')
+            ? 'Konum doğruluğu yetersiz. Araca yaklaşın ve konumu tekrar deneyin.'
+            : raw.contains('LOCATION_REQUIRED')
+              ? 'Devam etmek için konum izni gerekli.'
+              : 'Mesaj gönderilemedi. Tekrar dene.';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
     } finally {
       if (mounted) setState(() => sending = false);
     }
