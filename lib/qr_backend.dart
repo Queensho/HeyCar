@@ -5,6 +5,7 @@ import 'owner_auth.dart';
 
 class QrDraft {
   static String token = '';
+  static String scanSecret = '';
   static String plate = '';
   static String make = '';
   static String model = '';
