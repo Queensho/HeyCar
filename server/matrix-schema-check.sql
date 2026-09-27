@@ -23,7 +23,8 @@ BEGIN
         ('vehicle_reminders'),
         ('vehicle_parking_locations'),
         ('vehicle_transfers'),
-        ('admin_audit_logs')
+        ('admin_audit_logs'),
+        ('qr_proximity_proofs')
       ) AS required(name)
       WHERE to_regclass('public.' || name) IS NULL
     ) q;
@@ -96,6 +97,29 @@ BEGIN
 
   IF bad_count > 0 THEN
     RAISE EXCEPTION 'UNEXPOSED_SEQUENTIAL_QR_TOKENS_REMAIN: %', bad_count;
+  END IF;
+
+  SELECT COUNT(*) INTO bad_count
+    FROM information_schema.columns
+   WHERE table_schema='public'
+     AND table_name='qr_tags'
+     AND column_name='scan_secret'
+     AND is_nullable='NO';
+
+  IF bad_count <> 1 THEN
+    RAISE EXCEPTION 'QR_SCAN_SECRET_COLUMN_INVALID';
+  END IF;
+
+  IF to_regclass('public.qr_tags_scan_secret_unique') IS NULL THEN
+    RAISE EXCEPTION 'MISSING_QR_SCAN_SECRET_UNIQUE_INDEX';
+  END IF;
+
+  SELECT COUNT(*) INTO bad_count
+    FROM public.qr_tags
+   WHERE scan_secret IS NULL OR length(trim(scan_secret)) < 32;
+
+  IF bad_count > 0 THEN
+    RAISE EXCEPTION 'QR_SCAN_SECRET_MISSING: %', bad_count;
   END IF;
 
   IF to_regclass('public.vehicle_transfers_one_pending_per_vehicle') IS NULL THEN
