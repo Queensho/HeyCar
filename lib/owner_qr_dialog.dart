@@ -54,9 +54,10 @@ Future<String> _resolveOwnerQrToken() async {
 Future<void> showOwnerQrDialog(BuildContext context) async {
   final token = await _resolveOwnerQrToken();
   if (!context.mounted) return;
+  final secret=QrDraft.scanSecret.trim();
   final publicUrl = token.isEmpty
       ? ''
-      : 'https://queensho.github.io/HeyCar/?tag=${Uri.encodeComponent(token)}';
+      : 'https://queensho.github.io/HeyCar/?tag=${Uri.encodeComponent(token)}${secret.isEmpty?'':'&s=${Uri.encodeComponent(secret)}'}';
 
   await showDialog<void>(
     context: context,
