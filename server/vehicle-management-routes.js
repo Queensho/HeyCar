@@ -50,10 +50,10 @@ module.exports = function registerVehicleManagementRoutes(app, pool) {
       const premium = user.rows[0].premium === true;
       const vehicles = await pool.query(`
         SELECT v.id,v.plate,v.make,v.model,v.color,v.created_at,
-               q.token AS qr_token,q.status AS qr_status
+               q.token AS qr_token,q.status AS qr_status,q.scan_secret AS qr_scan_secret
           FROM vehicles v
           LEFT JOIN LATERAL (
-            SELECT token,status FROM qr_tags
+            SELECT token,status,scan_secret FROM qr_tags
              WHERE vehicle_id=v.id AND status='active'
              ORDER BY activated_at DESC NULLS LAST LIMIT 1
           ) q ON TRUE
