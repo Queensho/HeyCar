@@ -82,6 +82,7 @@ class _PasswordOwnerLoginScreenState extends State<PasswordOwnerLoginScreen> {
           QrDraft.make = v['make']?.toString() ?? '';
           QrDraft.model = v['model']?.toString() ?? '';
           QrDraft.token = v['qr_token']?.toString() ?? '';
+          QrDraft.scanSecret = v['qr_scan_secret']?.toString() ?? '';
           QrDraft.ownerName = OnboardingDraft.displayName.isEmpty ? 'HeyCar Kullanıcısı' : OnboardingDraft.displayName;
         }
         if (mounted) widget.onDone();
