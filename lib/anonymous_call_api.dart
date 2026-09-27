@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:html' as html;
+import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'onboarding_backend.dart';
 import 'public_theme_backend.dart';
@@ -8,17 +10,59 @@ import 'driver_auth.dart';
 class AnonymousCallApi {
   const AnonymousCallApi._();
 
+  static String _proximityDeviceId(){
+    const key='cepqar_proximity_device_v1';
+    var id=(html.window.localStorage[key]??'').trim();
+    if(id.isNotEmpty)return id;
+    final rnd=Random.secure();
+    id=List.generate(32,(_)=>rnd.nextInt(256).toRadixString(16).padLeft(2,'0')).join();
+    html.window.localStorage[key]=id;
+    return id;
+  }
+
+  static Future<Map<String,dynamic>> _locationPayload()async{
+    final p=await html.window.navigator.geolocation.getCurrentPosition(enableHighAccuracy:true).timeout(const Duration(seconds:15));
+    final lat=p.coords?.latitude?.toDouble(),lng=p.coords?.longitude?.toDouble(),acc=p.coords?.accuracy?.toDouble();
+    if(lat==null||lng==null)throw Exception('LOCATION_REQUIRED');
+    return {'latitude':lat,'longitude':lng,if(acc!=null)'accuracy':acc};
+  }
+
+  static void _consumeScanSecret(){
+    final params=Map<String,String>.from(Uri.base.queryParameters);
+    if(!params.containsKey('s'))return;
+    params.remove('s');
+    params.remove('src');
+    final clean=Uri.base.replace(queryParameters:params.isEmpty?null:params);
+    html.window.history.replaceState(null,'',clean.toString());
+  }
+
   static Future<String> _createScanToken(String token) async {
     final normalized=token.trim().toUpperCase();
     if(normalized.isEmpty)throw Exception('QR_TOKEN_MISSING');
-    final response=await http.post(
+    final secret=(Uri.base.queryParameters['s']??'').trim();
+    Map<String,dynamic>? location;
+    if(secret.isNotEmpty)location=await _locationPayload();
+
+    Future<http.Response> send(Map<String,dynamic>? loc)=>http.post(
       Uri.parse('${PublicThemeBackend.baseUrl}/api/qr/${Uri.encodeComponent(normalized)}/session'),
-      headers: const {'Content-Type':'application/json'},
+      headers:{'Content-Type':'application/json','x-proximity-device':_proximityDeviceId()},
+      body:jsonEncode({if(secret.isNotEmpty)'scanSecret':secret,...?loc}),
     ).timeout(const Duration(seconds:12));
-    if(response.statusCode<200||response.statusCode>=300)throw Exception('SCAN_SESSION_FAILED_${response.statusCode}');
-    final data=jsonDecode(response.body) as Map<String,dynamic>;
-    final scanToken=data['scanToken']?.toString()??'';
+
+    var response=await send(location);
+    if(response.statusCode==428){
+      location=await _locationPayload();
+      response=await send(location);
+    }
+    dynamic data;
+    try{data=jsonDecode(response.body);}catch(_){}
+    if(response.statusCode<200||response.statusCode>=300){
+      final code=data is Map?data['error']?.toString():'';
+      throw Exception(code?.isNotEmpty==true?code:'SCAN_SESSION_FAILED_${response.statusCode}');
+    }
+    final scanToken=(data is Map?data['scanToken']:null)?.toString()??'';
     if(scanToken.isEmpty)throw Exception('SCAN_TOKEN_MISSING');
+    if(secret.isNotEmpty)_consumeScanSecret();
     return scanToken;
   }
 
