@@ -11,19 +11,21 @@ void main() {
   final token = Uri.base.queryParameters['tag'] ?? '';
   final chat = Uri.base.queryParameters['chat'] ?? '';
   final call = Uri.base.queryParameters['call'] ?? '';
+  final verifiedQr = (Uri.base.queryParameters['s'] ?? '').trim().isNotEmpty;
   final path = Uri.base.path.toLowerCase();
   final business = path == '/isletme' || path.startsWith('/isletme/') || path == '/heycar/isletme' || path.startsWith('/heycar/isletme/');
-  runApp(HeyCarPublicWebApp(token: token, chat: chat, call: call, business: business));
+  runApp(HeyCarPublicWebApp(token: token, chat: chat, call: call, business: business, verifiedQr: verifiedQr));
 }
 
 class HeyCarPublicWebApp extends StatefulWidget {
-  const HeyCarPublicWebApp({super.key, required this.token, required this.chat, required this.call, required this.business});
-  final String token; final String chat; final String call; final bool business;
+  const HeyCarPublicWebApp({super.key, required this.token, required this.chat, required this.call, required this.business, required this.verifiedQr});
+  final String token; final String chat; final String call; final bool business; final bool verifiedQr;
   @override State<HeyCarPublicWebApp> createState()=>_HeyCarPublicWebAppState();
 }
 class _HeyCarPublicWebAppState extends State<HeyCarPublicWebApp>{
-  late bool showCall;
-  @override void initState(){super.initState();showCall=widget.call.trim()=='1'&&widget.token.trim().isNotEmpty;}
+  late bool showCall; Timer? qrExpiry;
+  @override void initState(){super.initState();showCall=widget.call.trim()=='1'&&widget.token.trim().isNotEmpty;if(widget.verifiedQr){qrExpiry=Timer(const Duration(minutes:30),(){final clean=Uri.base.replace(queryParameters:null);html.window.location.assign(clean.toString());});}}
+  @override void dispose(){qrExpiry?.cancel();super.dispose();}
   void closeCall(){
     if(!mounted)return;
     setState(()=>showCall=false);
