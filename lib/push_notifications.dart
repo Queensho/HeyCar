@@ -15,8 +15,8 @@ import 'owner_auth.dart';
 import 'driver_auth.dart';
 
 const _apiBase='https://heycar-api-185-165-46-213.nip.io';
-const _generalChannel='cepqar_notifications_v10';
-const _callChannel='cepqar_calls_v7';
+const _generalChannel='cepqontag_notifications_v11';
+const _callChannel='cepqontag_calls_v8';
 const _callAcceptAction='cepqar_accept_call';
 const _callDeclineAction='cepqar_decline_call';
 final FlutterLocalNotificationsPlugin _local=FlutterLocalNotificationsPlugin();
@@ -150,7 +150,7 @@ class PushNotifications{
       final p=_local.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
       await p?.createNotificationChannel(const AndroidNotificationChannel(
         _generalChannel,
-        'Cepqar Bildirimleri',
+        'CepQontag Bildirimleri',
         description:'Araç bildirimleri ve mesajlar',
         importance:Importance.max,
         playSound:true,
@@ -160,8 +160,8 @@ class PushNotifications{
       ));
       await p?.createNotificationChannel(const AndroidNotificationChannel(
         _callChannel,
-        'Cepqar Gelen Aramalar',
-        description:'Kilit ekranında tam ekran gelen Cepqar aramaları',
+        'CepQontag Gelen Aramalar',
+        description:'Kilit ekranında tam ekran gelen CepQontag aramaları',
         importance:Importance.max,
         playSound:true,
         sound:RawResourceAndroidNotificationSound('arama'),
@@ -243,7 +243,7 @@ class PushNotifications{
       final details=NotificationDetails(
         android:AndroidNotificationDetails(
           _generalChannel,
-          'Cepqar Bildirimleri',
+          'CepQontag Bildirimleri',
           channelDescription:'Araç bildirimleri ve mesajlar',
           importance:Importance.max,
           priority:Priority.max,
@@ -389,8 +389,8 @@ class PushNotifications{
 
     final params=CallKitParams(
       id:callId,
-      nameCaller:plate.isNotEmpty?plate:'Cepqar Araması',
-      appName:'Cepqar',
+      nameCaller:plate.isNotEmpty?plate:'CepQontag Araması',
+      appName:'CepQontag',
       handle:body,
       type:0,
       duration:45000,
@@ -404,8 +404,8 @@ class PushNotifications{
         textColor:'#FFFFFF',
         textAccept:'Kabul Et',
         textDecline:'Reddet',
-        incomingCallNotificationChannelName:'Cepqar Gelen Aramalar v4',
-        missedCallNotificationChannelName:'Cepqar Cevapsız Aramalar v4',
+        incomingCallNotificationChannelName:'CepQontag Gelen Aramalar v8',
+        missedCallNotificationChannelName:'CepQontag Cevapsız Aramalar v8',
         isShowCallID:false,
         isShowFullLockedScreen:true,
         isImportant:true,
@@ -434,9 +434,9 @@ class PushNotifications{
     };
     final body=serverBody.isNotEmpty?serverBody:(dataBody.isNotEmpty?dataBody:fallbackBody);
     if(body.isEmpty&&plate.isEmpty&&serverTitle.isEmpty)return;
-    final title=plate.isNotEmpty?'Cepqar • $plate':(serverTitle.isNotEmpty?serverTitle:'Cepqar');
+    final title=plate.isNotEmpty?'CepQontag • $plate':(serverTitle.isNotEmpty?serverTitle:'CepQontag');
     final details=NotificationDetails(
-      android:AndroidNotificationDetails(_generalChannel,'Cepqar Bildirimleri',channelDescription:'Araç bildirimleri ve mesajlar',importance:Importance.max,priority:Priority.max,autoCancel:true,visibility:NotificationVisibility.public,playSound:true,sound:const RawResourceAndroidNotificationSound('bildirim'),enableVibration:true,category:AndroidNotificationCategory.message,icon:'ic_stat_cepqar',largeIcon:const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),styleInformation:BigTextStyleInformation(body,contentTitle:title)),
+      android:AndroidNotificationDetails(_generalChannel,'CepQontag Bildirimleri',channelDescription:'Araç bildirimleri ve mesajlar',importance:Importance.max,priority:Priority.max,autoCancel:true,visibility:NotificationVisibility.public,playSound:true,sound:const RawResourceAndroidNotificationSound('bildirim'),enableVibration:true,category:AndroidNotificationCategory.message,icon:'ic_stat_cepqar',largeIcon:const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),styleInformation:BigTextStyleInformation(body,contentTitle:title)),
       iOS:const DarwinNotificationDetails(presentAlert:true,presentBadge:true,presentSound:true),
     );
     final key=(data['notificationId']??m.messageId??DateTime.now().millisecondsSinceEpoch.toString()).toString();
