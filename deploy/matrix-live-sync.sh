@@ -44,6 +44,7 @@ FILES=(
   driver-auth-service.js
   driver-routes.js
   maintenance-routes.js
+  maintenance-share-routes.js
   notification-push-hook.js
   notification-routes.js
   onboarding-routes.js
