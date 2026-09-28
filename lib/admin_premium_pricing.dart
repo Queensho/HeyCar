@@ -138,7 +138,7 @@ class _AdminPremiumPricingCardState extends State<AdminPremiumPricingCard>{
             width:double.infinity,
             padding:const EdgeInsets.all(10),
             decoration:BoxDecoration(color:_green.withValues(alpha:.06),borderRadius:BorderRadius.circular(12),border:Border.all(color:_green.withValues(alpha:.18))),
-            child:const Text('Kaydedilen değerler Cepqar Premium ekranına backend üzerinden yansır. Google Play Billing bağlandığında ödeme ekranındaki gerçek fiyatı Google Play belirler.',style:TextStyle(color:_muted,fontSize:10,height:1.35)),
+            child:const Text('Kaydedilen değerler CepQontag Premium ekranına backend üzerinden yansır. Google Play Billing bağlandığında ödeme ekranındaki gerçek fiyatı Google Play belirler.',style:TextStyle(color:_muted,fontSize:10,height:1.35)),
           ),
         ]),
     );

@@ -2060,7 +2060,7 @@ class _CommunicationOpsPageState extends State<CommunicationOpsPage>{
               Container(
                 padding:const EdgeInsets.all(11),
                 decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(15),border:Border.all(color:_line)),
-                child:const Row(children:[Icon(Icons.info_outline_rounded,color:_muted,size:17),SizedBox(width:7),Expanded(child:Text('Cepqar ses kaydı tutmaz. Bu ekran çağrı durum ve zaman metadata’sını gösterir.',style:TextStyle(color:_muted,fontSize:10.5)))]),
+                child:const Row(children:[Icon(Icons.info_outline_rounded,color:_muted,size:17),SizedBox(width:7),Expanded(child:Text('CepQontag ses kaydı tutmaz. Bu ekran çağrı durum ve zaman metadata’sını gösterir.',style:TextStyle(color:_muted,fontSize:10.5)))]),
               ),
               const SizedBox(height:10),
               if(calls.isEmpty)_adminEmpty('Bu filtrede çağrı kaydı yok.')
