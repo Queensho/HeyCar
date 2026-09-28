@@ -1,5 +1,5 @@
 [Unit]
-Description=Run Cepqar vehicle reminders every day
+Description=Run CepQontag vehicle reminders every day
 
 [Timer]
 # 05:05 UTC = 08:05 Türkiye (UTC+3)

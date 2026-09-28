@@ -1,5 +1,5 @@
 [Unit]
-Description=Cepqar vehicle reminder delivery
+Description=CepQontag vehicle reminder delivery
 After=network-online.target heycar.service
 Wants=network-online.target
 Requires=heycar.service

@@ -1,7 +1,7 @@
 const DEFAULTS={
   maintenance_mode:false,
   maintenance_title:'Kısa bir bakım yapıyoruz',
-  maintenance_message:'Cepqar kısa süre içinde tekrar kullanılabilir olacak.',
+  maintenance_message:'CepQontag kısa süre içinde tekrar kullanılabilir olacak.',
   min_android_version:'1.0.0',
   min_ios_version:'1.0.0',
   force_update_android:false,

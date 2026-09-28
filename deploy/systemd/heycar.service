@@ -1,5 +1,5 @@
 [Unit]
-Description=Cepqar API
+Description=CepQontag API
 After=network.target postgresql.service
 
 [Service]

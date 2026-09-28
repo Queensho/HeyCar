@@ -30,7 +30,7 @@ module.exports = function registerParkingRoutes(app, pool) {
       mallUrl.searchParams.set('bias', `proximity:${lon},${lat}`);
       mallUrl.searchParams.set('limit', '40');
       mallUrl.searchParams.set('apiKey', apiKey);
-      const opts = { headers:{ Accept:'application/json', 'User-Agent':'Cepqar/1.0' }, signal:AbortSignal.timeout(9000) };
+      const opts = { headers:{ Accept:'application/json', 'User-Agent':'CepQontag/1.0' }, signal:AbortSignal.timeout(9000) };
       const [response, mallResponse] = await Promise.all([fetch(url, opts), fetch(mallUrl, { ...opts, signal:AbortSignal.timeout(9000) })]);
       if (!response.ok) return res.status(502).json({ error:'GEOAPIFY_ERROR' });
       const data = await response.json(), features = Array.isArray(data.features) ? data.features : [];

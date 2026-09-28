@@ -28,7 +28,7 @@ module.exports=function registerPushRoutes(app,pool){
   const existing=app.locals.heycarPush;
   if(existing&&(typeof existing.sendOwner==='function'||typeof existing.send==='function'))return existing;
   if(existing){
-    console.warn('Replacing invalid Cepqar push service instance');
+    console.warn('Replacing invalid CepQontag push service instance');
     delete app.locals.heycarPush;
   }
   const webPush=registerWebPush(app,pool);
@@ -129,7 +129,7 @@ module.exports=function registerPushRoutes(app,pool){
           ...fcmData,
           webReceiptId,
           webReceiptSig:webReceiptSig(webReceiptId),
-          title:String(title||'Cepqar'),
+          title:String(title||'CepQontag'),
           body:String(body||'Yeni bir bildiriminiz var.')
         };
         message.webpush={
@@ -213,6 +213,6 @@ module.exports=function registerPushRoutes(app,pool){
   const send=sendOwner;
   const getHealth=()=>({...health});
   app.locals.heycarPush={send,sendOwner,sendDriver,getHealth,health};
-  console.log('Cepqar push service registered');
+  console.log('CepQontag push service registered');
   return app.locals.heycarPush;
 };

@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS app_settings (
   id SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id=1),
   maintenance_mode BOOLEAN NOT NULL DEFAULT FALSE,
   maintenance_title TEXT NOT NULL DEFAULT 'Kısa bir bakım yapıyoruz',
-  maintenance_message TEXT NOT NULL DEFAULT 'Cepqar kısa süre içinde tekrar kullanılabilir olacak.',
+  maintenance_message TEXT NOT NULL DEFAULT 'CepQontag kısa süre içinde tekrar kullanılabilir olacak.',
   min_android_version TEXT NOT NULL DEFAULT '1.0.0',
   min_ios_version TEXT NOT NULL DEFAULT '1.0.0',
   force_update_android BOOLEAN NOT NULL DEFAULT FALSE,

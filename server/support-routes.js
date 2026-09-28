@@ -231,7 +231,7 @@ module.exports=function registerSupportRoutes(app,pool,adminGuard){
 
       if((status==='answered'||status==='resolved')&&app.locals.heycarPush?.sendOwner){
         const title=status==='answered'?'Destek talebin yanıtlandı':'Destek talebin çözüldü';
-        const body=reply||'Cepqar destek talebin güncellendi.';
+        const body=reply||'CepQontag destek talebin güncellendi.';
         app.locals.heycarPush.sendOwner(
           String(updated.owner_id),
           {type:'support_ticket',sourceType:'support_ticket',ticketId:String(updated.id),status:String(updated.status)},
