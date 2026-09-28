@@ -7,7 +7,7 @@ res = Path("android/app/src/main/res")
 (res / "drawable-nodpi").mkdir(parents=True, exist_ok=True)
 (res / "values-v31").mkdir(parents=True, exist_ok=True)
 
-source = Image.open("assets/Logoqr.png").convert("RGBA")
+source = Image.open("assets/Logoyeni.png").convert("RGBA")
 
 # Pre-Android 12: full Cepqar wordmark, centered with comfortable breathing room.
 wordmark = Image.new("RGBA", (600, 220), (0, 0, 0, 0))
