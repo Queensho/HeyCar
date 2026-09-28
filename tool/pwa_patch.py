@@ -30,8 +30,8 @@ for size in (192, 512):
     out.save(icons_dir / f"cepqar-maskable-{size}.png", optimize=True)
 
 manifest = {
-    "name": "Cepqar",
-    "short_name": "Cepqar",
+    "name": "CepQontag",
+    "short_name": "CepQontag",
     "description": "QR tabanlı anonim araç iletişim uygulaması",
     "id": base_path,
     "start_url": base_path,
@@ -77,11 +77,11 @@ manifest = {
 html = index.read_text(encoding="utf-8")
 meta = f"""
   <meta name="theme-color" content="#07101F">
-  <meta name="application-name" content="Cepqar">
+  <meta name="application-name" content="CepQontag">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Cepqar">
+  <meta name="apple-mobile-web-app-title" content="CepQontag">
   <meta name="format-detection" content="telephone=no">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" sizes="192x192" href="icons/cepqar-192.png">
@@ -89,7 +89,7 @@ meta = f"""
 if 'name="apple-mobile-web-app-capable"' not in html:
     html = html.replace("</head>", meta + "</head>", 1)
 
-# Paint the iOS standalone safe area with Cepqar's dark background. This is
+# Paint the iOS standalone safe area with CepQontag's dark background. This is
 # visual-only; do not touch the PWA notification/service-worker behaviour.
 safe_area_style = """
 <style id="cepqar-ios-safe-area">
@@ -180,21 +180,21 @@ install_ui = r"""
     border-radius: 13px; background: #6E22D9; color: #fff; font-weight: 800;
   }
 </style>
-<div id="cepqar-install-banner" role="region" aria-label="Cepqar yükleme">
+<div id="cepqar-install-banner" role="region" aria-label="CepQontag yükleme">
   <img class="cepqar-install-icon" src="icons/cepqar-192.png" alt="">
   <div class="cepqar-install-copy">
-    <div class="cepqar-install-title">Cepqar'ı yükle</div>
+    <div class="cepqar-install-title">CepQontag'ı yükle</div>
     <div class="cepqar-install-subtitle" id="cepqar-install-subtitle">Uygulama gibi ana ekrandan aç.</div>
   </div>
   <button id="cepqar-install-button" type="button">Yükle</button>
   <button id="cepqar-install-close" type="button" aria-label="Kapat">×</button>
 </div>
-<div id="cepqar-ios-sheet" role="dialog" aria-modal="true" aria-label="iPhone'a Cepqar yükleme">
+<div id="cepqar-ios-sheet" role="dialog" aria-modal="true" aria-label="iPhone'a CepQontag yükleme">
   <div class="sheet">
-    <h3>Cepqar'ı iPhone'a ekle</h3>
+    <h3>CepQontag'ı iPhone'a ekle</h3>
     <p>Safari'de alttaki <b>Paylaş</b> simgesine dokun.</p>
     <p>Ardından <b>Ana Ekrana Ekle</b> → <b>Ekle</b> seç.</p>
-    <p>Sonrasında Cepqar adres çubuğu olmadan uygulama gibi açılır.</p>
+    <p>Sonrasında CepQontag adres çubuğu olmadan uygulama gibi açılır.</p>
     <button id="cepqar-ios-sheet-close" type="button">Tamam</button>
   </div>
 </div>
@@ -355,7 +355,7 @@ push_ui = r"""
   #cepqar-push-setup .secondary { background: #172337; color: #dce3ee; }
   #cepqar-push-setup .tiny { color: #8f9bad; font-size: 11px; line-height: 1.35; margin-top: 11px; }
 </style>
-<div id="cepqar-push-banner" role="region" aria-label="Cepqar bildirimleri">
+<div id="cepqar-push-banner" role="region" aria-label="CepQontag bildirimleri">
   <img src="icons/cepqar-192.png" alt="">
   <div class="copy">
     <div class="title">Bildirimleri eksiksiz aç</div>
@@ -370,21 +370,21 @@ push_ui = r"""
   <button id="cepqar-push-close" type="button" aria-label="Kapat">×</button>
 </div>
 
-<div id="cepqar-push-setup" role="dialog" aria-modal="true" aria-label="Cepqar bildirim kurulumu">
+<div id="cepqar-push-setup" role="dialog" aria-modal="true" aria-label="CepQontag bildirim kurulumu">
   <div class="sheet">
     <div class="handle"></div>
     <div class="setup-head">
       <img src="icons/cepqar-192.png" alt="">
       <div>
         <div class="setup-title" id="cepqar-setup-title">Bildirim kurulumu</div>
-        <div class="setup-sub" id="cepqar-setup-sub">Cepqar'ın uygulama kapalıyken de sesli bildirim göndermesi için son ayarları tamamla.</div>
+        <div class="setup-sub" id="cepqar-setup-sub">CepQontag'ın uygulama kapalıyken de sesli bildirim göndermesi için son ayarları tamamla.</div>
       </div>
     </div>
     <div class="progress"><i id="cepqar-step-1" class="on"></i><i id="cepqar-step-2"></i><i id="cepqar-step-3"></i></div>
     <div class="card">
       <strong id="cepqar-setup-card-title">1. Bildirim izni</strong>
-      <p id="cepqar-setup-card-text">Önce Cepqar'ın bildirim göndermesine izin ver.</p>
-      <div class="path" id="cepqar-setup-path">Bu izin Cepqar içinden açılır.</div>
+      <p id="cepqar-setup-card-text">Önce CepQontag'ın bildirim göndermesine izin ver.</p>
+      <div class="path" id="cepqar-setup-path">Bu izin CepQontag içinden açılır.</div>
     </div>
     <button class="primary" id="cepqar-setup-action" type="button">İzin ver</button>
     <button class="secondary" id="cepqar-setup-next" type="button" style="display:none">Devam et</button>
@@ -443,10 +443,10 @@ push_ui = r"""
 
     if (step === 1) {
       setupTitle.textContent = 'Bildirim kurulumu';
-      setupSub.textContent = 'Cepqar bildirimlerini uygulama gibi kullanmak için 3 kısa adım.';
+      setupSub.textContent = 'CepQontag bildirimlerini uygulama gibi kullanmak için 3 kısa adım.';
       setupCardTitle.textContent = '1. Bildirim izni';
-      setupCardText.textContent = 'Android bildirim iznini aç. Bu izin olmadan Cepqar bildirim gönderemez.';
-      setupPath.textContent = 'Cepqar > Bildirimlere izin ver';
+      setupCardText.textContent = 'Android bildirim iznini aç. Bu izin olmadan CepQontag bildirim gönderemez.';
+      setupPath.textContent = 'CepQontag > Bildirimlere izin ver';
       setupAction.textContent = Notification.permission === 'granted' ? 'İzin açık • Devam et' : 'İzin ver';
       setupAction.onclick = async function () {
         if (Notification.permission !== 'granted') {
@@ -459,11 +459,11 @@ push_ui = r"""
       setupSub.textContent = 'Bildirim geldiğinde ses çalsın ve ekranın üstünde görünsün.';
       setupCardTitle.textContent = '2. Ses + Yüzen bildirim';
       setupCardText.textContent = isXiaomi()
-        ? 'Cepqar/Chrome bildirimlerinde Ses, Titreşim, Yüzen bildirimler ve Kilit ekranı bildirimlerini aç.'
-        : 'Cepqar/Chrome bildirimlerinde Ses ve Açılır/Yüzen bildirimleri aç.';
+        ? 'CepQontag/Chrome bildirimlerinde Ses, Titreşim, Yüzen bildirimler ve Kilit ekranı bildirimlerini aç.'
+        : 'CepQontag/Chrome bildirimlerinde Ses ve Açılır/Yüzen bildirimleri aç.';
       setupPath.textContent = isXiaomi()
-        ? 'Ayarlar > Bildirimler ve durum çubuğu > Uygulama bildirimleri > Cepqar/Chrome'
-        : 'Ayarlar > Bildirimler > Uygulama bildirimleri > Cepqar/Chrome';
+        ? 'Ayarlar > Bildirimler ve durum çubuğu > Uygulama bildirimleri > CepQontag/Chrome'
+        : 'Ayarlar > Bildirimler > Uygulama bildirimleri > CepQontag/Chrome';
       setupAction.textContent = 'Bildirim ayarını aç';
       setupAction.onclick = function () {
         openAndroidIntent('intent:#Intent;action=android.settings.NOTIFICATION_SETTINGS;end');
@@ -473,14 +473,14 @@ push_ui = r"""
       setupNext.onclick = function () { showSetup(3); };
     } else {
       setupTitle.textContent = 'Arka planda çalışsın';
-      setupSub.textContent = 'Cepqar kapalıyken bildirimlerin gecikmemesi için son adım.';
+      setupSub.textContent = 'CepQontag kapalıyken bildirimlerin gecikmemesi için son adım.';
       setupCardTitle.textContent = '3. Pil kısıtlamasını kaldır';
       setupCardText.textContent = isXiaomi()
-        ? 'Cepqar/Chrome için Pil tasarrufu ayarını “Kısıtlama yok” yap.'
-        : 'Cepqar/Chrome için arka plan veya pil optimizasyonu kısıtlamasını kaldır.';
+        ? 'CepQontag/Chrome için Pil tasarrufu ayarını “Kısıtlama yok” yap.'
+        : 'CepQontag/Chrome için arka plan veya pil optimizasyonu kısıtlamasını kaldır.';
       setupPath.textContent = isXiaomi()
-        ? 'Ayarlar > Uygulamalar > Cepqar/Chrome > Pil tasarrufu > Kısıtlama yok'
-        : 'Ayarlar > Uygulamalar > Cepqar/Chrome > Pil > Kısıtlanmamış';
+        ? 'Ayarlar > Uygulamalar > CepQontag/Chrome > Pil tasarrufu > Kısıtlama yok'
+        : 'Ayarlar > Uygulamalar > CepQontag/Chrome > Pil > Kısıtlanmamış';
       setupAction.textContent = 'Pil ayarını aç';
       setupAction.onclick = function () {
         openAndroidIntent('intent:#Intent;action=android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS;end');
@@ -528,7 +528,7 @@ push_ui = r"""
     if (!messaging) {
       messaging = firebase.messaging();
       messaging.onMessage(function (payload) {
-        var title = (payload.notification && payload.notification.title) || (payload.data && payload.data.title) || 'Cepqar';
+        var title = (payload.notification && payload.notification.title) || (payload.data && payload.data.title) || 'CepQontag';
         var body = (payload.notification && payload.notification.body) || (payload.data && payload.data.body) || 'Yeni bir bildiriminiz var.';
         navigator.serviceWorker.ready.then(function (registration) {
           registration.showNotification(title, {
@@ -569,7 +569,7 @@ push_ui = r"""
       (registration.installing && registration.installing.scriptURL)
     );
 
-    // Important migration: users who installed Cepqar before the Firebase
+    // Important migration: users who installed CepQontag before the Firebase
     // worker rename can still be controlled by the old cepqar-sw.js.
     // getRegistration() alone reuses that registration, so background FCM
     // never reaches firebase-messaging-sw.js after the PWA is closed.
@@ -631,7 +631,7 @@ push_ui = r"""
         if (token) break;
       } catch (error) {
         lastTokenError = error;
-        console.warn('Cepqar FCM getToken attempt ' + (attempt + 1), error);
+        console.warn('CepQontag FCM getToken attempt ' + (attempt + 1), error);
         try { await registration.update(); } catch (_) {}
       }
     }
@@ -696,7 +696,7 @@ push_ui = r"""
         });
       }
     } catch (directError) {
-      console.warn('Cepqar direct Web Push subscription:', directError);
+      console.warn('CepQontag direct Web Push subscription:', directError);
     }
 
     localStorage.setItem('cepqar_fcm_web_token', token);
@@ -704,7 +704,7 @@ push_ui = r"""
 
     // Verify the browser can actually display a notification without asking
     // the user to run a separate test step.
-    await registration.showNotification('Cepqar bildirimleri açık', {
+    await registration.showNotification('CepQontag bildirimleri açık', {
       body: 'Araç bildirimleri artık bu cihazda gösterilecek.',
       icon: 'icons/cepqar-192.png',
       badge: 'icons/cepqar-192.png',
@@ -738,7 +738,7 @@ push_ui = r"""
         return result;
       }
       catch (error) {
-        console.warn('Cepqar FCM web refresh:', error);
+        console.warn('CepQontag FCM web refresh:', error);
         if (standalone()) {
           subtitle.textContent = 'Bildirimler yeniden bağlanıyor…';
           banner.style.display = 'flex';
@@ -748,7 +748,7 @@ push_ui = r"""
 
     if (!standalone()) return false;
     if (Notification.permission === 'denied') {
-      subtitle.textContent = '1/2 Bildirim izni kapalı. Tarayıcı ayarlarından Cepqar bildirimlerine izin ver.';
+      subtitle.textContent = '1/2 Bildirim izni kapalı. Tarayıcı ayarlarından CepQontag bildirimlerine izin ver.';
       enableButton.style.display = 'none';
     } else {
       subtitle.textContent = 'Uygulama kapalıyken de bildirim almak için iki izin gerekiyor.';
@@ -765,7 +765,7 @@ push_ui = r"""
       var ok = await subscribeNow();
       if (!ok) subtitle.textContent = 'Bildirim izni verilmedi.';
     } catch (error) {
-      console.warn('Cepqar FCM web:', error);
+      console.warn('CepQontag FCM web:', error);
       var rawCode = '';
       if (error) {
         if (typeof error.code === 'string' && error.code) rawCode = error.code;
@@ -776,7 +776,7 @@ push_ui = r"""
       var code = String(rawCode || 'UNKNOWN')
         .replace(/[^A-Za-z0-9_ .:\/-]/g, '').slice(0,120);
       if (code.indexOf('FCM_WEB_SAVE_401') >= 0) {
-        subtitle.textContent = 'Oturum yenileniyor. Cepqar’ı kapatıp tekrar açın.';
+        subtitle.textContent = 'Oturum yenileniyor. CepQontag’ı kapatıp tekrar açın.';
       } else if (code.indexOf('FCM_WEB_SAVE_') >= 0) {
         subtitle.textContent = 'Bildirimler açılamadı. Tekrar deneyin.';
       } else if (code.indexOf('permission-blocked') >= 0 || Notification.permission === 'denied') {
@@ -803,7 +803,7 @@ registration = """
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function () {
       navigator.serviceWorker.register('firebase-messaging-sw.js', { scope: './', updateViaCache: 'none' })
-        .catch(function (error) { console.warn('Cepqar PWA service worker:', error); });
+        .catch(function (error) { console.warn('CepQontag PWA service worker:', error); });
     });
   }
 </script>
@@ -825,7 +825,7 @@ self.addEventListener('notificationclick', (event) => {
   const target = new URL(rawTarget, self.location.origin).href;
 
   event.waitUntil((async () => {
-    // First focus an existing Cepqar PWA window if one exists.
+    // First focus an existing CepQontag PWA window if one exists.
     const windows = await clients.matchAll({ type: 'window', includeUncontrolled: true });
     for (const client of windows) {
       try {
@@ -908,7 +908,7 @@ self.addEventListener('push', (event) => {
 
     // Standards Web Push fallback sent by our backend.
     if (payload && payload.title && !payload.from && !payload.message) {
-      tasks.push(self.registration.showNotification(String(payload.title || 'Cepqar'), {
+      tasks.push(self.registration.showNotification(String(payload.title || 'CepQontag'), {
         body: String(payload.body || 'Yeni bir bildiriminiz var.'),
         icon: payload.icon || '/HeyCar/owner/icons/cepqar-192.png',
         badge: payload.badge || '/HeyCar/owner/icons/cepqar-192.png',
@@ -926,7 +926,7 @@ self.addEventListener('push', (event) => {
 messaging.onBackgroundMessage((payload) => {
   const data = payload.data || {};
   const notification = payload.notification || {};
-  const title = notification.title || data.title || 'Cepqar';
+  const title = notification.title || data.title || 'CepQontag';
   const options = {
     body: notification.body || data.body || data.message || 'Yeni bir bildiriminiz var.',
     icon: '/HeyCar/owner/icons/cepqar-192.png',
@@ -958,4 +958,4 @@ messaging.onBackgroundMessage((payload) => {
 """
 (build / "firebase-messaging-sw.js").write_text(sw, encoding="utf-8")
 
-print(f"Cepqar PWA ready: base={base_path}, manifest={build/'manifest.json'}")
+print(f"CepQontag PWA ready: base={base_path}, manifest={build/'manifest.json'}")

@@ -2,7 +2,7 @@ from pathlib import Path
 import re
 
 BRAND_FROM = 'HeyCar'
-BRAND_TO = 'Cepqar'
+BRAND_TO = 'CepQontag'
 string_re = re.compile(r"('(?:\\.|[^'\\])*'|\"(?:\\.|[^\"\\])*\")")
 
 def replace_literal(match):
@@ -136,4 +136,4 @@ class """, text, flags=re.S)
         text = re.sub(r"const Text\.rich\(TextSpan\(children: \[TextSpan\(text: 'Hey'.*?fontWeight: FontWeight\.w900\)\),", "Image.asset('assets/Logoqr.png', height: 32, fit: BoxFit.contain),", text, flags=re.S)
 
     path.write_text(text, encoding='utf-8')
-print('Cepqar frontend branding applied; technical HeyCar infrastructure preserved.')
+print('CepQontag frontend branding applied; technical HeyCar infrastructure preserved.')

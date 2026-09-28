@@ -1,4 +1,4 @@
-name: Build Cepqar iOS
+name: Build CepQontag iOS
 
 on:
   workflow_dispatch:
@@ -27,7 +27,7 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Apply shared Cepqar patches
+      - name: Apply shared CepQontag patches
         run: |
           python3 tool/brand_frontend.py
           python3 tool/owner_light_theme_patch.py
@@ -39,11 +39,11 @@ jobs:
       - name: Generate iOS platform
         run: flutter create . --platforms=ios --project-name app --org com.cepqar --no-pub
 
-      - name: Configure Cepqar iOS
+      - name: Configure CepQontag iOS
         run: |
-          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName Cepqar" ios/Runner/Info.plist || true
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName CepQontag" ios/Runner/Info.plist || true
           /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'QR kod taramak ve araç görselleri için kamera erişimi gerekir.'" ios/Runner/Info.plist
-          /usr/libexec/PlistBuddy -c "Add :NSMicrophoneUsageDescription string 'Cepqar sesli görüşmeleri için mikrofon erişimi gerekir.'" ios/Runner/Info.plist
+          /usr/libexec/PlistBuddy -c "Add :NSMicrophoneUsageDescription string 'CepQontag sesli görüşmeleri için mikrofon erişimi gerekir.'" ios/Runner/Info.plist
           /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'Araç görseli seçmek için fotoğraf arşivi erişimi gerekir.'" ios/Runner/Info.plist
           /usr/libexec/PlistBuddy -c "Add :NSLocationWhenInUseUsageDescription string 'Park yerinizi kaydetmek için konum erişimi gerekir.'" ios/Runner/Info.plist
           /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes array" ios/Runner/Info.plist
@@ -91,11 +91,11 @@ jobs:
       - name: Package iOS simulator app
         run: |
           mkdir -p build/ios-artifact
-          ditto -c -k --sequesterRsrc --keepParent build/ios/iphonesimulator/Runner.app build/ios-artifact/Cepqar-iOS-simulator.zip
+          ditto -c -k --sequesterRsrc --keepParent build/ios/iphonesimulator/Runner.app build/ios-artifact/CepQontag-iOS-simulator.zip
 
       - name: Upload iOS simulator artifact
         uses: actions/upload-artifact@v4
         with:
           name: cepqar-ios-simulator
-          path: build/ios-artifact/Cepqar-iOS-simulator.zip
+          path: build/ios-artifact/CepQontag-iOS-simulator.zip
           retention-days: 7

@@ -52,7 +52,7 @@ async function sendQrNotificationPush({ app, push: providedPush, qr, type, messa
       sentAt:String(Date.now())
     };
 
-    const notificationTitle=plate?`Cepqar • ${plate.toUpperCase()}`:'Cepqar';
+    const notificationTitle=plate?`CepQontag • ${plate.toUpperCase()}`:'CepQontag';
     let ownerResult=null;
     let driverResult=null;
 

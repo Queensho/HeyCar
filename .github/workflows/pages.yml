@@ -26,7 +26,7 @@ jobs:
         with:
           channel: stable
           cache: true
-      - name: Apply Cepqar frontend branding
+      - name: Apply CepQontag frontend branding
         run: python3 tool/brand_frontend.py
       - name: Apply owner light theme
         run: python3 tool/owner_light_theme_patch.py
@@ -118,7 +118,7 @@ jobs:
                               "com.miui.powerkeeper.ui.HiddenAppsConfigActivity"
                           )
                           putExtra("package_name", packageName)
-                          putExtra("package_label", "Cepqar")
+                          putExtra("package_label", "CepQontag")
                           addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                       })
                   } catch (e: Exception) {
@@ -173,7 +173,7 @@ jobs:
             text=text.replace('<manifest xmlns:android="http://schemas.android.com/apk/res/android">','<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">',1)
           permissions='''    <uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />\n    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />\n    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />\n    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />\n    <uses-permission android:name="android.permission.WAKE_LOCK" />\n    <uses-permission android:name="android.permission.VIBRATE" />\n'''
           if 'android.permission.RECORD_AUDIO' not in text:text=text.replace(marker,permissions+'\n    '+marker,1)
-          text=text.replace('android:label="app"','android:label="Cepqar"')
+          text=text.replace('android:label="app"','android:label="CepQontag"')
           text=text.replace('android:launchMode="singleTop"','android:launchMode="singleInstance"')
           text=text.replace('android:name=".MainActivity"', 'android:name=".MainActivity"\n            android:showWhenLocked="true"\n            android:turnScreenOn="true"')
           if 'com.google.firebase.messaging.default_notification_icon' not in text:
@@ -186,7 +186,7 @@ jobs:
             text=text.replace('</application>','''        <receiver\n            android:exported="false"\n            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />\n        <receiver\n            android:exported="false"\n            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">\n            <intent-filter>\n                <action android:name="android.intent.action.BOOT_COMPLETED"/>\n                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>\n                <action android:name="android.intent.action.QUICKBOOT_POWERON"/>\n                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>\n            </intent-filter>\n        </receiver>\n    </application>''')
           p.write_text(text)
           PY
-      - name: Apply Cepqar Android icons
+      - name: Apply CepQontag Android icons
         run: |
           set -e
           ICON="assets/app_icons/cepqar_icon.png"; test -f "$ICON"
@@ -211,7 +211,7 @@ jobs:
 
           bbox=mask.getbbox()
           if not bbox:
-            raise SystemExit("Could not extract Cepqar pq mark from launcher icon")
+            raise SystemExit("Could not extract CepQontag pq mark from launcher icon")
           mark=mask.crop(bbox)
           canvas=Image.new("L",(96,96),0)
           mark.thumbnail((76,76),Image.Resampling.LANCZOS)
@@ -221,13 +221,13 @@ jobs:
           out=Image.new("RGBA",(96,96),(255,255,255,0))
           out.putalpha(canvas)
           out.save("android/app/src/main/res/drawable/ic_stat_cepqar.png")
-          print("Cepqar pq notification mask generated")
+          print("CepQontag pq notification mask generated")
           PY
-      - name: Apply Cepqar native splash
+      - name: Apply CepQontag native splash
         run: |
           python3 -m pip install --quiet pillow
           python3 tool/native_splash_patch.py
-      - name: Install uploaded Cepqar notification sounds
+      - name: Install uploaded CepQontag notification sounds
         run: |
           set -e
           test -f assets/Bildirim.wav
@@ -243,7 +243,7 @@ jobs:
           test -s android/app/src/main/res/raw/arama.wav
           test -s android/app/src/main/res/raw/cepqar_call.wav
           test -s android/app/src/main/res/raw/ringtone_default.wav
-          echo "Uploaded Cepqar sounds installed with compatibility aliases"
+          echo "Uploaded CepQontag sounds installed with compatibility aliases"
 
       - name: Get dependencies
         run: flutter pub get

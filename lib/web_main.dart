@@ -34,7 +34,7 @@ class _HeyCarPublicWebAppState extends State<HeyCarPublicWebApp>{
     html.window.history.replaceState(null,'',clean.toString());
   }
   @override Widget build(BuildContext context)=>MaterialApp(
-    debugShowCheckedModeBanner:false,title:'Cepqar | Araç sahibine ulaş',
+    debugShowCheckedModeBanner:false,title:'CepQontag | Araç sahibine ulaş',
     theme:ThemeData(useMaterial3:true,brightness:Brightness.dark,scaffoldBackgroundColor:const Color(0xFF07101F),colorScheme:ColorScheme.fromSeed(seedColor:const Color(0xFFB6FF2A),brightness:Brightness.dark,primary:const Color(0xFFB6FF2A),secondary:const Color(0xFF7C4DFF),surface:const Color(0xFF101A31))),
     home:widget.business?const BusinessPanelPage():_PublicSplash(child:showCall
       ? PublicCallPage(qrToken:widget.token.trim().toUpperCase(),plate:'Araç sahibi',onExit:closeCall)
