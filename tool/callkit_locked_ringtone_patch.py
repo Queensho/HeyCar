@@ -160,7 +160,7 @@ new_play = """    private fun playSound(data: Bundle?) {
 
         requestRingtoneAudioFocus()
 
-        // Prefer the packaged Cepqar ringtone under res/raw and loop it using
+        // Prefer the packaged CepQontag ringtone under res/raw and loop it using
         // STREAM_RING. Keep RingtoneManager as a fallback for OEM-specific cases.
         if (sound.isNotEmpty() && !sound.equals("system_ringtone_default", true)) {
             val resId = context.resources.getIdentifier(sound, "raw", context.packageName)
@@ -223,7 +223,7 @@ new_play = """    private fun playSound(data: Bundle?) {
 
 replace_once(old_play, new_play, "wake-lock ringtone player with ring audio focus")
 p.write_text(text, encoding="utf-8")
-print(f"Cepqar CallKit ringtone patch applied: {p}")
+print(f"CepQontag CallKit ringtone patch applied: {p}")
 
 notification_candidates = sorted(
     Path.home().glob(
@@ -237,12 +237,12 @@ if not notification_candidates:
 np = notification_candidates[-1]
 notification_text = np.read_text(encoding="utf-8")
 old_channel = 'const val NOTIFICATION_CHANNEL_ID_INCOMING = "callkit_incoming_channel_id_v2"'
-new_channel = 'const val NOTIFICATION_CHANNEL_ID_INCOMING = "cepqar_callkit_incoming_channel_v7"'
+new_channel = 'const val NOTIFICATION_CHANNEL_ID_INCOMING = "cepqontag_callkit_incoming_channel_v8"'
 if old_channel in notification_text:
     notification_text = notification_text.replace(old_channel, new_channel, 1)
     np.write_text(notification_text, encoding="utf-8")
-    print(f"Fresh Cepqar CallKit channel id applied: {np}")
+    print(f"Fresh CepQontag CallKit channel id applied: {np}")
 elif new_channel in notification_text:
-    print("Fresh Cepqar CallKit channel id: already patched")
+    print("Fresh CepQontag CallKit channel id: already patched")
 else:
     raise SystemExit(f"Incoming CallKit channel id block not found in {np}")
