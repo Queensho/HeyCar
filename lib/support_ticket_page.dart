@@ -221,7 +221,7 @@ class _SupportTicketPageState extends State<SupportTicketPage>{
         if(reply.isNotEmpty)...[
           const SizedBox(height:10),
           Container(width:double.infinity,padding:const EdgeInsets.all(11),decoration:BoxDecoration(color:_cardReply,borderRadius:BorderRadius.circular(14),border:Border.all(color:_purple.withValues(alpha:.28))),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-            const Row(children:[Icon(Icons.support_agent_rounded,color:_purple,size:17),SizedBox(width:6),Text('Cepqar Destek',style:TextStyle(color:_purple,fontSize:10.5,fontWeight:FontWeight.w900))]),
+            const Row(children:[Icon(Icons.support_agent_rounded,color:_purple,size:17),SizedBox(width:6),Text('CepQontag Destek',style:TextStyle(color:_purple,fontSize:10.5,fontWeight:FontWeight.w900))]),
             const SizedBox(height:5),
             Text(reply,style:const TextStyle(color:Colors.white,fontSize:11.5,height:1.35)),
             const SizedBox(height:4),

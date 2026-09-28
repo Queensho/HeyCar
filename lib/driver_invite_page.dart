@@ -1511,7 +1511,7 @@ class _DriverSettingsPage extends StatelessWidget {
       builder: (dialogContext) => AlertDialog(
         backgroundColor: _panel,
         title: const Text('Çıkış yapılsın mı?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900)),
-        content: const Text('Cepqar sürücü hesabından çıkış yapacaksın.', style: TextStyle(color: _muted)),
+        content: const Text('CepQontag sürücü hesabından çıkış yapacaksın.', style: TextStyle(color: _muted)),
         actions: [
           TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Vazgeç')),
           FilledButton(
@@ -1598,7 +1598,7 @@ class _DriverSettingsPage extends StatelessWidget {
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text('Ayarlar', style: TextStyle(color: Colors.white, fontSize: 34, height: 1, fontWeight: FontWeight.w900, letterSpacing: -1.1)),
                   SizedBox(height: 8),
-                  Text('Hesabınızı ve Cepqar\ntercihlerinizi yönetin.', style: TextStyle(color: _muted, fontSize: 14.5, height: 1.32, fontWeight: FontWeight.w500)),
+                  Text('Hesabınızı ve CepQontag\ntercihlerinizi yönetin.', style: TextStyle(color: _muted, fontSize: 14.5, height: 1.32, fontWeight: FontWeight.w500)),
                 ]),
               ),
             ]),
@@ -1636,7 +1636,7 @@ class _DriverSettingsPage extends StatelessWidget {
               const SizedBox(height: 8),
               _SettingsTile(icon: Icons.refresh_rounded, iconColor: const Color(0xFF55E6A5), title: 'Verileri yenile', subtitle: 'Araç ve bildirim bilgilerini güncelle', onTap: onRefresh),
               const SizedBox(height: 14),
-              _SettingsTile(icon: Icons.logout_rounded, iconColor: const Color(0xFFFF4D63), title: 'Çıkış Yap', subtitle: 'Cepqar sürücü hesabından güvenli şekilde çıkış yap', onTap: () => _logout(context)),
+              _SettingsTile(icon: Icons.logout_rounded, iconColor: const Color(0xFFFF4D63), title: 'Çıkış Yap', subtitle: 'CepQontag sürücü hesabından güvenli şekilde çıkış yap', onTap: () => _logout(context)),
             ]),
           ),
         ]),

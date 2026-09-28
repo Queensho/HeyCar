@@ -386,7 +386,7 @@ class _PremiumSettingsTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text('Cepqar Premium', style: TextStyle(color: Colors.white, fontSize: 15.5, fontWeight: FontWeight.w900)),
+                    Text('CepQontag Premium', style: TextStyle(color: Colors.white, fontSize: 15.5, fontWeight: FontWeight.w900)),
                     SizedBox(height: 4),
                     Text('Premium özellikleri keşfedin', style: TextStyle(color: Color(0xFFD8C7F5), fontSize: 12, height: 1.2)),
                   ],

@@ -197,11 +197,11 @@ class _OwnerCallPageState extends State<OwnerCallPage> {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(22, 34, 22, 28),
             child: Column(children: [
-              const Text('Cepqar', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900)),
+              const Text('CepQontag', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900)),
               const Spacer(),
               Container(width: 120, height: 120, decoration: const BoxDecoration(color: Color(0xFF1B2850), shape: BoxShape.circle), child: const Icon(Icons.phone_in_talk_rounded, color: _ownerCallPurple, size: 58)),
               const SizedBox(height: 24),
-              Text(connected ? 'Anonim görüşme' : 'Cepqar araması', style: const TextStyle(color: Colors.white, fontSize: 27, fontWeight: FontWeight.w900)),
+              Text(connected ? 'Anonim görüşme' : 'CepQontag araması', style: const TextStyle(color: Colors.white, fontSize: 27, fontWeight: FontWeight.w900)),
               const SizedBox(height: 8),
               Text('$plate aracınız için ${connected ? 'bağlandı' : 'gelen arama'}', textAlign: TextAlign.center, style: const TextStyle(color: _ownerCallMuted, fontSize: 16, fontWeight: FontWeight.w700)),
               const SizedBox(height: 12),

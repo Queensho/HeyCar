@@ -438,7 +438,7 @@ class _DriverDeletedPage extends StatelessWidget{
       const SizedBox(height:18),
       const Text('Sürücü hesabın silindi',style:TextStyle(color:Colors.white,fontSize:24,fontWeight:FontWeight.w900)),
       const SizedBox(height:10),
-      const Text('Hesap verilerin ve sürücü yetkilerin silindi. Cepqar’ı yeniden açarak tekrar giriş veya kayıt yapabilirsin.',textAlign:TextAlign.center,style:TextStyle(color:_muted,height:1.4)),
+      const Text('Hesap verilerin ve sürücü yetkilerin silindi. CepQontag’ı yeniden açarak tekrar giriş veya kayıt yapabilirsin.',textAlign:TextAlign.center,style:TextStyle(color:_muted,height:1.4)),
       const SizedBox(height:22),
       OutlinedButton.icon(onPressed:SystemNavigator.pop,icon:const Icon(Icons.close_rounded),label:const Text('Uygulamayı Kapat')),
     ])))),

@@ -36,7 +36,7 @@ class _PremiumPageState extends State<PremiumPage>{
   }
   @override Widget build(BuildContext context)=>Scaffold(
     backgroundColor:_bg,
-    appBar:AppBar(backgroundColor:_bg,surfaceTintColor:_bg,foregroundColor:Colors.white,elevation:0,title:const Text('Cepqar Premium',style:TextStyle(fontSize:19,fontWeight:FontWeight.w900))),
+    appBar:AppBar(backgroundColor:_bg,surfaceTintColor:_bg,foregroundColor:Colors.white,elevation:0,title:const Text('CepQontag Premium',style:TextStyle(fontSize:19,fontWeight:FontWeight.w900))),
     body:SafeArea(top:false,child:ListView(padding:const EdgeInsets.fromLTRB(16,4,16,24),children:[
       Container(padding:const EdgeInsets.fromLTRB(16,16,16,15),decoration:BoxDecoration(gradient:const LinearGradient(colors:[Color(0xFF151333),Color(0xFF28145D)]),borderRadius:BorderRadius.circular(20),border:Border.all(color:_purple.withValues(alpha:.55))),child:const Row(children:[
         Icon(Icons.workspace_premium_rounded,color:Color(0xFFB78CFF),size:42),SizedBox(width:13),
