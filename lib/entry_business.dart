@@ -8,7 +8,7 @@ class CepqarBusinessApp extends StatelessWidget{
   @override
   Widget build(BuildContext context)=>MaterialApp(
     debugShowCheckedModeBanner:false,
-    title:'Cepqar İşletme',
+    title:'CepQontag İşletme',
     theme:ThemeData(useMaterial3:true,brightness:Brightness.dark),
     home:const BusinessPanelPage(),
   );

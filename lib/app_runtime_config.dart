@@ -98,7 +98,7 @@ class RuntimeConfigService {
     return RuntimeAppConfig(
       maintenanceMode:d['maintenanceMode']==true,
       maintenanceTitle:(d['maintenanceTitle']??'Kısa bir bakım yapıyoruz').toString(),
-      maintenanceMessage:(d['maintenanceMessage']??'Cepqar kısa süre içinde tekrar kullanılabilir olacak.').toString(),
+      maintenanceMessage:(d['maintenanceMessage']??'CepQontag kısa süre içinde tekrar kullanılabilir olacak.').toString(),
       minimumVersion:(pconf['minimum']??'0.0.0').toString(),
       forceUpdate:!kIsWeb&&pconf['forceUpdate']==true,
       storeUrl:(pconf['storeUrl']??'').toString(),

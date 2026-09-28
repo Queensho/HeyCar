@@ -121,7 +121,7 @@ Future<void> _restoreSession()async{
       QrDraft.model=prefs.getString('owner_model')??'';
       QrDraft.token=prefs.getString('owner_qr_token')??'';
       QrDraft.scanSecret=prefs.getString('owner_qr_scan_secret')??'';
-      QrDraft.ownerName=OnboardingDraft.displayName.isEmpty?'Cepqar Kullanıcısı':OnboardingDraft.displayName;
+      QrDraft.ownerName=OnboardingDraft.displayName.isEmpty?'CepQontag Kullanıcısı':OnboardingDraft.displayName;
     }
 
     await CrashReporting.setContext(role:driverLogged&&!loggedIn?'driver':loggedIn?'owner':'guest');

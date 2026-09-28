@@ -39,7 +39,7 @@ class _RealQrScanPageState extends State<RealQrScanPage> {
     if (busy) return;
     final token = QrBackend.normalizeToken(raw);
     if (token.isEmpty || !QrBackend.isValidToken(token)) {
-      setState(() => error = 'Geçerli bir Cepqar QR kodu gir.');
+      setState(() => error = 'Geçerli bir CepQontag QR kodu gir.');
       return;
     }
     setState(() {

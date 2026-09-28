@@ -93,7 +93,7 @@ class _ParkingPlacesPageState extends State<ParkingPlacesPage>
           setState(
             () =>
                 _locationError = permission == LocationPermission.deniedForever
-                ? 'Konum izni kapalı. Telefon ayarlarından Cepqar için izin verebilirsin.'
+                ? 'Konum izni kapalı. Telefon ayarlarından CepQontag için izin verebilirsin.'
                 : 'Konumunu yalnızca çevrendeki otoparkları bulmak için kullanacağız.',
           );
         return;

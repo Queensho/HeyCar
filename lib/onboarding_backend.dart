@@ -75,7 +75,7 @@ class OnboardingBackend {
     final code = decoded is Map ? decoded['error']?.toString() ?? '' : '';
     if (code == 'EMAIL_EXISTS') throw Exception('Bu e-posta adresi zaten kayıtlı.');
     if (code == 'PHONE_EXISTS') throw Exception('Bu telefon numarası zaten kayıtlı.');
-    if (code == 'PLATE_EXISTS') throw Exception('Bu plaka başka bir Cepqar hesabında kayıtlı. Mevcut hesabınla giriş yap veya araç devir kodunu kullan.');
+    if (code == 'PLATE_EXISTS') throw Exception('Bu plaka başka bir CepQontag hesabında kayıtlı. Mevcut hesabınla giriş yap veya araç devir kodunu kullan.');
     if (code == 'INVALID_PHONE') throw Exception('Geçerli bir cep telefonu numarası gir.');
     if (code == 'INVALID_INPUT') throw Exception('Bilgileri kontrol edip tekrar dene.');
     if (code == 'LEGAL_CONSENT_REQUIRED') throw Exception('Güncel Kullanım Şartları ve Gizlilik/KVKK metnini kabul etmelisin.');

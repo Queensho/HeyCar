@@ -16,9 +16,9 @@ class AppAccessGatePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final update=config.updateRequired;
-    final title=update?'Cepqar güncellemesi gerekli':config.maintenanceTitle;
+    final title=update?'CepQontag güncellemesi gerekli':config.maintenanceTitle;
     final message=update
-      ?'Bu sürüm artık desteklenmiyor. Cepqar’ı kullanmaya devam etmek için uygulamayı güncelle.'
+      ?'Bu sürüm artık desteklenmiyor. CepQontag’ı kullanmaya devam etmek için uygulamayı güncelle.'
       :config.maintenanceMessage;
     final icon=update?Icons.system_update_alt_rounded:Icons.build_circle_rounded;
 
