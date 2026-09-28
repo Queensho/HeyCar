@@ -104,6 +104,8 @@ class _OwnerCallPageState extends State<OwnerCallPage> {
         throw Exception('Arama bağlantısı henüz hazır değil.');
       }
       localStream = await navigator.mediaDevices.getUserMedia({'audio': true, 'video': false});
+      for (final track in localStream!.getAudioTracks()) { track.enabled = true; }
+      try { await Helper.setSpeakerphoneOn(false); } catch (_) {}
       peer = await createPeerConnection({
         'iceServers': [
           {'urls': 'stun:stun.l.google.com:19302'},
@@ -130,6 +132,9 @@ class _OwnerCallPageState extends State<OwnerCallPage> {
       await peer!.setLocalDescription(answer);
       await _signal(action: 'accept', answer: {'sdp': answer.sdp, 'type': answer.type});
       try { await FlutterCallkitIncoming.setCallConnected(callId); } catch (_) {}
+      // Re-assert the voice route after CallKit stops ringtone audio focus.
+      try { await Helper.setSpeakerphoneOn(false); } catch (_) {}
+      for (final track in localStream?.getAudioTracks() ?? <MediaStreamTrack>[]) { track.enabled = true; }
       if (mounted) setState(() { connected = true; busy = false; nativeAccepted = false; });
     } catch (e) {
       if (mounted && !closing) setState(() { error = e.toString().replaceFirst('Exception: ', ''); busy = false; });
