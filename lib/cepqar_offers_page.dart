@@ -58,7 +58,7 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
         title:Row(
           mainAxisSize:MainAxisSize.min,
           children:[
-            Image.asset('assets/Logoqr.png',height:25),
+            Image.asset('assets/Logoyeni.png',height:25),
             const SizedBox(width:5),
             Flexible(child:Text('Fırsatlar',maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:CepqarTheme.text,fontSize:19,fontWeight:FontWeight.w900))),
           ],

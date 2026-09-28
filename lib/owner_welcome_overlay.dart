@@ -49,7 +49,7 @@ class OwnerWelcomeOverlay extends StatelessWidget {
                       top: topInset + 14,
                       child: Center(
                         child: Image.asset(
-                          'assets/Logoqr.png',
+                          'assets/Logoyeni.png',
                           height: 54,
                           fit: BoxFit.contain,
                         ),

@@ -733,7 +733,7 @@ class _DriverHome extends StatelessWidget {
         width: 158,
         height: 55,
         child: Image.asset(
-          'assets/Logoqr.png',
+          'assets/Logoyeni.png',
           fit: BoxFit.contain,
           alignment: Alignment.centerLeft,
           errorBuilder: (_, __, ___) => const Align(
