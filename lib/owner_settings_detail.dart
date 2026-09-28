@@ -91,7 +91,7 @@ class _AccountDeletedPage extends StatelessWidget{
       const SizedBox(height:18),
       const Text('Hesabın silindi',style:TextStyle(color:Colors.white,fontSize:25,fontWeight:FontWeight.w900)),
       const SizedBox(height:10),
-      const Text('Hesabın ve bağlı verilerin silindi. Yeni hesap oluşturmak için Cepqar uygulamasını yeniden açabilirsin.',textAlign:TextAlign.center,style:TextStyle(color:_muted,height:1.4)),
+      const Text('Hesabın ve bağlı verilerin silindi. Yeni hesap oluşturmak için CepQontag uygulamasını yeniden açabilirsin.',textAlign:TextAlign.center,style:TextStyle(color:_muted,height:1.4)),
       const SizedBox(height:22),
       OutlinedButton.icon(onPressed:SystemNavigator.pop,icon:const Icon(Icons.close_rounded),label:const Text('Uygulamayı Kapat')),
     ])))),

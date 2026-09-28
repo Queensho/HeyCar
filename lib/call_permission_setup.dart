@@ -82,7 +82,7 @@ class _CallPermissionSetupPageState extends State<CallPermissionSetupPage> with 
 
   String get _status=>switch(_step){
     0=>'Bildirim ve tam ekran arama iznini verin.',
-    1=>'Cepqar için otomatik başlatmayı etkinleştirip geri dönün.',
+    1=>'CepQontag için otomatik başlatmayı etkinleştirip geri dönün.',
     2=>'“Kilit ekranında göster” ve “Arka planda açılır pencere” seçeneklerini açıp geri dönün.',
     3=>'Pil kullanımında “Kısıtlama yok” seçeneğini seçip geri dönün.',
     _=>''
@@ -101,10 +101,10 @@ class _CallPermissionSetupPageState extends State<CallPermissionSetupPage> with 
               child:const Icon(Icons.phone_in_talk_rounded,size:44,color:CepqarTheme.purple),
             ),
             const SizedBox(height:26),
-            const Text('Cepqar aramalarını kaçırmayın',textAlign:TextAlign.center,style:TextStyle(fontSize:25,fontWeight:FontWeight.w900)),
+            const Text('CepQontag aramalarını kaçırmayın',textAlign:TextAlign.center,style:TextStyle(fontSize:25,fontWeight:FontWeight.w900)),
             const SizedBox(height:10),
             Text(
-              _started?_status:'Telefon kilitliyken veya Cepqar kapalıyken de gelen aramaları gösterebilmek için birkaç ayarı hazırlayacağız.',
+              _started?_status:'Telefon kilitliyken veya CepQontag kapalıyken de gelen aramaları gösterebilmek için birkaç ayarı hazırlayacağız.',
               textAlign:TextAlign.center,
               style:TextStyle(fontSize:15,height:1.45,color:Theme.of(context).colorScheme.onSurfaceVariant),
             ),
