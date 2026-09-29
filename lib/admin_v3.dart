@@ -995,7 +995,7 @@ class _QrPageState extends State<QrPage>{
     final purple=PdfColor.fromHex('#6E22D9');
     final lilac=PdfColor.fromHex('#F0E4FC');
     final muted=PdfColor.fromHex('#665D77');
-    final templateData=await rootBundle.load('assets/Etiket3.png');
+    final templateData=await rootBundle.load('assets/Etiket4.png');
     final template=pw.MemoryImage(templateData.buffer.asUint8List());
 
     // REAL PRINT SIZE — do not derive this from source image pixels.
@@ -1008,13 +1008,13 @@ class _QrPageState extends State<QrPage>{
 
     // Shared Etiket3 overlay geometry. Values are proportions of the final
     // 55 x 46 mm label so preview/PNG/PDF stay aligned.
-    const qrLeftRatio=.575;
-    const qrTopRatio=.140;
-    const qrSizeWidthRatio=.350;
-    const codeLeftRatio=.555;
-    const codeTopRatio=.575;
-    const codeWidthRatio=.400;
-    const codeHeightRatio=.080;
+    const qrLeftRatio=.502;
+    const qrTopRatio=.300;
+    const qrSizeWidthRatio=.365;
+    const codeLeftRatio=.502;
+    const codeTopRatio=.642;
+    const codeWidthRatio=.365;
+    const codeHeightRatio=.065;
 
     pw.Widget labelCard(Map<String,dynamic> e){
       final token=_tokenOf(e);
@@ -1048,7 +1048,7 @@ class _QrPageState extends State<QrPage>{
               alignment:pw.Alignment.center,
               padding:pw.EdgeInsets.symmetric(horizontal:.45*PdfPageFormat.mm),
               decoration:pw.BoxDecoration(
-                color:lilac,
+                color:purple,
                 borderRadius:pw.BorderRadius.circular(1.5*PdfPageFormat.mm),
               ),
               child:pw.FittedBox(
@@ -1056,11 +1056,11 @@ class _QrPageState extends State<QrPage>{
                 child:pw.RichText(text:pw.TextSpan(children:[
                   pw.TextSpan(
                     text:'Etiket Kodu: ',
-                    style:pw.TextStyle(color:muted,fontSize:3.6),
+                    style:pw.TextStyle(color:PdfColors.white,fontSize:3.6),
                   ),
                   pw.TextSpan(
                     text:token,
-                    style:pw.TextStyle(color:purple,fontSize:4.92,fontWeight:pw.FontWeight.bold),
+                    style:pw.TextStyle(color:PdfColors.white,fontSize:4.92,fontWeight:pw.FontWeight.bold),
                   ),
                 ])),
               ),
@@ -1130,18 +1130,18 @@ class _QrPageState extends State<QrPage>{
   Widget _sticker(String token,String url)=>LayoutBuilder(builder:(context,c){
     final w=c.maxWidth;
     final h=c.maxHeight;
-    final qrSize=w*.350;
+    final qrSize=w*.365;
     return Stack(children:[
       Positioned.fill(
         child:Image.asset(
-          'assets/Etiket3.png',
+          'assets/Etiket4.png',
           fit:BoxFit.contain,
           alignment:Alignment.center,
         ),
       ),
       Positioned(
-        left:w*.575,
-        top:h*.140,
+        left:w*.502,
+        top:h*.300,
         width:qrSize,
         height:qrSize,
         child:LayoutBuilder(builder:(context,q){
@@ -1164,21 +1164,21 @@ class _QrPageState extends State<QrPage>{
         }),
       ),
       Positioned(
-        left:w*.555,
-        top:h*.575,
-        width:w*.400,
-        height:h*.080,
+        left:w*.502,
+        top:h*.642,
+        width:w*.365,
+        height:h*.065,
         child:Container(
           padding:EdgeInsets.symmetric(horizontal:w*.008),
           decoration:BoxDecoration(
-            color:const Color(0xFFF0E4FC),
+            color:const Color(0xFF6E22D9),
             borderRadius:BorderRadius.circular(h*.035),
           ),
           child:Center(child:FittedBox(
             fit:BoxFit.scaleDown,
             child:RichText(textAlign:TextAlign.center,text:TextSpan(children:[
-              const TextSpan(text:'Etiket Kodu: ',style:TextStyle(color:Color(0xFF665D77),fontSize:7.4,fontWeight:FontWeight.w600)),
-              TextSpan(text:token,style:const TextStyle(color:Color(0xFF6E22D9),fontSize:9.8,fontWeight:FontWeight.w900)),
+              const TextSpan(text:'Etiket Kodu: ',style:TextStyle(color:Colors.white,fontSize:7.4,fontWeight:FontWeight.w600)),
+              TextSpan(text:token,style:const TextStyle(color:Colors.white,fontSize:9.8,fontWeight:FontWeight.w900)),
             ])),
           )),
         ),
