@@ -1009,7 +1009,7 @@ class _QrPageState extends State<QrPage>{
     // Shared Etiket3 overlay geometry. Values are proportions of the final
     // 55 x 46 mm label so preview/PNG/PDF stay aligned.
     const qrLeftRatio=.562;
-    const qrTopRatio=.310;
+    const qrTopRatio=.335;
     const qrSizeWidthRatio=.245;
     const codeLeftRatio=.502;
     const codeTopRatio=.642;
@@ -1141,7 +1141,7 @@ class _QrPageState extends State<QrPage>{
       ),
       Positioned(
         left:w*.562,
-        top:h*.310,
+        top:h*.335,
         width:qrSize,
         height:qrSize,
         child:LayoutBuilder(builder:(context,q){
