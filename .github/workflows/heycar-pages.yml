@@ -157,6 +157,10 @@ jobs:
           mkdir -p deploy/owner
           cp -R build/web/. deploy/owner/
 
+      - name: Verify Vale app compiles
+        run: flutter build web --release --target lib/valet_main.dart --base-href "/HeyCar/vale/" --pwa-strategy=none
+        continue-on-error: true
+
       - name: Build admin panel
         run: |
           flutter build web --release --target lib/admin_v3.dart --base-href "/HeyCar/admin/" --pwa-strategy=none
