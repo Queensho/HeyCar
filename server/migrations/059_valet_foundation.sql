@@ -25,3 +25,11 @@ CREATE INDEX IF NOT EXISTS idx_valet_sessions_business_status ON valet_sessions(
 CREATE INDEX IF NOT EXISTS idx_valet_sessions_vehicle_active ON valet_sessions(vehicle_id,status) WHERE status NOT IN ('delivered','cancelled');
 CREATE INDEX IF NOT EXISTS idx_valet_staff_business ON valet_staff(business_id,is_active);
 COMMIT;
+
+CREATE TABLE IF NOT EXISTS valet_delivery_codes (
+ session_id uuid PRIMARY KEY REFERENCES valet_sessions(id) ON DELETE CASCADE,
+ code_hash text NOT NULL,
+ attempts integer NOT NULL DEFAULT 0 CHECK(attempts>=0),
+ expires_at timestamptz NOT NULL,
+ created_at timestamptz NOT NULL DEFAULT now()
+);
