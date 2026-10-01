@@ -107,6 +107,10 @@ module.exports=function registerAdminBusinessPremiumRoutes(app,pool,adminGuard){
           a.email||a.name||a.id||'admin'
         ]
       );
+      if(typeof body.valetEnabled==='boolean'){
+        const valet=await pool.query('UPDATE businesses SET valet_enabled=$2,updated_at=NOW() WHERE id::text=$1 RETURNING valet_enabled',[id,body.valetEnabled]);
+        q.rows[0].valet_enabled=valet.rows[0]?.valet_enabled===true;
+      }
       if(String(approval)==='rejected'||body.isActive===false){
         await pool.query('UPDATE business_campaigns SET is_active=FALSE,updated_at=NOW() WHERE business_id=$1',[q.rows[0].id]);
       }
