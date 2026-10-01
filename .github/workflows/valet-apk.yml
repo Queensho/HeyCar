@@ -1,0 +1,67 @@
+name: Build CepQontag Vale APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'lib/valet_main.dart'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+      - '.github/workflows/valet-apk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cepqontag-vale-apk
+  cancel-in-progress: true
+
+jobs:
+  build-valet-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Generate Android platform
+        run: flutter create . --platforms=android --project-name cepqontag_vale --org com.cepqontag --no-pub
+
+      - name: Set Vale app identity
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('android/app/build.gradle.kts')
+          s=p.read_text()
+          s=s.replace('com.cepqontag.cepqontag_vale', 'com.cepqontag.vale')
+          p.write_text(s)
+          m=Path('android/app/src/main/AndroidManifest.xml')
+          s=m.read_text().replace('android:label="cepqontag_vale"', 'android:label="CepQontag Vale"')
+          m.write_text(s)
+          PY
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze Vale entrypoint
+        run: flutter analyze lib/valet_main.dart --no-fatal-infos --no-fatal-warnings
+
+      - name: Build CepQontag Vale APK
+        run: flutter build apk --debug --target lib/valet_main.dart
+
+      - name: Rename APK
+        run: cp build/app/outputs/flutter-apk/app-debug.apk build/app/outputs/flutter-apk/CepQontag-Vale.apk
+
+      - name: Upload CepQontag Vale APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: cepqontag-vale-apk
+          path: build/app/outputs/flutter-apk/CepQontag-Vale.apk
+          retention-days: 14
+          if-no-files-found: error
