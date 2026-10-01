@@ -1,3 +1,4 @@
+const crypto=require('crypto');
 const {writeAdminAudit}=require('./admin-audit');
 
 async function tableExists(pool,name){
@@ -26,13 +27,15 @@ function isoOrNull(v){
 module.exports=function registerAdminBusinessPremiumRoutes(app,pool,adminGuard){
   const guard=typeof adminGuard==='function'?adminGuard:(_req,res)=>res.status(500).json({error:'ADMIN_GUARD_NOT_CONFIGURED'});
 
+  app.post('/api/admin/manage/businesses',guard,async(req,res)=>{const b=req.body||{},name=String(b.name||'').trim(),email=String(b.email||'').trim().toLowerCase(),password=String(b.password||''),category=String(b.category||'').trim();if(!name||!email||password.length<8)return res.status(400).json({error:'REQUIRED_FIELDS_MISSING'});const client=await pool.connect();try{await client.query('BEGIN');const exists=await client.query('SELECT id FROM business_accounts WHERE LOWER(email)=LOWER($1) LIMIT 1',[email]);if(exists.rowCount){await client.query('ROLLBACK');return res.status(409).json({error:'EMAIL_IN_USE'});}const salt=crypto.randomBytes(16).toString('base64url'),digest=crypto.scryptSync(password,salt,64).toString('hex'),ph='scrypt_v2:'+salt+':'+digest;const a=await client.query('INSERT INTO business_accounts(email,password_hash) VALUES($1,$2) RETURNING id,email',[email,ph]);const q=await client.query("INSERT INTO businesses(account_id,name,category,phone,address,is_active,approval_status,reviewed_at,reviewed_by,valet_enabled) VALUES($1,$2,$3,$4,$5,TRUE,'approved',NOW(),$6,$7) RETURNING *",[a.rows[0].id,name,category||null,b.phone||null,b.address||null,actor(req).id,b.valetEnabled===true]);await client.query('COMMIT');await writeAdminAudit(pool,{req,action:'business.create',targetType:'business',targetId:String(q.rows[0].id),details:{name,email,valetEnabled:b.valetEnabled===true}}).catch(()=>{});res.status(201).json({ok:true,business:{...q.rows[0],email:a.rows[0].email}});}catch(e){await client.query('ROLLBACK').catch(()=>{});console.error('admin create business',e);res.status(500).json({error:'SERVER_ERROR'});}finally{client.release();}});
+
   app.get('/api/admin/manage/businesses',guard,async(req,res)=>{
     const status=String(req.query?.status||'all').trim();
     try{
       const r=await pool.query(
         `SELECT b.id,b.account_id,b.name,b.category,b.phone,b.address,b.latitude,b.longitude,
                 b.opening_hours,b.description,b.logo_url,b.is_active,b.approval_status,b.admin_note,
-                b.reviewed_at,b.reviewed_by,b.created_at,b.updated_at,a.email,
+                b.reviewed_at,b.reviewed_by,b.created_at,b.updated_at,b.valet_enabled,a.email,
                 COUNT(DISTINCT c.id)::int AS campaign_count,
                 COUNT(DISTINCT c.id) FILTER(WHERE c.moderation_status='pending')::int AS pending_campaigns,
                 COUNT(DISTINCT red.id) FILTER(WHERE red.status='redeemed')::int AS redeemed_count,
@@ -107,6 +110,10 @@ module.exports=function registerAdminBusinessPremiumRoutes(app,pool,adminGuard){
           a.email||a.name||a.id||'admin'
         ]
       );
+      if(typeof body.valetEnabled==='boolean'){
+        const valet=await pool.query('UPDATE businesses SET valet_enabled=$2,updated_at=NOW() WHERE id::text=$1 RETURNING valet_enabled',[id,body.valetEnabled]);
+        q.rows[0].valet_enabled=valet.rows[0]?.valet_enabled===true;
+      }
       if(String(approval)==='rejected'||body.isActive===false){
         await pool.query('UPDATE business_campaigns SET is_active=FALSE,updated_at=NOW() WHERE business_id=$1',[q.rows[0].id]);
       }

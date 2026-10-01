@@ -9,6 +9,7 @@ const registerQrRoutes=require('./qr-routes');
 const registerOnboardingRoutes=require('./onboarding-routes');
 const registerOwnerAuthRoutes=require('./owner-auth-routes');
 const registerBusinessRoutes=require('./business-routes');
+const registerValetRoutes=require('./valet-routes');
 const registerAdminManagementRoutes=require('./admin-management-routes');
 const {registerAdminAuthRoutes}=require('./admin-auth-routes');
 const {configureTrustedProxy}=require('./proxy-security');
@@ -85,6 +86,7 @@ registerQrRoutes(app,pool);
 registerOnboardingRoutes(app,pool);
 registerOwnerAuthRoutes(app,pool);
 registerBusinessRoutes(app,pool);
+registerValetRoutes(app,pool);
 registerAdminManagementRoutes(app,pool,adminAuth);
 
 app.use((err,_req,res,next)=>{
