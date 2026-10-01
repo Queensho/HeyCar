@@ -1,4 +1,5 @@
 const crypto=require('crypto');
+const {ownerId: authenticatedOwnerId}=require('./owner-auth-service');
 
 module.exports=function registerValetRoutes(app,pool){
  const hash=s=>crypto.createHash('sha256').update(String(s)).digest('hex');
@@ -39,9 +40,15 @@ module.exports=function registerValetRoutes(app,pool){
   res.status(201).json({ok:true,session:q.rows[0]});
  });
 
+ app.get('/api/owner/valet/:vehicleId',async(req,res)=>{try{const owner=authenticatedOwnerId(req);if(!owner)return res.status(401).json({error:'OWNER_REQUIRED'});const q=await pool.query("SELECT s.*,b.name AS business_name FROM valet_sessions s JOIN vehicles v ON v.id=s.vehicle_id JOIN businesses b ON b.id=s.business_id WHERE s.vehicle_id::text=$1 AND v.owner_id::text=$2 AND s.status NOT IN ('delivered','cancelled') ORDER BY s.created_at DESC LIMIT 1",[String(req.params.vehicleId),String(owner)]);res.json({ok:true,session:q.rows[0]||null});}catch(e){console.error('owner valet status',e);res.status(500).json({error:'SERVER_ERROR'});}});
+ app.post('/api/owner/valet/:vehicleId/request',async(req,res)=>{try{const owner=authenticatedOwnerId(req);if(!owner)return res.status(401).json({error:'OWNER_REQUIRED'});const q=await pool.query("UPDATE valet_sessions s SET status='requested',requested_at=COALESCE(requested_at,now()),updated_at=now() FROM vehicles v WHERE s.vehicle_id=v.id AND s.vehicle_id::text=$1 AND v.owner_id::text=$2 AND s.status='parked' RETURNING s.*",[String(req.params.vehicleId),String(owner)]);if(!q.rowCount)return res.status(404).json({error:'ACTIVE_VALET_NOT_FOUND'});res.json({ok:true,session:q.rows[0]});}catch(e){console.error('owner valet request',e);res.status(500).json({error:'SERVER_ERROR'});}});
+
  app.patch('/api/business/valet/sessions/:id/status',async(req,res)=>{const a=await businessAuth(req,res);if(!a||!enabled(a,res))return;const status=String((req.body||{}).status||'');
   if(!['parked','requested','retrieving','ready','delivered','cancelled'].includes(status))return res.status(400).json({error:'INVALID_STATUS'});
   const q=await pool.query("UPDATE valet_sessions SET status=$3,requested_at=CASE WHEN $3='requested' THEN COALESCE(requested_at,now()) ELSE requested_at END,ready_at=CASE WHEN $3='ready' THEN now() ELSE ready_at END,delivered_at=CASE WHEN $3='delivered' THEN now() ELSE delivered_at END,updated_at=now() WHERE id=$1 AND business_id=$2 RETURNING *",[req.params.id,a.business_id,status]);
-  if(!q.rowCount)return res.status(404).json({error:'NOT_FOUND'});res.json({ok:true,session:q.rows[0]});
+  if(!q.rowCount)return res.status(404).json({error:'NOT_FOUND'});
+  const row=q.rows[0];
+  if(row.vehicle_id&&['retrieving','ready'].includes(status)){try{const o=await pool.query('SELECT owner_id FROM vehicles WHERE id=$1',[row.vehicle_id]);const owner=o.rows[0]?.owner_id,push=app.locals.heycarPush;if(owner&&push?.sendOwner){const title=status==='ready'?'Aracınız hazır':'Valeniz aracınızı getiriyor';const body=status==='ready'?row.plate+' teslim için hazır.':row.plate+' için vale yola çıktı.';await push.sendOwner(owner,{type:'valet_status',sourceType:'valet',vehicleId:String(row.vehicle_id),valetSessionId:String(row.id),status},title,body);}}catch(e){console.error('valet owner push',e);}}
+  res.json({ok:true,session:row});
  });
 };
