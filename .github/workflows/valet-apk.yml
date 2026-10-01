@@ -33,12 +33,31 @@ jobs:
       - name: Generate Android platform
         run: flutter create . --platforms=android --project-name vale --org com.cepqontag --no-pub
 
+      - name: Restore Vale Firebase Android config
+        env:
+          VALE_GOOGLE_SERVICES_JSON_B64: ${{ secrets.VALE_GOOGLE_SERVICES_JSON_B64 }}
+        run: |
+          set -e
+          test -n "$VALE_GOOGLE_SERVICES_JSON_B64"
+          printf '%s' "$VALE_GOOGLE_SERVICES_JSON_B64" | base64 --decode > android/app/google-services.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          data=json.loads(Path('android/app/google-services.json').read_text())
+          packages=[c.get('client_info',{}).get('android_client_info',{}).get('package_name') for c in data.get('client',[])]
+          if 'com.cepqontag.vale' not in packages:
+            raise SystemExit('Firebase config package mismatch: com.cepqontag.vale not found')
+          print('Vale Firebase config restored for com.cepqontag.vale')
+          PY
+
       - name: Set Vale app identity
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p=Path('android/app/build.gradle.kts')
           s=p.read_text()
+          if 'com.google.gms.google-services' not in s:
+            s=s.replace('plugins {', 'plugins {\n    id("com.google.gms.google-services") version "4.4.4"', 1)
           if 'isCoreLibraryDesugaringEnabled = true' not in s:
             s=s.replace('compileOptions {', 'compileOptions {\n        isCoreLibraryDesugaringEnabled = true', 1)
           if 'coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:' not in s:
@@ -49,6 +68,8 @@ jobs:
           p.write_text(s)
           m=Path('android/app/src/main/AndroidManifest.xml')
           s=m.read_text().replace('android:label="cepqontag_vale"', 'android:label="CepQontag Vale"')
+          if 'android.permission.POST_NOTIFICATIONS' not in s:
+            s=s.replace('<application', '    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <uses-permission android:name="android.permission.INTERNET" />\n    <application', 1)
           m.write_text(s)
           PY
 
