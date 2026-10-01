@@ -37,7 +37,7 @@ module.exports=function registerValetRoutes(app,pool){
       ORDER BY requested_at NULLS LAST,created_at
       FOR UPDATE SKIP LOCKED LIMIT 1`,[businessId]);
    if(!job.rowCount){await client.query('COMMIT');return null;}
-   const q=await client.query("UPDATE valet_sessions SET staff_id=$2,status='retrieving',assigned_at=now(),updated_at=now() WHERE id=$1 RETURNING *",[job.rows[0].id,staff.rows[0].id]);
+   const q=await client.query("UPDATE valet_sessions SET staff_id=$2,assigned_at=now(),updated_at=now() WHERE id=$1 AND status='requested' RETURNING *",[job.rows[0].id,staff.rows[0].id]);
    await client.query('COMMIT');
    return q.rows[0]||null;
   }catch(e){await client.query('ROLLBACK').catch(()=>{});throw e;}finally{client.release();}
