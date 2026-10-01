@@ -259,6 +259,12 @@ jobs:
         run: |
           mkdir -p business-site/isletme
           cp -R build/web/. business-site/isletme/
+      - name: Build admin web panel
+        run: flutter build web --release --target lib/admin_v3.dart --base-href /HeyCar/admin/
+      - name: Prepare admin web artifact
+        run: |
+          mkdir -p business-site/admin
+          cp -R build/web/. business-site/admin/
       - name: Upload business web artifact
         continue-on-error: true
         uses: actions/upload-artifact@v4
