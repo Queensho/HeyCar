@@ -55,5 +55,6 @@ Future<void> status(String id,String s)async{String? code;if(s=='delivered'){fin
   ]))
  );
 }
+}
 class ValetQrScanner extends StatefulWidget{const ValetQrScanner({super.key});@override State<ValetQrScanner> createState()=>_ValetQrScanner();}
 class _ValetQrScanner extends State<ValetQrScanner>{bool done=false;@override Widget build(BuildContext context)=>Scaffold(backgroundColor:Colors.black,appBar:AppBar(backgroundColor:Colors.black,title:const Text('CepQontag QR Okut',style:TextStyle(fontWeight:FontWeight.w900))),body:Stack(children:[MobileScanner(onDetect:(capture){if(done)return;for(final b in capture.barcodes){final raw=b.rawValue;if(raw!=null&&raw.trim().isNotEmpty){done=true;Navigator.pop(context,raw);break;}}}),Center(child:Container(width:260,height:260,decoration:BoxDecoration(border:Border.all(color:lime,width:3),borderRadius:BorderRadius.circular(24)))),const Positioned(left:24,right:24,bottom:55,child:Text('Araç camındaki CepQontag etiketini çerçevenin içine getir.',textAlign:TextAlign.center,style:TextStyle(color:Colors.white,fontWeight:FontWeight.w800,fontSize:15))) ]));}
