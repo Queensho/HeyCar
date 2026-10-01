@@ -38,21 +38,74 @@ class _BusinessValetPageState extends State<BusinessValetPage>{
    ]));
  }
  Future<void> addArea()async{final name=TextEditingController(),slots=TextEditingController();await showDialog(context:context,builder:(d)=>AlertDialog(backgroundColor:_vPanel,title:const Text('Park Alanı Ekle',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w900)),content:SizedBox(width:420,child:Column(mainAxisSize:MainAxisSize.min,children:[field(name,'Alan adı (örn. B2 Katı)'),field(slots,'Kapasite')])),actions:[TextButton(onPressed:()=>Navigator.pop(d),child:const Text('Vazgeç')),FilledButton(onPressed:()async{final ok=await post('/api/business/valet/areas',{'name':name.text,'slots':int.tryParse(slots.text)});if(ok&&d.mounted)Navigator.pop(d);},child:const Text('Kaydet'))]));}
- @override Widget build(BuildContext context){
-  if(loading)return const Center(child:Padding(padding:EdgeInsets.all(50),child:CircularProgressIndicator(color:_vPurple)));
-  if(!enabled)return box(const Center(child:Padding(padding:EdgeInsets.all(30),child:Text('Vale modülü henüz aktif değil',style:TextStyle(color:Colors.white,fontSize:19,fontWeight:FontWeight.w900)))));
-  final parked=sessions.where((x)=>x['status']=='parked').length,asked=sessions.where((x)=>x['status']=='requested').length,retr=sessions.where((x)=>x['status']=='retrieving').length;
-  return LayoutBuilder(builder:(context,k){final mobile=k.maxWidth<850;
-   final content=SingleChildScrollView(padding:EdgeInsets.all(mobile?14:28),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-    if(mobile)Row(children:[Builder(builder:(c)=>IconButton(onPressed:()=>Scaffold.of(c).openDrawer(),icon:const Icon(Icons.menu,color:Colors.white))),const SizedBox(width:6),const Expanded(child:Text('CepQontag VALE',style:TextStyle(color:Colors.white,fontSize:21,fontWeight:FontWeight.w900))),IconButton(onPressed:load,icon:const Icon(Icons.refresh,color:_vMuted))]),
-    Wrap(spacing:12,runSpacing:12,children:[metric('Bugün Toplam Araç',sessions.length.toString(),Icons.directions_car_filled_rounded),metric('Parkta',parked.toString(),Icons.local_parking_rounded),metric('Araç İsteniyor',asked.toString(),Icons.notifications_active_rounded),metric('Getiriliyor',retr.toString(),Icons.directions_car_rounded)]),
-    const SizedBox(height:28),Row(children:[const Expanded(child:Text('Güncel Araçlar',style:TextStyle(color:Colors.white,fontSize:23,fontWeight:FontWeight.w900))),if(!mobile)SizedBox(width:330,child:TextField(decoration:InputDecoration(hintText:'Plaka, marka ara...',prefixIcon:const Icon(Icons.search),filled:true,fillColor:_vPanel,border:OutlineInputBorder(borderRadius:BorderRadius.circular(14),borderSide:const BorderSide(color:_vLine))))))]),
-    if(mobile)...[const SizedBox(height:12),TextField(decoration:InputDecoration(hintText:'Plaka, marka ara...',prefixIcon:const Icon(Icons.search),filled:true,fillColor:_vPanel,border:OutlineInputBorder(borderRadius:BorderRadius.circular(14),borderSide:const BorderSide(color:_vLine))))],
-    const SizedBox(height:14),mobile?_mobileVehicles():_vehicleTable(),
-    const SizedBox(height:22),LayoutBuilder(builder:(c,z)=>z.maxWidth<720?Column(children:[listBox('Vale Personeli',staff,Icons.badge_rounded),const SizedBox(height:12),listBox('Park Alanları',areas,Icons.local_parking_rounded)]):Row(crossAxisAlignment:CrossAxisAlignment.start,children:[Expanded(child:listBox('Vale Personeli',staff,Icons.badge_rounded)),const SizedBox(width:12),Expanded(child:listBox('Park Alanları',areas,Icons.local_parking_rounded))])),
-    const SizedBox(height:20),box(Row(children:[Container(width:64,height:64,decoration:BoxDecoration(color:_vLine,borderRadius:BorderRadius.circular(14)),child:const Icon(Icons.android,color:_vLime,size:42)),const SizedBox(width:16),const Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('Vale Uygulaması',style:TextStyle(color:Colors.white,fontSize:17,fontWeight:FontWeight.w900)),Text('CepQontag Vale APK',style:TextStyle(color:_vMuted))])),FilledButton(onPressed:(){},style:FilledButton.styleFrom(backgroundColor:_vPurple,padding:const EdgeInsets.symmetric(horizontal:24,vertical:18)),child:const Text('APK İndir'))]))
-   ]));
-   return Scaffold(backgroundColor:_vBg,drawer:mobile?Drawer(backgroundColor:_vBg,child:SafeArea(child:_menu(true))):null,body:Row(children:[if(!mobile)SizedBox(width:260,child:_menu(false)),Expanded(child:content)]));
+ @override
+ Widget build(BuildContext context) {
+  if (loading) {
+   return const Center(child: Padding(padding: EdgeInsets.all(50), child: CircularProgressIndicator(color: _vPurple)));
+  }
+  if (!enabled) {
+   return box(const Center(child: Padding(padding: EdgeInsets.all(30), child: Text('Vale modülü henüz aktif değil', style: TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w900)))));
+  }
+  final parked=sessions.where((x)=>x['status']=='parked').length;
+  final asked=sessions.where((x)=>x['status']=='requested').length;
+  final retr=sessions.where((x)=>x['status']=='retrieving').length;
+  return LayoutBuilder(builder:(context,k){
+   final mobile=k.maxWidth<850;
+   final search=TextField(decoration:InputDecoration(hintText:'Plaka, marka ara...',prefixIcon:const Icon(Icons.search),filled:true,fillColor:_vPanel,border:OutlineInputBorder(borderRadius:BorderRadius.circular(14),borderSide:const BorderSide(color:_vLine))));
+   final content=SingleChildScrollView(
+    padding:EdgeInsets.all(mobile?14:28),
+    child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+     if(mobile) Row(children:[
+      Builder(builder:(c)=>IconButton(onPressed:()=>Scaffold.of(c).openDrawer(),icon:const Icon(Icons.menu,color:Colors.white))),
+      const SizedBox(width:6),
+      const Expanded(child:Text('CepQontag VALE',style:TextStyle(color:Colors.white,fontSize:21,fontWeight:FontWeight.w900))),
+      IconButton(onPressed:load,icon:const Icon(Icons.refresh,color:_vMuted)),
+     ]),
+     Wrap(spacing:12,runSpacing:12,children:[
+      metric('Bugün Toplam Araç',sessions.length.toString(),Icons.directions_car_filled_rounded),
+      metric('Parkta',parked.toString(),Icons.local_parking_rounded),
+      metric('Araç İsteniyor',asked.toString(),Icons.notifications_active_rounded),
+      metric('Getiriliyor',retr.toString(),Icons.directions_car_rounded),
+     ]),
+     const SizedBox(height:28),
+     Row(children:[
+      const Expanded(child:Text('Güncel Araçlar',style:TextStyle(color:Colors.white,fontSize:23,fontWeight:FontWeight.w900))),
+      if(!mobile) SizedBox(width:330,child:search),
+     ]),
+     if(mobile) ...[const SizedBox(height:12),search],
+     const SizedBox(height:14),
+     mobile?_mobileVehicles():_vehicleTable(),
+     const SizedBox(height:22),
+     LayoutBuilder(builder:(c,z){
+      if(z.maxWidth<720){
+       return Column(children:[listBox('Vale Personeli',staff,Icons.badge_rounded),const SizedBox(height:12),listBox('Park Alanları',areas,Icons.local_parking_rounded)]);
+      }
+      return Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
+       Expanded(child:listBox('Vale Personeli',staff,Icons.badge_rounded)),
+       const SizedBox(width:12),
+       Expanded(child:listBox('Park Alanları',areas,Icons.local_parking_rounded)),
+      ]);
+     }),
+     const SizedBox(height:20),
+     box(Row(children:[
+      Container(width:64,height:64,decoration:BoxDecoration(color:_vLine,borderRadius:BorderRadius.circular(14)),child:const Icon(Icons.android,color:_vLime,size:42)),
+      const SizedBox(width:16),
+      const Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+       Text('Vale Uygulaması',style:TextStyle(color:Colors.white,fontSize:17,fontWeight:FontWeight.w900)),
+       Text('CepQontag Vale APK',style:TextStyle(color:_vMuted)),
+      ])),
+      FilledButton(onPressed:(){},style:FilledButton.styleFrom(backgroundColor:_vPurple,padding:const EdgeInsets.symmetric(horizontal:24,vertical:18)),child:const Text('APK İndir')),
+     ])),
+    ]),
+   );
+   return Scaffold(
+    backgroundColor:_vBg,
+    drawer:mobile?Drawer(backgroundColor:_vBg,child:SafeArea(child:_menu(true))):null,
+    body:Row(children:[
+     if(!mobile) SizedBox(width:260,child:_menu(false)),
+     Expanded(child:content),
+    ]),
+   );
   });
  }
  Widget _menu(bool drawer)=>Container(decoration:const BoxDecoration(border:Border(right:BorderSide(color:_vLine))),padding:const EdgeInsets.fromLTRB(14,22,14,18),child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
