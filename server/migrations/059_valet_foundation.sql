@@ -1,6 +1,7 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS valet_enabled boolean NOT NULL DEFAULT false;
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS business_type text NOT NULL DEFAULT 'standard' CHECK(business_type IN ('standard','valet','both'));
 CREATE TABLE IF NOT EXISTS valet_staff (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), business_id uuid NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
  name text NOT NULL, phone text, pin_hash text NOT NULL, is_active boolean NOT NULL DEFAULT true,
