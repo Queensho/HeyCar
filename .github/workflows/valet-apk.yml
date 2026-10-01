@@ -31,7 +31,7 @@ jobs:
           cache: true
 
       - name: Generate Android platform
-        run: flutter create . --platforms=android --project-name cepqontag_vale --org com.cepqontag --no-pub
+        run: flutter create . --platforms=android --project-name vale --org com.cepqontag --no-pub
 
       - name: Set Vale app identity
         run: |
@@ -39,7 +39,6 @@ jobs:
           from pathlib import Path
           p=Path('android/app/build.gradle.kts')
           s=p.read_text()
-          s=s.replace('com.cepqontag.cepqontag_vale', 'com.cepqontag.vale')
           if 'isCoreLibraryDesugaringEnabled = true' not in s:
             s=s.replace('compileOptions {', 'compileOptions {\n        isCoreLibraryDesugaringEnabled = true', 1)
           if 'coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:' not in s:
