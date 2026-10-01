@@ -20,7 +20,23 @@ class _BusinessValetPageState extends State<BusinessValetPage>{
  Future<void> setStatus(String id,String value)async{try{final r=await http.patch(Uri.parse(_vApi+'/api/business/valet/sessions/'+id+'/status'),headers:headers,body:jsonEncode({'status':value}));if(r.statusCode==200)await load();}catch(_){}}
  Widget field(TextEditingController c,String label)=>Padding(padding:const EdgeInsets.only(bottom:10),child:TextField(controller:c,style:const TextStyle(color:Colors.white),decoration:InputDecoration(labelText:label,labelStyle:const TextStyle(color:_vMuted),filled:true,fillColor:_vBg,border:OutlineInputBorder(borderRadius:BorderRadius.circular(14),borderSide:const BorderSide(color:_vLine)))));
  Future<void> addVehicle()async{final plate=TextEditingController(),slot=TextEditingController(),key=TextEditingController(),note=TextEditingController();String? area=areas.isEmpty?null:areas.first['name']?.toString();await showDialog(context:context,builder:(d)=>StatefulBuilder(builder:(d,setD)=>AlertDialog(backgroundColor:_vPanel,title:const Text('Aracı Valeye Al',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w900)),content:SizedBox(width:430,child:Column(mainAxisSize:MainAxisSize.min,children:[field(plate,'Plaka'),if(areas.isNotEmpty)DropdownButtonFormField<String>(initialValue:area,dropdownColor:_vPanel,style:const TextStyle(color:Colors.white),decoration:const InputDecoration(labelText:'Park alanı'),items:areas.map((x)=>DropdownMenuItem(value:x['name'].toString(),child:Text(x['name'].toString()))).toList(),onChanged:(v)=>setD(()=>area=v)),const SizedBox(height:10),field(slot,'Park yeri / slot'),field(key,'Anahtar konumu'),field(note,'Not')])),actions:[TextButton(onPressed:()=>Navigator.pop(d),child:const Text('Vazgeç')),FilledButton(onPressed:()async{if(plate.text.trim().isEmpty)return;final ok=await post('/api/business/valet/accept',{'plate':plate.text,'parkingArea':area,'parkingSlot':slot.text,'keyLocation':key.text,'note':note.text});if(ok&&d.mounted)Navigator.pop(d);},child:const Text('Aracı Al'))])));}
- Future<void> addStaff()async{final name=TextEditingController(),phone=TextEditingController(),pin=TextEditingController();await showDialog(context:context,builder:(d)=>AlertDialog(backgroundColor:_vPanel,title:const Text('Vale Personeli Ekle',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w900)),content:SizedBox(width:420,child:Column(mainAxisSize:MainAxisSize.min,children:[field(name,'Ad soyad'),field(phone,'Telefon'),field(pin,'4-8 haneli PIN')])),actions:[TextButton(onPressed:()=>Navigator.pop(d),child:const Text('Vazgeç')),FilledButton(onPressed:()async{final n=name.text.trim(),p=pin.text.trim();if(n.isEmpty){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Personel adı gerekli.')));return;}if(!RegExp(r'^\d{4,8}]));}
+ Future<void> addStaff()async{
+  final name=TextEditingController(),phone=TextEditingController(),pin=TextEditingController();
+  await showDialog(context:context,builder:(d)=>AlertDialog(
+   backgroundColor:_vPanel,
+   title:const Text('Vale Personeli Ekle',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w900)),
+   content:SizedBox(width:420,child:Column(mainAxisSize:MainAxisSize.min,children:[field(name,'Ad soyad'),field(phone,'Telefon'),field(pin,'4-8 haneli PIN')])),
+   actions:[
+    TextButton(onPressed:()=>Navigator.pop(d),child:const Text('Vazgeç')),
+    FilledButton(onPressed:()async{
+     final n=name.text.trim(),p=pin.text.trim();
+     if(n.isEmpty){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Personel adı gerekli.')));return;}
+     if(!RegExp(r'^\d{4,8}$').hasMatch(p)){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('PIN yalnızca 4-8 rakam olmalı. Örnek: 1234')));return;}
+     final ok=await post('/api/business/valet/staff',{'name':n,'phone':phone.text.trim(),'pin':p});
+     if(ok&&d.mounted)Navigator.pop(d);
+    },child:const Text('Ekle'))
+   ]));
+ }
  Future<void> addArea()async{final name=TextEditingController(),slots=TextEditingController();await showDialog(context:context,builder:(d)=>AlertDialog(backgroundColor:_vPanel,title:const Text('Park Alanı Ekle',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w900)),content:SizedBox(width:420,child:Column(mainAxisSize:MainAxisSize.min,children:[field(name,'Alan adı (örn. B2 Katı)'),field(slots,'Kapasite')])),actions:[TextButton(onPressed:()=>Navigator.pop(d),child:const Text('Vazgeç')),FilledButton(onPressed:()async{final ok=await post('/api/business/valet/areas',{'name':name.text,'slots':int.tryParse(slots.text)});if(ok&&d.mounted)Navigator.pop(d);},child:const Text('Kaydet'))]));}
  @override Widget build(BuildContext context){
   if(loading)return const Center(child:Padding(padding:EdgeInsets.all(50),child:CircularProgressIndicator(color:_vPurple)));
