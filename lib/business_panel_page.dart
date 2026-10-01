@@ -26,7 +26,10 @@ class _BusinessPanelPageState extends State<BusinessPanelPage>{
  @override
  Widget build(BuildContext context){
   final desktop=MediaQuery.sizeOf(context).width>=900;
+  final businessType=(business?['business_type']??'standard').toString();
+  final valetOnly=businessType=='valet';
   if(token.isEmpty&&!loading)return _BusinessWelcome(onLogin:()=>_showAuth(context),onRegister:()=>_showAuth(context,register:true));
+  if(valetOnly&&token.isNotEmpty){return Scaffold(backgroundColor:_bg,body:SafeArea(child:Column(children:[Container(height:64,padding:const EdgeInsets.symmetric(horizontal:18),decoration:const BoxDecoration(color:_panel,border:Border(bottom:BorderSide(color:_line))),child:Row(children:[const Icon(Icons.local_parking_rounded,color:Color(0xFFB6FF2A)),const SizedBox(width:10),const Expanded(child:Text('CepQontag Vale',style:TextStyle(color:Colors.white,fontSize:19,fontWeight:FontWeight.w900))),TextButton.icon(onPressed:_logout,icon:const Icon(Icons.logout_rounded),label:const Text('Çıkış'))])),Expanded(child:BusinessValetPage(token:token))])));}
   final home=Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
    _Header(desktop:desktop,onLogin:token.isEmpty?()=>_showAuth(context):_logout),
    const SizedBox(height:16),if(loading)const LinearProgressIndicator(color:_purple),if(loading)const SizedBox(height:10),_Hero(name:(business?['name']??'İşletmen').toString()),const SizedBox(height:16),const AdminPromoBanner(audience:'business'),const SizedBox(height:16),_Stats(desktop:desktop,stats:stats),const SizedBox(height:16),
