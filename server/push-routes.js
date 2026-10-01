@@ -210,9 +210,18 @@ module.exports=function registerPushRoutes(app,pool){
     sendFrom('driver_push_tokens','driver_id',driver,data,title,body),
     webPush.sendDriver(driver,data,title,body)
   );
+  const sendToken=async(token,data,title,body)=>{
+    try{
+      const sa=serviceAccount(),key=await accessToken();if(!sa||!key)return false;
+      const fcmData=Object.fromEntries(Object.entries({...data,title,body}).map(([k,v])=>[k,String(v??'')]));
+      const message={token,data:fcmData,notification:{title,body},android:{priority:'HIGH',ttl:'120s',notification:{channel_id:'cepqar_notifications_v10',sound:'bildirim',notification_priority:'PRIORITY_MAX',default_vibrate_timings:true,visibility:'PUBLIC'}}};
+      const r=await fetch(`https://fcm.googleapis.com/v1/projects/${sa.project_id}/messages:send`,{method:'POST',headers:{authorization:`Bearer ${key}`,'content-type':'application/json'},body:JSON.stringify({message})});
+      return r.ok;
+    }catch(e){console.error('FCM direct token',e);return false;}
+  };
   const send=sendOwner;
   const getHealth=()=>({...health});
-  app.locals.heycarPush={send,sendOwner,sendDriver,getHealth,health};
+  app.locals.heycarPush={send,sendOwner,sendDriver,sendToken,getHealth,health};
   console.log('CepQontag push service registered');
   return app.locals.heycarPush;
 };
