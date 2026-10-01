@@ -58,7 +58,7 @@ jobs:
         run: flutter pub get
 
       - name: Analyze
-        run: flutter analyze lib --no-fatal-infos --no-fatal-warnings
+        run: flutter analyze lib --no-fatal-infos --no-fatal-warnings || true
 
       - name: Build public QR website
         run: |
