@@ -74,6 +74,16 @@ class _PasswordOwnerLoginScreenState extends State<PasswordOwnerLoginScreen> {
           OnboardingDraft.displayName = user['display_name']?.toString() ?? '';
           OnboardingDraft.email = user['email']?.toString() ?? '';
         }
+        // Always clear the previous account's selected vehicle before applying
+        // the newly authenticated owner's vehicle list.
+        OnboardingDraft.vehicleId = '';
+        QrDraft.vehicleId = '';
+        QrDraft.plate = '';
+        QrDraft.make = '';
+        QrDraft.model = '';
+        QrDraft.token = '';
+        QrDraft.scanSecret = '';
+        QrDraft.ownerName = OnboardingDraft.displayName.isEmpty ? 'HeyCar Kullanıcısı' : OnboardingDraft.displayName;
         if (vehicles is List && vehicles.isNotEmpty && vehicles.first is Map) {
           final v = Map<String, dynamic>.from(vehicles.first as Map);
           OnboardingDraft.vehicleId = v['id']?.toString() ?? '';
