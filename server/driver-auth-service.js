@@ -51,7 +51,7 @@ async function rotateRefresh(db,refresh){
   const c=await db.connect();
   try{
     await c.query('BEGIN');
-    const r=await c.query("SELECT id,driver_id FROM driver_auth_sessions WHERE refresh_token_hash=$1 AND revoked_at IS NULL AND expires_at>now() FOR UPDATE",[h]);
+    const r=await c.query("SELECT s.id,s.driver_id FROM driver_auth_sessions s JOIN users u ON u.id=s.driver_id WHERE s.refresh_token_hash=$1 AND s.revoked_at IS NULL AND s.expires_at>now() AND u.status='active' FOR UPDATE OF s",[h]);
     if(!r.rows.length){await c.query('ROLLBACK');return null;}
     await c.query('UPDATE driver_auth_sessions SET revoked_at=now() WHERE id=$1',[r.rows[0].id]);
     const out=await issueTokens(c,r.rows[0].driver_id);
