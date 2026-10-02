@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'owner_qr_dialog.dart';
 import 'owner_settings_detail.dart';
 import 'premium_page.dart';
@@ -70,7 +72,17 @@ class OwnerSettingsPage extends StatelessWidget {
 
     // Revoke the server refresh session before removing the local token.
     // Logout still completes locally if the network is unavailable.
-    await OwnerAuth.logout();
+    final refresh = OwnerAuth.refreshToken;
+    if (refresh.isNotEmpty) {
+      try {
+        await http.post(
+          Uri.parse(OnboardingBackend.baseUrl + '/api/owner/auth/logout'),
+          headers: const {'Content-Type': 'application/json'},
+          body: jsonEncode({'refreshToken': refresh}),
+        ).timeout(const Duration(seconds: 8));
+      } catch (_) {}
+    }
+    await OwnerAuth.clear();
 
     final prefs = await SharedPreferences.getInstance();
     for (final key in [
