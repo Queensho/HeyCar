@@ -125,7 +125,6 @@ jobs:
           cp -R build/web/. deploy/isletme/
 
       - name: Build vehicle owner web preview
-        continue-on-error: true
         run: |
           flutter build web --release --target lib/entry_theme_live.dart --base-href "/HeyCar/owner/" --pwa-strategy=none
           rm -f build/web/flutter_service_worker.js build/web/version.json
