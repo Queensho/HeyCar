@@ -370,6 +370,7 @@ module.exports = function registerNotificationRoutes(app, pool) {
     try {
       const p = await getPrivacy(ownerId);
       await pool.query(`UPDATE owner_privacy_settings SET security_version=$2, updated_at=NOW() WHERE owner_id=$1`, [ownerId, Number(p.security_version || 1) + 1]);
+      await pool.query(`UPDATE owner_auth_sessions SET revoked_at=NOW() WHERE owner_id=$1 AND revoked_at IS NULL`, [ownerId]);
       if (keepDeviceId) await pool.query(`UPDATE owner_devices SET active=FALSE WHERE owner_id=$1 AND device_id<>$2`, [ownerId, keepDeviceId]);
       else await pool.query(`UPDATE owner_devices SET active=FALSE WHERE owner_id=$1`, [ownerId]);
       return res.json({ ok: true });
