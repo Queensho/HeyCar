@@ -5,6 +5,9 @@ import 'owner_settings_detail.dart';
 import 'premium_page.dart';
 import 'legal_pages.dart';
 import 'support_ticket_page.dart';
+import 'owner_auth.dart';
+import 'onboarding_backend.dart';
+import 'qr_backend.dart';
 
 const _bg = Color(0xFF07111F);
 const _panel = Color(0xFF111A31);
@@ -65,6 +68,10 @@ class OwnerSettingsPage extends StatelessWidget {
 
     if (ok != true) return;
 
+    // Revoke the server refresh session before removing the local token.
+    // Logout still completes locally if the network is unavailable.
+    await OwnerAuth.logout();
+
     final prefs = await SharedPreferences.getInstance();
     for (final key in [
       'owner_logged_in',
@@ -77,9 +84,30 @@ class OwnerSettingsPage extends StatelessWidget {
       'owner_make',
       'owner_model',
       'owner_qr_token',
+      'owner_qr_scan_secret',
     ]) {
       await prefs.remove(key);
     }
+    // Delivery codes are vehicle-scoped and must not survive an account switch.
+    for (final key in prefs.getKeys().where((k) => k.startsWith('valet_delivery_code_')).toList()) {
+      await prefs.remove(key);
+    }
+
+    OnboardingDraft.phone = '';
+    OnboardingDraft.displayName = '';
+    OnboardingDraft.email = '';
+    OnboardingDraft.password = '';
+    OnboardingDraft.otpCode = '';
+    OnboardingDraft.userId = '';
+    OnboardingDraft.vehicleId = '';
+    OnboardingDraft.transferCode = '';
+    QrDraft.token = '';
+    QrDraft.scanSecret = '';
+    QrDraft.plate = '';
+    QrDraft.make = '';
+    QrDraft.model = '';
+    QrDraft.ownerName = 'HeyCar Kullanıcısı';
+    QrDraft.vehicleId = '';
 
     if (context.mounted) {
       Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
