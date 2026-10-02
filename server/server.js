@@ -12,7 +12,7 @@ const registerBusinessRoutes=require('./business-routes');
 const registerValetRoutes=require('./valet-routes');
 const registerAdminManagementRoutes=require('./admin-management-routes');
 const {registerAdminAuthRoutes}=require('./admin-auth-routes');
-const {configureTrustedProxy}=require('./proxy-security');
+const {configureTrustedProxy}=require('./proxy-security');\nconst {verify:verifyOwnerToken}=require('./owner-auth-service');\nconst {verify:verifyDriverToken}=require('./driver-auth-service');
 
 const app=express();
 configureTrustedProxy(app);
@@ -66,6 +66,34 @@ function databaseConfig(){
 
 const pool=new Pool(databaseConfig());
 app.locals.heycarPool=pool;
+
+// Enforce account/session liveness for signed Owner/Driver access tokens before
+// any API route runs. Route-level ownership checks remain the second layer.
+app.use('/api',async(req,res,next)=>{
+  const raw=String(req.headers.authorization||'');
+  if(!raw.toLowerCase().startsWith('bearer '))return next();
+  const token=raw.slice(7).trim();
+  const owner=verifyOwnerToken(token);
+  const driver=owner?null:verifyDriverToken(token);
+  if(!owner&&!driver)return next();
+  try{
+    if(owner){
+      const r=await pool.query(
+        "SELECT u.status,COALESCE(p.security_version,1)::int AS security_version FROM users u LEFT JOIN owner_privacy_settings p ON p.owner_id=u.id WHERE u.id=$1 LIMIT 1",
+        [String(owner.sub)]
+      );
+      if(!r.rows.length||r.rows[0].status!=='active')return res.status(401).json({error:'AUTH_SESSION_REVOKED'});
+      if(Number(owner.sv||1)!==Number(r.rows[0].security_version||1))return res.status(401).json({error:'AUTH_SESSION_REVOKED'});
+    }else{
+      const r=await pool.query("SELECT status FROM users WHERE id=$1 LIMIT 1",[String(driver.sub)]);
+      if(!r.rows.length||r.rows[0].status!=='active')return res.status(401).json({error:'AUTH_SESSION_REVOKED'});
+    }
+    return next();
+  }catch(e){
+    console.error('auth liveness check',e);
+    return res.status(503).json({error:'AUTH_CHECK_UNAVAILABLE'});
+  }
+});
 
 app.get('/health',async(_req,res)=>{
   try{
