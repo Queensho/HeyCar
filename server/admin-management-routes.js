@@ -320,6 +320,14 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
          RETURNING id,email,phone,display_name,role,status,created_at`,
         [status, req.params.userId]
       );
+      if (status === 'suspended') {
+        if (await tableExists(pool, 'owner_auth_sessions')) {
+          await pool.query('UPDATE owner_auth_sessions SET revoked_at=NOW() WHERE owner_id=$1 AND revoked_at IS NULL', [req.params.userId]);
+        }
+        if (await tableExists(pool, 'driver_auth_sessions')) {
+          await pool.query('UPDATE driver_auth_sessions SET revoked_at=NOW() WHERE driver_id=$1 AND revoked_at IS NULL', [req.params.userId]);
+        }
+      }
       await writeAdminAudit(pool, req, {
         action: status === 'suspended' ? 'user.suspended' : 'user.activated',
         targetType: 'user',
