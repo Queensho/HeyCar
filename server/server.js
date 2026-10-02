@@ -12,7 +12,9 @@ const registerBusinessRoutes=require('./business-routes');
 const registerValetRoutes=require('./valet-routes');
 const registerAdminManagementRoutes=require('./admin-management-routes');
 const {registerAdminAuthRoutes}=require('./admin-auth-routes');
-const {configureTrustedProxy}=require('./proxy-security');\nconst {verify:verifyOwnerToken}=require('./owner-auth-service');\nconst {verify:verifyDriverToken}=require('./driver-auth-service');
+const {configureTrustedProxy}=require('./proxy-security');
+const {verify:verifyOwnerToken}=require('./owner-auth-service');
+const {verify:verifyDriverToken}=require('./driver-auth-service');
 
 const app=express();
 configureTrustedProxy(app);
