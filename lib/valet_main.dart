@@ -1,5 +1,6 @@
 import 'dart:async';
-// Build marker: duplicate-session guardimport 'dart:convert';import 'package:flutter/material.dart';import 'package:http/http.dart' as http;import 'package:shared_preferences/shared_preferences.dart';import 'package:mobile_scanner/mobile_scanner.dart';import 'package:firebase_core/firebase_core.dart';import 'package:firebase_messaging/firebase_messaging.dart';
+// Build marker: duplicate-session guard
+import 'dart:convert';import 'package:flutter/material.dart';import 'package:http/http.dart' as http;import 'package:shared_preferences/shared_preferences.dart';import 'package:mobile_scanner/mobile_scanner.dart';import 'package:firebase_core/firebase_core.dart';import 'package:firebase_messaging/firebase_messaging.dart';
 const api='https://heycar-api-185-165-46-213.nip.io',purple=Color(0xFF713BFF),lime=Color(0xFFB6FF2A),bg=Color(0xFF07111F),panel=Color(0xFF101A30),muted=Color(0xFFA7B0C7);
 Future<void> main()async{WidgetsFlutterBinding.ensureInitialized();try{await Firebase.initializeApp();}catch(e){debugPrint('Vale Firebase init failed: $e');}runApp(const ValetApp());}
 class ValetApp extends StatelessWidget{const ValetApp({super.key});@override Widget build(BuildContext c)=>MaterialApp(debugShowCheckedModeBanner:false,theme:ThemeData.dark(useMaterial3:true).copyWith(scaffoldBackgroundColor:bg,colorScheme:ColorScheme.fromSeed(seedColor:purple,brightness:Brightness.dark)),home:const Gate());}
