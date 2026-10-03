@@ -23,9 +23,130 @@ class _S extends State<TowingFlowPage>{
   Future<void> call()async{if(quote==null)return;setState(()=>busy=true);try{final r=await OwnerHttp.post(Uri.parse('$api/api/owner/towing/requests'),body:jsonEncode({'vehicleId':QrDraft.vehicleId,'vehicleType':vehicleType,'truckType':truck,'issueType':notRunning?'Araç çalışmıyor':'Çekici','pickupLat':a,'pickupLng':b,'pickupAddress':pickup,'destinationLat':x,'destinationLng':y,'destinationAddress':dropoff,'distanceKm':km}));final d=jsonDecode(r.body);if(r.statusCode>=200&&r.statusCode<300){final id='${d['request']['id']}';if(mounted)Navigator.pushReplacement(context,MaterialPageRoute(builder:(_)=>TowingTrackingPage(id:id)));}else msg(d['error']=='ACTIVE_TOWING_REQUEST_EXISTS'?'Aktif çekici çağrın zaten var.':'Çağrı oluşturulamadı.');}catch(_){msg('Çağrı oluşturulamadı.');}finally{if(mounted)setState(()=>busy=false);}}
   Widget pinLine(IconData i,String t)=>Container(height:58,padding:const EdgeInsets.symmetric(horizontal:14),decoration:BoxDecoration(border:Border.all(color:const Color(0xFFE5E7EB)),borderRadius:BorderRadius.circular(14)),child:Row(children:[Icon(i,color:CepqarTheme.purple),const SizedBox(width:12),Expanded(child:Text(t,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Color(0xFF25252B),fontSize:16,fontWeight:FontWeight.w700)))]));
   Widget map()=>ClipRRect(borderRadius:BorderRadius.circular(18),child:SizedBox(height:MediaQuery.sizeOf(context).height*.43,child:FlutterMap(options:MapOptions(initialCenter:LatLng(a??41.0,b??28.9),initialZoom:12,onTap:(_,p)=>chooseDrop(p)),children:[TileLayer(urlTemplate:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',userAgentPackageName:'com.cepqar.app'),PolylineLayer(polylines:[if(a!=null&&x!=null)Polyline(points:[LatLng(a!,b!),LatLng(x!,y!)],strokeWidth:5,color:CepqarTheme.purple)]),MarkerLayer(markers:[if(a!=null)Marker(point:LatLng(a!,b!),width:44,height:44,child:Icon(Icons.my_location_rounded,color:CepqarTheme.purple,size:30)),if(x!=null)Marker(point:LatLng(x!,y!),width:54,height:54,child:Icon(Icons.location_on_rounded,color:CepqarTheme.purple,size:48))])]))));
-  Widget locationStep()=>Column(children:[map(),Transform.translate(offset:const Offset(0,-18),child:Container(padding:const EdgeInsets.fromLTRB(20,22,20,18),decoration:const BoxDecoration(color:Colors.white,borderRadius:BorderRadius.vertical(top:Radius.circular(28))),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('Nereden alınacak?',style:TextStyle(color:Colors.black,fontSize:22,fontWeight:FontWeight.w900)),const SizedBox(height:12),pinLine(Icons.location_on_rounded,pickup),const SizedBox(height:8),Row(children:[Expanded(child:InkWell(onTap:locate,child:pinLine(Icons.my_location_rounded,'Konumum'))),const SizedBox(width:8),Container(width:58,height:58,decoration:BoxDecoration(border:Border.all(color:CepqarTheme.purple,width:2),borderRadius:BorderRadius.circular(14)),child:Icon(Icons.swap_vert_rounded,color:CepqarTheme.purple))]),const SizedBox(height:20),const Text('Nereye bırakılacak?',style:TextStyle(color:Colors.black,fontSize:22,fontWeight:FontWeight.w900)),const SizedBox(height:12),pinLine(Icons.location_on_rounded,dropoff),const SizedBox(height:18),SizedBox(width:double.infinity,height:56,child:FilledButton(onPressed:a!=null&&x!=null?()=>setState(()=>step=1):null,style:FilledButton.styleFrom(backgroundColor:CepqarTheme.purple,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15))),child:const Text('Devam Et',style:TextStyle(fontSize:18,fontWeight:FontWeight.w900))))]))]));
-  Widget typeBox(String id,IconData icon,String title)=>Expanded(child:InkWell(onTap:()=>setState(()=>vehicleType=id),child:Container(height:105,decoration:BoxDecoration(color:vehicleType==id?CepqarTheme.purple.withValues(alpha:.08):const Color(0xFFF5F5F7),borderRadius:BorderRadius.circular(14),border:Border.all(color:vehicleType==id?CepqarTheme.purple:const Color(0xFFE5E7EB),width:vehicleType==id?2:1)),child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[Icon(icon,size:38,color:vehicleType==id?CepqarTheme.purple:Colors.black87),const SizedBox(height:8),Text(title,style:TextStyle(color:vehicleType==id?CepqarTheme.purple:Colors.black87,fontWeight:FontWeight.w800))]))));
-  Widget vehicleStep()=>Padding(padding:const EdgeInsets.all(20),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('Araç bilgisi',style:TextStyle(color:Colors.black,fontSize:23,fontWeight:FontWeight.w900)),const SizedBox(height:16),Row(children:[typeBox('car',Icons.directions_car_filled_rounded,'Otomobil'),const SizedBox(width:10),typeBox('suv',Icons.directions_car_rounded,'SUV / 4x4')]),const SizedBox(height:10),Row(children:[typeBox('commercial',Icons.local_shipping_rounded,'Hafif Ticari'),const SizedBox(width:10),typeBox('motorcycle',Icons.two_wheeler_rounded,'Motosiklet')]),const SizedBox(height:16),Container(padding:const EdgeInsets.symmetric(horizontal:14),decoration:BoxDecoration(color:const Color(0xFFF5F5F7),borderRadius:BorderRadius.circular(14)),child:SwitchListTile(contentPadding:EdgeInsets.zero,title:const Text('Araç çalışmıyor',style:TextStyle(color:Colors.black,fontWeight:FontWeight.w800)),value:notRunning,activeThumbColor:CepqarTheme.purple,onChanged:(v)=>setState(()=>notRunning=v))),const SizedBox(height:18),SizedBox(width:double.infinity,height:56,child:FilledButton(onPressed:price,style:FilledButton.styleFrom(backgroundColor:CepqarTheme.purple),child:const Text('Fiyat Hesapla',style:TextStyle(fontSize:18,fontWeight:FontWeight.w900))))]));
+  Widget locationStep() {
+    return Column(
+      children: [
+        map(),
+        Transform.translate(
+          offset: const Offset(0, -18),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(20, 22, 20, 18),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Nereden alınacak?', style: TextStyle(color: Colors.black, fontSize: 22, fontWeight: FontWeight.w900)),
+                const SizedBox(height: 12),
+                pinLine(Icons.location_on_rounded, pickup),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(child: InkWell(onTap: locate, child: pinLine(Icons.my_location_rounded, 'Konumum'))),
+                    const SizedBox(width: 8),
+                    Container(
+                      width: 58,
+                      height: 58,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: CepqarTheme.purple, width: 2),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(Icons.swap_vert_rounded, color: CepqarTheme.purple),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                const Text('Nereye bırakılacak?', style: TextStyle(color: Colors.black, fontSize: 22, fontWeight: FontWeight.w900)),
+                const SizedBox(height: 12),
+                pinLine(Icons.location_on_rounded, dropoff),
+                const SizedBox(height: 18),
+                SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: FilledButton(
+                    onPressed: a != null && x != null ? () => setState(() => step = 1) : null,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: CepqarTheme.purple,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                    ),
+                    child: const Text('Devam Et', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget typeBox(String id, IconData icon, String title) {
+    return Expanded(
+      child: InkWell(
+        onTap: () => setState(() => vehicleType = id),
+        child: Container(
+          height: 105,
+          decoration: BoxDecoration(
+            color: vehicleType == id ? CepqarTheme.purple.withValues(alpha: .08) : const Color(0xFFF5F5F7),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: vehicleType == id ? CepqarTheme.purple : const Color(0xFFE5E7EB),
+              width: vehicleType == id ? 2 : 1,
+            ),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 38, color: vehicleType == id ? CepqarTheme.purple : Colors.black87),
+              const SizedBox(height: 8),
+              Text(title, style: TextStyle(color: vehicleType == id ? CepqarTheme.purple : Colors.black87, fontWeight: FontWeight.w800)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget vehicleStep() {
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Araç bilgisi', style: TextStyle(color: Colors.black, fontSize: 23, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 16),
+          Row(children: [typeBox('car', Icons.directions_car_filled_rounded, 'Otomobil'), const SizedBox(width: 10), typeBox('suv', Icons.directions_car_rounded, 'SUV / 4x4')]),
+          const SizedBox(height: 10),
+          Row(children: [typeBox('commercial', Icons.local_shipping_rounded, 'Hafif Ticari'), const SizedBox(width: 10), typeBox('motorcycle', Icons.two_wheeler_rounded, 'Motosiklet')]),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(color: const Color(0xFFF5F5F7), borderRadius: BorderRadius.circular(14)),
+            child: SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Araç çalışmıyor', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w800)),
+              value: notRunning,
+              activeThumbColor: CepqarTheme.purple,
+              onChanged: (v) => setState(() => notRunning = v),
+            ),
+          ),
+          const SizedBox(height: 18),
+          SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: FilledButton(
+              onPressed: price,
+              style: FilledButton.styleFrom(backgroundColor: CepqarTheme.purple),
+              child: const Text('Fiyat Hesapla', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget quoteStep()=>Padding(padding:const EdgeInsets.all(20),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('Tahmini Ücret',style:TextStyle(color:Colors.black,fontSize:23,fontWeight:FontWeight.w900)),const SizedBox(height:12),Text('● $pickup\n● $dropoff',style:TextStyle(color:CepqarTheme.purple,fontWeight:FontWeight.w700,height:1.7)),const SizedBox(height:12),map(),const SizedBox(height:12),Row(mainAxisAlignment:MainAxisAlignment.spaceBetween,children:[Text('${km.toStringAsFixed(1)} km',style:const TextStyle(color:Colors.black,fontWeight:FontWeight.w800)),Text('Rota detayı',style:TextStyle(color:CepqarTheme.purple,fontWeight:FontWeight.w800))]),const Divider(height:28),Row(mainAxisAlignment:MainAxisAlignment.spaceBetween,children:[const Text('Toplam (KDV dahil)',style:TextStyle(color:Colors.black,fontWeight:FontWeight.w900)),Text('${quote?['total']??'-'} ${quote?['currency']??'TL'}',style:const TextStyle(color:Colors.black,fontSize:22,fontWeight:FontWeight.w900))]),const SizedBox(height:20),SizedBox(width:double.infinity,height:56,child:FilledButton(onPressed:call,style:FilledButton.styleFrom(backgroundColor:CepqarTheme.purple),child:const Text('Çekici Çağır',style:TextStyle(fontSize:18,fontWeight:FontWeight.w900))))]));
   @override Widget build(BuildContext c)=>Scaffold(backgroundColor:Colors.white,appBar:AppBar(backgroundColor:Colors.white,foregroundColor:Colors.black,elevation:0,title:step==0?null:Text(step==1?'Araç bilgisi':'Tahmini Ücret',style:const TextStyle(fontWeight:FontWeight.w900))),body:busy?const Center(child:CircularProgressIndicator()):SafeArea(child:SingleChildScrollView(child:step==0?locationStep():step==1?vehicleStep():quoteStep())));
 }
