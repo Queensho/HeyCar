@@ -70,8 +70,24 @@ class OwnerSettingsPage extends StatelessWidget {
 
     if (ok != true) return;
 
-    // Revoke the server refresh session before removing the local token.
+    // Stop push delivery to this installation before clearing auth.
     // Logout still completes locally if the network is unavailable.
+    final prefs = await SharedPreferences.getInstance();
+    final deviceId = prefs.getString('owner_device_id') ?? '';
+    if (deviceId.isNotEmpty && OwnerAuth.accessToken.isNotEmpty) {
+      try {
+        await http.delete(
+          Uri.parse(OnboardingBackend.baseUrl + '/api/owner/push-token'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ${OwnerAuth.accessToken}',
+          },
+          body: jsonEncode({'deviceId': deviceId}),
+        ).timeout(const Duration(seconds: 8));
+      } catch (_) {}
+    }
+
+    // Revoke the server refresh session before removing the local token.
     final refresh = OwnerAuth.refreshToken;
     if (refresh.isNotEmpty) {
       try {
@@ -84,7 +100,6 @@ class OwnerSettingsPage extends StatelessWidget {
     }
     await OwnerAuth.clear();
 
-    final prefs = await SharedPreferences.getInstance();
     for (final key in [
       'owner_logged_in',
       'owner_user_id',
