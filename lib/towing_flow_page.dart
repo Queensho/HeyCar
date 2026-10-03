@@ -363,6 +363,36 @@ class _T extends State<TowingTrackingPage> {
   @override void dispose(){t?.cancel();super.dispose();}
   Future<void> load()async{try{final r=await OwnerHttp.get(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/towing/requests/${widget.id}/tracking'));if(r.statusCode==200&&mounted)setState(()=>d=Map<String,dynamic>.from(jsonDecode(r.body)['tracking']));}catch(_){}}
   double? n(dynamic v)=>double.tryParse('${v??''}');
+  bool cancelling=false;
+  Future<void> cancelRequest() async {
+    final ok=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(
+      title:const Text('Çekici çağrısını iptal et?'),
+      content:const Text('Aktif çekici çağrın iptal edilecek. Sonrasında yeni bir çağrı oluşturabilirsin.'),
+      actions:[
+        TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('Vazgeç')),
+        FilledButton(onPressed:()=>Navigator.pop(ctx,true),style:FilledButton.styleFrom(backgroundColor:Colors.red),child:const Text('Çağrıyı İptal Et')),
+      ],
+    ))??false;
+    if(!ok||!mounted)return;
+    setState(()=>cancelling=true);
+    try{
+      final r=await OwnerHttp.post(
+        Uri.parse('${OnboardingBackend.baseUrl}/api/owner/towing/requests/${widget.id}/cancel'),
+        body:jsonEncode({'reason':'Kullanıcı tarafından iptal edildi'}),
+      );
+      final body=r.body.isEmpty?<String,dynamic>{}:Map<String,dynamic>.from(jsonDecode(r.body));
+      if(r.statusCode>=200&&r.statusCode<300){
+        t?.cancel();
+        await load();
+        if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Çekici çağrısı iptal edildi.')));
+      }else if(mounted){
+        final e='${body['error']??''}';
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e=='TOWING_REQUEST_NOT_CANCELLABLE'?'Bu aşamada çağrı artık iptal edilemiyor.':'Çağrı iptal edilemedi.')));
+      }
+    }catch(_){
+      if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Çağrı iptal edilemedi. Bağlantını kontrol et.')));
+    }finally{if(mounted)setState(()=>cancelling=false);}
+  }
   String label(String s)=>{'searching':'Yakındaki çekiciler aranıyor','accepted':'Çekici bulundu','arriving':'Çekici size geliyor','arrived':'Çekici geldi','vehicle_loaded':'Aracınız yüklendi','in_transit':'Aracınız hedefe gidiyor','delivered':'Teslim edildi','cancelled':'İptal edildi'}[s]??s;
   Widget searching(){
     return Container(
@@ -404,6 +434,15 @@ class _T extends State<TowingTrackingPage> {
         if(d!['towing_plate']!=null)Text('Çekici: ${d!['towing_plate']} ${d!['towing_brand']??''} ${d!['towing_model']??''}',style:TextStyle(color:CepqarTheme.muted)),
         if(d!['pickup_address']!=null)...[const SizedBox(height:14),Text('Alım: ${d!['pickup_address']}',style:TextStyle(color:CepqarTheme.muted))],
         if(d!['destination_address']!=null)Text('Bırakma: ${d!['destination_address']}',style:TextStyle(color:CepqarTheme.muted)),
+        if(['searching','accepted','arriving','arrived'].contains(status))...[
+          const SizedBox(height:20),
+          SizedBox(width:double.infinity,height:52,child:OutlinedButton.icon(
+            onPressed:cancelling?null:cancelRequest,
+            icon:cancelling?const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2)):const Icon(Icons.close_rounded),
+            label:Text(cancelling?'İptal ediliyor...':'Çağrıyı İptal Et',style:const TextStyle(fontWeight:FontWeight.w900)),
+            style:OutlinedButton.styleFrom(foregroundColor:Colors.red,side:const BorderSide(color:Colors.red),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(14))),
+          )),
+        ],
       ]))),
     ]));
   }
