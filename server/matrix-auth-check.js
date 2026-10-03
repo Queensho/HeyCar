@@ -10,7 +10,10 @@ async function main(){
   const adminId='10000000-0000-4000-8000-000000000003';
 
   const sessionDb={
-    async query(){return {rows:[],rowCount:1};},
+    async query(sql){
+      if(String(sql).includes('security_version'))return {rows:[{status:'active',security_version:1}],rowCount:1};
+      return {rows:[],rowCount:1};
+    },
   };
 
   const ownerTokens=await ownerAuth.issueTokens(sessionDb,ownerId);
