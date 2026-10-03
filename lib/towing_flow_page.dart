@@ -397,7 +397,7 @@ class _T extends State<TowingTrackingPage> {
       searchingNow?searching():trackingMap(),
       Padding(padding:const EdgeInsets.all(16),child:Container(padding:const EdgeInsets.all(18),decoration:BoxDecoration(color:CepqarTheme.panel,borderRadius:BorderRadius.circular(22),border:Border.all(color:CepqarTheme.line)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
         Text(label(status),style:TextStyle(color:CepqarTheme.text,fontSize:21,fontWeight:FontWeight.w900)),
-        if(d!['pickup_eta_minutes']!=null)...[const SizedBox(height:5),Text('${d!['pickup_eta_minutes']} dk • ${d!['pickup_distance_km']??'-'} km',style:TextStyle(color:CepqarTheme.purple,fontSize:17,fontWeight:FontWeight.w900))],
+        if((status=='accepted'||status=='arriving'||status=='arrived')&&d!['pickup_eta_minutes']!=null&&Number.tryParse('${d!['pickup_eta_minutes']}')!=null&&Number.parse('${d!['pickup_eta_minutes']}')>0)...[const SizedBox(height:5),Text('${d!['pickup_eta_minutes']} dk • ${d!['pickup_distance_km']??'-'} km',style:TextStyle(color:CepqarTheme.purple,fontSize:17,fontWeight:FontWeight.w900))],
         if(d!['provider_name']!=null)...[const SizedBox(height:16),const Divider(),const SizedBox(height:8),Text('${d!['provider_name']}',style:TextStyle(color:CepqarTheme.text,fontSize:17,fontWeight:FontWeight.w900))],
         if(d!['driver_name']!=null)Text('Sürücü: ${d!['driver_name']}',style:TextStyle(color:CepqarTheme.muted)),
         if(d!['towing_plate']!=null)Text('Çekici: ${d!['towing_plate']} ${d!['towing_brand']??''} ${d!['towing_model']??''}',style:TextStyle(color:CepqarTheme.muted)),
