@@ -2,10 +2,15 @@ const {ownerId:authenticatedOwnerId}=require('./owner-auth-service');
 const clean=(v,n=200)=>String(v==null?'':v).trim().slice(0,n);
 const num=v=>{const x=Number(v);return Number.isFinite(x)?x:null;};
 const crypto=require('crypto');
+const fs=require('fs');
+const path=require('path');
+const express=require('express');
 const normPhone=v=>clean(v,40).replace(/[^0-9+]/g,'');
 const inviteHash=v=>crypto.createHash('sha256').update(String(v)).digest('hex');
 
 module.exports=function registerTowingProviderRoutes(app,pool){
+  const documentDir=process.env.TOWING_DOCUMENT_DIR||'/opt/heycar/uploads/towing-docs';
+  try{fs.mkdirSync(documentDir,{recursive:true});}catch(e){console.error('towing document dir',e);}
   app.post('/api/towing/provider/apply',async(req,res)=>{
     const userId=authenticatedOwnerId(req);if(!userId)return res.status(401).json({error:'OWNER_REQUIRED'});
     const type=clean(req.body?.providerType,20),name=clean(req.body?.displayName,120),phone=clean(req.body?.phone,40);
@@ -13,10 +18,41 @@ module.exports=function registerTowingProviderRoutes(app,pool){
     try{
       const r=await pool.query(`INSERT INTO towing_providers(provider_type,owner_user_id,display_name,phone,email,tax_number,company_title,application_note)
       VALUES($1,$2,$3,$4,$5,$6,$7,$8)
-      ON CONFLICT(owner_user_id) DO UPDATE SET provider_type=EXCLUDED.provider_type,display_name=EXCLUDED.display_name,phone=EXCLUDED.phone,email=EXCLUDED.email,tax_number=EXCLUDED.tax_number,company_title=EXCLUDED.company_title,application_note=EXCLUDED.application_note,updated_at=NOW()
+      ON CONFLICT(owner_user_id) DO UPDATE SET provider_type=EXCLUDED.provider_type,display_name=EXCLUDED.display_name,phone=EXCLUDED.phone,email=EXCLUDED.email,tax_number=EXCLUDED.tax_number,company_title=EXCLUDED.company_title,application_note=EXCLUDED.application_note,status=CASE WHEN towing_providers.status='banned' THEN 'banned' ELSE 'pending' END,review_note=NULL,reviewed_at=NULL,updated_at=NOW()
       RETURNING *`,[type,userId,name,phone,clean(req.body?.email,200)||null,clean(req.body?.taxNumber,40)||null,clean(req.body?.companyTitle,160)||null,clean(req.body?.note,500)||null]);
       return res.status(201).json({ok:true,provider:r.rows[0]});
     }catch(e){console.error('towing provider apply',e);return res.status(500).json({error:'SERVER_ERROR'});}
+  });
+
+  app.put('/api/towing/provider/documents/:type',express.raw({type:'application/octet-stream',limit:'8mb'}),async(req,res)=>{
+    const userId=authenticatedOwnerId(req);if(!userId)return res.status(401).json({error:'OWNER_REQUIRED'});
+    const type=clean(req.params.type,40),allowed=['identity_license','vehicle_registration','authorization_certificate','tax_certificate'];
+    if(!allowed.includes(type))return res.status(400).json({error:'INVALID_DOCUMENT_TYPE'});
+    const data=Buffer.isBuffer(req.body)?req.body:null;if(!data||!data.length)return res.status(400).json({error:'DOCUMENT_REQUIRED'});
+    const mime=clean(req.headers['x-file-type']||'application/octet-stream',100),original=clean(req.headers['x-file-name']||type,180);
+    if(!['image/jpeg','image/png','image/webp','application/pdf'].includes(mime))return res.status(415).json({error:'DOCUMENT_TYPE_NOT_ALLOWED'});
+    try{
+      const p=await pool.query("SELECT id,status,provider_type FROM towing_providers WHERE owner_user_id=$1 LIMIT 1",[userId]);
+      if(!p.rowCount)return res.status(404).json({error:'PROVIDER_NOT_FOUND'});
+      if(p.rows[0].status==='banned')return res.status(403).json({error:'PROVIDER_BANNED'});
+      if(type==='tax_certificate'&&p.rows[0].provider_type!=='company')return res.status(400).json({error:'DOCUMENT_NOT_REQUIRED'});
+      const ext=mime==='application/pdf'?'.pdf':mime==='image/png'?'.png':mime==='image/webp'?'.webp':'.jpg';
+      const storage=crypto.randomUUID()+ext,tmp=path.join(documentDir,storage+'.tmp'),dest=path.join(documentDir,storage);
+      fs.writeFileSync(tmp,data,{mode:0o600});fs.renameSync(tmp,dest);
+      const old=await pool.query('SELECT storage_name FROM towing_provider_documents WHERE provider_id=$1 AND document_type=$2',[p.rows[0].id,type]);
+      const r=await pool.query(`INSERT INTO towing_provider_documents(provider_id,document_type,original_name,mime_type,storage_name,size_bytes)
+        VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(provider_id,document_type) DO UPDATE SET original_name=EXCLUDED.original_name,mime_type=EXCLUDED.mime_type,storage_name=EXCLUDED.storage_name,size_bytes=EXCLUDED.size_bytes,status='pending',review_note=NULL,reviewed_at=NULL,created_at=NOW()
+        RETURNING id,document_type,original_name,mime_type,size_bytes,status,created_at`,[p.rows[0].id,type,original,mime,storage,data.length]);
+      if(old.rowCount&&old.rows[0].storage_name!==storage){try{fs.unlinkSync(path.join(documentDir,path.basename(old.rows[0].storage_name)));}catch(_){}}
+      return res.json({ok:true,document:r.rows[0]});
+    }catch(e){console.error('towing document upload',e);return res.status(500).json({error:'SERVER_ERROR'});}
+  });
+
+  app.get('/api/towing/provider/documents',async(req,res)=>{
+    const userId=authenticatedOwnerId(req);if(!userId)return res.status(401).json({error:'OWNER_REQUIRED'});
+    try{const r=await pool.query(`SELECT d.id,d.document_type,d.original_name,d.mime_type,d.size_bytes,d.status,d.review_note,d.reviewed_at,d.created_at
+      FROM towing_provider_documents d JOIN towing_providers p ON p.id=d.provider_id WHERE p.owner_user_id=$1 ORDER BY d.document_type`,[userId]);return res.json({ok:true,items:r.rows});}
+    catch(e){console.error('towing documents list',e);return res.status(500).json({error:'SERVER_ERROR'});}
   });
 
   app.get('/api/towing/provider/me',async(req,res)=>{
