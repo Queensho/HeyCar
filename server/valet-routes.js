@@ -12,6 +12,24 @@ module.exports=function registerValetRoutes(app,pool){
   message:{error:'TOO_MANY_ATTEMPTS'},
  });
  const hash=s=>crypto.createHash('sha256').update(String(s)).digest('hex');
+ const pinHash=pin=>{
+  const salt=crypto.randomBytes(16).toString('base64url');
+  const digest=crypto.scryptSync(String(pin),salt,64).toString('hex');
+  return 'scrypt_v1:'+salt+':'+digest;
+ };
+ const verifyPin=(stored,pin)=>{
+  const value=String(stored||'');
+  if(value.startsWith('scrypt_v1:')){
+   const parts=value.split(':');
+   if(parts.length!==3)return {ok:false,legacy:false};
+   const expected=Buffer.from(parts[2],'hex');
+   const actual=crypto.scryptSync(String(pin),parts[1],64);
+   return {ok:expected.length===actual.length&&crypto.timingSafeEqual(expected,actual),legacy:false};
+  }
+  const expected=Buffer.from(value,'hex');
+  const actual=Buffer.from(hash(pin),'hex');
+  return {ok:expected.length===actual.length&&crypto.timingSafeEqual(expected,actual),legacy:true};
+ };
  async function businessAuth(req,res){
   const raw=String(req.headers.authorization||'').replace(/^Bearer\s+/i,'');
   if(!raw){res.status(401).json({error:'AUTH_REQUIRED'});return null;}
@@ -60,7 +78,7 @@ module.exports=function registerValetRoutes(app,pool){
   }catch(e){console.error('valet dispatch',e);return null;}
  }
 
- app.post('/api/valet/login',valetLoginLimiter,async(req,res)=>{try{const phone=String(req.body?.phone||'').replace(/\\D/g,''),pin=String(req.body?.pin||'').trim();if(!phone||!pin)return res.status(400).json({error:'REQUIRED_FIELDS_MISSING'});const q=await pool.query("SELECT s.id,s.name,s.business_id,b.name AS business_name,b.valet_enabled FROM valet_staff s JOIN businesses b ON b.id=s.business_id WHERE s.is_active=TRUE AND s.pin_hash=$1 AND regexp_replace(COALESCE(s.phone,''),'[^0-9]','','g')=$2 LIMIT 2",[hash(pin),phone]);if(q.rowCount!==1||q.rows[0].valet_enabled!==true)return res.status(401).json({error:'INVALID_VALET_LOGIN'});const token=crypto.randomBytes(32).toString('hex');await pool.query("INSERT INTO valet_staff_sessions(staff_id,token_hash,expires_at) VALUES($1,$2,now()+interval '30 days')",[q.rows[0].id,hash(token)]);res.json({ok:true,token,staff:{id:q.rows[0].id,name:q.rows[0].name,businessId:q.rows[0].business_id,businessName:q.rows[0].business_name}});}catch(e){console.error('valet login',e);res.status(500).json({error:'SERVER_ERROR'});}});
+ app.post('/api/valet/login',valetLoginLimiter,async(req,res)=>{try{const phone=String(req.body?.phone||'').replace(/\\D/g,''),pin=String(req.body?.pin||'').trim();if(!phone||!pin)return res.status(400).json({error:'REQUIRED_FIELDS_MISSING'});const q=await pool.query("SELECT s.id,s.name,s.business_id,s.pin_hash,b.name AS business_name,b.valet_enabled FROM valet_staff s JOIN businesses b ON b.id=s.business_id WHERE s.is_active=TRUE AND regexp_replace(COALESCE(s.phone,''),'[^0-9]','','g')=$1 LIMIT 2",[phone]);if(q.rowCount!==1||q.rows[0].valet_enabled!==true)return res.status(401).json({error:'INVALID_VALET_LOGIN'});const verified=verifyPin(q.rows[0].pin_hash,pin);if(!verified.ok)return res.status(401).json({error:'INVALID_VALET_LOGIN'});if(verified.legacy)await pool.query('UPDATE valet_staff SET pin_hash=$2,updated_at=now() WHERE id=$1',[q.rows[0].id,pinHash(pin)]);const token=crypto.randomBytes(32).toString('hex');await pool.query("INSERT INTO valet_staff_sessions(staff_id,token_hash,expires_at) VALUES($1,$2,now()+interval '30 days')",[q.rows[0].id,hash(token)]);res.json({ok:true,token,staff:{id:q.rows[0].id,name:q.rows[0].name,businessId:q.rows[0].business_id,businessName:q.rows[0].business_name}});}catch(e){console.error('valet login',e);res.status(500).json({error:'SERVER_ERROR'});}});
  async function valetAuth(req,res){const raw=String(req.headers.authorization||'').replace(/^Bearer\s+/i,'');if(!raw){res.status(401).json({error:'AUTH_REQUIRED'});return null;}const q=await pool.query("SELECT s.id AS staff_id,s.name,b.id AS business_id,b.name AS business_name FROM valet_staff_sessions vs JOIN valet_staff s ON s.id=vs.staff_id JOIN businesses b ON b.id=s.business_id WHERE vs.token_hash=$1 AND vs.expires_at>now() AND s.is_active=TRUE AND b.valet_enabled=TRUE",[hash(raw)]);if(!q.rowCount){res.status(401).json({error:'INVALID_SESSION'});return null;}return q.rows[0];}
  app.post('/api/valet/shift',async(req,res)=>{const a=await valetAuth(req,res);if(!a)return;const active=req.body?.active===true;if(!active){const busy=await pool.query("SELECT 1 FROM valet_sessions WHERE staff_id=$1 AND status IN ('accepted','retrieving','ready') LIMIT 1",[a.staff_id]);if(busy.rowCount)return res.status(409).json({error:'ACTIVE_JOB_EXISTS'});}const cur=await pool.query("SELECT on_shift FROM valet_staff WHERE id=$1",[a.staff_id]);const was=cur.rows[0]?.on_shift===true;if(active&&!was)await pool.query("INSERT INTO valet_shift_history(staff_id,business_id,started_at) VALUES($1,$2,now())",[a.staff_id,a.business_id]);if(!active&&was)await pool.query("UPDATE valet_shift_history SET ended_at=now() WHERE id=(SELECT id FROM valet_shift_history WHERE staff_id=$1 AND ended_at IS NULL ORDER BY started_at DESC LIMIT 1)",[a.staff_id]);await pool.query("UPDATE valet_staff SET on_shift=$2,shift_started_at=CASE WHEN $2 AND NOT on_shift THEN now() ELSE shift_started_at END,shift_ended_at=CASE WHEN NOT $2 AND on_shift THEN now() ELSE shift_ended_at END,updated_at=now() WHERE id=$1",[a.staff_id,active]);if(active)await dispatchNext(a.business_id);res.json({ok:true,onShift:active});});
  app.post('/api/valet/push-token',async(req,res)=>{const a=await valetAuth(req,res);if(!a)return;const token=String(req.body?.token||'').trim(),device=String(req.body?.deviceId||'').trim();if(!token||!device)return res.status(400).json({error:'REQUIRED_FIELDS_MISSING'});await pool.query("INSERT INTO valet_push_tokens(staff_id,business_id,device_id,fcm_token) VALUES($1,$2,$3,$4) ON CONFLICT(staff_id,device_id) DO UPDATE SET business_id=EXCLUDED.business_id,fcm_token=EXCLUDED.fcm_token,active=TRUE,updated_at=now()",[a.staff_id,a.business_id,device,token]);res.json({ok:true});});
@@ -84,7 +102,7 @@ module.exports=function registerValetRoutes(app,pool){
 
  app.post('/api/business/valet/staff',async(req,res)=>{const a=await businessAuth(req,res);if(!a||!enabled(a,res))return;const {name,phone,pin}=req.body||{};
   if(!name||!/^\d{4,8}$/.test(String(pin||'')))return res.status(400).json({error:'INVALID_STAFF'});
-  const q=await pool.query("INSERT INTO valet_staff(business_id,name,phone,pin_hash) VALUES($1,$2,$3,$4) RETURNING id,name,phone,is_active,created_at",[a.business_id,String(name).trim(),phone||null,hash(pin)]);
+  const q=await pool.query("INSERT INTO valet_staff(business_id,name,phone,pin_hash) VALUES($1,$2,$3,$4) RETURNING id,name,phone,is_active,created_at",[a.business_id,String(name).trim(),phone||null,pinHash(pin)]);
   res.status(201).json({ok:true,staff:q.rows[0]});
  });
 
