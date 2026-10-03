@@ -39,6 +39,53 @@ module.exports=function registerTowingRoutes(app,pool,adminGuard){
     }catch(e){console.error('towing quote',e);return res.status(500).json({error:'SERVER_ERROR'});}
   });
 
+  app.post('/api/owner/towing/requests',async(req,res)=>{
+    const ownerId=authenticatedOwnerId(req);if(!ownerId)return res.status(401).json({error:'OWNER_REQUIRED'});
+    const vehicleId=String(req.body?.vehicleId||'').trim()||null,vehicleType=String(req.body?.vehicleType||'').trim(),truckType=String(req.body?.truckType||'').trim();
+    const issueType=String(req.body?.issueType||'other').trim().slice(0,40),issueNote=String(req.body?.issueNote||'').trim().slice(0,500);
+    const pickupLat=n(req.body?.pickupLat),pickupLng=n(req.body?.pickupLng),destinationLat=n(req.body?.destinationLat),destinationLng=n(req.body?.destinationLng),distanceKm=n(req.body?.distanceKm);
+    if([pickupLat,pickupLng,destinationLat,destinationLng,distanceKm].some(x=>x===null)||distanceKm<0||distanceKm>2000)return res.status(400).json({error:'INVALID_ROUTE'});
+    if(pickupLat<-90||pickupLat>90||destinationLat<-90||destinationLat>90||pickupLng<-180||pickupLng>180||destinationLng<-180||destinationLng>180)return res.status(400).json({error:'INVALID_COORDINATES'});
+    const client=await pool.connect();
+    try{
+      await client.query('BEGIN');
+      if(vehicleId){const own=await client.query('SELECT id FROM vehicles WHERE id::text=$1 AND owner_id::text=$2 FOR UPDATE',[vehicleId,ownerId]);if(!own.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'VEHICLE_NOT_FOUND'});}}
+      const [v,t,s]=await Promise.all([
+        client.query('SELECT code,name,price_multiplier FROM towing_vehicle_types WHERE code=$1 AND active=TRUE',[vehicleType]),
+        client.query('SELECT code,name,base_fee,per_km_fee,minimum_fee FROM towing_truck_types WHERE code=$1 AND active=TRUE',[truckType]),
+        client.query('SELECT * FROM towing_pricing_settings WHERE id=1')
+      ]);
+      if(!v.rowCount||!t.rowCount||!s.rowCount){await client.query('ROLLBACK');return res.status(400).json({error:'TOWING_OPTION_NOT_AVAILABLE'});}
+      const vehicle=v.rows[0],truck=t.rows[0],settings=s.rows[0];
+      const raw=(Number(truck.base_fee)+distanceKm*Number(truck.per_km_fee))*Number(vehicle.price_multiplier);
+      const subtotal=Math.max(raw,Number(truck.minimum_fee));
+      const total=money(subtotal);
+      const snapshot={baseFee:Number(truck.base_fee),perKmFee:Number(truck.per_km_fee),minimumFee:Number(truck.minimum_fee),vehicleMultiplier:Number(vehicle.price_multiplier),distanceKm:money(distanceKm)};
+      const r=await client.query(`INSERT INTO towing_requests(owner_id,vehicle_id,vehicle_type,truck_type,issue_type,issue_note,pickup_lat,pickup_lng,pickup_address,destination_lat,destination_lng,destination_address,distance_km,quoted_total,currency,pricing_snapshot)
+        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb) RETURNING *`,[ownerId,vehicleId,vehicleType,truckType,issueType,issueNote||null,pickupLat,pickupLng,String(req.body?.pickupAddress||'').trim().slice(0,300)||null,destinationLat,destinationLng,String(req.body?.destinationAddress||'').trim().slice(0,300)||null,distanceKm,total,settings.currency,JSON.stringify(snapshot)]);
+      await client.query('COMMIT');return res.status(201).json({ok:true,request:r.rows[0]});
+    }catch(e){await client.query('ROLLBACK').catch(()=>{});if(e?.code==='23505')return res.status(409).json({error:'ACTIVE_TOWING_REQUEST_EXISTS'});console.error('towing request create',e);return res.status(500).json({error:'SERVER_ERROR'});}finally{client.release();}
+  });
+
+  app.get('/api/owner/towing/requests',async(req,res)=>{
+    const ownerId=authenticatedOwnerId(req);if(!ownerId)return res.status(401).json({error:'OWNER_REQUIRED'});
+    try{const r=await pool.query('SELECT * FROM towing_requests WHERE owner_id=$1 ORDER BY created_at DESC LIMIT 100',[ownerId]);return res.json({ok:true,items:r.rows});}
+    catch(e){console.error('towing request list',e);return res.status(500).json({error:'SERVER_ERROR'});}
+  });
+
+  app.get('/api/owner/towing/requests/:id',async(req,res)=>{
+    const ownerId=authenticatedOwnerId(req);if(!ownerId)return res.status(401).json({error:'OWNER_REQUIRED'});
+    try{const r=await pool.query('SELECT * FROM towing_requests WHERE id=$1 AND owner_id=$2 LIMIT 1',[req.params.id,ownerId]);if(!r.rowCount)return res.status(404).json({error:'TOWING_REQUEST_NOT_FOUND'});return res.json({ok:true,request:r.rows[0]});}
+    catch(e){console.error('towing request detail',e);return res.status(500).json({error:'SERVER_ERROR'});}
+  });
+
+  app.post('/api/owner/towing/requests/:id/cancel',async(req,res)=>{
+    const ownerId=authenticatedOwnerId(req);if(!ownerId)return res.status(401).json({error:'OWNER_REQUIRED'});
+    const reason=String(req.body?.reason||'').trim().slice(0,300);
+    try{const r=await pool.query(`UPDATE towing_requests SET status='cancelled',cancelled_at=NOW(),cancel_reason=$3,updated_at=NOW() WHERE id=$1 AND owner_id=$2 AND status IN ('searching','accepted','arriving','arrived') RETURNING *`,[req.params.id,ownerId,reason||null]);if(!r.rowCount)return res.status(409).json({error:'TOWING_REQUEST_NOT_CANCELLABLE'});return res.json({ok:true,request:r.rows[0]});}
+    catch(e){console.error('towing request cancel',e);return res.status(500).json({error:'SERVER_ERROR'});}
+  });
+
   app.get('/api/admin/manage/towing/pricing',adminGuard,async(_req,res)=>{
     try{const [v,t,s]=await Promise.all([pool.query('SELECT * FROM towing_vehicle_types ORDER BY sort_order,name'),pool.query('SELECT * FROM towing_truck_types ORDER BY sort_order,name'),pool.query('SELECT * FROM towing_pricing_settings WHERE id=1')]);return res.json({ok:true,vehicleTypes:v.rows,truckTypes:t.rows,settings:s.rows[0]});}
     catch(e){console.error('admin towing pricing',e);return res.status(500).json({error:'SERVER_ERROR'});}
