@@ -49,30 +49,77 @@ Widget activeJobMap(Map j){
   if(pickupLat==null||pickupLng==null)return const SizedBox.shrink();
   final driver=pos==null?null:LatLng(pos!.latitude,pos!.longitude),pickup=LatLng(pickupLat,pickupLng);
   final destination=destLat==null||destLng==null?null:LatLng(destLat,destLng);
-  final center=driver??pickup;
-  return Container(
-    height:260,
-    margin:const EdgeInsets.only(bottom:12),
-    clipBehavior:Clip.antiAlias,
-    decoration:BoxDecoration(borderRadius:BorderRadius.circular(18),border:Border.all(color:purple.withValues(alpha:.45))),
-    child:FlutterMap(
-      options:MapOptions(initialCenter:center,initialZoom:13,minZoom:10,maxZoom:18,interactionOptions:const InteractionOptions(flags:InteractiveFlag.all & ~InteractiveFlag.rotate)),
-      children:[
-        ColorFiltered(
-          colorFilter:const ColorFilter.matrix([-.12,-.24,-.04,0,115,-.15,-.30,-.05,0,140,-.18,-.36,-.06,0,173,0,0,0,1,0]),
-          child:TileLayer(urlTemplate:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',userAgentPackageName:'com.cepqar.towing',maxNativeZoom:19,panBuffer:0),
+  return SizedBox(
+    height:MediaQuery.sizeOf(context).height*.38,
+    child:Stack(children:[
+      FlutterMap(
+        options:MapOptions(
+          initialCenter:driver??pickup,
+          initialZoom:14,
+          minZoom:11,
+          maxZoom:18,
+          interactionOptions:const InteractionOptions(flags:InteractiveFlag.all & ~InteractiveFlag.rotate),
         ),
-        PolylineLayer(polylines:[
-          if(driver!=null)Polyline(points:[driver,pickup],strokeWidth:4,color:lime),
-          if(destination!=null)Polyline(points:[pickup,destination],strokeWidth:5,color:purple),
-        ]),
-        MarkerLayer(markers:[
-          if(driver!=null)Marker(point:driver,width:50,height:50,child:Container(decoration:BoxDecoration(color:bg,shape:BoxShape.circle,border:Border.all(color:lime,width:2)),child:const Icon(Icons.fire_truck_rounded,color:lime,size:30))),
-          Marker(point:pickup,width:42,height:42,child:Container(decoration:BoxDecoration(color:Colors.blueAccent,shape:BoxShape.circle,border:Border.all(color:Colors.white,width:3)),child:const Icon(Icons.person_pin_circle_rounded,color:Colors.white,size:24))),
-          if(destination!=null)Marker(point:destination,width:48,height:58,alignment:Alignment.topCenter,child:Stack(alignment:Alignment.topCenter,children:[const Positioned(bottom:6,child:Icon(Icons.arrow_drop_down_rounded,color:purple,size:42)),Container(width:40,height:40,decoration:BoxDecoration(color:purple,shape:BoxShape.circle,border:Border.all(color:Colors.white,width:2)),child:const Icon(Icons.flag_rounded,color:Colors.white,size:21))])),
-        ]),
-      ],
-    ),
+        children:[
+          ColorFiltered(
+            colorFilter:const ColorFilter.matrix([-.12,-.24,-.04,0,115,-.15,-.30,-.05,0,140,-.18,-.36,-.06,0,173,0,0,0,1,0]),
+            child:TileLayer(
+              urlTemplate:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              userAgentPackageName:'com.cepqar.app',
+              maxNativeZoom:19,
+              panBuffer:0,
+            ),
+          ),
+          PolylineLayer(polylines:[
+            if(driver!=null)Polyline(points:[driver,pickup],strokeWidth:4,color:lime),
+            if(destination!=null)Polyline(points:[pickup,destination],strokeWidth:5,color:purple),
+          ]),
+          MarkerLayer(markers:[
+            if(driver!=null)Marker(
+              point:driver,width:48,height:58,alignment:Alignment.topCenter,
+              child:Stack(alignment:Alignment.topCenter,children:[
+                const Positioned(bottom:6,child:Icon(Icons.arrow_drop_down_rounded,color:purple,size:42)),
+                Container(width:40,height:40,decoration:BoxDecoration(
+                  gradient:const LinearGradient(colors:[Color(0xFFAE70FF),purple]),
+                  shape:BoxShape.circle,border:Border.all(color:const Color(0xFFE1CCFF),width:2),
+                  boxShadow:const [BoxShadow(color:Color(0x55813CFF),blurRadius:10)],
+                ),child:const Icon(Icons.fire_truck_rounded,color:Colors.white,size:23)),
+              ]),
+            ),
+            Marker(
+              point:pickup,width:36,height:36,
+              child:Container(
+                decoration:BoxDecoration(color:Colors.blueAccent.withValues(alpha:.22),shape:BoxShape.circle),
+                padding:const EdgeInsets.all(7),
+                child:Container(decoration:BoxDecoration(color:Colors.blueAccent,shape:BoxShape.circle,border:Border.all(color:Colors.white,width:3))),
+              ),
+            ),
+            if(destination!=null)Marker(
+              point:destination,width:48,height:58,alignment:Alignment.topCenter,
+              child:Stack(alignment:Alignment.topCenter,children:[
+                const Positioned(bottom:6,child:Icon(Icons.arrow_drop_down_rounded,color:purple,size:42)),
+                Container(width:40,height:40,decoration:BoxDecoration(
+                  gradient:const LinearGradient(colors:[Color(0xFFAE70FF),purple]),
+                  shape:BoxShape.circle,border:Border.all(color:const Color(0xFFE1CCFF),width:2),
+                  boxShadow:const [BoxShadow(color:Color(0x55813CFF),blurRadius:10)],
+                ),child:const Icon(Icons.flag_rounded,color:Colors.white,size:21)),
+              ]),
+            ),
+          ]),
+        ],
+      ),
+      Positioned(
+        left:10,top:10,
+        child:Container(
+          padding:const EdgeInsets.symmetric(horizontal:10,vertical:7),
+          decoration:BoxDecoration(color:bg.withValues(alpha:.88),borderRadius:BorderRadius.circular(12)),
+          child:const Row(mainAxisSize:MainAxisSize.min,children:[
+            Icon(Icons.circle,color:Colors.blueAccent,size:11),SizedBox(width:5),Text('Alım',style:TextStyle(fontSize:11,fontWeight:FontWeight.w800)),
+            SizedBox(width:10),Icon(Icons.flag_rounded,color:purple,size:14),SizedBox(width:4),Text('Bırakma',style:TextStyle(fontSize:11,fontWeight:FontWeight.w800)),
+          ]),
+        ),
+      ),
+    ]),
   );
 }
 Widget jobCard(Map j,bool mine)=>Column(children:[if(mine)activeJobMap(j),Container(margin:const EdgeInsets.only(bottom:10),padding:const EdgeInsets.all(15),decoration:BoxDecoration(color:panel,borderRadius:BorderRadius.circular(18),border:Border.all(color:mine?lime.withValues(alpha:.5):Colors.transparent)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Row(children:[Icon(Icons.directions_car_filled,color:purple),const SizedBox(width:8),Expanded(child:Text('${j['issue_type']??'Çekici Talebi'}',style:const TextStyle(fontSize:17,fontWeight:FontWeight.w900))),Text('${j['quoted_total']??''} ${j['currency']??''}',style:const TextStyle(color:lime,fontWeight:FontWeight.w900))]),const SizedBox(height:8),Text('Alış: ${j['pickup_address']??'Konum'}',style:const TextStyle(color:muted)),Text('Hedef: ${j['destination_address']??'-'}',style:const TextStyle(color:muted)),Text('${j['distance_km']??'-'} km • ${j['truck_type']??''}',style:const TextStyle(color:muted)),if(mine)...[const SizedBox(height:8),Text(label('${j['status']}'),style:const TextStyle(color:lime,fontWeight:FontWeight.w900)),const SizedBox(height:10),SizedBox(width:double.infinity,child:FilledButton(onPressed:next,style:FilledButton.styleFrom(backgroundColor:purple),child:Text(button('${j['status']}')))) ]else...[const SizedBox(height:10),SizedBox(width:double.infinity,child:FilledButton(onPressed:()=>accept(j),style:FilledButton.styleFrom(backgroundColor:lime,foregroundColor:Colors.black),child:const Text('İşi Kabul Et',style:TextStyle(fontWeight:FontWeight.w900))))]]) )]);
