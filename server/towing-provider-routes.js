@@ -136,8 +136,10 @@ module.exports=function registerTowingProviderRoutes(app,pool){
       const active=await pool.query("SELECT 1 FROM towing_requests WHERE accepted_driver_id=$1 AND status IN ('accepted','arriving','arrived','vehicle_loaded','in_transit') LIMIT 1",[d.rows[0].id]);
       if(active.rowCount)return res.json({ok:true,items:[]});
       const r=await pool.query(`SELECT r.id,r.vehicle_type,r.truck_type,r.issue_type,r.pickup_lat,r.pickup_lng,r.pickup_address,r.destination_address,r.distance_km,r.quoted_total,r.currency,r.created_at,
+        ov.plate AS vehicle_plate,
         (6371*acos(LEAST(1,GREATEST(-1,cos(radians($1))*cos(radians(r.pickup_lat::float8))*cos(radians(r.pickup_lng::float8)-radians($2))+sin(radians($1))*sin(radians(r.pickup_lat::float8)))))) AS pickup_distance_km
         FROM towing_requests r
+        LEFT JOIN vehicles ov ON ov.id=r.vehicle_id
         WHERE r.status='searching' AND EXISTS(SELECT 1 FROM towing_provider_vehicles v WHERE v.provider_id=$3 AND v.truck_type=r.truck_type AND v.status='active')
         AND (6371*acos(LEAST(1,GREATEST(-1,cos(radians($1))*cos(radians(r.pickup_lat::float8))*cos(radians(r.pickup_lng::float8)-radians($2))+sin(radians($1))*sin(radians(r.pickup_lat::float8)))))) <= $4
         ORDER BY pickup_distance_km,r.created_at LIMIT 50`,[lat,lng,d.rows[0].provider_id,radius]);
@@ -165,8 +167,48 @@ module.exports=function registerTowingProviderRoutes(app,pool){
 
   app.get('/api/towing/provider/jobs/active',async(req,res)=>{
     const userId=authenticatedOwnerId(req);if(!userId)return res.status(401).json({error:'OWNER_REQUIRED'});
-    try{const r=await pool.query(`SELECT r.* FROM towing_requests r JOIN towing_provider_drivers d ON d.id=r.accepted_driver_id WHERE d.user_id=$1 AND r.status IN ('accepted','arriving','arrived','vehicle_loaded','in_transit') ORDER BY r.accepted_at DESC LIMIT 1`,[userId]);return res.json({ok:true,request:r.rows[0]||null});}
+    try{const r=await pool.query(`SELECT r.*,ov.plate AS vehicle_plate FROM towing_requests r JOIN towing_provider_drivers d ON d.id=r.accepted_driver_id LEFT JOIN vehicles ov ON ov.id=r.vehicle_id WHERE d.user_id=$1 AND r.status IN ('accepted','arriving','arrived','vehicle_loaded','in_transit') ORDER BY r.accepted_at DESC LIMIT 1`,[userId]);return res.json({ok:true,request:r.rows[0]||null});}
     catch(e){console.error('towing active job',e);return res.status(500).json({error:'SERVER_ERROR'});}
+  });
+
+  app.get('/api/towing/provider/jobs/history',async(req,res)=>{
+    const userId=authenticatedOwnerId(req);if(!userId)return res.status(401).json({error:'OWNER_REQUIRED'});
+    const limit=Math.min(Math.max(Math.round(num(req.query?.limit)||50),1),100);
+    try{
+      const r=await pool.query(`SELECT r.*,ov.plate AS vehicle_plate
+        FROM towing_requests r
+        JOIN towing_provider_drivers d ON d.id=r.accepted_driver_id
+        LEFT JOIN vehicles ov ON ov.id=r.vehicle_id
+        WHERE d.user_id=$1 AND r.status IN ('delivered','cancelled')
+        ORDER BY COALESCE(r.delivered_at,r.cancelled_at,r.updated_at,r.created_at) DESC
+        LIMIT $2`,[userId,limit]);
+      return res.json({ok:true,items:r.rows});
+    }catch(e){console.error('towing job history',e);return res.status(500).json({error:'SERVER_ERROR'});}
+  });
+
+  app.get('/api/towing/provider/earnings',async(req,res)=>{
+    const userId=authenticatedOwnerId(req);if(!userId)return res.status(401).json({error:'OWNER_REQUIRED'});
+    const period=String(req.query?.period||'week').toLowerCase();
+    const startExpr=period==='day'?'CURRENT_DATE':period==='month'?"date_trunc('month',NOW())":"date_trunc('week',NOW())";
+    const normalized=period==='day'?'day':period==='month'?'month':'week';
+    try{
+      const summary=await pool.query(`SELECT
+          COALESCE(SUM(r.quoted_total),0)::numeric AS total_earnings,
+          COUNT(*)::int AS completed_count,
+          COALESCE(SUM(r.distance_km),0)::numeric AS total_distance_km
+        FROM towing_requests r
+        JOIN towing_provider_drivers d ON d.id=r.accepted_driver_id
+        WHERE d.user_id=$1 AND r.status='delivered' AND r.delivered_at >= ${startExpr}`,[userId]);
+      const series=await pool.query(`SELECT to_char(date_trunc('day',r.delivered_at),'YYYY-MM-DD') AS day,
+          COALESCE(SUM(r.quoted_total),0)::numeric AS earnings,
+          COUNT(*)::int AS completed_count
+        FROM towing_requests r
+        JOIN towing_provider_drivers d ON d.id=r.accepted_driver_id
+        WHERE d.user_id=$1 AND r.status='delivered' AND r.delivered_at >= ${startExpr}
+        GROUP BY date_trunc('day',r.delivered_at)
+        ORDER BY date_trunc('day',r.delivered_at)`,[userId]);
+      return res.json({ok:true,period:normalized,summary:summary.rows[0],series:series.rows});
+    }catch(e){console.error('towing earnings',e);return res.status(500).json({error:'SERVER_ERROR'});}
   });
 
   app.patch('/api/towing/provider/jobs/:id/status',async(req,res)=>{
