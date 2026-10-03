@@ -95,9 +95,14 @@ module.exports = function registerParkingRoutes(app, pool) {
     } catch (e) { console.error(e); res.status(500).json({ error: 'SERVER_ERROR' }); }
   });
   app.put('/api/vehicles/:vehicleId/parking', express.json(), async (req, res) => {
+    const client=await pool.connect();
     try {
       if(!await parkingEnabled(res))return;
-      const v = await owns(req, res); if (!v) return;
+      const o=owner(req); if(!o)return res.status(401).json({error:'OWNER_REQUIRED'});
+      await client.query('BEGIN');
+      const owned=await client.query('SELECT id FROM vehicles WHERE id::text=$1 AND owner_id::text=$2 FOR UPDATE',[String(req.params.vehicleId||''),o]);
+      if(!owned.rowCount){await client.query('ROLLBACK');return res.status(403).json({error:'FORBIDDEN'});}
+      const v=String(owned.rows[0].id);
       const body = req.body || {};
       const area = String(body.area || '').trim().slice(0, 40), floor = String(body.floor || '').trim().slice(0, 20);
       const spot = String(body.spot || '').trim().slice(0, 30), note = String(body.note || '').trim().slice(0, 180);
@@ -110,10 +115,10 @@ module.exports = function registerParkingRoutes(app, pool) {
         return res.status(400).json({ error: 'INVALID_PARKING_LOCATION' });
       }
       if (!hasLocation && !area && !floor && !spot) {
-        const existing = await pool.query('SELECT 1 FROM vehicle_parking_locations WHERE vehicle_id=$1 AND owner_id=$2 AND latitude IS NOT NULL', [v, owner(req)]);
+        const existing = await client.query('SELECT 1 FROM vehicle_parking_locations WHERE vehicle_id=$1 AND owner_id=$2 AND latitude IS NOT NULL', [v, owner(req)]);
         if (!existing.rows.length) return res.status(400).json({ error: 'PARKING_FIELDS_REQUIRED' });
       }
-      const r = await pool.query(`INSERT INTO vehicle_parking_locations
+      const r = await client.query(`INSERT INTO vehicle_parking_locations
         (vehicle_id,owner_id,area,floor,spot,note,parking_name,latitude,longitude,osm_id,started_at,updated_at)
         VALUES($1,$2,$3,$4,$5,$6,$8,$9,$10,$11,CASE WHEN $7 THEN NOW() ELSE NULL END,NOW())
         ON CONFLICT(vehicle_id) DO UPDATE SET owner_id=EXCLUDED.owner_id,
@@ -126,8 +131,10 @@ module.exports = function registerParkingRoutes(app, pool) {
           updated_at=NOW() RETURNING ${fields}`,
         [v, owner(req), area, floor, spot, note, hasLocation, hasLocation ? name : null,
           hasLocation ? lat : null, hasLocation ? lon : null, hasLocation ? osmId : null]);
+      await client.query('COMMIT');
       res.json({ ok: true, parking: r.rows[0] });
-    } catch (e) { console.error(e); res.status(500).json({ error: 'SERVER_ERROR' }); }
+    } catch (e) { await client.query('ROLLBACK').catch(()=>{}); console.error(e); res.status(500).json({ error: 'SERVER_ERROR' }); }
+    finally { client.release(); }
   });
   app.delete('/api/vehicles/:vehicleId/parking', async (req, res) => {
     try {
