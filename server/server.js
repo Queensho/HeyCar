@@ -11,6 +11,7 @@ const registerOwnerAuthRoutes=require('./owner-auth-routes');
 const registerBusinessRoutes=require('./business-routes');
 const registerValetRoutes=require('./valet-routes');
 const registerTowingRoutes=require('./towing-routes');
+const registerTowingProviderRoutes=require('./towing-provider-routes');
 const registerAdminManagementRoutes=require('./admin-management-routes');
 const {registerAdminAuthRoutes}=require('./admin-auth-routes');
 const {configureTrustedProxy}=require('./proxy-security');
@@ -119,6 +120,7 @@ registerOwnerAuthRoutes(app,pool);
 registerBusinessRoutes(app,pool);
 registerValetRoutes(app,pool);
 registerTowingRoutes(app,pool,adminAuth);
+registerTowingProviderRoutes(app,pool);
 registerAdminManagementRoutes(app,pool,adminAuth);
 
 app.use((err,_req,res,next)=>{
