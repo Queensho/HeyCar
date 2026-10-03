@@ -1,9 +1,12 @@
 const {ownerId:authenticatedOwnerId}=require('./owner-auth-service');
+const fs=require('fs');
+const path=require('path');
 
 function n(v){const x=Number(v);return Number.isFinite(x)?x:null;}
 function money(v){return Math.round((Number(v)+Number.EPSILON)*100)/100;}
 
 module.exports=function registerTowingRoutes(app,pool,adminGuard){
+  const documentDir=process.env.TOWING_DOCUMENT_DIR||'/opt/heycar/uploads/towing-docs';
   app.get('/api/towing/options',async(_req,res)=>{
     try{
       const [vehicles,trucks,settings]=await Promise.all([
@@ -44,6 +47,7 @@ module.exports=function registerTowingRoutes(app,pool,adminGuard){
     const vehicleId=String(req.body?.vehicleId||'').trim()||null,vehicleType=String(req.body?.vehicleType||'').trim(),truckType=String(req.body?.truckType||'').trim();
     const issueType=String(req.body?.issueType||'other').trim().slice(0,40),issueNote=String(req.body?.issueNote||'').trim().slice(0,500);
     const pickupLat=n(req.body?.pickupLat),pickupLng=n(req.body?.pickupLng),destinationLat=n(req.body?.destinationLat),destinationLng=n(req.body?.destinationLng),distanceKm=n(req.body?.distanceKm);
+    const pickupAddress=String(req.body?.pickupAddress||'').trim().slice(0,300),destinationAddress=String(req.body?.destinationAddress||'').trim().slice(0,300);
     if([pickupLat,pickupLng,destinationLat,destinationLng,distanceKm].some(x=>x===null)||distanceKm<0||distanceKm>2000)return res.status(400).json({error:'INVALID_ROUTE'});
     if(pickupLat<-90||pickupLat>90||destinationLat<-90||destinationLat>90||pickupLng<-180||pickupLng>180||destinationLng<-180||destinationLng>180)return res.status(400).json({error:'INVALID_COORDINATES'});
     const client=await pool.connect();
@@ -62,7 +66,7 @@ module.exports=function registerTowingRoutes(app,pool,adminGuard){
       const total=money(subtotal);
       const snapshot={baseFee:Number(truck.base_fee),perKmFee:Number(truck.per_km_fee),minimumFee:Number(truck.minimum_fee),vehicleMultiplier:Number(vehicle.price_multiplier),distanceKm:money(distanceKm)};
       const r=await client.query(`INSERT INTO towing_requests(owner_id,vehicle_id,vehicle_type,truck_type,issue_type,issue_note,pickup_lat,pickup_lng,pickup_address,destination_lat,destination_lng,destination_address,distance_km,quoted_total,currency,pricing_snapshot)
-        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb) RETURNING *`,[ownerId,vehicleId,vehicleType,truckType,issueType,issueNote||null,pickupLat,pickupLng,String(req.body?.pickupAddress||'').trim().slice(0,300)||null,destinationLat,destinationLng,String(req.body?.destinationAddress||'').trim().slice(0,300)||null,distanceKm,total,settings.currency,JSON.stringify(snapshot)]);
+        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb) RETURNING *`,[ownerId,vehicleId,vehicleType,truckType,issueType,issueNote||null,pickupLat,pickupLng,pickupAddress||null,destinationLat,destinationLng,destinationAddress||null,distanceKm,total,settings.currency,JSON.stringify(snapshot)]);
       await client.query('COMMIT');
       try{
         const push=app.locals.heycarPush;
@@ -112,6 +116,56 @@ module.exports=function registerTowingRoutes(app,pool,adminGuard){
     catch(e){console.error('owner towing tracking',e);return res.status(500).json({error:'SERVER_ERROR'});}
   });
 
+
+  app.get('/api/admin/manage/towing/providers',adminGuard,async(req,res)=>{
+    const status=String(req.query?.status||'all');
+    try{const params=[];let where='';if(status!=='all'){params.push(status);where='WHERE p.status=$1';}
+      const r=await pool.query(`SELECT p.*,u.display_name owner_name,u.phone owner_phone,u.email owner_email,
+        (SELECT COUNT(*)::int FROM towing_provider_documents d WHERE d.provider_id=p.id) document_count,
+        (SELECT COUNT(*)::int FROM towing_provider_drivers d WHERE d.provider_id=p.id) driver_count,
+        (SELECT COUNT(*)::int FROM towing_provider_vehicles v WHERE v.provider_id=p.id) vehicle_count
+        FROM towing_providers p LEFT JOIN users u ON u.id=p.owner_user_id ${where} ORDER BY p.created_at DESC`,params);
+      return res.json({ok:true,items:r.rows});}catch(e){console.error('admin towing providers',e);return res.status(500).json({error:'SERVER_ERROR'});}
+  });
+
+  app.get('/api/admin/manage/towing/providers/:id',adminGuard,async(req,res)=>{
+    try{const [p,d,v,docs]=await Promise.all([
+      pool.query('SELECT p.*,u.display_name owner_name,u.phone owner_phone,u.email owner_email FROM towing_providers p LEFT JOIN users u ON u.id=p.owner_user_id WHERE p.id=$1',[req.params.id]),
+      pool.query('SELECT id,user_id,full_name,phone,status,online,last_seen_at,created_at FROM towing_provider_drivers WHERE provider_id=$1 ORDER BY created_at',[req.params.id]),
+      pool.query('SELECT * FROM towing_provider_vehicles WHERE provider_id=$1 ORDER BY created_at',[req.params.id]),
+      pool.query('SELECT id,document_type,original_name,mime_type,size_bytes,status,review_note,reviewed_at,created_at FROM towing_provider_documents WHERE provider_id=$1 ORDER BY document_type',[req.params.id])
+    ]);if(!p.rowCount)return res.status(404).json({error:'PROVIDER_NOT_FOUND'});return res.json({ok:true,provider:p.rows[0],drivers:d.rows,vehicles:v.rows,documents:docs.rows});}
+    catch(e){console.error('admin towing provider detail',e);return res.status(500).json({error:'SERVER_ERROR'});}
+  });
+
+  app.get('/api/admin/manage/towing/documents/:id/file',adminGuard,async(req,res)=>{
+    try{const r=await pool.query('SELECT original_name,mime_type,storage_name FROM towing_provider_documents WHERE id=$1',[req.params.id]);if(!r.rowCount)return res.status(404).json({error:'DOCUMENT_NOT_FOUND'});
+      const file=path.join(documentDir,path.basename(r.rows[0].storage_name));if(!fs.existsSync(file))return res.status(404).json({error:'DOCUMENT_FILE_NOT_FOUND'});
+      res.type(r.rows[0].mime_type);res.setHeader('Content-Disposition',`inline; filename="${String(r.rows[0].original_name).replace(/["\\r\\n]/g,'_')}"`);return res.sendFile(file);}
+    catch(e){console.error('admin towing document file',e);return res.status(500).json({error:'SERVER_ERROR'});}
+  });
+
+  app.patch('/api/admin/manage/towing/providers/:id/status',adminGuard,async(req,res)=>{
+    const status=String(req.body?.status||''),note=String(req.body?.note||'').trim().slice(0,500);
+    if(!['active','suspended','rejected','banned'].includes(status))return res.status(400).json({error:'INVALID_STATUS'});
+    try{if(status==='active'){const p=await pool.query('SELECT provider_type FROM towing_providers WHERE id=$1',[req.params.id]);if(!p.rowCount)return res.status(404).json({error:'PROVIDER_NOT_FOUND'});
+      const required=p.rows[0].provider_type==='company'?['identity_license','vehicle_registration','authorization_certificate','tax_certificate']:['identity_license','vehicle_registration','authorization_certificate'];
+      const docs=await pool.query('SELECT document_type FROM towing_provider_documents WHERE provider_id=$1',[req.params.id]);const have=new Set(docs.rows.map(x=>x.document_type));if(required.some(x=>!have.has(x)))return res.status(409).json({error:'REQUIRED_DOCUMENTS_MISSING'});}
+      const r=await pool.query(`UPDATE towing_providers SET status=$2,review_note=$3,reviewed_at=NOW(),verified_at=CASE WHEN $2='active' THEN NOW() ELSE verified_at END,updated_at=NOW() WHERE id=$1 RETURNING *`,[req.params.id,status,note||null]);if(!r.rowCount)return res.status(404).json({error:'PROVIDER_NOT_FOUND'});
+      if(status==='suspended'||status==='banned'||status==='rejected')await pool.query('UPDATE towing_provider_drivers SET online=FALSE,updated_at=NOW() WHERE provider_id=$1',[req.params.id]);
+      return res.json({ok:true,provider:r.rows[0]});}catch(e){console.error('admin towing provider status',e);return res.status(500).json({error:'SERVER_ERROR'});}
+  });
+
+  app.patch('/api/admin/manage/towing/documents/:id',adminGuard,async(req,res)=>{
+    const status=String(req.body?.status||''),note=String(req.body?.note||'').trim().slice(0,500);if(!['approved','rejected'].includes(status))return res.status(400).json({error:'INVALID_STATUS'});
+    try{const r=await pool.query('UPDATE towing_provider_documents SET status=$2,review_note=$3,reviewed_at=NOW() WHERE id=$1 RETURNING id,document_type,status,review_note,reviewed_at',[req.params.id,status,note||null]);if(!r.rowCount)return res.status(404).json({error:'DOCUMENT_NOT_FOUND'});return res.json({ok:true,document:r.rows[0]});}
+    catch(e){console.error('admin towing document review',e);return res.status(500).json({error:'SERVER_ERROR'});}
+  });
+
+  app.delete('/api/admin/manage/towing/providers/:id',adminGuard,async(req,res)=>{
+    try{const docs=await pool.query('SELECT storage_name FROM towing_provider_documents WHERE provider_id=$1',[req.params.id]);const r=await pool.query('DELETE FROM towing_providers WHERE id=$1 RETURNING id',[req.params.id]);if(!r.rowCount)return res.status(404).json({error:'PROVIDER_NOT_FOUND'});for(const d of docs.rows){try{fs.unlinkSync(path.join(documentDir,path.basename(d.storage_name)));}catch(_){}}return res.json({ok:true});}
+    catch(e){console.error('admin towing provider delete',e);return res.status(500).json({error:'SERVER_ERROR'});}
+  });
 
   app.get('/api/admin/manage/towing/pricing',adminGuard,async(_req,res)=>{
     try{const [v,t,s]=await Promise.all([pool.query('SELECT * FROM towing_vehicle_types ORDER BY sort_order,name'),pool.query('SELECT * FROM towing_truck_types ORDER BY sort_order,name'),pool.query('SELECT * FROM towing_pricing_settings WHERE id=1')]);return res.json({ok:true,vehicleTypes:v.rows,truckTypes:t.rows,settings:s.rows[0]});}
