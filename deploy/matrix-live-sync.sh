@@ -30,6 +30,17 @@ echo "Matrix log: $LOG"
 FILES=(
   package.json
   server.js
+  account-lifecycle-service.js
+  app-settings-service.js
+  conversation-routes.js
+  correction-routes.js
+  dnd-routes.js
+  message-moderation.js
+  owner-auth-service.js
+  proxy-security.js
+  security-event-log.js
+  system-health-routes.js
+  valet-routes.js
   admin-auth-routes.js
   admin-audit.js
   admin-management-routes.js
