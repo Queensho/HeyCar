@@ -31,7 +31,7 @@ module.exports=function registerTowingProviderRoutes(app,pool){
     try{
       const r=await pool.query(`INSERT INTO towing_providers(provider_type,owner_user_id,display_name,phone,email,tax_number,company_title,application_note)
       VALUES($1,$2,$3,$4,$5,$6,$7,$8)
-      ON CONFLICT(owner_user_id) DO UPDATE SET provider_type=EXCLUDED.provider_type,display_name=EXCLUDED.display_name,phone=EXCLUDED.phone,email=EXCLUDED.email,tax_number=EXCLUDED.tax_number,company_title=EXCLUDED.company_title,application_note=EXCLUDED.application_note,status=CASE WHEN towing_providers.status='banned' THEN 'banned' ELSE 'pending' END,review_note=NULL,reviewed_at=NULL,updated_at=NOW()
+      ON CONFLICT(owner_user_id) WHERE owner_user_id IS NOT NULL DO UPDATE SET provider_type=EXCLUDED.provider_type,display_name=EXCLUDED.display_name,phone=EXCLUDED.phone,email=EXCLUDED.email,tax_number=EXCLUDED.tax_number,company_title=EXCLUDED.company_title,application_note=EXCLUDED.application_note,status=CASE WHEN towing_providers.status='banned' THEN 'banned' ELSE 'pending' END,review_note=NULL,reviewed_at=NULL,updated_at=NOW()
       RETURNING *`,[type,userId,name,phone,clean(req.body?.email,200)||null,clean(req.body?.taxNumber,40)||null,clean(req.body?.companyTitle,160)||null,clean(req.body?.note,500)||null]);
       return res.status(201).json({ok:true,provider:r.rows[0]});
     }catch(e){console.error('towing provider apply',e);return res.status(500).json({error:'SERVER_ERROR'});}
