@@ -1,4 +1,4 @@
-const {ownerId:authenticatedOwnerId}=require('./owner-auth-service');
+const {ownerId:authenticatedOwnerId,issueTokens}=require('./owner-auth-service');
 const clean=(v,n=200)=>String(v==null?'':v).trim().slice(0,n);
 const num=v=>{const x=Number(v);return Number.isFinite(x)?x:null;};
 const crypto=require('crypto');
@@ -7,10 +7,23 @@ const path=require('path');
 const express=require('express');
 const normPhone=v=>clean(v,40).replace(/[^0-9+]/g,'');
 const inviteHash=v=>crypto.createHash('sha256').update(String(v)).digest('hex');
+const normalizeTrMobile=raw=>{let d=String(raw||'').replace(/\D/g,'');if(d.startsWith('90')&&d.length===12)d=d.slice(2);else if(d.startsWith('0')&&d.length===11)d=d.slice(1);return /^5\d{9}$/.test(d)?`+90${d}`:null;};
 
 module.exports=function registerTowingProviderRoutes(app,pool){
   const documentDir=process.env.TOWING_DOCUMENT_DIR||'/opt/heycar/uploads/towing-docs';
   try{fs.mkdirSync(documentDir,{recursive:true});}catch(e){console.error('towing document dir',e);}
+  app.post('/api/towing/register',async(req,res)=>{
+    const phone=normalizeTrMobile(req.body?.phone),password=String(req.body?.password||''),displayName=clean(req.body?.displayName,120),email=clean(req.body?.email,200).toLowerCase()||null;
+    if(!phone||password.length<6||!displayName)return res.status(400).json({error:'INVALID_INPUT'});
+    if(req.body?.legalAccepted!==true)return res.status(400).json({error:'LEGAL_CONSENT_REQUIRED'});
+    const db=await pool.connect();try{await db.query('BEGIN');
+      const exists=await db.query('SELECT id FROM users WHERE phone=$1 OR ($2::text IS NOT NULL AND lower(email)=$2) LIMIT 1',[phone,email]);
+      if(exists.rowCount){await db.query('ROLLBACK');return res.status(409).json({error:'ACCOUNT_EXISTS'});}
+      const u=await db.query(\`INSERT INTO users(email,phone,display_name,password_hash,role,status) VALUES($1,$2,$3,crypt($4,gen_salt('bf',12)),'user','active') RETURNING id,email,phone,display_name,role,status,created_at\`,[email,phone,displayName,password]);
+      const tokens=await issueTokens(db,u.rows[0].id);await db.query('COMMIT');return res.status(201).json({ok:true,user:u.rows[0],...tokens});
+    }catch(e){await db.query('ROLLBACK').catch(()=>{});console.error('towing register',e);return res.status(500).json({error:'SERVER_ERROR'});}finally{db.release();}
+  });
+
   app.post('/api/towing/provider/apply',async(req,res)=>{
     const userId=authenticatedOwnerId(req);if(!userId)return res.status(401).json({error:'OWNER_REQUIRED'});
     const type=clean(req.body?.providerType,20),name=clean(req.body?.displayName,120),phone=clean(req.body?.phone,40);
