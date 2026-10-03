@@ -63,7 +63,23 @@ module.exports=function registerTowingRoutes(app,pool,adminGuard){
       const snapshot={baseFee:Number(truck.base_fee),perKmFee:Number(truck.per_km_fee),minimumFee:Number(truck.minimum_fee),vehicleMultiplier:Number(vehicle.price_multiplier),distanceKm:money(distanceKm)};
       const r=await client.query(`INSERT INTO towing_requests(owner_id,vehicle_id,vehicle_type,truck_type,issue_type,issue_note,pickup_lat,pickup_lng,pickup_address,destination_lat,destination_lng,destination_address,distance_km,quoted_total,currency,pricing_snapshot)
         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb) RETURNING *`,[ownerId,vehicleId,vehicleType,truckType,issueType,issueNote||null,pickupLat,pickupLng,String(req.body?.pickupAddress||'').trim().slice(0,300)||null,destinationLat,destinationLng,String(req.body?.destinationAddress||'').trim().slice(0,300)||null,distanceKm,total,settings.currency,JSON.stringify(snapshot)]);
-      await client.query('COMMIT');return res.status(201).json({ok:true,request:r.rows[0]});
+      await client.query('COMMIT');
+      try{
+        const push=app.locals.heycarPush;
+        if(push&&typeof push.sendOwner==='function'){
+          const nearby=await pool.query(`SELECT DISTINCT d.user_id
+            FROM towing_provider_drivers d
+            JOIN towing_providers p ON p.id=d.provider_id
+            WHERE d.user_id IS NOT NULL AND d.status='active' AND d.online=TRUE AND p.status='active'
+              AND d.last_lat IS NOT NULL AND d.last_lng IS NOT NULL
+              AND EXISTS(SELECT 1 FROM towing_provider_vehicles tv WHERE tv.provider_id=d.provider_id AND tv.truck_type=$3 AND tv.status='active')
+              AND (6371*acos(LEAST(1,GREATEST(-1,cos(radians($1))*cos(radians(d.last_lat::float8))*cos(radians(d.last_lng::float8)-radians($2))+sin(radians($1))*sin(radians(d.last_lat::float8))))))<=30
+            LIMIT 100`,[pickupLat,pickupLng,truckType]);
+          const body=pickupAddress?'Yeni çekici talebi • '+pickupAddress:'Yakınında yeni bir çekici talebi var';
+          await Promise.allSettled(nearby.rows.map(row=>push.sendOwner(String(row.user_id),{type:'towing_request',requestId:String(r.rows[0].id),pickupAddress:pickupAddress||'',destinationAddress:destinationAddress||'',truckType:String(truckType)},'Yeni Çekici Talebi',body)));
+        }
+      }catch(pushError){console.error('towing request push',pushError);}
+      return res.status(201).json({ok:true,request:r.rows[0]});
     }catch(e){await client.query('ROLLBACK').catch(()=>{});if(e?.code==='23505')return res.status(409).json({error:'ACTIVE_TOWING_REQUEST_EXISTS'});console.error('towing request create',e);return res.status(500).json({error:'SERVER_ERROR'});}finally{client.release();}
   });
 
