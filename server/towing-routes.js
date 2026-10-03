@@ -89,6 +89,7 @@ module.exports=function registerTowingRoutes(app,pool,adminGuard){
   app.get('/api/owner/towing/requests/:id/tracking',async(req,res)=>{
     const ownerId=authenticatedOwnerId(req);if(!ownerId)return res.status(401).json({error:'OWNER_REQUIRED'});
     try{const r=await pool.query(`SELECT r.id,r.status,r.driver_lat,r.driver_lng,r.driver_location_at,r.pickup_eta_minutes,r.pickup_distance_km,
+      r.pickup_lat,r.pickup_lng,r.pickup_address,r.destination_lat,r.destination_lng,r.destination_address,r.distance_km,
       p.display_name AS provider_name,p.provider_type,d.full_name AS driver_name,v.plate AS towing_plate,v.brand AS towing_brand,v.model AS towing_model,v.truck_type
       FROM towing_requests r LEFT JOIN towing_providers p ON p.id=r.accepted_provider_id LEFT JOIN towing_provider_drivers d ON d.id=r.accepted_driver_id LEFT JOIN towing_provider_vehicles v ON v.id=r.accepted_towing_vehicle_id
       WHERE r.id=$1 AND r.owner_id=$2 LIMIT 1`,[req.params.id,ownerId]);if(!r.rowCount)return res.status(404).json({error:'TOWING_REQUEST_NOT_FOUND'});return res.json({ok:true,tracking:r.rows[0]});}
