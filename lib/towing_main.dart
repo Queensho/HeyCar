@@ -45,13 +45,13 @@ Future<Position?> loc()async{var p=await Geolocator.checkPermission();if(p==Loca
 Future<void> load()async{try{final mr=await http.get(Uri.parse(api+'/api/towing/provider/me'),headers:h);if(mr.statusCode==401){widget.logout();return;}if(mr.statusCode==200)me=jsonDecode(mr.body);else if(mr.statusCode==404)me=null;final ar=await http.get(Uri.parse(api+'/api/towing/provider/jobs/active'),headers:h);if(ar.statusCode==200)active=jsonDecode(ar.body)['request'];if(online){pos=await loc();if(pos!=null){final nr=await http.get(Uri.parse('$api/api/towing/provider/jobs/nearby?lat=${pos!.latitude}&lng=${pos!.longitude}&radiusKm=30'),headers:h);if(nr.statusCode==200)jobs=jsonDecode(nr.body)['items']??[];if(active!=null){
   final status='${active!['status']??''}';
   final approaching=status=='accepted'||status=='arriving'||status=='arrived';
+  final delivering=status=='vehicle_loaded'||status=='in_transit';
   final pLat=double.tryParse('${active!['pickup_lat']??''}'),pLng=double.tryParse('${active!['pickup_lng']??''}');
-  double? remaining; int eta=0;
-  if(approaching&&pLat!=null&&pLng!=null){
-    remaining=Geolocator.distanceBetween(pos!.latitude,pos!.longitude,pLat,pLng)/1000;
-    eta=(remaining/35*60).ceil().clamp(1,1440);
-  }
-  await http.put(Uri.parse('$api/api/towing/provider/jobs/${active!['id']}/location'),headers:h,body:jsonEncode({'lat':pos!.latitude,'lng':pos!.longitude,'pickupEtaMinutes':approaching?eta:0,'pickupDistanceKm':approaching&&remaining!=null?double.parse(remaining.toStringAsFixed(1)):null}));
+  final dLat=double.tryParse('${active!['destination_lat']??''}'),dLng=double.tryParse('${active!['destination_lng']??''}');
+  double? remaining,destRemaining; int eta=0,destEta=0;
+  if(approaching&&pLat!=null&&pLng!=null){remaining=Geolocator.distanceBetween(pos!.latitude,pos!.longitude,pLat,pLng)/1000;eta=(remaining/35*60).ceil().clamp(1,1440);}
+  if(delivering&&dLat!=null&&dLng!=null){destRemaining=Geolocator.distanceBetween(pos!.latitude,pos!.longitude,dLat,dLng)/1000;destEta=(destRemaining/35*60).ceil().clamp(1,1440);}
+  await http.put(Uri.parse('$api/api/towing/provider/jobs/${active!['id']}/location'),headers:h,body:jsonEncode({'lat':pos!.latitude,'lng':pos!.longitude,'pickupEtaMinutes':approaching?eta:0,'pickupDistanceKm':approaching&&remaining!=null?double.parse(remaining.toStringAsFixed(1)):null,'destinationEtaMinutes':delivering?destEta:0,'destinationDistanceKm':delivering&&destRemaining!=null?double.parse(destRemaining.toStringAsFixed(1)):null}));
 }}}if(mounted)setState((){});}catch(_){}}
 Future<void> toggle()async{setState(()=>busy=true);try{final p=await loc();if(p==null)return;final next=!online;final r=await http.put(Uri.parse(api+'/api/towing/provider/online'),headers:h,body:jsonEncode({'online':next,'lat':p.latitude,'lng':p.longitude}));if(r.statusCode==200){setState(()=>online=next);await load();}else if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Çevrimiçi olunamadı. Sağlayıcı hesabının aktif olması gerekir.')));}finally{if(mounted)setState(()=>busy=false);}}
 Future<void> accept(Map j)async{final vs=(me?['vehicles'] as List? ?? []).where((v)=>v['truck_type']==j['truck_type']&&v['status']=='active').toList();if(vs.isEmpty)return;final r=await http.post(Uri.parse('$api/api/towing/provider/jobs/${j['id']}/accept'),headers:h,body:jsonEncode({'towingVehicleId':vs.first['id']}));if(r.statusCode<300)await load();}
