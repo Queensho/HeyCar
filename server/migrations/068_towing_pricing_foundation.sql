@@ -43,7 +43,7 @@ INSERT INTO towing_pricing_settings(id) VALUES(1) ON CONFLICT(id) DO NOTHING;
 
 DO $$ BEGIN
  IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='heycar_user') THEN
-  GRANT SELECT ON towing_vehicle_types,towing_truck_types,towing_pricing_settings TO heycar_user;
+  GRANT SELECT, INSERT, UPDATE, DELETE ON towing_vehicle_types,towing_truck_types,towing_pricing_settings TO heycar_user;
  END IF;
 END $$;
 
