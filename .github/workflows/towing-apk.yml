@@ -36,9 +36,10 @@ jobs:
           s=p.read_text().replace('com.cepqontag.cekici','com.cepqontag.cekici')
           # flutter_local_notifications requires Java 8+ core library desugaring.
           s=s.replace('compileOptions {', 'compileOptions {\n        isCoreLibraryDesugaringEnabled = true', 1)
-          marker='dependencies {'
-          if marker in s and 'desugar_jdk_libs' not in s:
-              s=s.replace(marker, marker+'\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")', 1)
+          # Flutter's generated Kotlin DSL may not contain a dependencies block yet.
+          # Append one explicitly so the desugaring configuration has its dependency.
+          if 'coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")' not in s:
+              s += '\n\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")\n}\n'
           p.write_text(s)
           m=Path('android/app/src/main/AndroidManifest.xml')
           s=m.read_text().replace('android:label="cekici"', 'android:label="CepQontag Çekici"')
