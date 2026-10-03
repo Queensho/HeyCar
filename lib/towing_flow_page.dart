@@ -26,17 +26,32 @@ class _S extends State<TowingFlowPage>{
     return ClipRRect(
       borderRadius: BorderRadius.circular(18),
       child: SizedBox(
-        height: MediaQuery.sizeOf(context).height * .43,
+        height: MediaQuery.sizeOf(context).height * .38,
         child: FlutterMap(
           options: MapOptions(
             initialCenter: LatLng(a ?? 41.0, b ?? 28.9),
-            initialZoom: 12,
+            initialZoom: 14,
+            minZoom: 11,
+            maxZoom: 18,
             onTap: (_, p) => chooseDrop(p),
+            interactionOptions: const InteractionOptions(
+              flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+            ),
           ),
           children: [
-            TileLayer(
-              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              userAgentPackageName: 'com.cepqar.app',
+            ColorFiltered(
+              colorFilter: const ColorFilter.matrix([
+                -.12, -.24, -.04, 0, 115,
+                -.15, -.30, -.05, 0, 140,
+                -.18, -.36, -.06, 0, 173,
+                0, 0, 0, 1, 0,
+              ]),
+              child: TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.cepqar.app',
+                maxNativeZoom: 19,
+                panBuffer: 0,
+              ),
             ),
             PolylineLayer(
               polylines: [
@@ -53,16 +68,49 @@ class _S extends State<TowingFlowPage>{
                 if (a != null)
                   Marker(
                     point: LatLng(a!, b!),
-                    width: 44,
-                    height: 44,
-                    child: Icon(Icons.my_location_rounded, color: CepqarTheme.purple, size: 30),
+                    width: 36,
+                    height: 36,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.blueAccent.withValues(alpha: .22),
+                        shape: BoxShape.circle,
+                      ),
+                      padding: const EdgeInsets.all(7),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.blueAccent,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 3),
+                        ),
+                      ),
+                    ),
                   ),
                 if (x != null)
                   Marker(
                     point: LatLng(x!, y!),
-                    width: 54,
-                    height: 54,
-                    child: Icon(Icons.location_on_rounded, color: CepqarTheme.purple, size: 48),
+                    width: 48,
+                    height: 58,
+                    alignment: Alignment.topCenter,
+                    child: Stack(
+                      alignment: Alignment.topCenter,
+                      children: [
+                        const Positioned(
+                          bottom: 6,
+                          child: Icon(Icons.arrow_drop_down_rounded, color: Color(0xFF813CFF), size: 42),
+                        ),
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(colors: [Color(0xFFAE70FF), Color(0xFF813CFF)]),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: const Color(0xFFE1CCFF), width: 2),
+                            boxShadow: const [BoxShadow(color: Color(0x55813CFF), blurRadius: 10)],
+                          ),
+                          child: const Icon(Icons.flag_rounded, color: Colors.white, size: 21),
+                        ),
+                      ],
+                    ),
                   ),
               ],
             ),
@@ -71,6 +119,7 @@ class _S extends State<TowingFlowPage>{
       ),
     );
   }
+
   Widget locationStep() {
     return Column(
       children: [
