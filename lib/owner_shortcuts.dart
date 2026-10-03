@@ -8,6 +8,7 @@ class OwnerShortcutDefinition {
 
 /// Add future shortcuts here only. Existing user selections keep working by id.
 const ownerShortcutCatalog=<OwnerShortcutDefinition>[
+  OwnerShortcutDefinition(id:'roadside_help',title:'Yolda Kaldım',subtitle:'Yol yardım • Çekici',icon:Icons.sos_rounded,action:'roadside_help'),
   OwnerShortcutDefinition(id:'offers',title:'CepQontag Fırsatlar',subtitle:'Yakındaki kampanyalar',icon:Icons.local_offer_rounded,action:'offers'),
   OwnerShortcutDefinition(id:'qr',title:'QR Kodum',subtitle:'İndir / Paylaş',icon:Icons.qr_code_scanner_rounded,action:'qr'),
   OwnerShortcutDefinition(id:'qr_security',title:'QR Güvenliği',subtitle:'Okutma ve güvenlik',icon:Icons.shield_outlined,action:'qr_security'),
@@ -22,5 +23,5 @@ const ownerShortcutCatalog=<OwnerShortcutDefinition>[
 ];
 
 const fixedOwnerShortcutIds=['qr','qr_security'];
-const defaultOwnerShortcutIds=['qr','qr_security','vehicle'];
+const defaultOwnerShortcutIds=['qr','qr_security','vehicle','roadside_help'];
 const maxOwnerShortcuts=4;
