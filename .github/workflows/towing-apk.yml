@@ -1,0 +1,55 @@
+name: Build CepQontag Cekici APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'lib/towing_main.dart'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+      - '.github/workflows/towing-apk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cepqontag-towing-apk
+  cancel-in-progress: true
+
+jobs:
+  build-towing-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Generate Android platform
+        run: flutter create . --platforms=android --project-name cekici --org com.cepqontag --no-pub
+      - name: Set app identity and location permissions
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('android/app/build.gradle.kts')
+          s=p.read_text().replace('com.cepqontag.cekici','com.cepqontag.cekici')
+          p.write_text(s)
+          m=Path('android/app/src/main/AndroidManifest.xml')
+          s=m.read_text().replace('android:label="cekici"', 'android:label="CepQontag Çekici"')
+          s=s.replace('<application', '    <uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n    <application', 1)
+          m.write_text(s)
+          PY
+      - run: flutter pub get
+      - name: Analyze towing entrypoint
+        run: flutter analyze lib/towing_main.dart --no-fatal-infos --no-fatal-warnings
+      - name: Build CepQontag Cekici APK
+        run: flutter build apk --debug --target lib/towing_main.dart
+      - name: Rename APK
+        run: cp build/app/outputs/flutter-apk/app-debug.apk build/app/outputs/flutter-apk/CepQontag-Cekici.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cepqontag-cekici-apk
+          path: build/app/outputs/flutter-apk/CepQontag-Cekici.apk
+          retention-days: 14
+          if-no-files-found: error
