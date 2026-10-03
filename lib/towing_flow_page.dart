@@ -11,14 +11,60 @@ import 'onboarding_backend.dart';
 import 'qr_backend.dart';
 class TowingFlowPage extends StatefulWidget{const TowingFlowPage({super.key});@override State<TowingFlowPage> createState()=>_S();}
 class _S extends State<TowingFlowPage>{
-  int step=0;bool busy=false,notRunning=true;String vehicleType='car',truck='platform';double? a,b,x,y;String pickup='Konumum',dropoff='Haritada bırakma noktasını seç';Map<String,dynamic>? quote;final dest=TextEditingController();String get api=>OnboardingBackend.baseUrl;
+  int step=0;bool busy=false,notRunning=true;String vehicleType='car',truck='platform';double? a,b,x,y;String pickup='Konumum',dropoff='Haritada bırakma noktasını seç';Map<String,dynamic>? quote;final dest=TextEditingController();List<Map<String,dynamic>> destResults=[];bool destSearching=false;Timer? destDebounce;String get api=>OnboardingBackend.baseUrl;
   @override void initState(){super.initState();locate();}
-  @override void dispose(){dest.dispose();super.dispose();}
+  @override void dispose(){destDebounce?.cancel();dest.dispose();super.dispose();}
   void msg(String s){ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(s)));}
   Future<String> address(double lat,double lng)async{try{final r=await http.get(Uri.parse('https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=$lat&lon=$lng&accept-language=tr'),headers:{'User-Agent':'CepQontag/1.0'});if(r.statusCode==200){final d=jsonDecode(r.body),m=d['address']??{};final district=m['town']??m['city_district']??m['suburb']??m['city'];final city=m['province']??m['city'];if(district!=null&&city!=null)return '$district, $city';}}catch(_){}return 'Seçilen konum';}
   Future<void> locate()async{setState(()=>busy=true);try{var p=await Geolocator.checkPermission();if(p==LocationPermission.denied)p=await Geolocator.requestPermission();if(p==LocationPermission.denied||p==LocationPermission.deniedForever)throw Exception();final z=await Geolocator.getCurrentPosition();final ad=await address(z.latitude,z.longitude);if(mounted)setState((){a=z.latitude;b=z.longitude;pickup=ad;});}catch(_){msg('Konum alınamadı.');}finally{if(mounted)setState(()=>busy=false);}}
   double get km=>(a==null||x==null)?0:Geolocator.distanceBetween(a!,b!,x!,y!)/1000;
   Future<void> chooseDrop(LatLng p)async{final ad=await address(p.latitude,p.longitude);if(mounted)setState((){x=p.latitude;y=p.longitude;dropoff=ad;dest.text=ad;});}
+  Future<void> searchDestination(String value) async {
+    destDebounce?.cancel();
+    final q = value.trim();
+    if (q.length < 3) {
+      if (mounted) setState(() => destResults = []);
+      return;
+    }
+    destDebounce = Timer(const Duration(milliseconds: 450), () async {
+      if (mounted) setState(() => destSearching = true);
+      try {
+        final uri = Uri.https('nominatim.openstreetmap.org', '/search', {
+          'format': 'jsonv2',
+          'q': q,
+          'countrycodes': 'tr',
+          'limit': '5',
+          'addressdetails': '1',
+          'accept-language': 'tr',
+        });
+        final r = await http.get(uri, headers: {'User-Agent': 'CepQontag/1.0'});
+        if (r.statusCode == 200 && mounted) {
+          final list = (jsonDecode(r.body) as List).cast<Map<String, dynamic>>();
+          setState(() => destResults = list);
+        }
+      } catch (_) {
+        if (mounted) setState(() => destResults = []);
+      } finally {
+        if (mounted) setState(() => destSearching = false);
+      }
+    });
+  }
+
+  void selectDestination(Map<String, dynamic> item) {
+    final lat = double.tryParse('${item['lat']}');
+    final lon = double.tryParse('${item['lon']}');
+    if (lat == null || lon == null) return;
+    final label = '${item['display_name'] ?? 'Seçilen adres'}';
+    FocusScope.of(context).unfocus();
+    setState(() {
+      x = lat;
+      y = lon;
+      dropoff = label;
+      dest.text = label;
+      destResults = [];
+    });
+  }
+
   Future<void> price()async{if(a==null||x==null){msg('Alım ve bırakma konumunu seç.');return;}setState(()=>busy=true);try{final r=await OwnerHttp.post(Uri.parse('$api/api/owner/towing/quote'),body:jsonEncode({'distanceKm':km,'vehicleType':vehicleType,'truckType':truck}));final d=jsonDecode(r.body);if(r.statusCode==200&&mounted){setState(()=>quote=Map<String,dynamic>.from(d['quote']));step=2;}else msg('Fiyat hesaplanamadı.');}catch(_){msg('Fiyat hesaplanamadı.');}finally{if(mounted)setState(()=>busy=false);}}
   Future<void> call()async{if(quote==null)return;setState(()=>busy=true);try{final r=await OwnerHttp.post(Uri.parse('$api/api/owner/towing/requests'),body:jsonEncode({'vehicleId':QrDraft.vehicleId,'vehicleType':vehicleType,'truckType':truck,'issueType':notRunning?'Araç çalışmıyor':'Çekici','pickupLat':a,'pickupLng':b,'pickupAddress':pickup,'destinationLat':x,'destinationLng':y,'destinationAddress':dropoff,'distanceKm':km}));final d=jsonDecode(r.body);if(r.statusCode>=200&&r.statusCode<300){final id='${d['request']['id']}';if(mounted)Navigator.pushReplacement(context,MaterialPageRoute(builder:(_)=>TowingTrackingPage(id:id)));}else msg(d['error']=='ACTIVE_TOWING_REQUEST_EXISTS'?'Aktif çekici çağrın zaten var.':'Çağrı oluşturulamadı.');}catch(_){msg('Çağrı oluşturulamadı.');}finally{if(mounted)setState(()=>busy=false);}}
   Widget pinLine(IconData i,String t)=>Container(height:58,padding:const EdgeInsets.symmetric(horizontal:14),decoration:BoxDecoration(border:Border.all(color:const Color(0xFFE5E7EB)),borderRadius:BorderRadius.circular(14)),child:Row(children:[Icon(i,color:CepqarTheme.purple),const SizedBox(width:12),Expanded(child:Text(t,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Color(0xFF25252B),fontSize:16,fontWeight:FontWeight.w700)))]));
@@ -157,7 +203,65 @@ class _S extends State<TowingFlowPage>{
                 const SizedBox(height: 20),
                 const Text('Nereye bırakılacak?', style: TextStyle(color: Colors.black, fontSize: 22, fontWeight: FontWeight.w900)),
                 const SizedBox(height: 12),
-                pinLine(Icons.location_on_rounded, dropoff),
+                TextField(
+                  controller: dest,
+                  onChanged: searchDestination,
+                  style: const TextStyle(color: Color(0xFF25252B), fontSize: 16, fontWeight: FontWeight.w700),
+                  decoration: InputDecoration(
+                    hintText: 'Adres veya yer adı yaz',
+                    hintStyle: const TextStyle(color: Color(0xFF8A8A94), fontWeight: FontWeight.w600),
+                    prefixIcon: Icon(Icons.location_on_rounded, color: CepqarTheme.purple),
+                    suffixIcon: destSearching
+                        ? const Padding(
+                            padding: EdgeInsets.all(15),
+                            child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
+                          )
+                        : dest.text.isEmpty
+                            ? null
+                            : IconButton(
+                                onPressed: () => setState(() {
+                                  dest.clear();
+                                  dropoff = 'Adres veya yer adı yaz';
+                                  x = null;
+                                  y = null;
+                                  destResults = [];
+                                }),
+                                icon: const Icon(Icons.close_rounded),
+                              ),
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: CepqarTheme.purple, width: 2)),
+                  ),
+                ),
+                if (destResults.isNotEmpty)
+                  Container(
+                    margin: const EdgeInsets.only(top: 6),
+                    constraints: const BoxConstraints(maxHeight: 230),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border.all(color: const Color(0xFFE5E7EB)),
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: const [BoxShadow(color: Color(0x18000000), blurRadius: 12, offset: Offset(0, 4))],
+                    ),
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      padding: EdgeInsets.zero,
+                      itemCount: destResults.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      itemBuilder: (_, i) {
+                        final item = destResults[i];
+                        return ListTile(
+                          leading: Icon(Icons.place_outlined, color: CepqarTheme.purple),
+                          title: Text('${item['display_name'] ?? ''}', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w700)),
+                          onTap: () => selectDestination(item),
+                        );
+                      },
+                    ),
+                  ),
+                const SizedBox(height: 8),
+                Text('İstersen bırakma noktasını haritaya dokunarak da seçebilirsin.', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
                 const SizedBox(height: 18),
                 SizedBox(
                   width: double.infinity,
