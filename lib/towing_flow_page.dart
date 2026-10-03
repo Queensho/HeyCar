@@ -352,6 +352,58 @@ class _S extends State<TowingFlowPage>{
   Widget quoteStep()=>Padding(padding:const EdgeInsets.all(20),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('Tahmini Ücret',style:TextStyle(color:Colors.black,fontSize:23,fontWeight:FontWeight.w900)),const SizedBox(height:12),Text('● $pickup\n● $dropoff',style:TextStyle(color:CepqarTheme.purple,fontWeight:FontWeight.w700,height:1.7)),const SizedBox(height:12),map(),const SizedBox(height:12),Row(mainAxisAlignment:MainAxisAlignment.spaceBetween,children:[Text('${km.toStringAsFixed(1)} km',style:const TextStyle(color:Colors.black,fontWeight:FontWeight.w800)),Text('Rota detayı',style:TextStyle(color:CepqarTheme.purple,fontWeight:FontWeight.w800))]),const Divider(height:28),Row(mainAxisAlignment:MainAxisAlignment.spaceBetween,children:[const Text('Toplam (KDV dahil)',style:TextStyle(color:Colors.black,fontWeight:FontWeight.w900)),Text('${quote?['total']??'-'} ${quote?['currency']??'TL'}',style:const TextStyle(color:Colors.black,fontSize:22,fontWeight:FontWeight.w900))]),const SizedBox(height:20),SizedBox(width:double.infinity,height:56,child:FilledButton(onPressed:call,style:FilledButton.styleFrom(backgroundColor:CepqarTheme.purple,foregroundColor:Colors.white),child:const Text('Çekici Çağır',style:TextStyle(fontSize:18,fontWeight:FontWeight.w900))))]));
   @override Widget build(BuildContext c)=>Scaffold(backgroundColor:Colors.white,appBar:AppBar(backgroundColor:Colors.white,foregroundColor:Colors.black,elevation:0,title:step==0?null:Text(step==1?'Araç bilgisi':'Tahmini Ücret',style:const TextStyle(fontWeight:FontWeight.w900))),body:busy?const Center(child:CircularProgressIndicator()):SafeArea(child:SingleChildScrollView(child:step==0?locationStep():step==1?vehicleStep():quoteStep())));
 }
-class TowingTrackingPage extends StatefulWidget{const TowingTrackingPage({super.key,required this.id});final String id;@override State<TowingTrackingPage> createState()=>_T();}
-class _T extends State<TowingTrackingPage>{Map<String,dynamic>? d;Timer? t;@override void initState(){super.initState();load();t=Timer.periodic(const Duration(seconds:5),(_)=>load());}@override void dispose(){t?.cancel();super.dispose();}Future<void> load()async{try{final r=await OwnerHttp.get(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/towing/requests/${widget.id}/tracking'));if(r.statusCode==200&&mounted)setState(()=>d=Map<String,dynamic>.from(jsonDecode(r.body)['tracking']));}catch(_){}}String label(String s)=>{'searching':'Yakındaki çekiciler aranıyor','accepted':'Çekici bulundu','arriving':'Çekici size geliyor','arrived':'Çekici geldi','vehicle_loaded':'Aracınız yüklendi','in_transit':'Aracınız yolda','delivered':'Teslim edildi','cancelled':'İptal edildi'}[s]??s;
-@override Widget build(BuildContext c){final lat=double.tryParse('${d?['driver_lat']??''}'),lng=double.tryParse('${d?['driver_lng']??''}');return Scaffold(backgroundColor:CepqarTheme.bg,appBar:AppBar(backgroundColor:CepqarTheme.bg,foregroundColor:CepqarTheme.text,title:const Text('Çekici Takibi')),body:d==null?const Center(child:CircularProgressIndicator()):ListView(children:[SizedBox(height:330,child:lat==null?Center(child:Column(mainAxisSize:MainAxisSize.min,children:[Icon(Icons.radar_rounded,color:CepqarTheme.purple,size:65),const SizedBox(height:12),Text(label('${d!['status']}'),style:TextStyle(color:CepqarTheme.text,fontSize:20,fontWeight:FontWeight.w900))])):FlutterMap(options:MapOptions(initialCenter:LatLng(lat,lng!),initialZoom:14),children:[TileLayer(urlTemplate:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',userAgentPackageName:'com.cepqar.app'),MarkerLayer(markers:[Marker(point:LatLng(lat,lng),width:55,height:55,child:Icon(Icons.fire_truck_rounded,color:CepqarTheme.purple,size:42))])])),Padding(padding:const EdgeInsets.all(16),child:Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:CepqarTheme.panel,borderRadius:BorderRadius.circular(20),border:Border.all(color:CepqarTheme.line)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(label('${d!['status']}'),style:TextStyle(color:CepqarTheme.text,fontSize:20,fontWeight:FontWeight.w900)),if(d!['pickup_eta_minutes']!=null)Text('${d!['pickup_eta_minutes']} dk • ${d!['pickup_distance_km']??'-'} km',style:TextStyle(color:CepqarTheme.purple,fontWeight:FontWeight.w900)),if(d!['provider_name']!=null)...[const SizedBox(height:12),Text('${d!['provider_name']}',style:TextStyle(color:CepqarTheme.text,fontWeight:FontWeight.w900))],if(d!['driver_name']!=null)Text('Sürücü: ${d!['driver_name']}',style:TextStyle(color:CepqarTheme.muted)),if(d!['towing_plate']!=null)Text('Çekici: ${d!['towing_plate']}',style:TextStyle(color:CepqarTheme.muted))])))]));}}
+class TowingTrackingPage extends StatefulWidget {
+  const TowingTrackingPage({super.key, required this.id});
+  final String id;
+  @override State<TowingTrackingPage> createState() => _T();
+}
+class _T extends State<TowingTrackingPage> {
+  Map<String,dynamic>? d; Timer? t;
+  @override void initState(){super.initState();load();t=Timer.periodic(const Duration(seconds:5),(_)=>load());}
+  @override void dispose(){t?.cancel();super.dispose();}
+  Future<void> load()async{try{final r=await OwnerHttp.get(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/towing/requests/${widget.id}/tracking'));if(r.statusCode==200&&mounted)setState(()=>d=Map<String,dynamic>.from(jsonDecode(r.body)['tracking']));}catch(_){}}
+  double? n(dynamic v)=>double.tryParse('${v??''}');
+  String label(String s)=>{'searching':'Yakındaki çekiciler aranıyor','accepted':'Çekici bulundu','arriving':'Çekici size geliyor','arrived':'Çekici geldi','vehicle_loaded':'Aracınız yüklendi','in_transit':'Aracınız hedefe gidiyor','delivered':'Teslim edildi','cancelled':'İptal edildi'}[s]??s;
+  Widget searching(){
+    return Container(
+      height:360,color:const Color(0xFF111318),
+      child:Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
+        Container(width:150,height:150,decoration:BoxDecoration(shape:BoxShape.circle,border:Border.all(color:CepqarTheme.purple.withValues(alpha:.25),width:18)),child:Center(child:Container(width:92,height:92,decoration:BoxDecoration(shape:BoxShape.circle,border:Border.all(color:CepqarTheme.purple.withValues(alpha:.55),width:12)),child:Icon(Icons.radar_rounded,color:CepqarTheme.purple,size:62)))),
+        const SizedBox(height:24),
+        const Text('Yakındaki çekiciler aranıyor',style:TextStyle(color:Colors.white,fontSize:21,fontWeight:FontWeight.w900)),
+        const SizedBox(height:8),
+        const Text('Uygun bir çekici bulunduğunda burada göreceksiniz.',textAlign:TextAlign.center,style:TextStyle(color:Color(0xFF9CA3AF))),
+      ])),
+    );
+  }
+  Widget trackingMap(){
+    final dl=n(d?['driver_lat']),dn=n(d?['driver_lng']),pl=n(d?['pickup_lat']),pn=n(d?['pickup_lng']),xl=n(d?['destination_lat']),xn=n(d?['destination_lng']);
+    final driver=dl==null||dn==null?null:LatLng(dl,dn),pickup=pl==null||pn==null?null:LatLng(pl,pn),dest=xl==null||xn==null?null:LatLng(xl,xn);
+    final center=driver??pickup??dest??const LatLng(41.0,28.9);
+    return SizedBox(height:360,child:FlutterMap(options:MapOptions(initialCenter:center,initialZoom:14,minZoom:11,maxZoom:18,interactionOptions:const InteractionOptions(flags:InteractiveFlag.all & ~InteractiveFlag.rotate)),children:[
+      ColorFiltered(colorFilter:const ColorFilter.matrix([-.12,-.24,-.04,0,115,-.15,-.30,-.05,0,140,-.18,-.36,-.06,0,173,0,0,0,1,0]),child:TileLayer(urlTemplate:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',userAgentPackageName:'com.cepqar.app',maxNativeZoom:19,panBuffer:0)),
+      PolylineLayer(polylines:[if(driver!=null&&pickup!=null)Polyline(points:[driver,pickup],strokeWidth:4,color:const Color(0xFFB6FF2A)),if(pickup!=null&&dest!=null)Polyline(points:[pickup,dest],strokeWidth:5,color:CepqarTheme.purple)]),
+      MarkerLayer(markers:[
+        if(driver!=null)Marker(point:driver,width:48,height:58,alignment:Alignment.topCenter,child:Icon(Icons.fire_truck_rounded,color:CepqarTheme.purple,size:42)),
+        if(pickup!=null)Marker(point:pickup,width:36,height:36,child:Container(decoration:BoxDecoration(color:Colors.blueAccent.withValues(alpha:.22),shape:BoxShape.circle),padding:const EdgeInsets.all(7),child:Container(decoration:BoxDecoration(color:Colors.blueAccent,shape:BoxShape.circle,border:Border.all(color:Colors.white,width:3))))),
+        if(dest!=null)Marker(point:dest,width:48,height:58,alignment:Alignment.topCenter,child:Icon(Icons.location_on_rounded,color:CepqarTheme.purple,size:48)),
+      ]),
+    ]));
+  }
+  @override Widget build(BuildContext c){
+    if(d==null)return Scaffold(backgroundColor:CepqarTheme.bg,body:const Center(child:CircularProgressIndicator()));
+    final status='${d!['status']}'; final searchingNow=status=='searching';
+    return Scaffold(backgroundColor:CepqarTheme.bg,appBar:AppBar(backgroundColor:CepqarTheme.bg,foregroundColor:CepqarTheme.text,title:Text(searchingNow?'Çekici aranıyor':'Çekici Takibi')),body:ListView(children:[
+      searchingNow?searching():trackingMap(),
+      Padding(padding:const EdgeInsets.all(16),child:Container(padding:const EdgeInsets.all(18),decoration:BoxDecoration(color:CepqarTheme.panel,borderRadius:BorderRadius.circular(22),border:Border.all(color:CepqarTheme.line)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        Text(label(status),style:TextStyle(color:CepqarTheme.text,fontSize:21,fontWeight:FontWeight.w900)),
+        if(d!['pickup_eta_minutes']!=null)...[const SizedBox(height:5),Text('${d!['pickup_eta_minutes']} dk • ${d!['pickup_distance_km']??'-'} km',style:TextStyle(color:CepqarTheme.purple,fontSize:17,fontWeight:FontWeight.w900))],
+        if(d!['provider_name']!=null)...[const SizedBox(height:16),const Divider(),const SizedBox(height:8),Text('${d!['provider_name']}',style:TextStyle(color:CepqarTheme.text,fontSize:17,fontWeight:FontWeight.w900))],
+        if(d!['driver_name']!=null)Text('Sürücü: ${d!['driver_name']}',style:TextStyle(color:CepqarTheme.muted)),
+        if(d!['towing_plate']!=null)Text('Çekici: ${d!['towing_plate']} ${d!['towing_brand']??''} ${d!['towing_model']??''}',style:TextStyle(color:CepqarTheme.muted)),
+        if(d!['pickup_address']!=null)...[const SizedBox(height:14),Text('Alım: ${d!['pickup_address']}',style:TextStyle(color:CepqarTheme.muted))],
+        if(d!['destination_address']!=null)Text('Bırakma: ${d!['destination_address']}',style:TextStyle(color:CepqarTheme.muted)),
+      ]))),
+    ]));
+  }
+}
