@@ -1,6 +1,9 @@
 const {ownerId:authenticatedOwnerId}=require('./owner-auth-service');
 const clean=(v,n=200)=>String(v==null?'':v).trim().slice(0,n);
 const num=v=>{const x=Number(v);return Number.isFinite(x)?x:null;};
+const crypto=require('crypto');
+const normPhone=v=>clean(v,40).replace(/[^0-9+]/g,'');
+const inviteHash=v=>crypto.createHash('sha256').update(String(v)).digest('hex');
 
 module.exports=function registerTowingProviderRoutes(app,pool){
   app.post('/api/towing/provider/apply',async(req,res)=>{
@@ -26,8 +29,33 @@ module.exports=function registerTowingProviderRoutes(app,pool){
     const userId=authenticatedOwnerId(req);if(!userId)return res.status(401).json({error:'OWNER_REQUIRED'});
     try{const p=await pool.query("SELECT id,provider_type FROM towing_providers WHERE owner_user_id=$1 AND status='active'",[userId]);if(!p.rowCount)return res.status(403).json({error:'ACTIVE_PROVIDER_REQUIRED'});if(p.rows[0].provider_type!=='company')return res.status(403).json({error:'COMPANY_PROVIDER_REQUIRED'});
       const name=clean(req.body?.fullName,120),phone=clean(req.body?.phone,40);if(!name||!phone)return res.status(400).json({error:'INVALID_DRIVER'});
-      const r=await pool.query('INSERT INTO towing_provider_drivers(provider_id,full_name,phone) VALUES($1,$2,$3) RETURNING *',[p.rows[0].id,name,phone]);return res.status(201).json({ok:true,driver:r.rows[0]});}
+      const code=String(crypto.randomInt(100000,1000000));
+      const r=await pool.query(`INSERT INTO towing_provider_drivers(provider_id,full_name,phone,invite_code_hash,invite_code_expires_at)
+        VALUES($1,$2,$3,$4,NOW()+INTERVAL '48 hours') RETURNING id,provider_id,full_name,phone,status,user_id,invite_code_expires_at,created_at`,[p.rows[0].id,name,normPhone(phone),inviteHash(code)]);
+      return res.status(201).json({ok:true,driver:r.rows[0],inviteCode:code});}
     catch(e){console.error('towing driver create',e);return res.status(500).json({error:'SERVER_ERROR'});}
+  });
+
+
+  app.post('/api/towing/provider/drivers/link',async(req,res)=>{
+    const userId=authenticatedOwnerId(req);if(!userId)return res.status(401).json({error:'OWNER_REQUIRED'});
+    const phone=normPhone(req.body?.phone),code=clean(req.body?.inviteCode,12);
+    if(!phone||!/^[0-9]{6}$/.test(code))return res.status(400).json({error:'INVALID_DRIVER_INVITE'});
+    const db=await pool.connect();
+    try{await db.query('BEGIN');
+      const d=await db.query(`SELECT d.id,d.user_id,d.full_name,d.phone,d.provider_id,p.display_name provider_name,p.status provider_status
+        FROM towing_provider_drivers d JOIN towing_providers p ON p.id=d.provider_id
+        WHERE regexp_replace(d.phone,'[^0-9+]','','g')=$1 AND d.invite_code_hash=$2 AND d.invite_code_expires_at>NOW() AND d.status='active'
+        FOR UPDATE OF d`,[phone,inviteHash(code)]);
+      if(!d.rowCount){await db.query('ROLLBACK');return res.status(404).json({error:'DRIVER_INVITE_NOT_FOUND'});}
+      if(d.rows[0].provider_status!=='active'){await db.query('ROLLBACK');return res.status(403).json({error:'ACTIVE_PROVIDER_REQUIRED'});}
+      if(d.rows[0].user_id&&d.rows[0].user_id!==userId){await db.query('ROLLBACK');return res.status(409).json({error:'DRIVER_ALREADY_LINKED'});}
+      const used=await db.query('SELECT id FROM towing_provider_drivers WHERE user_id=$1 AND id<>$2 LIMIT 1',[userId,d.rows[0].id]);
+      if(used.rowCount){await db.query('ROLLBACK');return res.status(409).json({error:'USER_ALREADY_DRIVER'});}
+      const r=await db.query(`UPDATE towing_provider_drivers SET user_id=$2,linked_at=NOW(),invite_code_hash=NULL,invite_code_expires_at=NULL,updated_at=NOW()
+        WHERE id=$1 RETURNING id,provider_id,user_id,full_name,phone,status,linked_at`,[d.rows[0].id,userId]);
+      await db.query('COMMIT');return res.json({ok:true,driver:r.rows[0],providerName:d.rows[0].provider_name});
+    }catch(e){await db.query('ROLLBACK').catch(()=>{});if(e?.code==='23505')return res.status(409).json({error:'USER_ALREADY_DRIVER'});console.error('towing driver link',e);return res.status(500).json({error:'SERVER_ERROR'});}finally{db.release();}
   });
 
   app.post('/api/towing/provider/vehicles',async(req,res)=>{
