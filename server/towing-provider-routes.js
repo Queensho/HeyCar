@@ -83,6 +83,8 @@ module.exports=function registerTowingProviderRoutes(app,pool){
     try{
       const d=await pool.query(`SELECT d.id,d.provider_id FROM towing_provider_drivers d JOIN towing_providers p ON p.id=d.provider_id WHERE d.user_id=$1 AND d.status='active' AND d.online=TRUE AND p.status='active' LIMIT 1`,[userId]);
       if(!d.rowCount)return res.status(403).json({error:'ONLINE_DRIVER_REQUIRED'});
+      const active=await pool.query("SELECT 1 FROM towing_requests WHERE accepted_driver_id=$1 AND status IN ('accepted','arriving','arrived','vehicle_loaded','in_transit') LIMIT 1",[d.rows[0].id]);
+      if(active.rowCount)return res.json({ok:true,items:[]});
       const r=await pool.query(`SELECT r.id,r.vehicle_type,r.truck_type,r.issue_type,r.pickup_lat,r.pickup_lng,r.pickup_address,r.destination_address,r.distance_km,r.quoted_total,r.currency,r.created_at,
         (6371*acos(LEAST(1,GREATEST(-1,cos(radians($1))*cos(radians(r.pickup_lat::float8))*cos(radians(r.pickup_lng::float8)-radians($2))+sin(radians($1))*sin(radians(r.pickup_lat::float8)))))) AS pickup_distance_km
         FROM towing_requests r
@@ -131,7 +133,7 @@ module.exports=function registerTowingProviderRoutes(app,pool){
 
   app.put('/api/towing/provider/jobs/:id/location',async(req,res)=>{
     const userId=authenticatedOwnerId(req);if(!userId)return res.status(401).json({error:'OWNER_REQUIRED'});
-    const lat=num(req.body?.lat),lng=num(req.body?.lng),eta=Math.round(num(req.body?.etaMinutes)||0),remaining=num(req.body?.pickupDistanceKm);
+    const lat=num(req.body?.lat),lng=num(req.body?.lng),eta=Math.round(num(req.body?.pickupEtaMinutes ?? req.body?.etaMinutes)||0),remaining=num(req.body?.pickupDistanceKm);
     if(lat===null||lng===null||lat<-90||lat>90||lng<-180||lng>180||eta<0||eta>1440||(remaining!==null&&(remaining<0||remaining>2000)))return res.status(400).json({error:'INVALID_LOCATION'});
     const db=await pool.connect();try{await db.query('BEGIN');const d=await db.query("SELECT id FROM towing_provider_drivers WHERE user_id=$1 AND status='active' FOR UPDATE",[userId]);if(!d.rowCount){await db.query('ROLLBACK');return res.status(403).json({error:'DRIVER_REQUIRED'});}
       const j=await db.query("SELECT id,status FROM towing_requests WHERE id=$1 AND accepted_driver_id=$2 AND status IN ('accepted','arriving','arrived','vehicle_loaded','in_transit') FOR UPDATE",[req.params.id,d.rows[0].id]);if(!j.rowCount){await db.query('ROLLBACK');return res.status(404).json({error:'ACTIVE_TOWING_REQUEST_NOT_FOUND'});}
