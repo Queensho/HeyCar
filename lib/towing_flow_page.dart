@@ -22,7 +22,55 @@ class _S extends State<TowingFlowPage>{
   Future<void> price()async{if(a==null||x==null){msg('Alım ve bırakma konumunu seç.');return;}setState(()=>busy=true);try{final r=await OwnerHttp.post(Uri.parse('$api/api/owner/towing/quote'),body:jsonEncode({'distanceKm':km,'vehicleType':vehicleType,'truckType':truck}));final d=jsonDecode(r.body);if(r.statusCode==200&&mounted){setState(()=>quote=Map<String,dynamic>.from(d['quote']));step=2;}else msg('Fiyat hesaplanamadı.');}catch(_){msg('Fiyat hesaplanamadı.');}finally{if(mounted)setState(()=>busy=false);}}
   Future<void> call()async{if(quote==null)return;setState(()=>busy=true);try{final r=await OwnerHttp.post(Uri.parse('$api/api/owner/towing/requests'),body:jsonEncode({'vehicleId':QrDraft.vehicleId,'vehicleType':vehicleType,'truckType':truck,'issueType':notRunning?'Araç çalışmıyor':'Çekici','pickupLat':a,'pickupLng':b,'pickupAddress':pickup,'destinationLat':x,'destinationLng':y,'destinationAddress':dropoff,'distanceKm':km}));final d=jsonDecode(r.body);if(r.statusCode>=200&&r.statusCode<300){final id='${d['request']['id']}';if(mounted)Navigator.pushReplacement(context,MaterialPageRoute(builder:(_)=>TowingTrackingPage(id:id)));}else msg(d['error']=='ACTIVE_TOWING_REQUEST_EXISTS'?'Aktif çekici çağrın zaten var.':'Çağrı oluşturulamadı.');}catch(_){msg('Çağrı oluşturulamadı.');}finally{if(mounted)setState(()=>busy=false);}}
   Widget pinLine(IconData i,String t)=>Container(height:58,padding:const EdgeInsets.symmetric(horizontal:14),decoration:BoxDecoration(border:Border.all(color:const Color(0xFFE5E7EB)),borderRadius:BorderRadius.circular(14)),child:Row(children:[Icon(i,color:CepqarTheme.purple),const SizedBox(width:12),Expanded(child:Text(t,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Color(0xFF25252B),fontSize:16,fontWeight:FontWeight.w700)))]));
-  Widget map()=>ClipRRect(borderRadius:BorderRadius.circular(18),child:SizedBox(height:MediaQuery.sizeOf(context).height*.43,child:FlutterMap(options:MapOptions(initialCenter:LatLng(a??41.0,b??28.9),initialZoom:12,onTap:(_,p)=>chooseDrop(p)),children:[TileLayer(urlTemplate:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',userAgentPackageName:'com.cepqar.app'),PolylineLayer(polylines:[if(a!=null&&x!=null)Polyline(points:[LatLng(a!,b!),LatLng(x!,y!)],strokeWidth:5,color:CepqarTheme.purple)]),MarkerLayer(markers:[if(a!=null)Marker(point:LatLng(a!,b!),width:44,height:44,child:Icon(Icons.my_location_rounded,color:CepqarTheme.purple,size:30)),if(x!=null)Marker(point:LatLng(x!,y!),width:54,height:54,child:Icon(Icons.location_on_rounded,color:CepqarTheme.purple,size:48))])]))));
+  Widget map() {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(18),
+      child: SizedBox(
+        height: MediaQuery.sizeOf(context).height * .43,
+        child: FlutterMap(
+          options: MapOptions(
+            initialCenter: LatLng(a ?? 41.0, b ?? 28.9),
+            initialZoom: 12,
+            onTap: (_, p) => chooseDrop(p),
+          ),
+          children: [
+            TileLayer(
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              userAgentPackageName: 'com.cepqar.app',
+            ),
+            PolylineLayer(
+              polylines: [
+                if (a != null && x != null)
+                  Polyline(
+                    points: [LatLng(a!, b!), LatLng(x!, y!)],
+                    strokeWidth: 5,
+                    color: CepqarTheme.purple,
+                  ),
+              ],
+            ),
+            MarkerLayer(
+              markers: [
+                if (a != null)
+                  Marker(
+                    point: LatLng(a!, b!),
+                    width: 44,
+                    height: 44,
+                    child: Icon(Icons.my_location_rounded, color: CepqarTheme.purple, size: 30),
+                  ),
+                if (x != null)
+                  Marker(
+                    point: LatLng(x!, y!),
+                    width: 54,
+                    height: 54,
+                    child: Icon(Icons.location_on_rounded, color: CepqarTheme.purple, size: 48),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
   Widget locationStep() {
     return Column(
       children: [
