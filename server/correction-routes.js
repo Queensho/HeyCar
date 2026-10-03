@@ -27,29 +27,45 @@ function registerOwnerCorrectionRoutes(app, pool) {
       return res.status(400).json({ error: 'INVALID_REQUEST_TYPE' });
     }
 
+    const client = await pool.connect();
     try {
-      if (vehicleId && !(await ownerOwnsVehicle(pool, ownerId, vehicleId))) {
-        return res.status(403).json({ error: 'FORBIDDEN' });
+      await client.query('BEGIN');
+      if (vehicleId) {
+        const owned = await client.query(
+          'SELECT id FROM vehicles WHERE id=$1 AND owner_id=$2 FOR UPDATE',
+          [vehicleId, ownerId]
+        );
+        if (!owned.rows.length) {
+          await client.query('ROLLBACK');
+          return res.status(403).json({ error: 'FORBIDDEN' });
+        }
       }
 
-      const user = await pool.query(
+      const user = await client.query(
         'SELECT email FROM users WHERE id=$1 LIMIT 1',
         [ownerId]
       );
-      if (!user.rows.length) return res.status(404).json({ error: 'OWNER_NOT_FOUND' });
+      if (!user.rows.length) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ error: 'OWNER_NOT_FOUND' });
+      }
 
       const email = contactEmail || clean(user.rows[0].email, 250).toLowerCase() || null;
-      const r = await pool.query(
+      const r = await client.query(
         `INSERT INTO correction_requests
            (owner_id, vehicle_id, qr_token, request_type, message, contact_email)
          VALUES ($1,$2,$3,$4,$5,$6)
          RETURNING id,owner_id,vehicle_id,qr_token,request_type,message,contact_email,status,created_at`,
         [ownerId, vehicleId || null, qrToken || null, requestType, message, email]
       );
+      await client.query('COMMIT');
       return res.status(201).json({ ok: true, request: r.rows[0] });
     } catch (e) {
+      await client.query('ROLLBACK').catch(()=>{});
       console.error('correction request create error', e);
       return res.status(500).json({ error: 'SERVER_ERROR' });
+    } finally {
+      client.release();
     }
   });
 
