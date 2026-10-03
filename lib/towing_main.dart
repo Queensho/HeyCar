@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 const api='https://heycar-api-185-165-46-213.nip.io',purple=Color(0xFF713BFF),lime=Color(0xFFB6FF2A),bg=Color(0xFF07111F),panel=Color(0xFF101A30),muted=Color(0xFFA7B0C7);
@@ -41,5 +43,37 @@ Future<void> accept(Map j)async{final vs=(me?['vehicles'] as List? ?? []).where(
 Future<void> next()async{if(active==null)return;final s='${active!['status']}',n={'accepted':'arriving','arriving':'arrived','arrived':'vehicle_loaded','vehicle_loaded':'in_transit','in_transit':'delivered'}[s];if(n==null)return;final r=await http.patch(Uri.parse('$api/api/towing/provider/jobs/${active!['id']}/status'),headers:h,body:jsonEncode({'status':n}));if(r.statusCode<300)await load();}
 String label(String s)=>{'accepted':'Kabul Edildi','arriving':'Müşteriye Gidiyorum','arrived':'Müşteriye Ulaştım','vehicle_loaded':'Araç Yüklendi','in_transit':'Hedefe Gidiyorum','delivered':'Teslim Edildi'}[s]??s;String button(String s)=>{'accepted':'Yola Çık','arriving':'Müşteriye Ulaştım','arrived':'Aracı Yükledim','vehicle_loaded':'Hedefe Yola Çık','in_transit':'Teslim Edildi'}[s]??'Tamamla';
 @override Widget build(BuildContext c)=>Scaffold(appBar:AppBar(backgroundColor:bg,title:const Text('CepQontag Çekici',style:TextStyle(fontWeight:FontWeight.w900)),actions:[IconButton(tooltip:'Firmaya Katıl',onPressed:()=>Navigator.push(c,MaterialPageRoute(builder:(_)=>JoinCompany(token:widget.token,onJoined:load))),icon:const Icon(Icons.add_business_rounded)),IconButton(onPressed:widget.logout,icon:const Icon(Icons.logout))]),body:RefreshIndicator(onRefresh:load,child:ListView(padding:const EdgeInsets.all(14),children:[if(me==null)...[Container(margin:const EdgeInsets.only(bottom:14),padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:panel,borderRadius:BorderRadius.circular(18),border:Border.all(color:purple)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('Henüz bir çekici firmasına bağlı değilsin',style:TextStyle(fontSize:17,fontWeight:FontWeight.w900)),const SizedBox(height:6),const Text('Firma yöneticinden aldığın 6 haneli davet koduyla hesabını firmaya bağla.',style:TextStyle(color:muted)),const SizedBox(height:12),SizedBox(width:double.infinity,child:FilledButton.icon(onPressed:()=>Navigator.push(c,MaterialPageRoute(builder:(_)=>JoinCompany(token:widget.token,onJoined:load))),icon:const Icon(Icons.add_business_rounded),label:const Text('Firmaya Katıl'),style:FilledButton.styleFrom(backgroundColor:purple))) ]))],Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:panel,borderRadius:BorderRadius.circular(18)),child:Row(children:[Icon(online?Icons.radio_button_checked:Icons.radio_button_off,color:online?lime:muted),const SizedBox(width:10),Expanded(child:Text(online?'Çevrimiçi • İş alabilirsin':'Çevrimdışı',style:const TextStyle(fontWeight:FontWeight.w900))),FilledButton(onPressed:busy?null:toggle,style:FilledButton.styleFrom(backgroundColor:online?Colors.redAccent:lime,foregroundColor:online?Colors.white:Colors.black),child:Text(online?'Çevrimdışı Ol':'İşe Başla'))])),const SizedBox(height:14),if(active!=null)...[const Text('Aktif İş',style:TextStyle(fontSize:18,fontWeight:FontWeight.w900)),const SizedBox(height:8),jobCard(active!,true)],if(active==null)...[Text('Yakındaki Talepler (${jobs.length})',style:const TextStyle(fontSize:18,fontWeight:FontWeight.w900)),const SizedBox(height:8),if(!online)const Padding(padding:EdgeInsets.all(24),child:Text('Talepleri görmek için çevrimiçi ol.',textAlign:TextAlign.center,style:TextStyle(color:muted))),...jobs.map((j)=>jobCard(j,false))]])));
-Widget jobCard(Map j,bool mine)=>Container(margin:const EdgeInsets.only(bottom:10),padding:const EdgeInsets.all(15),decoration:BoxDecoration(color:panel,borderRadius:BorderRadius.circular(18),border:Border.all(color:mine?lime.withValues(alpha:.5):Colors.transparent)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Row(children:[Icon(Icons.directions_car_filled,color:purple),const SizedBox(width:8),Expanded(child:Text('${j['issue_type']??'Çekici Talebi'}',style:const TextStyle(fontSize:17,fontWeight:FontWeight.w900))),Text('${j['quoted_total']??''} ${j['currency']??''}',style:const TextStyle(color:lime,fontWeight:FontWeight.w900))]),const SizedBox(height:8),Text('Alış: ${j['pickup_address']??'Konum'}',style:const TextStyle(color:muted)),Text('Hedef: ${j['destination_address']??'-'}',style:const TextStyle(color:muted)),Text('${j['distance_km']??'-'} km • ${j['truck_type']??''}',style:const TextStyle(color:muted)),if(mine)...[const SizedBox(height:8),Text(label('${j['status']}'),style:const TextStyle(color:lime,fontWeight:FontWeight.w900)),const SizedBox(height:10),SizedBox(width:double.infinity,child:FilledButton(onPressed:next,style:FilledButton.styleFrom(backgroundColor:purple),child:Text(button('${j['status']}'))))]else...[const SizedBox(height:10),SizedBox(width:double.infinity,child:FilledButton(onPressed:()=>accept(j),style:FilledButton.styleFrom(backgroundColor:lime,foregroundColor:Colors.black),child:const Text('İşi Kabul Et',style:TextStyle(fontWeight:FontWeight.w900))))]]) );
+Widget activeJobMap(Map j){
+  double? n(dynamic v)=>double.tryParse('${v??''}');
+  final pickupLat=n(j['pickup_lat']),pickupLng=n(j['pickup_lng']),destLat=n(j['destination_lat']),destLng=n(j['destination_lng']);
+  if(pickupLat==null||pickupLng==null)return const SizedBox.shrink();
+  final driver=pos==null?null:LatLng(pos!.latitude,pos!.longitude),pickup=LatLng(pickupLat,pickupLng);
+  final destination=destLat==null||destLng==null?null:LatLng(destLat,destLng);
+  final center=driver??pickup;
+  return Container(
+    height:260,
+    margin:const EdgeInsets.only(bottom:12),
+    clipBehavior:Clip.antiAlias,
+    decoration:BoxDecoration(borderRadius:BorderRadius.circular(18),border:Border.all(color:purple.withValues(alpha:.45))),
+    child:FlutterMap(
+      options:MapOptions(initialCenter:center,initialZoom:13,minZoom:10,maxZoom:18,interactionOptions:const InteractionOptions(flags:InteractiveFlag.all & ~InteractiveFlag.rotate)),
+      children:[
+        ColorFiltered(
+          colorFilter:const ColorFilter.matrix([-.12,-.24,-.04,0,115,-.15,-.30,-.05,0,140,-.18,-.36,-.06,0,173,0,0,0,1,0]),
+          child:TileLayer(urlTemplate:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',userAgentPackageName:'com.cepqar.towing',maxNativeZoom:19,panBuffer:0),
+        ),
+        PolylineLayer(polylines:[
+          if(driver!=null)Polyline(points:[driver,pickup],strokeWidth:4,color:lime),
+          if(destination!=null)Polyline(points:[pickup,destination],strokeWidth:5,color:purple),
+        ]),
+        MarkerLayer(markers:[
+          if(driver!=null)Marker(point:driver,width:50,height:50,child:Container(decoration:BoxDecoration(color:bg,shape:BoxShape.circle,border:Border.all(color:lime,width:2)),child:const Icon(Icons.fire_truck_rounded,color:lime,size:30))),
+          Marker(point:pickup,width:42,height:42,child:Container(decoration:BoxDecoration(color:Colors.blueAccent,shape:BoxShape.circle,border:Border.all(color:Colors.white,width:3)),child:const Icon(Icons.person_pin_circle_rounded,color:Colors.white,size:24))),
+          if(destination!=null)Marker(point:destination,width:48,height:58,alignment:Alignment.topCenter,child:Stack(alignment:Alignment.topCenter,children:[const Positioned(bottom:6,child:Icon(Icons.arrow_drop_down_rounded,color:purple,size:42)),Container(width:40,height:40,decoration:BoxDecoration(color:purple,shape:BoxShape.circle,border:Border.all(color:Colors.white,width:2)),child:const Icon(Icons.flag_rounded,color:Colors.white,size:21))])),
+        ]),
+      ],
+    ),
+  );
+}
+Widget jobCard(Map j,bool mine)=>Column(children:[if(mine)activeJobMap(j),Container(margin:const EdgeInsets.only(bottom:10),padding:const EdgeInsets.all(15),decoration:BoxDecoration(color:panel,borderRadius:BorderRadius.circular(18),border:Border.all(color:mine?lime.withValues(alpha:.5):Colors.transparent)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Row(children:[Icon(Icons.directions_car_filled,color:purple),const SizedBox(width:8),Expanded(child:Text('${j['issue_type']??'Çekici Talebi'}',style:const TextStyle(fontSize:17,fontWeight:FontWeight.w900))),Text('${j['quoted_total']??''} ${j['currency']??''}',style:const TextStyle(color:lime,fontWeight:FontWeight.w900))]),const SizedBox(height:8),Text('Alış: ${j['pickup_address']??'Konum'}',style:const TextStyle(color:muted)),Text('Hedef: ${j['destination_address']??'-'}',style:const TextStyle(color:muted)),Text('${j['distance_km']??'-'} km • ${j['truck_type']??''}',style:const TextStyle(color:muted)),if(mine)...[const SizedBox(height:8),Text(label('${j['status']}'),style:const TextStyle(color:lime,fontWeight:FontWeight.w900)),const SizedBox(height:10),SizedBox(width:double.infinity,child:FilledButton(onPressed:next,style:FilledButton.styleFrom(backgroundColor:purple),child:Text(button('${j['status']}')))) ]else...[const SizedBox(height:10),SizedBox(width:double.infinity,child:FilledButton(onPressed:()=>accept(j),style:FilledButton.styleFrom(backgroundColor:lime,foregroundColor:Colors.black),child:const Text('İşi Kabul Et',style:TextStyle(fontWeight:FontWeight.w900))))]]) )]);
 }
