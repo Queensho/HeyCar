@@ -764,7 +764,7 @@ class _ManualPanel extends StatelessWidget {
             'Etiketin üzerinde yazan kodu eksiksiz gir.',
             style: TextStyle(
               color: _muted,
-              fontSize: 10.5.5,
+              fontSize: 10.5,
             ),
           ),
           const SizedBox(height: 13),
@@ -865,7 +865,7 @@ class _ManualPanel extends StatelessWidget {
               style: TextButton.styleFrom(
                 foregroundColor: _purple,
                 textStyle: const TextStyle(
-                  fontSize: 10.5.5,
+                  fontSize: 10.5,
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -905,7 +905,7 @@ class _ErrorBox extends StatelessWidget {
               text,
               style: const TextStyle(
                 color: Color(0xFFB62842),
-                fontSize: 10.5.5,
+                fontSize: 10.5,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -1246,7 +1246,7 @@ class _InfoRow extends StatelessWidget {
             label,
             style: const TextStyle(
               color: _muted,
-              fontSize: 10.5.5,
+              fontSize: 10.5,
             ),
           ),
         ),
