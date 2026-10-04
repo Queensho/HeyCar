@@ -42,7 +42,7 @@ class _HeyCarPublicWebAppState extends State<HeyCarPublicWebApp>{
         ? GuestChatPage(conversationId:widget.chat.trim())
         : widget.token.trim().isEmpty
           ? const PublicQrEntryScreen()
-          : PublicQrPersonalizedScreen(token:widget.token),
+          : PublicQrPersonalizedScreen(token:widget.token)),
   );
 }
 class _PublicSplash extends StatefulWidget{const _PublicSplash({required this.child});final Widget child;@override State<_PublicSplash> createState()=>_PublicSplashState();}
