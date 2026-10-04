@@ -49,15 +49,21 @@ if settings_at >= 0:
     )
     s = before + settings
 
-# Normal driver text/cards follow the shared light/dark text palette.
-s = s.replace('Colors.white70', 'CepqarTheme.muted')
-s = re.sub(r'color:\s*Colors\.white(?=\s*[,\)])', 'color: CepqarTheme.text', s)
-# Hero copy remains white over both owner/driver artwork, matching owner header.
-s = s.replace("color: CepqarTheme.text,\n                          fontSize: 32,", "color: Colors.white,\n                          fontSize: 32,")
-s = s.replace("color: _purple,\n                          fontSize: 43,", "color: Colors.white,\n                          fontSize: 43,")
-s = s.replace("color: CepqarTheme.muted,\n                            fontSize: 17,", "color: Colors.white70,\n                            fontSize: 17,")
-# Purple filled buttons must keep white labels/icons in both themes.
-s = re.sub(r'FilledButton\.styleFrom\(backgroundColor:\s*_purple(?!\s*,\s*foregroundColor)', 'FilledButton.styleFrom(backgroundColor:_purple,foregroundColor:Colors.white', s)
+# Normal DRIVER APP text/cards follow the shared light/dark palette.
+# Auth/invite screens before DriverHomePage intentionally use the fixed light
+# CepQontag onboarding design, so do not rewrite their explicit white/purple UI.
+home_at = s.find('class DriverHomePage')
+if home_at >= 0:
+    auth_prefix, driver_app = s[:home_at], s[home_at:]
+    driver_app = driver_app.replace('Colors.white70', 'CepqarTheme.muted')
+    driver_app = re.sub(r'color:\s*Colors\.white(?=\s*[,\)])', 'color: CepqarTheme.text', driver_app)
+    # Hero copy remains white over both owner/driver artwork, matching owner header.
+    driver_app = driver_app.replace("color: CepqarTheme.text,\n                          fontSize: 32,", "color: Colors.white,\n                          fontSize: 32,")
+    driver_app = driver_app.replace("color: _purple,\n                          fontSize: 43,", "color: Colors.white,\n                          fontSize: 43,")
+    driver_app = driver_app.replace("color: CepqarTheme.muted,\n                            fontSize: 17,", "color: Colors.white70,\n                            fontSize: 17,")
+    # Purple filled buttons must keep white labels/icons in both themes.
+    driver_app = re.sub(r'FilledButton\.styleFrom\(backgroundColor:\s*_purple(?!\s*,\s*foregroundColor)', 'FilledButton.styleFrom(backgroundColor:_purple,foregroundColor:Colors.white', driver_app)
+    s = auth_prefix + driver_app
 
 # Compact theme control lives inside the existing profile row, immediately before
 # the dropdown arrow. This preserves avatar, name, Sürücü and Aktif/Pasif layout.
