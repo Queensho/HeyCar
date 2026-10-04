@@ -142,7 +142,7 @@ class PublicNotificationApi {
 
   static Future<bool> pickAndUploadPhoto() async {
     final token=currentToken(); if(token.isEmpty) throw Exception('QR_TOKEN_MISSING');
-    final file=await _picker.pickImage(source:ImageSource.camera,imageQuality:68,maxWidth:1280); if(file==null)return false;
+    final file=await _picker.pickImage(source:ImageSource.gallery,imageQuality:68,maxWidth:1280); if(file==null)return false;
     final bytes=await file.readAsBytes(); final mime=file.mimeType??'image/jpeg';
     final response=await http.post(Uri.parse('${PublicThemeBackend.baseUrl}/api/qr/${Uri.encodeComponent(token)}/notification-photo'),headers:{'Content-Type':mime,'x-scan-token':await scanToken()},body:bytes).timeout(const Duration(seconds:20));
     if(response.statusCode<200||response.statusCode>=300)throw Exception('PHOTO_UPLOAD_FAILED_${response.statusCode}');
