@@ -217,6 +217,7 @@ Widget _bottomAction(IconData icon,String title,String subtitle,VoidCallback tap
     ),
   );
 }
+}
 
 class _VehicleReferenceCard extends StatelessWidget{
   const _VehicleReferenceCard({
@@ -278,7 +279,7 @@ class _VehicleReferenceCard extends StatelessWidget{
                     ),
                   ]),
                   const SizedBox(height:4),
-                  Text(model.isEmpty?make:'\$make \$model',style:TextStyle(color:_text,fontSize:13.5,fontWeight:FontWeight.w800)),
+                  Text(model.isEmpty?make:'$make $model',style:TextStyle(color:_text,fontSize:13.5,fontWeight:FontWeight.w800)),
                   if(details.isNotEmpty)...[
                     const SizedBox(height:3),
                     Text(details,style:TextStyle(color:_muted,fontSize:11.5)),
