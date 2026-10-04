@@ -5,9 +5,10 @@ p = Path('lib/owner_notifications_page.dart')
 s = p.read_text()
 old = "return ColoredBox(color:_bg,child:SafeArea(bottom:false,child:RefreshIndicator("
 new = "return Scaffold(backgroundColor:_bg,body:SafeArea(bottom:false,child:RefreshIndicator("
-if old not in s:
+if old in s:
+    s = s.replace(old, new, 1)
+elif new not in s:
     raise SystemExit('owner notifications root pattern not found')
-s = s.replace(old, new, 1)
 p.write_text(s)
 
 # Android notification small icon must be a drawable. The full-colour Cepqar launcher
