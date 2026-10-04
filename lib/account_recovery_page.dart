@@ -78,7 +78,7 @@ class _AccountRecoveryPageState extends State<AccountRecoveryPage>{
                     ),
                   ),
                   const Spacer(),
-                  Image.asset('assets/Aylogo.png',height:compact?30:32,fit:BoxFit.contain),
+                  Image.asset('assets/Logoyeni.png',height:compact?30:32,fit:BoxFit.contain),
                   const Spacer(),
                   const SizedBox(width:40),
                 ]),
