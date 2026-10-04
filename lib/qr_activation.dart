@@ -1,17 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'qr_backend.dart';
-import 'correction_request_page.dart';
 
-const _bg = Color(0xFF07111F);
-const _panel = Color(0xFF101A2F);
-const _line = Color(0xFF33436A);
-const _purple = Color(0xFF8B5CFF);
-const _purple2 = Color(0xFF6D3EFF);
-const _muted = Color(0xFFAAB4CF);
+import 'correction_request_page.dart';
+import 'qr_backend.dart';
+
+const _bg = Color(0xFFFDFDFF);
+const _panel = Colors.white;
+const _soft = Color(0xFFF7F5FC);
+const _line = Color(0xFFE5E7EF);
+const _purple = Color(0xFF5E24F5);
+const _purple2 = Color(0xFF7A35FF);
+const _text = Color(0xFF090B18);
+const _muted = Color(0xFF747A8D);
 
 class RealQrScanPage extends StatefulWidget {
-  const RealQrScanPage({super.key, required this.onFound, required this.onBack});
+  const RealQrScanPage({
+    super.key,
+    required this.onFound,
+    required this.onBack,
+  });
+
   final VoidCallback onFound;
   final VoidCallback onBack;
 
@@ -24,6 +32,7 @@ class _RealQrScanPageState extends State<RealQrScanPage> {
     formats: const [BarcodeFormat.qrCode],
   );
   final TextEditingController code = TextEditingController();
+
   bool manual = false;
   bool busy = false;
   String? error;
@@ -42,25 +51,31 @@ class _RealQrScanPageState extends State<RealQrScanPage> {
       setState(() => error = 'Geçerli bir CepQontag QR kodu gir.');
       return;
     }
+
     setState(() {
       busy = true;
       error = null;
     });
+
     try {
       final data = await QrBackend.lookup(token);
       final status = data['status']?.toString();
+
       if (status == 'active') {
         throw Exception('Bu QR daha önce bir araca bağlanmış.');
       }
       if (status == 'disabled') {
         throw Exception('Bu QR etiketi devre dışı.');
       }
+
       QrDraft.token = token;
       await scanner.stop();
       if (mounted) widget.onFound();
     } catch (e) {
       if (mounted) {
-        setState(() => error = e.toString().replaceFirst('Exception: ', ''));
+        setState(
+          () => error = e.toString().replaceFirst('Exception: ', ''),
+        );
       }
     } finally {
       if (mounted) setState(() => busy = false);
@@ -80,10 +95,12 @@ class _RealQrScanPageState extends State<RealQrScanPage> {
 
   Future<void> _setManual(bool value) async {
     if (manual == value) return;
+
     setState(() {
       manual = value;
       error = null;
     });
+
     if (value) {
       await scanner.stop();
     } else {
@@ -93,116 +110,308 @@ class _RealQrScanPageState extends State<RealQrScanPage> {
 
   @override
   Widget build(BuildContext context) {
-    final compact = MediaQuery.sizeOf(context).height < 820;
+    final compact = MediaQuery.sizeOf(context).height < 760;
+
     return Scaffold(
       backgroundColor: _bg,
       body: SafeArea(
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(22, compact ? 14 : 20, 22, 28),
-          children: [
-            Row(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 460),
+            child: ListView(
+              padding: EdgeInsets.fromLTRB(
+                20,
+                compact ? 10 : 14,
+                20,
+                28,
+              ),
               children: [
-                IconButton(
-                  onPressed: widget.onBack,
-                  icon: const Icon(Icons.chevron_left_rounded, color: Colors.white, size: 38),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints.tightFor(width: 44, height: 44),
+                _OnboardingStepHeader(
+                  onBack: widget.onBack,
+                  progress: 1,
+                  stepText: '3/3',
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
-                    child: const LinearProgressIndicator(
-                      value: .72,
-                      minHeight: 7,
-                      backgroundColor: Color(0xFF34425B),
-                      valueColor: AlwaysStoppedAnimation(_purple),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: compact ? 22 : 32),
-            const Text.rich(
-              TextSpan(
-                children: [
-                  TextSpan(text: 'QR etiketini ', style: TextStyle(color: Colors.white)),
-                  TextSpan(text: 'okut', style: TextStyle(color: _purple)),
-                ],
-              ),
-              style: TextStyle(
-                fontSize: 34,
-                height: 1.05,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -1,
-              ),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Kutudan çıkan QR etiketini kamerayla okut veya kod ile aktif et.',
-              style: TextStyle(color: _muted, fontSize: 16, height: 1.45),
-            ),
-            const SizedBox(height: 22),
-            _ModeSwitch(manual: manual, onChanged: _setManual),
-            const SizedBox(height: 18),
-            if (manual)
-              _ManualPanel(
-                code: code,
-                busy: busy,
-                onSubmit: () => _useToken(code.text),
-                onCamera: () => _setManual(false),
-              )
-            else
-              _ScannerPanel(
-                controller: scanner,
-                busy: busy,
-                onDetect: _onDetect,
-                onManual: () => _setManual(true),
-              ),
-            if (error != null) ...[
-              const SizedBox(height: 14),
-              Container(
-                padding: const EdgeInsets.all(13),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF351827),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFF7C2947)),
-                ),
-                child: Row(
+                const SizedBox(height: 9),
+                const _StageTrail(active: 3),
+                SizedBox(height: compact ? 14 : 18),
+                Row(
                   children: [
-                    const Icon(Icons.error_outline_rounded, color: Color(0xFFFF708D), size: 20),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        error!,
-                        style: const TextStyle(color: Color(0xFFFFA5B5), fontWeight: FontWeight.w700, fontSize: 13),
+                    Image.asset(
+                      'assets/Aylogo.png',
+                      height: compact ? 28 : 30,
+                      fit: BoxFit.contain,
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0E8FF),
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: const Text(
+                        'QR ETİKET',
+                        style: TextStyle(
+                          color: _purple,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ),
-            ],
-          ],
+                SizedBox(height: compact ? 15 : 18),
+                Text.rich(
+                  TextSpan(
+                    children: const [
+                      TextSpan(
+                        text: 'QR etiketini ',
+                        style: TextStyle(color: _text),
+                      ),
+                      TextSpan(
+                        text: 'bağla',
+                        style: TextStyle(color: _purple),
+                      ),
+                    ],
+                  ),
+                  style: TextStyle(
+                    fontSize: compact ? 27 : 30,
+                    height: 1.02,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -1,
+                  ),
+                ),
+                const SizedBox(height: 7),
+                const Text(
+                  'Kutudan çıkan etiketi kamerayla okut veya üzerindeki aktivasyon kodunu gir.',
+                  style: TextStyle(
+                    color: _muted,
+                    fontSize: 11.8,
+                    height: 1.4,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 15),
+                _ModeSwitch(
+                  manual: manual,
+                  onChanged: _setManual,
+                ),
+                const SizedBox(height: 13),
+                if (manual)
+                  _ManualPanel(
+                    code: code,
+                    busy: busy,
+                    onSubmit: () => _useToken(code.text),
+                    onCamera: () => _setManual(false),
+                  )
+                else
+                  _ScannerPanel(
+                    controller: scanner,
+                    busy: busy,
+                    onDetect: _onDetect,
+                    onManual: () => _setManual(true),
+                  ),
+                if (error != null) ...[
+                  const SizedBox(height: 12),
+                  _ErrorBox(text: error!),
+                ],
+                const SizedBox(height: 14),
+                const _NextHint(
+                  text:
+                      'Sonraki: QR bilgilerini kontrol edip araca bağlamayı onayla.',
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
 }
 
+class _OnboardingStepHeader extends StatelessWidget {
+  const _OnboardingStepHeader({
+    required this.onBack,
+    required this.progress,
+    required this.stepText,
+  });
+
+  final VoidCallback onBack;
+  final double progress;
+  final String stepText;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        InkWell(
+          onTap: onBack,
+          borderRadius: BorderRadius.circular(13),
+          child: Container(
+            width: 39,
+            height: 39,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(13),
+              border: Border.all(color: _line),
+            ),
+            child: const Icon(
+              Icons.chevron_left_rounded,
+              color: _text,
+              size: 28,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(99),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 6,
+              backgroundColor: const Color(0xFFE9E3F7),
+              valueColor: const AlwaysStoppedAnimation(_purple),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          stepText,
+          style: const TextStyle(
+            color: _text,
+            fontSize: 12,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StageTrail extends StatelessWidget {
+  const _StageTrail({required this.active});
+  final int active;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        _StageItem(
+          index: 1,
+          label: 'Hesap',
+          done: active > 1,
+          active: active == 1,
+        ),
+        const _StageLine(),
+        _StageItem(
+          index: 2,
+          label: 'Araç',
+          done: active > 2,
+          active: active == 2,
+        ),
+        const _StageLine(),
+        _StageItem(
+          index: 3,
+          label: 'QR Etiket',
+          done: active > 3,
+          active: active == 3,
+        ),
+      ],
+    );
+  }
+}
+
+class _StageItem extends StatelessWidget {
+  const _StageItem({
+    required this.index,
+    required this.label,
+    required this.done,
+    required this.active,
+  });
+
+  final int index;
+  final String label;
+  final bool done;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = done || active;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 18,
+          height: 18,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected ? _purple : const Color(0xFFF0EDF7),
+            shape: BoxShape.circle,
+          ),
+          child: done
+              ? const Icon(
+                  Icons.check_rounded,
+                  color: Colors.white,
+                  size: 12,
+                )
+              : Text(
+                  '$index',
+                  style: TextStyle(
+                    color: active ? Colors.white : _muted,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+        ),
+        const SizedBox(width: 5),
+        Text(
+          label,
+          style: TextStyle(
+            color: active ? _text : _muted,
+            fontSize: 10,
+            fontWeight: active ? FontWeight.w900 : FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StageLine extends StatelessWidget {
+  const _StageLine();
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        height: 1,
+        margin: const EdgeInsets.symmetric(horizontal: 6),
+        color: _line,
+      ),
+    );
+  }
+}
+
 class _ModeSwitch extends StatelessWidget {
-  const _ModeSwitch({required this.manual, required this.onChanged});
+  const _ModeSwitch({
+    required this.manual,
+    required this.onChanged,
+  });
+
   final bool manual;
   final ValueChanged<bool> onChanged;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 58,
+      height: 48,
       padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
-        color: const Color(0xFF091425),
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: const Color(0xFF7180A3)),
+        color: const Color(0xFFF6F4FA),
+        borderRadius: BorderRadius.circular(17),
+        border: Border.all(color: _line),
       ),
       child: Row(
         children: [
@@ -218,7 +427,7 @@ class _ModeSwitch extends StatelessWidget {
             child: _ModeButton(
               active: manual,
               icon: Icons.keyboard_alt_outlined,
-              label: 'Kod ile aktif et',
+              label: 'Kod ile bağla',
               onTap: () => onChanged(true),
             ),
           ),
@@ -229,7 +438,13 @@ class _ModeSwitch extends StatelessWidget {
 }
 
 class _ModeButton extends StatelessWidget {
-  const _ModeButton({required this.active, required this.icon, required this.label, required this.onTap});
+  const _ModeButton({
+    required this.active,
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
   final bool active;
   final IconData icon;
   final String label;
@@ -241,22 +456,30 @@ class _ModeButton extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(15),
         child: Ink(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(28),
-            gradient: active ? const LinearGradient(colors: [_purple, _purple2]) : null,
+            borderRadius: BorderRadius.circular(15),
+            gradient: active
+                ? const LinearGradient(
+                    colors: [_purple, _purple2],
+                  )
+                : null,
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: active ? Colors.white : const Color(0xFFD3D8E6), size: 22),
-              const SizedBox(width: 8),
+              Icon(
+                icon,
+                color: active ? Colors.white : _muted,
+                size: 18,
+              ),
+              const SizedBox(width: 7),
               Text(
                 label,
                 style: TextStyle(
-                  color: active ? Colors.white : const Color(0xFFD3D8E6),
-                  fontSize: 14.5,
+                  color: active ? Colors.white : _muted,
+                  fontSize: 11.5,
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -275,6 +498,7 @@ class _ScannerPanel extends StatelessWidget {
     required this.onDetect,
     required this.onManual,
   });
+
   final MobileScannerController controller;
   final bool busy;
   final void Function(BarcodeCapture) onDetect;
@@ -282,64 +506,115 @@ class _ScannerPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final height = MediaQuery.sizeOf(context).height < 820 ? 390.0 : 430.0;
-    return Column(
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(28),
-          child: SizedBox(
-            height: height,
-            width: double.infinity,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                MobileScanner(controller: controller, onDetect: onDetect),
-                Container(color: Colors.black.withValues(alpha: .22)),
-                const Center(child: _ScanFrame()),
-                Positioned(
-                  right: 14,
-                  bottom: 14,
-                  child: Material(
-                    color: const Color(0xDD151B2D),
-                    shape: const CircleBorder(),
-                    child: InkWell(
-                      customBorder: const CircleBorder(),
-                      onTap: controller.toggleTorch,
-                      child: const SizedBox(
-                        width: 58,
-                        height: 58,
-                        child: Icon(Icons.flashlight_on_outlined, color: Colors.white, size: 26),
+    final compact = MediaQuery.sizeOf(context).height < 760;
+
+    return Container(
+      padding: const EdgeInsets.all(9),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _line),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: .025),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: SizedBox(
+              height: compact ? 300 : 340,
+              width: double.infinity,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  MobileScanner(
+                    controller: controller,
+                    onDetect: onDetect,
+                  ),
+                  Container(
+                    color: Colors.black.withValues(alpha: .18),
+                  ),
+                  const Center(
+                    child: _ScanFrame(),
+                  ),
+                  Positioned(
+                    right: 11,
+                    bottom: 11,
+                    child: Material(
+                      color: const Color(0xD91A1E2C),
+                      shape: const CircleBorder(),
+                      child: InkWell(
+                        customBorder: const CircleBorder(),
+                        onTap: controller.toggleTorch,
+                        child: const SizedBox(
+                          width: 44,
+                          height: 44,
+                          child: Icon(
+                            Icons.flashlight_on_outlined,
+                            color: Colors.white,
+                            size: 21,
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
-                if (busy)
-                  Container(
-                    color: Colors.black.withValues(alpha: .35),
-                    child: const Center(child: CircularProgressIndicator(color: _purple)),
-                  ),
-              ],
+                  if (busy)
+                    Container(
+                      color: Colors.black.withValues(alpha: .35),
+                      child: const Center(
+                        child: CircularProgressIndicator(
+                          color: _purple,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 16),
-        const Text(
-          'QR’ı çerçeve içine al',
-          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900),
-        ),
-        const SizedBox(height: 16),
-        OutlinedButton.icon(
-          style: OutlinedButton.styleFrom(
-            foregroundColor: const Color(0xFFD5CBFF),
-            side: const BorderSide(color: Color(0xFF5A678D)),
-            minimumSize: const Size(double.infinity, 54),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+          const SizedBox(height: 10),
+          const Text(
+            'QR kodunu çerçevenin içine getir',
+            style: TextStyle(
+              color: _text,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w900,
+            ),
           ),
-          onPressed: onManual,
-          icon: const Icon(Icons.keyboard_alt_outlined),
-          label: const Text('Kodu manuel gir', style: TextStyle(fontWeight: FontWeight.w800)),
-        ),
-      ],
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            height: 42,
+            child: OutlinedButton.icon(
+              onPressed: onManual,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: _purple,
+                side: const BorderSide(
+                  color: Color(0xFFD8CDFB),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              icon: const Icon(
+                Icons.keyboard_alt_outlined,
+                size: 18,
+              ),
+              label: const Text(
+                'Kodu manuel gir',
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -350,22 +625,39 @@ class _ScanFrame extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 230,
-      height: 230,
+      width: 210,
+      height: 210,
       child: Stack(
         children: const [
-          _Corner(alignment: Alignment.topLeft, turns: 0),
-          _Corner(alignment: Alignment.topRight, turns: 1),
-          _Corner(alignment: Alignment.bottomRight, turns: 2),
-          _Corner(alignment: Alignment.bottomLeft, turns: 3),
+          _Corner(
+            alignment: Alignment.topLeft,
+            turns: 0,
+          ),
+          _Corner(
+            alignment: Alignment.topRight,
+            turns: 1,
+          ),
+          _Corner(
+            alignment: Alignment.bottomRight,
+            turns: 2,
+          ),
+          _Corner(
+            alignment: Alignment.bottomLeft,
+            turns: 3,
+          ),
           Center(
             child: SizedBox(
-              width: 230,
+              width: 210,
               height: 3,
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   color: _purple,
-                  boxShadow: [BoxShadow(color: _purple, blurRadius: 10)],
+                  boxShadow: [
+                    BoxShadow(
+                      color: _purple,
+                      blurRadius: 10,
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -377,7 +669,11 @@ class _ScanFrame extends StatelessWidget {
 }
 
 class _Corner extends StatelessWidget {
-  const _Corner({required this.alignment, required this.turns});
+  const _Corner({
+    required this.alignment,
+    required this.turns,
+  });
+
   final Alignment alignment;
   final int turns;
 
@@ -388,14 +684,22 @@ class _Corner extends StatelessWidget {
       child: RotatedBox(
         quarterTurns: turns,
         child: Container(
-          width: 52,
-          height: 52,
+          width: 48,
+          height: 48,
           decoration: const BoxDecoration(
             border: Border(
-              top: BorderSide(color: _purple, width: 6),
-              left: BorderSide(color: _purple, width: 6),
+              top: BorderSide(
+                color: _purple,
+                width: 5,
+              ),
+              left: BorderSide(
+                color: _purple,
+                width: 5,
+              ),
             ),
-            borderRadius: BorderRadius.only(topLeft: Radius.circular(14)),
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(13),
+            ),
           ),
         ),
       ),
@@ -404,7 +708,13 @@ class _Corner extends StatelessWidget {
 }
 
 class _ManualPanel extends StatelessWidget {
-  const _ManualPanel({required this.code, required this.busy, required this.onSubmit, required this.onCamera});
+  const _ManualPanel({
+    required this.code,
+    required this.busy,
+    required this.onSubmit,
+    required this.onCamera,
+  });
+
   final TextEditingController code;
   final bool busy;
   final VoidCallback onSubmit;
@@ -413,90 +723,233 @@ class _ManualPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: _panel,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: _line),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: .025),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Row(
             children: [
-              Icon(Icons.keyboard_alt_outlined, color: _purple, size: 28),
-              SizedBox(width: 12),
+              Icon(
+                Icons.keyboard_alt_outlined,
+                color: _purple,
+                size: 22,
+              ),
+              SizedBox(width: 9),
               Expanded(
                 child: Text(
                   'Aktivasyon kodunu gir',
-                  style: TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w900),
+                  style: TextStyle(
+                    color: _text,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 5),
           const Text(
-            'QR etiketinin üzerindeki kodu aşağıya yaz.',
-            style: TextStyle(color: _muted, fontSize: 14),
+            'Etiketin üzerinde yazan kodu eksiksiz gir.',
+            style: TextStyle(
+              color: _muted,
+              fontSize: 10.5,
+            ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 13),
           TextField(
             controller: code,
             textCapitalization: TextCapitalization.characters,
             autocorrect: false,
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+            style: const TextStyle(
+              color: _text,
+              fontWeight: FontWeight.w800,
+              fontSize: 13.5,
+            ),
             decoration: InputDecoration(
-              hintText: 'CP-QAR-01',
-              hintStyle: const TextStyle(color: Color(0xFF6F7891)),
-              prefixIcon: const Icon(Icons.qr_code_scanner_rounded, color: Colors.white70),
+              hintText: 'CP-QONTAG-XXXX',
+              hintStyle: const TextStyle(
+                color: Color(0xFF9AA0AF),
+              ),
+              prefixIcon: const Icon(
+                Icons.qr_code_scanner_rounded,
+                color: _purple,
+                size: 18,
+              ),
               filled: true,
-              fillColor: const Color(0xFF0D172B),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(18)),
+              fillColor: const Color(0xFFF9F8FC),
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 13,
+                vertical: 14,
+              ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(14),
                 borderSide: const BorderSide(color: _line),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(18),
-                borderSide: const BorderSide(color: _purple, width: 1.5),
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(
+                  color: _purple,
+                  width: 1.5,
+                ),
               ),
             ),
             onSubmitted: (_) => onSubmit(),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 11),
           SizedBox(
             width: double.infinity,
-            height: 54,
+            height: 46,
             child: FilledButton(
+              onPressed: busy ? null : onSubmit,
               style: FilledButton.styleFrom(
                 backgroundColor: _purple,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                disabledBackgroundColor:
+                    _purple.withValues(alpha: .55),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
               ),
-              onPressed: busy ? null : onSubmit,
               child: busy
                   ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
                     )
                   : const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text('Kodu Aktif Et', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
-                        SizedBox(width: 8),
-                        Icon(Icons.arrow_forward_rounded),
+                        Text(
+                          'Kodu Kontrol Et',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        SizedBox(width: 7),
+                        Icon(
+                          Icons.arrow_forward_rounded,
+                          size: 18,
+                        ),
                       ],
                     ),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 5),
           Center(
             child: TextButton.icon(
               onPressed: onCamera,
-              icon: const Icon(Icons.qr_code_2_rounded),
-              label: const Text('Kamerayla okutmaya dön'),
-              style: TextButton.styleFrom(foregroundColor: _purple),
+              icon: const Icon(
+                Icons.qr_code_2_rounded,
+                size: 17,
+              ),
+              label: const Text(
+                'Kamerayla okutmaya dön',
+              ),
+              style: TextButton.styleFrom(
+                foregroundColor: _purple,
+                textStyle: const TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ErrorBox extends StatelessWidget {
+  const _ErrorBox({required this.text});
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF1F3),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFFFFD1D8),
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.error_outline_rounded,
+            color: Color(0xFFD63B55),
+            size: 17,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: Color(0xFFB62842),
+                fontSize: 10.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NextHint extends StatelessWidget {
+  const _NextHint({required this.text});
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 10,
+        vertical: 9,
+      ),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F6FF),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFFE7E0FA),
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.arrow_forward_rounded,
+            color: _purple,
+            size: 16,
+          ),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: _muted,
+                fontSize: 9.8,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -506,7 +959,12 @@ class _ManualPanel extends StatelessWidget {
 }
 
 class RealQrConfirmPage extends StatefulWidget {
-  const RealQrConfirmPage({super.key, required this.onDone, required this.onBack});
+  const RealQrConfirmPage({
+    super.key,
+    required this.onDone,
+    required this.onBack,
+  });
+
   final VoidCallback onDone;
   final VoidCallback onBack;
 
@@ -520,10 +978,12 @@ class _RealQrConfirmPageState extends State<RealQrConfirmPage> {
 
   Future<void> _activateQr() async {
     if (busy) return;
+
     setState(() {
       busy = true;
       error = null;
     });
+
     try {
       await QrBackend.activate(
         token: QrDraft.token,
@@ -533,10 +993,13 @@ class _RealQrConfirmPageState extends State<RealQrConfirmPage> {
         model: QrDraft.model,
         ownerName: QrDraft.ownerName,
       );
+
       if (mounted) widget.onDone();
     } catch (e) {
       if (mounted) {
-        setState(() => error = e.toString().replaceFirst('Exception: ', ''));
+        setState(
+          () => error = e.toString().replaceFirst('Exception: ', ''),
+        );
       }
     } finally {
       if (mounted) setState(() => busy = false);
@@ -544,132 +1007,218 @@ class _RealQrConfirmPageState extends State<RealQrConfirmPage> {
   }
 
   bool get canCreateCorrectionRequest =>
-      error != null && (error!.contains('düzeltme talebi') || error!.contains('zaten bağlı'));
+      error != null &&
+      (error!.contains('düzeltme talebi') ||
+          error!.contains('zaten bağlı'));
 
   @override
   Widget build(BuildContext context) {
+    final compact = MediaQuery.sizeOf(context).height < 760;
+
     return Scaffold(
       backgroundColor: _bg,
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(22, 18, 22, 28),
-          children: [
-            Row(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 460),
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(
+                20,
+                10,
+                20,
+                28,
+              ),
               children: [
-                IconButton(
-                  onPressed: widget.onBack,
-                  icon: const Icon(Icons.chevron_left_rounded, color: Colors.white, size: 38),
+                _OnboardingStepHeader(
+                  onBack: widget.onBack,
+                  progress: 1,
+                  stepText: '3/3',
                 ),
-                const SizedBox(width: 8),
-                const Expanded(
-                  child: Text(
-                    'QR bulundu',
-                    style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900),
+                const SizedBox(height: 9),
+                const _StageTrail(active: 3),
+                SizedBox(height: compact ? 15 : 18),
+                const Text(
+                  'QR bulundu',
+                  style: TextStyle(
+                    color: _text,
+                    fontSize: 27,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -.8,
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Bu etiketi oluşturduğun araca bağlamak istiyor musun?',
-              style: TextStyle(color: _muted, fontSize: 15, height: 1.4),
-            ),
-            const SizedBox(height: 28),
-            Center(
-              child: Container(
-                width: 220,
-                height: 220,
-                decoration: BoxDecoration(
-                  color: _panel,
-                  borderRadius: BorderRadius.circular(30),
-                  border: Border.all(color: _line),
+                const SizedBox(height: 5),
+                const Text(
+                  'Etiket bilgilerini kontrol et ve oluşturduğun araca bağlamayı onayla.',
+                  style: TextStyle(
+                    color: _muted,
+                    fontSize: 11.5,
+                    height: 1.4,
+                  ),
                 ),
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    const Icon(Icons.qr_code_2_rounded, size: 140, color: Colors.white),
-                    const Positioned(
-                      right: 14,
-                      top: 14,
-                      child: CircleAvatar(
-                        radius: 23,
-                        backgroundColor: _purple,
-                        child: Icon(Icons.check_rounded, color: Colors.white),
+                const SizedBox(height: 16),
+                Center(
+                  child: Container(
+                    width: compact ? 150 : 170,
+                    height: compact ? 150 : 170,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF7F3FF),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: const Color(0xFFD9CCFF),
                       ),
                     ),
-                    Positioned(
-                      bottom: 14,
-                      child: Text(
-                        QrDraft.token,
-                        style: const TextStyle(color: _muted, fontWeight: FontWeight.w800),
-                      ),
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        const Icon(
+                          Icons.qr_code_2_rounded,
+                          size: 106,
+                          color: _purple,
+                        ),
+                        const Positioned(
+                          right: 9,
+                          top: 9,
+                          child: CircleAvatar(
+                            radius: 18,
+                            backgroundColor: _purple,
+                            child: Icon(
+                              Icons.check_rounded,
+                              color: Colors.white,
+                              size: 19,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: _panel,
-                borderRadius: BorderRadius.circular(22),
-                border: Border.all(color: _line),
-              ),
-              child: Column(
-                children: [
-                  _InfoRow(label: 'Etiket No', value: QrDraft.token),
-                  const Divider(color: _line, height: 24),
-                  _InfoRow(label: 'Araç', value: '${QrDraft.plate} • ${QrDraft.make} ${QrDraft.model}'.trim()),
-                  const Divider(color: _line, height: 24),
-                  const _InfoRow(label: 'Durum', value: 'Aktifleştirmeye hazır'),
-                ],
-              ),
-            ),
-            if (error != null) ...[
-              const SizedBox(height: 14),
-              Text(error!, style: const TextStyle(color: Color(0xFFFF8AA0), fontWeight: FontWeight.w700)),
-              if (canCreateCorrectionRequest) ...[
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: 52,
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      side: const BorderSide(color: _purple),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-                    ),
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => CorrectionRequestPage(
-                          initialType: 'qr_change',
-                          initialMessage: error ?? '',
+                const SizedBox(height: 14),
+                Container(
+                  padding: const EdgeInsets.all(13),
+                  decoration: BoxDecoration(
+                    color: _panel,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: _line),
+                  ),
+                  child: Column(
+                    children: [
+                      _InfoRow(
+                        label: 'Etiket No',
+                        value: QrDraft.token,
+                      ),
+                      const Divider(
+                        color: _line,
+                        height: 20,
+                      ),
+                      _InfoRow(
+                        label: 'Araç',
+                        value:
+                            '${QrDraft.plate} • ${QrDraft.make} ${QrDraft.model}'
+                                .trim(),
+                      ),
+                      const Divider(
+                        color: _line,
+                        height: 20,
+                      ),
+                      const _InfoRow(
+                        label: 'Durum',
+                        value: 'Bağlanmaya hazır',
+                        success: true,
+                      ),
+                    ],
+                  ),
+                ),
+                if (error != null) ...[
+                  const SizedBox(height: 12),
+                  _ErrorBox(text: error!),
+                  if (canCreateCorrectionRequest) ...[
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      height: 44,
+                      child: OutlinedButton.icon(
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => CorrectionRequestPage(
+                              initialType: 'qr_change',
+                              initialMessage: error ?? '',
+                            ),
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: _purple,
+                          side: const BorderSide(
+                            color: Color(0xFFD8CDFB),
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        icon: const Icon(
+                          Icons.support_agent_rounded,
+                          size: 18,
+                        ),
+                        label: const Text(
+                          'Düzeltme talebi oluştur',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
                       ),
                     ),
-                    icon: const Icon(Icons.support_agent_rounded),
-                    label: const Text('Düzeltme talebi oluştur', style: TextStyle(fontWeight: FontWeight.w900)),
+                  ],
+                ],
+                const SizedBox(height: 15),
+                SizedBox(
+                  height: 50,
+                  child: FilledButton(
+                    onPressed: busy ? null : _activateQr,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _purple,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor:
+                          _purple.withValues(alpha: .55),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: busy
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.link_rounded,
+                                size: 19,
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'QR Etiketini Araca Bağla',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ],
+                          ),
                   ),
                 ),
-              ],
-            ],
-            const SizedBox(height: 22),
-            SizedBox(
-              height: 56,
-              child: FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: _purple,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                const SizedBox(height: 11),
+                const _NextHint(
+                  text:
+                      'Sonraki: Etiketi araca doğru şekilde yerleştir ve kurulumu tamamla.',
                 ),
-                onPressed: busy ? null : _activateQr,
-                child: busy
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text('Hesabıma bağla', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
-              ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -677,23 +1226,41 @@ class _RealQrConfirmPageState extends State<RealQrConfirmPage> {
 }
 
 class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.label, required this.value});
+  const _InfoRow({
+    required this.label,
+    required this.value,
+    this.success = false,
+  });
+
   final String label;
   final String value;
+  final bool success;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
         SizedBox(
-          width: 92,
-          child: Text(label, style: const TextStyle(color: _muted, fontSize: 13)),
+          width: 76,
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: _muted,
+              fontSize: 10.5,
+            ),
+          ),
         ),
         Expanded(
           child: Text(
             value,
             textAlign: TextAlign.right,
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+            style: TextStyle(
+              color: success
+                  ? const Color(0xFF24A457)
+                  : _text,
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ),
       ],
