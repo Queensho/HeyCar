@@ -40,7 +40,7 @@ Widget _brandHeader(){
     height:42,
     child:Row(children:[
       Image.asset(
-        CepqarTheme.isLight ? 'assets/Logoyeni.png' : 'assets/Logoyeni.png',
+        CepqarTheme.isLight ? 'assets/file_00000000b130820abb8d411e67ab0d25.png' : 'assets/Logoyeni.png',
         key:ValueKey(CepqarTheme.isLight),
         height:31,
         fit:BoxFit.contain,
