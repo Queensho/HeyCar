@@ -383,7 +383,7 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
                     ),
                     const Spacer(),
                     Image.asset(
-                      'assets/Aylogo.png',
+                      'assets/Logoyeni.png',
                       height:compact?30:32,
                       fit:BoxFit.contain,
                       filterQuality:FilterQuality.high,
