@@ -563,7 +563,7 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
                     ),
                   ],
                 )
-              : FutureBuilder<List<int>>(
+              : FutureBuilder<Uint8List>(
                   future: photo!.readAsBytes(),
                   builder: (context, snap) {
                     if (!snap.hasData) {
