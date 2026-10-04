@@ -88,7 +88,7 @@ class OwnerWelcome extends StatelessWidget {
                 child: Stack(
                   children: [
                     Positioned.fill(child: Image.asset('assets/Aracsahibi.png', fit: BoxFit.cover, alignment: Alignment.topCenter)),
-                    Positioned(left: 22, right: 22, top: topInset + 16, child: const Center(child: _HeyCarLogo(fontSize: 42))),
+                    Positioned(left: 22, right: 22, top: topInset + 16, child: const Center(child: _HeyCarLogo(fontSize: 30))),
                     Positioned(left: 0, right: 0, top: topInset + 76, child: const Text('İyi insanlar\nher yerde', textAlign: TextAlign.center, style: TextStyle(color: _authMuted, fontSize: 19, height: 1.25, fontWeight: FontWeight.w500))),
                   ],
                 ),
