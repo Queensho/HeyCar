@@ -119,6 +119,69 @@ class _TowingProfileTabState extends State<TowingProfileTab>{
     const SizedBox(height:14),SizedBox(height:54,child:OutlinedButton.icon(onPressed:widget.onLogout,icon:const Icon(Icons.logout_rounded),label:const Text('Çıkış yap'),style:OutlinedButton.styleFrom(foregroundColor:Colors.redAccent,side:BorderSide(color:Colors.redAccent.withValues(alpha:.35)),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(16))))),
   ]));}
   Widget _row(IconData icon,String title,String? subtitle,VoidCallback tap)=>ListTile(onTap:tap,leading:Icon(icon,color:Colors.white),title:Text(title,style:const TextStyle(fontWeight:FontWeight.w700)),subtitle:subtitle==null?null:Text(subtitle,style:const TextStyle(color:_muted,fontSize:11)),trailing:const Icon(Icons.chevron_right_rounded,color:_muted));
-  void _vehicles(List vehicles){showModalBottomSheet(context:context,backgroundColor:_panel,builder:(ctx)=>SafeArea(child:Padding(padding:const EdgeInsets.all(18),child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.stretch,children:[const Text('Araç Bilgilerim',style:TextStyle(fontSize:22,fontWeight:FontWeight.w900)),const SizedBox(height:12),if(vehicles.isEmpty)const Text('Kayıtlı araç yok.',style:TextStyle(color:_muted))else ...vehicles.map((v)=>ListTile(contentPadding:EdgeInsets.zero,leading:const Icon(Icons.fire_truck_rounded,color:_lime),title:Text(_s(v['plate']??'-'),style:const TextStyle(fontWeight:FontWeight.w900)),subtitle:Text(_s(v['brand']??'')+' '+_s(v['model']??'')+' • '+(v['truck_type']=='akrep'?'Akrep':'Platform')),trailing:Text(_s(v['status']??''),style:const TextStyle(color:_lime))))])));}
-  void _documents(){showModalBottomSheet(context:context,backgroundColor:_panel,builder:(ctx)=>SafeArea(child:Padding(padding:const EdgeInsets.all(18),child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.stretch,children:[const Text('Belgelerim',style:TextStyle(fontSize:22,fontWeight:FontWeight.w900)),const SizedBox(height:10),if(docs.isEmpty)const Text('Belge bulunamadı.',style:TextStyle(color:_muted))else ...docs.map((d)=>ListTile(contentPadding:EdgeInsets.zero,leading:Icon(d['status']=='approved'?Icons.check_circle_rounded:Icons.description_outlined,color:d['status']=='approved'?_lime:_muted),title:Text(_s(d['original_name']??d['document_type'])),trailing:Text(d['status']=='approved'?'Onaylı':_s(d['status']),style:TextStyle(color:d['status']=='approved'?_lime:_muted))))])));}
+  void _vehicles(List vehicles){
+    showModalBottomSheet(
+      context:context,
+      backgroundColor:_panel,
+      builder:(ctx)=>SafeArea(
+        child:Padding(
+          padding:const EdgeInsets.all(18),
+          child:Column(
+            mainAxisSize:MainAxisSize.min,
+            crossAxisAlignment:CrossAxisAlignment.stretch,
+            children:[
+              const Text('Araç Bilgilerim',style:TextStyle(fontSize:22,fontWeight:FontWeight.w900)),
+              const SizedBox(height:12),
+              if(vehicles.isEmpty)
+                const Text('Kayıtlı araç yok.',style:TextStyle(color:_muted))
+              else
+                ...vehicles.map((v)=>ListTile(
+                  contentPadding:EdgeInsets.zero,
+                  leading:const Icon(Icons.fire_truck_rounded,color:_lime),
+                  title:Text(_s(v['plate']??'-'),style:const TextStyle(fontWeight:FontWeight.w900)),
+                  subtitle:Text(_s(v['brand']??'')+' '+_s(v['model']??'')+' • '+(v['truck_type']=='akrep'?'Akrep':'Platform')),
+                  trailing:Text(_s(v['status']??''),style:const TextStyle(color:_lime)),
+                )),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _documents(){
+    showModalBottomSheet(
+      context:context,
+      backgroundColor:_panel,
+      builder:(ctx)=>SafeArea(
+        child:Padding(
+          padding:const EdgeInsets.all(18),
+          child:Column(
+            mainAxisSize:MainAxisSize.min,
+            crossAxisAlignment:CrossAxisAlignment.stretch,
+            children:[
+              const Text('Belgelerim',style:TextStyle(fontSize:22,fontWeight:FontWeight.w900)),
+              const SizedBox(height:10),
+              if(docs.isEmpty)
+                const Text('Belge bulunamadı.',style:TextStyle(color:_muted))
+              else
+                ...docs.map((d)=>ListTile(
+                  contentPadding:EdgeInsets.zero,
+                  leading:Icon(
+                    d['status']=='approved'?Icons.check_circle_rounded:Icons.description_outlined,
+                    color:d['status']=='approved'?_lime:_muted,
+                  ),
+                  title:Text(_s(d['original_name']??d['document_type'])),
+                  trailing:Text(
+                    d['status']=='approved'?'Onaylı':_s(d['status']),
+                    style:TextStyle(color:d['status']=='approved'?_lime:_muted),
+                  ),
+                )),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
 }
