@@ -172,7 +172,7 @@ Widget _incomingRequestScreen(Map<String,dynamic> j)=>Scaffold(
       _line(Icons.timer_outlined,'Mesafemiz: ${j['pickup_distance_km']??'-'} km',Colors.white),
       const Spacer(),
       Row(children:[const Icon(Icons.payments_rounded,color:Colors.white,size:22),const SizedBox(width:9),const Text('İş bedeli:',style:TextStyle(fontWeight:FontWeight.w700,fontSize:17)),const SizedBox(width:8),Expanded(child:Text('${_homeMoney(j['quoted_total'])} TL',style:const TextStyle(color:lime,fontSize:23,fontWeight:FontWeight.w900)))]),
-    ])),
+    ]))),
     const SizedBox(height:14),
     SizedBox(height:62,child:FilledButton(onPressed:()=>accept(j),style:FilledButton.styleFrom(backgroundColor:lime,foregroundColor:Colors.black,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(20))),child:Text('Kabul Et ($offerSeconds sn)',style:const TextStyle(fontSize:18,fontWeight:FontWeight.w900)))),
     const SizedBox(height:10),
