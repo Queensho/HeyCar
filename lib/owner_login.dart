@@ -299,13 +299,13 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
   }) => Column(
     crossAxisAlignment:CrossAxisAlignment.start,
     children:[
-      Text(label,style:const TextStyle(color:Color(0xFF090B18),fontSize:12.3,fontWeight:FontWeight.w800)),
+      Text(label,style:const TextStyle(color:Color(0xFF090B18),fontSize:12.5,fontWeight:FontWeight.w800)),
       const SizedBox(height:6),
       TextField(
         controller:controller,
         keyboardType:keyboardType,
         obscureText:obscureText,
-        style:const TextStyle(color:Color(0xFF090B18),fontSize:13.5,fontWeight:FontWeight.w600),
+        style:const TextStyle(color:Color(0xFF090B18),fontSize:13,fontWeight:FontWeight.w600),
         decoration:_regInput(hint,icon,suffix:suffix),
       ),
     ],
@@ -314,7 +314,7 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
   Widget _phoneRegisterField() => Column(
     crossAxisAlignment:CrossAxisAlignment.start,
     children:[
-      const Text('Telefon Numarası',style:TextStyle(color:Color(0xFF090B18),fontSize:12.3,fontWeight:FontWeight.w800)),
+      const Text('Telefon Numarası',style:TextStyle(color:Color(0xFF090B18),fontSize:12.5,fontWeight:FontWeight.w800)),
       const SizedBox(height:6),
       Container(
         height:49,
@@ -335,7 +335,7 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
             child:TextField(
               controller:phone,
               keyboardType:TextInputType.phone,
-              style:const TextStyle(color:Color(0xFF090B18),fontSize:13.5,fontWeight:FontWeight.w600),
+              style:const TextStyle(color:Color(0xFF090B18),fontSize:13,fontWeight:FontWeight.w600),
               decoration:const InputDecoration(
                 hintText:'5XX XXX XX XX',
                 hintStyle:TextStyle(color:Color(0xFF9AA0AF),fontSize:12.5),
@@ -447,7 +447,7 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
                                 'CepQontag’a katıl',
                                 style:TextStyle(
                                   color:const Color(0xFF090B18),
-                                  fontSize:compact?23:25,
+                                  fontSize:23,
                                   height:1,
                                   fontWeight:FontWeight.w900,
                                   letterSpacing:-.9,
@@ -456,7 +456,7 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
                               const SizedBox(height:6),
                               Text(
                                 'Aracını ekle, QR etiketini bağla\nve önemli durumlarda anında haberdar ol.',
-                                style:TextStyle(color:const Color(0xFF686F82),fontSize:compact?10.8:11.5,height:1.35,fontWeight:FontWeight.w500),
+                                style:TextStyle(color:const Color(0xFF686F82),fontSize:11.5,height:1.35,fontWeight:FontWeight.w500),
                               ),
                             ],
                           ),
@@ -467,12 +467,12 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
                   SizedBox(height:compact?16:19),
                   Text(
                     'Kayıt Ol',
-                    style:TextStyle(color:const Color(0xFF090B18),fontSize:compact?24:27,fontWeight:FontWeight.w900,letterSpacing:-.8),
+                    style:TextStyle(color:const Color(0xFF090B18),fontSize:25,fontWeight:FontWeight.w900,letterSpacing:-.8),
                   ),
                   const SizedBox(height:3),
                   const Text(
                     'Hesap bilgilerini tamamla. Sonraki adımda aracını ekleyeceksin.',
-                    style:TextStyle(color:Color(0xFF747A8D),fontSize:11.2,height:1.35),
+                    style:TextStyle(color:Color(0xFF747A8D),fontSize:11.5,height:1.35),
                   ),
                   SizedBox(height:compact?14:17),
                   _phoneRegisterField(),
@@ -515,7 +515,7 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
                     padding:EdgeInsets.only(left:2),
                     child:Text(
                       'Araç satın aldıysan eski sahibinin verdiği kodu buraya girebilirsin.',
-                      style:TextStyle(color:Color(0xFF8A90A1),fontSize:9.5,height:1.25),
+                      style:TextStyle(color:Color(0xFF8A90A1),fontSize:10.5,height:1.25),
                     ),
                   ),
                   const SizedBox(height:12),
@@ -548,7 +548,7 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
                               children:[
                                 const Text(
                                   'Kullanım koşullarını ve gizlilik politikasını kabul ediyorum.',
-                                  style:TextStyle(color:Color(0xFF555C70),fontSize:10.2,height:1.3,fontWeight:FontWeight.w600),
+                                  style:TextStyle(color:Color(0xFF555C70),fontSize:11,height:1.3,fontWeight:FontWeight.w600),
                                 ),
                                 const SizedBox(height:2),
                                 Wrap(
@@ -562,7 +562,7 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
                                         tapTargetSize:MaterialTapTargetSize.shrinkWrap,
                                         foregroundColor:const Color(0xFF5E24F5),
                                       ),
-                                      child:const Text('Kullanım Şartları',style:TextStyle(fontSize:9.5,fontWeight:FontWeight.w800)),
+                                      child:const Text('Kullanım Şartları',style:TextStyle(fontSize:10.5,fontWeight:FontWeight.w800)),
                                     ),
                                     TextButton(
                                       onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const PrivacyKvkkPage())),
@@ -572,7 +572,7 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
                                         tapTargetSize:MaterialTapTargetSize.shrinkWrap,
                                         foregroundColor:const Color(0xFF5E24F5),
                                       ),
-                                      child:const Text('Gizlilik / KVKK',style:TextStyle(fontSize:9.5,fontWeight:FontWeight.w800)),
+                                      child:const Text('Gizlilik / KVKK',style:TextStyle(fontSize:10.5,fontWeight:FontWeight.w800)),
                                     ),
                                   ],
                                 ),
@@ -604,7 +604,7 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
                           else
                             const Icon(Icons.add_rounded,size:21),
                           const SizedBox(width:9),
-                          Text(busy?'Kayıt yapılıyor...':'Kayıt Ol',style:const TextStyle(fontSize:15.5,fontWeight:FontWeight.w900)),
+                          Text(busy?'Kayıt yapılıyor...':'Kayıt Ol',style:const TextStyle(fontSize:14.5,fontWeight:FontWeight.w900)),
                           if(!busy)...[
                             const SizedBox(width:10),
                             const Icon(Icons.arrow_forward_rounded,size:20),
