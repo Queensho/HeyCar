@@ -141,10 +141,33 @@ module.exports=function registerTowingProviderRoutes(app,pool){
         FROM towing_requests r
         LEFT JOIN vehicles ov ON ov.id=r.vehicle_id
         WHERE r.status='searching' AND EXISTS(SELECT 1 FROM towing_provider_vehicles v WHERE v.provider_id=$3 AND v.truck_type=r.truck_type AND v.status='active')
+        AND NOT EXISTS(SELECT 1 FROM towing_offer_rejections x WHERE x.request_id=r.id AND x.driver_id=$5 AND x.rejected_at > NOW()-INTERVAL '10 minutes')
         AND (6371*acos(LEAST(1,GREATEST(-1,cos(radians($1))*cos(radians(r.pickup_lat::float8))*cos(radians(r.pickup_lng::float8)-radians($2))+sin(radians($1))*sin(radians(r.pickup_lat::float8)))))) <= $4
-        ORDER BY pickup_distance_km,r.created_at LIMIT 50`,[lat,lng,d.rows[0].provider_id,radius]);
+        ORDER BY pickup_distance_km,r.created_at LIMIT 1`,[lat,lng,d.rows[0].provider_id,radius,d.rows[0].id]);
       return res.json({ok:true,items:r.rows});
     }catch(e){console.error('towing nearby jobs',e);return res.status(500).json({error:'SERVER_ERROR'});}
+  });
+
+  app.post('/api/towing/provider/jobs/:id/reject',async(req,res)=>{
+    const userId=authenticatedOwnerId(req);if(!userId)return res.status(401).json({error:'OWNER_REQUIRED'});
+    try{
+      const d=await pool.query("SELECT id FROM towing_provider_drivers WHERE user_id=$1 AND status='active' LIMIT 1",[userId]);
+      if(!d.rowCount)return res.status(403).json({error:'DRIVER_REQUIRED'});
+      const q=await pool.query("SELECT id FROM towing_requests WHERE id=$1 AND status='searching'",[req.params.id]);
+      if(!q.rowCount)return res.status(404).json({error:'TOWING_REQUEST_NOT_FOUND'});
+      await pool.query("INSERT INTO towing_offer_rejections(request_id,driver_id,rejected_at) VALUES($1,$2,NOW()) ON CONFLICT(request_id,driver_id) DO UPDATE SET rejected_at=EXCLUDED.rejected_at",[req.params.id,d.rows[0].id]);
+      return res.json({ok:true});
+    }catch(e){console.error('towing reject',e);return res.status(500).json({error:'SERVER_ERROR'});}
+  });
+
+  app.get('/api/towing/provider/drivers/nearby',async(req,res)=>{
+    const userId=authenticatedOwnerId(req);if(!userId)return res.status(401).json({error:'OWNER_REQUIRED'});
+    const lat=num(req.query?.lat),lng=num(req.query?.lng),radius=Math.min(Math.max(num(req.query?.radiusKm)||30,1),100);
+    if(lat===null||lng===null||lat<-90||lat>90||lng<-180||lng>180)return res.status(400).json({error:'LOCATION_REQUIRED'});
+    try{
+      const sql="SELECT d.id,d.last_lat,d.last_lng,d.last_location_at,p.display_name,(SELECT v.plate FROM towing_provider_vehicles v WHERE v.provider_id=d.provider_id AND v.status='active' ORDER BY v.created_at LIMIT 1) AS towing_plate,(6371*acos(LEAST(1,GREATEST(-1,cos(radians($1))*cos(radians(d.last_lat::float8))*cos(radians(d.last_lng::float8)-radians($2))+sin(radians($1))*sin(radians(d.last_lat::float8)))))) AS distance_km FROM towing_provider_drivers d JOIN towing_providers p ON p.id=d.provider_id WHERE d.online=TRUE AND d.status='active' AND p.status='active' AND d.user_id<>$3 AND d.last_lat IS NOT NULL AND d.last_lng IS NOT NULL AND d.last_location_at > NOW()-INTERVAL '15 minutes' AND (6371*acos(LEAST(1,GREATEST(-1,cos(radians($1))*cos(radians(d.last_lat::float8))*cos(radians(d.last_lng::float8)-radians($2))+sin(radians($1))*sin(radians(d.last_lat::float8)))))) <= $4 ORDER BY distance_km LIMIT 20";
+      const r=await pool.query(sql,[lat,lng,userId,radius]);return res.json({ok:true,items:r.rows});
+    }catch(e){console.error('towing nearby drivers',e);return res.status(500).json({error:'SERVER_ERROR'});}
   });
 
   app.post('/api/towing/provider/jobs/:id/accept',async(req,res)=>{
