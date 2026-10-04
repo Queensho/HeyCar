@@ -150,7 +150,7 @@ class _PasswordOwnerLoginScreenState extends State<PasswordOwnerLoginScreen> {
                     ),
                     const Spacer(),
                     Image.asset(
-                      'assets/Logoyeni.png',
+                      'assets/file_00000000b130820abb8d411e67ab0d25.png',
                       height:compact?30:32,
                       fit:BoxFit.contain,
                       filterQuality:FilterQuality.high,
