@@ -83,6 +83,45 @@ module.exports = function registerOwnerAuthRoutes(app, pool) {
     }
     return res.json({ok:true});
   }catch(e){console.error('account recovery error',e);return res.status(500).json({error:'SERVER_ERROR'});}});
+  app.patch('/api/owner/account/profile',async(req,res)=>{
+    const ownerId=authenticatedOwnerId(req);
+    if(!ownerId)return res.status(401).json({error:'OWNER_REQUIRED'});
+    const displayName=String(req.body?.displayName||'').trim().replace(/\s+/g,' ').slice(0,120);
+    const phone=normalizeTrMobile(req.body?.phone);
+    const emailRaw=String(req.body?.email||'').trim().toLowerCase();
+    const email=emailRaw||null;
+    if(displayName.length<2)return res.status(400).json({error:'DISPLAY_NAME_REQUIRED'});
+    if(!phone)return res.status(400).json({error:'INVALID_PHONE'});
+    if(email&&(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||email.length>240))return res.status(400).json({error:'INVALID_EMAIL'});
+    try{
+      const duplicate=await pool.query(
+        `SELECT id::text AS id,
+                CASE WHEN phone=$2 THEN 'PHONE_IN_USE' ELSE 'EMAIL_IN_USE' END AS error
+           FROM users
+          WHERE id::text<>$1
+            AND (phone=$2 OR ($3::text IS NOT NULL AND lower(email)=$3))
+          LIMIT 1`,
+        [ownerId,phone,email]
+      );
+      if(duplicate.rows.length)return res.status(409).json({error:duplicate.rows[0].error});
+      const updated=await pool.query(
+        `UPDATE users
+            SET display_name=$2,phone=$3,email=$4
+          WHERE id::text=$1 AND status='active'
+          RETURNING id,email,phone,display_name,role,status,created_at`,
+        [ownerId,displayName,phone,email]
+      );
+      if(!updated.rows.length)return res.status(404).json({error:'USER_NOT_FOUND'});
+      return res.json({ok:true,user:updated.rows[0]});
+    }catch(e){
+      if(e&&e.code==='23505'){
+        const detail=String(e.detail||'').toLowerCase();
+        return res.status(409).json({error:detail.includes('email')?'EMAIL_IN_USE':'PHONE_IN_USE'});
+      }
+      console.error('owner profile update error',e);
+      return res.status(500).json({error:'SERVER_ERROR'});
+    }
+  });
   app.post('/api/owner/account/recovery-code',async(req,res)=>{try{const ownerId=authenticatedOwnerId(req);if(!ownerId)return res.status(401).json({error:'OWNER_REQUIRED'});const code=await issueRecoveryCode(pool,ownerId);return res.json({ok:true,recoveryCode:code});}catch(e){console.error('owner recovery code error',e);return res.status(500).json({error:'SERVER_ERROR'});}});
   app.delete('/api/owner/account',async(req,res)=>{try{const ownerId=authenticatedOwnerId(req);if(!ownerId)return res.status(401).json({error:'OWNER_REQUIRED'});const password=String(req.body?.password||'');if(password.length<6)return res.status(400).json({error:'PASSWORD_REQUIRED'});if(!await verifyPassword(pool,ownerId,password))return res.status(401).json({error:'PASSWORD_INVALID'});const out=await deleteAccount(pool,ownerId,{mode:'owner'});if(!out.ok)return res.status(out.error==='USER_NOT_FOUND'?404:409).json({error:out.error});return res.json({ok:true});}catch(e){console.error('owner account delete error',e);return res.status(500).json({error:'SERVER_ERROR'});}});
   app.post('/api/owner/auth/refresh',async(req,res)=>{try{const refreshToken=String(req.body?.refreshToken||'');if(!refreshToken)return res.status(400).json({error:'REFRESH_REQUIRED'});const tokens=await rotateRefresh(pool,refreshToken);if(!tokens)return res.status(401).json({error:'REFRESH_INVALID'});return res.json({ok:true,...tokens});}catch(e){console.error('owner refresh error',e);return res.status(500).json({error:'SERVER_ERROR'});}});
