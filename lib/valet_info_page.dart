@@ -69,7 +69,7 @@ class ValetInfoPage extends StatelessWidget {
                             width: 58,
                             height: 58,
                             decoration: BoxDecoration(
-                              color: _purple.withValues(alpha: .13),
+                              color: ValetInfoPage._purple.withValues(alpha: .13),
                               borderRadius: BorderRadius.circular(17),
                             ),
                             child: const Icon(Icons.support_agent_rounded, color: _purple, size: 31),
@@ -242,7 +242,7 @@ class ValetInfoPage extends StatelessWidget {
                           Container(
                             width: 38,
                             height: 38,
-                            decoration: const BoxDecoration(color: _lime, shape: BoxShape.circle),
+                            decoration: const BoxDecoration(color: ValetInfoPage._lime, shape: BoxShape.circle),
                             child: const Icon(Icons.verified_user_rounded, color: Colors.black, size: 20),
                           ),
                           const SizedBox(width: 10),
@@ -375,10 +375,10 @@ class _StepCard extends StatelessWidget {
                     width: 43,
                     height: 43,
                     decoration: BoxDecoration(
-                      color: _purple.withValues(alpha: .13),
+                      color: ValetInfoPage._purple.withValues(alpha: .13),
                       borderRadius: BorderRadius.circular(13),
                     ),
-                    child: Icon(icon, color: _purple, size: 23),
+                    child: Icon(icon, color: ValetInfoPage._purple, size: 23),
                   ),
                   Positioned(
                     left: -5,
@@ -387,7 +387,7 @@ class _StepCard extends StatelessWidget {
                       width: 19,
                       height: 19,
                       alignment: Alignment.center,
-                      decoration: const BoxDecoration(color: _lime, shape: BoxShape.circle),
+                      decoration: const BoxDecoration(color: ValetInfoPage._lime, shape: BoxShape.circle),
                       child: Text(
                         number,
                         style: const TextStyle(color: Colors.black, fontSize: 9, fontWeight: FontWeight.w900),
