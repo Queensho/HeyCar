@@ -27,9 +27,12 @@ for filename, replacements in FILES.items():
     for old, new in replacements:
         text = text.replace(old, new)
 
-    # All normal copy/icons follow the current theme. Purple action buttons are restored to white below.
-    text = text.replace('Colors.white70', 'CepqarTheme.muted')
-    text = text.replace('Colors.white', 'CepqarTheme.text')
+    # All normal copy/icons follow the current theme. The redesigned vehicle center
+    # intentionally contains dark hero/QR surfaces even in light mode, so keep its
+    # explicit white foregrounds untouched.
+    if filename != 'lib/vehicle_center_page.dart':
+        text = text.replace('Colors.white70', 'CepqarTheme.muted')
+        text = text.replace('Colors.white', 'CepqarTheme.text')
 
     # Light equivalents for dark-only decorative surfaces.
     text = text.replace('const Color(0xFF082321)', "(CepqarTheme.isLight ? const Color(0xFFEAF8F0) : const Color(0xFF082321))")
@@ -46,8 +49,18 @@ for filename, replacements in FILES.items():
     # Dynamic theme values cannot live in const widget expressions.
     text = re.sub(r'\bconst\s+(?=[A-Z_][A-Za-z0-9_]*(?:<[^>]+>)?\s*\()', '', text)
 
-    # Keep text/icons on purple primary actions white in both modes.
-    text = re.sub(r'FilledButton\.styleFrom\(\s*backgroundColor:\s*_purple', 'FilledButton.styleFrom(backgroundColor:_purple,foregroundColor:Colors.white', text)
+    # Keep text/icons on purple primary actions white in both modes and make the
+    # patch safe to run repeatedly when foregroundColor is already present.
+    text = re.sub(
+        r'FilledButton\.styleFrom\(\s*backgroundColor:\s*_purple,\s*foregroundColor:\s*(?:Colors\.white|CepqarTheme\.text)',
+        'FilledButton.styleFrom(backgroundColor:_purple,foregroundColor:Colors.white',
+        text,
+    )
+    text = re.sub(
+        r'FilledButton\.styleFrom\(\s*backgroundColor:\s*_purple(?!\s*,\s*foregroundColor)',
+        'FilledButton.styleFrom(backgroundColor:_purple,foregroundColor:Colors.white',
+        text,
+    )
 
     # Restore public widget constructors used by const callers elsewhere.
     for cls in {
