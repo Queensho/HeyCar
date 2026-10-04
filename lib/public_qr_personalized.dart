@@ -140,16 +140,6 @@ class _CodeEntryState extends State<_CodeEntry> {
                     Stack(
                       clipBehavior: Clip.none,
                       children: [
-                        Positioned(
-                          right: compact ? -24 : -18,
-                          top: compact ? -10 : -14,
-                          width: compact ? 210 : 245,
-                          height: compact ? 175 : 200,
-                          child: Opacity(
-                            opacity: .98,
-                            child: Image.asset('assets/Heycar3d.png', fit: BoxFit.contain),
-                          ),
-                        ),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -1111,7 +1101,7 @@ class _MessageComposerState extends State<_MessageComposer>{
                         onTap:_chooseType,
                         borderRadius:BorderRadius.circular(15),
                         child:Container(
-                          minHeight:compact?58:64,
+                          constraints:BoxConstraints(minHeight:compact?58:64),
                           padding:const EdgeInsets.symmetric(horizontal:12,vertical:10),
                           decoration:BoxDecoration(
                             color:_soft,
