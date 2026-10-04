@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 
 import 'onboarding_backend.dart';
 import 'vehicle_api.dart';
+import 'cepqar_theme.dart';
 
 class OwnerNewVehicleDraft {
   const OwnerNewVehicleDraft({
@@ -29,14 +30,23 @@ class OwnerNewVehiclePage extends StatefulWidget {
 }
 
 class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
-  static const _bg = Color(0xFF070D1B);
-  static const _panel = Color(0xFF0D1528);
-  static const _panelSoft = Color(0xFF10182D);
-  static const _line = Color(0xFF293657);
   static const _purple = Color(0xFF8B46FF);
   static const _purple2 = Color(0xFF5E2BFF);
-  static const _muted = Color(0xFF9DA8C2);
-  static const _text = Colors.white;
+
+  bool get _light => CepqarTheme.isLight;
+  Color get _bg => CepqarTheme.bg;
+  Color get _panel => CepqarTheme.panel;
+  Color get _panelSoft => _light ? const Color(0xFFF5F2FF) : const Color(0xFF10182D);
+  Color get _line => CepqarTheme.line;
+  Color get _muted => CepqarTheme.muted;
+  Color get _text => CepqarTheme.text;
+  Color get _field => _light ? Colors.white : const Color(0xFF0B1324);
+  Color get _fieldBorder => _light ? const Color(0xFFDDE1EA) : const Color(0xFF344263);
+  Color get _fieldIcon => _light ? const Color(0xFF747E95) : const Color(0xFFA8B2D0);
+  Color get _hint => _light ? const Color(0xFF8A93A8) : const Color(0xFF7F8AA7);
+  Color get _softPurple => _light ? const Color(0xFFF1EAFF) : const Color(0xFF221451);
+  Color get _infoBg => _light ? const Color(0xFFF6F2FF) : const Color(0xFF15143A);
+  Color get _infoLine => _light ? const Color(0xFFE4D9FB) : const Color(0xFF282653);
 
   final plate = TextEditingController();
   String? make;
@@ -173,8 +183,8 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
         enabledBorder: InputBorder.none,
         focusedBorder: InputBorder.none,
         contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 13),
-        hintStyle: const TextStyle(
-          color: Color(0xFF7F8AA7),
+        hintStyle: TextStyle(
+          color: _hint,
           fontSize: 12,
           fontWeight: FontWeight.w500,
         ),
@@ -185,7 +195,10 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
         child: Row(
           children: [
             Image.asset(
-              'assets/Logoyeni.png',
+              _light
+                  ? 'assets/file_00000000b130820abb8d411e67ab0d25.png'
+                  : 'assets/Logoyeni.png',
+              key: ValueKey(_light),
               height: 31,
               fit: BoxFit.contain,
               alignment: Alignment.centerLeft,
@@ -198,13 +211,13 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF10192E),
+                    color: _light ? Colors.white : const Color(0xFF10192E),
                     shape: BoxShape.circle,
                     border: Border.all(color: _line),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.notifications_none_rounded,
-                    color: Colors.white,
+                    color: _text,
                     size: 20,
                   ),
                 ),
@@ -224,14 +237,14 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
               height: 36,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: const Color(0xFF161F38),
+                color: _light ? const Color(0xFFF1EAFF) : const Color(0xFF161F38),
                 shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFF384567)),
+                border: Border.all(color: _light ? const Color(0xFFDCCBFF) : const Color(0xFF384567)),
               ),
               child: Text(
                 initials,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: _text,
                   fontSize: 11.5,
                   fontWeight: FontWeight.w900,
                 ),
@@ -255,11 +268,11 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
                 borderRadius: BorderRadius.circular(13),
                 border: Border.all(color: _line),
               ),
-              child: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 22),
+              child: Icon(Icons.arrow_back_rounded, color: _text, size: 22),
             ),
           ),
           const SizedBox(width: 14),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -296,7 +309,7 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: const Color(0xFF221451),
+              color: _softPurple,
               borderRadius: BorderRadius.circular(15),
               border: Border.all(color: _purple.withValues(alpha: .45)),
               boxShadow: [
@@ -307,14 +320,14 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
                 ),
               ],
             ),
-            child: const Icon(
+            child: Icon(
               Icons.directions_car_filled_rounded,
               color: Color(0xFF9E5CFF),
               size: 25,
             ),
           ),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -347,7 +360,7 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
           children: [
             Text(
               text,
-              style: const TextStyle(
+              style: TextStyle(
                 color: _text,
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
@@ -357,7 +370,7 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
               const Spacer(),
               Text(
                 trailing,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Color(0xFF8390AE),
                   fontSize: 10.5,
                   fontWeight: FontWeight.w500,
@@ -376,9 +389,9 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
             height: 48,
             padding: const EdgeInsets.symmetric(horizontal: 10),
             decoration: BoxDecoration(
-              color: const Color(0xFF0B1324),
+              color: _field,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFF344263)),
+              border: Border.all(color: _fieldBorder),
             ),
             child: Row(
               children: [
@@ -392,7 +405,7 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
                     ),
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: const Text(
+                  child: Text(
                     'TR',
                     style: TextStyle(
                       color: Colors.white,
@@ -407,8 +420,8 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
                     controller: plate,
                     textCapitalization: TextCapitalization.characters,
                     autocorrect: false,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: _text,
                       fontSize: 13.5,
                       fontWeight: FontWeight.w700,
                       letterSpacing: .2,
@@ -439,13 +452,13 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
             height: 48,
             padding: const EdgeInsets.only(left: 11, right: 8),
             decoration: BoxDecoration(
-              color: const Color(0xFF0B1324),
+              color: _field,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFF344263)),
+              border: Border.all(color: _fieldBorder),
             ),
             child: Row(
               children: [
-                Icon(icon, color: const Color(0xFFA8B2D0), size: 19),
+                Icon(icon, color: _fieldIcon, size: 19),
                 const SizedBox(width: 8),
                 Expanded(
                   child: loading
@@ -464,23 +477,23 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
                           child: DropdownButton<T>(
                             value: value,
                             isExpanded: true,
-                            dropdownColor: const Color(0xFF111A2F),
-                            icon: const Icon(
+                            dropdownColor: _light ? Colors.white : const Color(0xFF111A2F),
+                            icon: Icon(
                               Icons.keyboard_arrow_down_rounded,
-                              color: Color(0xFFA8B2D0),
+                              color: _fieldIcon,
                               size: 19,
                             ),
                             hint: Text(
                               hint,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Color(0xFF7F8AA7),
+                              style: TextStyle(
+                                color: _hint,
                                 fontSize: 11.5,
                               ),
                             ),
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: _text,
                               fontSize: 11.5,
                               fontWeight: FontWeight.w700,
                             ),
@@ -513,20 +526,20 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
           height: 116,
           width: double.infinity,
           decoration: BoxDecoration(
-            color: const Color(0xFF091121),
+            color: _field,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: const Color(0xFF65708B),
+              color: _fieldBorder,
               style: BorderStyle.solid,
             ),
           ),
           child: photo == null
-              ? const Column(
+              ? Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     CircleAvatar(
                       radius: 23,
-                      backgroundColor: Color(0xFF20134D),
+                      backgroundColor: _softPurple,
                       child: Icon(
                         Icons.photo_camera_outlined,
                         color: Color(0xFF9B55FF),
@@ -540,7 +553,7 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
                           TextSpan(
                             text: 'Araç fotoğrafı ekle ',
                             style: TextStyle(
-                              color: Colors.white,
+                              color: _text,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
@@ -593,7 +606,7 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
                                 color: Colors.black.withValues(alpha: .62),
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(
+                              child: Icon(
                                 Icons.edit_rounded,
                                 color: Colors.white,
                                 size: 16,
@@ -611,11 +624,11 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
   Widget _infoBox() => Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: const Color(0xFF15143A),
+          color: _infoBg,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF282653)),
+          border: Border.all(color: _infoLine),
         ),
-        child: const Row(
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Icon(
@@ -666,8 +679,8 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
                 borderRadius: BorderRadius.circular(14),
               ),
             ),
-            icon: const Icon(Icons.add_rounded, size: 22),
-            label: const Text(
+            icon: Icon(Icons.add_rounded, size: 22),
+            label: Text(
               'Aracı Ekle',
               style: TextStyle(
                 fontSize: 14,
@@ -699,7 +712,9 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
                 color: _panel.withValues(alpha: .97),
                 borderRadius: BorderRadius.circular(18),
                 border: Border.all(
-                  color: _purple.withValues(alpha: .48),
+                  color: _light
+                      ? const Color(0xFFD9CCFF)
+                      : _purple.withValues(alpha: .48),
                 ),
                 boxShadow: [
                   BoxShadow(
