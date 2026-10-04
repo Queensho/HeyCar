@@ -9,6 +9,7 @@ import 'onboarding_backend.dart';
 import 'qr_backend.dart';
 import 'owner_auth.dart';
 import 'owner_valet_card.dart';
+import 'owner_shortcuts.dart';
 
 class OwnerHomeRedesign extends StatefulWidget{
   const OwnerHomeRedesign({
@@ -30,6 +31,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   List<Map<String,dynamic>> notices=[];
   Map<String,dynamic>? valetSession;
   String valetDeliveryCode='';
+  List<String> quickAccessIds=const ['roadside_help','parking','maintenance','offers'];
   bool valetRequesting=false;
   bool loading=true;
 
@@ -55,9 +57,142 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   @override void initState(){
     super.initState();
     load();
+    _loadQuickAccess();
     timer=Timer.periodic(const Duration(seconds:8),(_)=>load(silent:true));
   }
   @override void dispose(){timer?.cancel();super.dispose();}
+
+  String get _quickAccessKey{
+    final owner=OnboardingDraft.userId.trim();
+    return owner.isEmpty?'owner_quick_access':'owner_quick_access_$owner';
+  }
+
+  OwnerShortcutDefinition? _quickDef(String id){
+    for(final d in ownerShortcutCatalog){
+      if(d.id==id)return d;
+    }
+    return null;
+  }
+
+  Color _quickColor(String id)=>switch(id){
+    'roadside_help'=>const Color(0xFFFF775F),
+    'offers'=>const Color(0xFFFF9D47),
+    'qr'=>const Color(0xFF713BFF),
+    'qr_security'=>const Color(0xFF2AD879),
+    'vehicle'=>const Color(0xFF347DFF),
+    'parking'=>const Color(0xFF22C775),
+    'notifications'=>const Color(0xFFFF5E76),
+    'maintenance'=>const Color(0xFF8B5CFF),
+    'inspection'=>const Color(0xFF3D8BFF),
+    'insurance'=>const Color(0xFF24B9A7),
+    'drivers'=>const Color(0xFF6F78FF),
+    'settings'=>const Color(0xFF7C879E),
+    _=>purple,
+  };
+
+  Future<void> _loadQuickAccess()async{
+    try{
+      final prefs=await SharedPreferences.getInstance();
+      final saved=prefs.getStringList(_quickAccessKey)??const <String>[];
+      final valid=saved.where((id)=>_quickDef(id)!=null).take(maxOwnerShortcuts).toList();
+      if(valid.isNotEmpty&&mounted)setState(()=>quickAccessIds=valid);
+    }catch(_){}
+  }
+
+  Future<void> _saveQuickAccess(List<String> ids)async{
+    final clean=ids.where((id)=>_quickDef(id)!=null).take(maxOwnerShortcuts).toList();
+    if(clean.isEmpty)return;
+    final prefs=await SharedPreferences.getInstance();
+    await prefs.setStringList(_quickAccessKey,clean);
+    if(mounted)setState(()=>quickAccessIds=clean);
+  }
+
+  Future<void> _editQuickAccess()async{
+    var selected=List<String>.from(quickAccessIds);
+    await showModalBottomSheet<void>(
+      context:context,
+      isScrollControlled:true,
+      backgroundColor:Colors.transparent,
+      builder:(sheetContext)=>StatefulBuilder(
+        builder:(sheetContext,setSheet)=>Container(
+          constraints:BoxConstraints(maxHeight:MediaQuery.sizeOf(sheetContext).height*.76),
+          decoration:BoxDecoration(
+            color:panel,
+            borderRadius:const BorderRadius.vertical(top:Radius.circular(26)),
+            border:Border(top:BorderSide(color:line)),
+          ),
+          child:SafeArea(
+            top:false,
+            child:Column(mainAxisSize:MainAxisSize.min,children:[
+              const SizedBox(height:9),
+              Container(width:38,height:4,decoration:BoxDecoration(color:muted.withValues(alpha:.35),borderRadius:BorderRadius.circular(9))),
+              Padding(
+                padding:const EdgeInsets.fromLTRB(18,14,14,8),
+                child:Row(children:[
+                  Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                    Text('Hızlı Erişim',style:TextStyle(color:text,fontSize:19,fontWeight:FontWeight.w900)),
+                    const SizedBox(height:2),
+                    Text('Ana ekranda görmek istediğiniz en fazla 4 özelliği seçin.',style:TextStyle(color:muted,fontSize:10.5)),
+                  ])),
+                  Text('${selected.length}/$maxOwnerShortcuts',style:const TextStyle(color:purple,fontWeight:FontWeight.w900)),
+                ]),
+              ),
+              Flexible(
+                child:ListView.separated(
+                  shrinkWrap:true,
+                  padding:const EdgeInsets.fromLTRB(12,4,12,10),
+                  itemCount:ownerShortcutCatalog.length,
+                  separatorBuilder:(_,__)=>Divider(height:1,color:line.withValues(alpha:.7)),
+                  itemBuilder:(_,i){
+                    final d=ownerShortcutCatalog[i];
+                    final active=selected.contains(d.id);
+                    final disabled=!active&&selected.length>=maxOwnerShortcuts;
+                    final color=_quickColor(d.id);
+                    return ListTile(
+                      enabled:!disabled,
+                      contentPadding:const EdgeInsets.symmetric(horizontal:8,vertical:1),
+                      leading:Container(
+                        width:38,height:38,
+                        decoration:BoxDecoration(color:color.withValues(alpha:light ? .11 : .17),borderRadius:BorderRadius.circular(11)),
+                        child:Icon(d.icon,color:color,size:20),
+                      ),
+                      title:Text(d.title,style:TextStyle(color:disabled?muted:text,fontSize:12.5,fontWeight:FontWeight.w800)),
+                      subtitle:Text(d.subtitle,style:TextStyle(color:muted,fontSize:9.5)),
+                      trailing:Icon(active?Icons.check_circle_rounded:Icons.add_circle_outline_rounded,color:active?purple:muted,size:22),
+                      onTap:disabled?null:(){
+                        setSheet((){
+                          if(active){
+                            if(selected.length>1)selected.remove(d.id);
+                          }else{
+                            selected.add(d.id);
+                          }
+                        });
+                      },
+                    );
+                  },
+                ),
+              ),
+              Padding(
+                padding:const EdgeInsets.fromLTRB(16,8,16,14),
+                child:SizedBox(
+                  width:double.infinity,
+                  height:44,
+                  child:FilledButton(
+                    onPressed:(){
+                      _saveQuickAccess(selected);
+                      Navigator.pop(sheetContext);
+                    },
+                    style:FilledButton.styleFrom(backgroundColor:purple,foregroundColor:Colors.white,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(14))),
+                    child:const Text('Kaydet',style:TextStyle(fontWeight:FontWeight.w900)),
+                  ),
+                ),
+              ),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
 
   Future<void> load({bool silent=false})async{
     if(!silent&&mounted)setState(()=>loading=true);
@@ -524,27 +659,58 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     );
   }
 
-  Widget quick(IconData icon,String title,Color color,VoidCallback tap)=>Expanded(child:InkWell(
-    onTap:tap,borderRadius:BorderRadius.circular(17),
-    child:Container(height:86,decoration:card(),child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[
-      Container(width:39,height:39,decoration:BoxDecoration(color:color.withValues(alpha:light ? 0.12 : 0.17),shape:BoxShape.circle),child:Icon(icon,color:color,size:22)),
-      const SizedBox(height:7),
-      Text(title,maxLines:1,textAlign:TextAlign.center,style:TextStyle(color:text,fontSize:10.6,fontWeight:FontWeight.w800)),
-    ])),
+  Widget quick(OwnerShortcutDefinition d)=>Expanded(child:InkWell(
+    onTap:()=>widget.shortcut(d.action),
+    onLongPress:_editQuickAccess,
+    borderRadius:BorderRadius.circular(17),
+    child:Container(
+      height:78,
+      decoration:card(),
+      child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[
+        Container(
+          width:36,height:36,
+          decoration:BoxDecoration(color:_quickColor(d.id).withValues(alpha:light ? .11 : .17),shape:BoxShape.circle),
+          child:Icon(d.icon,color:_quickColor(d.id),size:20),
+        ),
+        const SizedBox(height:6),
+        Padding(
+          padding:const EdgeInsets.symmetric(horizontal:3),
+          child:Text(d.title,maxLines:1,overflow:TextOverflow.ellipsis,textAlign:TextAlign.center,style:TextStyle(color:text,fontSize:9.1,fontWeight:FontWeight.w800)),
+        ),
+      ]),
+    ),
   ));
 
-  Widget quickRow()=>Padding(
-    padding:const EdgeInsets.fromLTRB(16,11,16,0),
-    child:Row(children:[
-      quick(Icons.phone_rounded,'Beni Ara',const Color(0xFF8B36FF),()=>shareLink('Beni CepQontag üzerinden ara.')),
-      const SizedBox(width:7),
-      quick(Icons.chat_bubble_rounded,'Mesaj Gönder',const Color(0xFF347DFF),()=>shareLink('Bana CepQontag üzerinden mesaj gönder.')),
-      const SizedBox(width:7),
-      quick(Icons.location_on_rounded,'Konum Paylaş',const Color(0xFF22C775),shareLocation),
-      const SizedBox(width:7),
-      quick(Icons.send_rounded,'Link Paylaş',const Color(0xFFFF8057),()=>shareLink('CepQontag araç iletişim bağlantım:')),
-    ]),
-  );
+  Widget quickRow(){
+    final items=quickAccessIds.map(_quickDef).whereType<OwnerShortcutDefinition>().take(maxOwnerShortcuts).toList();
+    return Padding(
+      padding:const EdgeInsets.fromLTRB(16,10,16,0),
+      child:Column(children:[
+        Row(children:[
+          Expanded(child:Text('Hızlı Erişim',style:TextStyle(color:text,fontSize:13.5,fontWeight:FontWeight.w900))),
+          InkWell(
+            onTap:_editQuickAccess,
+            borderRadius:BorderRadius.circular(12),
+            child:Padding(
+              padding:const EdgeInsets.symmetric(horizontal:5,vertical:4),
+              child:Row(children:[
+                const Icon(Icons.tune_rounded,color:purple,size:15),
+                const SizedBox(width:3),
+                Text('Düzenle',style:TextStyle(color:purple,fontSize:9.3,fontWeight:FontWeight.w900)),
+              ]),
+            ),
+          ),
+        ]),
+        const SizedBox(height:6),
+        Row(children:[
+          for(var i=0;i<items.length;i++)...[
+            if(i>0)const SizedBox(width:7),
+            quick(items[i]),
+          ],
+        ]),
+      ]),
+    );
+  }
 
   Widget stat(IconData icon,int value,String label,Color color)=>Expanded(child:Column(children:[
     Row(mainAxisAlignment:MainAxisAlignment.center,children:[
