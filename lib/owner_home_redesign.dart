@@ -122,13 +122,73 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   Widget header()=>SizedBox(
     height:light?194:182,
     child:Stack(children:[
-      Positioned.fill(child:Container(decoration:BoxDecoration(
-        gradient:light
-          ?const LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:[Color(0xFFFAFAFF),Color(0xFFF1EEFF),Color(0xFFF7F7FC)])
-          :const LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:[Color(0xFF050913),Color(0xFF070A18),Color(0xFF12082C)]),
-      ))),
-      Positioned.fill(child:IgnorePointer(child:CustomPaint(painter:_OwnerHeaderWavePainter(light:light)))),
-      Positioned(right:-34,top:18,child:Container(width:210,height:148,decoration:BoxDecoration(shape:BoxShape.circle,gradient:RadialGradient(colors:[purple.withValues(alpha:light ? 0.16 : 0.34),purple.withValues(alpha:0)])))),
+      Positioned.fill(
+        child:Container(
+          decoration:BoxDecoration(
+            gradient:light
+              ?const LinearGradient(
+                  begin:Alignment.topLeft,
+                  end:Alignment.bottomRight,
+                  colors:[
+                    Color(0xFFFBFAFF),
+                    Color(0xFFF2EDFF),
+                    Color(0xFFE9E0FF),
+                    Color(0xFFF8F6FF),
+                  ],
+                  stops:[0,.38,.72,1],
+                )
+              :const LinearGradient(
+                  begin:Alignment.topLeft,
+                  end:Alignment.bottomRight,
+                  colors:[
+                    Color(0xFF050913),
+                    Color(0xFF0B1020),
+                    Color(0xFF17102E),
+                    Color(0xFF080B15),
+                  ],
+                  stops:[0,.40,.76,1],
+                ),
+          ),
+        ),
+      ),
+      Positioned(
+        right:-72,
+        top:-66,
+        child:Container(
+          width:290,
+          height:250,
+          decoration:BoxDecoration(
+            shape:BoxShape.circle,
+            gradient:RadialGradient(
+              colors:[
+                const Color(0xFF8D63FF).withValues(alpha:light ? .24 : .28),
+                const Color(0xFF8D63FF).withValues(alpha:light ? .10 : .12),
+                Colors.transparent,
+              ],
+              stops:const [0,.48,1],
+            ),
+          ),
+        ),
+      ),
+      Positioned(
+        left:-92,
+        bottom:-92,
+        child:Container(
+          width:250,
+          height:210,
+          decoration:BoxDecoration(
+            shape:BoxShape.circle,
+            gradient:RadialGradient(
+              colors:[
+                const Color(0xFFB89CFF).withValues(alpha:light ? .16 : .10),
+                const Color(0xFF713BFF).withValues(alpha:light ? .05 : .06),
+                Colors.transparent,
+              ],
+              stops:const [0,.52,1],
+            ),
+          ),
+        ),
+      ),
       Padding(
         padding:EdgeInsets.fromLTRB(20,MediaQuery.paddingOf(context).top+2,18,0),
         child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
