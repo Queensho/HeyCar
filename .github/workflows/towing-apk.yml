@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'lib/towing_main.dart'
+      - 'lib/towing_driver_pages.dart'
       - 'pubspec.yaml'
       - 'pubspec.lock'
       - '.github/workflows/towing-apk.yml'
