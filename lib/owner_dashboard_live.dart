@@ -53,7 +53,7 @@ void action(String a){if(a=='qr')_qr();else if(a=='qr_security'&&vid.isNotEmpty)
         bottomNavigationBar:SafeArea(
           top:false,
           child:Container(
-            height:62,
+            height:66,
             margin:const EdgeInsets.fromLTRB(14,0,14,8),
             padding:const EdgeInsets.symmetric(horizontal:5,vertical:5),
             decoration:BoxDecoration(
@@ -76,11 +76,11 @@ void action(String a){if(a=='qr')_qr();else if(a=='qr_security'&&vid.isNotEmpty)
                     ),
                     child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[
                       Stack(clipBehavior:Clip.none,children:[
-                        Icon(icons[i],size:21,color:active?CepqarTheme.purple:CepqarTheme.muted),
+                        Icon(icons[i],size:22,color:active?CepqarTheme.purple:CepqarTheme.muted),
                         if(i==3&&unread>0)const Positioned(right:-4,top:-3,child:CircleAvatar(radius:4,backgroundColor:Color(0xFFFF4158))),
                       ]),
                       const SizedBox(height:3),
-                      Text(labels[i],maxLines:1,style:TextStyle(fontSize:8.8,fontWeight:active?FontWeight.w800:FontWeight.w600,color:active?CepqarTheme.purple:CepqarTheme.muted)),
+                      Text(labels[i],maxLines:1,style:TextStyle(fontSize:10.4,fontWeight:active?FontWeight.w800:FontWeight.w600,color:active?CepqarTheme.purple:CepqarTheme.muted)),
                     ]),
                   ),
                 ),
