@@ -265,7 +265,6 @@ Widget _bottomAction(IconData icon,String title,String subtitle,VoidCallback tap
   );
 }
 }
-}
 
 class _VehiclesHeaderWavePainter extends CustomPainter{
   const _VehiclesHeaderWavePainter({required this.light});
