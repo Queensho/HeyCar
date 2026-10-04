@@ -412,43 +412,95 @@ class _OwnerHeaderWavePainter extends CustomPainter{
 
   @override
   void paint(Canvas canvas,Size size){
-    final p1=Paint()
-      ..color=const Color(0xFF713BFF).withValues(alpha:light?0.13:0.24)
-      ..style=PaintingStyle.fill;
-    final p2=Paint()
-      ..color=const Color(0xFF8B5CFF).withValues(alpha:light?0.10:0.18)
-      ..style=PaintingStyle.fill;
-    final p3=Paint()
-      ..color=const Color(0xFF5B22D6).withValues(alpha:light?0.08:0.15)
-      ..style=PaintingStyle.fill;
-
     final w=size.width,h=size.height;
 
-    final path1=Path()
-      ..moveTo(w*.46,0)
-      ..cubicTo(w*.58,h*.10,w*.68,h*.30,w*.78,h*.22)
-      ..cubicTo(w*.90,h*.12,w*.96,h*.28,w,h*.18)
-      ..lineTo(w,0)
-      ..close();
-    canvas.drawPath(path1,p1);
+    // Soft corporate glow kept on the right so the brand and greeting stay clean.
+    final glow=Paint()
+      ..shader=RadialGradient(
+        center:const Alignment(.72,-.10),
+        radius:.95,
+        colors:[
+          const Color(0xFF713BFF).withValues(alpha:light ? .14 : .25),
+          const Color(0xFF713BFF).withValues(alpha:light ? .04 : .08),
+          Colors.transparent,
+        ],
+        stops:const [0,.48,1],
+      ).createShader(Offset.zero&size);
+    canvas.drawRect(Offset.zero&size,glow);
 
-    final path2=Path()
-      ..moveTo(w*.38,h*.48)
-      ..cubicTo(w*.54,h*.24,w*.65,h*.62,w*.78,h*.40)
-      ..cubicTo(w*.89,h*.22,w*.95,h*.48,w,h*.34)
-      ..lineTo(w,h*.74)
-      ..cubicTo(w*.89,h*.82,w*.80,h*.64,w*.68,h*.76)
-      ..cubicTo(w*.57,h*.87,w*.49,h*.61,w*.38,h*.72)
+    // Main ribbon: one controlled sweep instead of several organic waves.
+    final ribbon=Path()
+      ..moveTo(w*.50,h*.05)
+      ..cubicTo(w*.66,h*.10,w*.74,h*.22,w*.86,h*.18)
+      ..cubicTo(w*.94,h*.15,w*.99,h*.11,w*1.06,h*.13)
+      ..lineTo(w*1.06,h*.38)
+      ..cubicTo(w*.98,h*.35,w*.92,h*.39,w*.84,h*.42)
+      ..cubicTo(w*.72,h*.47,w*.64,h*.37,w*.50,h*.33)
       ..close();
-    canvas.drawPath(path2,p2);
 
-    final path3=Path()
-      ..moveTo(w*.54,h)
-      ..cubicTo(w*.66,h*.76,w*.75,h*.92,w*.84,h*.70)
-      ..cubicTo(w*.91,h*.54,w*.96,h*.69,w,h*.60)
-      ..lineTo(w,h)
+    canvas.drawPath(
+      ribbon,
+      Paint()
+        ..shader=LinearGradient(
+          begin:Alignment.centerLeft,
+          end:Alignment.centerRight,
+          colors:[
+            const Color(0xFF713BFF).withValues(alpha:0),
+            const Color(0xFF713BFF).withValues(alpha:light ? .08 : .15),
+            const Color(0xFF8E5BFF).withValues(alpha:light ? .16 : .26),
+            const Color(0xFF5A22D6).withValues(alpha:light ? .08 : .14),
+          ],
+          stops:const [0,.30,.72,1],
+        ).createShader(Offset.zero&size),
+    );
+
+    // Secondary ribbon for depth; flatter and thinner to keep it corporate.
+    final lower=Path()
+      ..moveTo(w*.42,h*.63)
+      ..cubicTo(w*.58,h*.54,w*.69,h*.66,w*.80,h*.61)
+      ..cubicTo(w*.89,h*.57,w*.97,h*.52,w*1.05,h*.56)
+      ..lineTo(w*1.05,h*.73)
+      ..cubicTo(w*.96,h*.70,w*.88,h*.75,w*.79,h*.78)
+      ..cubicTo(w*.66,h*.82,w*.55,h*.70,w*.42,h*.75)
       ..close();
-    canvas.drawPath(path3,p3);
+
+    canvas.drawPath(
+      lower,
+      Paint()
+        ..shader=LinearGradient(
+          begin:Alignment.centerLeft,
+          end:Alignment.centerRight,
+          colors:[
+            const Color(0xFF713BFF).withValues(alpha:0),
+            const Color(0xFF713BFF).withValues(alpha:light ? .05 : .10),
+            const Color(0xFF8750F7).withValues(alpha:light ? .10 : .18),
+            const Color(0xFF4B16B5).withValues(alpha:light ? .04 : .09),
+          ],
+          stops:const [0,.28,.70,1],
+        ).createShader(Offset.zero&size),
+    );
+
+    // Fine accent line gives a premium/technical finish.
+    final accent=Path()
+      ..moveTo(w*.57,h*.19)
+      ..cubicTo(w*.71,h*.24,w*.78,h*.30,w*.88,h*.27)
+      ..cubicTo(w*.95,h*.25,w*1.00,h*.22,w*1.05,h*.24);
+
+    canvas.drawPath(
+      accent,
+      Paint()
+        ..style=PaintingStyle.stroke
+        ..strokeWidth=1.25
+        ..strokeCap=StrokeCap.round
+        ..shader=LinearGradient(
+          colors:[
+            Colors.transparent,
+            const Color(0xFFA984FF).withValues(alpha:light ? .30 : .50),
+            const Color(0xFF713BFF).withValues(alpha:light ? .18 : .34),
+            Colors.transparent,
+          ],
+        ).createShader(Rect.fromLTWH(w*.52,0,w*.55,h)),
+    );
   }
 
   @override
