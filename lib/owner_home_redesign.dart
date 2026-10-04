@@ -317,7 +317,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   );
 
   Widget brand()=>Image.asset(
-    CepqarTheme.isLight ? 'assets/Logoyeni.png' : 'assets/Logoyeni.png',
+    CepqarTheme.isLight ? 'assets/file_00000000b130820abb8d411e67ab0d25.png' : 'assets/Logoyeni.png',
     key:ValueKey(CepqarTheme.isLight),
     height:32,
     fit:BoxFit.contain,
@@ -1210,7 +1210,7 @@ class OwnerServicesRedesign extends StatelessWidget{
         Align(
           alignment:Alignment.centerLeft,
           child:Image.asset(
-            CepqarTheme.isLight ? 'assets/Logoyeni.png' : 'assets/Logoyeni.png',
+            CepqarTheme.isLight ? 'assets/file_00000000b130820abb8d411e67ab0d25.png' : 'assets/Logoyeni.png',
             key:ValueKey(CepqarTheme.isLight),
             height:31,
             fit:BoxFit.contain,
