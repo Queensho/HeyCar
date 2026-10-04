@@ -9,6 +9,7 @@ import 'vehicle_api.dart';
 import 'vehicle_center_page.dart';
 import 'cepqar_theme.dart';
 import 'owner_auth.dart';
+import 'active_driver_card.dart';
 
 const _purple=Color(0xFF8B5CFF),_gold=Color(0xFFFFC857),_green=Color(0xFF38D178);
 Color get _bg=>CepqarTheme.bg; Color get _panel=>CepqarTheme.panel; Color get _line=>CepqarTheme.line; Color get _muted=>CepqarTheme.muted; Color get _text=>CepqarTheme.text;
@@ -265,6 +266,10 @@ Widget _bottomAction(IconData icon,String title,String subtitle,VoidCallback tap
                   remove:()=>_remove(v),
                 ),
               )),
+            if(!loading&&error==null&&vehicles.isNotEmpty)...[
+              const SizedBox(height:4),
+              const ActiveDriverCard(),
+            ],
             const SizedBox(height:12),
           ],
         ),
@@ -343,8 +348,8 @@ class _VehicleReferenceCard extends StatelessWidget{
       :(dark?_purple.withValues(alpha:.38):_line);
 
     return Container(
-      height:132,
-      padding:const EdgeInsets.fromLTRB(10,8,10,8),
+      height:124,
+      padding:const EdgeInsets.fromLTRB(10,7,10,7),
       decoration:BoxDecoration(
         color:dark?const Color(0xFF090E1D):_panel,
         borderRadius:BorderRadius.circular(15),
@@ -360,11 +365,11 @@ class _VehicleReferenceCard extends StatelessWidget{
             borderRadius:BorderRadius.circular(11),
             child:Row(children:[
               Expanded(
-                flex:39,
+                flex:34,
                 child:Stack(children:[
                   Positioned.fill(
                     child:Padding(
-                      padding:const EdgeInsets.fromLTRB(1,5,3,0),
+                      padding:const EdgeInsets.fromLTRB(4,7,6,2),
                       child:Image.asset(
                         'assets/Arac.png',
                         fit:BoxFit.contain,
@@ -392,13 +397,13 @@ class _VehicleReferenceCard extends StatelessWidget{
               ),
               const SizedBox(width:8),
               Expanded(
-                flex:61,
+                flex:66,
                 child:Column(
                   mainAxisAlignment:MainAxisAlignment.center,
                   crossAxisAlignment:CrossAxisAlignment.start,
                   children:[
                     Row(children:[
-                      Expanded(child:Text('${v['plate']??''}',maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:_text,fontSize:15.5,fontWeight:FontWeight.w900,letterSpacing:.15))),
+                      Expanded(child:Text('${v['plate']??''}',maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:_text,fontSize:14.6,fontWeight:FontWeight.w900,letterSpacing:.15))),
                       Container(
                         padding:const EdgeInsets.symmetric(horizontal:7,vertical:3),
                         decoration:BoxDecoration(
@@ -416,10 +421,10 @@ class _VehicleReferenceCard extends StatelessWidget{
                       ),
                     ]),
                     const SizedBox(height:2),
-                    Text(model.isEmpty?make:'$make $model',maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:_text,fontSize:11.5,fontWeight:FontWeight.w800)),
+                    Text(model.isEmpty?make:'$make $model',maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:_text,fontSize:10.8,fontWeight:FontWeight.w800)),
                     if(details.isNotEmpty)...[
                       const SizedBox(height:1),
-                      Text(details,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:_muted,fontSize:9.1)),
+                      Text(details,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:_muted,fontSize:8.7)),
                     ],
                     const Spacer(),
                     Row(children:[
@@ -492,16 +497,16 @@ class _VehicleAction extends StatelessWidget{
           padding:const EdgeInsets.symmetric(vertical:1),
           child:Column(children:[
             Container(
-              width:29,height:29,
+              width:27,height:27,
               decoration:BoxDecoration(
                 color:dark?const Color(0xFF17132E):_purple.withValues(alpha:.07),
                 borderRadius:BorderRadius.circular(7),
                 border:dark?Border.all(color:_purple.withValues(alpha:.35)):null,
               ),
-              child:Icon(icon,color:dark?const Color(0xFFA06DFF):_purple,size:16),
+              child:Icon(icon,color:dark?const Color(0xFFA06DFF):_purple,size:15),
             ),
             const SizedBox(height:2),
-            Text(label,maxLines:1,overflow:TextOverflow.ellipsis,textAlign:TextAlign.center,style:TextStyle(color:_muted,fontSize:7.2,fontWeight:FontWeight.w700)),
+            Text(label,maxLines:1,overflow:TextOverflow.ellipsis,textAlign:TextAlign.center,style:TextStyle(color:_muted,fontSize:6.9,fontWeight:FontWeight.w700)),
           ]),
         ),
       ),
