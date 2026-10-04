@@ -176,7 +176,7 @@ class OwnerWelcomeOverlay extends StatelessWidget {
                                           'Giriş Yap',
                                           style: TextStyle(
                                             color: Colors.white,
-                                            fontSize: compact ? 17 : 18,
+                                            fontSize: 16,
                                             fontWeight: FontWeight.w900,
                                             letterSpacing: -.2,
                                           ),
@@ -220,7 +220,7 @@ class OwnerWelcomeOverlay extends StatelessWidget {
                                     Text(
                                       'Kayıt Ol',
                                       style: TextStyle(
-                                        fontSize: compact ? 17 : 18,
+                                        fontSize: 16,
                                         fontWeight: FontWeight.w900,
                                         letterSpacing: -.2,
                                       ),
@@ -290,7 +290,7 @@ class _TopBar extends StatelessWidget {
                   'TR',
                   style: TextStyle(
                     color: _text,
-                    fontSize: compact ? 14 : 15,
+                    fontSize: 14,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -345,7 +345,7 @@ class _OwnerReachBadge extends StatelessWidget {
             'ARAÇ SAHİBİNE ULAŞ',
             style: TextStyle(
               color: _purple,
-              fontSize: compact ? 12 : 13,
+              fontSize: 12,
               fontWeight: FontWeight.w900,
               letterSpacing: -.1,
             ),
@@ -404,7 +404,7 @@ class _HeroCopy extends StatelessWidget {
           'Aracına not bırak, önemli\ndurumlarda anında haber ver.',
           style: TextStyle(
             color: _muted,
-            fontSize: compact ? 16.5 : 18,
+            fontSize: 16.5,
             height: 1.3,
             fontWeight: FontWeight.w500,
             letterSpacing: -.2,
@@ -471,7 +471,7 @@ class _FeatureCard extends StatelessWidget {
             maxLines: 1,
             style: TextStyle(
               color: _text,
-              fontSize: compact ? 11.5 : 12.5,
+              fontSize: 12,
               height: 1.05,
               fontWeight: FontWeight.w900,
               letterSpacing: -.2,
@@ -484,7 +484,7 @@ class _FeatureCard extends StatelessWidget {
               maxLines: 1,
               style: TextStyle(
                 color: _text,
-                fontSize: compact ? 11.5 : 12.5,
+                fontSize: 12,
                 height: 1.05,
                 fontWeight: FontWeight.w900,
                 letterSpacing: -.2,
