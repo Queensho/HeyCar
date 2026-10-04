@@ -1288,7 +1288,7 @@ class _ComposerAction extends StatelessWidget{
             child:busy
                 ?const Padding(
                     padding:EdgeInsets.all(9),
-                    child:CircularProgressIndicator(strokeWidth:2,color:_purple),
+                    child:CircularProgressIndicator(strokeWidth:2,color:_MessageComposerState._purple),
                   )
                 :Icon(icon,color:active?const Color(0xFF4DAA10):_purple,size:20),
           ),
@@ -1302,14 +1302,14 @@ class _ComposerAction extends StatelessWidget{
                   title,
                   maxLines:1,
                   overflow:TextOverflow.ellipsis,
-                  style:const TextStyle(color:_ink,fontSize:11.5,fontWeight:FontWeight.w900),
+                  style:const TextStyle(color:_MessageComposerState._ink,fontSize:11.5,fontWeight:FontWeight.w900),
                 ),
                 const SizedBox(height:2),
                 Text(
                   subtitle,
                   maxLines:1,
                   overflow:TextOverflow.ellipsis,
-                  style:const TextStyle(color:_body,fontSize:9.5,fontWeight:FontWeight.w500),
+                  style:const TextStyle(color:_MessageComposerState._body,fontSize:9.5,fontWeight:FontWeight.w500),
                 ),
               ],
             ),
