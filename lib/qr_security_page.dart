@@ -111,20 +111,20 @@ class _QrSecurityPageState extends State<QrSecurityPage> {
 
   Widget _metric(String value, String label, IconData icon) => Container(
     width: (MediaQuery.sizeOf(context).width - 48) / 2,
-    padding: const EdgeInsets.all(15),
+    padding: const EdgeInsets.all(13),
     decoration: BoxDecoration(
       color: panel,
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(16),
       border: Border.all(color: line),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, color: purple, size: 23),
-        const SizedBox(height: 12),
-        Text(value, style: TextStyle(color: text, fontSize: 24, fontWeight: FontWeight.w900)),
+        Icon(icon, color: purple, size: 21),
+        const SizedBox(height: 9),
+        Text(value, style: TextStyle(color: text, fontSize: 20, fontWeight: FontWeight.w900)),
         const SizedBox(height: 3),
-        Text(label, style: TextStyle(color: muted, fontSize: 12, fontWeight: FontWeight.w700)),
+        Text(label, style: TextStyle(color: muted, fontSize: 11, fontWeight: FontWeight.w700)),
       ],
     ),
   );
@@ -138,7 +138,7 @@ class _QrSecurityPageState extends State<QrSecurityPage> {
         backgroundColor: bg,
         foregroundColor: text,
         elevation: 0,
-        title: const Text('QR Güvenliği', style: TextStyle(fontWeight: FontWeight.w900)),
+        title: const Text('QR Güvenliği', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
         actions: [IconButton(onPressed: load, icon: const Icon(Icons.refresh_rounded))],
       ),
       body: loading
@@ -156,20 +156,20 @@ class _QrSecurityPageState extends State<QrSecurityPage> {
                     children: [
                       Text(
                         widget.plate.isEmpty ? 'Seçili araç' : widget.plate,
-                        style: TextStyle(color: text, fontSize: 23, fontWeight: FontWeight.w900),
+                        style: TextStyle(color: text, fontSize: 20, fontWeight: FontWeight.w900),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         'QR okutma hareketlerini ve iletişim trafiğini takip et.',
-                        style: TextStyle(color: muted, height: 1.4),
+                        style: TextStyle(color: muted, fontSize: 11, height: 1.35),
                       ),
                       if (suspicious > 0) ...[
                         const SizedBox(height: 16),
                         Container(
-                          padding: const EdgeInsets.all(15),
+                          padding: const EdgeInsets.all(13),
                           decoration: BoxDecoration(
                             color: red.withValues(alpha: .10),
-                            borderRadius: BorderRadius.circular(18),
+                            borderRadius: BorderRadius.circular(16),
                             border: Border.all(color: red.withValues(alpha: .45)),
                           ),
                           child: Row(
@@ -199,7 +199,7 @@ class _QrSecurityPageState extends State<QrSecurityPage> {
                       ),
                       if (busyHours.isNotEmpty) ...[
                         const SizedBox(height: 24),
-                        Text('En Yoğun Saatler', style: TextStyle(color: text, fontSize: 18, fontWeight: FontWeight.w900)),
+                        Text('En Yoğun Saatler', style: TextStyle(color: text, fontSize: 16, fontWeight: FontWeight.w900)),
                         const SizedBox(height: 9),
                         Wrap(
                           spacing: 8,
@@ -215,7 +215,7 @@ class _QrSecurityPageState extends State<QrSecurityPage> {
                               ),
                               child: Text(
                                 '${h.toString().padLeft(2, '0')}:00–${((h + 1) % 24).toString().padLeft(2, '0')}:00  •  ${n(x['count'])}',
-                                style: TextStyle(color: text, fontSize: 12, fontWeight: FontWeight.w800),
+                                style: TextStyle(color: text, fontSize: 11, fontWeight: FontWeight.w800),
                               ),
                             );
                           }).toList(),
@@ -224,15 +224,15 @@ class _QrSecurityPageState extends State<QrSecurityPage> {
                       const SizedBox(height: 24),
                       Row(
                         children: [
-                          Expanded(child: Text('Son Okutmalar', style: TextStyle(color: text, fontSize: 18, fontWeight: FontWeight.w900))),
-                          Text('${scans.length} kayıt', style: TextStyle(color: muted, fontSize: 12)),
+                          Expanded(child: Text('Son Okutmalar', style: TextStyle(color: text, fontSize: 16, fontWeight: FontWeight.w900))),
+                          Text('${scans.length} kayıt', style: TextStyle(color: muted, fontSize: 11)),
                         ],
                       ),
                       const SizedBox(height: 10),
                       if (scans.isEmpty)
                         Container(
                           padding: const EdgeInsets.all(26),
-                          decoration: BoxDecoration(color: panel, borderRadius: BorderRadius.circular(18), border: Border.all(color: line)),
+                          decoration: BoxDecoration(color: panel, borderRadius: BorderRadius.circular(16), border: Border.all(color: line)),
                           child: Column(
                             children: [
                               Icon(Icons.qr_code_2_rounded, color: muted, size: 38),
@@ -249,14 +249,14 @@ class _QrSecurityPageState extends State<QrSecurityPage> {
                             padding: const EdgeInsets.all(13),
                             decoration: BoxDecoration(
                               color: panel,
-                              borderRadius: BorderRadius.circular(17),
+                              borderRadius: BorderRadius.circular(15),
                               border: Border.all(color: bad ? red.withValues(alpha: .55) : line),
                             ),
                             child: Row(
                               children: [
                                 Container(
-                                  width: 44,
-                                  height: 44,
+                                  width: 40,
+                                  height: 40,
                                   decoration: BoxDecoration(
                                     color: (bad ? red : purple).withValues(alpha: .12),
                                     borderRadius: BorderRadius.circular(13),
@@ -274,12 +274,12 @@ class _QrSecurityPageState extends State<QrSecurityPage> {
                                         children: [
                                           Icon(Icons.location_on_outlined, color: muted, size: 15),
                                           const SizedBox(width: 3),
-                                          Expanded(child: Text(_place(x), style: TextStyle(color: muted, fontSize: 12.5))),
+                                          Expanded(child: Text(_place(x), style: TextStyle(color: muted, fontSize: 11.5))),
                                         ],
                                       ),
                                       if (bad) ...[
                                         const SizedBox(height: 4),
-                                        Text(_reason(x['suspicion_reason']), style: const TextStyle(color: red, fontSize: 11.5, fontWeight: FontWeight.w800)),
+                                        Text(_reason(x['suspicion_reason']), style: const TextStyle(color: red, fontSize: 10.5, fontWeight: FontWeight.w800)),
                                       ],
                                     ],
                                   ),
@@ -288,7 +288,7 @@ class _QrSecurityPageState extends State<QrSecurityPage> {
                             ),
                           );
                         }),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 9),
                       Container(
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
@@ -304,7 +304,7 @@ class _QrSecurityPageState extends State<QrSecurityPage> {
                             Expanded(
                               child: Text(
                                 'Konum yaklaşık şehir/bölge düzeyindedir. Ham IP adresi ve kesin konum araç sahibine gösterilmez veya QR güvenlik geçmişinde saklanmaz.',
-                                style: TextStyle(color: muted, fontSize: 11.5, height: 1.4),
+                                style: TextStyle(color: muted, fontSize: 10.5, height: 1.35),
                               ),
                             ),
                           ],
