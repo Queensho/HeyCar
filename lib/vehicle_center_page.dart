@@ -889,7 +889,7 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
         shape:BoxShape.circle,
         gradient:LinearGradient(colors:[Color(0xFF5121C9),Color(0xFF8B5CFF)]),
       ),
-      child:Text(_initials,style:const TextStyle(color:Colors.white,fontSize:10.5,fontWeight:FontWeight.w900)),
+      child:Text(_initials,style:const TextStyle(color:Colors.white,fontSize:CepqarTheme.caption,fontWeight:FontWeight.w900)),
     ),
   ]);
 
@@ -905,9 +905,9 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
     ),
     const SizedBox(width:12),
     Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-      Text('Araç Detayı',style:TextStyle(color:CepqarTheme.text,fontSize:22,fontWeight:FontWeight.w900,letterSpacing:-.4)),
+      Text('Araç Detayı',style:TextStyle(color:CepqarTheme.text,fontSize:CepqarTheme.pageTitle,fontWeight:FontWeight.w900,letterSpacing:-.4)),
       const SizedBox(height:2),
-      Text('Aracınızla ilgili tüm detayları buradan yönetin.',style:TextStyle(color:_muted,fontSize:11.5,fontWeight:FontWeight.w500)),
+      Text('Aracınızla ilgili tüm detayları buradan yönetin.',style:TextStyle(color:_muted,fontSize:CepqarTheme.body,fontWeight:FontWeight.w500)),
     ])),
   ]);
 
@@ -946,7 +946,7 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
             child:Row(mainAxisSize:MainAxisSize.min,children:[
               CircleAvatar(radius:3.5,backgroundColor:_qrActive?const Color(0xFF65F47A):const Color(0xFFFFB84D)),
               const SizedBox(width:6),
-              Text(_qrActive?'Aktif':'QR Pasif',style:TextStyle(color:_qrActive?const Color(0xFF65F47A):const Color(0xFFFFC66D),fontSize:10.5,fontWeight:FontWeight.w900)),
+              Text(_qrActive?'Aktif':'QR Pasif',style:TextStyle(color:_qrActive?const Color(0xFF65F47A):const Color(0xFFFFC66D),fontSize:CepqarTheme.caption,fontWeight:FontWeight.w900)),
             ]),
           ),
         ),
@@ -955,16 +955,16 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
           child:SizedBox(
             width:172,
             child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisSize:MainAxisSize.min,children:[
-              Text(_plate,style:const TextStyle(color:Colors.white,fontSize:21,fontWeight:FontWeight.w900,letterSpacing:.2)),
+              Text(_plate,style:const TextStyle(color:Colors.white,fontSize:20,fontWeight:FontWeight.w900,letterSpacing:.2)),
               const SizedBox(height:2),
-              Text(_make.isEmpty?_title:_make,style:const TextStyle(color:Colors.white,fontSize:13.5,fontWeight:FontWeight.w700)),
+              Text(_make.isEmpty?_title:_make,style:const TextStyle(color:Colors.white,fontSize:CepqarTheme.cardTitle,fontWeight:FontWeight.w700)),
               if(secondary.isNotEmpty)...[
                 const SizedBox(height:2),
-                Text(secondary,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Color(0xFFAEB8D4),fontSize:11.3,fontWeight:FontWeight.w500)),
+                Text(secondary,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Color(0xFFAEB8D4),fontSize:CepqarTheme.bodySmall,fontWeight:FontWeight.w500)),
               ],
               if(km>0)...[
                 const SizedBox(height:2),
-                Text('${_number(km)} km',style:const TextStyle(color:Color(0xFF8794B7),fontSize:10.5,fontWeight:FontWeight.w600)),
+                Text('${_number(km)} km',style:const TextStyle(color:Color(0xFF8794B7),fontSize:CepqarTheme.caption,fontWeight:FontWeight.w600)),
               ],
             ]),
           ),
@@ -1001,9 +1001,9 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
               Icon(Icons.chevron_right_rounded,color:_muted,size:17),
             ]),
             const Spacer(),
-            Text(title,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:CepqarTheme.text,fontSize:11.6,fontWeight:FontWeight.w900)),
+            Text(title,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:CepqarTheme.text,fontSize:CepqarTheme.body,fontWeight:FontWeight.w900)),
             const SizedBox(height:1),
-            Text(subtitle,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:_muted,fontSize:9.4,fontWeight:FontWeight.w500)),
+            Text(subtitle,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:_muted,fontSize:CepqarTheme.caption,fontWeight:FontWeight.w500)),
           ]),
         ),
       ),
@@ -1035,7 +1035,7 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
       ),
       const SizedBox(width:10),
       Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-        Text.rich(TextSpan(style:TextStyle(color:CepqarTheme.text,fontSize:12.5,fontWeight:FontWeight.w900),children:[
+        Text.rich(TextSpan(style:TextStyle(color:CepqarTheme.text,fontSize:CepqarTheme.buttonText,fontWeight:FontWeight.w900),children:[
           const TextSpan(text:'QR Etiketiniz '),
           TextSpan(text:_qrActive?'Aktif':'Pasif',style:TextStyle(color:_qrActive?const Color(0xFF54D66D):const Color(0xFFFFB84D))),
         ])),
@@ -1043,7 +1043,7 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
         Text(
           _qrActive?'Araç etiketiniz taranmaya hazır. Aracınızla her zaman iletişimde kalın.':'QR etiketinizi bağlayarak aracınızı iletişime açın.',
           maxLines:2,overflow:TextOverflow.ellipsis,
-          style:TextStyle(color:_muted,fontSize:10.2,height:1.28),
+          style:TextStyle(color:_muted,fontSize:CepqarTheme.caption,height:1.28),
         ),
       ])),
       const SizedBox(width:8),
@@ -1058,7 +1058,7 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
               shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(9)),
             ),
             icon:Icon(_qrActive?Icons.visibility_outlined:Icons.add_rounded,size:15),
-            label:Text(_qrActive?'QR Göster':'QR Bağla',style:const TextStyle(fontSize:10,fontWeight:FontWeight.w800)),
+            label:Text(_qrActive?'QR Göster':'QR Bağla',style:const TextStyle(fontSize:CepqarTheme.caption,fontWeight:FontWeight.w800)),
           ),
         ),
         const SizedBox(height:5),
@@ -1073,7 +1073,7 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
               shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(9)),
             ),
             icon:const Icon(Icons.ios_share_rounded,size:14),
-            label:const Text('Paylaş',style:TextStyle(fontSize:10,fontWeight:FontWeight.w800)),
+            label:const Text('Paylaş',style:TextStyle(fontSize:CepqarTheme.caption,fontWeight:FontWeight.w800)),
           ),
         ),
       ])),
@@ -1093,8 +1093,8 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
         ),
         const SizedBox(width:7),
         Expanded(child:Column(mainAxisAlignment:MainAxisAlignment.center,crossAxisAlignment:CrossAxisAlignment.start,children:[
-          Text(value,style:TextStyle(color:CepqarTheme.text,fontSize:14.5,fontWeight:FontWeight.w900)),
-          Text(label,maxLines:2,overflow:TextOverflow.ellipsis,style:TextStyle(color:_muted,fontSize:9.2,height:1.12,fontWeight:FontWeight.w600)),
+          Text(value,style:TextStyle(color:CepqarTheme.text,fontSize:15,fontWeight:FontWeight.w900)),
+          Text(label,maxLines:2,overflow:TextOverflow.ellipsis,style:TextStyle(color:_muted,fontSize:CepqarTheme.caption,height:1.12,fontWeight:FontWeight.w600)),
         ])),
       ]),
     ),
@@ -1121,9 +1121,9 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
             ),
             const SizedBox(width:10),
             Expanded(child:Column(mainAxisAlignment:MainAxisAlignment.center,crossAxisAlignment:CrossAxisAlignment.start,children:[
-              Text(title,style:TextStyle(color:CepqarTheme.text,fontSize:12.2,fontWeight:FontWeight.w800)),
+              Text(title,style:TextStyle(color:CepqarTheme.text,fontSize:CepqarTheme.body,fontWeight:FontWeight.w800)),
               const SizedBox(height:2),
-              Text(subtitle,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:_muted,fontSize:10.2,fontWeight:FontWeight.w500)),
+              Text(subtitle,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:_muted,fontSize:CepqarTheme.caption,fontWeight:FontWeight.w500)),
             ])),
             Icon(Icons.chevron_right_rounded,color:_muted,size:18),
           ]),
@@ -1295,8 +1295,8 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
                         ),
                         const SizedBox(width:10),
                         Expanded(child:Column(mainAxisAlignment:MainAxisAlignment.center,crossAxisAlignment:CrossAxisAlignment.start,children:[
-                          const Text('Bu Aracı Sil',style:TextStyle(color:Color(0xFFE84C61),fontSize:12.2,fontWeight:FontWeight.w900)),
-                          Text('Bu aracı hesabınızdan kalıcı olarak silin.',style:TextStyle(color:const Color(0xFFE84C61).withValues(alpha:.72),fontSize:10.2)),
+                          const Text('Bu Aracı Sil',style:TextStyle(color:Color(0xFFE84C61),fontSize:CepqarTheme.body,fontWeight:FontWeight.w900)),
+                          Text('Bu aracı hesabınızdan kalıcı olarak silin.',style:TextStyle(color:const Color(0xFFE84C61).withValues(alpha:.72),fontSize:CepqarTheme.caption)),
                         ])),
                         const Icon(Icons.chevron_right_rounded,color:Color(0xFFE84C61),size:18),
                       ]),
