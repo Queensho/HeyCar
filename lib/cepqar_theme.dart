@@ -34,6 +34,16 @@ class CepqarTheme {
   static const lightText = Color(0xFF0B1530);
   static const lightMuted = Color(0xFF6E7890);
 
+  // Shared owner-app sizing scale. Keep authenticated screens visually consistent.
+  static const double pageTitle = 25;
+  static const double sectionTitle = 18;
+  static const double cardTitle = 13;
+  static const double body = 12;
+  static const double bodySmall = 11;
+  static const double caption = 10.5;
+  static const double buttonText = 12.5;
+  static const double navText = 10.5;
+
   static Color get bg => isLight ? lightBg : darkBg;
   static Color get panel => isLight ? lightPanel : darkPanel;
   static Color get line => isLight ? lightLine : darkLine;
