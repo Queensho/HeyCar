@@ -123,7 +123,7 @@ module.exports=function registerQrSecurityRoutes(app,pool,pushService){
       [qr.token,qr.vehicle_id,String(qr.owner_id),hash,scanSessionHash||null,loc.city||null,loc.region||null,loc.country||null,loc.source||null]
     );
     const row=ins.rows[0];
-    if(!loc.city&&!loc.region&&isPublicIp(ip))enrichLocation(row.id,ip).catch(()=>{});
+    // Do not persist IP-derived city/region. Mobile carrier, VPN and proxy exits can map to the wrong country.
 
     const counts=await pool.query(
       `SELECT
@@ -201,7 +201,7 @@ module.exports=function registerQrSecurityRoutes(app,pool,pushService){
           [vehicleId]
         ),
         pool.query(
-          `SELECT id,created_at,city,region,country,suspicious,suspicion_reason
+          `SELECT id,created_at,city,region,country,location_source,suspicious,suspicion_reason
              FROM qr_scan_history
             WHERE vehicle_id::text=$1
             ORDER BY created_at DESC
