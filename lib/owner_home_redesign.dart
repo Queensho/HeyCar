@@ -28,6 +28,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   Timer? timer;
   List<Map<String,dynamic>> notices=[];
   Map<String,dynamic>? valetSession;
+  bool valetRequesting=false;
   bool loading=true;
 
   bool get light=>CepqarTheme.isLight;
@@ -142,7 +143,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   ));
 
   Widget header()=>SizedBox(
-    height:light?194:182,
+    height:194,
     child:Stack(children:[
       Positioned.fill(
         child:Container(
@@ -211,6 +212,25 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
           ),
         ),
       ),
+      Positioned(
+        left:0,right:0,bottom:0,height:42,
+        child:IgnorePointer(
+          child:Container(
+            decoration:BoxDecoration(
+              gradient:LinearGradient(
+                begin:Alignment.topCenter,
+                end:Alignment.bottomCenter,
+                colors:[
+                  (light?const Color(0xFFF8F6FF):const Color(0xFF080B15)).withValues(alpha:0),
+                  pageBg.withValues(alpha:.72),
+                  pageBg,
+                ],
+                stops:const [0,.62,1],
+              ),
+            ),
+          ),
+        ),
+      ),
       Padding(
         padding:EdgeInsets.fromLTRB(20,MediaQuery.paddingOf(context).top+2,18,0),
         child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
@@ -225,16 +245,80 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             Container(width:42,height:42,alignment:Alignment.center,decoration:BoxDecoration(shape:BoxShape.circle,gradient:const LinearGradient(colors:[Color(0xFF5820C8),Color(0xFF8C4DFF)])),child:Text(initials,style:const TextStyle(color:Colors.white,fontSize:14,fontWeight:FontWeight.w900))),
           ]),
           const SizedBox(height:13),
-          if(light)...[
-            Text('Merhaba',style:TextStyle(color:muted,fontSize:17,fontWeight:FontWeight.w600)),
-            Text('$firstName Bey',style:TextStyle(color:text,fontSize:28,fontWeight:FontWeight.w900,height:1.02)),
-            const SizedBox(height:7),
-          ],
-          SizedBox(width:180,child:Text('Aracınızla dünya\nsizinle iletişimde.',style:TextStyle(color:muted,fontSize:light?16.5:18,fontWeight:FontWeight.w700,height:1.2))),
+          Text('Merhaba',style:TextStyle(color:light?muted:const Color(0xFFC8D0E2),fontSize:17,fontWeight:FontWeight.w600)),
+          Text('$firstName Bey',style:TextStyle(color:light?text:Colors.white,fontSize:28,fontWeight:FontWeight.w900,height:1.02)),
+          const SizedBox(height:7),
+          SizedBox(width:190,child:Text('Aracınızla dünya\nsizinle iletişimde.',style:TextStyle(color:light?muted:const Color(0xFFB8C1D4),fontSize:16.5,fontWeight:FontWeight.w700,height:1.2))),
         ]),
       ),
     ]),
   );
+
+  int _valetStep(String status)=>switch(status){
+    'accepted'=>0,
+    'parked'=>1,
+    'requested'=>2,
+    'retrieving'=>2,
+    'ready'=>3,
+    _=>0,
+  };
+
+  Future<void> _requestValetVehicle()async{
+    final vehicleId=QrDraft.vehicleId.trim();
+    if(vehicleId.isEmpty||valetRequesting)return;
+    setState(()=>valetRequesting=true);
+    try{
+      final r=await OwnerHttp.post(
+        Uri.parse('${OnboardingBackend.baseUrl}/api/owner/valet/$vehicleId/request'),
+        body:jsonEncode(<String,dynamic>{}),
+      );
+      final d=r.body.isEmpty?null:jsonDecode(r.body);
+      if(r.statusCode>=200&&r.statusCode<300){
+        final code=d is Map?'${d['deliveryCode']??''}':'';
+        await load(silent:true);
+        if(mounted){
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content:Text(code.isEmpty?'Araç getirme talebi gönderildi.':'Araç çağrıldı • Teslim kodu: $code')),
+          );
+        }
+      }else{
+        final err=d is Map?'${d['error']??''}':'';
+        if(mounted)ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content:Text(err=='VALET_REQUEST_ALREADY_ACTIVE'?'Araç getirme talebi zaten aktif.':'Araç çağırma işlemi başlatılamadı.')),
+        );
+      }
+    }catch(_){
+      if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Vale bağlantısına ulaşılamadı.')));
+    }finally{
+      if(mounted)setState(()=>valetRequesting=false);
+    }
+  }
+
+  Widget _valetTimeline(String status,Color accent){
+    const labels=['Alındı','Park','Getiriliyor','Hazır'];
+    final current=_valetStep(status);
+    return Row(children:List.generate(labels.length,(i){
+      final done=i<=current;
+      return Expanded(
+        child:Row(children:[
+          Expanded(child:Column(children:[
+            Container(
+              width:18,height:18,
+              decoration:BoxDecoration(
+                shape:BoxShape.circle,
+                color:done?accent:accent.withValues(alpha:light ? .08 : .12),
+                border:Border.all(color:accent.withValues(alpha:done?1:.35),width:1),
+              ),
+              child:Icon(done?Icons.check_rounded:Icons.circle_outlined,color:done?Colors.white:accent,size:11),
+            ),
+            const SizedBox(height:2),
+            Text(labels[i],maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:done?text:muted,fontSize:6.7,fontWeight:done?FontWeight.w800:FontWeight.w600)),
+          ])),
+          if(i<labels.length-1)Container(width:8,height:1,color:accent.withValues(alpha:i<current ? .75 : .24)),
+        ]),
+      );
+    }));
+  }
 
   String _valetStatusTitle(String status)=>switch(status){
     'accepted'=>'Vale aracınızı teslim aldı',
@@ -264,69 +348,69 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   Widget _valetVehicleCard(Map<String,dynamic> s){
     final status='${s['status']??'parked'}';
     final venue='${s['business_name']??'CepQontag Vale'}'.trim();
-    final area='${s['parking_area']??''}'.trim();
-    final slot='${s['parking_slot']??''}'.trim();
     final accent=_valetAccent(status);
-    final location=[if(area.isNotEmpty)area,if(slot.isNotEmpty)slot].join(' • ');
+    final canRequest=status=='parked'||status=='accepted';
+    final buttonText=valetRequesting
+      ?'Gönderiliyor...'
+      :status=='ready'
+        ?'Teslime Hazır'
+        :status=='retrieving'||status=='requested'
+          ?'Araç Getiriliyor'
+          :'Araç Çağır';
 
-    return InkWell(
-      onTap:widget.services,
-      borderRadius:BorderRadius.circular(18),
-      child:Container(
-        height:132,
-        padding:const EdgeInsets.fromLTRB(13,12,11,11),
-        decoration:BoxDecoration(
-          color:panel,
-          borderRadius:BorderRadius.circular(18),
-          border:Border.all(color:accent.withValues(alpha:light ? .34 : .48)),
-          boxShadow:light?[BoxShadow(color:accent.withValues(alpha:.07),blurRadius:16,offset:const Offset(0,6))]:null,
-        ),
-        child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-          Row(children:[
-            Container(
-              width:32,height:32,
-              decoration:BoxDecoration(color:accent.withValues(alpha:light ? .10 : .18),borderRadius:BorderRadius.circular(10)),
-              child:Icon(Icons.support_agent_rounded,color:accent,size:19),
-            ),
-            const SizedBox(width:8),
-            Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-              Text('VALE',style:TextStyle(color:accent,fontSize:9,fontWeight:FontWeight.w900,letterSpacing:.7)),
-              Text(venue.isEmpty?'CepQontag Vale':venue,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:text,fontSize:11.5,fontWeight:FontWeight.w900)),
-            ])),
-            Container(
-              padding:const EdgeInsets.symmetric(horizontal:7,vertical:4),
-              decoration:BoxDecoration(color:accent.withValues(alpha:light ? .10 : .16),borderRadius:BorderRadius.circular(20)),
-              child:Text(_valetBadge(status),style:TextStyle(color:accent,fontSize:7.8,fontWeight:FontWeight.w900)),
-            ),
-          ]),
-          const SizedBox(height:9),
-          Text(_valetStatusTitle(status),maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:text,fontSize:13.5,fontWeight:FontWeight.w900)),
-          const SizedBox(height:3),
-          Text(
-            location.isEmpty?(QrDraft.plate.isEmpty?'Araç vale işlemi aktif':QrDraft.plate):location,
-            maxLines:1,
-            overflow:TextOverflow.ellipsis,
-            style:TextStyle(color:muted,fontSize:10.2,fontWeight:FontWeight.w600),
-          ),
-          const Spacer(),
-          Row(children:[
-            Icon(
-              status=='ready'?Icons.check_circle_rounded:status=='retrieving'?Icons.directions_car_filled_rounded:Icons.local_parking_rounded,
-              color:accent,size:18,
-            ),
-            const SizedBox(width:6),
-            Expanded(
-              child:Text(
-                status=='parked'?'Aracımı getir durumunu takip et':'Vale sürecini takip et',
-                maxLines:1,
-                overflow:TextOverflow.ellipsis,
-                style:TextStyle(color:accent,fontSize:9.5,fontWeight:FontWeight.w900),
-              ),
-            ),
-            Icon(Icons.chevron_right_rounded,color:accent,size:20),
-          ]),
-        ]),
+    return Container(
+      height:132,
+      padding:const EdgeInsets.fromLTRB(11,9,10,8),
+      decoration:BoxDecoration(
+        color:panel,
+        borderRadius:BorderRadius.circular(18),
+        border:Border.all(color:accent.withValues(alpha:light ? .34 : .48)),
+        boxShadow:light?[BoxShadow(color:accent.withValues(alpha:.07),blurRadius:16,offset:const Offset(0,6))]:null,
       ),
+      child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        Row(children:[
+          Container(
+            width:28,height:28,
+            decoration:BoxDecoration(color:accent.withValues(alpha:light ? .10 : .18),borderRadius:BorderRadius.circular(9)),
+            child:Icon(Icons.support_agent_rounded,color:accent,size:17),
+          ),
+          const SizedBox(width:7),
+          Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+            Text('VALE',style:TextStyle(color:accent,fontSize:8,fontWeight:FontWeight.w900,letterSpacing:.6)),
+            Text(venue.isEmpty?'CepQontag Vale':venue,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:text,fontSize:10.5,fontWeight:FontWeight.w900)),
+          ])),
+          Container(
+            padding:const EdgeInsets.symmetric(horizontal:6,vertical:3),
+            decoration:BoxDecoration(color:accent.withValues(alpha:light ? .10 : .16),borderRadius:BorderRadius.circular(18)),
+            child:Text(_valetBadge(status),style:TextStyle(color:accent,fontSize:6.8,fontWeight:FontWeight.w900)),
+          ),
+        ]),
+        const SizedBox(height:5),
+        Text(_valetStatusTitle(status),maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:text,fontSize:11.5,fontWeight:FontWeight.w900)),
+        const SizedBox(height:5),
+        _valetTimeline(status,accent),
+        const Spacer(),
+        SizedBox(
+          width:double.infinity,
+          height:27,
+          child:FilledButton.icon(
+            onPressed:canRequest&&!valetRequesting?_requestValetVehicle:null,
+            style:FilledButton.styleFrom(
+              backgroundColor:accent,
+              disabledBackgroundColor:accent.withValues(alpha:light ? .12 : .18),
+              disabledForegroundColor:light?muted:const Color(0xFFC3CAD8),
+              foregroundColor:Colors.white,
+              padding:const EdgeInsets.symmetric(horizontal:8),
+              shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(10)),
+            ),
+            icon:Icon(
+              status=='ready'?Icons.check_circle_rounded:status=='retrieving'||status=='requested'?Icons.directions_car_filled_rounded:Icons.directions_car_rounded,
+              size:14,
+            ),
+            label:Text(buttonText,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:8.6,fontWeight:FontWeight.w900)),
+          ),
+        ),
+      ]),
     );
   }
 
