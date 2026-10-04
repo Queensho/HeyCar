@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:geolocator/geolocator.dart';
 import 'onboarding_backend.dart';import 'qr_backend.dart';import 'vehicle_api.dart';import 'owner_notifications_page.dart';import 'owner_settings_page.dart';import 'owner_vehicles_page.dart';import 'owner_dashboard_stats.dart';import 'parking_location_card.dart';import 'owner_shortcuts.dart';import 'cepqar_theme.dart';import 'maintenance_page.dart';import 'vehicle_reminders_page.dart';import 'cepqar_offers_page.dart';
 import 'owner_auth.dart';
 import 'qr_security_page.dart';
@@ -17,8 +20,81 @@ Future<void> _vehicleChanged()async{setState(()=>parked=false);await _loadVehicl
 Future<void> _parking()async{if(vid.isEmpty)return;bool garage=false,street=false;try{final p=await SharedPreferences.getInstance(),prefix='street_park_${vid}_';street=p.getDouble('${prefix}lat')!=null&&p.getDouble('${prefix}lng')!=null&&p.getString('${prefix}time')!=null;}catch(_){}try{final r=await OwnerHttp.get(Uri.parse('${QrBackend.baseUrl}/api/vehicles/$vid/parking'),json:false);if(r.statusCode>=200&&r.statusCode<300){final d=jsonDecode(r.body);garage=d is Map&&d['parking'] is Map;}}catch(_){}if(mounted)setState(()=>parked=garage||street);}
 void _qr(){final t=QrDraft.token.trim();if(t.isEmpty){ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('${QrDraft.plate.trim().isEmpty?'Seçili araç':QrDraft.plate} için QR aktif değil. Araçlarım bölümünden QR Aktif Et’e bas.')));return;}final secret=QrDraft.scanSecret.trim();final u='https://queensho.github.io/HeyCar/?tag=${Uri.encodeComponent(t)}${secret.isEmpty?'':'&s=${Uri.encodeComponent(secret)}'}';showModalBottomSheet(context:context,backgroundColor:CepqarTheme.panel,builder:(c)=>Padding(padding:const EdgeInsets.all(22),child:Column(mainAxisSize:MainAxisSize.min,children:[Text('${QrDraft.plate} QR',style:TextStyle(color:CepqarTheme.text,fontSize:23,fontWeight:FontWeight.w900)),const SizedBox(height:14),Container(width:225,height:225,padding:const EdgeInsets.all(12),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(22)),child:Image.network('https://quickchart.io/qr?text=${Uri.encodeComponent(u)}&size=420',errorBuilder:(_,__,___)=>const Icon(Icons.qr_code_2,size:160,color:Colors.black))),const SizedBox(height:10),Text(t,style:TextStyle(color:CepqarTheme.muted,fontWeight:FontWeight.w700))])));}
 Future<void> _park()async{if(vid.isEmpty)return;await showModalBottomSheet(context:context,isScrollControlled:true,backgroundColor:CepqarTheme.bg,builder:(c)=>Padding(padding:const EdgeInsets.all(18),child:ParkingLocationCard(vehicleId:vid)));await _parking();}
-void action(String a){if(a=='qr')_qr();else if(a=='qr_security'&&vid.isNotEmpty)Navigator.push(context,MaterialPageRoute(builder:(_)=>QrSecurityPage(vehicleId:vid,plate:QrDraft.plate)));else if(a=='parking')_park();else if(a=='notifications')setState(()=>tab=1);else if(a=='vehicles'||a=='drivers')setState(()=>tab=2);else if(a=='settings')setState(()=>tab=3);else if(a=='offers')Navigator.push(context,MaterialPageRoute(builder:(_)=>const CepqarOffersPage()));else if(a=='roadside_help')Navigator.push(context,MaterialPageRoute(builder:(_)=>const RoadsideHelpPage()));else if(a=='maintenance')Navigator.push(context,MaterialPageRoute(builder:(_)=>MaintenancePage(plate:QrDraft.plate,title:'${QrDraft.make} ${QrDraft.model}'.trim())));else if(a=='reminders'&&vid.isNotEmpty)Navigator.push(context,MaterialPageRoute(builder:(_)=>VehicleRemindersPage(vehicleId:vid)));}
-@override Widget build(BuildContext context)=>ValueListenableBuilder<ThemeMode>(valueListenable:CepqarTheme.mode,builder:(_,__,___)=>ValueListenableBuilder<int>(valueListenable:ownerUnreadNotificationCount,builder:(c,unread,_){final pages=[_Home(key:ValueKey('home-$vid-${QrDraft.token}'),notifications:()=>setState(()=>tab=1),vehicles:()=>setState(()=>tab=2),park:_park,shortcut:action,parked:parked),OwnerNotificationsPage(key:ValueKey('notifications-$vid'),vehicleId:vid,plate:QrDraft.plate),OwnerVehiclesPage(onVehicleChanged:_vehicleChanged),OwnerSettingsPage(onOpenVehicles:()=>setState(()=>tab=2),onOpenQr:_qr)];const labels=['Ana Sayfa','Bildirimler','Araçlarım','Ayarlar'],icons=[Icons.home_rounded,Icons.notifications_none_rounded,Icons.directions_car_outlined,Icons.settings_outlined];return Scaffold(backgroundColor:CepqarTheme.bg,body:vehicleLoading?const Center(child:CircularProgressIndicator()):IndexedStack(index:tab,children:pages),bottomNavigationBar:Container(height:82,decoration:BoxDecoration(color:CepqarTheme.panel,border:Border(top:BorderSide(color:CepqarTheme.line))),child:SafeArea(top:false,child:Row(children:List.generate(4,(i){final a=tab==i;return Expanded(child:InkWell(onTap:()=>setState(()=>tab=i),child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[Stack(clipBehavior:Clip.none,children:[Icon(icons[i],color:a?CepqarTheme.purple:CepqarTheme.muted,size:28),if(i==1&&unread>0)const Positioned(right:-5,top:-4,child:CircleAvatar(radius:4,backgroundColor:Color(0xFFFF4D63)))]),const SizedBox(height:5),Text(labels[i],style:TextStyle(color:a?CepqarTheme.purple:CepqarTheme.muted,fontSize:11.5,fontWeight:a?FontWeight.w800:FontWeight.w500))])));})))));}));}
+void action(String a){if(a=='qr')_qr();else if(a=='qr_security'&&vid.isNotEmpty)Navigator.push(context,MaterialPageRoute(builder:(_)=>QrSecurityPage(vehicleId:vid,plate:QrDraft.plate)));else if(a=='parking')_park();else if(a=='notifications')setState(()=>tab=3);else if(a=='vehicles'||a=='drivers')setState(()=>tab=1);else if(a=='services')setState(()=>tab=2);else if(a=='settings')setState(()=>tab=4);else if(a=='offers')Navigator.push(context,MaterialPageRoute(builder:(_)=>const CepqarOffersPage()));else if(a=='roadside_help')Navigator.push(context,MaterialPageRoute(builder:(_)=>const RoadsideHelpPage()));else if(a=='maintenance')Navigator.push(context,MaterialPageRoute(builder:(_)=>MaintenancePage(plate:QrDraft.plate,title:'${QrDraft.make} ${QrDraft.model}'.trim())));else if(a=='reminders'&&vid.isNotEmpty)Navigator.push(context,MaterialPageRoute(builder:(_)=>VehicleRemindersPage(vehicleId:vid)));}
+@override Widget build(BuildContext context)=>ValueListenableBuilder<ThemeMode>(
+  valueListenable:CepqarTheme.mode,
+  builder:(_,__,___)=>ValueListenableBuilder<int>(
+    valueListenable:ownerUnreadNotificationCount,
+    builder:(c,unread,_){
+      final pages=[
+        _Home(
+          key:ValueKey('home-$vid-${QrDraft.token}'),
+          notifications:()=>setState(()=>tab=3),
+          vehicles:()=>setState(()=>tab=1),
+          services:()=>setState(()=>tab=2),
+          park:_park,
+          shortcut:action,
+          parked:parked,
+        ),
+        OwnerVehiclesPage(onVehicleChanged:_vehicleChanged),
+        _ServicesPage(
+          onVale:()=>setState(()=>tab=2),
+          onTowing:()=>action('roadside_help'),
+          onPark:_park,
+          onOffers:()=>action('offers'),
+          onMaintenance:()=>action('maintenance'),
+          onReminders:()=>action('reminders'),
+        ),
+        OwnerNotificationsPage(key:ValueKey('notifications-$vid'),vehicleId:vid,plate:QrDraft.plate),
+        OwnerSettingsPage(onOpenVehicles:()=>setState(()=>tab=1),onOpenQr:_qr),
+      ];
+      const labels=['Anasayfa','Araçlarım','Hizmetler','Bildirimler','Profil'];
+      const icons=[Icons.home_rounded,Icons.directions_car_outlined,Icons.grid_view_rounded,Icons.receipt_long_outlined,Icons.person_outline_rounded];
+      return Scaffold(
+        backgroundColor:CepqarTheme.bg,
+        body:vehicleLoading?const Center(child:CircularProgressIndicator()):IndexedStack(index:tab,children:pages),
+        bottomNavigationBar:SafeArea(
+          top:false,
+          child:Container(
+            height:72,
+            margin:const EdgeInsets.fromLTRB(14,0,14,10),
+            padding:const EdgeInsets.symmetric(horizontal:6,vertical:6),
+            decoration:BoxDecoration(
+              color:CepqarTheme.isLight?Colors.white:const Color(0xFF090F1D),
+              borderRadius:BorderRadius.circular(28),
+              border:Border.all(color:CepqarTheme.isLight?const Color(0xFFE6E6F0):const Color(0xFF1B2540)),
+              boxShadow:[BoxShadow(color:Colors.black.withValues(alpha:CepqarTheme.isLight?.08:.30),blurRadius:22,offset:const Offset(0,8))],
+            ),
+            child:Row(children:List.generate(5,(i){
+              final active=tab==i;
+              return Expanded(
+                child:InkWell(
+                  onTap:()=>setState(()=>tab=i),
+                  borderRadius:BorderRadius.circular(20),
+                  child:AnimatedContainer(
+                    duration:const Duration(milliseconds:180),
+                    decoration:BoxDecoration(
+                      color:active?CepqarTheme.purple.withValues(alpha:CepqarTheme.isLight?.10:.18):Colors.transparent,
+                      borderRadius:BorderRadius.circular(20),
+                    ),
+                    child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[
+                      Stack(clipBehavior:Clip.none,children:[
+                        Icon(icons[i],size:23,color:active?CepqarTheme.purple:CepqarTheme.muted),
+                        if(i==3&&unread>0)const Positioned(right:-4,top:-3,child:CircleAvatar(radius:4,backgroundColor:Color(0xFFFF4158))),
+                      ]),
+                      const SizedBox(height:3),
+                      Text(labels[i],maxLines:1,style:TextStyle(fontSize:9.5,fontWeight:active?FontWeight.w800:FontWeight.w600,color:active?CepqarTheme.purple:CepqarTheme.muted)),
+                    ]),
+                  ),
+                ),
+              );
+            })),
+          ),
+        ),
+      );
+    },
+  ),
+);
 class _Home extends StatefulWidget{const _Home({super.key,required this.notifications,required this.vehicles,required this.park,required this.shortcut,required this.parked});final VoidCallback notifications,vehicles,park;final ValueChanged<String> shortcut;final bool parked;@override State<_Home> createState()=>_HS();}
 class _HS extends State<_Home>{List<String> ids=[...defaultOwnerShortcutIds];bool edit=false;String get key=>'owner_shortcuts_${OnboardingDraft.userId.trim().isEmpty?'local':OnboardingDraft.userId.trim()}';String get name=>OnboardingDraft.displayName.trim().isEmpty?'Araç Sahibi':OnboardingDraft.displayName.trim().split(' ').first;
 List<String> _normalizeShortcuts(Iterable<String> source){final valid=source.where((x)=>ownerShortcutCatalog.any((d)=>d.id==x)&&!fixedOwnerShortcutIds.contains(x)).toList();final out=<String>[...fixedOwnerShortcutIds];for(final id in valid){if(out.length>=maxOwnerShortcuts)break;if(!out.contains(id))out.add(id);}return out;}
