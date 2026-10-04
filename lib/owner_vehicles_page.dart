@@ -39,18 +39,11 @@ Widget _brandHeader(){
   return SizedBox(
     height:42,
     child:Row(children:[
-      Container(
-        width:30,height:30,
-        decoration:BoxDecoration(
-          borderRadius:BorderRadius.circular(8),
-          color:_purple.withValues(alpha:CepqarTheme.isLight ? .10 : .14),
-        ),
-        child:const Icon(Icons.qr_code_2_rounded,color:_purple,size:23),
-      ),
-      const SizedBox(width:8),
-      Text(
-        'Cepqontag',
-        style:TextStyle(color:_text,fontSize:24,fontWeight:FontWeight.w900,letterSpacing:-.9),
+      Image.asset(
+        'assets/Logoyeni.png',
+        height:31,
+        fit:BoxFit.contain,
+        alignment:Alignment.centerLeft,
       ),
       const Spacer(),
       Container(
