@@ -95,12 +95,14 @@ class _QrSecurityPageState extends State<QrSecurityPage> {
   }
 
   String _place(Map<String, dynamic> x) {
+    final source = '${x['location_source'] ?? ''}'.trim();
+    if (source == 'ip_lookup') return 'Konum doğrulanamadı';
     final parts = <String>[];
     for (final key in ['city', 'region', 'country']) {
       final v = '${x[key] ?? ''}'.trim();
       if (v.isNotEmpty && !parts.contains(v)) parts.add(v);
     }
-    return parts.isEmpty ? 'Yaklaşık bölge belirlenemedi' : parts.join(', ');
+    return parts.isEmpty ? 'Konum doğrulanamadı' : parts.join(', ');
   }
 
   String _reason(dynamic raw) => switch ('$raw') {
