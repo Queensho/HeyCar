@@ -110,12 +110,38 @@ module.exports=function registerTowingRoutes(app,pool,adminGuard){
     const ownerId=authenticatedOwnerId(req);if(!ownerId)return res.status(401).json({error:'OWNER_REQUIRED'});
     try{const r=await pool.query(`SELECT r.id,r.status,r.driver_lat,r.driver_lng,r.driver_location_at,r.pickup_eta_minutes,r.pickup_distance_km,r.destination_eta_minutes,r.destination_distance_km,
       r.pickup_lat,r.pickup_lng,r.pickup_address,r.destination_lat,r.destination_lng,r.destination_address,r.distance_km,
-      p.display_name AS provider_name,p.provider_type,d.full_name AS driver_name,v.plate AS towing_plate,v.brand AS towing_brand,v.model AS towing_model,v.truck_type
+      p.display_name AS provider_name,p.provider_type,d.full_name AS driver_name,d.phone AS driver_phone,v.plate AS towing_plate,v.brand AS towing_brand,v.model AS towing_model,v.truck_type
       FROM towing_requests r LEFT JOIN towing_providers p ON p.id=r.accepted_provider_id LEFT JOIN towing_provider_drivers d ON d.id=r.accepted_driver_id LEFT JOIN towing_provider_vehicles v ON v.id=r.accepted_towing_vehicle_id
       WHERE r.id=$1 AND r.owner_id=$2 LIMIT 1`,[req.params.id,ownerId]);if(!r.rowCount)return res.status(404).json({error:'TOWING_REQUEST_NOT_FOUND'});return res.json({ok:true,tracking:r.rows[0]});}
     catch(e){console.error('owner towing tracking',e);return res.status(500).json({error:'SERVER_ERROR'});}
   });
 
+
+  app.get('/api/owner/towing/requests/:id/messages',async(req,res)=>{
+    const ownerId=authenticatedOwnerId(req);if(!ownerId)return res.status(401).json({error:'OWNER_REQUIRED'});
+    try{
+      const job=await pool.query("SELECT id FROM towing_requests WHERE id=$1 AND owner_id=$2 LIMIT 1",[req.params.id,ownerId]);
+      if(!job.rowCount)return res.status(404).json({error:'TOWING_REQUEST_NOT_FOUND'});
+      const m=await pool.query("SELECT id,sender_role,message,created_at FROM towing_messages WHERE request_id=$1 ORDER BY created_at,id LIMIT 300",[req.params.id]);
+      return res.json({ok:true,items:m.rows});
+    }catch(e){console.error('owner towing messages',e);return res.status(500).json({error:'SERVER_ERROR'});}
+  });
+
+  app.post('/api/owner/towing/requests/:id/messages',async(req,res)=>{
+    const ownerId=authenticatedOwnerId(req);if(!ownerId)return res.status(401).json({error:'OWNER_REQUIRED'});
+    const message=String(req.body?.message||'').trim().slice(0,1000);if(!message)return res.status(400).json({error:'MESSAGE_REQUIRED'});
+    try{
+      const job=await pool.query(`SELECT r.id,r.status,d.user_id AS driver_user_id
+        FROM towing_requests r LEFT JOIN towing_provider_drivers d ON d.id=r.accepted_driver_id
+        WHERE r.id=$1 AND r.owner_id=$2 LIMIT 1`,[req.params.id,ownerId]);
+      if(!job.rowCount)return res.status(404).json({error:'TOWING_REQUEST_NOT_FOUND'});
+      if(!job.rows[0].driver_user_id)return res.status(409).json({error:'TOWING_DRIVER_NOT_ASSIGNED'});
+      if(job.rows[0].status==='cancelled')return res.status(409).json({error:'TOWING_CHAT_CLOSED'});
+      const m=await pool.query("INSERT INTO towing_messages(request_id,sender_user_id,sender_role,message) VALUES($1,$2,'owner',$3) RETURNING id,sender_role,message,created_at",[req.params.id,ownerId,message]);
+      try{const push=app.locals.heycarPush;if(push&&typeof push.sendOwner==='function')await push.sendOwner(String(job.rows[0].driver_user_id),{type:'towing_message',requestId:String(req.params.id),messageId:String(m.rows[0].id)},'Müşteriden mesaj',message);}catch(pushError){console.error('towing owner message push',pushError);}
+      return res.status(201).json({ok:true,message:m.rows[0]});
+    }catch(e){console.error('owner towing message send',e);return res.status(500).json({error:'SERVER_ERROR'});}
+  });
 
   app.get('/api/admin/manage/towing/providers',adminGuard,async(req,res)=>{
     const status=String(req.query?.status||'all');
