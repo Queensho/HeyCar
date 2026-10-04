@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'onboarding_backend.dart';
 import 'owner_chat_page.dart';
@@ -11,7 +10,6 @@ import 'owner_auth.dart';
 const _purple=Color(0xFF8B5CFF);
 Color get _bg=>CepqarTheme.bg;
 Color get _panel=>CepqarTheme.panel;
-Color get _panel2=>CepqarTheme.panel;
 Color get _line=>CepqarTheme.line;
 Color get _muted=>CepqarTheme.muted;
 Color get _text=>CepqarTheme.text;
@@ -34,9 +32,135 @@ String _desc(Map<String,dynamic> n){final m='${n['message']??''}'.trim(),p='${n[
 List<Map<String,dynamic>> get filtered{const fs=['Tümü','Park','Mesaj','Arama','Fırsat','Sistem'];if(tab==0)return List<Map<String,dynamic>>.from(items);final target=fs[tab];return items.where((e)=>_cat('${e['type']??'system'}')==target).toList();}
 Future<void> _markAllRead()async{final unread=items.where((e)=>e['status']=='new').toList();if(unread.isEmpty||markingAll)return;setState((){markingAll=true;for(final n in unread)n['status']='read';});ownerUnreadNotificationCount.value=0;try{for(final n in unread){final id='${n['id']??''}';if(id.isEmpty)continue;final r=await OwnerHttp.patch(Uri.parse('$base/api/owner/notifications/$id'),headers:{'Cache-Control':'no-cache'},body:jsonEncode({'status':'read'})).timeout(const Duration(seconds:10));if(r.statusCode<200||r.statusCode>=300)throw Exception();}await _load(silent:true);}catch(_){await _load(silent:true);if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Bazı bildirimler okundu olarak işaretlenemedi.')));}finally{if(mounted)setState(()=>markingAll=false);}}
 @override Widget build(BuildContext c){final list=filtered,unread=items.where((e)=>e['status']=='new').length;final groups=<String,List<Map<String,dynamic>>>{'Bugün':[],'Dün':[],'Daha Önce':[]};for(final n in list)groups[_group(n)]!.add(n);return Scaffold(backgroundColor:_bg,body:SafeArea(bottom:false,child:RefreshIndicator(onRefresh:_load,color:_purple,child:ListView(physics:const AlwaysScrollableScrollPhysics(),padding:const EdgeInsets.fromLTRB(14,7,14,22),children:[_header(unread),const SizedBox(height:7),_filters(),const SizedBox(height:7),if(loading)const Padding(padding:EdgeInsets.all(48),child:Center(child:CircularProgressIndicator(color:_purple)))else if(error!=null)_state(Icons.error_outline_rounded,error!)else if(list.isEmpty)_state(Icons.notifications_none_rounded,tab==0?'Henüz bildiriminiz yok.':'Bu kategoride bildirim yok.')else ...[for(final g in ['Bugün','Dün','Daha Önce'])if(groups[g]!.isNotEmpty)_section(g,groups[g]!)]]))));}
-Widget _header(int unread){final light=CepqarTheme.isLight,canMark=unread>0&&!markingAll;return Container(padding:const EdgeInsets.fromLTRB(2,0,0,6),decoration:BoxDecoration(gradient:LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:light?[_purple.withValues(alpha:.08),Colors.transparent]:[_purple.withValues(alpha:.12),Colors.transparent])),child:Column(children:[SizedBox(height:40,child:Row(children:[Container(width:29,height:29,decoration:BoxDecoration(borderRadius:BorderRadius.circular(8),color:_purple.withValues(alpha:light?.10:.17)),child:const Icon(Icons.qr_code_2_rounded,color:_purple,size:22)),const SizedBox(width:8),Text('CepQontag',style:TextStyle(color:_text,fontSize:22,fontWeight:FontWeight.w900,letterSpacing:-.7)),const Spacer(),if(unread>0)Container(height:24,padding:const EdgeInsets.symmetric(horizontal:7),alignment:Alignment.center,decoration:BoxDecoration(color:const Color(0xFFFF4D63).withValues(alpha:light?.10:.16),borderRadius:BorderRadius.circular(12)),child:Text('$unread yeni',style:const TextStyle(color:Color(0xFFFF4D63),fontSize:9.2,fontWeight:FontWeight.w900)))])),Row(children:[Expanded(child:Text('Bildirimler',style:TextStyle(color:_text,fontSize:25,fontWeight:FontWeight.w900,letterSpacing:-.45))),TextButton.icon(onPressed:canMark?_markAllRead:null,style:TextButton.styleFrom(minimumSize:const Size(0,34),padding:const EdgeInsets.symmetric(horizontal:5),tapTargetSize:MaterialTapTargetSize.shrinkWrap,foregroundColor:_purple,disabledForegroundColor:_muted.withValues(alpha:.55)),icon:markingAll?const SizedBox(width:12,height:12,child:CircularProgressIndicator(strokeWidth:1.7,color:_purple)):const Icon(Icons.done_all_rounded,size:15),label:const Text('Tümünü Okundu İşaretle',style:TextStyle(fontSize:9.2,fontWeight:FontWeight.w800)))]),if(widget.plate.isNotEmpty)Align(alignment:Alignment.centerLeft,child:Text('${widget.plate} • seçili araç',style:TextStyle(color:_muted,fontSize:10,fontWeight:FontWeight.w600)))]));}
+Widget _header(int unread){final light=CepqarTheme.isLight,canMark=unread>0&&!markingAll;return Container(padding:const EdgeInsets.fromLTRB(2,0,0,6),decoration:BoxDecoration(gradient:LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:light?[_purple.withValues(alpha:.08),Colors.transparent]:[_purple.withValues(alpha:.12),Colors.transparent])),child:Column(children:[SizedBox(height:40,child:Row(children:[Container(width:29,height:29,decoration:BoxDecoration(borderRadius:BorderRadius.circular(8),color:_purple.withValues(alpha:light ? .10 : .17)),child:const Icon(Icons.qr_code_2_rounded,color:_purple,size:22)),const SizedBox(width:8),Text('CepQontag',style:TextStyle(color:_text,fontSize:22,fontWeight:FontWeight.w900,letterSpacing:-.7)),const Spacer(),if(unread>0)Container(height:24,padding:const EdgeInsets.symmetric(horizontal:7),alignment:Alignment.center,decoration:BoxDecoration(color:const Color(0xFFFF4D63).withValues(alpha:light ? .10 : .16),borderRadius:BorderRadius.circular(12)),child:Text('$unread yeni',style:const TextStyle(color:Color(0xFFFF4D63),fontSize:9.2,fontWeight:FontWeight.w900)))])),Row(children:[Expanded(child:Text('Bildirimler',style:TextStyle(color:_text,fontSize:25,fontWeight:FontWeight.w900,letterSpacing:-.45))),TextButton.icon(onPressed:canMark?_markAllRead:null,style:TextButton.styleFrom(minimumSize:const Size(0,34),padding:const EdgeInsets.symmetric(horizontal:5),tapTargetSize:MaterialTapTargetSize.shrinkWrap,foregroundColor:_purple,disabledForegroundColor:_muted.withValues(alpha:.55)),icon:markingAll?const SizedBox(width:12,height:12,child:CircularProgressIndicator(strokeWidth:1.7,color:_purple)):const Icon(Icons.done_all_rounded,size:15),label:const Text('Tümünü Okundu İşaretle',style:TextStyle(fontSize:9.2,fontWeight:FontWeight.w800)))]),if(widget.plate.isNotEmpty)Align(alignment:Alignment.centerLeft,child:Text('${widget.plate} • seçili araç',style:TextStyle(color:_muted,fontSize:10,fontWeight:FontWeight.w600)))]));}
 Widget _filters(){const fs=['Tümü','Park','Mesaj','Arama','Fırsat','Sistem'];return SizedBox(height:38,child:ListView.separated(scrollDirection:Axis.horizontal,itemCount:fs.length,separatorBuilder:(_,__)=>const SizedBox(width:6),itemBuilder:(_,i){final active=tab==i;return InkWell(onTap:()=>setState(()=>tab=i),borderRadius:BorderRadius.circular(11),child:AnimatedContainer(duration:const Duration(milliseconds:180),height:34,alignment:Alignment.center,padding:const EdgeInsets.symmetric(horizontal:13),decoration:BoxDecoration(color:active?_purple:_panel,borderRadius:BorderRadius.circular(11),border:Border.all(color:active?_purple:_line)),child:Text(fs[i],style:TextStyle(color:active?Colors.white:_muted,fontSize:10.5,fontWeight:FontWeight.w800))));}));}
 Widget _section(String name,List<Map<String,dynamic>> xs)=>Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Padding(padding:const EdgeInsets.fromLTRB(2,9,0,7),child:Text(name,style:TextStyle(color:_text,fontSize:13.5,fontWeight:FontWeight.w900))),for(final n in xs)...[_card(n),const SizedBox(height:7)]]);
-Widget _card(Map<String,dynamic> n){final t='${n['type']??'system'}',fresh=n['status']=='new',color=_vColor(t),light=CepqarTheme.isLight;return Material(color:Colors.transparent,child:InkWell(onTap:()=>_details(n),borderRadius:BorderRadius.circular(15),child:Ink(padding:const EdgeInsets.fromLTRB(10,10,8,10),decoration:BoxDecoration(color:fresh?Color.alphaBlend(_purple.withValues(alpha:light?.035:.055),_panel):_panel,borderRadius:BorderRadius.circular(15),border:Border.all(color:fresh?_purple.withValues(alpha:light?.18:.27):_line),boxShadow:light?[BoxShadow(color:Colors.black.withValues(alpha:.025),blurRadius:10,offset:const Offset(0,3))]:null),child:Row(children:[Container(width:40,height:40,decoration:BoxDecoration(color:color.withValues(alpha:light?.10:.16),borderRadius:BorderRadius.circular(12)),child:Icon(_vIcon(t),color:color,size:20)),const SizedBox(width:10),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(_vTitle(t),maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:_text,fontSize:12.8,fontWeight:fresh?FontWeight.w900:FontWeight.w800)),const SizedBox(height:3),Text(_desc(n),maxLines:2,overflow:TextOverflow.ellipsis,style:TextStyle(color:_muted,fontSize:10.4,height:1.2,fontWeight:FontWeight.w500))])),const SizedBox(width:7),SizedBox(width:48,child:Column(crossAxisAlignment:CrossAxisAlignment.end,children:[Text(_when(n),maxLines:1,style:TextStyle(color:_muted,fontSize:9.3,fontWeight:FontWeight.w600)),const SizedBox(height:8),Row(mainAxisAlignment:MainAxisAlignment.end,children:[if(fresh)const CircleAvatar(radius:3.5,backgroundColor:Color(0xFFFF4D63)),if(fresh)const SizedBox(width:6),Icon(Icons.chevron_right_rounded,color:_muted,size:18)])]))]))));}
-Future<void> _details(Map<String,dynamic> n)async{final t='${n['type']??'system'}',status='${n['status']??'new'}',fresh=status=='new',trackable=t!='message'&&t!='call_request',color=_vColor(t),photo='${n['photo_path']??''}'.trim(),lat=double.tryParse('${n['latitude']??''}'),lng=double.tryParse('${n['longitude']??''}'),plate='${n['plate']??''}'.trim();await showModalBottomSheet<void>(context:context,isScrollControlled:true,backgroundColor:_panel,shape:const RoundedRectangleBorder(borderRadius:BorderRadius.vertical(top:Radius.circular(22))),builder:(sc)=>SafeArea(top:false,child:Padding(padding:const EdgeInsets.fromLTRB(16,9,16,14),child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[Center(child:Container(width:38,height:4,decoration:BoxDecoration(color:_line,borderRadius:BorderRadius.circular(4)))),const SizedBox(height:13),Row(children:[Container(width:42,height:42,decoration:BoxDecoration(color:color.withValues(alpha:.13),borderRadius:BorderRadius.circular(13)),child:Icon(_vIcon(t),color:color,size:21)),const SizedBox(width:10),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(_vTitle(t),style:TextStyle(color:_text,fontSize:15,fontWeight:FontWeight.w900)),const SizedBox(height:2),Text([if(plate.isNotEmpty)plate,_when(n)].join(' • '),style:TextStyle(color:_muted,fontSize:10.5,fontWeight:FontWeight.w600))])),IconButton(onPressed:()=>Navigator.pop(sc),icon:Icon(Icons.close_rounded,color:_muted,size:20))]),const SizedBox(height:12),Container(width:double.infinity,padding:const EdgeInsets.all(12),decoration:BoxDecoration(color:CepqarTheme.isLight?const Color(0xFFF7F7FB):const Color(0xFF0B1426),borderRadius:BorderRadius.circular(14),border:Border.all(color:_line)),child:Text(_desc(n),style:TextStyle(color:_text,fontSize:12,height:1.38,fontWeight:FontWeight.w600))),if(photo.isNotEmpty||(lat!=null&&lng!=null))... [const SizedBox(height:8),Row(children:[if(photo.isNotEmpty)Expanded(child:TextButton.icon(onPressed:()=>launchUrl(Uri.parse(photo.startsWith('http')?photo:'$base$photo')),icon:const Icon(Icons.image_outlined,size:17),label:const Text('Fotoğraf',style:TextStyle(fontSize:10.5)))),if(photo.isNotEmpty&&lat!=null&&lng!=null)const SizedBox(width:6),if(lat!=null&&lng!=null)Expanded(child:TextButton.icon(onPressed:()=>launchUrl(Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng')),icon:const Icon(Icons.location_on_outlined,size:17),label:const Text('Konum',style:TextStyle(fontSize:10.5)))))]),],const SizedBox(height:11),Row(children:[Expanded(child:trackable?FilledButton.icon(onPressed:status=='resolved'||status=='arriving'?null:(){Navigator.pop(sc);_status(n,fresh?'read':'arriving');},style:FilledButton.styleFrom(backgroundColor:_purple,foregroundColor:Colors.white,minimumSize:const Size(0,42),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(13))),icon:Icon(fresh?Icons.visibility_rounded:Icons.directions_walk_rounded,size:17),label:Text(fresh?'Gördüm':status=='arriving'?'Geliyorum ✓':status=='resolved'?'Çözüldü':'Geliyorum',style:const TextStyle(fontSize:11,fontWeight:FontWeight.w800))):FilledButton.icon(onPressed:(){Navigator.pop(sc);_reply(n);},style:FilledButton.styleFrom(backgroundColor:_purple,foregroundColor:Colors.white,minimumSize:const Size(0,42),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(13))),icon:const Icon(Icons.reply_rounded,size:17),label:const Text('Cevapla',style:TextStyle(fontSize:11,fontWeight:FontWeight.w800))))),const SizedBox(width:8),Expanded(child:OutlinedButton.icon(onPressed:status=='resolved'?null:(){Navigator.pop(sc);_status(n,'resolved');},style:OutlinedButton.styleFrom(foregroundColor:_muted,side:BorderSide(color:_line),minimumSize:const Size(0,42),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(13))),icon:const Icon(Icons.check_circle_outline_rounded,size:17),label:Text(status=='resolved'?'Çözüldü ✓':'Çözüldü',style:const TextStyle(fontSize:11,fontWeight:FontWeight.w800)))))]),]))));}
+Widget _card(Map<String,dynamic> n){final t='${n['type']??'system'}',fresh=n['status']=='new',color=_vColor(t),light=CepqarTheme.isLight;return Material(color:Colors.transparent,child:InkWell(onTap:()=>_details(n),borderRadius:BorderRadius.circular(15),child:Ink(padding:const EdgeInsets.fromLTRB(10,10,8,10),decoration:BoxDecoration(color:fresh?Color.alphaBlend(_purple.withValues(alpha:light ? .035 : .055),_panel):_panel,borderRadius:BorderRadius.circular(15),border:Border.all(color:fresh?_purple.withValues(alpha:light ? .18 : .27):_line),boxShadow:light?[BoxShadow(color:Colors.black.withValues(alpha:.025),blurRadius:10,offset:const Offset(0,3))]:null),child:Row(children:[Container(width:40,height:40,decoration:BoxDecoration(color:color.withValues(alpha:light ? .10 : .16),borderRadius:BorderRadius.circular(12)),child:Icon(_vIcon(t),color:color,size:20)),const SizedBox(width:10),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(_vTitle(t),maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:_text,fontSize:12.8,fontWeight:fresh?FontWeight.w900:FontWeight.w800)),const SizedBox(height:3),Text(_desc(n),maxLines:2,overflow:TextOverflow.ellipsis,style:TextStyle(color:_muted,fontSize:10.4,height:1.2,fontWeight:FontWeight.w500))])),const SizedBox(width:7),SizedBox(width:48,child:Column(crossAxisAlignment:CrossAxisAlignment.end,children:[Text(_when(n),maxLines:1,style:TextStyle(color:_muted,fontSize:9.3,fontWeight:FontWeight.w600)),const SizedBox(height:8),Row(mainAxisAlignment:MainAxisAlignment.end,children:[if(fresh)const CircleAvatar(radius:3.5,backgroundColor:Color(0xFFFF4D63)),if(fresh)const SizedBox(width:6),Icon(Icons.chevron_right_rounded,color:_muted,size:18)])]))]))));}
+Future<void> _details(Map<String,dynamic> n)async{
+  final t='${n['type']??'system'}';
+  final status='${n['status']??'new'}';
+  final fresh=status=='new';
+  final trackable=t!='message'&&t!='call_request';
+  final color=_vColor(t);
+  final photo='${n['photo_path']??''}'.trim();
+  final lat=double.tryParse('${n['latitude']??''}');
+  final lng=double.tryParse('${n['longitude']??''}');
+  final plate='${n['plate']??''}'.trim();
+  final hasExtras=photo.isNotEmpty||(lat!=null&&lng!=null);
+  await showModalBottomSheet<void>(
+    context:context,
+    isScrollControlled:true,
+    backgroundColor:_panel,
+    shape:const RoundedRectangleBorder(borderRadius:BorderRadius.vertical(top:Radius.circular(22))),
+    builder:(sc){
+      return SafeArea(
+        top:false,
+        child:Padding(
+          padding:const EdgeInsets.fromLTRB(16,9,16,14),
+          child:Column(
+            mainAxisSize:MainAxisSize.min,
+            crossAxisAlignment:CrossAxisAlignment.start,
+            children:[
+              Center(child:Container(width:38,height:4,decoration:BoxDecoration(color:_line,borderRadius:BorderRadius.circular(4)))),
+              const SizedBox(height:13),
+              Row(children:[
+                Container(width:42,height:42,decoration:BoxDecoration(color:color.withValues(alpha:.13),borderRadius:BorderRadius.circular(13)),child:Icon(_vIcon(t),color:color,size:21)),
+                const SizedBox(width:10),
+                Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                  Text(_vTitle(t),style:TextStyle(color:_text,fontSize:15,fontWeight:FontWeight.w900)),
+                  const SizedBox(height:2),
+                  Text([if(plate.isNotEmpty)plate,_when(n)].join(' • '),style:TextStyle(color:_muted,fontSize:10.5,fontWeight:FontWeight.w600)),
+                ])),
+                IconButton(onPressed:()=>Navigator.pop(sc),icon:Icon(Icons.close_rounded,color:_muted,size:20)),
+              ]),
+              const SizedBox(height:12),
+              Container(
+                width:double.infinity,
+                padding:const EdgeInsets.all(12),
+                decoration:BoxDecoration(
+                  color:CepqarTheme.isLight?const Color(0xFFF7F7FB):const Color(0xFF0B1426),
+                  borderRadius:BorderRadius.circular(14),
+                  border:Border.all(color:_line),
+                ),
+                child:Text(_desc(n),style:TextStyle(color:_text,fontSize:12,height:1.38,fontWeight:FontWeight.w600)),
+              ),
+              if(hasExtras) ...[
+                const SizedBox(height:8),
+                Row(children:[
+                  if(photo.isNotEmpty)
+                    Expanded(child:TextButton.icon(
+                      onPressed:()=>launchUrl(Uri.parse(photo.startsWith('http')?photo:'$base$photo')),
+                      icon:const Icon(Icons.image_outlined,size:17),
+                      label:const Text('Fotoğraf',style:TextStyle(fontSize:10.5)),
+                    )),
+                  if(photo.isNotEmpty&&lat!=null&&lng!=null)const SizedBox(width:6),
+                  if(lat!=null&&lng!=null)
+                    Expanded(child:TextButton.icon(
+                      onPressed:()=>launchUrl(Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng')),
+                      icon:const Icon(Icons.location_on_outlined,size:17),
+                      label:const Text('Konum',style:TextStyle(fontSize:10.5)),
+                    )),
+                ]),
+              ],
+              const SizedBox(height:11),
+              Row(children:[
+                Expanded(
+                  child:trackable
+                    ?FilledButton.icon(
+                      onPressed:status=='resolved'||status=='arriving'?null:(){
+                        Navigator.pop(sc);
+                        _status(n,fresh?'read':'arriving');
+                      },
+                      style:FilledButton.styleFrom(
+                        backgroundColor:_purple,
+                        foregroundColor:Colors.white,
+                        minimumSize:const Size(0,42),
+                        shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(13)),
+                      ),
+                      icon:Icon(fresh?Icons.visibility_rounded:Icons.directions_walk_rounded,size:17),
+                      label:Text(
+                        fresh?'Gördüm':status=='arriving'?'Geliyorum ✓':status=='resolved'?'Çözüldü':'Geliyorum',
+                        style:const TextStyle(fontSize:11,fontWeight:FontWeight.w800),
+                      ),
+                    )
+                    :FilledButton.icon(
+                      onPressed:(){
+                        Navigator.pop(sc);
+                        _reply(n);
+                      },
+                      style:FilledButton.styleFrom(
+                        backgroundColor:_purple,
+                        foregroundColor:Colors.white,
+                        minimumSize:const Size(0,42),
+                        shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(13)),
+                      ),
+                      icon:const Icon(Icons.reply_rounded,size:17),
+                      label:const Text('Cevapla',style:TextStyle(fontSize:11,fontWeight:FontWeight.w800)),
+                    ),
+                ),
+                const SizedBox(width:8),
+                Expanded(
+                  child:OutlinedButton.icon(
+                    onPressed:status=='resolved'?null:(){
+                      Navigator.pop(sc);
+                      _status(n,'resolved');
+                    },
+                    style:OutlinedButton.styleFrom(
+                      foregroundColor:_muted,
+                      side:BorderSide(color:_line),
+                      minimumSize:const Size(0,42),
+                      shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(13)),
+                    ),
+                    icon:const Icon(Icons.check_circle_outline_rounded,size:17),
+                    label:Text(status=='resolved'?'Çözüldü ✓':'Çözüldü',style:const TextStyle(fontSize:11,fontWeight:FontWeight.w800)),
+                  ),
+                ),
+              ]),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
 Widget _state(IconData i,String t)=>Container(margin:const EdgeInsets.only(top:18),padding:const EdgeInsets.symmetric(horizontal:20,vertical:30),decoration:BoxDecoration(color:_panel,borderRadius:BorderRadius.circular(18),border:Border.all(color:_line)),child:Column(children:[Container(width:48,height:48,decoration:BoxDecoration(color:_purple.withValues(alpha:.10),borderRadius:BorderRadius.circular(15)),child:Icon(i,color:_purple,size:25)),const SizedBox(height:10),Text(t,textAlign:TextAlign.center,style:TextStyle(color:_muted,fontSize:12,fontWeight:FontWeight.w700))]));}
