@@ -393,7 +393,7 @@ class _PublicHomeState extends State<_PublicHome>{
           Text(message,textAlign:TextAlign.center,style:const TextStyle(color:_ink,fontSize:19,height:1.3,fontWeight:FontWeight.w800)),
           const SizedBox(height:9),
           Row(mainAxisAlignment:MainAxisAlignment.center,children:[const Icon(Icons.schedule_rounded,color:Color(0xFF8B91A3),size:16),const SizedBox(width:5),Flexible(child:Text(_updatedAgo(note['createdAt']),style:const TextStyle(color:Color(0xFF8B91A3),fontSize:12,fontWeight:FontWeight.w600)))]),
-          const SizedBox(height:18),
+          const SizedBox(height:10),
           SizedBox(width:double.infinity,height:48,child:FilledButton(onPressed:()=>Navigator.of(dialogContext).pop(),style:FilledButton.styleFrom(backgroundColor:_violet,foregroundColor:Colors.white,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(14))),child:const Text('Tamam',style:TextStyle(fontSize:15,fontWeight:FontWeight.w900)))),
         ])),
       ));
@@ -404,9 +404,10 @@ class _PublicHomeState extends State<_PublicHome>{
   Widget build(BuildContext context)
   {
     final size=MediaQuery.sizeOf(context);
-    final compact=size.width<390;
-    final heroHeight=compact?470.0:510.0;
-    final pagePad=compact?15.0:18.0;
+    final compact=size.width<390||size.height<760;
+    final short=size.height<700;
+    final heroHeight=short?278.0:(compact?300.0:330.0);
+    final pagePad=compact?14.0:17.0;
     final publicMessage=widget.theme.publicMessage.trim().isEmpty
         ? 'Numaram gizli,\nyolun açık.'
         : widget.theme.publicMessage.trim();
@@ -457,8 +458,8 @@ class _PublicHomeState extends State<_PublicHome>{
                       ),
                       Positioned(
                         left:pagePad,
-                        top:compact?112:122,
-                        width:compact?220:245,
+                        top:short?68:(compact?76:84),
+                        width:short?178:(compact?190:215),
                         child:Column(
                           crossAxisAlignment:CrossAxisAlignment.start,
                           children:[
@@ -466,18 +467,18 @@ class _PublicHomeState extends State<_PublicHome>{
                               'ARAÇ SAHİBİNE ULAŞ',
                               style:TextStyle(
                                 color:const Color(0xFF4D5877),
-                                fontSize:compact?10.5:11.5,
-                                letterSpacing:2.6,
+                                fontSize:short?8.7:(compact?9.4:10.5),
+                                letterSpacing:2.2,
                                 fontWeight:FontWeight.w800,
                               ),
                             ),
-                            SizedBox(height:compact?11:13),
+                            SizedBox(height:short?7:(compact?8:10)),
                             Text(
                               'Bana\nulaşmak',
                               style:TextStyle(
                                 color:_ink,
-                                fontSize:compact?43:48,
-                                height:.89,
+                                fontSize:short?31:(compact?34:38),
+                                height:.90,
                                 fontWeight:FontWeight.w900,
                                 letterSpacing:-1.8,
                               ),
@@ -486,32 +487,32 @@ class _PublicHomeState extends State<_PublicHome>{
                               'çok kolay.',
                               style:TextStyle(
                                 color:_violet,
-                                fontSize:compact?43:48,
-                                height:.93,
+                                fontSize:short?31:(compact?34:38),
+                                height:.94,
                                 fontWeight:FontWeight.w900,
                                 letterSpacing:-1.8,
                               ),
                             ),
                             const SizedBox(height:3),
                             Container(
-                              width:compact?166:184,
-                              height:10,
+                              width:short?122:(compact?136:150),
+                              height:7,
                               decoration:const BoxDecoration(
                                 border:Border(
-                                  top:BorderSide(color:Color(0xFF9AFF20),width:4),
+                                  top:BorderSide(color:Color(0xFF9AFF20),width:3),
                                 ),
                               ),
                               transform:Matrix4.rotationZ(-.08),
                             ),
-                            SizedBox(height:compact?14:17),
+                            SizedBox(height:short?7:(compact?9:11)),
                             Text(
                               publicMessage,
                               maxLines:2,
                               overflow:TextOverflow.ellipsis,
                               style:TextStyle(
                                 color:const Color(0xFF404A68),
-                                fontSize:compact?17:19,
-                                height:1.32,
+                                fontSize:short?12.5:(compact?13.5:15),
+                                height:1.28,
                                 fontWeight:FontWeight.w500,
                               ),
                             ),
@@ -522,7 +523,7 @@ class _PublicHomeState extends State<_PublicHome>{
                   ),
                 ),
                 Transform.translate(
-                  offset:Offset(0,compact?-25:-30),
+                  offset:Offset(0,short?-12:(compact?-16:-20)),
                   child:Padding(
                     padding:EdgeInsets.symmetric(horizontal:pagePad),
                     child:Column(
@@ -531,9 +532,9 @@ class _PublicHomeState extends State<_PublicHome>{
                           shrinkWrap:true,
                           physics:const NeverScrollableScrollPhysics(),
                           crossAxisCount:2,
-                          mainAxisSpacing:10,
-                          crossAxisSpacing:10,
-                          childAspectRatio:compact?1.08:1.04,
+                          mainAxisSpacing:8,
+                          crossAxisSpacing:8,
+                          childAspectRatio:short?1.72:(compact?1.58:1.42),
                           children:[
                             _ReferenceActionCard(
                               title:'Aracınızı\nçekebilir misiniz?',
@@ -581,52 +582,52 @@ class _PublicHomeState extends State<_PublicHome>{
                             ),
                           ],
                         ),
-                        const SizedBox(height:10),
+                        const SizedBox(height:8),
                         InkWell(
-                          borderRadius:BorderRadius.circular(17),
+                          borderRadius:BorderRadius.circular(15),
                           onTap:()=>_startCall(context),
                           child:Container(
-                            height:compact?60:64,
-                            padding:const EdgeInsets.symmetric(horizontal:13),
+                            height:short?46:(compact?50:54),
+                            padding:const EdgeInsets.symmetric(horizontal:11),
                             decoration:BoxDecoration(
                               color:_navy,
-                              borderRadius:BorderRadius.circular(17),
+                              borderRadius:BorderRadius.circular(15),
                               boxShadow:const [BoxShadow(color:Color(0x18071A3C),blurRadius:16,offset:Offset(0,7))],
                             ),
                             child:Row(
                               children:[
                                 Container(
-                                  width:42,height:42,
+                                  width:short?32:36,height:short?32:36,
                                   decoration:BoxDecoration(
                                     color:const Color(0xFF192D5D),
-                                    borderRadius:BorderRadius.circular(12),
+                                    borderRadius:BorderRadius.circular(10),
                                   ),
-                                  child:const Icon(Icons.phone_rounded,color:Colors.white,size:24),
+                                  child:Icon(Icons.phone_rounded,color:Colors.white,size:short?18:21),
                                 ),
-                                const SizedBox(width:12),
+                                const SizedBox(width:9),
                                 const Expanded(
                                   child:Column(
                                     mainAxisAlignment:MainAxisAlignment.center,
                                     crossAxisAlignment:CrossAxisAlignment.start,
                                     children:[
-                                      Text('Gizli arama',style:TextStyle(color:Colors.white,fontSize:15.5,fontWeight:FontWeight.w900)),
+                                      Text('Gizli arama',style:TextStyle(color:Colors.white,fontSize:13.5,fontWeight:FontWeight.w900)),
                                       SizedBox(height:2),
-                                      Text('Numaranız karşı tarafa gösterilmez.',maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:Color(0xFFB7C1D8),fontSize:10.8,fontWeight:FontWeight.w500)),
+                                      Text('Numaranız karşı tarafa gösterilmez.',maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:Color(0xFFB7C1D8),fontSize:9.4,fontWeight:FontWeight.w500)),
                                     ],
                                   ),
                                 ),
-                                const Icon(Icons.chevron_right_rounded,color:Colors.white,size:25),
+                                const Icon(Icons.chevron_right_rounded,color:Colors.white,size:22),
                               ],
                             ),
                           ),
                         ),
-                        const SizedBox(height:10),
+                        const SizedBox(height:8),
                         InkWell(
-                          borderRadius:BorderRadius.circular(17),
+                          borderRadius:BorderRadius.circular(15),
                           onTap:()=>html.window.location.href=Uri.base.resolve('app/').toString(),
                           child:Container(
-                            height:compact?68:72,
-                            padding:const EdgeInsets.symmetric(horizontal:13),
+                            height:short?50:(compact?54:58),
+                            padding:const EdgeInsets.symmetric(horizontal:11),
                             decoration:BoxDecoration(
                               gradient:const LinearGradient(
                                 colors:[Color(0xFFB9FF2B),Color(0xFFA6F719)],
@@ -637,12 +638,12 @@ class _PublicHomeState extends State<_PublicHome>{
                             child:Row(
                               children:[
                                 Container(
-                                  width:45,height:45,
+                                  width:short?34:38,height:short?34:38,
                                   decoration:BoxDecoration(
                                     color:Colors.black.withValues(alpha:.08),
-                                    borderRadius:BorderRadius.circular(13),
+                                    borderRadius:BorderRadius.circular(10),
                                   ),
-                                  child:const Icon(Icons.person_add_alt_1_rounded,color:Colors.black,size:26),
+                                  child:Icon(Icons.person_add_alt_1_rounded,color:Colors.black,size:short?19:22),
                                 ),
                                 const SizedBox(width:12),
                                 const Expanded(
@@ -650,24 +651,24 @@ class _PublicHomeState extends State<_PublicHome>{
                                     mainAxisAlignment:MainAxisAlignment.center,
                                     crossAxisAlignment:CrossAxisAlignment.start,
                                     children:[
-                                      Text("Sen de CepQontag'a Katıl",style:TextStyle(color:Colors.black,fontSize:15,fontWeight:FontWeight.w900)),
+                                      Text("Sen de CepQontag'a Katıl",style:TextStyle(color:Colors.black,fontSize:13.2,fontWeight:FontWeight.w900)),
                                       SizedBox(height:2),
-                                      Text('Aracını ekle, sen de bu kolaylığı yaşa.',maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:Color(0xFF3D5712),fontSize:10.8,fontWeight:FontWeight.w600)),
+                                      Text('Aracını ekle, sen de bu kolaylığı yaşa.',maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:Color(0xFF3D5712),fontSize:9.2,fontWeight:FontWeight.w600)),
                                     ],
                                   ),
                                 ),
-                                const Icon(Icons.chevron_right_rounded,color:Colors.black,size:25),
+                                const Icon(Icons.chevron_right_rounded,color:Colors.black,size:22),
                               ],
                             ),
                           ),
                         ),
-                        const SizedBox(height:15),
+                        const SizedBox(height:9),
                         const Row(
                           mainAxisAlignment:MainAxisAlignment.center,
                           children:[
-                            Icon(Icons.shield_rounded,color:Color(0xFF677596),size:18),
+                            Icon(Icons.shield_rounded,color:Color(0xFF677596),size:15),
                             SizedBox(width:7),
-                            Text('Kişisel bilgileriniz gizli kalır.',style:TextStyle(color:Color(0xFF67718A),fontSize:11.5,fontWeight:FontWeight.w500)),
+                            Text('Kişisel bilgileriniz gizli kalır.',style:TextStyle(color:Color(0xFF67718A),fontSize:10,fontWeight:FontWeight.w500)),
                           ],
                         ),
                         const SizedBox(height:18),
@@ -764,7 +765,7 @@ class _ReferenceActionCard extends StatelessWidget{
       onTap:onTap,
       borderRadius:BorderRadius.circular(18),
       child:Ink(
-        padding:const EdgeInsets.fromLTRB(13,12,12,11),
+        padding:const EdgeInsets.fromLTRB(10,9,9,8),
         decoration:BoxDecoration(
           gradient:LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:cardColors),
           borderRadius:BorderRadius.circular(18),
@@ -775,24 +776,24 @@ class _ReferenceActionCard extends StatelessWidget{
           crossAxisAlignment:CrossAxisAlignment.start,
           children:[
             Container(
-              width:41,height:41,
-              decoration:BoxDecoration(color:iconBg,borderRadius:BorderRadius.circular(12)),
-              child:Icon(icon,color:iconColor,size:24),
+              width:28,height:28,
+              decoration:BoxDecoration(color:iconBg,borderRadius:BorderRadius.circular(10)),
+              child:Icon(icon,color:iconColor,size:20),
             ),
-            const SizedBox(height:8),
+            const SizedBox(height:5),
             Text(
               title,
               maxLines:2,
               overflow:TextOverflow.ellipsis,
               style:const TextStyle(
                 color:_PublicHomeState._ink,
-                fontSize:14.5,
-                height:1.06,
+                fontSize:12.4,
+                height:1.05,
                 fontWeight:FontWeight.w900,
                 letterSpacing:-.25,
               ),
             ),
-            const SizedBox(height:5),
+            const SizedBox(height:3),
             Expanded(
               child:Row(
                 crossAxisAlignment:CrossAxisAlignment.end,
@@ -802,14 +803,14 @@ class _ReferenceActionCard extends StatelessWidget{
                       subtitle,
                       maxLines:2,
                       overflow:TextOverflow.ellipsis,
-                      style:const TextStyle(color:_PublicHomeState._body,fontSize:10.8,height:1.25,fontWeight:FontWeight.w500),
+                      style:const TextStyle(color:_PublicHomeState._body,fontSize:9.2,height:1.18,fontWeight:FontWeight.w500),
                     ),
                   ),
                   const SizedBox(width:5),
                   Container(
                     width:34,height:34,
                     decoration:BoxDecoration(color:arrowBg,shape:BoxShape.circle),
-                    child:Icon(Icons.arrow_forward_rounded,color:arrowColor,size:20),
+                    child:Icon(Icons.arrow_forward_rounded,color:arrowColor,size:17),
                   ),
                 ],
               ),
