@@ -12,6 +12,31 @@ const normalizeTrMobile=raw=>{let d=String(raw||'').replace(/\D/g,'');if(d.start
 module.exports=function registerTowingProviderRoutes(app,pool){
   const documentDir=process.env.TOWING_DOCUMENT_DIR||'/opt/heycar/uploads/towing-docs';
   try{fs.mkdirSync(documentDir,{recursive:true});}catch(e){console.error('towing document dir',e);}
+  const rejectionWindowDays=Math.max(1,Math.min(30,Number(process.env.TOWING_REJECTION_WINDOW_DAYS||7)));
+  async function rejectionPerformance(db,driverId){
+    const r=await db.query(`SELECT
+      (SELECT COUNT(*)::int FROM towing_offer_rejections x WHERE x.driver_id=$1 AND x.rejected_at>=NOW()-($2::text||' days')::interval) AS rejected,
+      (SELECT COUNT(*)::int FROM towing_requests t WHERE t.accepted_driver_id=$1 AND t.accepted_at>=NOW()-($2::text||' days')::interval) AS accepted`,[driverId,rejectionWindowDays]);
+    const rejected=Number(r.rows[0]?.rejected||0),accepted=Number(r.rows[0]?.accepted||0),total=rejected+accepted;
+    return {rejected,accepted,total,rejectionRate:total?Math.round(rejected*1000/total)/10:0,windowDays:rejectionWindowDays};
+  }
+  async function enforceRejectionPolicy(db,driverId){
+    const p=await rejectionPerformance(db,driverId);
+    let minutes=0;
+    if(p.total>=20&&p.rejectionRate>=85)minutes=360;
+    else if(p.total>=15&&p.rejectionRate>=75)minutes=60;
+    else if(p.total>=10&&p.rejectionRate>=60)minutes=30;
+    if(minutes>0){
+      const u=await db.query(`UPDATE towing_provider_drivers
+        SET online=FALSE,
+            dispatch_suspended_until=GREATEST(COALESCE(dispatch_suspended_until,NOW()),NOW()+($2::text||' minutes')::interval),
+            dispatch_suspension_reason='HIGH_REJECTION_RATE',
+            updated_at=NOW()
+        WHERE id=$1 RETURNING dispatch_suspended_until`,[driverId,minutes]);
+      return {...p,suspended:true,suspensionMinutes:minutes,suspendedUntil:u.rows[0]?.dispatch_suspended_until||null};
+    }
+    return {...p,suspended:false,suspensionMinutes:0,suspendedUntil:null};
+  }
   app.post('/api/towing/register',async(req,res)=>{
     const phone=normalizeTrMobile(req.body?.phone),password=String(req.body?.password||''),displayName=clean(req.body?.displayName,120),email=clean(req.body?.email,200).toLowerCase()||null;
     if(!phone||password.length<6||!displayName)return res.status(400).json({error:'INVALID_INPUT'});
@@ -70,7 +95,7 @@ module.exports=function registerTowingProviderRoutes(app,pool){
 
   app.get('/api/towing/provider/me',async(req,res)=>{
     const userId=authenticatedOwnerId(req);if(!userId)return res.status(401).json({error:'OWNER_REQUIRED'});
-    try{let p=await pool.query('SELECT * FROM towing_providers WHERE owner_user_id=$1 LIMIT 1',[userId]);let currentDriver=null;if(!p.rowCount){const linked=await pool.query(`SELECT p.*,d.id AS current_driver_id,d.full_name AS current_driver_name,d.phone AS current_driver_phone,d.online AS current_driver_online FROM towing_provider_drivers d JOIN towing_providers p ON p.id=d.provider_id WHERE d.user_id=$1 AND d.status='active' LIMIT 1`,[userId]);if(!linked.rowCount)return res.status(404).json({error:'PROVIDER_NOT_FOUND'});currentDriver={id:linked.rows[0].current_driver_id,full_name:linked.rows[0].current_driver_name,phone:linked.rows[0].current_driver_phone,online:linked.rows[0].current_driver_online};p={rows:[linked.rows[0]],rowCount:1};}const id=p.rows[0].id;const [d,v]=await Promise.all([pool.query('SELECT id,provider_id,user_id,full_name,phone,status,is_provider_owner,online,last_seen_at,created_at FROM towing_provider_drivers WHERE provider_id=$1 ORDER BY created_at',[id]),pool.query('SELECT * FROM towing_provider_vehicles WHERE provider_id=$1 ORDER BY created_at',[id])]);return res.json({ok:true,provider:p.rows[0],currentDriver,drivers:d.rows,vehicles:v.rows});}
+    try{let p=await pool.query('SELECT * FROM towing_providers WHERE owner_user_id=$1 LIMIT 1',[userId]);let currentDriver=null;if(!p.rowCount){const linked=await pool.query(`SELECT p.*,d.id AS current_driver_id,d.full_name AS current_driver_name,d.phone AS current_driver_phone,d.online AS current_driver_online,d.dispatch_suspended_until AS current_driver_suspended_until,d.dispatch_suspension_reason AS current_driver_suspension_reason FROM towing_provider_drivers d JOIN towing_providers p ON p.id=d.provider_id WHERE d.user_id=$1 AND d.status='active' LIMIT 1`,[userId]);if(!linked.rowCount)return res.status(404).json({error:'PROVIDER_NOT_FOUND'});currentDriver={id:linked.rows[0].current_driver_id,full_name:linked.rows[0].current_driver_name,phone:linked.rows[0].current_driver_phone,online:linked.rows[0].current_driver_online,dispatch_suspended_until:linked.rows[0].current_driver_suspended_until,dispatch_suspension_reason:linked.rows[0].current_driver_suspension_reason};p={rows:[linked.rows[0]],rowCount:1};}const id=p.rows[0].id;const [d,v]=await Promise.all([pool.query('SELECT id,provider_id,user_id,full_name,phone,status,is_provider_owner,online,last_seen_at,dispatch_suspended_until,dispatch_suspension_reason,created_at FROM towing_provider_drivers WHERE provider_id=$1 ORDER BY created_at',[id]),pool.query('SELECT * FROM towing_provider_vehicles WHERE provider_id=$1 ORDER BY created_at',[id])]);return res.json({ok:true,provider:p.rows[0],currentDriver,drivers:d.rows,vehicles:v.rows});}
     catch(e){console.error('towing provider me',e);return res.status(500).json({error:'SERVER_ERROR'});}
   });
 
@@ -121,9 +146,23 @@ module.exports=function registerTowingProviderRoutes(app,pool){
     if(online&&(lat===null||lng===null||lat<-90||lat>90||lng<-180||lng>180))return res.status(400).json({error:'LOCATION_REQUIRED'});
     const c=await pool.connect();try{await c.query('BEGIN');let p=await c.query("SELECT id,provider_type,display_name,phone FROM towing_providers WHERE owner_user_id=$1 AND status='active' FOR UPDATE",[userId]);let d;if(p.rowCount){d=await c.query('SELECT * FROM towing_provider_drivers WHERE provider_id=$1 AND user_id=$2 FOR UPDATE',[p.rows[0].id,userId]);if(!d.rowCount&&p.rows[0].provider_type==='individual')d=await c.query('INSERT INTO towing_provider_drivers(provider_id,user_id,full_name,phone,is_provider_owner) VALUES($1,$2,$3,$4,TRUE) RETURNING *',[p.rows[0].id,userId,p.rows[0].display_name,p.rows[0].phone||'']);}else{d=await c.query(`SELECT d.* FROM towing_provider_drivers d JOIN towing_providers p ON p.id=d.provider_id WHERE d.user_id=$1 AND d.status='active' AND p.status='active' FOR UPDATE OF d`,[userId]);}
       if(!d||!d.rowCount){await c.query('ROLLBACK');return res.status(409).json({error:'DRIVER_PROFILE_REQUIRED'});}
+      if(d.rows[0].dispatch_suspended_until&&new Date(d.rows[0].dispatch_suspended_until)>new Date()){await c.query('ROLLBACK');return res.status(423).json({error:'DRIVER_TEMPORARILY_SUSPENDED',suspendedUntil:d.rows[0].dispatch_suspended_until,reason:d.rows[0].dispatch_suspension_reason});}
+      if(d.rows[0].dispatch_suspended_until){await c.query('UPDATE towing_provider_drivers SET dispatch_suspended_until=NULL,dispatch_suspension_reason=NULL WHERE id=$1',[d.rows[0].id]);}
       if(online){const vehicle=await c.query("SELECT 1 FROM towing_provider_vehicles WHERE provider_id=$1 AND status='active' LIMIT 1",[d.rows[0].provider_id]);if(!vehicle.rowCount){await c.query('ROLLBACK');return res.status(409).json({error:'TOWING_VEHICLE_REQUIRED'});}}
       const u=await c.query('UPDATE towing_provider_drivers SET online=$2,last_lat=CASE WHEN $2 THEN $3 ELSE last_lat END,last_lng=CASE WHEN $2 THEN $4 ELSE last_lng END,last_location_at=CASE WHEN $2 THEN NOW() ELSE last_location_at END,last_seen_at=NOW(),updated_at=NOW() WHERE id=$1 RETURNING *',[d.rows[0].id,online,lat,lng]);await c.query('COMMIT');return res.json({ok:true,driver:u.rows[0]});}
     catch(e){await c.query('ROLLBACK').catch(()=>{});console.error('towing online',e);return res.status(500).json({error:'SERVER_ERROR'});}finally{c.release();}
+  });
+
+  app.get('/api/towing/provider/performance',async(req,res)=>{
+    const userId=authenticatedOwnerId(req);if(!userId)return res.status(401).json({error:'OWNER_REQUIRED'});
+    try{
+      const d=await pool.query("SELECT id,online,dispatch_suspended_until,dispatch_suspension_reason FROM towing_provider_drivers WHERE user_id=$1 AND status='active' LIMIT 1",[userId]);
+      if(!d.rowCount)return res.status(404).json({error:'DRIVER_REQUIRED'});
+      const p=await rejectionPerformance(pool,d.rows[0].id);
+      const until=d.rows[0].dispatch_suspended_until;
+      const suspended=!!until&&new Date(until)>new Date();
+      return res.json({ok:true,...p,warningRate:40,suspensionRate:60,minDecisions:10,suspended,suspendedUntil:suspended?until:null,suspensionReason:suspended?d.rows[0].dispatch_suspension_reason:null});
+    }catch(e){console.error('towing performance',e);return res.status(500).json({error:'SERVER_ERROR'});}
   });
 
   app.get('/api/towing/provider/jobs/nearby',async(req,res)=>{
@@ -131,8 +170,9 @@ module.exports=function registerTowingProviderRoutes(app,pool){
     const lat=num(req.query?.lat),lng=num(req.query?.lng),radius=Math.min(Math.max(num(req.query?.radiusKm)||30,1),100);
     if(lat===null||lng===null||lat<-90||lat>90||lng<-180||lng>180)return res.status(400).json({error:'LOCATION_REQUIRED'});
     try{
-      const d=await pool.query(`SELECT d.id,d.provider_id FROM towing_provider_drivers d JOIN towing_providers p ON p.id=d.provider_id WHERE d.user_id=$1 AND d.status='active' AND d.online=TRUE AND p.status='active' LIMIT 1`,[userId]);
+      const d=await pool.query(`SELECT d.id,d.provider_id,d.dispatch_suspended_until,d.dispatch_suspension_reason FROM towing_provider_drivers d JOIN towing_providers p ON p.id=d.provider_id WHERE d.user_id=$1 AND d.status='active' AND d.online=TRUE AND p.status='active' LIMIT 1`,[userId]);
       if(!d.rowCount)return res.status(403).json({error:'ONLINE_DRIVER_REQUIRED'});
+      if(d.rows[0].dispatch_suspended_until&&new Date(d.rows[0].dispatch_suspended_until)>new Date())return res.status(423).json({error:'DRIVER_TEMPORARILY_SUSPENDED',suspendedUntil:d.rows[0].dispatch_suspended_until,reason:d.rows[0].dispatch_suspension_reason});
       const active=await pool.query("SELECT 1 FROM towing_requests WHERE accepted_driver_id=$1 AND status IN ('accepted','arriving','arrived','vehicle_loaded','in_transit') LIMIT 1",[d.rows[0].id]);
       if(active.rowCount)return res.json({ok:true,items:[]});
       const r=await pool.query(`SELECT r.id,r.vehicle_type,r.truck_type,r.issue_type,r.pickup_lat,r.pickup_lng,r.pickup_address,r.destination_address,r.distance_km,r.quoted_total,r.currency,r.created_at,
@@ -155,8 +195,10 @@ module.exports=function registerTowingProviderRoutes(app,pool){
       if(!d.rowCount)return res.status(403).json({error:'DRIVER_REQUIRED'});
       const q=await pool.query("SELECT id FROM towing_requests WHERE id=$1 AND status='searching'",[req.params.id]);
       if(!q.rowCount)return res.status(404).json({error:'TOWING_REQUEST_NOT_FOUND'});
-      await pool.query("INSERT INTO towing_offer_rejections(request_id,driver_id,rejected_at) VALUES($1,$2,NOW()) ON CONFLICT(request_id,driver_id) DO UPDATE SET rejected_at=EXCLUDED.rejected_at",[req.params.id,d.rows[0].id]);
-      return res.json({ok:true});
+      const reason=['manual','timeout'].includes(clean(req.body?.reason,20))?clean(req.body?.reason,20):'manual';
+      await pool.query("INSERT INTO towing_offer_rejections(request_id,driver_id,rejected_at,reason) VALUES($1,$2,NOW(),$3) ON CONFLICT(request_id,driver_id) DO UPDATE SET rejected_at=EXCLUDED.rejected_at,reason=EXCLUDED.reason",[req.params.id,d.rows[0].id,reason]);
+      const performance=await enforceRejectionPolicy(pool,d.rows[0].id);
+      return res.json({ok:true,performance});
     }catch(e){console.error('towing reject',e);return res.status(500).json({error:'SERVER_ERROR'});}
   });
 
@@ -176,8 +218,9 @@ module.exports=function registerTowingProviderRoutes(app,pool){
     const db=await pool.connect();
     try{
       await db.query('BEGIN');
-      const d=await db.query(`SELECT d.id,d.provider_id FROM towing_provider_drivers d JOIN towing_providers p ON p.id=d.provider_id WHERE d.user_id=$1 AND d.status='active' AND d.online=TRUE AND p.status='active' FOR UPDATE OF d`,[userId]);
+      const d=await db.query(`SELECT d.id,d.provider_id,d.dispatch_suspended_until,d.dispatch_suspension_reason FROM towing_provider_drivers d JOIN towing_providers p ON p.id=d.provider_id WHERE d.user_id=$1 AND d.status='active' AND d.online=TRUE AND p.status='active' FOR UPDATE OF d`,[userId]);
       if(!d.rowCount){await db.query('ROLLBACK');return res.status(403).json({error:'ONLINE_DRIVER_REQUIRED'});}
+      if(d.rows[0].dispatch_suspended_until&&new Date(d.rows[0].dispatch_suspended_until)>new Date()){await db.query('ROLLBACK');return res.status(423).json({error:'DRIVER_TEMPORARILY_SUSPENDED',suspendedUntil:d.rows[0].dispatch_suspended_until,reason:d.rows[0].dispatch_suspension_reason});}
       const job=await db.query("SELECT * FROM towing_requests WHERE id=$1 FOR UPDATE",[req.params.id]);
       if(!job.rowCount){await db.query('ROLLBACK');return res.status(404).json({error:'TOWING_REQUEST_NOT_FOUND'});}
       if(job.rows[0].status!=='searching'){await db.query('ROLLBACK');return res.status(409).json({error:'TOWING_REQUEST_ALREADY_TAKEN'});}
