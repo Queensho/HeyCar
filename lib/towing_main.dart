@@ -9,6 +9,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'towing_driver_pages.dart';
 const api='https://heycar-api-185-165-46-213.nip.io',purple=Color(0xFF713BFF),lime=Color(0xFFB6FF2A),bg=Color(0xFF07111F),panel=Color(0xFF101A30),muted=Color(0xFFA7B0C7);
 Future<void> main()async{WidgetsFlutterBinding.ensureInitialized();try{await Firebase.initializeApp();}catch(e){debugPrint('Firebase init unavailable: $e');}runApp(const TowingApp());}
@@ -64,6 +65,23 @@ class _AddTowingVehicle extends State<AddTowingVehicle>{
  Map<String,String> get h=>{'content-type':'application/json','authorization':'Bearer ${widget.token}'};
  Future<void> save()async{if(plate.text.trim().isEmpty){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Çekici plakasını gir.')));return;}setState(()=>busy=true);try{final r=await http.post(Uri.parse(api+'/api/towing/provider/vehicles'),headers:h,body:jsonEncode({'truckType':truckType,'plate':plate.text.trim(),'brand':brand.text.trim(),'model':model.text.trim()}));if(r.statusCode==201){widget.onDone();if(mounted)Navigator.pop(context);}else{final d=jsonDecode(r.body);if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(d['error']=='TOWING_VEHICLE_ALREADY_EXISTS'?'Bu çekici plakası zaten kayıtlı.':'Çekici aracı kaydedilemedi.')));}}finally{if(mounted)setState(()=>busy=false);}}
  @override Widget build(BuildContext c)=>Scaffold(appBar:AppBar(title:const Text('Çekici Aracı Ekle')),body:ListView(padding:const EdgeInsets.all(20),children:[const Text('İş alabilmek için aracını kaydet',style:TextStyle(fontSize:23,fontWeight:FontWeight.w900)),const SizedBox(height:7),const Text('Talep, müşterinin seçtiği çekici tipiyle aracın tipi eşleştiğinde sana düşer.',style:TextStyle(color:muted)),const SizedBox(height:20),DropdownButtonFormField<String>(initialValue:truckType,decoration:const InputDecoration(labelText:'Çekici tipi',border:OutlineInputBorder()),items:const [DropdownMenuItem(value:'platform',child:Text('Platform')),DropdownMenuItem(value:'akrep',child:Text('Akrep'))],onChanged:(v)=>setState(()=>truckType=v??'platform')),const SizedBox(height:12),TextField(controller:plate,textCapitalization:TextCapitalization.characters,decoration:const InputDecoration(labelText:'Çekici plakası',border:OutlineInputBorder())),const SizedBox(height:12),TextField(controller:brand,decoration:const InputDecoration(labelText:'Marka (opsiyonel)',border:OutlineInputBorder())),const SizedBox(height:12),TextField(controller:model,decoration:const InputDecoration(labelText:'Model (opsiyonel)',border:OutlineInputBorder())),const SizedBox(height:18),FilledButton(onPressed:busy?null:save,style:FilledButton.styleFrom(backgroundColor:lime,foregroundColor:Colors.black,padding:const EdgeInsets.all(16)),child:Text(busy?'Kaydediliyor...':'Aracı Kaydet',style:const TextStyle(fontWeight:FontWeight.w900))) ]));}
+class TowingDriverChatPage extends StatefulWidget{
+  const TowingDriverChatPage({super.key,required this.token,required this.requestId,required this.title});
+  final String token,requestId,title;
+  @override State<TowingDriverChatPage> createState()=>_TowingDriverChatPageState();
+}
+class _TowingDriverChatPageState extends State<TowingDriverChatPage>{
+  final input=TextEditingController();List items=[];Timer? timer;bool sending=false;
+  Map<String,String> get h=>{'content-type':'application/json','authorization':'Bearer ${widget.token}'};
+  @override void initState(){super.initState();load();timer=Timer.periodic(const Duration(seconds:3),(_)=>load());}
+  @override void dispose(){timer?.cancel();input.dispose();super.dispose();}
+  Future<void> load()async{try{final r=await http.get(Uri.parse(api+'/api/towing/provider/jobs/${widget.requestId}/messages'),headers:h);if(r.statusCode==200&&mounted)setState(()=>items=jsonDecode(r.body)['items']??[]);}catch(_){}}
+  Future<void> send()async{final text=input.text.trim();if(text.isEmpty||sending)return;setState(()=>sending=true);try{final r=await http.post(Uri.parse(api+'/api/towing/provider/jobs/${widget.requestId}/messages'),headers:h,body:jsonEncode({'message':text}));if(r.statusCode<300){input.clear();await load();}}finally{if(mounted)setState(()=>sending=false);}}
+  @override Widget build(BuildContext context)=>Scaffold(appBar:AppBar(title:Text(widget.title),backgroundColor:bg),body:Column(children:[
+    Expanded(child:ListView.builder(reverse:true,padding:const EdgeInsets.all(14),itemCount:items.length,itemBuilder:(_,i){final m=items[items.length-1-i],mine=m['sender_role']=='driver';return Align(alignment:mine?Alignment.centerRight:Alignment.centerLeft,child:Container(constraints:const BoxConstraints(maxWidth:290),margin:const EdgeInsets.symmetric(vertical:4),padding:const EdgeInsets.symmetric(horizontal:13,vertical:10),decoration:BoxDecoration(color:mine?purple:panel,borderRadius:BorderRadius.circular(16)),child:Text('${m['message']??''}',style:const TextStyle(fontWeight:FontWeight.w600))));})),
+    SafeArea(top:false,child:Padding(padding:const EdgeInsets.fromLTRB(12,8,12,12),child:Row(children:[Expanded(child:TextField(controller:input,minLines:1,maxLines:4,textInputAction:TextInputAction.newline,decoration:InputDecoration(hintText:'Mesaj yaz...',filled:true,fillColor:panel,border:OutlineInputBorder(borderRadius:BorderRadius.circular(18),borderSide:BorderSide.none)))),const SizedBox(width:8),IconButton.filled(onPressed:sending?null:send,style:IconButton.styleFrom(backgroundColor:lime,foregroundColor:Colors.black),icon:sending?const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2,color:Colors.black)):const Icon(Icons.send_rounded))]))),
+  ]));
+}
 class Home extends StatefulWidget{const Home({super.key,required this.token,required this.logout});final String token;final VoidCallback logout;@override State<Home> createState()=>_Home();}
 class _Home extends State<Home>{bool online=false,busy=false;int tab=0,offerSeconds=30;List jobs=[],nearbyDrivers=[];Map? active,me,homeEarnings,performance;Position? pos;Timer? timer,offerTimer;String? offerId;StreamSubscription<RemoteMessage>? pushOpen,pushForeground;Map<String,String> get h=>{'content-type':'application/json','authorization':'Bearer ${widget.token}'};@override void initState(){super.initState();if(firebaseReady){registerPush();pushOpen=FirebaseMessaging.onMessageOpenedApp.listen(_onPush);pushForeground=FirebaseMessaging.onMessage.listen(_onPush);FirebaseMessaging.instance.getInitialMessage().then((m){if(m!=null)_onPush(m);});}load();timer=Timer.periodic(const Duration(seconds:8),(_)=>load());}
 void _onPush(RemoteMessage m){final type='${m.data['type']??''}';if(type=='towing_request'||type=='towing_job')load();}
@@ -187,17 +205,53 @@ Widget _requestCard(Map<String,dynamic> j)=>Container(margin:const EdgeInsets.fr
   const SizedBox(height:8),SizedBox(width:double.infinity,height:48,child:OutlinedButton(onPressed:load,style:OutlinedButton.styleFrom(foregroundColor:Colors.white,side:const BorderSide(color:Color(0xFF334155))),child:const Text('Reddet'))),
 ]));
 Widget _line(IconData icon,String text,Color color)=>Padding(padding:const EdgeInsets.symmetric(vertical:4),child:Row(children:[Icon(icon,color:color,size:20),const SizedBox(width:9),Expanded(child:Text(text,style:const TextStyle(fontWeight:FontWeight.w600)))]));
+Future<void> _callCustomer(Map j)async{
+  final phone='${j['owner_phone']??''}'.trim();
+  if(phone.isEmpty){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Müşteri telefon bilgisi bulunamadı.')));return;}
+  final uri=Uri(scheme:'tel',path:phone);
+  if(!await launchUrl(uri,mode:LaunchMode.externalApplication)&&mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Arama başlatılamadı.')));
+}
+Future<void> _openDirections(Map j,String appName,bool destination)async{
+  final lat=double.tryParse('${destination?j['destination_lat']:j['pickup_lat']}');
+  final lng=double.tryParse('${destination?j['destination_lng']:j['pickup_lng']}');
+  if(lat==null||lng==null)return;
+  Uri uri;
+  if(appName=='google')uri=Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng&travelmode=driving');
+  else if(appName=='yandex')uri=Uri.parse('https://yandex.com/maps/?rtext=~$lat,$lng&rtt=auto');
+  else uri=Uri.parse('https://maps.apple.com/?daddr=$lat,$lng&dirflg=d');
+  if(!await launchUrl(uri,mode:LaunchMode.externalApplication)&&mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Harita uygulaması açılamadı.')));
+}
+void _openDriverChat(Map j)=>Navigator.push(context,MaterialPageRoute(builder:(_)=>TowingDriverChatPage(token:widget.token,requestId:'${j['id']}',title:'Müşteri ile Mesajlaş')));
+Widget _navButton(String text,IconData icon,VoidCallback onTap)=>Expanded(child:OutlinedButton.icon(onPressed:onTap,icon:Icon(icon,size:18),label:Text(text,maxLines:1,overflow:TextOverflow.ellipsis),style:OutlinedButton.styleFrom(foregroundColor:Colors.white,side:const BorderSide(color:Color(0xFF334155)),padding:const EdgeInsets.symmetric(vertical:12,horizontal:8),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(13)))));
 Widget _activeScreen(Map j){
   final status='${j['status']??''}';
   if(status=='delivered')return _completedScreen(j);
-  final loaded=status=='vehicle_loaded'||status=='in_transit';
-  return Scaffold(appBar:AppBar(backgroundColor:bg,title:Text(loaded?'Araç yüklendi':'Alım noktasına gidin',style:const TextStyle(fontWeight:FontWeight.w900)),actions:[IconButton(onPressed:load,icon:const Icon(Icons.refresh_rounded))]),body:Column(children:[
-    if(!loaded)Expanded(child:activeJobMap(j)),
-    Expanded(child:SingleChildScrollView(padding:const EdgeInsets.all(16),child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
-      if(loaded)_timeline(status) else Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(22)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('${j['plate']??j['vehicle_plate']??'Araç'}',style:const TextStyle(color:Colors.black,fontSize:22,fontWeight:FontWeight.w900)),const SizedBox(height:6),Text('${j['pickup_address']??'Alım noktası'}',style:const TextStyle(color:Colors.black54)),const SizedBox(height:12),Row(children:[_roundIcon(Icons.phone_rounded),const SizedBox(width:10),_roundIcon(Icons.message_rounded)])])),
-      const SizedBox(height:14),SizedBox(height:58,child:FilledButton(onPressed:next,style:FilledButton.styleFrom(backgroundColor:purple,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(16))),child:Text(button(status),style:const TextStyle(fontSize:17,fontWeight:FontWeight.w900)))),
-    ]))),
-  ]));
+  final destination=status=='vehicle_loaded'||status=='in_transit';
+  final targetTitle=destination?'Bırakma noktasına gidin':'Alım noktasına gidin';
+  final targetAddress='${destination?j['destination_address']:j['pickup_address']}';
+  return Scaffold(
+    appBar:AppBar(backgroundColor:bg,title:Text(targetTitle,style:const TextStyle(fontWeight:FontWeight.w900)),actions:[IconButton(onPressed:load,icon:const Icon(Icons.refresh_rounded))]),
+    body:Column(children:[
+      Expanded(flex:5,child:activeJobMap(j)),
+      Expanded(flex:6,child:SingleChildScrollView(padding:const EdgeInsets.fromLTRB(16,14,16,20),child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+        Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:panel,borderRadius:BorderRadius.circular(20),border:Border.all(color:const Color(0xFF27344B))),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          Row(children:[Icon(destination?Icons.flag_rounded:Icons.location_on_rounded,color:lime),const SizedBox(width:8),Expanded(child:Text(destination?'Bırakma noktası':'Alım noktası',style:const TextStyle(fontSize:17,fontWeight:FontWeight.w900)))]),
+          const SizedBox(height:7),Text(targetAddress,style:const TextStyle(color:Colors.white,fontSize:16,fontWeight:FontWeight.w700)),
+          const SizedBox(height:14),Row(children:[_navButton('Google',Icons.map_rounded,()=>_openDirections(j,'google',destination)),const SizedBox(width:7),_navButton('Yandex',Icons.navigation_rounded,()=>_openDirections(j,'yandex',destination)),const SizedBox(width:7),_navButton('Haritalar',Icons.route_rounded,()=>_openDirections(j,'maps',destination))]),
+        ])),
+        const SizedBox(height:12),
+        Container(padding:const EdgeInsets.all(15),decoration:BoxDecoration(color:panel,borderRadius:BorderRadius.circular(20)),child:Row(children:[
+          Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('${j['vehicle_plate']??'Araç'}',style:const TextStyle(fontSize:20,fontWeight:FontWeight.w900)),const SizedBox(height:3),Text('${j['owner_name']??'Müşteri'}',style:const TextStyle(color:muted))])),
+          IconButton.filled(onPressed:()=>_callCustomer(j),style:IconButton.styleFrom(backgroundColor:lime,foregroundColor:Colors.black),icon:const Icon(Icons.phone_rounded)),
+          const SizedBox(width:8),
+          IconButton.filled(onPressed:()=>_openDriverChat(j),style:IconButton.styleFrom(backgroundColor:purple,foregroundColor:Colors.white),icon:const Icon(Icons.message_rounded)),
+        ])),
+        if(destination)...[const SizedBox(height:12),_timeline(status)],
+        const SizedBox(height:14),
+        SizedBox(height:58,child:FilledButton(onPressed:next,style:FilledButton.styleFrom(backgroundColor:purple,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(16))),child:Text(button(status),style:const TextStyle(fontSize:17,fontWeight:FontWeight.w900)))),
+      ]))),
+    ]),
+  );
 }
 Widget _roundIcon(IconData i)=>Container(width:44,height:44,decoration:const BoxDecoration(color:Color(0xFFF0F1F5),shape:BoxShape.circle),child:Icon(i,color:Colors.black87));
 Widget _timeline(String status){
