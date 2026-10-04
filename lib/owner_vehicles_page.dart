@@ -169,7 +169,7 @@ Widget _bottomAction(IconData icon,String title,String subtitle,VoidCallback tap
         onRefresh:_load,
         color:_purple,
         child:ListView(
-          padding:EdgeInsets.fromLTRB(14,top+7,14,18),
+          padding:EdgeInsets.fromLTRB(16,top+7,16,18),
           children:[
             _brandHeader(),
             const SizedBox(height:13),
