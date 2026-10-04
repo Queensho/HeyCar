@@ -538,14 +538,14 @@ class _ProfileIdentityCard extends StatelessWidget {
                           email,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: muted, fontSize: 10.2),
+                          style: TextStyle(color: muted, fontSize: 11.2),
                         ),
                         const SizedBox(height: 1),
                         Text(
                           phone,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: muted, fontSize: 10.2),
+                          style: TextStyle(color: muted, fontSize: 11.2),
                         ),
                       ],
                     ),
@@ -590,13 +590,13 @@ class _ProfileIdentityCard extends StatelessWidget {
                           'Premium Üye',
                           style: TextStyle(
                             color: light ? const Color(0xFF634600) : const Color(0xFFFFCC4F),
-                            fontSize: 11.8,
+                            fontSize: 12.8,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
                         Text(
                           'Daha fazla özellikten yararlanın.',
-                          style: TextStyle(color: muted, fontSize: 9.2),
+                          style: TextStyle(color: muted, fontSize: 10.5),
                         ),
                       ],
                     ),
@@ -635,7 +635,7 @@ class _QuickProfileAction extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(14),
         child: Container(
-          height: 68,
+          height: 74,
           padding: const EdgeInsets.fromLTRB(3, 8, 3, 6),
           decoration: BoxDecoration(
             color: panel,
@@ -666,12 +666,12 @@ class _QuickProfileAction extends StatelessWidget {
               const SizedBox(height: 5),
               Text(
                 label,
-                maxLines: 1,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: text,
-                  fontSize: 8.3,
+                  fontSize: 9.8,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -701,7 +701,7 @@ class _ThemeProfileRow extends StatelessWidget {
             InkWell(
               onTap: () => CepqarTheme.setDarkMode(!dark),
               child: SizedBox(
-                height: 43,
+                height: 48,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 11),
                   child: Row(
@@ -721,15 +721,15 @@ class _ThemeProfileRow extends StatelessWidget {
                               'Karanlık Mod',
                               style: TextStyle(
                                 color: text,
-                                fontSize: 10.8,
-                                fontWeight: FontWeight.w600,
+                                fontSize: 12.0,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
                             Text(
                               dark ? 'Açık' : 'Kapalı • Aydınlık tema',
                               style: TextStyle(
                                 color: muted,
-                                fontSize: 8.5,
+                                fontSize: 10.0,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -784,7 +784,7 @@ class _ProfileMenuRow extends StatelessWidget {
         InkWell(
           onTap: onTap,
           child: SizedBox(
-            height: 39,
+            height: 45,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 11),
               child: Row(
@@ -800,8 +800,8 @@ class _ProfileMenuRow extends StatelessWidget {
                       title,
                       style: TextStyle(
                         color: danger ? _danger : text,
-                        fontSize: 10.8,
-                        fontWeight: danger ? FontWeight.w800 : FontWeight.w600,
+                        fontSize: 12.1,
+                        fontWeight: danger ? FontWeight.w800 : FontWeight.w700,
                       ),
                     ),
                   ),
