@@ -656,18 +656,29 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         Expanded(
           flex:38,
           child:InkWell(
-            onTap:()=>widget.shortcut('qr'),
+            onTap:()=>widget.shortcut('qr_security'),
             borderRadius:BorderRadius.circular(18),
             child:Container(
               height:132,padding:const EdgeInsets.all(13),
               decoration:card(gradient:const LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:[Color(0xFF4C12D0),Color(0xFF7732F4),Color(0xFF9B5DFF)])),
               child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-                Container(width:38,height:38,decoration:BoxDecoration(color:Colors.white.withValues(alpha:.14),borderRadius:BorderRadius.circular(11)),child:const Icon(Icons.qr_code_rounded,color:Colors.white,size:28)),
+                Container(
+                  width:38,height:38,
+                  decoration:BoxDecoration(color:Colors.white.withValues(alpha:.14),borderRadius:BorderRadius.circular(11)),
+                  child:Stack(alignment:Alignment.center,children:[
+                    const Icon(Icons.shield_rounded,color:Colors.white,size:27),
+                    Positioned(right:4,bottom:4,child:Container(
+                      width:14,height:14,
+                      decoration:BoxDecoration(color:const Color(0xFF6C26E8),borderRadius:BorderRadius.circular(4)),
+                      child:const Icon(Icons.qr_code_2_rounded,color:Colors.white,size:11),
+                    )),
+                  ]),
+                ),
                 const Spacer(),
-                const Text('QR Etiketim',style:TextStyle(color:Colors.white,fontSize:14,fontWeight:FontWeight.w900)),
+                const Text('QR Güvenliği',style:TextStyle(color:Colors.white,fontSize:14,fontWeight:FontWeight.w900)),
                 const SizedBox(height:3),
                 Row(children:[
-                  const Expanded(child:Text('Etiketinizi okutun,\naracınıza ulaşılsın.',style:TextStyle(color:Color(0xFFE4DAFF),fontSize:9.3,height:1.22))),
+                  const Expanded(child:Text('Etiket güvenliğini\nkontrol edin.',style:TextStyle(color:Color(0xFFE4DAFF),fontSize:9.3,height:1.22))),
                   Container(width:29,height:29,decoration:BoxDecoration(color:Colors.white.withValues(alpha:.15),shape:BoxShape.circle),child:const Icon(Icons.chevron_right_rounded,color:Colors.white,size:19)),
                 ]),
               ]),
@@ -986,7 +997,6 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
           Transform.translate(offset:const Offset(0,-3),child:vehicleQr()),
           quickRow(),
           monthly(),
-          security(),
           section('Hizmetler',widget.services),
           servicesGrid(),
           section('Son Bildirimler',widget.notifications),
