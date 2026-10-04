@@ -158,7 +158,9 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     final car='${QrDraft.make} ${QrDraft.model}'.trim();
     return Padding(
       padding:const EdgeInsets.symmetric(horizontal:16),
-      child:Row(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+      child:SizedBox(
+        height:132,
+        child:Row(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
         Expanded(
           flex:62,
           child:InkWell(
@@ -187,7 +189,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                     ]),
                   ),
                   const Spacer(),
-                  Image.asset('assets/Arac.png',width:76,height:43,fit:BoxFit.contain,errorBuilder:(_,__,___)=>const SizedBox.shrink()),
+                  Container(width:54,height:36,decoration:BoxDecoration(color:purple.withValues(alpha:light ? 0.08 : 0.16),borderRadius:BorderRadius.circular(10)),child:const Icon(Icons.directions_car_filled_rounded,color:purple,size:26)),
                   Icon(Icons.chevron_right_rounded,color:muted,size:20),
                 ]),
               ]),
@@ -217,6 +219,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
           ),
         ),
       ]),
+      ),
     );
   }
 
