@@ -671,7 +671,7 @@ class _QuickProfileAction extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: text,
-                  fontSize: 9.8,
+                  fontSize: CepqarTheme.caption,
                   fontWeight: FontWeight.w700,
                 ),
               ),
