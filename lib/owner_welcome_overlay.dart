@@ -399,7 +399,7 @@ class _HeroCopy extends StatelessWidget {
             ),
           ],
         ),
-        SizedBox(height: compact ? 31 : 35),
+        SizedBox(height: compact ? 43 : 47),
         Text(
           'Aracına not bırak, önemli\ndurumlarda anında haber ver.',
           style: TextStyle(
