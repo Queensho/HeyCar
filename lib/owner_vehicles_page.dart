@@ -191,7 +191,7 @@ Widget _bottomAction(IconData icon,String title,String subtitle,VoidCallback tap
               padding:const EdgeInsets.only(bottom:12),
               child:_VehicleReferenceCard(
                 v:v,
-                selected:'\${v['id']}'==selected,
+                selected:'${v['id']}'==selected,
                 open:()=>_open(v),
                 select:()=>_select(v),
                 qr:()=>_qr(v),
@@ -233,11 +233,11 @@ class _VehicleReferenceCard extends StatelessWidget{
   final VoidCallback open,select,qr,transfer,remove;
 
   @override Widget build(BuildContext context){
-    final make='\${v['make']??''}'.trim();
-    final model='\${v['model']??''}'.trim();
-    final year='\${v['year']??''}'.trim();
-    final color='\${v['color']??''}'.trim();
-    final hasQr='\${v['qr_token']??''}'.trim().isNotEmpty;
+    final make='${v['make']??''}'.trim();
+    final model='${v['model']??''}'.trim();
+    final year='${v['year']??''}'.trim();
+    final color='${v['color']??''}'.trim();
+    final hasQr='${v['qr_token']??''}'.trim().isNotEmpty;
     final details=[if(year.isNotEmpty)year,if(color.isNotEmpty)color].join(' • ');
     return Container(
       height:218,
@@ -266,7 +266,7 @@ class _VehicleReferenceCard extends StatelessWidget{
                 flex:57,
                 child:Column(mainAxisAlignment:MainAxisAlignment.center,crossAxisAlignment:CrossAxisAlignment.start,children:[
                   Row(children:[
-                    Expanded(child:Text('\${v['plate']??''}',style:TextStyle(color:_text,fontSize:21,fontWeight:FontWeight.w900,letterSpacing:.2))),
+                    Expanded(child:Text('${v['plate']??''}',style:TextStyle(color:_text,fontSize:21,fontWeight:FontWeight.w900,letterSpacing:.2))),
                     Container(
                       padding:const EdgeInsets.symmetric(horizontal:9,vertical:5),
                       decoration:BoxDecoration(color:hasQr?const Color(0xFFE3F9EC):const Color(0xFFFFEFE1),borderRadius:BorderRadius.circular(20)),
