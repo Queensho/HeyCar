@@ -36,15 +36,240 @@ class _PublicQrEntryScreenState extends State<PublicQrEntryScreen> {
         ])),
         Positioned(right:compact?-118:-124,top:compact?-22:-26,width:compact?305:335,height:compact?295:320,child:IgnorePointer(child:Image.asset('assets/Heycar3d.png',fit:BoxFit.contain,alignment:Alignment.bottomRight))),
       ])),
-      Transform.translate(offset:const Offset(0,-12),child:Container(width:double.infinity,padding:EdgeInsets.fromLTRB(compact?18:20,compact?18:20,compact?18:20,compact?17:19),decoration:BoxDecoration(color:_panel,borderRadius:BorderRadius.circular(24),border:Border.all(color:_line)),child:Column(children:[
-        Row(mainAxisAlignment:MainAxisAlignment.center,children:[const Icon(Icons.link_rounded,color:_purple,size:23),const SizedBox(width:9),Flexible(child:Text('Araç Etiket Kodunu Gir',textAlign:TextAlign.center,style:TextStyle(color:Colors.white,fontSize:compact?18.5:20.5,fontWeight:FontWeight.w900)))]),const SizedBox(height:8),
-        Text('QR kodu okutmadan da etiketteki kodu yazarak\ndirekt araca ulaşabilirsin.',textAlign:TextAlign.center,style:TextStyle(color:_muted,fontSize:compact?12.5:14,height:1.42)),const SizedBox(height:15),
-        SizedBox(height:compact?56:60,child:TextField(controller:code,textCapitalization:TextCapitalization.characters,onSubmitted:_open,style:const TextStyle(color:Colors.white,fontWeight:FontWeight.w800,fontSize:17),decoration:InputDecoration(hintText:'Örn: HC-7XK9P2',hintStyle:const TextStyle(color:Color(0xFF69738D)),prefixIcon:const Icon(Icons.sell_outlined,color:_purple,size:26),filled:true,fillColor:const Color(0xFF0E172A),contentPadding:const EdgeInsets.symmetric(vertical:16),border:OutlineInputBorder(borderRadius:BorderRadius.circular(17),borderSide:const BorderSide(color:_purple)),enabledBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(17),borderSide:const BorderSide(color:_purple)),focusedBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(17),borderSide:const BorderSide(color:_purple,width:1.5))))),const SizedBox(height:12),
-        SizedBox(width:double.infinity,height:compact?52:55,child:FilledButton(style:FilledButton.styleFrom(backgroundColor:_lime,foregroundColor:Colors.black,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(16))),onPressed:()=>_open(code.text),child:Text('Devam Et  →',style:TextStyle(fontSize:compact?16.5:17.5,fontWeight:FontWeight.w900)))),const SizedBox(height:14),
-        const Row(children:[Expanded(child:Divider(color:_line)),Padding(padding:EdgeInsets.symmetric(horizontal:14),child:Text('veya',style:TextStyle(color:_muted,fontSize:13))),Expanded(child:Divider(color:_line))]),const SizedBox(height:12),
-        InkWell(borderRadius:BorderRadius.circular(17),onTap:()=>setState((){scanning=!scanning;consumed=false;}),child:Container(padding:EdgeInsets.symmetric(horizontal:14,vertical:compact?13:14),decoration:BoxDecoration(color:const Color(0xFF10192C),borderRadius:BorderRadius.circular(17),border:Border.all(color:_line)),child:Row(children:[Icon(Icons.qr_code_scanner_rounded,color:Colors.white,size:compact?28:31),const SizedBox(width:13),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('QR Kodu Okut',style:TextStyle(color:Colors.white,fontSize:compact?16:17.5,fontWeight:FontWeight.w900)),const SizedBox(height:3),Text('Kameranı aç ve etiketi tara',style:TextStyle(color:_muted,fontSize:compact?12.5:13.5))])),const Icon(Icons.chevron_right_rounded,color:Colors.white70,size:25)]))),
-        if(scanning)...[const SizedBox(height:12),ClipRRect(borderRadius:BorderRadius.circular(18),child:SizedBox(height:210,child:MobileScanner(onDetect:(capture){if(consumed||capture.barcodes.isEmpty)return;final raw=capture.barcodes.first.rawValue;if(raw==null||raw.isEmpty)return;consumed=true;_open(raw,scanned:true);})))],
-      ]))),
+      Transform.translate(
+        offset:const Offset(0,-12),
+        child:Container(
+          width:double.infinity,
+          padding:EdgeInsets.fromLTRB(compact?17:19,compact?17:19,compact?17:19,compact?16:18),
+          decoration:BoxDecoration(
+            color:Colors.white,
+            borderRadius:BorderRadius.circular(22),
+            border:Border.all(color:const Color(0xFFE5E1EE)),
+            boxShadow:const [
+              BoxShadow(color:Color(0x12000000),blurRadius:24,offset:Offset(0,9)),
+            ],
+          ),
+          child:Column(
+            crossAxisAlignment:CrossAxisAlignment.start,
+            children:[
+              Row(
+                crossAxisAlignment:CrossAxisAlignment.start,
+                children:[
+                  Container(
+                    width:compact?45:48,
+                    height:compact?45:48,
+                    decoration:BoxDecoration(
+                      color:const Color(0xFFF3EDFF),
+                      borderRadius:BorderRadius.circular(15),
+                    ),
+                    child:const Icon(Icons.link_rounded,color:Color(0xFF6C32F3),size:25),
+                  ),
+                  const SizedBox(width:12),
+                  Expanded(
+                    child:Column(
+                      crossAxisAlignment:CrossAxisAlignment.start,
+                      children:[
+                        Text(
+                          'Araç Etiket Kodunu Gir',
+                          style:TextStyle(
+                            color:const Color(0xFF11152D),
+                            fontSize:compact?17:18.5,
+                            fontWeight:FontWeight.w900,
+                            height:1.12,
+                          ),
+                        ),
+                        const SizedBox(height:6),
+                        Text(
+                          'QR kodu okutmadan da etiketteki kodu yazarak direkt araca ulaşabilirsin.',
+                          style:TextStyle(
+                            color:const Color(0xFF697087),
+                            fontSize:compact?11.5:12.5,
+                            height:1.4,
+                            fontWeight:FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height:16),
+              SizedBox(
+                height:compact?54:57,
+                child:TextField(
+                  controller:code,
+                  textCapitalization:TextCapitalization.characters,
+                  onSubmitted:_open,
+                  style:TextStyle(
+                    color:const Color(0xFF161A31),
+                    fontWeight:FontWeight.w700,
+                    fontSize:compact?15:16,
+                  ),
+                  decoration:InputDecoration(
+                    hintText:'Örn: HC-7XK9P2',
+                    hintStyle:TextStyle(
+                      color:const Color(0xFF858CA2),
+                      fontSize:compact?14.5:15.5,
+                      fontWeight:FontWeight.w500,
+                    ),
+                    prefixIcon:Padding(
+                      padding:const EdgeInsets.all(10),
+                      child:Container(
+                        width:34,
+                        height:34,
+                        decoration:BoxDecoration(
+                          color:const Color(0xFFF6F1FF),
+                          borderRadius:BorderRadius.circular(11),
+                        ),
+                        child:const Icon(Icons.sell_outlined,color:Color(0xFF6C32F3),size:21),
+                      ),
+                    ),
+                    filled:true,
+                    fillColor:Colors.white,
+                    contentPadding:const EdgeInsets.symmetric(vertical:15),
+                    border:OutlineInputBorder(
+                      borderRadius:BorderRadius.circular(16),
+                      borderSide:const BorderSide(color:Color(0xFFD9DCE7),width:1.1),
+                    ),
+                    enabledBorder:OutlineInputBorder(
+                      borderRadius:BorderRadius.circular(16),
+                      borderSide:const BorderSide(color:Color(0xFFD9DCE7),width:1.1),
+                    ),
+                    focusedBorder:OutlineInputBorder(
+                      borderRadius:BorderRadius.circular(16),
+                      borderSide:const BorderSide(color:Color(0xFF7C3CFF),width:1.5),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height:13),
+              SizedBox(
+                width:double.infinity,
+                height:compact?50:53,
+                child:DecoratedBox(
+                  decoration:BoxDecoration(
+                    gradient:const LinearGradient(
+                      colors:[Color(0xFF7136FF),Color(0xFF8040FF),Color(0xFF6A50FF)],
+                    ),
+                    borderRadius:BorderRadius.circular(16),
+                    boxShadow:const [
+                      BoxShadow(color:Color(0x336C32F3),blurRadius:17,offset:Offset(0,7)),
+                    ],
+                  ),
+                  child:FilledButton(
+                    onPressed:()=>_open(code.text),
+                    style:FilledButton.styleFrom(
+                      backgroundColor:Colors.transparent,
+                      shadowColor:Colors.transparent,
+                      foregroundColor:Colors.white,
+                      shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(16)),
+                    ),
+                    child:Row(
+                      mainAxisAlignment:MainAxisAlignment.center,
+                      children:[
+                        Text(
+                          'Devam Et',
+                          style:TextStyle(fontSize:compact?15.5:16.5,fontWeight:FontWeight.w900),
+                        ),
+                        const SizedBox(width:9),
+                        const Icon(Icons.arrow_forward_rounded,size:21),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height:15),
+              const Row(
+                children:[
+                  Expanded(child:Divider(color:Color(0xFFE1E3EB),height:1)),
+                  Padding(
+                    padding:EdgeInsets.symmetric(horizontal:13),
+                    child:Text(
+                      'veya',
+                      style:TextStyle(
+                        color:Color(0xFF7B8193),
+                        fontSize:12,
+                        fontWeight:FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  Expanded(child:Divider(color:Color(0xFFE1E3EB),height:1)),
+                ],
+              ),
+              const SizedBox(height:14),
+              InkWell(
+                borderRadius:BorderRadius.circular(16),
+                onTap:()=>setState((){scanning=!scanning;consumed=false;}),
+                child:Container(
+                  padding:EdgeInsets.symmetric(horizontal:14,vertical:compact?12:13),
+                  decoration:BoxDecoration(
+                    color:const Color(0xFFF7F3FF),
+                    borderRadius:BorderRadius.circular(16),
+                    border:Border.all(color:const Color(0xFFE2D9F7)),
+                  ),
+                  child:Row(
+                    children:[
+                      Container(
+                        width:compact?39:42,
+                        height:compact?39:42,
+                        decoration:BoxDecoration(
+                          color:Colors.white,
+                          borderRadius:BorderRadius.circular(12),
+                        ),
+                        child:const Icon(Icons.qr_code_scanner_rounded,color:Color(0xFF6C32F3),size:25),
+                      ),
+                      const SizedBox(width:12),
+                      Expanded(
+                        child:Column(
+                          crossAxisAlignment:CrossAxisAlignment.start,
+                          children:[
+                            Text(
+                              'QR Kodu Okut',
+                              style:TextStyle(
+                                color:const Color(0xFF12162D),
+                                fontSize:compact?15:16,
+                                fontWeight:FontWeight.w900,
+                              ),
+                            ),
+                            const SizedBox(height:3),
+                            Text(
+                              'Kameranı aç ve etiketi tara',
+                              style:TextStyle(
+                                color:const Color(0xFF7B8297),
+                                fontSize:compact?11.5:12.5,
+                                fontWeight:FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right_rounded,color:Color(0xFF202641),size:24),
+                    ],
+                  ),
+                ),
+              ),
+              if(scanning)...[
+                const SizedBox(height:12),
+                ClipRRect(
+                  borderRadius:BorderRadius.circular(16),
+                  child:SizedBox(
+                    height:205,
+                    child:MobileScanner(
+                      onDetect:(capture){
+                        if(consumed||capture.barcodes.isEmpty)return;
+                        final raw=capture.barcodes.first.rawValue;
+                        if(raw==null||raw.isEmpty)return;
+                        consumed=true;
+                        _open(raw,scanned:true);
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
       Transform.translate(offset:const Offset(0,-2),child:Container(width:double.infinity,height:compact?108:118,decoration:BoxDecoration(color:_panel,borderRadius:BorderRadius.circular(21),border:Border.all(color:_line)),child:Stack(clipBehavior:Clip.none,children:[Positioned(left:compact?14:17,top:compact?29:32,width:compact?170:190,child:Row(crossAxisAlignment:CrossAxisAlignment.start,children:[const Icon(Icons.info_outline,color:_purple,size:21),const SizedBox(width:9),Expanded(child:Text('Kodu aracın üzerindeki\nHeyCar etiketinde bulabilirsin.',style:TextStyle(color:_muted,fontSize:compact?12.5:14,height:1.45)))])),Positioned(right:compact?-7:-10,bottom:compact?-4:-7,width:compact?184:208,height:compact?111:124,child:Transform.rotate(angle:-.06,child:Image.asset('assets/Qrkod.png',fit:BoxFit.contain,alignment:Alignment.bottomRight)))]))),
       const SizedBox(height:15),Center(child:Text('HeyCar  💜  Yollarda daha fazla bağlantı',style:TextStyle(color:_muted,fontSize:compact?12:13))),
     ]))))));
