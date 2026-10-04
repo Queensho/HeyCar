@@ -1,32 +1,90 @@
 import 'package:flutter/material.dart';
 
-const _bg=Color(0xFF07111F),_panel=Color(0xFF111A31),_line=Color(0xFF29345A),_purple=Color(0xFF8B5CFF),_muted=Color(0xFFA7B0C7);
+const _bg=Color(0xFFFDFDFF),_panel=Colors.white,_line=Color(0xFFE5E7EF),_purple=Color(0xFF5E24F5),_muted=Color(0xFF747A8D),_text=Color(0xFF090B18);
 const legalVersion='1.0';
 const legalUpdated='22 Eylül 2026';
 
 class LegalCenterPage extends StatelessWidget{
   const LegalCenterPage({super.key});
-  @override Widget build(BuildContext context)=>Scaffold(
+  @override
+  Widget build(BuildContext context)=>Scaffold(
     backgroundColor:_bg,
-    appBar:AppBar(backgroundColor:_bg,foregroundColor:Colors.white,title:const Text('Yasal ve Gizlilik')),
-    body:SafeArea(child:ListView(padding:const EdgeInsets.all(18),children:[
-      _legalCard(context,Icons.description_outlined,'Kullanım Şartları','CepQontag hizmetinin kullanım kuralları, yasaklı kullanımlar ve sorumluluklar.',const TermsOfUsePage()),
-      const SizedBox(height:12),
-      _legalCard(context,Icons.privacy_tip_outlined,'Gizlilik ve KVKK Aydınlatma Metni','Hangi verilerin işlendiği, neden işlendiği ve KVKK kapsamındaki hakların.',const PrivacyKvkkPage()),
-      const SizedBox(height:18),
-      const Text('Sürüm $legalVersion • Son güncelleme $legalUpdated',textAlign:TextAlign.center,style:TextStyle(color:_muted,fontSize:12)),
-    ])),
+    body:SafeArea(
+      child:Center(
+        child:ConstrainedBox(
+          constraints:const BoxConstraints(maxWidth:460),
+          child:ListView(
+            padding:const EdgeInsets.fromLTRB(20,10,20,28),
+            children:[
+              Row(children:[
+                InkWell(
+                  onTap:()=>Navigator.pop(context),
+                  borderRadius:BorderRadius.circular(14),
+                  child:Container(
+                    width:40,height:40,
+                    decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(14),border:Border.all(color:_line)),
+                    child:const Icon(Icons.arrow_back_rounded,color:_text,size:20),
+                  ),
+                ),
+                const Spacer(),
+                Image.asset('assets/Aylogo.png',height:31,fit:BoxFit.contain),
+                const Spacer(),
+                const SizedBox(width:40),
+              ]),
+              const SizedBox(height:16),
+              const Text('Yasal ve Gizlilik',style:TextStyle(color:_text,fontSize:26,fontWeight:FontWeight.w900,letterSpacing:-.8)),
+              const SizedBox(height:4),
+              const Text('CepQontag kullanım koşullarını ve kişisel veri metinlerini buradan inceleyebilirsin.',style:TextStyle(color:_muted,fontSize:11.3,height:1.4)),
+              const SizedBox(height:17),
+              _legalCard(context,Icons.description_outlined,'Kullanım Şartları','Hizmetin kullanım kuralları, yasaklı kullanımlar ve sorumluluklar.',const TermsOfUsePage()),
+              const SizedBox(height:10),
+              _legalCard(context,Icons.privacy_tip_outlined,'Gizlilik ve KVKK','İşlenen veriler, amaçlar, saklama süreleri ve KVKK kapsamındaki hakların.',const PrivacyKvkkPage()),
+              const SizedBox(height:17),
+              Container(
+                padding:const EdgeInsets.all(11),
+                decoration:BoxDecoration(color:const Color(0xFFF8F6FF),borderRadius:BorderRadius.circular(13),border:Border.all(color:const Color(0xFFE7E0FA))),
+                child:const Row(children:[
+                  Icon(Icons.verified_user_outlined,color:_purple,size:18),
+                  SizedBox(width:9),
+                  Expanded(child:Text('Sürüm $legalVersion • Son güncelleme $legalUpdated',style:TextStyle(color:_muted,fontSize:10.2,fontWeight:FontWeight.w600))),
+                ]),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
   );
+
   Widget _legalCard(BuildContext c,IconData icon,String title,String sub,Widget page)=>Material(
-    color:_panel,borderRadius:BorderRadius.circular(18),
-    child:InkWell(onTap:()=>Navigator.push(c,MaterialPageRoute(builder:(_)=>page)),borderRadius:BorderRadius.circular(18),
-      child:Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(border:Border.all(color:_line),borderRadius:BorderRadius.circular(18)),child:Row(children:[
-        Container(width:46,height:46,decoration:BoxDecoration(color:_purple.withValues(alpha:.15),borderRadius:BorderRadius.circular(14)),child:Icon(icon,color:_purple)),
-        const SizedBox(width:12),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-          Text(title,style:const TextStyle(color:Colors.white,fontWeight:FontWeight.w900,fontSize:15)),
-          const SizedBox(height:4),Text(sub,style:const TextStyle(color:_muted,height:1.3,fontSize:12)),
-        ])),const Icon(Icons.chevron_right_rounded,color:Colors.white70)
-      ]))),
+    color:Colors.white,
+    borderRadius:BorderRadius.circular(16),
+    child:InkWell(
+      onTap:()=>Navigator.push(c,MaterialPageRoute(builder:(_)=>page)),
+      borderRadius:BorderRadius.circular(16),
+      child:Container(
+        padding:const EdgeInsets.all(13),
+        decoration:BoxDecoration(
+          border:Border.all(color:_line),
+          borderRadius:BorderRadius.circular(16),
+          boxShadow:[BoxShadow(color:Colors.black.withValues(alpha:.025),blurRadius:10,offset:const Offset(0,3))],
+        ),
+        child:Row(children:[
+          Container(
+            width:40,height:40,
+            decoration:BoxDecoration(color:const Color(0xFFF0E8FF),borderRadius:BorderRadius.circular(12)),
+            child:Icon(icon,color:_purple,size:20),
+          ),
+          const SizedBox(width:11),
+          Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+            Text(title,style:const TextStyle(color:_text,fontWeight:FontWeight.w900,fontSize:13)),
+            const SizedBox(height:3),
+            Text(sub,style:const TextStyle(color:_muted,height:1.3,fontSize:10)),
+          ])),
+          const Icon(Icons.chevron_right_rounded,color:Color(0xFF9AA0AF),size:19),
+        ]),
+      ),
+    ),
   );
 }
 
@@ -81,21 +139,65 @@ class _LegalDocument extends StatelessWidget{
   const _LegalDocument({required this.title,required this.intro,required this.sections});
   final String title,intro;
   final List<(String,String)> sections;
-  @override Widget build(BuildContext context)=>Scaffold(
+
+  @override
+  Widget build(BuildContext context)=>Scaffold(
     backgroundColor:_bg,
-    appBar:AppBar(backgroundColor:_bg,foregroundColor:Colors.white,title:Text(title)),
-    body:SafeArea(child:ListView(padding:const EdgeInsets.fromLTRB(18,8,18,28),children:[
-      Text(intro,style:const TextStyle(color:Colors.white,height:1.5,fontSize:14,fontWeight:FontWeight.w600)),
-      const SizedBox(height:8),
-      const Text('Sürüm $legalVersion • Son güncelleme $legalUpdated',style:TextStyle(color:_muted,fontSize:12)),
-      const SizedBox(height:18),
-      for(final s in sections)...[
-        Container(width:double.infinity,padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:_panel,border:Border.all(color:_line),borderRadius:BorderRadius.circular(16)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-          Text(s.$1,style:const TextStyle(color:Colors.white,fontSize:15,fontWeight:FontWeight.w900)),
-          const SizedBox(height:7),Text(s.$2,style:const TextStyle(color:_muted,fontSize:13.2,height:1.5)),
-        ])),
-        const SizedBox(height:10),
-      ],
-    ])),
+    body:SafeArea(
+      child:Center(
+        child:ConstrainedBox(
+          constraints:const BoxConstraints(maxWidth:560),
+          child:ListView(
+            padding:const EdgeInsets.fromLTRB(18,10,18,28),
+            children:[
+              Row(children:[
+                InkWell(
+                  onTap:()=>Navigator.pop(context),
+                  borderRadius:BorderRadius.circular(14),
+                  child:Container(
+                    width:40,height:40,
+                    decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(14),border:Border.all(color:_line)),
+                    child:const Icon(Icons.arrow_back_rounded,color:_text,size:20),
+                  ),
+                ),
+                const Spacer(),
+                Image.asset('assets/Aylogo.png',height:30,fit:BoxFit.contain),
+                const Spacer(),
+                const SizedBox(width:40),
+              ]),
+              const SizedBox(height:16),
+              Text(title,style:const TextStyle(color:_text,fontSize:25,fontWeight:FontWeight.w900,letterSpacing:-.7)),
+              const SizedBox(height:7),
+              Text(intro,style:const TextStyle(color:Color(0xFF555C70),height:1.45,fontSize:11.5,fontWeight:FontWeight.w500)),
+              const SizedBox(height:8),
+              Container(
+                padding:const EdgeInsets.symmetric(horizontal:10,vertical:7),
+                decoration:BoxDecoration(color:const Color(0xFFF8F6FF),borderRadius:BorderRadius.circular(10)),
+                child:const Text('Sürüm $legalVersion • Son güncelleme $legalUpdated',style:TextStyle(color:_muted,fontSize:9.6,fontWeight:FontWeight.w600)),
+              ),
+              const SizedBox(height:14),
+              for(final section in sections)...[
+                Container(
+                  width:double.infinity,
+                  padding:const EdgeInsets.all(13),
+                  decoration:BoxDecoration(
+                    color:Colors.white,
+                    border:Border.all(color:_line),
+                    borderRadius:BorderRadius.circular(15),
+                    boxShadow:[BoxShadow(color:Colors.black.withValues(alpha:.018),blurRadius:8,offset:const Offset(0,2))],
+                  ),
+                  child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                    Text(section.$1,style:const TextStyle(color:_text,fontSize:12.7,fontWeight:FontWeight.w900)),
+                    const SizedBox(height:6),
+                    Text(section.$2,style:const TextStyle(color:Color(0xFF606779),fontSize:10.8,height:1.48,fontWeight:FontWeight.w500)),
+                  ]),
+                ),
+                const SizedBox(height:9),
+              ],
+            ],
+          ),
+        ),
+      ),
+    ),
   );
 }
