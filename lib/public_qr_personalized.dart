@@ -826,163 +826,501 @@ class _MessageComposer extends StatefulWidget {
   const _MessageComposer({required this.plate, required this.type});
   final String plate;
   final String type;
+
   @override
-  State<_MessageComposer> createState() => _MessageComposerState();
+  State<_MessageComposer> createState()=>_MessageComposerState();
 }
 
-class _MessageComposerState extends State<_MessageComposer> {
-  late final TextEditingController message = TextEditingController(
-    text: widget.type == 'Aracınızı çekebilir misiniz?'
-        ? 'Çıkışımı kapatıyor, müsaitseniz aracı çekebilir misiniz?'
-        : widget.type == 'Farlarınız açık'
-            ? 'Farlarınız açık kalmış.'
-            : widget.type == 'Aracınızda hasar var'
-                ? 'Aracınızda hasar olduğunu fark ettim.'
-                : '',
-  );
-  bool sending = false;
-  bool photoAdded = false;
-  bool locationAdded = false;
-  bool photoBusy = false;
-  bool locationBusy = false;
+class _MessageComposerState extends State<_MessageComposer>{
+  static const _screen=Color(0xFFF9FAFF);
+  static const _ink=Color(0xFF0E1430);
+  static const _body=Color(0xFF737B91);
+  static const _purple=Color(0xFF6330E6);
+  static const _lime=Color(0xFFA8FF32);
+  static const _soft=Color(0xFFF8F6FF);
+  static const _softPurple=Color(0xFFF1EBFF);
+  static const _border=Color(0xFFE0DDE9);
+
+  static const _types=<String>[
+    'Aracınızı çekebilir misiniz?',
+    'Farlarınız açık',
+    'Aracınızda hasar var',
+    'Diğer mesaj',
+  ];
+
+  late String selectedType;
+  late final TextEditingController message;
+  bool sending=false;
+  bool photoAdded=false;
+  bool locationAdded=false;
+  bool photoBusy=false;
+  bool locationBusy=false;
 
   @override
-  void initState() {
+  void initState(){
     super.initState();
+    selectedType=_types.contains(widget.type)?widget.type:'Diğer mesaj';
+    message=TextEditingController(text:_defaultMessage(selectedType));
     PublicNotificationApi.clearDraft();
   }
 
+  String _defaultMessage(String type){
+    switch(type){
+      case 'Aracınızı çekebilir misiniz?':
+        return 'Çıkışımı kapatıyor, müsaitseniz aracı çekebilir misiniz?';
+      case 'Farlarınız açık':
+        return 'Farlarınız açık kalmış.';
+      case 'Aracınızda hasar var':
+        return 'Aracınızda hasar olduğunu fark ettim.';
+      default:
+        return '';
+    }
+  }
+
   @override
-  void dispose() {
+  void dispose(){
     message.dispose();
     super.dispose();
   }
 
-  bool get canSend => message.text.trim().isNotEmpty || photoAdded || locationAdded;
+  bool get canSend=>message.text.trim().isNotEmpty||photoAdded||locationAdded;
 
-  Future<void> _addPhoto() async {
-    if (photoBusy) return;
-    setState(() => photoBusy = true);
-    try {
-      final ok = await PublicNotificationApi.pickAndUploadPhoto();
-      if (!mounted) return;
-      setState(() => photoAdded = ok);
-      if (ok) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Fotoğraf eklendi.')));
-    } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Fotoğraf eklenemedi.')));
-    } finally {
-      if (mounted) setState(() => photoBusy = false);
+  IconData get _typeIcon{
+    switch(selectedType){
+      case 'Aracınızı çekebilir misiniz?': return Icons.chat_bubble_outline_rounded;
+      case 'Farlarınız açık': return Icons.lightbulb_outline_rounded;
+      case 'Aracınızda hasar var': return Icons.warning_amber_rounded;
+      default: return Icons.chat_rounded;
     }
   }
 
-  Future<void> _addLocation() async {
-    if (locationBusy) return;
-    setState(() => locationBusy = true);
-    try {
-      final ok = await PublicNotificationApi.pickLocation();
-      if (!mounted) return;
-      setState(() => locationAdded = ok);
-      if (ok) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Konum eklendi.')));
-    } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Konum izni verilmedi veya konum alınamadı.')));
-    } finally {
-      if (mounted) setState(() => locationBusy = false);
+  Color get _typeAccent{
+    switch(selectedType){
+      case 'Aracınızı çekebilir misiniz?': return const Color(0xFF76D91E);
+      case 'Farlarınız açık': return const Color(0xFF7137F2);
+      case 'Aracınızda hasar var': return const Color(0xFFE33B50);
+      default: return const Color(0xFF2F78EA);
     }
   }
 
-  Future<void> _send() async {
-    if (sending || !canSend) return;
-    setState(() => sending = true);
-    try {
-      await PublicNotificationApi.send(
-        typeLabel: widget.type,
-        message: message.text,
-      );
-      if (!mounted) return;
+  Color get _typeBg{
+    switch(selectedType){
+      case 'Aracınızı çekebilir misiniz?': return const Color(0xFFE9FFD3);
+      case 'Farlarınız açık': return const Color(0xFFF1E9FF);
+      case 'Aracınızda hasar var': return const Color(0xFFFFE9ED);
+      default: return const Color(0xFFE8F1FF);
+    }
+  }
+
+  Future<void> _chooseType()async{
+    final picked=await showModalBottomSheet<String>(
+      context:context,
+      backgroundColor:const Color(0xFFFFFFFF),
+      showDragHandle:true,
+      shape:const RoundedRectangleBorder(
+        borderRadius:BorderRadius.vertical(top:Radius.circular(24)),
+      ),
+      builder:(sheet)=>SafeArea(
+        child:Padding(
+          padding:const EdgeInsets.fromLTRB(16,2,16,18),
+          child:Column(
+            mainAxisSize:MainAxisSize.min,
+            children:[
+              const Text(
+                'Bildirim türünü seç',
+                style:TextStyle(color:_ink,fontSize:17,fontWeight:FontWeight.w900),
+              ),
+              const SizedBox(height:10),
+              ..._types.map((type)=>ListTile(
+                shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(14)),
+                leading:Icon(
+                  type=='Aracınızı çekebilir misiniz?'
+                      ? Icons.chat_bubble_outline_rounded
+                      : type=='Farlarınız açık'
+                          ? Icons.lightbulb_outline_rounded
+                          : type=='Aracınızda hasar var'
+                              ? Icons.warning_amber_rounded
+                              : Icons.chat_rounded,
+                  color:_purple,
+                ),
+                title:Text(type,style:const TextStyle(color:_ink,fontSize:13,fontWeight:FontWeight.w800)),
+                trailing:type==selectedType?const Icon(Icons.check_circle_rounded,color:_purple):null,
+                onTap:()=>Navigator.pop(sheet,type),
+              )),
+            ],
+          ),
+        ),
+      ),
+    );
+    if(picked==null||picked==selectedType||!mounted)return;
+    setState((){
+      selectedType=picked;
+      message.text=_defaultMessage(picked);
+      message.selection=TextSelection.collapsed(offset:message.text.length);
+    });
+  }
+
+  Future<void> _addPhoto()async{
+    if(photoBusy)return;
+    setState(()=>photoBusy=true);
+    try{
+      final ok=await PublicNotificationApi.pickAndUploadPhoto();
+      if(!mounted)return;
+      setState(()=>photoAdded=ok);
+      if(ok)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Fotoğraf eklendi.')));
+    }catch(_){
+      if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Fotoğraf eklenemedi.')));
+    }finally{
+      if(mounted)setState(()=>photoBusy=false);
+    }
+  }
+
+  Future<void> _addLocation()async{
+    if(locationBusy)return;
+    setState(()=>locationBusy=true);
+    try{
+      final ok=await PublicNotificationApi.pickLocation();
+      if(!mounted)return;
+      setState(()=>locationAdded=ok);
+      if(ok)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Konum eklendi.')));
+    }catch(_){
+      if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Konum izni verilmedi veya konum alınamadı.')));
+    }finally{
+      if(mounted)setState(()=>locationBusy=false);
+    }
+  }
+
+  Future<void> _send()async{
+    if(sending||!canSend)return;
+    setState(()=>sending=true);
+    try{
+      await PublicNotificationApi.send(typeLabel:selectedType,message:message.text);
+      if(!mounted)return;
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => _SentScreen(plate: widget.plate, notificationId: PublicNotificationApi.lastNotificationId ?? '', statusToken: PublicNotificationApi.lastStatusToken ?? '')),
+        MaterialPageRoute(
+          builder:(_)=>_SentScreen(
+            plate:widget.plate,
+            notificationId:PublicNotificationApi.lastNotificationId??'',
+            statusToken:PublicNotificationApi.lastStatusToken??'',
+          ),
+        ),
       );
-    } catch (e) {
-      if (!mounted) return;
+    }catch(e){
+      if(!mounted)return;
       final raw=e.toString();
       final text=raw.contains('VEHICLE_NOT_NEARBY')
-          ? 'Araç yanında değilsiniz. Güvenlik nedeniyle işlem gönderilmedi.'
-          : raw.contains('LOCATION_ACCURACY_TOO_LOW')
-            ? 'Konum doğruluğu yetersiz. Araca yaklaşın ve konumu tekrar deneyin.'
-            : raw.contains('LOCATION_REQUIRED')
-              ? 'Devam etmek için konum izni gerekli.'
-              : 'Mesaj gönderilemedi. Tekrar dene.';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
-    } finally {
-      if (mounted) setState(() => sending = false);
+          ?'Araç yanında değilsiniz. Güvenlik nedeniyle işlem gönderilmedi.'
+          :raw.contains('LOCATION_ACCURACY_TOO_LOW')
+              ?'Konum doğruluğu yetersiz. Araca yaklaşın ve konumu tekrar deneyin.'
+              :raw.contains('LOCATION_REQUIRED')
+                  ?'Devam etmek için konum izni gerekli.'
+                  :'Mesaj gönderilemedi. Tekrar dene.';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(text)));
+    }finally{
+      if(mounted)setState(()=>sending=false);
     }
   }
 
   @override
-  Widget build(BuildContext context) => _Shell(
-        child: Scaffold(
-          backgroundColor: Colors.transparent,
-          appBar: _appBar('Mesaj Gönder'),
-          body: ListView(
-            padding: const EdgeInsets.fromLTRB(18, 10, 18, 24),
-            children: [
-              _vehicleHead(widget.plate, 'Araç sahibine anonim mesaj gönderilecektir.'),
-              const SizedBox(height: 16),
-              _glass(
-                child: Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      decoration: BoxDecoration(color: _panel2, borderRadius: BorderRadius.circular(15), border: Border.all(color: _line)),
-                      child: Row(children: [
-                        const Icon(Icons.directions_car_filled_rounded, color: _lime),
-                        const SizedBox(width: 10),
-                        Expanded(child: Text(widget.type, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800))),
-                        const Icon(Icons.expand_more, color: Colors.white70),
-                      ]),
-                    ),
-                    const SizedBox(height: 10),
-                    TextField(
-                      controller: message,
-                      maxLength: 120,
-                      maxLines: 4,
-                      onChanged: (_) => setState(() {}),
-                      style: const TextStyle(color: Colors.white, fontSize: 16),
-                      decoration: InputDecoration(
-                        hintText: 'Mesajını yaz...',
-                        hintStyle: const TextStyle(color: _muted),
-                        filled: true,
-                        fillColor: _panel2,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Row(children: [
-                      Expanded(child: _miniAction(Icons.camera_alt_rounded, photoAdded ? 'Fotoğraf eklendi' : 'Fotoğraf ekle', onTap: _addPhoto, active: photoAdded, busy: photoBusy)),
-                      const SizedBox(width: 10),
-                      Expanded(child: _miniAction(Icons.location_on_rounded, locationAdded ? 'Konum eklendi' : 'Konum ekle', onTap: _addLocation, active: locationAdded, busy: locationBusy)),
-                    ]),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: FilledButton.icon(
-                        style: FilledButton.styleFrom(backgroundColor: _lime, foregroundColor: Colors.black, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-                        onPressed: !canSend || sending ? null : _send,
-                        icon: sending
-                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.black))
-                            : const Icon(Icons.send_rounded),
-                        label: Text(sending ? 'Gönderiliyor...' : 'Mesaj Gönder', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+  Widget build(BuildContext context){
+    final size=MediaQuery.sizeOf(context);
+    final compact=size.width<390||size.height<760;
+    final pad=compact?15.0:18.0;
+    final maxLines=compact?4:5;
+
+    return Scaffold(
+      backgroundColor:_screen,
+      appBar:AppBar(
+        backgroundColor:const Color(0xFFFFFFFF),
+        surfaceTintColor:const Color(0xFFFFFFFF),
+        elevation:0,
+        scrolledUnderElevation:0,
+        centerTitle:true,
+        toolbarHeight:compact?58:64,
+        leading:IconButton(
+          onPressed:()=>Navigator.pop(context),
+          icon:const Icon(Icons.arrow_back_rounded,color:_ink,size:27),
+        ),
+        title:Text(
+          'Mesaj Gönder',
+          style:TextStyle(
+            color:_ink,
+            fontSize:compact?19:21,
+            fontWeight:FontWeight.w900,
+            letterSpacing:-.4,
           ),
         ),
-      );
+      ),
+      body:SafeArea(
+        top:false,
+        child:Center(
+          child:ConstrainedBox(
+            constraints:const BoxConstraints(maxWidth:430),
+            child:ListView(
+              padding:EdgeInsets.fromLTRB(pad,compact?12:18,pad,24),
+              children:[
+                Center(
+                  child:Container(
+                    width:compact?78:86,
+                    height:compact?78:86,
+                    decoration:const BoxDecoration(
+                      shape:BoxShape.circle,
+                      gradient:RadialGradient(
+                        colors:[Color(0xFFE9E3FF),Color(0xFFF4F1FF)],
+                      ),
+                    ),
+                    child:Icon(Icons.directions_car_filled_rounded,color:_purple,size:compact?42:47),
+                  ),
+                ),
+                SizedBox(height:compact?10:13),
+                Text(
+                  widget.plate,
+                  textAlign:TextAlign.center,
+                  style:TextStyle(
+                    color:_ink,
+                    fontSize:compact?25:29,
+                    fontWeight:FontWeight.w900,
+                    letterSpacing:.7,
+                  ),
+                ),
+                const SizedBox(height:5),
+                Text(
+                  'Araç sahibine anonim mesaj gönderilecektir.',
+                  textAlign:TextAlign.center,
+                  style:TextStyle(
+                    color:_body,
+                    fontSize:compact?11.5:12.5,
+                    height:1.35,
+                    fontWeight:FontWeight.w500,
+                  ),
+                ),
+                SizedBox(height:compact?16:20),
+                Container(
+                  padding:EdgeInsets.fromLTRB(compact?14:16,compact?14:16,compact?14:16,compact?14:16),
+                  decoration:BoxDecoration(
+                    color:const Color(0xFFFFFFFF),
+                    borderRadius:BorderRadius.circular(22),
+                    boxShadow:const [
+                      BoxShadow(color:Color(0x100B1330),blurRadius:22,offset:Offset(0,8)),
+                    ],
+                  ),
+                  child:Column(
+                    children:[
+                      InkWell(
+                        onTap:_chooseType,
+                        borderRadius:BorderRadius.circular(15),
+                        child:Container(
+                          minHeight:compact?58:64,
+                          padding:const EdgeInsets.symmetric(horizontal:12,vertical:10),
+                          decoration:BoxDecoration(
+                            color:_soft,
+                            borderRadius:BorderRadius.circular(15),
+                            border:Border.all(color:const Color(0xFFE3DDF1)),
+                          ),
+                          child:Row(
+                            children:[
+                              Container(
+                                width:compact?39:43,
+                                height:compact?39:43,
+                                decoration:BoxDecoration(color:_typeBg,shape:BoxShape.circle),
+                                child:Icon(_typeIcon,color:_typeAccent,size:compact?20:22),
+                              ),
+                              const SizedBox(width:11),
+                              Expanded(
+                                child:Text(
+                                  selectedType,
+                                  maxLines:2,
+                                  overflow:TextOverflow.ellipsis,
+                                  style:TextStyle(
+                                    color:_ink,
+                                    fontSize:compact?13.5:15,
+                                    fontWeight:FontWeight.w900,
+                                  ),
+                                ),
+                              ),
+                              const Icon(Icons.keyboard_arrow_down_rounded,color:Color(0xFF343A55),size:25),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height:12),
+                      TextField(
+                        controller:message,
+                        maxLength:120,
+                        maxLines:maxLines,
+                        minLines:compact?4:5,
+                        onChanged:(_)=>setState((){}),
+                        style:TextStyle(
+                          color:_ink,
+                          fontSize:compact?13:14.5,
+                          height:1.35,
+                          fontWeight:FontWeight.w500,
+                        ),
+                        decoration:InputDecoration(
+                          hintText:'Mesajını yaz...',
+                          hintStyle:const TextStyle(color:Color(0xFF9AA1B2)),
+                          counterStyle:TextStyle(color:_body,fontSize:compact?10:11),
+                          filled:true,
+                          fillColor:const Color(0xFFFCFCFF),
+                          contentPadding:const EdgeInsets.fromLTRB(13,13,13,10),
+                          border:OutlineInputBorder(
+                            borderRadius:BorderRadius.circular(15),
+                            borderSide:const BorderSide(color:_border),
+                          ),
+                          enabledBorder:OutlineInputBorder(
+                            borderRadius:BorderRadius.circular(15),
+                            borderSide:const BorderSide(color:_border),
+                          ),
+                          focusedBorder:OutlineInputBorder(
+                            borderRadius:BorderRadius.circular(15),
+                            borderSide:const BorderSide(color:_purple,width:1.35),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height:4),
+                      Row(
+                        children:[
+                          Expanded(
+                            child:_ComposerAction(
+                              icon:photoAdded?Icons.check_rounded:Icons.camera_alt_rounded,
+                              title:photoAdded?'Fotoğraf eklendi':'Fotoğraf ekle',
+                              subtitle:photoAdded?'1 fotoğraf hazır':'Kameradan fotoğraf',
+                              active:photoAdded,
+                              busy:photoBusy,
+                              onTap:_addPhoto,
+                            ),
+                          ),
+                          const SizedBox(width:10),
+                          Expanded(
+                            child:_ComposerAction(
+                              icon:locationAdded?Icons.check_rounded:Icons.location_on_rounded,
+                              title:locationAdded?'Konum eklendi':'Konum ekle',
+                              subtitle:locationAdded?'Mevcut konum hazır':'Mevcut konum',
+                              active:locationAdded,
+                              busy:locationBusy,
+                              onTap:_addLocation,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height:compact?13:15),
+                      SizedBox(
+                        width:double.infinity,
+                        height:compact?50:55,
+                        child:DecoratedBox(
+                          decoration:BoxDecoration(
+                            gradient:LinearGradient(
+                              colors:canSend
+                                  ?const [Color(0xFFA7FF31),Color(0xFF9BF72A)]
+                                  :const [Color(0xFFE3E7DD),Color(0xFFD8DDD2)],
+                            ),
+                            borderRadius:BorderRadius.circular(16),
+                          ),
+                          child:FilledButton.icon(
+                            onPressed:!canSend||sending?null:_send,
+                            style:FilledButton.styleFrom(
+                              backgroundColor:Colors.transparent,
+                              disabledBackgroundColor:Colors.transparent,
+                              shadowColor:Colors.transparent,
+                              foregroundColor:_ink,
+                              disabledForegroundColor:const Color(0xFF8A9185),
+                              shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(16)),
+                            ),
+                            icon:sending
+                                ?const SizedBox(width:19,height:19,child:CircularProgressIndicator(strokeWidth:2.2,color:_ink))
+                                :const Icon(Icons.send_outlined,size:22),
+                            label:Text(
+                              sending?'Gönderiliyor...':'Mesaj Gönder',
+                              style:TextStyle(fontSize:compact?15:16.5,fontWeight:FontWeight.w900),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ComposerAction extends StatelessWidget{
+  const _ComposerAction({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    required this.active,
+    required this.busy,
+  });
+
+  final IconData icon;
+  final String title,subtitle;
+  final VoidCallback onTap;
+  final bool active,busy;
+
+  @override
+  Widget build(BuildContext context)=>InkWell(
+    onTap:busy?null:onTap,
+    borderRadius:BorderRadius.circular(15),
+    child:Container(
+      height:74,
+      padding:const EdgeInsets.symmetric(horizontal:10),
+      decoration:BoxDecoration(
+        color:const Color(0xFFFBFAFF),
+        borderRadius:BorderRadius.circular(15),
+        border:Border.all(color:active?const Color(0xFFB59BFF):const Color(0xFFE3DDF1)),
+      ),
+      child:Row(
+        children:[
+          Container(
+            width:36,
+            height:36,
+            decoration:BoxDecoration(
+              color:active?const Color(0xFFE8FFD5):_ComposerAction._iconBg,
+              shape:BoxShape.circle,
+            ),
+            child:busy
+                ?const Padding(
+                    padding:EdgeInsets.all(9),
+                    child:CircularProgressIndicator(strokeWidth:2,color:_purple),
+                  )
+                :Icon(icon,color:active?const Color(0xFF4DAA10):_purple,size:20),
+          ),
+          const SizedBox(width:9),
+          Expanded(
+            child:Column(
+              mainAxisAlignment:MainAxisAlignment.center,
+              crossAxisAlignment:CrossAxisAlignment.start,
+              children:[
+                Text(
+                  title,
+                  maxLines:1,
+                  overflow:TextOverflow.ellipsis,
+                  style:const TextStyle(color:_ink,fontSize:11.5,fontWeight:FontWeight.w900),
+                ),
+                const SizedBox(height:2),
+                Text(
+                  subtitle,
+                  maxLines:1,
+                  overflow:TextOverflow.ellipsis,
+                  style:const TextStyle(color:_body,fontSize:9.5,fontWeight:FontWeight.w500),
+                ),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right_rounded,color:Color(0xFF5A4A91),size:21),
+        ],
+      ),
+    ),
+  );
+
+  static const _iconBg=Color(0xFFF0EAFF);
 }
 
 class _SentScreen extends StatefulWidget {
