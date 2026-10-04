@@ -6,12 +6,13 @@ import 'qr_backend.dart';
 import 'owner_auth.dart';
 import 'account_recovery_page.dart';
 
-const _bg = Color(0xFF06111F);
-const _panel = Color(0xFF0E1930);
-const _line = Color(0xFF2C3B67);
-const _purple = Color(0xFF8B5CFF);
-const _purple2 = Color(0xFF6D3EFF);
-const _muted = Color(0xFFAAB4CF);
+const _bg = Color(0xFFFDFDFF);
+const _panel = Colors.white;
+const _line = Color(0xFFE5E7EF);
+const _purple = Color(0xFF5E24F5);
+const _purple2 = Color(0xFF7A35FF);
+const _text = Color(0xFF090B18);
+const _muted = Color(0xFF747A8D);
 
 class PasswordOwnerLoginScreen extends StatefulWidget {
   const PasswordOwnerLoginScreen({super.key, required this.onDone, required this.onBack});
@@ -120,100 +121,226 @@ class _PasswordOwnerLoginScreenState extends State<PasswordOwnerLoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final top = MediaQuery.paddingOf(context).top;
+    final size=MediaQuery.sizeOf(context);
+    final compact=size.height<720;
     return Scaffold(
-      backgroundColor: _bg,
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            SizedBox(
-              height: 320,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Image.asset('assets/Aracsahibi.png', fit: BoxFit.cover, alignment: Alignment.topCenter),
-                  Positioned(
-                    left: 14,
-                    top: top + 12,
-                    child: IconButton(
-                      onPressed: widget.onBack,
-                      icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 24),
+      backgroundColor:_bg,
+      body:SafeArea(
+        child:Center(
+          child:ConstrainedBox(
+            constraints:const BoxConstraints(maxWidth:460),
+            child:SingleChildScrollView(
+              padding:EdgeInsets.fromLTRB(20,10,20,compact?104:110),
+              child:Column(
+                crossAxisAlignment:CrossAxisAlignment.start,
+                children:[
+                  Row(children:[
+                    InkWell(
+                      onTap:widget.onBack,
+                      borderRadius:BorderRadius.circular(14),
+                      child:Container(
+                        width:40,height:40,
+                        decoration:BoxDecoration(
+                          color:Colors.white,
+                          borderRadius:BorderRadius.circular(14),
+                          border:Border.all(color:_line),
+                        ),
+                        child:const Icon(Icons.arrow_back_rounded,color:_text,size:20),
+                      ),
+                    ),
+                    const Spacer(),
+                    Image.asset(
+                      'assets/Aylogo.png',
+                      height:compact?30:32,
+                      fit:BoxFit.contain,
+                      filterQuality:FilterQuality.high,
+                    ),
+                    const Spacer(),
+                    const SizedBox(width:40),
+                  ]),
+                  SizedBox(height:compact?12:15),
+                  Container(
+                    height:compact?172:190,
+                    width:double.infinity,
+                    clipBehavior:Clip.antiAlias,
+                    decoration:BoxDecoration(
+                      borderRadius:BorderRadius.circular(24),
+                      border:Border.all(color:const Color(0xFFE9E3FF)),
+                    ),
+                    child:Stack(
+                      fit:StackFit.expand,
+                      children:[
+                        Image.asset(
+                          'assets/IMG_20261004_191854.png',
+                          fit:BoxFit.cover,
+                          alignment:const Alignment(.25,.52),
+                          filterQuality:FilterQuality.high,
+                        ),
+                        DecoratedBox(
+                          decoration:BoxDecoration(
+                            gradient:LinearGradient(
+                              begin:Alignment.topLeft,
+                              end:Alignment.bottomRight,
+                              colors:[
+                                Colors.white.withValues(alpha:.90),
+                                Colors.white.withValues(alpha:.48),
+                                Colors.transparent,
+                              ],
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          left:18,
+                          top:18,
+                          width:205,
+                          child:Column(
+                            crossAxisAlignment:CrossAxisAlignment.start,
+                            children:[
+                              Container(
+                                padding:const EdgeInsets.symmetric(horizontal:10,vertical:5),
+                                decoration:BoxDecoration(
+                                  color:const Color(0xFFF0E8FF),
+                                  borderRadius:BorderRadius.circular(18),
+                                ),
+                                child:const Row(
+                                  mainAxisSize:MainAxisSize.min,
+                                  children:[
+                                    Icon(Icons.lock_outline_rounded,color:_purple,size:14),
+                                    SizedBox(width:6),
+                                    Text('GÜVENLİ GİRİŞ',style:TextStyle(color:_purple,fontSize:10.5,fontWeight:FontWeight.w900)),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height:11),
+                              Text(
+                                'Tekrar hoş geldin',
+                                style:TextStyle(
+                                  color:_text,
+                                  fontSize:compact?24:27,
+                                  height:1,
+                                  fontWeight:FontWeight.w900,
+                                  letterSpacing:-1,
+                                ),
+                              ),
+                              const SizedBox(height:7),
+                              Text(
+                                'Aracınla ilgili tüm bildirimlere\nve hizmetlere ulaş.',
+                                style:TextStyle(color:_muted,fontSize:compact?11.5:12.5,height:1.35,fontWeight:FontWeight.w500),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    top: top + 16,
-                    child: const Text('Giriş Yap', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 27, fontWeight: FontWeight.w900)),
+                  SizedBox(height:compact?17:20),
+                  Text(
+                    'Giriş Yap',
+                    style:TextStyle(color:_text,fontSize:compact?25:28,fontWeight:FontWeight.w900,letterSpacing:-.8),
                   ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 28),
-              child: Container(
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(24), border: Border.all(color: _line)),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Text('Telefon Numarası', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w900)),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: phone,
-                    keyboardType: TextInputType.phone,
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
-                    decoration: _input('5XX XXX XX XX', Icons.phone_rounded),
+                  const SizedBox(height:4),
+                  const Text(
+                    'CepQontag hesabına telefon numaran ve şifrenle giriş yap.',
+                    style:TextStyle(color:_muted,fontSize:11.5,height:1.35),
                   ),
-                  const SizedBox(height: 14),
-                  const Text('Şifre', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w900)),
-                  const SizedBox(height: 8),
+                  SizedBox(height:compact?15:18),
+                  const Text('Telefon Numarası',style:TextStyle(color:_text,fontSize:12.5,fontWeight:FontWeight.w800)),
+                  const SizedBox(height:6),
                   TextField(
-                    controller: password,
-                    obscureText: obscure,
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
-                    decoration: _input('Şifreni gir', Icons.lock_outline_rounded).copyWith(
-                      suffixIcon: IconButton(
-                        onPressed: () => setState(() => obscure = !obscure),
-                        icon: Icon(obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined, color: _muted),
+                    controller:phone,
+                    keyboardType:TextInputType.phone,
+                    style:const TextStyle(color:_text,fontWeight:FontWeight.w700,fontSize:14),
+                    decoration:_input('5XX XXX XX XX',Icons.phone_rounded),
+                  ),
+                  const SizedBox(height:12),
+                  const Text('Şifre',style:TextStyle(color:_text,fontSize:12.5,fontWeight:FontWeight.w800)),
+                  const SizedBox(height:6),
+                  TextField(
+                    controller:password,
+                    obscureText:obscure,
+                    style:const TextStyle(color:_text,fontWeight:FontWeight.w700,fontSize:14),
+                    decoration:_input('Şifreni gir',Icons.lock_outline_rounded).copyWith(
+                      suffixIcon:IconButton(
+                        onPressed:()=>setState(()=>obscure=!obscure),
+                        icon:Icon(obscure?Icons.visibility_outlined:Icons.visibility_off_outlined,color:_muted,size:19),
                       ),
                     ),
                   ),
                   Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: busy ? null : () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountRecoveryPage(mode: 'owner'))),
-                      child: const Text('Şifremi unuttum', style: TextStyle(color: _purple)),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: FilledButton(
-                      onPressed: busy ? null : _login,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: _purple,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                    alignment:Alignment.centerRight,
+                    child:TextButton(
+                      onPressed:busy?null:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const AccountRecoveryPage(mode:'owner'))),
+                      style:TextButton.styleFrom(
+                        foregroundColor:_purple,
+                        padding:const EdgeInsets.symmetric(horizontal:4,vertical:5),
+                        minimumSize:const Size(0,34),
                       ),
-                      child: Text(busy ? 'Giriş yapılıyor...' : 'Giriş Yap', style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w900)),
+                      child:const Text('Şifremi unuttum',style:TextStyle(fontSize:11.5,fontWeight:FontWeight.w800)),
                     ),
                   ),
-                ]),
+                  const SizedBox(height:5),
+                  SizedBox(
+                    width:double.infinity,
+                    height:52,
+                    child:FilledButton(
+                      onPressed:busy?null:_login,
+                      style:FilledButton.styleFrom(
+                        backgroundColor:_purple,
+                        foregroundColor:Colors.white,
+                        disabledBackgroundColor:_purple.withValues(alpha:.55),
+                        shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(17)),
+                        elevation:0,
+                      ),
+                      child:Row(
+                        mainAxisAlignment:MainAxisAlignment.center,
+                        children:[
+                          if(busy)
+                            const SizedBox(width:17,height:17,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white))
+                          else
+                            const Icon(Icons.person_rounded,size:19),
+                          const SizedBox(width:10),
+                          Text(busy?'Giriş yapılıyor...':'Giriş Yap',style:const TextStyle(fontSize:15.5,fontWeight:FontWeight.w900)),
+                          if(!busy)...[
+                            const SizedBox(width:11),
+                            const Icon(Icons.arrow_forward_rounded,size:20),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height:12),
+                  Row(children:[
+                    Expanded(child:Container(height:1,color:_line)),
+                    const Padding(
+                      padding:EdgeInsets.symmetric(horizontal:10),
+                      child:Text('GÜVENLİ • ANONİM • HIZLI',style:TextStyle(color:_muted,fontSize:8.5,fontWeight:FontWeight.w700,letterSpacing:.5)),
+                    ),
+                    Expanded(child:Container(height:1,color:_line)),
+                  ]),
+                ],
               ),
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 
   InputDecoration _input(String hint, IconData icon) => InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(color: _muted),
-        prefixIcon: Icon(icon, color: _purple),
-        filled: true,
-        fillColor: const Color(0xFF111D37),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(17), borderSide: const BorderSide(color: _line)),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(17), borderSide: const BorderSide(color: _purple, width: 1.5)),
+        hintText:hint,
+        hintStyle:const TextStyle(color:Color(0xFF9AA0AF),fontSize:13),
+        prefixIcon:Icon(icon,color:_purple,size:18),
+        filled:true,
+        fillColor:Colors.white,
+        isDense:true,
+        contentPadding:const EdgeInsets.symmetric(horizontal:14,vertical:15),
+        enabledBorder:OutlineInputBorder(
+          borderRadius:BorderRadius.circular(15),
+          borderSide:const BorderSide(color:_line),
+        ),
+        focusedBorder:OutlineInputBorder(
+          borderRadius:BorderRadius.circular(15),
+          borderSide:const BorderSide(color:_purple,width:1.5),
+        ),
       );
-}
+
