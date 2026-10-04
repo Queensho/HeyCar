@@ -152,8 +152,8 @@ class _OwnerVehicleSetupPageState extends State<OwnerVehicleSetupPage> {
                       ),
                     ),
                   ),
-                  const Positioned(left: 18, top: 18, child: Text.rich(TextSpan(children: [TextSpan(text: 'Aracını ', style: TextStyle(color: _text)), TextSpan(text: 'ekle', style: TextStyle(color: _purple))]), style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -1))),
-                  const Positioned(left: 18, top: 60, width: 215, child: Text('Plakanı yaz, ardından marka ve modelini seç.', style: TextStyle(color: _muted, fontSize: 13.2, height: 1.35, fontWeight: FontWeight.w500))),
+                  const Positioned(left: 18, top: 18, child: Text.rich(TextSpan(children: [TextSpan(text: 'Aracını ', style: TextStyle(color: _text)), TextSpan(text: 'ekle', style: TextStyle(color: _purple))]), style: TextStyle(fontSize: 25, fontWeight: FontWeight.w900, letterSpacing: -1))),
+                  const Positioned(left: 18, top: 60, width: 215, child: Text('Plakanı yaz, ardından marka ve modelini seç.', style: TextStyle(color: _muted, fontSize: 12, height: 1.35, fontWeight: FontWeight.w500))),
                 ]),
               ),
               const SizedBox(height: 14),
@@ -161,8 +161,8 @@ class _OwnerVehicleSetupPageState extends State<OwnerVehicleSetupPage> {
                 height: 52,
                 decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(17), border: Border.all(color: _line)),
                 child: Row(children: [
-                  Expanded(child: Container(alignment: Alignment.center, decoration: BoxDecoration(gradient: const LinearGradient(colors: [_purple, _purple2]), borderRadius: BorderRadius.circular(16)), child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.directions_car_filled_rounded, color: Colors.white, size: 19), SizedBox(width: 8), Text('Plaka ile ekle', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13.5))]))),
-                  const Expanded(child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.camera_alt_rounded, color: _muted, size: 18), SizedBox(width: 7), Text('Ruhsat fotoğrafı', style: TextStyle(color: _muted, fontWeight: FontWeight.w700, fontSize: 12.5))])),
+                  Expanded(child: Container(alignment: Alignment.center, decoration: BoxDecoration(gradient: const LinearGradient(colors: [_purple, _purple2]), borderRadius: BorderRadius.circular(16)), child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.directions_car_filled_rounded, color: Colors.white, size: 19), SizedBox(width: 8), Text('Plaka ile ekle', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13))]))),
+                  const Expanded(child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.camera_alt_rounded, color: _muted, size: 18), SizedBox(width: 7), Text('Ruhsat fotoğrafı', style: TextStyle(color: _muted, fontWeight: FontWeight.w700, fontSize: 12))])),
                 ]),
               ),
               const SizedBox(height: 14),
@@ -183,13 +183,13 @@ class _OwnerVehicleSetupPageState extends State<OwnerVehicleSetupPage> {
                 child: Row(children: [
                   Container(width: 62, height: 58, decoration: BoxDecoration(color: _panel2, borderRadius: BorderRadius.circular(15), border: Border.all(color: _line)), child: Padding(padding: const EdgeInsets.all(10), child: _BrandLogo(make))),
                   const SizedBox(width: 13),
-                  Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [Text('$make $model', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _text, fontSize: 17, fontWeight: FontWeight.w900)), const SizedBox(height: 4), Text(plate.text.trim().toUpperCase(), style: const TextStyle(color: _muted, fontSize: 14))])),
+                  Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [Text('$make $model', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _text, fontSize: 15, fontWeight: FontWeight.w900)), const SizedBox(height: 4), Text(plate.text.trim().toUpperCase(), style: const TextStyle(color: _muted, fontSize: 13))])),
                 ]),
               ),
               const SizedBox(height: 16),
-              SizedBox(width: double.infinity, height: 56, child: FilledButton(onPressed: saving ? null : _save, style: FilledButton.styleFrom(backgroundColor: _orange, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))), child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [Text(saving ? 'Kaydediliyor...' : 'Aracı kaydet', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)), const SizedBox(width: 8), if (!saving) const Icon(Icons.arrow_forward_rounded)]))),
+              SizedBox(width: double.infinity, height: 56, child: FilledButton(onPressed: saving ? null : _save, style: FilledButton.styleFrom(backgroundColor: _orange, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))), child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [Text(saving ? 'Kaydediliyor...' : 'Aracı kaydet', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900)), const SizedBox(width: 8), if (!saving) const Icon(Icons.arrow_forward_rounded)]))),
               const SizedBox(height: 10),
-              const Center(child: Text('Sonraki adım: QR etiketini bu araca bağla.', style: TextStyle(color: _muted, fontSize: 11.5, fontWeight: FontWeight.w600))),
+              const Center(child: Text('Sonraki adım: QR etiketini bu araca bağla.', style: TextStyle(color: _muted, fontSize: 11, fontWeight: FontWeight.w600))),
             ],
           ),
         ),
@@ -197,7 +197,7 @@ class _OwnerVehicleSetupPageState extends State<OwnerVehicleSetupPage> {
     );
   }
 
-  Widget _label(String left, String right, VoidCallback tap) => Row(children: [Text(left, style: const TextStyle(color: _muted, fontSize: 13, fontWeight: FontWeight.w800)), const Spacer(), InkWell(onTap: tap, child: Row(children: [Text(right, style: const TextStyle(color: _purple, fontSize: 12.5, fontWeight: FontWeight.w900)), const Icon(Icons.chevron_right_rounded, color: _purple, size: 19)]))]);
+  Widget _label(String left, String right, VoidCallback tap) => Row(children: [Text(left, style: const TextStyle(color: _muted, fontSize: 13, fontWeight: FontWeight.w800)), const Spacer(), InkWell(onTap: tap, child: Row(children: [Text(right, style: const TextStyle(color: _purple, fontSize: 12, fontWeight: FontWeight.w900)), const Icon(Icons.chevron_right_rounded, color: _purple, size: 19)]))]);
 
   Future<void> _showMakes() async {
     final selected = await showModalBottomSheet<String>(context: context, isScrollControlled: true, backgroundColor: Colors.transparent, builder: (_) => _PickerSheet(title: 'Araç markasını seç', values: makes, selected: make, showLogos: true));
@@ -227,10 +227,10 @@ class _StepName extends StatelessWidget{
       ),
       child:done
         ? const Icon(Icons.check_rounded,color:Colors.white,size:12)
-        : Text(active?'2':'3',style:TextStyle(color:active?Colors.white:_muted,fontSize:9,fontWeight:FontWeight.w900)),
+        : Text(active?'2':'3',style:TextStyle(color:active?Colors.white:_muted,fontSize:10.5,fontWeight:FontWeight.w900)),
     ),
     const SizedBox(width:5),
-    Text(text,style:TextStyle(color:active?_text:_muted,fontSize:10.2,fontWeight:active?FontWeight.w900:FontWeight.w700)),
+    Text(text,style:TextStyle(color:active?_text:_muted,fontSize:10.5,fontWeight:active?FontWeight.w900:FontWeight.w700)),
   ]);
 }
 
@@ -241,12 +241,12 @@ class _StepDash extends StatelessWidget{
 
 class _PlateField extends StatelessWidget {
   const _PlateField({required this.controller}); final TextEditingController controller;
-  @override Widget build(BuildContext context) => Container(height: 62, clipBehavior: Clip.antiAlias, decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(18), border: Border.all(color: _line)), child: Row(children: [Container(width: 62, alignment: Alignment.center, decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xFF0C49A1), Color(0xFF073273)])), child: const Text('TR', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900))), Expanded(child: TextField(controller: controller, textAlign: TextAlign.center, textCapitalization: TextCapitalization.characters, style: const TextStyle(color: _text, fontSize: 20, fontWeight: FontWeight.w900), decoration: const InputDecoration(hintText: '34 ABC 123', hintStyle: TextStyle(color: Color(0xFF69738D)), border: InputBorder.none, enabledBorder: InputBorder.none, focusedBorder: InputBorder.none, filled: false)))]));
+  @override Widget build(BuildContext context) => Container(height: 62, clipBehavior: Clip.antiAlias, decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(18), border: Border.all(color: _line)), child: Row(children: [Container(width: 62, alignment: Alignment.center, decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xFF0C49A1), Color(0xFF073273)])), child: const Text('TR', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w900))), Expanded(child: TextField(controller: controller, textAlign: TextAlign.center, textCapitalization: TextCapitalization.characters, style: const TextStyle(color: _text, fontSize: 19, fontWeight: FontWeight.w900), decoration: const InputDecoration(hintText: '34 ABC 123', hintStyle: TextStyle(color: Color(0xFF69738D)), border: InputBorder.none, enabledBorder: InputBorder.none, focusedBorder: InputBorder.none, filled: false)))]));
 }
 
 class _Selector extends StatelessWidget {
   const _Selector({required this.onTap, required this.leading, required this.title, required this.trailing}); final VoidCallback? onTap; final Widget leading,trailing; final String title;
-  @override Widget build(BuildContext context) => Material(color: _panel, borderRadius: BorderRadius.circular(18), child: InkWell(onTap: onTap, borderRadius: BorderRadius.circular(18), child: Container(height: 62, padding: const EdgeInsets.symmetric(horizontal: 14), decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), border: Border.all(color: _line)), child: Row(children: [SizedBox(width: 36, height: 36, child: Center(child: leading)), const SizedBox(width: 12), Expanded(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _text, fontSize: 16, fontWeight: FontWeight.w800))), trailing]))));
+  @override Widget build(BuildContext context) => Material(color: _panel, borderRadius: BorderRadius.circular(18), child: InkWell(onTap: onTap, borderRadius: BorderRadius.circular(18), child: Container(height: 62, padding: const EdgeInsets.symmetric(horizontal: 14), decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), border: Border.all(color: _line)), child: Row(children: [SizedBox(width: 36, height: 36, child: Center(child: leading)), const SizedBox(width: 12), Expanded(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _text, fontSize: 13, fontWeight: FontWeight.w800))), trailing]))));
 }
 
 class _BrandLogo extends StatelessWidget {
