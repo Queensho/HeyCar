@@ -43,7 +43,7 @@ class OwnerGuidePage extends StatelessWidget {
                 Row(
                   children: [
                     Image.asset(
-                      'assets/Aylogo.png',
+                      'assets/Logoyeni.png',
                       height: compact ? 28 : 30,
                       fit: BoxFit.contain,
                     ),
