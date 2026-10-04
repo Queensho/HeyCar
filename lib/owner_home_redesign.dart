@@ -316,15 +316,12 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     boxShadow:light?[BoxShadow(color:Colors.black.withValues(alpha:.045),blurRadius:16,offset:const Offset(0,6))]:null,
   );
 
-  Widget brand()=>Text.rich(TextSpan(
-    style:TextStyle(fontSize:28,fontWeight:FontWeight.w900,letterSpacing:-1.3,color:text),
-    children:[
-      const TextSpan(text:'Cep'),
-      const TextSpan(text:'q',style:TextStyle(color:purple)),
-      const TextSpan(text:'ontag'),
-      TextSpan(text:'®',style:TextStyle(fontSize:8,color:muted)),
-    ],
-  ));
+  Widget brand()=>Image.asset(
+    'assets/Logoyeni.png',
+    height:32,
+    fit:BoxFit.contain,
+    alignment:Alignment.centerLeft,
+  );
 
   Widget header()=>SizedBox(
     height:194,
@@ -1208,7 +1205,12 @@ class OwnerServicesRedesign extends StatelessWidget{
     ];
     return ColoredBox(
       color:CepqarTheme.bg,
-      child:SafeArea(bottom:false,child:ListView(padding:const EdgeInsets.fromLTRB(18,18,18,28),children:[
+      child:SafeArea(bottom:false,child:ListView(padding:const EdgeInsets.fromLTRB(18,10,18,28),children:[
+        Align(
+          alignment:Alignment.centerLeft,
+          child:Image.asset('assets/Logoyeni.png',height:31,fit:BoxFit.contain),
+        ),
+        const SizedBox(height:14),
         Text('Hizmetler',style:TextStyle(color:text,fontSize:27,fontWeight:FontWeight.w900)),
         const SizedBox(height:5),
         Text('CepQontag ile aracınız için tüm hizmetler tek yerde.',style:TextStyle(color:muted,fontSize:13)),
