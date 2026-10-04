@@ -348,8 +348,8 @@ class _VehicleReferenceCard extends StatelessWidget{
       :(dark?_purple.withValues(alpha:.38):_line);
 
     return Container(
-      height:124,
-      padding:const EdgeInsets.fromLTRB(10,7,10,7),
+      height:142,
+      padding:const EdgeInsets.fromLTRB(11,8,11,8),
       decoration:BoxDecoration(
         color:dark?const Color(0xFF090E1D):_panel,
         borderRadius:BorderRadius.circular(15),
@@ -365,11 +365,11 @@ class _VehicleReferenceCard extends StatelessWidget{
             borderRadius:BorderRadius.circular(11),
             child:Row(children:[
               Expanded(
-                flex:34,
+                flex:38,
                 child:Stack(children:[
                   Positioned.fill(
                     child:Padding(
-                      padding:const EdgeInsets.fromLTRB(4,7,6,2),
+                      padding:const EdgeInsets.fromLTRB(2,5,4,1),
                       child:Image.asset(
                         'assets/Arac.png',
                         fit:BoxFit.contain,
@@ -397,13 +397,13 @@ class _VehicleReferenceCard extends StatelessWidget{
               ),
               const SizedBox(width:8),
               Expanded(
-                flex:66,
+                flex:62,
                 child:Column(
                   mainAxisAlignment:MainAxisAlignment.center,
                   crossAxisAlignment:CrossAxisAlignment.start,
                   children:[
                     Row(children:[
-                      Expanded(child:Text('${v['plate']??''}',maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:_text,fontSize:14.6,fontWeight:FontWeight.w900,letterSpacing:.15))),
+                      Expanded(child:Text('${v['plate']??''}',maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:_text,fontSize:16.2,fontWeight:FontWeight.w900,letterSpacing:.15))),
                       Container(
                         padding:const EdgeInsets.symmetric(horizontal:7,vertical:3),
                         decoration:BoxDecoration(
@@ -421,10 +421,10 @@ class _VehicleReferenceCard extends StatelessWidget{
                       ),
                     ]),
                     const SizedBox(height:2),
-                    Text(model.isEmpty?make:'$make $model',maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:_text,fontSize:10.8,fontWeight:FontWeight.w800)),
+                    Text(model.isEmpty?make:'$make $model',maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:_text,fontSize:12.0,fontWeight:FontWeight.w800)),
                     if(details.isNotEmpty)...[
                       const SizedBox(height:1),
-                      Text(details,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:_muted,fontSize:8.7)),
+                      Text(details,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:_muted,fontSize:9.3)),
                     ],
                     const Spacer(),
                     Row(children:[
@@ -497,16 +497,16 @@ class _VehicleAction extends StatelessWidget{
           padding:const EdgeInsets.symmetric(vertical:1),
           child:Column(children:[
             Container(
-              width:27,height:27,
+              width:30,height:30,
               decoration:BoxDecoration(
                 color:dark?const Color(0xFF17132E):_purple.withValues(alpha:.07),
                 borderRadius:BorderRadius.circular(7),
                 border:dark?Border.all(color:_purple.withValues(alpha:.35)):null,
               ),
-              child:Icon(icon,color:dark?const Color(0xFFA06DFF):_purple,size:15),
+              child:Icon(icon,color:dark?const Color(0xFFA06DFF):_purple,size:16),
             ),
             const SizedBox(height:2),
-            Text(label,maxLines:1,overflow:TextOverflow.ellipsis,textAlign:TextAlign.center,style:TextStyle(color:_muted,fontSize:6.9,fontWeight:FontWeight.w700)),
+            Text(label,maxLines:1,overflow:TextOverflow.ellipsis,textAlign:TextAlign.center,style:TextStyle(color:_muted,fontSize:7.4,fontWeight:FontWeight.w700)),
           ]),
         ),
       ),
