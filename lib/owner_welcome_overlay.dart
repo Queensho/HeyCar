@@ -253,7 +253,7 @@ class _TopBar extends StatelessWidget {
     return Row(
       children: [
         Image.asset(
-          'assets/Aylogo.png',
+          'assets/Logoyeni.png',
           height: compact ? 29 : 32,
           fit: BoxFit.contain,
           alignment: Alignment.centerLeft,
