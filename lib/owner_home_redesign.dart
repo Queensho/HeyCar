@@ -138,7 +138,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                   Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
                     Text('Hızlı Erişim',style:TextStyle(color:text,fontSize:19,fontWeight:FontWeight.w900)),
                     const SizedBox(height:2),
-                    Text('Ana ekranda görmek istediğiniz en fazla 4 özelliği seçin.',style:TextStyle(color:muted,fontSize:10.5)),
+                    Text('Ana ekranda görmek istediğiniz en fazla 4 özelliği seçin.',style:TextStyle(color:muted,fontSize:CepqarTheme.bodySmall)),
                   ])),
                   Text('${selected.length}/$maxOwnerShortcuts',style:const TextStyle(color:purple,fontWeight:FontWeight.w900)),
                 ]),
@@ -162,8 +162,8 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                         decoration:BoxDecoration(color:color.withValues(alpha:light ? .11 : .17),borderRadius:BorderRadius.circular(11)),
                         child:Icon(d.icon,color:color,size:20),
                       ),
-                      title:Text(d.title,style:TextStyle(color:disabled?muted:text,fontSize:12.5,fontWeight:FontWeight.w800)),
-                      subtitle:Text(d.subtitle,style:TextStyle(color:muted,fontSize:9.5)),
+                      title:Text(d.title,style:TextStyle(color:disabled?muted:text,fontSize:CepqarTheme.cardTitle,fontWeight:FontWeight.w800)),
+                      subtitle:Text(d.subtitle,style:TextStyle(color:muted,fontSize:CepqarTheme.caption)),
                       trailing:Icon(active?Icons.check_circle_rounded:Icons.add_circle_outline_rounded,color:active?purple:muted,size:22),
                       onTap:disabled?null:(){
                         setSheet((){
@@ -428,9 +428,9 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
           ]),
           const SizedBox(height:13),
           Text('Merhaba',style:TextStyle(color:light?muted:const Color(0xFFC8D0E2),fontSize:17,fontWeight:FontWeight.w600)),
-          Text(firstName,style:TextStyle(color:light?text:Colors.white,fontSize:28,fontWeight:FontWeight.w900,height:1.02)),
+          Text(firstName,style:TextStyle(color:light?text:Colors.white,fontSize:26,fontWeight:FontWeight.w900,height:1.02)),
           const SizedBox(height:7),
-          SizedBox(width:190,child:Text('Aracınızla dünya\nsizinle iletişimde.',style:TextStyle(color:light?muted:const Color(0xFFB8C1D4),fontSize:16.5,fontWeight:FontWeight.w700,height:1.2))),
+          SizedBox(width:190,child:Text('Aracınızla dünya\nsizinle iletişimde.',style:TextStyle(color:light?muted:const Color(0xFFB8C1D4),fontSize:16,fontWeight:FontWeight.w700,height:1.2))),
         ]),
       ),
     ]),
@@ -501,7 +501,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
               child:Icon(done?Icons.check_rounded:Icons.circle_outlined,color:done?Colors.white:accent,size:11),
             ),
             const SizedBox(height:2),
-            Text(labels[i],maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:done?text:muted,fontSize:6.7,fontWeight:done?FontWeight.w800:FontWeight.w600)),
+            Text(labels[i],maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:done?text:muted,fontSize:CepqarTheme.caption,fontWeight:done?FontWeight.w800:FontWeight.w600)),
           ])),
           if(i<labels.length-1)Container(width:8,height:1,color:accent.withValues(alpha:i<current ? .75 : .24)),
         ]),
@@ -568,17 +568,17 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
           ),
           const SizedBox(width:7),
           Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-            Text('VALE',style:TextStyle(color:accent,fontSize:8,fontWeight:FontWeight.w900,letterSpacing:.6)),
-            Text(venue.isEmpty?'CepQontag Vale':venue,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:text,fontSize:10.5,fontWeight:FontWeight.w900)),
+            Text('VALE',style:TextStyle(color:accent,fontSize:CepqarTheme.caption,fontWeight:FontWeight.w900,letterSpacing:.6)),
+            Text(venue.isEmpty?'CepQontag Vale':venue,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:text,fontSize:CepqarTheme.bodySmall,fontWeight:FontWeight.w900)),
           ])),
           Container(
             padding:const EdgeInsets.symmetric(horizontal:6,vertical:3),
             decoration:BoxDecoration(color:accent.withValues(alpha:light ? .10 : .16),borderRadius:BorderRadius.circular(18)),
-            child:Text(_valetBadge(status),style:TextStyle(color:accent,fontSize:6.8,fontWeight:FontWeight.w900)),
+            child:Text(_valetBadge(status),style:TextStyle(color:accent,fontSize:CepqarTheme.caption,fontWeight:FontWeight.w900)),
           ),
         ]),
         const SizedBox(height:5),
-        Text(_valetStatusTitle(status),maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:text,fontSize:11.5,fontWeight:FontWeight.w900)),
+        Text(_valetStatusTitle(status),maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:text,fontSize:CepqarTheme.body,fontWeight:FontWeight.w900)),
         const SizedBox(height:5),
         _valetTimeline(status,accent),
         const Spacer(),
@@ -605,7 +605,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                     :Icons.directions_car_rounded,
               size:14,
             ),
-            label:Text(buttonText,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:8.6,fontWeight:FontWeight.w900)),
+            label:Text(buttonText,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:CepqarTheme.bodySmall,fontWeight:FontWeight.w900)),
           ),
         ),
       ]),
@@ -636,7 +636,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                   const SizedBox(height:3),
                   Text(car.isEmpty?'Araç bilgilerini ekle':car,style:TextStyle(color:text,fontSize:13,fontWeight:FontWeight.w700)),
                   const SizedBox(height:1),
-                  Text('CepQontag aracınız',style:TextStyle(color:muted,fontSize:11.3)),
+                  Text('CepQontag aracınız',style:TextStyle(color:muted,fontSize:CepqarTheme.body)),
                   const Spacer(),
                   Row(children:[
                     Container(
@@ -682,7 +682,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                 const Text('QR Güvenliği',style:TextStyle(color:Colors.white,fontSize:14,fontWeight:FontWeight.w900)),
                 const SizedBox(height:3),
                 Row(children:[
-                  const Expanded(child:Text('Etiket güvenliğini\nkontrol edin.',style:TextStyle(color:Color(0xFFE4DAFF),fontSize:9.3,height:1.22))),
+                  const Expanded(child:Text('Etiket güvenliğini\nkontrol edin.',style:TextStyle(color:Color(0xFFE4DAFF),fontSize:CepqarTheme.caption,height:1.22))),
                   Container(width:29,height:29,decoration:BoxDecoration(color:Colors.white.withValues(alpha:.15),shape:BoxShape.circle),child:const Icon(Icons.chevron_right_rounded,color:Colors.white,size:19)),
                 ]),
               ]),
@@ -710,7 +710,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         const SizedBox(height:6),
         Padding(
           padding:const EdgeInsets.symmetric(horizontal:3),
-          child:Text(d.title,maxLines:1,overflow:TextOverflow.ellipsis,textAlign:TextAlign.center,style:TextStyle(color:text,fontSize:9.1,fontWeight:FontWeight.w800)),
+          child:Text(d.title,maxLines:1,overflow:TextOverflow.ellipsis,textAlign:TextAlign.center,style:TextStyle(color:text,fontSize:CepqarTheme.caption,fontWeight:FontWeight.w800)),
         ),
       ]),
     ),
@@ -722,7 +722,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       padding:const EdgeInsets.fromLTRB(16,10,16,0),
       child:Column(children:[
         Row(children:[
-          Expanded(child:Text('Hızlı Erişim',style:TextStyle(color:text,fontSize:13.5,fontWeight:FontWeight.w900))),
+          Expanded(child:Text('Hızlı Erişim',style:TextStyle(color:text,fontSize:CepqarTheme.cardTitle,fontWeight:FontWeight.w900))),
           InkWell(
             onTap:_editQuickAccess,
             borderRadius:BorderRadius.circular(12),
@@ -731,7 +731,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
               child:Row(children:[
                 const Icon(Icons.tune_rounded,color:purple,size:15),
                 const SizedBox(width:3),
-                Text('Düzenle',style:TextStyle(color:purple,fontSize:9.3,fontWeight:FontWeight.w900)),
+                Text('Düzenle',style:TextStyle(color:purple,fontSize:CepqarTheme.caption,fontWeight:FontWeight.w900)),
               ]),
             ),
           ),
@@ -754,7 +754,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       Text('$value',style:TextStyle(color:text,fontSize:18,fontWeight:FontWeight.w900)),
     ]),
     const SizedBox(height:5),
-    Text(label,textAlign:TextAlign.center,style:TextStyle(color:muted,fontSize:9.3,height:1.15,fontWeight:FontWeight.w600)),
+    Text(label,textAlign:TextAlign.center,style:TextStyle(color:muted,fontSize:CepqarTheme.caption,height:1.15,fontWeight:FontWeight.w600)),
   ]));
   Widget vline()=>Container(width:1,height:41,color:line);
 
@@ -766,7 +766,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         Row(children:[
           const Icon(Icons.bar_chart_rounded,color:purple,size:22),const SizedBox(width:7),
           Expanded(child:Text('Bu Ayki Özetim',style:TextStyle(color:text,fontSize:15,fontWeight:FontWeight.w900))),
-          InkWell(onTap:widget.notifications,child:const Row(children:[Text('Tümünü Gör',style:TextStyle(color:purple,fontSize:10.3,fontWeight:FontWeight.w800)),Icon(Icons.chevron_right_rounded,color:purple,size:18)])),
+          InkWell(onTap:widget.notifications,child:const Row(children:[Text('Tümünü Gör',style:TextStyle(color:purple,fontSize:CepqarTheme.bodySmall,fontWeight:FontWeight.w800)),Icon(Icons.chevron_right_rounded,color:purple,size:18)])),
         ]),
         const Spacer(),
         if(loading)const LinearProgressIndicator(minHeight:2,color:purple)else Row(children:[
@@ -850,7 +850,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                         'QR etiketiniz aktif ve aracınızla\nher zaman iletişimde kalabilirsiniz.',
                         maxLines:2,
                         overflow:TextOverflow.ellipsis,
-                        style:TextStyle(color:muted,fontSize:11.2,height:1.28,fontWeight:FontWeight.w500),
+                        style:TextStyle(color:muted,fontSize:CepqarTheme.body,height:1.28,fontWeight:FontWeight.w500),
                       ),
                     ],
                   ),
@@ -875,7 +875,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                 child:Column(children:[
                   const Text(
                     'Cepqontag',
-                    style:TextStyle(color:Color(0xFF111111),fontSize:9.2,fontWeight:FontWeight.w900,letterSpacing:-.2),
+                    style:TextStyle(color:Color(0xFF111111),fontSize:CepqarTheme.caption,fontWeight:FontWeight.w900,letterSpacing:-.2),
                   ),
                   const SizedBox(height:3),
                   Expanded(
@@ -914,7 +914,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     padding:const EdgeInsets.fromLTRB(16,17,16,8),
     child:Row(children:[
       Expanded(child:Text(title,style:TextStyle(color:text,fontSize:18,fontWeight:FontWeight.w900))),
-      InkWell(onTap:tap,child:const Row(children:[Text('Tümünü Gör',style:TextStyle(color:purple,fontSize:10.5,fontWeight:FontWeight.w800)),Icon(Icons.chevron_right_rounded,color:purple,size:18)])),
+      InkWell(onTap:tap,child:const Row(children:[Text('Tümünü Gör',style:TextStyle(color:purple,fontSize:CepqarTheme.bodySmall,fontWeight:FontWeight.w800)),Icon(Icons.chevron_right_rounded,color:purple,size:18)])),
     ]),
   );
 
@@ -930,7 +930,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
           Expanded(child:Column(mainAxisAlignment:MainAxisAlignment.center,crossAxisAlignment:CrossAxisAlignment.start,children:[
             Text(title,style:TextStyle(color:text,fontSize:13,fontWeight:FontWeight.w900)),
             const SizedBox(height:3),
-            Text(subtitle,maxLines:2,overflow:TextOverflow.ellipsis,style:TextStyle(color:muted,fontSize:9.2,height:1.23)),
+            Text(subtitle,maxLines:2,overflow:TextOverflow.ellipsis,style:TextStyle(color:muted,fontSize:CepqarTheme.caption,height:1.23)),
           ])),
           Container(width:28,height:28,decoration:BoxDecoration(color:(light?Colors.white:Colors.black).withValues(alpha:light ? 0.85 : 0.28),shape:BoxShape.circle),child:Icon(Icons.chevron_right_rounded,color:text,size:18)),
         ]))),
@@ -964,7 +964,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   }
 
   Widget latestCard(){
-    if(notices.isEmpty)return Padding(padding:const EdgeInsets.symmetric(horizontal:16),child:Container(height:68,alignment:Alignment.center,decoration:card(),child:Text('Henüz yeni bildirim yok.',style:TextStyle(color:muted,fontSize:11.5,fontWeight:FontWeight.w700))));
+    if(notices.isEmpty)return Padding(padding:const EdgeInsets.symmetric(horizontal:16),child:Container(height:68,alignment:Alignment.center,decoration:card(),child:Text('Henüz yeni bildirim yok.',style:TextStyle(color:muted,fontSize:CepqarTheme.body,fontWeight:FontWeight.w700))));
     final n=notices.first,fresh=n['status']=='new';
     return Padding(
       padding:const EdgeInsets.symmetric(horizontal:16),
@@ -978,9 +978,9 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
               Text(nt(n),style:TextStyle(color:text,fontSize:13,fontWeight:FontWeight.w900)),
               const SizedBox(height:3),
-              Text('${n['message']??'Aracınızla ilgili yeni bir bildirim var.'}',maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:muted,fontSize:10.2)),
+              Text('${n['message']??'Aracınızla ilgili yeni bir bildirim var.'}',maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:muted,fontSize:CepqarTheme.bodySmall)),
             ])),
-            Text(time(n['created_at']),style:TextStyle(color:muted,fontSize:9.2)),
+            Text(time(n['created_at']),style:TextStyle(color:muted,fontSize:CepqarTheme.caption)),
             if(fresh)...[const SizedBox(width:6),const CircleAvatar(radius:4,backgroundColor:Color(0xFFFF4158))],
             Icon(Icons.chevron_right_rounded,color:muted,size:19),
           ]),
@@ -1217,7 +1217,7 @@ class OwnerServicesRedesign extends StatelessWidget{
           ),
         ),
         const SizedBox(height:14),
-        Text('Hizmetler',style:TextStyle(color:text,fontSize:27,fontWeight:FontWeight.w900)),
+        Text('Hizmetler',style:TextStyle(color:text,fontSize:CepqarTheme.pageTitle,fontWeight:FontWeight.w900)),
         const SizedBox(height:5),
         Text('CepQontag ile aracınız için tüm hizmetler tek yerde.',style:TextStyle(color:muted,fontSize:13)),
         const SizedBox(height:18),
@@ -1234,7 +1234,7 @@ class OwnerServicesRedesign extends StatelessWidget{
                 Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
                   Text(x.title,style:TextStyle(color:text,fontSize:15,fontWeight:FontWeight.w900)),
                   const SizedBox(height:3),
-                  Text(x.subtitle,style:TextStyle(color:muted,fontSize:11.5)),
+                  Text(x.subtitle,style:TextStyle(color:muted,fontSize:CepqarTheme.body)),
                 ])),
                 Icon(Icons.chevron_right_rounded,color:muted),
               ]),
