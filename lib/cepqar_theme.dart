@@ -2,21 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class CepqarTheme {
-  static final ValueNotifier<ThemeMode> mode = ValueNotifier(ThemeMode.dark);
+  static final ValueNotifier<ThemeMode> mode = ValueNotifier(ThemeMode.light);
 
   static bool get isLight => mode.value == ThemeMode.light;
 
   static Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
-    mode.value = (prefs.getBool('cepqar_light_theme') ?? false)
+    mode.value = (prefs.getBool('cepqar_light_theme') ?? true)
         ? ThemeMode.light
         : ThemeMode.dark;
   }
 
-  static Future<void> toggle() async {
-    mode.value = isLight ? ThemeMode.dark : ThemeMode.light;
+  static Future<void> setDarkMode(bool enabled) async {
+    mode.value = enabled ? ThemeMode.dark : ThemeMode.light;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('cepqar_light_theme', isLight);
+    await prefs.setBool('cepqar_light_theme', !enabled);
+  }
+
+  static Future<void> toggle() async {
+    await setDarkMode(isLight);
   }
 
   static const purple = Color(0xFF713BFF);
