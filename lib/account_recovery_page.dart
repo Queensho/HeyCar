@@ -126,12 +126,12 @@ class _AccountRecoveryPageState extends State<AccountRecoveryPage>{
                           const SizedBox(height:10),
                           Text(
                             widget.mode=='driver'?'Sürücü hesabını kurtar':'Hesabını güvenle kurtar',
-                            style:TextStyle(color:_text,fontSize:compact?22:24,height:1,fontWeight:FontWeight.w900,letterSpacing:-.8),
+                            style:TextStyle(color:_text,fontSize:22,height:1,fontWeight:FontWeight.w900,letterSpacing:-.8),
                           ),
                           const SizedBox(height:7),
                           const Text(
                             'CQ ile başlayan kurtarma kodunla\nyeni şifreni oluştur.',
-                            style:TextStyle(color:_muted,fontSize:11.2,height:1.35,fontWeight:FontWeight.w500),
+                            style:TextStyle(color:_muted,fontSize:11.5,height:1.35,fontWeight:FontWeight.w500),
                           ),
                         ]),
                       ),
@@ -141,21 +141,21 @@ class _AccountRecoveryPageState extends State<AccountRecoveryPage>{
                 SizedBox(height:compact?17:20),
                 Text(
                   'Şifremi Unuttum',
-                  style:TextStyle(color:_text,fontSize:compact?24:27,fontWeight:FontWeight.w900,letterSpacing:-.8),
+                  style:TextStyle(color:_text,fontSize:25,fontWeight:FontWeight.w900,letterSpacing:-.8),
                 ),
                 const SizedBox(height:4),
                 const Text(
                   'Telefon numaranı, kurtarma kodunu ve yeni şifreni gir.',
-                  style:TextStyle(color:_muted,fontSize:11.3,height:1.35),
+                  style:TextStyle(color:_muted,fontSize:11.5,height:1.35),
                 ),
                 SizedBox(height:compact?14:17),
-                TextField(controller:phone,keyboardType:TextInputType.phone,style:const TextStyle(color:_text,fontSize:13.5,fontWeight:FontWeight.w600),decoration:deco('Telefon numarası',Icons.phone_outlined)),
+                TextField(controller:phone,keyboardType:TextInputType.phone,style:const TextStyle(color:_text,fontSize:13,fontWeight:FontWeight.w600),decoration:deco('Telefon numarası',Icons.phone_outlined)),
                 const SizedBox(height:11),
-                TextField(controller:code,textCapitalization:TextCapitalization.characters,style:const TextStyle(color:_text,fontSize:13.5,fontWeight:FontWeight.w700,letterSpacing:.5),decoration:deco('CQ kurtarma kodu',Icons.vpn_key_outlined)),
+                TextField(controller:code,textCapitalization:TextCapitalization.characters,style:const TextStyle(color:_text,fontSize:13,fontWeight:FontWeight.w700,letterSpacing:.5),decoration:deco('CQ kurtarma kodu',Icons.vpn_key_outlined)),
                 const SizedBox(height:11),
-                TextField(controller:password,obscureText:true,style:const TextStyle(color:_text,fontSize:13.5,fontWeight:FontWeight.w600),decoration:deco('Yeni şifre',Icons.lock_outline_rounded)),
+                TextField(controller:password,obscureText:true,style:const TextStyle(color:_text,fontSize:13,fontWeight:FontWeight.w600),decoration:deco('Yeni şifre',Icons.lock_outline_rounded)),
                 const SizedBox(height:11),
-                TextField(controller:confirm,obscureText:true,style:const TextStyle(color:_text,fontSize:13.5,fontWeight:FontWeight.w600),decoration:deco('Yeni şifre tekrar',Icons.lock_reset_rounded)),
+                TextField(controller:confirm,obscureText:true,style:const TextStyle(color:_text,fontSize:13,fontWeight:FontWeight.w600),decoration:deco('Yeni şifre tekrar',Icons.lock_reset_rounded)),
                 if(error!=null)...[
                   const SizedBox(height:10),
                   Container(
@@ -190,7 +190,7 @@ class _AccountRecoveryPageState extends State<AccountRecoveryPage>{
                       else
                         const Icon(Icons.lock_reset_rounded,size:19),
                       const SizedBox(width:9),
-                      Text(busy?'Kontrol ediliyor...':'Şifreyi Yenile',style:const TextStyle(fontSize:15,fontWeight:FontWeight.w900)),
+                      Text(busy?'Kontrol ediliyor...':'Şifreyi Yenile',style:const TextStyle(fontSize:14,fontWeight:FontWeight.w900)),
                     ]),
                   ),
                 ),
