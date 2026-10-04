@@ -60,7 +60,7 @@ void action(String a){if(a=='qr')_qr();else if(a=='qr_security'&&vid.isNotEmpty)
               color:CepqarTheme.isLight?Colors.white:const Color(0xFF090F1D),
               borderRadius:BorderRadius.circular(28),
               border:Border.all(color:CepqarTheme.isLight?const Color(0xFFE6E6F0):const Color(0xFF1B2540)),
-              boxShadow:[BoxShadow(color:Colors.black.withValues(alpha:CepqarTheme.isLight?.08:.30),blurRadius:22,offset:const Offset(0,8))],
+              boxShadow:[BoxShadow(color:Colors.black.withValues(alpha:CepqarTheme.isLight ? 0.08 : 0.30),blurRadius:22,offset:const Offset(0,8))],
             ),
             child:Row(children:List.generate(5,(i){
               final active=tab==i;
@@ -71,7 +71,7 @@ void action(String a){if(a=='qr')_qr();else if(a=='qr_security'&&vid.isNotEmpty)
                   child:AnimatedContainer(
                     duration:const Duration(milliseconds:180),
                     decoration:BoxDecoration(
-                      color:active?CepqarTheme.purple.withValues(alpha:CepqarTheme.isLight?.10:.18):Colors.transparent,
+                      color:active?CepqarTheme.purple.withValues(alpha:CepqarTheme.isLight ? 0.10 : 0.18):Colors.transparent,
                       borderRadius:BorderRadius.circular(20),
                     ),
                     child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[
