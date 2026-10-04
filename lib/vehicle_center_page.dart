@@ -862,7 +862,7 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
 
   Widget _brandBar() => Row(children:[
     Image.asset(
-      CepqarTheme.isLight ? 'assets/Aylogo.png' : 'assets/Logoyeni.png',
+      CepqarTheme.isLight ? 'assets/Logoyeni.png' : 'assets/Logoyeni.png',
       key:ValueKey(CepqarTheme.isLight),
       height:30,
       fit:BoxFit.contain,
