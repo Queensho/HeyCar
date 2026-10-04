@@ -343,4 +343,4 @@ class _PasswordOwnerLoginScreenState extends State<PasswordOwnerLoginScreen> {
           borderSide:const BorderSide(color:_purple,width:1.5),
         ),
       );
-
+}
