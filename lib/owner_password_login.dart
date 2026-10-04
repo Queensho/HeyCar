@@ -216,7 +216,7 @@ class _PasswordOwnerLoginScreenState extends State<PasswordOwnerLoginScreen> {
                                 'Tekrar hoş geldin',
                                 style:TextStyle(
                                   color:_text,
-                                  fontSize:compact?24:27,
+                                  fontSize:24,
                                   height:1,
                                   fontWeight:FontWeight.w900,
                                   letterSpacing:-1,
@@ -225,7 +225,7 @@ class _PasswordOwnerLoginScreenState extends State<PasswordOwnerLoginScreen> {
                               const SizedBox(height:7),
                               Text(
                                 'Aracınla ilgili tüm bildirimlere\nve hizmetlere ulaş.',
-                                style:TextStyle(color:_muted,fontSize:compact?11.5:12.5,height:1.35,fontWeight:FontWeight.w500),
+                                style:TextStyle(color:_muted,fontSize:11.5,height:1.35,fontWeight:FontWeight.w500),
                               ),
                             ],
                           ),
@@ -236,7 +236,7 @@ class _PasswordOwnerLoginScreenState extends State<PasswordOwnerLoginScreen> {
                   SizedBox(height:compact?17:20),
                   Text(
                     'Giriş Yap',
-                    style:TextStyle(color:_text,fontSize:compact?25:28,fontWeight:FontWeight.w900,letterSpacing:-.8),
+                    style:TextStyle(color:_text,fontSize:25,fontWeight:FontWeight.w900,letterSpacing:-.8),
                   ),
                   const SizedBox(height:4),
                   const Text(
@@ -249,7 +249,7 @@ class _PasswordOwnerLoginScreenState extends State<PasswordOwnerLoginScreen> {
                   TextField(
                     controller:phone,
                     keyboardType:TextInputType.phone,
-                    style:const TextStyle(color:_text,fontWeight:FontWeight.w700,fontSize:14),
+                    style:const TextStyle(color:_text,fontWeight:FontWeight.w700,fontSize:13.5),
                     decoration:_input('5XX XXX XX XX',Icons.phone_rounded),
                   ),
                   const SizedBox(height:12),
@@ -258,7 +258,7 @@ class _PasswordOwnerLoginScreenState extends State<PasswordOwnerLoginScreen> {
                   TextField(
                     controller:password,
                     obscureText:obscure,
-                    style:const TextStyle(color:_text,fontWeight:FontWeight.w700,fontSize:14),
+                    style:const TextStyle(color:_text,fontWeight:FontWeight.w700,fontSize:13.5),
                     decoration:_input('Şifreni gir',Icons.lock_outline_rounded).copyWith(
                       suffixIcon:IconButton(
                         onPressed:()=>setState(()=>obscure=!obscure),
@@ -299,7 +299,7 @@ class _PasswordOwnerLoginScreenState extends State<PasswordOwnerLoginScreen> {
                           else
                             const Icon(Icons.person_rounded,size:19),
                           const SizedBox(width:10),
-                          Text(busy?'Giriş yapılıyor...':'Giriş Yap',style:const TextStyle(fontSize:15.5,fontWeight:FontWeight.w900)),
+                          Text(busy?'Giriş yapılıyor...':'Giriş Yap',style:const TextStyle(fontSize:14.5,fontWeight:FontWeight.w900)),
                           if(!busy)...[
                             const SizedBox(width:11),
                             const Icon(Icons.arrow_forward_rounded,size:20),
@@ -313,7 +313,7 @@ class _PasswordOwnerLoginScreenState extends State<PasswordOwnerLoginScreen> {
                     Expanded(child:Container(height:1,color:_line)),
                     const Padding(
                       padding:EdgeInsets.symmetric(horizontal:10),
-                      child:Text('GÜVENLİ • ANONİM • HIZLI',style:TextStyle(color:_muted,fontSize:8.5,fontWeight:FontWeight.w700,letterSpacing:.5)),
+                      child:Text('GÜVENLİ • ANONİM • HIZLI',style:TextStyle(color:_muted,fontSize:10.5,fontWeight:FontWeight.w700,letterSpacing:.5)),
                     ),
                     Expanded(child:Container(height:1,color:_line)),
                   ]),
