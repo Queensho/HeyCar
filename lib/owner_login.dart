@@ -269,75 +269,359 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) => _AuthScaffold(
-        title: 'Kayıt Ol',
-        subtitle: "HeyCar'a katıl, aracın hep güvende olsun.",
-        onBack: widget.onBack,
-        child: Column(children: [
-          const _MiniHero(),
-          const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: _DarkCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const _FieldLabel(icon: Icons.phone_rounded, text: 'Telefon Numarası'),
-              const SizedBox(height: 7),
-              _PhoneField(controller: phone),
-              const SizedBox(height: 14),
-              const _FieldLabel(icon: Icons.mail_outline_rounded, text: 'E-posta ile Kayıt Ol'),
-              const SizedBox(height: 7),
-              _DarkTextField(controller: email, hint: 'E-posta adresin', keyboardType: TextInputType.emailAddress),
-              const SizedBox(height: 14),
-              const _FieldLabel(icon: Icons.lock_outline_rounded, text: 'Şifre'),
-              const SizedBox(height: 7),
-              _DarkTextField(controller: password, hint: 'Şifre oluştur', obscure: obscure, suffix: IconButton(onPressed: () => setState(() => obscure = !obscure), icon: Icon(obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined, color: _authMuted))),
-              const SizedBox(height: 14),
-              const _FieldLabel(icon: Icons.person_outline_rounded, text: 'Ad Soyad'),
-              const SizedBox(height: 7),
-              _DarkTextField(controller: name, hint: 'Adını gir'),
-              const SizedBox(height: 14),
-              const _FieldLabel(icon: Icons.swap_horiz_rounded, text: 'Araç Devir Kodun var mı?'),
-              const SizedBox(height: 7),
-              _DarkTextField(controller: transferCode, hint: 'Devir kodu (isteğe bağlı)'),
-              const SizedBox(height: 6),
-              const Text('Araç satın aldıysan eski sahibinin verdiği kodu buraya girebilirsin.',style:TextStyle(color:_authMuted,fontSize:11.5)),
-              const SizedBox(height: 14),
-              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                InkWell(
-                  onTap: () => setState(() => accepted = !accepted),
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(width: 24, height: 24, decoration: BoxDecoration(borderRadius: BorderRadius.circular(7), border: Border.all(color: _authPurple, width: 1.8), color: accepted ? _authPurple : Colors.transparent), child: accepted ? const Icon(Icons.check_rounded, size: 17, color: Colors.white) : null),
-                ),
-                const SizedBox(width: 10),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  InkWell(
-                    onTap: () => setState(() => accepted = !accepted),
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 2),
-                      child: Text('Kullanım koşullarını ve gizlilik politikasını okudum ve kabul ediyorum.', style: TextStyle(color: _authMuted, fontSize: 12.5, height: 1.35)),
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Wrap(spacing: 2, runSpacing: 0, children: [
-                    TextButton(
-                      onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsOfUsePage())),
-                      style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0), minimumSize: const Size(0, 28), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                      child: const Text('Kullanım Şartları', style: TextStyle(fontSize: 11.8, fontWeight: FontWeight.w800)),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PrivacyKvkkPage())),
-                      style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0), minimumSize: const Size(0, 28), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                      child: const Text('Gizlilik / KVKK', style: TextStyle(fontSize: 11.8, fontWeight: FontWeight.w800)),
-                    ),
-                  ]),
-                ])),
-              ]),
-              const SizedBox(height: 16),
-              _PrimaryAuthButton(text: busy ? 'Kayıt yapılıyor...' : 'Kayıt Ol', onPressed: busy ? null : submit),
-            ])),
+  InputDecoration _regInput(String hint, IconData icon, {Widget? suffix}) => InputDecoration(
+        hintText:hint,
+        hintStyle:const TextStyle(color:Color(0xFF9AA0AF),fontSize:12.5),
+        prefixIcon:Icon(icon,color:const Color(0xFF5E24F5),size:18),
+        suffixIcon:suffix,
+        filled:true,
+        fillColor:Colors.white,
+        isDense:true,
+        contentPadding:const EdgeInsets.symmetric(horizontal:13,vertical:14),
+        enabledBorder:OutlineInputBorder(
+          borderRadius:BorderRadius.circular(15),
+          borderSide:const BorderSide(color:Color(0xFFE5E7EF)),
+        ),
+        focusedBorder:OutlineInputBorder(
+          borderRadius:BorderRadius.circular(15),
+          borderSide:const BorderSide(color:Color(0xFF5E24F5),width:1.5),
+        ),
+      );
+
+  Widget _regField({
+    required String label,
+    required IconData icon,
+    required TextEditingController controller,
+    required String hint,
+    TextInputType? keyboardType,
+    bool obscureText=false,
+    Widget? suffix,
+  }) => Column(
+    crossAxisAlignment:CrossAxisAlignment.start,
+    children:[
+      Text(label,style:const TextStyle(color:Color(0xFF090B18),fontSize:12.3,fontWeight:FontWeight.w800)),
+      const SizedBox(height:6),
+      TextField(
+        controller:controller,
+        keyboardType:keyboardType,
+        obscureText:obscureText,
+        style:const TextStyle(color:Color(0xFF090B18),fontSize:13.5,fontWeight:FontWeight.w600),
+        decoration:_regInput(hint,icon,suffix:suffix),
+      ),
+    ],
+  );
+
+  Widget _phoneRegisterField() => Column(
+    crossAxisAlignment:CrossAxisAlignment.start,
+    children:[
+      const Text('Telefon Numarası',style:TextStyle(color:Color(0xFF090B18),fontSize:12.3,fontWeight:FontWeight.w800)),
+      const SizedBox(height:6),
+      Container(
+        height:49,
+        decoration:BoxDecoration(
+          color:Colors.white,
+          borderRadius:BorderRadius.circular(15),
+          border:Border.all(color:const Color(0xFFE5E7EF)),
+        ),
+        child:Row(children:[
+          const SizedBox(width:13),
+          const Icon(Icons.phone_rounded,color:Color(0xFF5E24F5),size:18),
+          const SizedBox(width:9),
+          const Text('+90',style:TextStyle(color:Color(0xFF090B18),fontSize:13,fontWeight:FontWeight.w800)),
+          const SizedBox(width:8),
+          Container(width:1,height:22,color:const Color(0xFFE5E7EF)),
+          const SizedBox(width:10),
+          Expanded(
+            child:TextField(
+              controller:phone,
+              keyboardType:TextInputType.phone,
+              style:const TextStyle(color:Color(0xFF090B18),fontSize:13.5,fontWeight:FontWeight.w600),
+              decoration:const InputDecoration(
+                hintText:'5XX XXX XX XX',
+                hintStyle:TextStyle(color:Color(0xFF9AA0AF),fontSize:12.5),
+                border:InputBorder.none,
+                enabledBorder:InputBorder.none,
+                focusedBorder:InputBorder.none,
+                isDense:true,
+                filled:false,
+              ),
+            ),
           ),
         ]),
-      );
+      ),
+    ],
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final size=MediaQuery.sizeOf(context);
+    final compact=size.height<760;
+    return Scaffold(
+      backgroundColor:const Color(0xFFFDFDFF),
+      body:SafeArea(
+        child:Center(
+          child:ConstrainedBox(
+            constraints:const BoxConstraints(maxWidth:460),
+            child:SingleChildScrollView(
+              padding:EdgeInsets.fromLTRB(20,10,20,compact?24:30),
+              child:Column(
+                crossAxisAlignment:CrossAxisAlignment.start,
+                children:[
+                  Row(children:[
+                    InkWell(
+                      onTap:widget.onBack,
+                      borderRadius:BorderRadius.circular(14),
+                      child:Container(
+                        width:40,height:40,
+                        decoration:BoxDecoration(
+                          color:Colors.white,
+                          borderRadius:BorderRadius.circular(14),
+                          border:Border.all(color:const Color(0xFFE5E7EF)),
+                        ),
+                        child:const Icon(Icons.arrow_back_rounded,color:Color(0xFF090B18),size:20),
+                      ),
+                    ),
+                    const Spacer(),
+                    Image.asset(
+                      'assets/Aylogo.png',
+                      height:compact?30:32,
+                      fit:BoxFit.contain,
+                      filterQuality:FilterQuality.high,
+                    ),
+                    const Spacer(),
+                    const SizedBox(width:40),
+                  ]),
+                  SizedBox(height:compact?12:15),
+                  Container(
+                    height:compact?146:160,
+                    width:double.infinity,
+                    clipBehavior:Clip.antiAlias,
+                    decoration:BoxDecoration(
+                      borderRadius:BorderRadius.circular(24),
+                      border:Border.all(color:const Color(0xFFE9E3FF)),
+                    ),
+                    child:Stack(
+                      fit:StackFit.expand,
+                      children:[
+                        Image.asset(
+                          'assets/IMG_20261004_191854.png',
+                          fit:BoxFit.cover,
+                          alignment:const Alignment(.18,.55),
+                          filterQuality:FilterQuality.high,
+                        ),
+                        DecoratedBox(
+                          decoration:BoxDecoration(
+                            gradient:LinearGradient(
+                              begin:Alignment.topLeft,
+                              end:Alignment.bottomRight,
+                              colors:[
+                                Colors.white.withValues(alpha:.92),
+                                Colors.white.withValues(alpha:.50),
+                                Colors.transparent,
+                              ],
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          left:17,top:16,width:225,
+                          child:Column(
+                            crossAxisAlignment:CrossAxisAlignment.start,
+                            children:[
+                              Container(
+                                padding:const EdgeInsets.symmetric(horizontal:10,vertical:5),
+                                decoration:BoxDecoration(
+                                  color:const Color(0xFFF0E8FF),
+                                  borderRadius:BorderRadius.circular(18),
+                                ),
+                                child:const Row(
+                                  mainAxisSize:MainAxisSize.min,
+                                  children:[
+                                    Icon(Icons.person_add_alt_1_rounded,color:Color(0xFF5E24F5),size:14),
+                                    SizedBox(width:6),
+                                    Text('YENİ HESAP',style:TextStyle(color:Color(0xFF5E24F5),fontSize:10.5,fontWeight:FontWeight.w900)),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height:10),
+                              Text(
+                                'CepQontag’a katıl',
+                                style:TextStyle(
+                                  color:const Color(0xFF090B18),
+                                  fontSize:compact?23:25,
+                                  height:1,
+                                  fontWeight:FontWeight.w900,
+                                  letterSpacing:-.9,
+                                ),
+                              ),
+                              const SizedBox(height:6),
+                              Text(
+                                'Aracını ekle, QR etiketini bağla\nve önemli durumlarda anında haberdar ol.',
+                                style:TextStyle(color:const Color(0xFF686F82),fontSize:compact?10.8:11.5,height:1.35,fontWeight:FontWeight.w500),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height:compact?16:19),
+                  Text(
+                    'Kayıt Ol',
+                    style:TextStyle(color:const Color(0xFF090B18),fontSize:compact?24:27,fontWeight:FontWeight.w900,letterSpacing:-.8),
+                  ),
+                  const SizedBox(height:3),
+                  const Text(
+                    'Hesap bilgilerini tamamla. Sonraki adımda aracını ekleyeceksin.',
+                    style:TextStyle(color:Color(0xFF747A8D),fontSize:11.2,height:1.35),
+                  ),
+                  SizedBox(height:compact?14:17),
+                  _phoneRegisterField(),
+                  const SizedBox(height:11),
+                  _regField(
+                    label:'Ad Soyad',
+                    icon:Icons.person_outline_rounded,
+                    controller:name,
+                    hint:'Adını ve soyadını gir',
+                  ),
+                  const SizedBox(height:11),
+                  _regField(
+                    label:'E-posta',
+                    icon:Icons.mail_outline_rounded,
+                    controller:email,
+                    hint:'E-posta adresin (isteğe bağlı)',
+                    keyboardType:TextInputType.emailAddress,
+                  ),
+                  const SizedBox(height:11),
+                  _regField(
+                    label:'Şifre',
+                    icon:Icons.lock_outline_rounded,
+                    controller:password,
+                    hint:'En az 6 karakter',
+                    obscureText:obscure,
+                    suffix:IconButton(
+                      onPressed:()=>setState(()=>obscure=!obscure),
+                      icon:Icon(obscure?Icons.visibility_outlined:Icons.visibility_off_outlined,color:const Color(0xFF747A8D),size:19),
+                    ),
+                  ),
+                  const SizedBox(height:11),
+                  _regField(
+                    label:'Araç Devir Kodu',
+                    icon:Icons.swap_horiz_rounded,
+                    controller:transferCode,
+                    hint:'Varsa devir kodunu gir',
+                  ),
+                  const SizedBox(height:5),
+                  const Padding(
+                    padding:EdgeInsets.only(left:2),
+                    child:Text(
+                      'Araç satın aldıysan eski sahibinin verdiği kodu buraya girebilirsin.',
+                      style:TextStyle(color:Color(0xFF8A90A1),fontSize:9.5,height:1.25),
+                    ),
+                  ),
+                  const SizedBox(height:12),
+                  InkWell(
+                    onTap:()=>setState(()=>accepted=!accepted),
+                    borderRadius:BorderRadius.circular(13),
+                    child:Container(
+                      padding:const EdgeInsets.all(10),
+                      decoration:BoxDecoration(
+                        color:const Color(0xFFF8F6FF),
+                        borderRadius:BorderRadius.circular(13),
+                        border:Border.all(color:const Color(0xFFE7E0FA)),
+                      ),
+                      child:Row(
+                        crossAxisAlignment:CrossAxisAlignment.start,
+                        children:[
+                          Container(
+                            width:21,height:21,
+                            decoration:BoxDecoration(
+                              color:accepted?const Color(0xFF5E24F5):Colors.white,
+                              borderRadius:BorderRadius.circular(6),
+                              border:Border.all(color:const Color(0xFF5E24F5),width:1.5),
+                            ),
+                            child:accepted?const Icon(Icons.check_rounded,color:Colors.white,size:15):null,
+                          ),
+                          const SizedBox(width:9),
+                          Expanded(
+                            child:Column(
+                              crossAxisAlignment:CrossAxisAlignment.start,
+                              children:[
+                                const Text(
+                                  'Kullanım koşullarını ve gizlilik politikasını kabul ediyorum.',
+                                  style:TextStyle(color:Color(0xFF555C70),fontSize:10.2,height:1.3,fontWeight:FontWeight.w600),
+                                ),
+                                const SizedBox(height:2),
+                                Wrap(
+                                  spacing:2,
+                                  children:[
+                                    TextButton(
+                                      onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const TermsOfUsePage())),
+                                      style:TextButton.styleFrom(
+                                        padding:const EdgeInsets.symmetric(horizontal:2),
+                                        minimumSize:const Size(0,26),
+                                        tapTargetSize:MaterialTapTargetSize.shrinkWrap,
+                                        foregroundColor:const Color(0xFF5E24F5),
+                                      ),
+                                      child:const Text('Kullanım Şartları',style:TextStyle(fontSize:9.5,fontWeight:FontWeight.w800)),
+                                    ),
+                                    TextButton(
+                                      onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const PrivacyKvkkPage())),
+                                      style:TextButton.styleFrom(
+                                        padding:const EdgeInsets.symmetric(horizontal:2),
+                                        minimumSize:const Size(0,26),
+                                        tapTargetSize:MaterialTapTargetSize.shrinkWrap,
+                                        foregroundColor:const Color(0xFF5E24F5),
+                                      ),
+                                      child:const Text('Gizlilik / KVKK',style:TextStyle(fontSize:9.5,fontWeight:FontWeight.w800)),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height:13),
+                  SizedBox(
+                    width:double.infinity,
+                    height:52,
+                    child:FilledButton(
+                      onPressed:busy?null:submit,
+                      style:FilledButton.styleFrom(
+                        backgroundColor:const Color(0xFF5E24F5),
+                        foregroundColor:Colors.white,
+                        disabledBackgroundColor:const Color(0xFF5E24F5).withValues(alpha:.55),
+                        shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(17)),
+                        elevation:0,
+                      ),
+                      child:Row(
+                        mainAxisAlignment:MainAxisAlignment.center,
+                        children:[
+                          if(busy)
+                            const SizedBox(width:17,height:17,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white))
+                          else
+                            const Icon(Icons.add_rounded,size:21),
+                          const SizedBox(width:9),
+                          Text(busy?'Kayıt yapılıyor...':'Kayıt Ol',style:const TextStyle(fontSize:15.5,fontWeight:FontWeight.w900)),
+                          if(!busy)...[
+                            const SizedBox(width:10),
+                            const Icon(Icons.arrow_forward_rounded,size:20),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
 }
 
 class _AuthScaffold extends StatelessWidget {
