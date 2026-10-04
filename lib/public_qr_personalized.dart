@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'public_theme_backend.dart';
 import 'public_notification_api.dart';
+import 'public_menu_pages.dart';
 
 const _bg = Color(0xFF07101F);
 const _panel = Color(0xFF101A31);
@@ -342,6 +343,7 @@ class _PublicHome extends StatefulWidget {
 }
 
 class _PublicHomeState extends State<_PublicHome>{
+  final scaffoldKey=GlobalKey<ScaffoldState>();
   static const _ink=Color(0xFF0D1230);
   static const _body=Color(0xFF5F6882);
   static const _violet=Color(0xFF6424F2);
@@ -354,6 +356,11 @@ class _PublicHomeState extends State<_PublicHome>{
   void initState(){
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_)=>_checkParkNote());
+  }
+
+  void _openMenuPage(Widget page){
+    Navigator.of(context).pop();
+    Navigator.of(context).push(MaterialPageRoute(builder:(_)=>page));
   }
 
   String _updatedAgo(dynamic raw){
@@ -403,7 +410,17 @@ class _PublicHomeState extends State<_PublicHome>{
         : widget.theme.publicMessage.trim();
 
     return Scaffold(
+      key:scaffoldKey,
       backgroundColor:const Color(0xFFF8FAFF),
+      endDrawer:_VisitorMenu(
+        onAbout:()=>_openMenuPage(const HeyCarAboutPage()),
+        onHow:()=>_openMenuPage(const HeyCarHowPage()),
+        onCode:()=>_openMenuPage(const HeyCarCodePage()),
+        onScan:()=>_openMenuPage(const HeyCarScanPage()),
+        onPrivacy:()=>_openMenuPage(const HeyCarPrivacyPage()),
+        onHelp:()=>_openMenuPage(const HeyCarHelpPage()),
+        onOwner:()=>_openMenuPage(const HeyCarOwnerPage()),
+      ),
       body:SafeArea(
         bottom:false,
         child:Center(
@@ -444,7 +461,7 @@ class _PublicHomeState extends State<_PublicHome>{
                         left:pagePad,
                         right:pagePad,
                         top:8,
-                        child:_PublicHomeTopBar(compact:compact),
+                        child:_PublicHomeTopBar(compact:compact,onMenu:()=>scaffoldKey.currentState?.openEndDrawer()),
                       ),
                       Positioned(
                         left:pagePad,
@@ -691,8 +708,9 @@ class _PublicHomeState extends State<_PublicHome>{
 }
 
 class _PublicHomeTopBar extends StatelessWidget{
-  const _PublicHomeTopBar({required this.compact});
+  const _PublicHomeTopBar({required this.compact,required this.onMenu});
   final bool compact;
+  final VoidCallback onMenu;
 
   @override
   Widget build(BuildContext context)=>Row(
@@ -724,8 +742,137 @@ class _PublicHomeTopBar extends StatelessWidget{
         ),
       ),
       const SizedBox(width:9),
-      const Icon(Icons.menu_rounded,color:_PublicHomeState._ink,size:29),
+      IconButton(
+        onPressed:onMenu,
+        padding:EdgeInsets.zero,
+        constraints:const BoxConstraints(minWidth:36,minHeight:36),
+        splashRadius:22,
+        icon:const Icon(Icons.menu_rounded,color:_PublicHomeState._ink,size:29),
+      ),
     ],
+  );
+}
+
+class _VisitorMenu extends StatelessWidget{
+  const _VisitorMenu({
+    required this.onAbout,
+    required this.onHow,
+    required this.onCode,
+    required this.onScan,
+    required this.onPrivacy,
+    required this.onHelp,
+    required this.onOwner,
+  });
+
+  final VoidCallback onAbout,onHow,onCode,onScan,onPrivacy,onHelp,onOwner;
+
+  @override
+  Widget build(BuildContext context)=>Drawer(
+    width:MediaQuery.sizeOf(context).width*.84,
+    backgroundColor:const Color(0xFFFFFFFF),
+    shape:const RoundedRectangleBorder(
+      borderRadius:BorderRadius.horizontal(left:Radius.circular(26)),
+    ),
+    child:SafeArea(
+      child:Padding(
+        padding:const EdgeInsets.fromLTRB(17,12,17,18),
+        child:Column(
+          crossAxisAlignment:CrossAxisAlignment.start,
+          children:[
+            Row(
+              children:[
+                Image.asset(
+                  'assets/file_00000000b130820abb8d411e67ab0d25.png',
+                  height:31,
+                  fit:BoxFit.contain,
+                ),
+                const Spacer(),
+                IconButton(
+                  onPressed:()=>Navigator.pop(context),
+                  icon:const Icon(Icons.close_rounded,color:_PublicHomeState._ink,size:27),
+                ),
+              ],
+            ),
+            const SizedBox(height:12),
+            const Text(
+              'MENÜ',
+              style:TextStyle(
+                color:Color(0xFF7B8398),
+                fontSize:10.5,
+                letterSpacing:2.2,
+                fontWeight:FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height:10),
+            _item(Icons.info_outline_rounded,'CepQontag Nedir?',onAbout),
+            _item(Icons.route_rounded,'Nasıl Çalışır?',onHow),
+            _item(Icons.keyboard_alt_outlined,'Etiket Koduyla Ulaş',onCode),
+            _item(Icons.qr_code_scanner_rounded,'QR Kod Okut',onScan,accent:true),
+            _item(Icons.shield_outlined,'Gizlilik & Güvenlik',onPrivacy),
+            _item(Icons.help_outline_rounded,'Yardım / SSS',onHelp),
+            const Spacer(),
+            InkWell(
+              onTap:onOwner,
+              borderRadius:BorderRadius.circular(17),
+              child:Container(
+                width:double.infinity,
+                padding:const EdgeInsets.all(14),
+                decoration:BoxDecoration(
+                  color:const Color(0xFFF5F1FF),
+                  borderRadius:BorderRadius.circular(17),
+                  border:Border.all(color:const Color(0xFFE1D7F8)),
+                ),
+                child:const Row(
+                  children:[
+                    CircleAvatar(
+                      radius:20,
+                      backgroundColor:Color(0xFFE9DEFF),
+                      child:Icon(Icons.directions_car_filled_rounded,color:_PublicHomeState._violet,size:20),
+                    ),
+                    SizedBox(width:10),
+                    Expanded(
+                      child:Column(
+                        crossAxisAlignment:CrossAxisAlignment.start,
+                        children:[
+                          Text('Araç sahibi misin?',style:TextStyle(color:_PublicHomeState._ink,fontSize:12.5,fontWeight:FontWeight.w900)),
+                          SizedBox(height:3),
+                          Text('Aracını ve etiketini yönet.',style:TextStyle(color:Color(0xFF747C91),fontSize:10.5,fontWeight:FontWeight.w500)),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.chevron_right_rounded,color:_PublicHomeState._violet),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  Widget _item(IconData icon,String title,VoidCallback onTap,{bool accent=false})=>Padding(
+    padding:const EdgeInsets.only(bottom:7),
+    child:InkWell(
+      onTap:onTap,
+      borderRadius:BorderRadius.circular(15),
+      child:Container(
+        padding:const EdgeInsets.symmetric(horizontal:13,vertical:12),
+        decoration:BoxDecoration(
+          color:accent?const Color(0xFFF0E9FF):const Color(0xFFF9FAFD),
+          borderRadius:BorderRadius.circular(15),
+          border:Border.all(color:accent?const Color(0xFFDCCBFF):const Color(0xFFEAECF2)),
+        ),
+        child:Row(
+          children:[
+            Icon(icon,color:accent?_PublicHomeState._violet:_PublicHomeState._ink,size:21),
+            const SizedBox(width:11),
+            Expanded(child:Text(title,style:const TextStyle(color:_PublicHomeState._ink,fontSize:12.5,fontWeight:FontWeight.w800))),
+            const Icon(Icons.chevron_right_rounded,color:Color(0xFF7B8398),size:21),
+          ],
+        ),
+      ),
+    ),
   );
 }
 
