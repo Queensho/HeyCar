@@ -70,7 +70,7 @@ class OwnerGuidePage extends StatelessWidget {
                             'QR AKTİF',
                             style: TextStyle(
                               color: Color(0xFF238D4D),
-                              fontSize: 10,
+                              fontSize: 10.5,
                               fontWeight: FontWeight.w900,
                             ),
                           ),
@@ -94,7 +94,7 @@ class OwnerGuidePage extends StatelessWidget {
                     ],
                   ),
                   style: TextStyle(
-                    fontSize: compact ? 26 : 29,
+                    fontSize: 25,
                     height: 1.03,
                     fontWeight: FontWeight.w900,
                     letterSpacing: -1,
@@ -105,7 +105,7 @@ class OwnerGuidePage extends StatelessWidget {
                   'QR etiketin artık aracına bağlı. Etiketi görünür bir noktaya yapıştır ve kurulumu tamamla.',
                   style: TextStyle(
                     color: _muted,
-                    fontSize: 11.7,
+                    fontSize: 12,
                     height: 1.4,
                     fontWeight: FontWeight.w500,
                   ),
@@ -173,7 +173,7 @@ class OwnerGuidePage extends StatelessWidget {
                           'Kurulum tamamlandığında aracın QR üzerinden anonim mesaj ve arama alabilecek.',
                           style: TextStyle(
                             color: _muted,
-                            fontSize: 10,
+                            fontSize: 10.5,
                             height: 1.35,
                             fontWeight: FontWeight.w600,
                           ),
@@ -217,7 +217,7 @@ class OwnerGuidePage extends StatelessWidget {
                               'Kurulumu Tamamla',
                               style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 14,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w900,
                               ),
                             ),
@@ -355,7 +355,7 @@ class _StageItem extends StatelessWidget {
                   '3',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 9,
+                    fontSize: 10.5,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -365,7 +365,7 @@ class _StageItem extends StatelessWidget {
           label,
           style: TextStyle(
             color: active ? _text : _muted,
-            fontSize: 10,
+            fontSize: 10.5,
             fontWeight: active
                 ? FontWeight.w900
                 : FontWeight.w700,
@@ -435,7 +435,7 @@ class _GuideTip extends StatelessWidget {
                   title,
                   style: const TextStyle(
                     color: _text,
-                    fontSize: 11.3,
+                    fontSize: 12,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -444,7 +444,7 @@ class _GuideTip extends StatelessWidget {
                   text,
                   style: const TextStyle(
                     color: _muted,
-                    fontSize: 9.5,
+                    fontSize: 10.5,
                     height: 1.3,
                   ),
                 ),
