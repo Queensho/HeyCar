@@ -317,7 +317,8 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   );
 
   Widget brand()=>Image.asset(
-    'assets/Logoyeni.png',
+    CepqarTheme.isLight ? 'assets/Aylogo.png' : 'assets/Logoyeni.png',
+    key:ValueKey(CepqarTheme.isLight),
     height:32,
     fit:BoxFit.contain,
     alignment:Alignment.centerLeft,
@@ -1208,7 +1209,12 @@ class OwnerServicesRedesign extends StatelessWidget{
       child:SafeArea(bottom:false,child:ListView(padding:const EdgeInsets.fromLTRB(18,10,18,28),children:[
         Align(
           alignment:Alignment.centerLeft,
-          child:Image.asset('assets/Logoyeni.png',height:31,fit:BoxFit.contain),
+          child:Image.asset(
+            CepqarTheme.isLight ? 'assets/Aylogo.png' : 'assets/Logoyeni.png',
+            key:ValueKey(CepqarTheme.isLight),
+            height:31,
+            fit:BoxFit.contain,
+          ),
         ),
         const SizedBox(height:14),
         Text('Hizmetler',style:TextStyle(color:text,fontSize:27,fontWeight:FontWeight.w900)),
