@@ -53,12 +53,12 @@ void action(String a){if(a=='qr')_qr();else if(a=='qr_security'&&vid.isNotEmpty)
         bottomNavigationBar:SafeArea(
           top:false,
           child:Container(
-            height:72,
-            margin:const EdgeInsets.fromLTRB(14,0,14,10),
-            padding:const EdgeInsets.symmetric(horizontal:6,vertical:6),
+            height:62,
+            margin:const EdgeInsets.fromLTRB(14,0,14,8),
+            padding:const EdgeInsets.symmetric(horizontal:5,vertical:5),
             decoration:BoxDecoration(
               color:CepqarTheme.isLight?Colors.white:const Color(0xFF090F1D),
-              borderRadius:BorderRadius.circular(28),
+              borderRadius:BorderRadius.circular(25),
               border:Border.all(color:CepqarTheme.isLight?const Color(0xFFE6E6F0):const Color(0xFF1B2540)),
               boxShadow:[BoxShadow(color:Colors.black.withValues(alpha:CepqarTheme.isLight ? 0.08 : 0.30),blurRadius:22,offset:const Offset(0,8))],
             ),
@@ -67,7 +67,7 @@ void action(String a){if(a=='qr')_qr();else if(a=='qr_security'&&vid.isNotEmpty)
               return Expanded(
                 child:InkWell(
                   onTap:()=>setState(()=>tab=i),
-                  borderRadius:BorderRadius.circular(20),
+                  borderRadius:BorderRadius.circular(18),
                   child:AnimatedContainer(
                     duration:const Duration(milliseconds:180),
                     decoration:BoxDecoration(
@@ -76,11 +76,11 @@ void action(String a){if(a=='qr')_qr();else if(a=='qr_security'&&vid.isNotEmpty)
                     ),
                     child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[
                       Stack(clipBehavior:Clip.none,children:[
-                        Icon(icons[i],size:23,color:active?CepqarTheme.purple:CepqarTheme.muted),
+                        Icon(icons[i],size:21,color:active?CepqarTheme.purple:CepqarTheme.muted),
                         if(i==3&&unread>0)const Positioned(right:-4,top:-3,child:CircleAvatar(radius:4,backgroundColor:Color(0xFFFF4158))),
                       ]),
                       const SizedBox(height:3),
-                      Text(labels[i],maxLines:1,style:TextStyle(fontSize:9.5,fontWeight:active?FontWeight.w800:FontWeight.w600,color:active?CepqarTheme.purple:CepqarTheme.muted)),
+                      Text(labels[i],maxLines:1,style:TextStyle(fontSize:8.8,fontWeight:active?FontWeight.w800:FontWeight.w600,color:active?CepqarTheme.purple:CepqarTheme.muted)),
                     ]),
                   ),
                 ),
