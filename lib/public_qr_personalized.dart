@@ -534,7 +534,7 @@ class _PublicHomeState extends State<_PublicHome>{
                           crossAxisCount:2,
                           mainAxisSpacing:8,
                           crossAxisSpacing:8,
-                          childAspectRatio:short?1.72:(compact?1.58:1.42),
+                          childAspectRatio:short?1.48:(compact?1.46:1.38),
                           children:[
                             _ReferenceActionCard(
                               title:'Aracınızı\nçekebilir misiniz?',
@@ -671,7 +671,7 @@ class _PublicHomeState extends State<_PublicHome>{
                             Text('Kişisel bilgileriniz gizli kalır.',style:TextStyle(color:Color(0xFF67718A),fontSize:10,fontWeight:FontWeight.w500)),
                           ],
                         ),
-                        const SizedBox(height:18),
+                        const SizedBox(height:10),
                       ],
                     ),
                   ),
@@ -808,7 +808,7 @@ class _ReferenceActionCard extends StatelessWidget{
                   ),
                   const SizedBox(width:5),
                   Container(
-                    width:34,height:34,
+                    width:28,height:28,
                     decoration:BoxDecoration(color:arrowBg,shape:BoxShape.circle),
                     child:Icon(Icons.arrow_forward_rounded,color:arrowColor,size:17),
                   ),
