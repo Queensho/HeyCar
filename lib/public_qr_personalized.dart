@@ -350,10 +350,18 @@ class _PublicHome extends StatefulWidget {
   final PublicThemeData theme;
   @override State<_PublicHome> createState()=>_PublicHomeState();
 }
+
 class _PublicHomeState extends State<_PublicHome>{
+  static const _ink=Color(0xFF0D1230);
+  static const _body=Color(0xFF5F6882);
+  static const _violet=Color(0xFF6424F2);
+  static const _navy=Color(0xFF071A3C);
+  static const _limeCta=Color(0xFFB8FF2C);
+
   String get plate => widget.vehicle['plate']?.toString() ?? 'Araç';
 
-  @override void initState(){
+  @override
+  void initState(){
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_)=>_checkParkNote());
   }
@@ -377,108 +385,440 @@ class _PublicHomeState extends State<_PublicHome>{
       if(!mounted)return;
       await showDialog<void>(context:context,barrierDismissible:true,builder:(dialogContext)=>Dialog(
         backgroundColor:Colors.transparent,insetPadding:const EdgeInsets.symmetric(horizontal:22),
-        child:Container(width:double.infinity,constraints:const BoxConstraints(maxWidth:390),padding:const EdgeInsets.fromLTRB(20,22,20,18),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(26),boxShadow:const [BoxShadow(color:Color(0x33000000),blurRadius:28,offset:Offset(0,12))]),child:Column(mainAxisSize:MainAxisSize.min,children:[
-          Container(width:52,height:52,decoration:BoxDecoration(color:_purple.withValues(alpha:.12),borderRadius:BorderRadius.circular(16)),child:const Icon(Icons.local_parking_rounded,color:_purple,size:31)),
-          const SizedBox(height:14),
-          const Text('🚗 Araç sahibinden not',textAlign:TextAlign.center,style:TextStyle(color:Color(0xFF151826),fontSize:18,fontWeight:FontWeight.w900)),
-          const SizedBox(height:12),
-          Text(message,textAlign:TextAlign.center,style:const TextStyle(color:Color(0xFF151826),fontSize:21,height:1.3,fontWeight:FontWeight.w800)),
-          const SizedBox(height:10),
-          Row(mainAxisAlignment:MainAxisAlignment.center,children:[const Icon(Icons.schedule_rounded,color:Color(0xFF8B91A3),size:17),const SizedBox(width:5),Flexible(child:Text(_updatedAgo(note['createdAt']),style:const TextStyle(color:Color(0xFF8B91A3),fontSize:13,fontWeight:FontWeight.w600)))]),
-          const SizedBox(height:20),
-          SizedBox(width:double.infinity,height:50,child:FilledButton(onPressed:()=>Navigator.of(dialogContext).pop(),style:FilledButton.styleFrom(backgroundColor:_purple,foregroundColor:Colors.white,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15))),child:const Text('Tamam',style:TextStyle(fontSize:16,fontWeight:FontWeight.w900)))),
+        child:Container(width:double.infinity,constraints:const BoxConstraints(maxWidth:390),padding:const EdgeInsets.fromLTRB(20,22,20,18),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(24),boxShadow:const [BoxShadow(color:Color(0x33000000),blurRadius:28,offset:Offset(0,12))]),child:Column(mainAxisSize:MainAxisSize.min,children:[
+          Container(width:50,height:50,decoration:BoxDecoration(color:_violet.withValues(alpha:.10),borderRadius:BorderRadius.circular(15)),child:const Icon(Icons.local_parking_rounded,color:_violet,size:29)),
+          const SizedBox(height:13),
+          const Text('🚗 Araç sahibinden not',textAlign:TextAlign.center,style:TextStyle(color:_ink,fontSize:17,fontWeight:FontWeight.w900)),
+          const SizedBox(height:11),
+          Text(message,textAlign:TextAlign.center,style:const TextStyle(color:_ink,fontSize:19,height:1.3,fontWeight:FontWeight.w800)),
+          const SizedBox(height:9),
+          Row(mainAxisAlignment:MainAxisAlignment.center,children:[const Icon(Icons.schedule_rounded,color:Color(0xFF8B91A3),size:16),const SizedBox(width:5),Flexible(child:Text(_updatedAgo(note['createdAt']),style:const TextStyle(color:Color(0xFF8B91A3),fontSize:12,fontWeight:FontWeight.w600)))]),
+          const SizedBox(height:18),
+          SizedBox(width:double.infinity,height:48,child:FilledButton(onPressed:()=>Navigator.of(dialogContext).pop(),style:FilledButton.styleFrom(backgroundColor:_violet,foregroundColor:Colors.white,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(14))),child:const Text('Tamam',style:TextStyle(fontSize:15,fontWeight:FontWeight.w900)))),
         ])),
       ));
     }catch(_){}
   }
 
   @override
-  Widget build(BuildContext context) {
-    final compact = MediaQuery.sizeOf(context).height < 780;
-    final bgUrl = PublicThemeBackend.resolveBackground(widget.theme.backgroundUrl);
-    return _Shell(
-      background: bgUrl,
-      child: ListView(
-        padding: EdgeInsets.fromLTRB(18, compact ? 10 : 14, 18, 24),
-        children: [
-          const _TopBar(),
-          SizedBox(height: compact ? 24 : 32),
-          Text('Bana\nulaşmak', style: TextStyle(color: Colors.white, fontSize: compact ? 34 : 39, height: .96, fontWeight: FontWeight.w900)),
-          Text('çok kolay.', style: TextStyle(color: _lime, fontSize: compact ? 34 : 39, height: 1, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 12),
-          Text(widget.theme.publicMessage.isEmpty ? 'Numaram gizli, yolun açık.' : widget.theme.publicMessage, style: TextStyle(color: Colors.white, fontSize: compact ? 16 : 18, height: 1.35, fontWeight: FontWeight.w600)),
-          SizedBox(height: compact ? 18 : 24),
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            mainAxisSpacing: 9,
-            crossAxisSpacing: 9,
-            childAspectRatio: compact ? 1.28 : 1.18,
-            children: [
-              _ActionCard(title: 'Aracınızı\nçekebilir misiniz?', icon: Icons.phone_rounded, strong: true, onTap: () => _compose(context, 'Aracınızı çekebilir misiniz?')),
-              _ActionCard(title: 'Farlarınız açık', icon: Icons.lightbulb_rounded, onTap: () => _compose(context, 'Farlarınız açık')),
-              _ActionCard(title: 'Aracınızda\nhasar var', icon: Icons.warning_amber_rounded, onTap: () => _compose(context, 'Aracınızda hasar var')),
-              _ActionCard(title: 'Diğer mesaj', icon: Icons.chat_bubble_rounded, onTap: () => _compose(context, 'Diğer mesaj')),
-            ],
-          ),
-          const SizedBox(height: 10),
-          InkWell(
-            borderRadius: BorderRadius.circular(18),
-            onTap: () => _startCall(context),
-            child: Container(
-              height: compact ? 52 : 58,
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(18), border: Border.all(color: _line)),
-              child: const Row(children: [
-                Icon(Icons.phone_rounded, color: Colors.white),
-                SizedBox(width: 16),
-                Expanded(child: Text('Gizli arama', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 17))),
-                Icon(Icons.chevron_right, color: Colors.white70),
-              ]),
+  Widget build(BuildContext context)
+  {
+    final size=MediaQuery.sizeOf(context);
+    final compact=size.width<390;
+    final heroHeight=compact?470.0:510.0;
+    final pagePad=compact?15.0:18.0;
+    final publicMessage=widget.theme.publicMessage.trim().isEmpty
+        ? 'Numaram gizli,\nyolun açık.'
+        : widget.theme.publicMessage.trim();
+
+    return Scaffold(
+      backgroundColor:const Color(0xFFF8FAFF),
+      body:SafeArea(
+        bottom:false,
+        child:Center(
+          child:ConstrainedBox(
+            constraints:const BoxConstraints(maxWidth:430),
+            child:ListView(
+              padding:EdgeInsets.zero,
+              children:[
+                SizedBox(
+                  height:heroHeight,
+                  child:Stack(
+                    fit:StackFit.expand,
+                    children:[
+                      Positioned.fill(
+                        child:Image.asset(
+                          'assets/IMG_20261004_191854.png',
+                          fit:BoxFit.cover,
+                          alignment:Alignment.center,
+                        ),
+                      ),
+                      Positioned.fill(
+                        child:DecoratedBox(
+                          decoration:BoxDecoration(
+                            gradient:LinearGradient(
+                              begin:Alignment.topCenter,
+                              end:Alignment.bottomCenter,
+                              colors:[
+                                Colors.white.withValues(alpha:.93),
+                                Colors.white.withValues(alpha:.30),
+                                Colors.white.withValues(alpha:.06),
+                              ],
+                              stops:const [0,.40,1],
+                            ),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        left:pagePad,
+                        right:pagePad,
+                        top:8,
+                        child:_PublicHomeTopBar(compact:compact),
+                      ),
+                      Positioned(
+                        left:pagePad,
+                        top:compact?112:122,
+                        width:compact?220:245,
+                        child:Column(
+                          crossAxisAlignment:CrossAxisAlignment.start,
+                          children:[
+                            Text(
+                              'ARAÇ SAHİBİNE ULAŞ',
+                              style:TextStyle(
+                                color:const Color(0xFF4D5877),
+                                fontSize:compact?10.5:11.5,
+                                letterSpacing:2.6,
+                                fontWeight:FontWeight.w800,
+                              ),
+                            ),
+                            SizedBox(height:compact?11:13),
+                            Text(
+                              'Bana\nulaşmak',
+                              style:TextStyle(
+                                color:_ink,
+                                fontSize:compact?43:48,
+                                height:.89,
+                                fontWeight:FontWeight.w900,
+                                letterSpacing:-1.8,
+                              ),
+                            ),
+                            Text(
+                              'çok kolay.',
+                              style:TextStyle(
+                                color:_violet,
+                                fontSize:compact?43:48,
+                                height:.93,
+                                fontWeight:FontWeight.w900,
+                                letterSpacing:-1.8,
+                              ),
+                            ),
+                            const SizedBox(height:3),
+                            Container(
+                              width:compact?166:184,
+                              height:10,
+                              decoration:const BoxDecoration(
+                                border:Border(
+                                  top:BorderSide(color:Color(0xFF9AFF20),width:4),
+                                ),
+                              ),
+                              transform:Matrix4.rotationZ(-.08),
+                            ),
+                            SizedBox(height:compact?14:17),
+                            Text(
+                              publicMessage,
+                              maxLines:2,
+                              overflow:TextOverflow.ellipsis,
+                              style:TextStyle(
+                                color:const Color(0xFF404A68),
+                                fontSize:compact?17:19,
+                                height:1.32,
+                                fontWeight:FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Transform.translate(
+                  offset:Offset(0,compact?-25:-30),
+                  child:Padding(
+                    padding:EdgeInsets.symmetric(horizontal:pagePad),
+                    child:Column(
+                      children:[
+                        GridView.count(
+                          shrinkWrap:true,
+                          physics:const NeverScrollableScrollPhysics(),
+                          crossAxisCount:2,
+                          mainAxisSpacing:10,
+                          crossAxisSpacing:10,
+                          childAspectRatio:compact?1.08:1.04,
+                          children:[
+                            _ReferenceActionCard(
+                              title:'Aracınızı\nçekebilir misiniz?',
+                              subtitle:'Acil durumda\nbeni arayın.',
+                              icon:Icons.phone_rounded,
+                              iconColor:const Color(0xFF057B24),
+                              iconBg:const Color(0xFFE9FFD7),
+                              cardColors:const [Color(0xFFF8FFF0),Color(0xFFF3FFE8)],
+                              arrowColor:const Color(0xFF158126),
+                              arrowBg:const Color(0xFFE8FFD2),
+                              onTap:()=>_compose(context,'Aracınızı çekebilir misiniz?'),
+                            ),
+                            _ReferenceActionCard(
+                              title:'Farlarınız açık\nkalmış.',
+                              subtitle:'Önemli bir durumu\nbildirin.',
+                              icon:Icons.lightbulb_rounded,
+                              iconColor:_violet,
+                              iconBg:const Color(0xFFF2E9FF),
+                              cardColors:const [Color(0xFFFCF9FF),Color(0xFFF8F2FF)],
+                              arrowColor:_violet,
+                              arrowBg:const Color(0xFFF0E7FF),
+                              onTap:()=>_compose(context,'Farlarınız açık'),
+                            ),
+                            _ReferenceActionCard(
+                              title:'Aracınızda\nhasar var.',
+                              subtitle:'Size bilgi vermek\nistiyorum.',
+                              icon:Icons.warning_amber_rounded,
+                              iconColor:const Color(0xFFE0152A),
+                              iconBg:const Color(0xFFFFEBEF),
+                              cardColors:const [Color(0xFFFFF8F8),Color(0xFFFFF0F1)],
+                              arrowColor:const Color(0xFFC91A2D),
+                              arrowBg:const Color(0xFFFFE5E9),
+                              onTap:()=>_compose(context,'Aracınızda hasar var'),
+                            ),
+                            _ReferenceActionCard(
+                              title:'Diğer mesaj',
+                              subtitle:'Size anonim\nmesaj bırakın.',
+                              icon:Icons.chat_rounded,
+                              iconColor:const Color(0xFF1764E8),
+                              iconBg:const Color(0xFFE8F1FF),
+                              cardColors:const [Color(0xFFF8FCFF),Color(0xFFF0F7FF)],
+                              arrowColor:const Color(0xFF1460E4),
+                              arrowBg:const Color(0xFFE6F0FF),
+                              onTap:()=>_compose(context,'Diğer mesaj'),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height:10),
+                        InkWell(
+                          borderRadius:BorderRadius.circular(17),
+                          onTap:()=>_startCall(context),
+                          child:Container(
+                            height:compact?60:64,
+                            padding:const EdgeInsets.symmetric(horizontal:13),
+                            decoration:BoxDecoration(
+                              color:_navy,
+                              borderRadius:BorderRadius.circular(17),
+                              boxShadow:const [BoxShadow(color:Color(0x18071A3C),blurRadius:16,offset:Offset(0,7))],
+                            ),
+                            child:Row(
+                              children:[
+                                Container(
+                                  width:42,height:42,
+                                  decoration:BoxDecoration(
+                                    color:const Color(0xFF192D5D),
+                                    borderRadius:BorderRadius.circular(12),
+                                  ),
+                                  child:const Icon(Icons.phone_rounded,color:Colors.white,size:24),
+                                ),
+                                const SizedBox(width:12),
+                                const Expanded(
+                                  child:Column(
+                                    mainAxisAlignment:MainAxisAlignment.center,
+                                    crossAxisAlignment:CrossAxisAlignment.start,
+                                    children:[
+                                      Text('Gizli arama',style:TextStyle(color:Colors.white,fontSize:15.5,fontWeight:FontWeight.w900)),
+                                      SizedBox(height:2),
+                                      Text('Numaranız karşı tarafa gösterilmez.',maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:Color(0xFFB7C1D8),fontSize:10.8,fontWeight:FontWeight.w500)),
+                                    ],
+                                  ),
+                                ),
+                                const Icon(Icons.chevron_right_rounded,color:Colors.white,size:25),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height:10),
+                        InkWell(
+                          borderRadius:BorderRadius.circular(17),
+                          onTap:()=>html.window.location.href=Uri.base.resolve('app/').toString(),
+                          child:Container(
+                            height:compact?68:72,
+                            padding:const EdgeInsets.symmetric(horizontal:13),
+                            decoration:BoxDecoration(
+                              gradient:const LinearGradient(
+                                colors:[Color(0xFFB9FF2B),Color(0xFFA6F719)],
+                              ),
+                              borderRadius:BorderRadius.circular(17),
+                              boxShadow:const [BoxShadow(color:Color(0x2798E915),blurRadius:18,offset:Offset(0,7))],
+                            ),
+                            child:Row(
+                              children:[
+                                Container(
+                                  width:45,height:45,
+                                  decoration:BoxDecoration(
+                                    color:Colors.black.withValues(alpha:.08),
+                                    borderRadius:BorderRadius.circular(13),
+                                  ),
+                                  child:const Icon(Icons.person_add_alt_1_rounded,color:Colors.black,size:26),
+                                ),
+                                const SizedBox(width:12),
+                                const Expanded(
+                                  child:Column(
+                                    mainAxisAlignment:MainAxisAlignment.center,
+                                    crossAxisAlignment:CrossAxisAlignment.start,
+                                    children:[
+                                      Text("Sen de CepQontag'a Katıl",style:TextStyle(color:Colors.black,fontSize:15,fontWeight:FontWeight.w900)),
+                                      SizedBox(height:2),
+                                      Text('Aracını ekle, sen de bu kolaylığı yaşa.',maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:Color(0xFF3D5712),fontSize:10.8,fontWeight:FontWeight.w600)),
+                                    ],
+                                  ),
+                                ),
+                                const Icon(Icons.chevron_right_rounded,color:Colors.black,size:25),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height:15),
+                        const Row(
+                          mainAxisAlignment:MainAxisAlignment.center,
+                          children:[
+                            Icon(Icons.shield_rounded,color:Color(0xFF677596),size:18),
+                            SizedBox(width:7),
+                            Text('Kişisel bilgileriniz gizli kalır.',style:TextStyle(color:Color(0xFF67718A),fontSize:11.5,fontWeight:FontWeight.w500)),
+                          ],
+                        ),
+                        const SizedBox(height:18),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 10),
-          InkWell(
-            borderRadius: BorderRadius.circular(18),
-            onTap: () => html.window.location.href = Uri.base.resolve('app/').toString(),
-            child: Container(
-              height: compact ? 52 : 58,
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              decoration: BoxDecoration(color: _lime, borderRadius: BorderRadius.circular(18)),
-              child: const Row(children: [
-                Icon(Icons.person_add_alt_1_rounded, color: Colors.black),
-                SizedBox(width: 16),
-                Expanded(child: Text("Sen de Cepqar'a Katıl", style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900, fontSize: 17))),
-                Icon(Icons.chevron_right_rounded, color: Colors.black),
-              ]),
-            ),
-          ),
-          const SizedBox(height: 18),
-          const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Icon(Icons.shield_rounded, color: Colors.white70, size: 20),
-            SizedBox(width: 8),
-            Text('Kişisel bilgileriniz gizli kalır.', style: TextStyle(color: _muted)),
-          ]),
-        ],
+        ),
       ),
     );
   }
 
-  void _compose(BuildContext context, String type) {
-    Navigator.push(context, MaterialPageRoute(builder: (_) => _MessageComposer(plate: plate, type: type)));
+  void _compose(BuildContext context,String type){
+    Navigator.push(context,MaterialPageRoute(builder:(_)=>_MessageComposer(plate:plate,type:type)));
   }
 
-  Future<void> _startCall(BuildContext context) async {
-    try {
+  Future<void> _startCall(BuildContext context)async{
+    try{
       await PublicNotificationApi.sendCallRequest();
-      if (!context.mounted) return;
-      Navigator.push(context, MaterialPageRoute(builder: (_) => _HiddenCall(plate: plate)));
-    } catch (_) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Arama isteği gönderilemedi.')));
+      if(!context.mounted)return;
+      Navigator.push(context,MaterialPageRoute(builder:(_)=>_HiddenCall(plate:plate)));
+    }catch(_){
+      if(!context.mounted)return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Arama isteği gönderilemedi.')));
     }
   }
+}
+
+class _PublicHomeTopBar extends StatelessWidget{
+  const _PublicHomeTopBar({required this.compact});
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context)=>Row(
+    children:[
+      Image.asset(
+        'assets/file_00000000b130820abb8d411e67ab0d25.png',
+        height:compact?31:34,
+        fit:BoxFit.contain,
+        alignment:Alignment.centerLeft,
+      ),
+      const Spacer(),
+      Container(
+        height:36,
+        padding:const EdgeInsets.symmetric(horizontal:11),
+        decoration:BoxDecoration(
+          color:Colors.white.withValues(alpha:.82),
+          borderRadius:BorderRadius.circular(18),
+          border:Border.all(color:const Color(0xFFDDE2ED)),
+          boxShadow:const [BoxShadow(color:Color(0x0E000000),blurRadius:12,offset:Offset(0,4))],
+        ),
+        child:const Row(
+          children:[
+            Icon(Icons.language_rounded,color:_ink,size:18),
+            SizedBox(width:7),
+            Text('TR',style:TextStyle(color:_ink,fontSize:13,fontWeight:FontWeight.w900)),
+            SizedBox(width:3),
+            Icon(Icons.keyboard_arrow_down_rounded,color:_ink,size:18),
+          ],
+        ),
+      ),
+      const SizedBox(width:9),
+      const Icon(Icons.menu_rounded,color:_ink,size:29),
+    ],
+  );
+}
+
+class _ReferenceActionCard extends StatelessWidget{
+  const _ReferenceActionCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.iconColor,
+    required this.iconBg,
+    required this.cardColors,
+    required this.arrowColor,
+    required this.arrowBg,
+    required this.onTap,
+  });
+
+  final String title,subtitle;
+  final IconData icon;
+  final Color iconColor,iconBg,arrowColor,arrowBg;
+  final List<Color> cardColors;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context)=>Material(
+    color:Colors.transparent,
+    child:InkWell(
+      onTap:onTap,
+      borderRadius:BorderRadius.circular(18),
+      child:Ink(
+        padding:const EdgeInsets.fromLTRB(13,12,12,11),
+        decoration:BoxDecoration(
+          gradient:LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:cardColors),
+          borderRadius:BorderRadius.circular(18),
+          border:Border.all(color:Colors.white.withValues(alpha:.95)),
+          boxShadow:const [BoxShadow(color:Color(0x100A1530),blurRadius:16,offset:Offset(0,6))],
+        ),
+        child:Column(
+          crossAxisAlignment:CrossAxisAlignment.start,
+          children:[
+            Container(
+              width:41,height:41,
+              decoration:BoxDecoration(color:iconBg,borderRadius:BorderRadius.circular(12)),
+              child:Icon(icon,color:iconColor,size:24),
+            ),
+            const SizedBox(height:8),
+            Text(
+              title,
+              maxLines:2,
+              overflow:TextOverflow.ellipsis,
+              style:const TextStyle(
+                color:_ink,
+                fontSize:14.5,
+                height:1.06,
+                fontWeight:FontWeight.w900,
+                letterSpacing:-.25,
+              ),
+            ),
+            const SizedBox(height:5),
+            Expanded(
+              child:Row(
+                crossAxisAlignment:CrossAxisAlignment.end,
+                children:[
+                  Expanded(
+                    child:Text(
+                      subtitle,
+                      maxLines:2,
+                      overflow:TextOverflow.ellipsis,
+                      style:const TextStyle(color:_body,fontSize:10.8,height:1.25,fontWeight:FontWeight.w500),
+                    ),
+                  ),
+                  const SizedBox(width:5),
+                  Container(
+                    width:34,height:34,
+                    decoration:BoxDecoration(color:arrowBg,shape:BoxShape.circle),
+                    child:Icon(Icons.arrow_forward_rounded,color:arrowColor,size:20),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _MessageComposer extends StatefulWidget {
@@ -714,35 +1054,6 @@ class _HiddenCall extends StatelessWidget {
                   ),
                 ],
               ),
-            ),
-          ),
-        ),
-      );
-}
-
-class _ActionCard extends StatelessWidget {
-  const _ActionCard({required this.title, required this.icon, required this.onTap, this.strong = false});
-  final String title;
-  final IconData icon;
-  final VoidCallback onTap;
-  final bool strong;
-
-  @override
-  Widget build(BuildContext context) => Material(
-        color: strong ? _lime : _panel,
-        borderRadius: BorderRadius.circular(20),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(20),
-          child: Padding(
-            padding: const EdgeInsets.all(13),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, color: strong ? Colors.black : Colors.white, size: 32),
-                const SizedBox(height: 8),
-                Text(title, textAlign: TextAlign.center, style: TextStyle(color: strong ? Colors.black : Colors.white, fontWeight: FontWeight.w900, fontSize: 14.5, height: 1.15)),
-              ],
             ),
           ),
         ),
