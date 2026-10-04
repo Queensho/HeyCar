@@ -11,6 +11,7 @@ import 'qr_security_page.dart';
 import 'admin_promo_banner.dart';
 import 'owner_valet_card.dart';
 import 'roadside_help_page.dart';
+import 'owner_home_redesign.dart';
 class OwnerDashboardLive extends StatefulWidget{const OwnerDashboardLive({super.key});@override State<OwnerDashboardLive> createState()=>_S();}
 class _S extends State<OwnerDashboardLive>{int tab=0;bool parked=false,vehicleLoading=true;String get vid=>QrDraft.vehicleId.trim().isNotEmpty?QrDraft.vehicleId.trim():OnboardingDraft.vehicleId.trim();String get oid=>OnboardingDraft.userId.trim();@override void initState(){super.initState();_loadVehicle();}
 Future<void> _loadVehicle()async{if(oid.isEmpty){if(mounted)setState(()=>vehicleLoading=false);return;}try{final r=await OwnerHttp.get(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/vehicles'),json:false);final d=jsonDecode(r.body);if(d is Map&&d['vehicles'] is List){final vs=(d['vehicles'] as List).whereType<Map>().toList();if(vs.isNotEmpty){var v=vs.first;for(final x in vs){if('${x['id']}'==vid){v=x;break;}}_apply(v,notify:false);}}}catch(_){}if(mounted)setState(()=>vehicleLoading=false);await _parking();}
@@ -27,7 +28,7 @@ void action(String a){if(a=='qr')_qr();else if(a=='qr_security'&&vid.isNotEmpty)
     valueListenable:ownerUnreadNotificationCount,
     builder:(c,unread,_){
       final pages=[
-        _Home(
+        OwnerHomeRedesign(
           key:ValueKey('home-$vid-${QrDraft.token}'),
           notifications:()=>setState(()=>tab=3),
           vehicles:()=>setState(()=>tab=1),
@@ -37,7 +38,7 @@ void action(String a){if(a=='qr')_qr();else if(a=='qr_security'&&vid.isNotEmpty)
           parked:parked,
         ),
         OwnerVehiclesPage(onVehicleChanged:_vehicleChanged),
-        _ServicesPage(
+        OwnerServicesRedesign(
           onVale:()=>setState(()=>tab=2),
           onTowing:()=>action('roadside_help'),
           onPark:_park,
