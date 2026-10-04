@@ -127,8 +127,8 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
           ?const LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:[Color(0xFFFAFAFF),Color(0xFFF1EEFF),Color(0xFFF7F7FC)])
           :const LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:[Color(0xFF050913),Color(0xFF070A18),Color(0xFF12082C)]),
       ))),
-      Positioned(right:-35,top:22,child:Container(width:225,height:145,decoration:BoxDecoration(shape:BoxShape.circle,gradient:RadialGradient(colors:[purple.withValues(alpha:light ? 0.20 : 0.48),purple.withValues(alpha:0)])))),
-      Positioned(right:-4,bottom:-2,child:Image.asset('assets/Arac.png',width:light?232:248,height:132,fit:BoxFit.contain,errorBuilder:(_,__,___)=>Icon(Icons.directions_car_filled_rounded,size:108,color:purple.withValues(alpha:.7)))),
+      Positioned.fill(child:IgnorePointer(child:CustomPaint(painter:_OwnerHeaderWavePainter(light:light)))),
+      Positioned(right:-34,top:18,child:Container(width:210,height:148,decoration:BoxDecoration(shape:BoxShape.circle,gradient:RadialGradient(colors:[purple.withValues(alpha:light ? 0.16 : 0.34),purple.withValues(alpha:0)])))),
       Padding(
         padding:EdgeInsets.fromLTRB(20,MediaQuery.paddingOf(context).top+2,18,0),
         child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
@@ -404,6 +404,55 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       ),
     ),
   );
+}
+
+class _OwnerHeaderWavePainter extends CustomPainter{
+  const _OwnerHeaderWavePainter({required this.light});
+  final bool light;
+
+  @override
+  void paint(Canvas canvas,Size size){
+    final p1=Paint()
+      ..color=const Color(0xFF713BFF).withValues(alpha:light?0.13:0.24)
+      ..style=PaintingStyle.fill;
+    final p2=Paint()
+      ..color=const Color(0xFF8B5CFF).withValues(alpha:light?0.10:0.18)
+      ..style=PaintingStyle.fill;
+    final p3=Paint()
+      ..color=const Color(0xFF5B22D6).withValues(alpha:light?0.08:0.15)
+      ..style=PaintingStyle.fill;
+
+    final w=size.width,h=size.height;
+
+    final path1=Path()
+      ..moveTo(w*.46,0)
+      ..cubicTo(w*.58,h*.10,w*.68,h*.30,w*.78,h*.22)
+      ..cubicTo(w*.90,h*.12,w*.96,h*.28,w,h*.18)
+      ..lineTo(w,0)
+      ..close();
+    canvas.drawPath(path1,p1);
+
+    final path2=Path()
+      ..moveTo(w*.38,h*.48)
+      ..cubicTo(w*.54,h*.24,w*.65,h*.62,w*.78,h*.40)
+      ..cubicTo(w*.89,h*.22,w*.95,h*.48,w,h*.34)
+      ..lineTo(w,h*.74)
+      ..cubicTo(w*.89,h*.82,w*.80,h*.64,w*.68,h*.76)
+      ..cubicTo(w*.57,h*.87,w*.49,h*.61,w*.38,h*.72)
+      ..close();
+    canvas.drawPath(path2,p2);
+
+    final path3=Path()
+      ..moveTo(w*.54,h)
+      ..cubicTo(w*.66,h*.76,w*.75,h*.92,w*.84,h*.70)
+      ..cubicTo(w*.91,h*.54,w*.96,h*.69,w,h*.60)
+      ..lineTo(w,h)
+      ..close();
+    canvas.drawPath(path3,p3);
+  }
+
+  @override
+  bool shouldRepaint(covariant _OwnerHeaderWavePainter oldDelegate)=>oldDelegate.light!=light;
 }
 
 class OwnerServicesRedesign extends StatelessWidget{
