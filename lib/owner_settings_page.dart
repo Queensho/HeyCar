@@ -285,6 +285,7 @@ class OwnerSettingsPage extends StatelessWidget {
                     title: 'Bildirim Ayarları',
                     onTap: () => _push(context, const OwnerNotificationSettingsPage()),
                   ),
+                  const _ThemeProfileRow(),
                   _ProfileMenuRow(
                     icon: Icons.lock_outline_rounded,
                     title: 'Gizlilik ve Güvenlik',
@@ -341,10 +342,11 @@ class _ProfileBrandHeader extends StatelessWidget {
     return Row(
       children: [
         Image.asset(
-          'assets/Logoyeni.png',
-          height:31,
-          fit:BoxFit.contain,
-          alignment:Alignment.centerLeft,
+          CepqarTheme.isLight ? 'assets/Aylogo.png' : 'assets/Logoyeni.png',
+          key: ValueKey(CepqarTheme.isLight),
+          height: 31,
+          fit: BoxFit.contain,
+          alignment: Alignment.centerLeft,
         ),
         const Spacer(),
         Stack(
@@ -677,6 +679,81 @@ class _QuickProfileAction extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _ThemeProfileRow extends StatelessWidget {
+  const _ThemeProfileRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: CepqarTheme.mode,
+      builder: (_, mode, __) {
+        final dark = mode == ThemeMode.dark;
+        final text = CepqarTheme.text;
+        final muted = CepqarTheme.muted;
+        final line = CepqarTheme.line;
+
+        return Column(
+          children: [
+            InkWell(
+              onTap: () => CepqarTheme.setDarkMode(!dark),
+              child: SizedBox(
+                height: 43,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 11),
+                  child: Row(
+                    children: [
+                      Icon(
+                        dark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                        color: text,
+                        size: 17,
+                      ),
+                      const SizedBox(width: 11),
+                      Expanded(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Karanlık Mod',
+                              style: TextStyle(
+                                color: text,
+                                fontSize: 10.8,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              dark ? 'Açık' : 'Kapalı • Aydınlık tema',
+                              style: TextStyle(
+                                color: muted,
+                                fontSize: 8.5,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Switch(
+                        value: dark,
+                        onChanged: CepqarTheme.setDarkMode,
+                        activeThumbColor: _purple,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(left: 39, right: 10),
+              child: Container(height: 1, color: line.withValues(alpha: .72)),
+            ),
+          ],
+        );
+      },
     );
   }
 }
