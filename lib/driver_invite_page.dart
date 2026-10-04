@@ -58,7 +58,7 @@ class _DriverAuthTop extends StatelessWidget{
       ),
     ),
     const Spacer(),
-    Image.asset('assets/Aylogo.png',height:31,fit:BoxFit.contain),
+    Image.asset('assets/Logoyeni.png',height:31,fit:BoxFit.contain),
     const Spacer(),
     const SizedBox(width:40),
   ]);
