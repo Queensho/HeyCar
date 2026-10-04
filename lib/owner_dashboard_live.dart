@@ -35,7 +35,6 @@ void action(String a){if(a=='qr')_qr();else if(a=='qr_security'&&vid.isNotEmpty)
           services:()=>setState(()=>tab=2),
           park:_park,
           shortcut:action,
-          parked:parked,
         ),
         OwnerVehiclesPage(onVehicleChanged:_vehicleChanged),
         OwnerServicesRedesign(
