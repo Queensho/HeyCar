@@ -137,7 +137,7 @@ class _RealQrScanPageState extends State<RealQrScanPage> {
                 Row(
                   children: [
                     Image.asset(
-                      'assets/Aylogo.png',
+                      'assets/Logoyeni.png',
                       height: compact ? 28 : 30,
                       fit: BoxFit.contain,
                     ),
