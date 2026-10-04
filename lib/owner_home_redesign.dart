@@ -222,8 +222,8 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                 end:Alignment.bottomCenter,
                 colors:[
                   (light?const Color(0xFFF8F6FF):const Color(0xFF080B15)).withValues(alpha:0),
-                  pageBg.withValues(alpha:.72),
-                  pageBg,
+                  bg.withValues(alpha:.72),
+                  bg,
                 ],
                 stops:const [0,.62,1],
               ),
