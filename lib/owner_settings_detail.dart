@@ -98,40 +98,336 @@ class _AccountDeletedPage extends StatelessWidget{
   );
 }
 
-class OwnerAccountSettingsPage extends StatelessWidget {
+class OwnerAccountSettingsPage extends StatefulWidget {
   const OwnerAccountSettingsPage({super.key});
 
   @override
+  State<OwnerAccountSettingsPage> createState() => _OwnerAccountSettingsPageState();
+}
+
+class _OwnerAccountSettingsPageState extends State<OwnerAccountSettingsPage> {
+  late final TextEditingController name;
+  late final TextEditingController phone;
+  late final TextEditingController email;
+  bool editing = false;
+  bool saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    name = TextEditingController(text: OnboardingDraft.displayName.trim());
+    phone = TextEditingController(text: OnboardingDraft.phone.trim());
+    email = TextEditingController(text: OnboardingDraft.email.trim());
+  }
+
+  @override
+  void dispose() {
+    name.dispose();
+    phone.dispose();
+    email.dispose();
+    super.dispose();
+  }
+
+  String get _nameValue => name.text.trim().isEmpty ? 'Araç Sahibi' : name.text.trim();
+  String get _phoneValue => phone.text.trim().isEmpty ? 'Telefon bilgisi yok' : phone.text.trim();
+  String get _emailValue => email.text.trim().isEmpty ? 'E-posta eklenmemiş' : email.text.trim();
+
+  void _cancelEdit() {
+    name.text = OnboardingDraft.displayName.trim();
+    phone.text = OnboardingDraft.phone.trim();
+    email.text = OnboardingDraft.email.trim();
+    setState(() => editing = false);
+  }
+
+  Future<void> _saveProfile() async {
+    if (saving) return;
+    final displayName = name.text.trim().replaceAll(RegExp(r'\s+'), ' ');
+    final phoneValue = phone.text.trim();
+    final emailValue = email.text.trim();
+
+    if (displayName.length < 2) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ad soyad bilgisini girin.')),
+      );
+      return;
+    }
+    if (phoneValue.replaceAll(RegExp(r'\D'), '').length < 10) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Geçerli bir telefon numarası girin.')),
+      );
+      return;
+    }
+    if (emailValue.isNotEmpty &&
+        !RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(emailValue)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Geçerli bir e-posta adresi girin.')),
+      );
+      return;
+    }
+
+    setState(() => saving = true);
+    try {
+      final r = await OwnerHttp.patch(
+        Uri.parse('$_baseUrl/api/owner/account/profile'),
+        body: jsonEncode({
+          'displayName': displayName,
+          'phone': phoneValue,
+          'email': emailValue,
+        }),
+      ).timeout(const Duration(seconds: 15));
+
+      final data = r.body.isEmpty ? <String, dynamic>{} : jsonDecode(r.body);
+      final error = data is Map ? data['error']?.toString() ?? '' : '';
+
+      if (r.statusCode == 409) {
+        final message = error == 'PHONE_IN_USE'
+            ? 'Bu telefon numarası başka bir hesapta kullanılıyor.'
+            : 'Bu e-posta adresi başka bir hesapta kullanılıyor.';
+        throw Exception(message);
+      }
+      if (r.statusCode == 400) {
+        final message = error == 'INVALID_PHONE'
+            ? 'Geçerli bir Türkiye cep telefonu numarası girin.'
+            : error == 'INVALID_EMAIL'
+                ? 'E-posta adresini kontrol edin.'
+                : 'Bilgileri kontrol edin.';
+        throw Exception(message);
+      }
+      if (r.statusCode < 200 || r.statusCode >= 300 || data is! Map) {
+        throw Exception('Bilgiler kaydedilemedi.');
+      }
+
+      final user = data['user'];
+      final nextName = user is Map ? user['display_name']?.toString() ?? displayName : displayName;
+      final nextPhone = user is Map ? user['phone']?.toString() ?? phoneValue : phoneValue;
+      final nextEmail = user is Map ? user['email']?.toString() ?? emailValue : emailValue;
+
+      OnboardingDraft.displayName = nextName;
+      OnboardingDraft.phone = nextPhone;
+      OnboardingDraft.email = nextEmail;
+      QrDraft.ownerName = nextName.isEmpty ? 'CepQontag Kullanıcısı' : nextName;
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('owner_display_name', nextName);
+      await prefs.setString('owner_phone', nextPhone);
+      await prefs.setString('owner_email', nextEmail);
+
+      name.text = nextName;
+      phone.text = nextPhone;
+      email.text = nextEmail;
+
+      if (!mounted) return;
+      setState(() {
+        saving = false;
+        editing = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Hesap bilgileri güncellendi.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => saving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e.toString().replaceFirst('Exception: ', '').trim().isEmpty
+                ? 'Bilgiler kaydedilemedi.'
+                : e.toString().replaceFirst('Exception: ', ''),
+          ),
+        ),
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final name = OnboardingDraft.displayName.trim().isEmpty
-        ? 'Araç Sahibi'
-        : OnboardingDraft.displayName.trim();
-    final phone = OnboardingDraft.phone.trim().isEmpty
-        ? 'Telefon bilgisi yok'
-        : OnboardingDraft.phone.trim();
-    final email = OnboardingDraft.email.trim().isEmpty
-        ? 'E-posta eklenmemiş'
-        : OnboardingDraft.email.trim();
     return _SettingsScaffold(
       title: 'Hesap bilgilerim',
       child: Column(
         children: [
-          const CircleAvatar(
+          CircleAvatar(
             radius: 38,
             backgroundColor: _panel,
-            child: Icon(Icons.person_rounded, color: _purple, size: 38),
+            child: Icon(
+              editing ? Icons.edit_rounded : Icons.person_rounded,
+              color: _purple,
+              size: 36,
+            ),
           ),
-          const SizedBox(height: 18),
-          _InfoTile(icon: Icons.person_outline_rounded, label: 'Ad Soyad', value: name),
-          _InfoTile(icon: Icons.phone_outlined, label: 'Telefon', value: phone),
-          _InfoTile(icon: Icons.mail_outline_rounded, label: 'E-posta', value: email),
-          const SizedBox(height: 12),
-          _ActionTile(icon: Icons.vpn_key_outlined, title: 'Hesap kurtarma kodu', subtitle: 'Şifreni unutursan kullanacağın kodu oluştur', onTap: () => _showOwnerRecoveryCode(context)),
-          _ActionTile(icon: Icons.delete_forever_outlined, title: 'Hesabı sil', subtitle: 'Hesabını ve bağlı verilerini kalıcı olarak sil', onTap: () => _deleteOwnerAccount(context)),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  editing ? 'Bilgilerini düzenle' : 'Kişisel bilgiler',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              if (!editing)
+                TextButton.icon(
+                  onPressed: () => setState(() => editing = true),
+                  icon: const Icon(Icons.edit_outlined, size: 18),
+                  label: const Text('Düzenle'),
+                )
+              else
+                TextButton(
+                  onPressed: saving ? null : _cancelEdit,
+                  child: const Text('Vazgeç'),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (!editing) ...[
+            _InfoTile(
+              icon: Icons.person_outline_rounded,
+              label: 'Ad Soyad',
+              value: _nameValue,
+            ),
+            _InfoTile(
+              icon: Icons.phone_outlined,
+              label: 'Telefon',
+              value: _phoneValue,
+            ),
+            _InfoTile(
+              icon: Icons.mail_outline_rounded,
+              label: 'E-posta',
+              value: _emailValue,
+            ),
+          ] else ...[
+            _EditableAccountField(
+              controller: name,
+              icon: Icons.person_outline_rounded,
+              label: 'Ad Soyad',
+              textCapitalization: TextCapitalization.words,
+              enabled: !saving,
+            ),
+            _EditableAccountField(
+              controller: phone,
+              icon: Icons.phone_outlined,
+              label: 'Telefon',
+              keyboardType: TextInputType.phone,
+              enabled: !saving,
+            ),
+            _EditableAccountField(
+              controller: email,
+              icon: Icons.mail_outline_rounded,
+              label: 'E-posta',
+              keyboardType: TextInputType.emailAddress,
+              enabled: !saving,
+            ),
+            const SizedBox(height: 2),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: FilledButton.icon(
+                onPressed: saving ? null : _saveProfile,
+                style: FilledButton.styleFrom(
+                  backgroundColor: _purple,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                ),
+                icon: saving
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.check_rounded, size: 20),
+                label: Text(
+                  saving ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet',
+                  style: const TextStyle(fontWeight: FontWeight.w900),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+          _ActionTile(
+            icon: Icons.vpn_key_outlined,
+            title: 'Hesap kurtarma kodu',
+            subtitle: 'Şifreni unutursan kullanacağın kodu oluştur',
+            onTap: () => _showOwnerRecoveryCode(context),
+          ),
+          _ActionTile(
+            icon: Icons.delete_forever_outlined,
+            title: 'Hesabı sil',
+            subtitle: 'Hesabını ve bağlı verilerini kalıcı olarak sil',
+            onTap: () => _deleteOwnerAccount(context),
+          ),
         ],
       ),
     );
   }
+}
+
+class _EditableAccountField extends StatelessWidget {
+  const _EditableAccountField({
+    required this.controller,
+    required this.icon,
+    required this.label,
+    this.keyboardType,
+    this.textCapitalization = TextCapitalization.none,
+    this.enabled = true,
+  });
+
+  final TextEditingController controller;
+  final IconData icon;
+  final String label;
+  final TextInputType? keyboardType;
+  final TextCapitalization textCapitalization;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: _panel,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: _line),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: _purple, size: 25),
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextField(
+                controller: controller,
+                enabled: enabled,
+                keyboardType: keyboardType,
+                textCapitalization: textCapitalization,
+                autocorrect: false,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15.5,
+                  fontWeight: FontWeight.w800,
+                ),
+                decoration: InputDecoration(
+                  labelText: label,
+                  labelStyle: const TextStyle(
+                    color: _muted,
+                    fontSize: 12,
+                  ),
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  disabledBorder: InputBorder.none,
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 9),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
 }
 
 class OwnerNotificationSettingsPage extends StatefulWidget {
