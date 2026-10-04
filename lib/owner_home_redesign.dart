@@ -230,12 +230,32 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         final sessionKey='owner_valet_delivery_session_$vehicleId';
         if(nextValet!=null){
           final currentSessionId='${nextValet['id']??''}';
+          final currentStatus='${nextValet['status']??''}';
           final savedSessionId=prefs.getString(sessionKey)??'';
           if(currentSessionId.isNotEmpty&&savedSessionId==currentSessionId){
             nextDeliveryCode=prefs.getString(codeKey)??'';
           }else if(savedSessionId.isNotEmpty&&savedSessionId!=currentSessionId){
             await prefs.remove(codeKey);
             await prefs.remove(sessionKey);
+          }
+
+          if(nextDeliveryCode.isEmpty&&['requested','retrieving','ready'].contains(currentStatus)){
+            try{
+              final cr=await OwnerHttp.post(
+                Uri.parse('${OnboardingBackend.baseUrl}/api/owner/valet/$vehicleId/delivery-code'),
+                body:jsonEncode(<String,dynamic>{}),
+              );
+              final cd=cr.body.isEmpty?null:jsonDecode(cr.body);
+              if(cr.statusCode>=200&&cr.statusCode<300&&cd is Map){
+                final recovered='${cd['deliveryCode']??''}';
+                final recoveredSession='${cd['sessionId']??currentSessionId}';
+                if(recovered.isNotEmpty&&recoveredSession.isNotEmpty){
+                  nextDeliveryCode=recovered;
+                  await prefs.setString(codeKey,recovered);
+                  await prefs.setString(sessionKey,recoveredSession);
+                }
+              }
+            }catch(_){}
           }
         }else{
           await prefs.remove(codeKey);
