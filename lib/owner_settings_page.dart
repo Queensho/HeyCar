@@ -195,28 +195,7 @@ class OwnerSettingsPage extends StatelessWidget {
               onNotifications: onOpenNotifications ??
                   () => _push(context, const OwnerNotificationSettingsPage()),
             ),
-            const SizedBox(height: 14),
-            Text(
-              'Profil',
-              style: TextStyle(
-                color: text,
-                fontSize: 27,
-                height: 1,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -.65,
-              ),
-            ),
-            const SizedBox(height: 5),
-            Text(
-              'Hesabınızı yönetin, bilgilerinizi\ngüncelleyin ve ayarları düzenleyin.',
-              style: TextStyle(
-                color: muted,
-                fontSize: 12.5,
-                height: 1.32,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 13),
+            const SizedBox(height: 10),
             _ProfileIdentityCard(
               name: _displayName,
               email: _email,
