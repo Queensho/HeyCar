@@ -724,16 +724,16 @@ class _PublicHomeTopBar extends StatelessWidget{
         ),
         child:const Row(
           children:[
-            Icon(Icons.language_rounded,color:_ink,size:18),
+            Icon(Icons.language_rounded,color:_PublicHomeState._ink,size:18),
             SizedBox(width:7),
-            Text('TR',style:TextStyle(color:_ink,fontSize:13,fontWeight:FontWeight.w900)),
+            Text('TR',style:TextStyle(color:_PublicHomeState._ink,fontSize:13,fontWeight:FontWeight.w900)),
             SizedBox(width:3),
-            Icon(Icons.keyboard_arrow_down_rounded,color:_ink,size:18),
+            Icon(Icons.keyboard_arrow_down_rounded,color:_PublicHomeState._ink,size:18),
           ],
         ),
       ),
       const SizedBox(width:9),
-      const Icon(Icons.menu_rounded,color:_ink,size:29),
+      const Icon(Icons.menu_rounded,color:_PublicHomeState._ink,size:29),
     ],
   );
 }
@@ -785,7 +785,7 @@ class _ReferenceActionCard extends StatelessWidget{
               maxLines:2,
               overflow:TextOverflow.ellipsis,
               style:const TextStyle(
-                color:_ink,
+                color:_PublicHomeState._ink,
                 fontSize:14.5,
                 height:1.06,
                 fontWeight:FontWeight.w900,
@@ -802,7 +802,7 @@ class _ReferenceActionCard extends StatelessWidget{
                       subtitle,
                       maxLines:2,
                       overflow:TextOverflow.ellipsis,
-                      style:const TextStyle(color:_body,fontSize:10.8,height:1.25,fontWeight:FontWeight.w500),
+                      style:const TextStyle(color:_PublicHomeState._body,fontSize:10.8,height:1.25,fontWeight:FontWeight.w500),
                     ),
                   ),
                   const SizedBox(width:5),
