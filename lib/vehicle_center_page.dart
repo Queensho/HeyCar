@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:share_plus/share_plus.dart';
 import 'qr_backend.dart';
 import 'qr_activation.dart';
@@ -46,7 +45,7 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
   List<dynamic> records = [], upcoming = [];
   List<Map<String, dynamic>> _reminders = [];
   bool _maintenanceError = false, _reminderError = false;
-  int _loadVersion = 0, _tab = 0;
+  int _loadVersion = 0;
   Map<String,dynamic> _vehicle = <String,dynamic>{};
   List<Map<String,dynamic>> _notifications = <Map<String,dynamic>>[];
   String get vid => _vehicleId;
