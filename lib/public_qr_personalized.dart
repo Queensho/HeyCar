@@ -1322,7 +1322,7 @@ class _MessageComposerState extends State<_MessageComposer>{
                             child:_ComposerAction(
                               icon:photoAdded?Icons.check_rounded:Icons.camera_alt_rounded,
                               title:photoAdded?'Fotoğraf eklendi':'Fotoğraf ekle',
-                              subtitle:photoAdded?'1 fotoğraf hazır':'Kameradan fotoğraf',
+                              subtitle:photoAdded?'1 fotoğraf hazır':'Fotoğraf seç',
                               active:photoAdded,
                               busy:photoBusy,
                               onTap:_addPhoto,
@@ -1406,8 +1406,8 @@ class _ComposerAction extends StatelessWidget{
     onTap:busy?null:onTap,
     borderRadius:BorderRadius.circular(15),
     child:Container(
-      height:74,
-      padding:const EdgeInsets.symmetric(horizontal:10),
+      height:78,
+      padding:const EdgeInsets.symmetric(horizontal:9),
       decoration:BoxDecoration(
         color:const Color(0xFFFBFAFF),
         borderRadius:BorderRadius.circular(15),
@@ -1437,16 +1437,16 @@ class _ComposerAction extends StatelessWidget{
               children:[
                 Text(
                   title,
-                  maxLines:1,
+                  maxLines:2,
                   overflow:TextOverflow.ellipsis,
-                  style:const TextStyle(color:_MessageComposerState._ink,fontSize:11.5,fontWeight:FontWeight.w900),
+                  style:const TextStyle(color:_MessageComposerState._ink,fontSize:10.8,height:1.05,fontWeight:FontWeight.w900),
                 ),
                 const SizedBox(height:2),
                 Text(
                   subtitle,
-                  maxLines:1,
+                  maxLines:2,
                   overflow:TextOverflow.ellipsis,
-                  style:const TextStyle(color:_MessageComposerState._body,fontSize:9.5,fontWeight:FontWeight.w500),
+                  style:const TextStyle(color:_MessageComposerState._body,fontSize:9.2,height:1.08,fontWeight:FontWeight.w500),
                 ),
               ],
             ),
