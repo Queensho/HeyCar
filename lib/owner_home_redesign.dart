@@ -31,7 +31,10 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   List<Map<String,dynamic>> notices=[];
   Map<String,dynamic>? valetSession;
   String valetDeliveryCode='';
-  List<String> quickAccessIds=const ['roadside_help','parking','maintenance','offers'];
+  static const Set<String> _quickAccessAllowed={
+    'parking','maintenance','drivers','inspection','insurance','qr','qr_security','vehicle','notifications','settings'
+  };
+  List<String> quickAccessIds=const ['parking','maintenance','drivers','inspection'];
   bool valetRequesting=false;
   bool loading=true;
 
@@ -68,11 +71,14 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   }
 
   OwnerShortcutDefinition? _quickDef(String id){
+    if(!_quickAccessAllowed.contains(id))return null;
     for(final d in ownerShortcutCatalog){
       if(d.id==id)return d;
     }
     return null;
   }
+
+  List<OwnerShortcutDefinition> get _quickAccessCatalog=>ownerShortcutCatalog.where((d)=>_quickAccessAllowed.contains(d.id)).toList();
 
   Color _quickColor(String id)=>switch(id){
     'roadside_help'=>const Color(0xFFFF775F),
@@ -141,10 +147,10 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                 child:ListView.separated(
                   shrinkWrap:true,
                   padding:const EdgeInsets.fromLTRB(12,4,12,10),
-                  itemCount:ownerShortcutCatalog.length,
+                  itemCount:_quickAccessCatalog.length,
                   separatorBuilder:(_,__)=>Divider(height:1,color:line.withValues(alpha:.7)),
                   itemBuilder:(_,i){
-                    final d=ownerShortcutCatalog[i];
+                    final d=_quickAccessCatalog[i];
                     final active=selected.contains(d.id);
                     final disabled=!active&&selected.length>=maxOwnerShortcuts;
                     final color=_quickColor(d.id);
@@ -941,8 +947,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       crossAxisSpacing:9,mainAxisSpacing:9,childAspectRatio:1.78,
       children:[
         service(Icons.support_agent_rounded,'Vale','Aracınızı güvenle teslim edin.',const Color(0xFF8B36FF),widget.services),
-        service(Icons.fire_truck_rounded,'Çekici','Yolda kaldığınızda yanınızdayız.',const Color(0xFFFF8A43),()=>widget.shortcut('roadside_help'),car:true),
-        service(Icons.local_parking_rounded,'Park','Size en yakın otoparkları keşfedin.',const Color(0xFF397DFF),widget.park),
+        service(Icons.fire_truck_rounded,'Çekici / Yol Yardım','Yolda kaldığınızda yanınızdayız.',const Color(0xFFFF8A43),()=>widget.shortcut('roadside_help'),car:true),
         service(Icons.local_offer_rounded,'Fırsatlar','Size özel kampanyalar ve ayrıcalıklar.',const Color(0xFF23C976),()=>widget.shortcut('offers')),
       ],
     ),
@@ -1198,11 +1203,8 @@ class OwnerServicesRedesign extends StatelessWidget{
     final light=CepqarTheme.isLight,text=CepqarTheme.text,muted=CepqarTheme.muted,panel=CepqarTheme.panel,line=CepqarTheme.line;
     final items=<({IconData icon,String title,String subtitle,Color color,VoidCallback tap})>[
       (icon:Icons.support_agent_rounded,title:'Vale',subtitle:'Aracınızı güvenle teslim edin, zaman kazanın.',color:const Color(0xFF8B36FF),tap:onVale),
-      (icon:Icons.fire_truck_rounded,title:'Çekici',subtitle:'Yolda kaldığınızda yanınızdayız.',color:const Color(0xFFFF8A43),tap:onTowing),
-      (icon:Icons.local_parking_rounded,title:'Park',subtitle:'Size en yakın otoparkları keşfedin.',color:const Color(0xFF397DFF),tap:onPark),
-      (icon:Icons.local_offer_rounded,title:'Fırsatlar',subtitle:'Size özel kampanya ve ayrıcalıklar.',color:const Color(0xFF23C976),tap:onOffers),
-      (icon:Icons.build_rounded,title:'Araç Bakım',subtitle:'Bakım kayıtlarını ve servis geçmişini yönetin.',color:const Color(0xFF8B5CFF),tap:onMaintenance),
-      (icon:Icons.verified_user_rounded,title:'Sigorta & Hatırlatmalar',subtitle:'Araç tarihlerini ve hatırlatmaları takip edin.',color:const Color(0xFF5B6FFF),tap:onReminders),
+      (icon:Icons.fire_truck_rounded,title:'Çekici / Yol Yardım',subtitle:'Yolda kaldığınızda çekici ve yol yardım çağırın.',color:const Color(0xFFFF8A43),tap:onTowing),
+      (icon:Icons.local_offer_rounded,title:'Fırsatlar',subtitle:'Size özel kampanya ve ayrıcalıkları keşfedin.',color:const Color(0xFF23C976),tap:onOffers),
     ];
     return ColoredBox(
       color:CepqarTheme.bg,
