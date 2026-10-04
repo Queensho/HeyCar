@@ -127,7 +127,7 @@ Widget _bottomAction(IconData icon,String title,String subtitle,VoidCallback tap
       padding:const EdgeInsets.symmetric(horizontal:12),
       decoration:BoxDecoration(color:_panel,borderRadius:BorderRadius.circular(16),border:Border.all(color:_line)),
       child:Row(children:[
-        Container(width:42,height:42,decoration:BoxDecoration(color:_purple.withValues(alpha:CepqarTheme.isLight?.09:.16),borderRadius:BorderRadius.circular(12)),child:Icon(icon,color:_purple,size:24)),
+        Container(width:42,height:42,decoration:BoxDecoration(color:_purple.withValues(alpha:CepqarTheme.isLight ? 0.09 : 0.16),borderRadius:BorderRadius.circular(12)),child:Icon(icon,color:_purple,size:24)),
         const SizedBox(width:10),
         Expanded(child:Column(mainAxisAlignment:MainAxisAlignment.center,crossAxisAlignment:CrossAxisAlignment.start,children:[
           Text(title,style:TextStyle(color:_text,fontSize:13,fontWeight:FontWeight.w900)),
@@ -345,7 +345,7 @@ class _VehicleAction extends StatelessWidget{
       child:Padding(
         padding:const EdgeInsets.symmetric(vertical:3),
         child:Column(children:[
-          Container(width:38,height:38,decoration:BoxDecoration(color:_purple.withValues(alpha:CepqarTheme.isLight?.08:.15),borderRadius:BorderRadius.circular(12)),child:Icon(icon,color:_purple,size:21)),
+          Container(width:38,height:38,decoration:BoxDecoration(color:_purple.withValues(alpha:CepqarTheme.isLight ? 0.08 : 0.15),borderRadius:BorderRadius.circular(12)),child:Icon(icon,color:_purple,size:21)),
           const SizedBox(height:5),
           Text(label,maxLines:1,overflow:TextOverflow.ellipsis,textAlign:TextAlign.center,style:TextStyle(color:_muted,fontSize:9,fontWeight:FontWeight.w700)),
         ]),
