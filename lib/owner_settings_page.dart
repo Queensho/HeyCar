@@ -340,34 +340,11 @@ class _ProfileBrandHeader extends StatelessWidget {
 
     return Row(
       children: [
-        Text.rich(
-          TextSpan(
-            children: [
-              TextSpan(text: 'Cep', style: TextStyle(color: text)),
-              const TextSpan(text: 'q', style: TextStyle(color: _purple)),
-              TextSpan(text: 'ontag', style: TextStyle(color: text)),
-              WidgetSpan(
-                alignment: PlaceholderAlignment.top,
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 2, top: 2),
-                  child: Text(
-                    '®',
-                    style: TextStyle(
-                      color: CepqarTheme.muted,
-                      fontSize: 7.5,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          style: const TextStyle(
-            fontSize: 24.5,
-            height: 1,
-            fontWeight: FontWeight.w900,
-            letterSpacing: -1.25,
-          ),
+        Image.asset(
+          'assets/Logoyeni.png',
+          height:31,
+          fit:BoxFit.contain,
+          alignment:Alignment.centerLeft,
         ),
         const Spacer(),
         Stack(
