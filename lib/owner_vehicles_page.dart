@@ -143,9 +143,9 @@ Widget _bottomAction(IconData icon,String title,String subtitle,VoidCallback tap
         Container(width:32,height:32,decoration:BoxDecoration(color:_purple.withValues(alpha:CepqarTheme.isLight ? 0.09 : 0.16),borderRadius:BorderRadius.circular(10)),child:Icon(icon,color:_purple,size:20)),
         const SizedBox(width:10),
         Expanded(child:Column(mainAxisAlignment:MainAxisAlignment.center,crossAxisAlignment:CrossAxisAlignment.start,children:[
-          Text(title,style:TextStyle(color:_text,fontSize:11.5,fontWeight:FontWeight.w900)),
+          Text(title,style:TextStyle(color:_text,fontSize:12.5,fontWeight:FontWeight.w900)),
           const SizedBox(height:3),
-          Text(subtitle,maxLines:2,overflow:TextOverflow.ellipsis,style:TextStyle(color:_muted,fontSize:8.3,height:1.15)),
+          Text(subtitle,maxLines:2,overflow:TextOverflow.ellipsis,style:TextStyle(color:_muted,fontSize:10.2,height:1.2)),
         ])),
         Icon(Icons.chevron_right_rounded,color:_muted,size:19),
       ]),
@@ -186,7 +186,7 @@ Widget _bottomAction(IconData icon,String title,String subtitle,VoidCallback tap
                     'Araçlarınızı yönetin, QR etiketlerinizi görüntüleyin ve tüm bilgileri kontrol edin.',
                     maxLines:3,
                     overflow:TextOverflow.ellipsis,
-                    style:TextStyle(color:_muted,fontSize:8.7,height:1.22,fontWeight:FontWeight.w500),
+                    style:TextStyle(color:_muted,fontSize:10.5,height:1.28,fontWeight:FontWeight.w500),
                   ),
                 ),
                 Positioned(
@@ -207,7 +207,7 @@ Widget _bottomAction(IconData icon,String title,String subtitle,VoidCallback tap
                             elevation:CepqarTheme.isLight?0:4,
                           ),
                           icon:const Icon(Icons.add_rounded,size:17),
-                          label:const Text('Yeni Araç Ekle',maxLines:1,overflow:TextOverflow.fade,style:TextStyle(fontSize:8.5,fontWeight:FontWeight.w900)),
+                          label:const Text('Yeni Araç Ekle',maxLines:1,overflow:TextOverflow.fade,style:TextStyle(fontSize:10,fontWeight:FontWeight.w900)),
                         ),
                       ),
                       const SizedBox(width:6),
@@ -222,7 +222,7 @@ Widget _bottomAction(IconData icon,String title,String subtitle,VoidCallback tap
                             shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(13)),
                           ),
                           icon:const Icon(Icons.swap_horiz_rounded,size:17),
-                          label:const Text('Araç Devir Al',maxLines:1,overflow:TextOverflow.fade,style:TextStyle(fontSize:8.5,fontWeight:FontWeight.w900)),
+                          label:const Text('Araç Devir Al',maxLines:1,overflow:TextOverflow.fade,style:TextStyle(fontSize:10,fontWeight:FontWeight.w900)),
                         ),
                       ),
                     ]),
@@ -244,7 +244,7 @@ Widget _bottomAction(IconData icon,String title,String subtitle,VoidCallback tap
                   const SizedBox(height:6),
                   Text('Henüz araç eklenmedi.',style:TextStyle(color:_text,fontWeight:FontWeight.w900)),
                   const SizedBox(height:3),
-                  Text('Yeni Araç Ekle ile ilk aracınızı kaydedin.',style:TextStyle(color:_muted,fontSize:9.4)),
+                  Text('Yeni Araç Ekle ile ilk aracınızı kaydedin.',style:TextStyle(color:_muted,fontSize:10.6)),
                 ]),
               )
             else
@@ -383,7 +383,7 @@ class _VehicleReferenceCard extends StatelessWidget{
                       child:const Row(mainAxisSize:MainAxisSize.min,children:[
                         Icon(Icons.workspace_premium_rounded,color:Colors.white,size:10),
                         SizedBox(width:3),
-                        Text('Ana Araç',style:TextStyle(color:Colors.white,fontSize:8.2,fontWeight:FontWeight.w900)),
+                        Text('Ana Araç',style:TextStyle(color:Colors.white,fontSize:9.5,fontWeight:FontWeight.w900)),
                       ]),
                     ),
                   ),
@@ -410,7 +410,7 @@ class _VehicleReferenceCard extends StatelessWidget{
                         child:Row(mainAxisSize:MainAxisSize.min,children:[
                           CircleAvatar(radius:3,backgroundColor:hasQr?const Color(0xFF25D675):const Color(0xFFFF8B35)),
                           const SizedBox(width:4),
-                          Text(hasQr?'Aktif':'Pasif',style:TextStyle(color:hasQr?const Color(0xFF35D985):const Color(0xFFFF9B36),fontSize:8.1,fontWeight:FontWeight.w900)),
+                          Text(hasQr?'Aktif':'Pasif',style:TextStyle(color:hasQr?const Color(0xFF35D985):const Color(0xFFFF9B36),fontSize:9.5,fontWeight:FontWeight.w900)),
                         ]),
                       ),
                     ]),
@@ -418,7 +418,7 @@ class _VehicleReferenceCard extends StatelessWidget{
                     Text(model.isEmpty?make:'$make $model',maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:_text,fontSize:12.0,fontWeight:FontWeight.w800)),
                     if(details.isNotEmpty)...[
                       const SizedBox(height:1),
-                      Text(details,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:_muted,fontSize:9.3)),
+                      Text(details,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:_muted,fontSize:10.5)),
                     ],
                     const Spacer(),
                     Row(children:[
@@ -426,7 +426,7 @@ class _VehicleReferenceCard extends StatelessWidget{
                         onTap:select,
                         child:Padding(
                           padding:const EdgeInsets.symmetric(vertical:2),
-                          child:Text('Ana araç yap',style:TextStyle(color:_purple,fontSize:8.2,fontWeight:FontWeight.w900)),
+                          child:Text('Ana araç yap',style:TextStyle(color:_purple,fontSize:9.5,fontWeight:FontWeight.w900)),
                         ),
                       ),
                       const Spacer(),
@@ -500,7 +500,7 @@ class _VehicleAction extends StatelessWidget{
               child:Icon(icon,color:dark?const Color(0xFFA06DFF):_purple,size:16),
             ),
             const SizedBox(height:2),
-            Text(label,maxLines:1,overflow:TextOverflow.ellipsis,textAlign:TextAlign.center,style:TextStyle(color:_muted,fontSize:7.4,fontWeight:FontWeight.w700)),
+            Text(label,maxLines:1,overflow:TextOverflow.ellipsis,textAlign:TextAlign.center,style:TextStyle(color:_muted,fontSize:9.4,fontWeight:FontWeight.w700)),
           ]),
         ),
       ),
