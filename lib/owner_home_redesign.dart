@@ -27,6 +27,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   static const purple=Color(0xFF713BFF);
   Timer? timer;
   List<Map<String,dynamic>> notices=[];
+  Map<String,dynamic>? valetSession;
   bool loading=true;
 
   bool get light=>CepqarTheme.isLight;
@@ -51,22 +52,43 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   @override void initState(){
     super.initState();
     load();
-    timer=Timer.periodic(const Duration(seconds:20),(_)=>load(silent:true));
+    timer=Timer.periodic(const Duration(seconds:8),(_)=>load(silent:true));
   }
   @override void dispose(){timer?.cancel();super.dispose();}
 
   Future<void> load({bool silent=false})async{
     if(!silent&&mounted)setState(()=>loading=true);
     try{
-      final r=await OwnerHttp.get(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/notifications'),json:false);
-      final d=r.body.isEmpty?null:jsonDecode(r.body);
-      if(r.statusCode>=200&&r.statusCode<300&&d is Map&&d['notifications'] is List){
-        var next=(d['notifications'] as List).whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).toList();
-        if(QrDraft.vehicleId.trim().isNotEmpty){
-          next=next.where((e)=>'${e['vehicle_id']??''}'==QrDraft.vehicleId.trim()).toList();
+      final vehicleId=QrDraft.vehicleId.trim();
+      final futures=<Future>[
+        OwnerHttp.get(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/notifications'),json:false),
+        if(vehicleId.isNotEmpty)OwnerHttp.get(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/valet/$vehicleId'),json:false),
+      ];
+      final rs=await Future.wait(futures);
+
+      final nr=rs[0];
+      final nd=nr.body.isEmpty?null:jsonDecode(nr.body);
+      var nextNotices=<Map<String,dynamic>>[];
+      if(nr.statusCode>=200&&nr.statusCode<300&&nd is Map&&nd['notifications'] is List){
+        nextNotices=(nd['notifications'] as List).whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).toList();
+        if(vehicleId.isNotEmpty){
+          nextNotices=nextNotices.where((e)=>'${e['vehicle_id']??''}'==vehicleId).toList();
         }
-        if(mounted)setState(()=>notices=next);
       }
+
+      Map<String,dynamic>? nextValet;
+      if(vehicleId.isNotEmpty&&rs.length>1){
+        final vr=rs[1];
+        final vd=vr.body.isEmpty?null:jsonDecode(vr.body);
+        if(vr.statusCode==200&&vd is Map&&vd['session'] is Map){
+          nextValet=Map<String,dynamic>.from(vd['session']);
+        }
+      }
+
+      if(mounted)setState((){
+        notices=nextNotices;
+        valetSession=nextValet;
+      });
     }catch(_){}
     if(mounted)setState(()=>loading=false);
   }
@@ -214,6 +236,100 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     ]),
   );
 
+  String _valetStatusTitle(String status)=>switch(status){
+    'accepted'=>'Vale aracınızı teslim aldı',
+    'parked'=>'Aracınız valede',
+    'requested'=>'Araç getirme talebi gönderildi',
+    'retrieving'=>'Vale aracınızı getiriyor',
+    'ready'=>'Aracınız teslim için hazır',
+    _=>'Vale işlemi devam ediyor',
+  };
+
+  String _valetBadge(String status)=>switch(status){
+    'accepted'=>'TESLİM ALINDI',
+    'parked'=>'VALEDE',
+    'requested'=>'TALEP GÖNDERİLDİ',
+    'retrieving'=>'GETİRİLİYOR',
+    'ready'=>'HAZIR',
+    _=>'VALE',
+  };
+
+  Color _valetAccent(String status)=>switch(status){
+    'ready'=>const Color(0xFF28D879),
+    'retrieving'=>const Color(0xFFFFB347),
+    'requested'=>const Color(0xFF8C5CFF),
+    _=>const Color(0xFF713BFF),
+  };
+
+  Widget _valetVehicleCard(Map<String,dynamic> s){
+    final status='${s['status']??'parked'}';
+    final venue='${s['business_name']??'CepQontag Vale'}'.trim();
+    final area='${s['parking_area']??''}'.trim();
+    final slot='${s['parking_slot']??''}'.trim();
+    final accent=_valetAccent(status);
+    final location=[if(area.isNotEmpty)area,if(slot.isNotEmpty)slot].join(' • ');
+
+    return InkWell(
+      onTap:widget.services,
+      borderRadius:BorderRadius.circular(18),
+      child:Container(
+        height:132,
+        padding:const EdgeInsets.fromLTRB(13,12,11,11),
+        decoration:BoxDecoration(
+          color:panel,
+          borderRadius:BorderRadius.circular(18),
+          border:Border.all(color:accent.withValues(alpha:light ? .34 : .48)),
+          boxShadow:light?[BoxShadow(color:accent.withValues(alpha:.07),blurRadius:16,offset:const Offset(0,6))]:null,
+        ),
+        child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          Row(children:[
+            Container(
+              width:32,height:32,
+              decoration:BoxDecoration(color:accent.withValues(alpha:light ? .10 : .18),borderRadius:BorderRadius.circular(10)),
+              child:Icon(Icons.support_agent_rounded,color:accent,size:19),
+            ),
+            const SizedBox(width:8),
+            Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+              Text('VALE',style:TextStyle(color:accent,fontSize:9,fontWeight:FontWeight.w900,letterSpacing:.7)),
+              Text(venue.isEmpty?'CepQontag Vale':venue,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:text,fontSize:11.5,fontWeight:FontWeight.w900)),
+            ])),
+            Container(
+              padding:const EdgeInsets.symmetric(horizontal:7,vertical:4),
+              decoration:BoxDecoration(color:accent.withValues(alpha:light ? .10 : .16),borderRadius:BorderRadius.circular(20)),
+              child:Text(_valetBadge(status),style:TextStyle(color:accent,fontSize:7.8,fontWeight:FontWeight.w900)),
+            ),
+          ]),
+          const SizedBox(height:9),
+          Text(_valetStatusTitle(status),maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:text,fontSize:13.5,fontWeight:FontWeight.w900)),
+          const SizedBox(height:3),
+          Text(
+            location.isEmpty?(QrDraft.plate.isEmpty?'Araç vale işlemi aktif':QrDraft.plate):location,
+            maxLines:1,
+            overflow:TextOverflow.ellipsis,
+            style:TextStyle(color:muted,fontSize:10.2,fontWeight:FontWeight.w600),
+          ),
+          const Spacer(),
+          Row(children:[
+            Icon(
+              status=='ready'?Icons.check_circle_rounded:status=='retrieving'?Icons.directions_car_filled_rounded:Icons.local_parking_rounded,
+              color:accent,size:18,
+            ),
+            const SizedBox(width:6),
+            Expanded(
+              child:Text(
+                status=='parked'?'Aracımı getir durumunu takip et':'Vale sürecini takip et',
+                maxLines:1,
+                overflow:TextOverflow.ellipsis,
+                style:TextStyle(color:accent,fontSize:9.5,fontWeight:FontWeight.w900),
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded,color:accent,size:20),
+          ]),
+        ]),
+      ),
+    );
+  }
+
   Widget vehicleQr(){
     final car='${QrDraft.make} ${QrDraft.model}'.trim();
     return Padding(
@@ -223,38 +339,40 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         child:Row(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
         Expanded(
           flex:62,
-          child:InkWell(
-            onTap:widget.vehicles,
-            borderRadius:BorderRadius.circular(18),
-            child:Container(
-              height:132,padding:const EdgeInsets.fromLTRB(14,13,9,11),decoration:card(),
-              child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-                Row(children:[
-                  Expanded(child:Text(QrDraft.plate.isEmpty?'Araç eklenmedi':QrDraft.plate,style:TextStyle(color:text,fontSize:20,fontWeight:FontWeight.w900))),
-                  Icon(Icons.keyboard_arrow_down_rounded,color:text,size:21),
-                ]),
-                const SizedBox(height:3),
-                Text(car.isEmpty?'Araç bilgilerini ekle':car,style:TextStyle(color:text,fontSize:13,fontWeight:FontWeight.w700)),
-                const SizedBox(height:1),
-                Text('CepQontag aracınız',style:TextStyle(color:muted,fontSize:11.3)),
-                const Spacer(),
-                Row(children:[
-                  Container(
-                    padding:const EdgeInsets.symmetric(horizontal:10,vertical:5),
-                    decoration:BoxDecoration(color:QrDraft.token.isEmpty?const Color(0xFFFFE9E9):const Color(0xFFDFFAEA),borderRadius:BorderRadius.circular(20)),
-                    child:Row(mainAxisSize:MainAxisSize.min,children:[
-                      CircleAvatar(radius:4,backgroundColor:QrDraft.token.isEmpty?const Color(0xFFFF5A68):const Color(0xFF25D676)),
-                      const SizedBox(width:6),
-                      Text(QrDraft.token.isEmpty?'Pasif':'Aktif',style:TextStyle(color:QrDraft.token.isEmpty?const Color(0xFFC93443):const Color(0xFF158C4C),fontSize:11,fontWeight:FontWeight.w900)),
-                    ]),
-                  ),
+          child:valetSession!=null
+            ?_valetVehicleCard(valetSession!)
+            :InkWell(
+              onTap:widget.vehicles,
+              borderRadius:BorderRadius.circular(18),
+              child:Container(
+                height:132,padding:const EdgeInsets.fromLTRB(14,13,9,11),decoration:card(),
+                child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                  Row(children:[
+                    Expanded(child:Text(QrDraft.plate.isEmpty?'Araç eklenmedi':QrDraft.plate,style:TextStyle(color:text,fontSize:20,fontWeight:FontWeight.w900))),
+                    Icon(Icons.keyboard_arrow_down_rounded,color:text,size:21),
+                  ]),
+                  const SizedBox(height:3),
+                  Text(car.isEmpty?'Araç bilgilerini ekle':car,style:TextStyle(color:text,fontSize:13,fontWeight:FontWeight.w700)),
+                  const SizedBox(height:1),
+                  Text('CepQontag aracınız',style:TextStyle(color:muted,fontSize:11.3)),
                   const Spacer(),
-                  Container(width:54,height:36,decoration:BoxDecoration(color:purple.withValues(alpha:light ? 0.08 : 0.16),borderRadius:BorderRadius.circular(10)),child:const Icon(Icons.directions_car_filled_rounded,color:purple,size:26)),
-                  Icon(Icons.chevron_right_rounded,color:muted,size:20),
+                  Row(children:[
+                    Container(
+                      padding:const EdgeInsets.symmetric(horizontal:10,vertical:5),
+                      decoration:BoxDecoration(color:QrDraft.token.isEmpty?const Color(0xFFFFE9E9):const Color(0xFFDFFAEA),borderRadius:BorderRadius.circular(20)),
+                      child:Row(mainAxisSize:MainAxisSize.min,children:[
+                        CircleAvatar(radius:4,backgroundColor:QrDraft.token.isEmpty?const Color(0xFFFF5A68):const Color(0xFF25D676)),
+                        const SizedBox(width:6),
+                        Text(QrDraft.token.isEmpty?'Pasif':'Aktif',style:TextStyle(color:QrDraft.token.isEmpty?const Color(0xFFC93443):const Color(0xFF158C4C),fontSize:11,fontWeight:FontWeight.w900)),
+                      ]),
+                    ),
+                    const Spacer(),
+                    Container(width:54,height:36,decoration:BoxDecoration(color:purple.withValues(alpha:light ? 0.08 : 0.16),borderRadius:BorderRadius.circular(10)),child:const Icon(Icons.directions_car_filled_rounded,color:purple,size:26)),
+                    Icon(Icons.chevron_right_rounded,color:muted,size:20),
+                  ]),
                 ]),
-              ]),
+              ),
             ),
-          ),
         ),
         const SizedBox(width:9),
         Expanded(
