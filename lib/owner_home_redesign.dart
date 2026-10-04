@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'cepqar_theme.dart';
 import 'onboarding_backend.dart';
 import 'qr_backend.dart';
@@ -28,6 +29,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   Timer? timer;
   List<Map<String,dynamic>> notices=[];
   Map<String,dynamic>? valetSession;
+  String valetDeliveryCode='';
   bool valetRequesting=false;
   bool loading=true;
 
@@ -86,9 +88,30 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         }
       }
 
+      var nextDeliveryCode='';
+      if(vehicleId.isNotEmpty){
+        final prefs=await SharedPreferences.getInstance();
+        final codeKey='owner_valet_delivery_code_$vehicleId';
+        final sessionKey='owner_valet_delivery_session_$vehicleId';
+        if(nextValet!=null){
+          final currentSessionId='${nextValet['id']??''}';
+          final savedSessionId=prefs.getString(sessionKey)??'';
+          if(currentSessionId.isNotEmpty&&savedSessionId==currentSessionId){
+            nextDeliveryCode=prefs.getString(codeKey)??'';
+          }else if(savedSessionId.isNotEmpty&&savedSessionId!=currentSessionId){
+            await prefs.remove(codeKey);
+            await prefs.remove(sessionKey);
+          }
+        }else{
+          await prefs.remove(codeKey);
+          await prefs.remove(sessionKey);
+        }
+      }
+
       if(mounted)setState((){
         notices=nextNotices;
         valetSession=nextValet;
+        valetDeliveryCode=nextDeliveryCode;
       });
     }catch(_){}
     if(mounted)setState(()=>loading=false);
@@ -275,6 +298,13 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       final d=r.body.isEmpty?null:jsonDecode(r.body);
       if(r.statusCode>=200&&r.statusCode<300){
         final code=d is Map?'${d['deliveryCode']??''}':'';
+        final sessionId=d is Map&&d['session'] is Map?'${(d['session'] as Map)['id']??''}':'';
+        if(code.isNotEmpty&&sessionId.isNotEmpty){
+          final prefs=await SharedPreferences.getInstance();
+          await prefs.setString('owner_valet_delivery_code_$vehicleId',code);
+          await prefs.setString('owner_valet_delivery_session_$vehicleId',sessionId);
+          if(mounted)setState(()=>valetDeliveryCode=code);
+        }
         await load(silent:true);
         if(mounted){
           ScaffoldMessenger.of(context).showSnackBar(
@@ -350,13 +380,16 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     final venue='${s['business_name']??'CepQontag Vale'}'.trim();
     final accent=_valetAccent(status);
     final canRequest=status=='parked'||status=='accepted';
+    final showDeliveryCode=(status=='requested'||status=='retrieving'||status=='ready')&&valetDeliveryCode.isNotEmpty;
     final buttonText=valetRequesting
       ?'Gönderiliyor...'
-      :status=='ready'
-        ?'Teslime Hazır'
-        :status=='retrieving'||status=='requested'
-          ?'Araç Getiriliyor'
-          :'Araç Çağır';
+      :showDeliveryCode
+        ?'Teslimat Kodu • $valetDeliveryCode'
+        :status=='ready'
+          ?'Teslime Hazır'
+          :status=='retrieving'||status=='requested'
+            ?'Araç Getiriliyor'
+            :'Araç Çağır';
 
     return Container(
       height:132,
@@ -404,7 +437,13 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
               shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(10)),
             ),
             icon:Icon(
-              status=='ready'?Icons.check_circle_rounded:status=='retrieving'||status=='requested'?Icons.directions_car_filled_rounded:Icons.directions_car_rounded,
+              showDeliveryCode
+                ?Icons.password_rounded
+                :status=='ready'
+                  ?Icons.check_circle_rounded
+                  :status=='retrieving'||status=='requested'
+                    ?Icons.directions_car_filled_rounded
+                    :Icons.directions_car_rounded,
               size:14,
             ),
             label:Text(buttonText,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:8.6,fontWeight:FontWeight.w900)),
