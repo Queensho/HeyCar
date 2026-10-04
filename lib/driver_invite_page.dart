@@ -20,6 +20,118 @@ const _orange = Color(0xFFFFA51F);
 const _pink = Color(0xFFFF4D78);
 const _blue = Color(0xFF4AB8FF);
 
+const _driverAuthBg = Color(0xFFFDFDFF);
+const _driverAuthText = Color(0xFF090B18);
+const _driverAuthMuted = Color(0xFF747A8D);
+const _driverAuthLine = Color(0xFFE5E7EF);
+const _driverAuthPurple = Color(0xFF5E24F5);
+
+InputDecoration _driverAuthInput(String label, IconData icon) => InputDecoration(
+  labelText: label,
+  labelStyle: const TextStyle(color:_driverAuthMuted,fontSize:12),
+  prefixIcon: Icon(icon,color:_driverAuthPurple,size:18),
+  filled:true,
+  fillColor:Colors.white,
+  isDense:true,
+  contentPadding:const EdgeInsets.symmetric(horizontal:13,vertical:14),
+  enabledBorder:OutlineInputBorder(
+    borderRadius:BorderRadius.circular(15),
+    borderSide:const BorderSide(color:_driverAuthLine),
+  ),
+  focusedBorder:OutlineInputBorder(
+    borderRadius:BorderRadius.circular(15),
+    borderSide:const BorderSide(color:_driverAuthPurple,width:1.5),
+  ),
+);
+
+class _DriverAuthTop extends StatelessWidget{
+  const _DriverAuthTop({required this.onBack});
+  final VoidCallback onBack;
+  @override Widget build(BuildContext context)=>Row(children:[
+    InkWell(
+      onTap:onBack,
+      borderRadius:BorderRadius.circular(14),
+      child:Container(
+        width:40,height:40,
+        decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(14),border:Border.all(color:_driverAuthLine)),
+        child:const Icon(Icons.arrow_back_rounded,color:_driverAuthText,size:20),
+      ),
+    ),
+    const Spacer(),
+    Image.asset('assets/Aylogo.png',height:31,fit:BoxFit.contain),
+    const Spacer(),
+    const SizedBox(width:40),
+  ]);
+}
+
+class _DriverAuthHero extends StatelessWidget{
+  const _DriverAuthHero({required this.badge,required this.icon,required this.title,required this.subtitle,this.height=154});
+  final String badge,title,subtitle;
+  final IconData icon;
+  final double height;
+  @override Widget build(BuildContext context)=>Container(
+    height:height,
+    width:double.infinity,
+    clipBehavior:Clip.antiAlias,
+    decoration:BoxDecoration(
+      borderRadius:BorderRadius.circular(24),
+      border:Border.all(color:const Color(0xFFE9E3FF)),
+    ),
+    child:Stack(fit:StackFit.expand,children:[
+      Image.asset(
+        'assets/IMG_20261004_191854.png',
+        fit:BoxFit.cover,
+        alignment:const Alignment(.20,.55),
+        filterQuality:FilterQuality.high,
+      ),
+      DecoratedBox(
+        decoration:BoxDecoration(
+          gradient:LinearGradient(
+            begin:Alignment.topLeft,end:Alignment.bottomRight,
+            colors:[
+              Colors.white.withValues(alpha:.93),
+              Colors.white.withValues(alpha:.54),
+              Colors.transparent,
+            ],
+          ),
+        ),
+      ),
+      Positioned(
+        left:17,top:16,width:240,
+        child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          Container(
+            padding:const EdgeInsets.symmetric(horizontal:10,vertical:5),
+            decoration:BoxDecoration(color:const Color(0xFFF0E8FF),borderRadius:BorderRadius.circular(18)),
+            child:Row(mainAxisSize:MainAxisSize.min,children:[
+              Icon(icon,color:_driverAuthPurple,size:14),
+              const SizedBox(width:6),
+              Text(badge,style:const TextStyle(color:_driverAuthPurple,fontSize:10.4,fontWeight:FontWeight.w900)),
+            ]),
+          ),
+          const SizedBox(height:10),
+          Text(title,style:const TextStyle(color:_driverAuthText,fontSize:23,height:1,fontWeight:FontWeight.w900,letterSpacing:-.8)),
+          const SizedBox(height:7),
+          Text(subtitle,style:const TextStyle(color:_driverAuthMuted,fontSize:11.1,height:1.35,fontWeight:FontWeight.w500)),
+        ]),
+      ),
+    ]),
+  );
+}
+
+Widget _driverAuthError(String text)=>Container(
+  padding:const EdgeInsets.all(10),
+  decoration:BoxDecoration(
+    color:const Color(0xFFFFF1F3),
+    borderRadius:BorderRadius.circular(12),
+    border:Border.all(color:const Color(0xFFFFD1D8)),
+  ),
+  child:Row(children:[
+    const Icon(Icons.error_outline_rounded,color:Color(0xFFD63B55),size:17),
+    const SizedBox(width:8),
+    Expanded(child:Text(text,style:const TextStyle(color:Color(0xFFB62842),fontSize:10.5,fontWeight:FontWeight.w600))),
+  ]),
+);
+
 class DriverCodeEntryPage extends StatefulWidget {
   const DriverCodeEntryPage({super.key});
 
@@ -64,53 +176,77 @@ class _DriverCodeEntryPageState extends State<DriverCodeEntryPage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        backgroundColor: _bg,
-        appBar: AppBar(backgroundColor: const Color(0xFF0A1020), title: const Text('Davet Kodu')),
-        body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(22),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              const SizedBox(height: 30),
-              const Icon(Icons.group_add_rounded, size: 72, color: _purple),
-              const SizedBox(height: 20),
-              const Text(
-                'Sürücü davet kodunu gir',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
+  Widget build(BuildContext context)=>Scaffold(
+    backgroundColor:_driverAuthBg,
+    body:SafeArea(
+      child:Center(
+        child:ConstrainedBox(
+          constraints:const BoxConstraints(maxWidth:460),
+          child:ListView(
+            padding:const EdgeInsets.fromLTRB(20,10,20,28),
+            children:[
+              _DriverAuthTop(onBack:()=>Navigator.pop(context)),
+              const SizedBox(height:15),
+              const _DriverAuthHero(
+                badge:'SÜRÜCÜ DAVETİ',
+                icon:Icons.vpn_key_outlined,
+                title:'Davet kodunu gir',
+                subtitle:'Araç sahibinin verdiği PQ ile başlayan kodla yetkili sürücü akışına devam et.',
               ),
-              const SizedBox(height: 8),
-              const Text(
-                'Araç sahibinin verdiği PQ ile başlayan kodu kullan.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: _muted),
-              ),
-              const SizedBox(height: 24),
+              const SizedBox(height:19),
+              const Text('Davet Kodum Var',style:TextStyle(color:_driverAuthText,fontSize:26,fontWeight:FontWeight.w900,letterSpacing:-.8)),
+              const SizedBox(height:4),
+              const Text('8 karakterli davet kodunu kontrol edip araç davetine geçeceğiz.',style:TextStyle(color:_driverAuthMuted,fontSize:11.3,height:1.35)),
+              const SizedBox(height:16),
               TextField(
-                controller: code,
-                textCapitalization: TextCapitalization.characters,
-                maxLength: 8,
-                decoration: const InputDecoration(
-                  labelText: 'Davet Kodu',
-                  hintText: 'PQ7M4K2A',
-                  border: OutlineInputBorder(),
+                controller:code,
+                textCapitalization:TextCapitalization.characters,
+                maxLength:8,
+                style:const TextStyle(color:_driverAuthText,fontSize:15,fontWeight:FontWeight.w800,letterSpacing:1.2),
+                decoration:_driverAuthInput('Davet Kodu',Icons.vpn_key_outlined).copyWith(
+                  hintText:'PQ7M4K2A',
+                  counterText:'',
                 ),
               ),
-              if (error != null) Text(error!, style: const TextStyle(color: Colors.redAccent)),
-              const SizedBox(height: 12),
-              FilledButton(
-                onPressed: busy ? null : go,
-                child: Text(busy ? 'Kontrol ediliyor...' : 'Devam Et'),
+              if(error!=null)...[
+                const SizedBox(height:10),
+                _driverAuthError(error!),
+              ],
+              const SizedBox(height:14),
+              SizedBox(
+                height:52,
+                child:FilledButton(
+                  onPressed:busy?null:go,
+                  style:FilledButton.styleFrom(
+                    backgroundColor:_driverAuthPurple,
+                    foregroundColor:Colors.white,
+                    disabledBackgroundColor:_driverAuthPurple.withValues(alpha:.55),
+                    shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(17)),
+                    elevation:0,
+                  ),
+                  child:Row(mainAxisAlignment:MainAxisAlignment.center,children:[
+                    if(busy)
+                      const SizedBox(width:17,height:17,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white))
+                    else
+                      const Icon(Icons.arrow_forward_rounded,size:19),
+                    const SizedBox(width:9),
+                    Text(busy?'Kontrol ediliyor...':'Devam Et',style:const TextStyle(fontSize:15,fontWeight:FontWeight.w900)),
+                  ]),
+                ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height:8),
               TextButton(
-                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DriverLoginPage())),
-                child: const Text('Sürücü hesabımla giriş yap'),
+                onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const DriverLoginPage())),
+                style:TextButton.styleFrom(foregroundColor:_driverAuthPurple),
+                child:const Text('Zaten sürücü hesabım var • Giriş Yap',style:TextStyle(fontSize:11.5,fontWeight:FontWeight.w800)),
               ),
-            ]),
+            ],
           ),
         ),
-      );
+      ),
+    ),
+  );
+
 }
 
 
@@ -172,38 +308,75 @@ class _DriverLoginPageState extends State<DriverLoginPage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        backgroundColor: _bg,
-        appBar: AppBar(backgroundColor: const Color(0xFF0A1020), title: const Text('Sürücü Girişi')),
-        body: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.all(22),
-            children: [
-              const SizedBox(height: 28),
-              const Icon(Icons.key_rounded, size: 70, color: _purple),
-              const SizedBox(height: 20),
-              const Text('Sürücü hesabına giriş yap', textAlign: TextAlign.center, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
-              const SizedBox(height: 24),
-              TextField(controller: phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Telefon')),
-              const SizedBox(height: 12),
-              TextField(controller: pass, obscureText: true, decoration: const InputDecoration(labelText: 'Şifre')),
-              if (error != null) ...[
-                const SizedBox(height: 12),
-                Text(error!, style: const TextStyle(color: Colors.redAccent)),
+  Widget build(BuildContext context)=>Scaffold(
+    backgroundColor:_driverAuthBg,
+    body:SafeArea(
+      child:Center(
+        child:ConstrainedBox(
+          constraints:const BoxConstraints(maxWidth:460),
+          child:ListView(
+            padding:const EdgeInsets.fromLTRB(20,10,20,28),
+            children:[
+              _DriverAuthTop(onBack:()=>Navigator.pop(context)),
+              const SizedBox(height:15),
+              const _DriverAuthHero(
+                badge:'SÜRÜCÜ GİRİŞİ',
+                icon:Icons.key_rounded,
+                title:'Sürücü hesabına giriş yap',
+                subtitle:'Yetkili olduğun araçlara ve sürücü bildirimlerine güvenli şekilde ulaş.',
+              ),
+              const SizedBox(height:19),
+              const Text('Sürücü Girişi',style:TextStyle(color:_driverAuthText,fontSize:26,fontWeight:FontWeight.w900,letterSpacing:-.8)),
+              const SizedBox(height:4),
+              const Text('Telefon numaran ve şifrenle giriş yap.',style:TextStyle(color:_driverAuthMuted,fontSize:11.3)),
+              const SizedBox(height:16),
+              TextField(
+                controller:phone,
+                keyboardType:TextInputType.phone,
+                style:const TextStyle(color:_driverAuthText,fontSize:13.5,fontWeight:FontWeight.w600),
+                decoration:_driverAuthInput('Telefon numarası',Icons.phone_outlined),
+              ),
+              const SizedBox(height:11),
+              TextField(
+                controller:pass,
+                obscureText:true,
+                style:const TextStyle(color:_driverAuthText,fontSize:13.5,fontWeight:FontWeight.w600),
+                decoration:_driverAuthInput('Şifre',Icons.lock_outline_rounded),
+              ),
+              if(error!=null)...[
+                const SizedBox(height:10),
+                _driverAuthError(error!),
               ],
               Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: busy ? null : () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountRecoveryPage(mode: 'driver'))),
-                  child: const Text('Şifremi unuttum'),
+                alignment:Alignment.centerRight,
+                child:TextButton(
+                  onPressed:busy?null:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const AccountRecoveryPage(mode:'driver'))),
+                  style:TextButton.styleFrom(foregroundColor:_driverAuthPurple,padding:const EdgeInsets.symmetric(horizontal:4,vertical:5)),
+                  child:const Text('Şifremi unuttum',style:TextStyle(fontSize:11.5,fontWeight:FontWeight.w800)),
                 ),
               ),
-              const SizedBox(height: 8),
-              FilledButton(onPressed: busy ? null : login, child: Text(busy ? 'Giriş yapılıyor...' : 'Giriş Yap')),
+              const SizedBox(height:4),
+              SizedBox(
+                height:52,
+                child:FilledButton(
+                  onPressed:busy?null:login,
+                  style:FilledButton.styleFrom(
+                    backgroundColor:_driverAuthPurple,
+                    foregroundColor:Colors.white,
+                    disabledBackgroundColor:_driverAuthPurple.withValues(alpha:.55),
+                    shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(17)),
+                    elevation:0,
+                  ),
+                  child:Text(busy?'Giriş yapılıyor...':'Giriş Yap',style:const TextStyle(fontSize:15,fontWeight:FontWeight.w900)),
+                ),
+              ),
             ],
           ),
         ),
-      );
+      ),
+    ),
+  );
+
 }
 
 class DriverInvitePage extends StatefulWidget {
@@ -297,87 +470,133 @@ class _DriverInvitePageState extends State<DriverInvitePage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        backgroundColor: _bg,
-        appBar: AppBar(backgroundColor: const Color(0xFF0A1020), title: const Text('Sürücü Daveti')),
-        body: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.all(20),
-            children: [
-              if (invite != null) ...[
-                const Icon(Icons.directions_car_rounded, size: 64, color: _purple),
-                const SizedBox(height: 14),
-                Text(
-                  '${invite!['plate']} • ${invite!['make']} ${invite!['model'] ?? ''}',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+  Widget build(BuildContext context)=>Scaffold(
+    backgroundColor:_driverAuthBg,
+    body:SafeArea(
+      child:Center(
+        child:ConstrainedBox(
+          constraints:const BoxConstraints(maxWidth:460),
+          child:ListView(
+            padding:const EdgeInsets.fromLTRB(20,10,20,28),
+            children:[
+              _DriverAuthTop(onBack:()=>Navigator.pop(context)),
+              const SizedBox(height:15),
+              if(invite==null&&error==null)
+                const Padding(
+                  padding:EdgeInsets.symmetric(vertical:80),
+                  child:Center(child:CircularProgressIndicator(color:_driverAuthPurple)),
+                )
+              else if(invite!=null)...[
+                _DriverAuthHero(
+                  badge:'YETKİLİ SÜRÜCÜ',
+                  icon:Icons.directions_car_filled_rounded,
+                  title:'${invite!['plate']??''}',
+                  subtitle:'${invite!['owner_name']??'Araç sahibi'} seni ${invite!['make']??''} ${invite!['model']??''} aracı için davet etti.',
+                  height:160,
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  '${invite!['owner_name']} seni bu araca yetkili sürücü olarak davet etti.',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: _muted),
-                ),
-                const SizedBox(height: 24),
-                TextField(controller: name, decoration: const InputDecoration(labelText: 'Ad Soyad')),
-                const SizedBox(height: 12),
+                const SizedBox(height:18),
+                const Text('Daveti Kabul Et',style:TextStyle(color:_driverAuthText,fontSize:25,fontWeight:FontWeight.w900,letterSpacing:-.8)),
+                const SizedBox(height:4),
+                const Text('Bilgilerini tamamla ve yetkili sürücü hesabını oluştur.',style:TextStyle(color:_driverAuthMuted,fontSize:11.3)),
+                const SizedBox(height:15),
                 TextField(
-                  controller: phone,
-                  keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(labelText: 'Telefon'),
+                  controller:name,
+                  style:const TextStyle(color:_driverAuthText,fontSize:13.5,fontWeight:FontWeight.w600),
+                  decoration:_driverAuthInput('Ad Soyad',Icons.person_outline_rounded),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height:11),
                 TextField(
-                  controller: pass,
-                  obscureText: true,
-                  decoration: const InputDecoration(labelText: 'Şifre (en az 6 karakter)'),
+                  controller:phone,
+                  keyboardType:TextInputType.phone,
+                  style:const TextStyle(color:_driverAuthText,fontSize:13.5,fontWeight:FontWeight.w600),
+                  decoration:_driverAuthInput('Telefon',Icons.phone_outlined),
                 ),
-                const SizedBox(height: 14),
-                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  InkWell(
-                    onTap: busy ? null : () => setState(() => acceptedLegal = !acceptedLegal),
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(width:24,height:24,decoration:BoxDecoration(borderRadius:BorderRadius.circular(7),border:Border.all(color:_purple,width:1.8),color:acceptedLegal?_purple:Colors.transparent),child:acceptedLegal?const Icon(Icons.check_rounded,size:17,color:Colors.white):null),
-                  ),
-                  const SizedBox(width:10),
-                  Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-                    InkWell(
-                      onTap: busy ? null : () => setState(() => acceptedLegal = !acceptedLegal),
-                      child: const Padding(padding:EdgeInsets.symmetric(vertical:2),child:Text('Kullanım Şartları ve Gizlilik/KVKK metnini okudum ve kabul ediyorum.',style:TextStyle(color:_muted,fontSize:12.3,height:1.35))),
+                const SizedBox(height:11),
+                TextField(
+                  controller:pass,
+                  obscureText:true,
+                  style:const TextStyle(color:_driverAuthText,fontSize:13.5,fontWeight:FontWeight.w600),
+                  decoration:_driverAuthInput('Şifre • en az 6 karakter',Icons.lock_outline_rounded),
+                ),
+                const SizedBox(height:12),
+                InkWell(
+                  onTap:busy?null:()=>setState(()=>acceptedLegal=!acceptedLegal),
+                  borderRadius:BorderRadius.circular(13),
+                  child:Container(
+                    padding:const EdgeInsets.all(10),
+                    decoration:BoxDecoration(
+                      color:const Color(0xFFF8F6FF),
+                      borderRadius:BorderRadius.circular(13),
+                      border:Border.all(color:const Color(0xFFE7E0FA)),
                     ),
-                    Wrap(spacing:2,children:[
-                      TextButton(
-                        onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const TermsOfUsePage())),
-                        style:TextButton.styleFrom(padding:const EdgeInsets.symmetric(horizontal:4),minimumSize:const Size(0,28),tapTargetSize:MaterialTapTargetSize.shrinkWrap),
-                        child:const Text('Kullanım Şartları',style:TextStyle(fontSize:11.5,fontWeight:FontWeight.w800)),
+                    child:Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                      Container(
+                        width:21,height:21,
+                        decoration:BoxDecoration(
+                          color:acceptedLegal?_driverAuthPurple:Colors.white,
+                          borderRadius:BorderRadius.circular(6),
+                          border:Border.all(color:_driverAuthPurple,width:1.5),
+                        ),
+                        child:acceptedLegal?const Icon(Icons.check_rounded,size:15,color:Colors.white):null,
                       ),
-                      TextButton(
-                        onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const PrivacyKvkkPage())),
-                        style:TextButton.styleFrom(padding:const EdgeInsets.symmetric(horizontal:4),minimumSize:const Size(0,28),tapTargetSize:MaterialTapTargetSize.shrinkWrap),
-                        child:const Text('Gizlilik / KVKK',style:TextStyle(fontSize:11.5,fontWeight:FontWeight.w800)),
-                      ),
+                      const SizedBox(width:9),
+                      Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                        const Text(
+                          'Kullanım Şartları ve Gizlilik/KVKK metnini okudum ve kabul ediyorum.',
+                          style:TextStyle(color:Color(0xFF555C70),fontSize:10.2,height:1.3,fontWeight:FontWeight.w600),
+                        ),
+                        Wrap(spacing:2,children:[
+                          TextButton(
+                            onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const TermsOfUsePage())),
+                            style:TextButton.styleFrom(foregroundColor:_driverAuthPurple,padding:const EdgeInsets.symmetric(horizontal:2),minimumSize:const Size(0,26),tapTargetSize:MaterialTapTargetSize.shrinkWrap),
+                            child:const Text('Kullanım Şartları',style:TextStyle(fontSize:9.5,fontWeight:FontWeight.w800)),
+                          ),
+                          TextButton(
+                            onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const PrivacyKvkkPage())),
+                            style:TextButton.styleFrom(foregroundColor:_driverAuthPurple,padding:const EdgeInsets.symmetric(horizontal:2),minimumSize:const Size(0,26),tapTargetSize:MaterialTapTargetSize.shrinkWrap),
+                            child:const Text('Gizlilik / KVKK',style:TextStyle(fontSize:9.5,fontWeight:FontWeight.w800)),
+                          ),
+                        ]),
+                      ])),
                     ]),
-                  ])),
-                ]),
-                const SizedBox(height: 10),
-                FilledButton(
-                  onPressed: busy ? null : accept,
-                  child: Text(busy ? 'Bekle...' : 'Daveti Kabul Et'),
-                ),
-              ],
-              if (error != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 16),
-                  child: Text(
-                    error!,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.redAccent),
                   ),
                 ),
+                if(error!=null)...[
+                  const SizedBox(height:10),
+                  _driverAuthError(error!),
+                ],
+                const SizedBox(height:13),
+                SizedBox(
+                  height:52,
+                  child:FilledButton(
+                    onPressed:busy?null:accept,
+                    style:FilledButton.styleFrom(
+                      backgroundColor:_driverAuthPurple,
+                      foregroundColor:Colors.white,
+                      disabledBackgroundColor:_driverAuthPurple.withValues(alpha:.55),
+                      shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(17)),
+                      elevation:0,
+                    ),
+                    child:Text(busy?'Kaydediliyor...':'Daveti Kabul Et',style:const TextStyle(fontSize:15,fontWeight:FontWeight.w900)),
+                  ),
+                ),
+              ]else if(error!=null)...[
+                const _DriverAuthHero(
+                  badge:'DAVET',
+                  icon:Icons.error_outline_rounded,
+                  title:'Davet açılamadı',
+                  subtitle:'Davet kodunun geçerli ve süresi dolmamış olduğundan emin ol.',
+                ),
+                const SizedBox(height:14),
+                _driverAuthError(error!),
+              ],
             ],
           ),
         ),
-      );
+      ),
+    ),
+  );
+
 }
 
 class DriverHomePage extends StatefulWidget {
