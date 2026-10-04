@@ -428,7 +428,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
           ]),
           const SizedBox(height:13),
           Text('Merhaba',style:TextStyle(color:light?muted:const Color(0xFFC8D0E2),fontSize:17,fontWeight:FontWeight.w600)),
-          Text('$firstName Bey',style:TextStyle(color:light?text:Colors.white,fontSize:28,fontWeight:FontWeight.w900,height:1.02)),
+          Text(firstName,style:TextStyle(color:light?text:Colors.white,fontSize:28,fontWeight:FontWeight.w900,height:1.02)),
           const SizedBox(height:7),
           SizedBox(width:190,child:Text('Aracınızla dünya\nsizinle iletişimde.',style:TextStyle(color:light?muted:const Color(0xFFB8C1D4),fontSize:16.5,fontWeight:FontWeight.w700,height:1.2))),
         ]),
