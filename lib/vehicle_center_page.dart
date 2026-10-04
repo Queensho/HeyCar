@@ -995,7 +995,7 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
             Row(children:[
               Container(
                 width:30,height:30,
-                decoration:BoxDecoration(color:_purple.withValues(alpha:CepqarTheme.isLight?.09:.18),borderRadius:BorderRadius.circular(9)),
+                decoration:BoxDecoration(color:_purple.withValues(alpha:CepqarTheme.isLight ? .09 : .18),borderRadius:BorderRadius.circular(9)),
                 child:Icon(icon,color:_accent,size:17),
               ),
               const Spacer(),
@@ -1024,7 +1024,7 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
 
   Widget _qrStatusCard()=>Container(
     padding:const EdgeInsets.all(10),
-    decoration:_compactCard(border:_purple.withValues(alpha:CepqarTheme.isLight?.18:.32)),
+    decoration:_compactCard(border:_purple.withValues(alpha:CepqarTheme.isLight ? .18 : .32)),
     child:Row(children:[
       Container(
         width:56,height:56,
@@ -1089,7 +1089,7 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
       child:Row(children:[
         Container(
           width:30,height:30,
-          decoration:BoxDecoration(color:color.withValues(alpha:CepqarTheme.isLight?.10:.18),borderRadius:BorderRadius.circular(9)),
+          decoration:BoxDecoration(color:color.withValues(alpha:CepqarTheme.isLight ? .10 : .18),borderRadius:BorderRadius.circular(9)),
           child:Icon(icon,color:color,size:17),
         ),
         const SizedBox(width:7),
@@ -1117,7 +1117,7 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
           child:Row(children:[
             Container(
               width:31,height:31,
-              decoration:BoxDecoration(color:_purple.withValues(alpha:CepqarTheme.isLight?.09:.18),borderRadius:BorderRadius.circular(9)),
+              decoration:BoxDecoration(color:_purple.withValues(alpha:CepqarTheme.isLight ? .09 : .18),borderRadius:BorderRadius.circular(9)),
               child:Icon(icon,color:_accent,size:17),
             ),
             const SizedBox(width:10),
@@ -1284,7 +1284,7 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
                       height:54,
                       padding:const EdgeInsets.symmetric(horizontal:11),
                       decoration:BoxDecoration(
-                        color:const Color(0xFFD83C52).withValues(alpha:CepqarTheme.isLight?.08:.16),
+                        color:const Color(0xFFD83C52).withValues(alpha:CepqarTheme.isLight ? .08 : .16),
                         borderRadius:BorderRadius.circular(14),
                         border:Border.all(color:const Color(0xFFE0445B).withValues(alpha:.72)),
                       ),
