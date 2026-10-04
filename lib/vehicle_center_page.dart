@@ -1235,7 +1235,7 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
               color:_purple,
               child:ListView(
                 physics:const AlwaysScrollableScrollPhysics(),
-                padding:const EdgeInsets.fromLTRB(14,8,14,26),
+                padding:const EdgeInsets.fromLTRB(16,8,16,26),
                 children:[
                   _brandBar(),
                   const SizedBox(height:11),
