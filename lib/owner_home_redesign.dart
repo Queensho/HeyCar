@@ -280,24 +280,129 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   Widget security()=>Padding(
     padding:const EdgeInsets.fromLTRB(16,13,16,0),
     child:InkWell(
-      onTap:()=>widget.shortcut('qr_security'),borderRadius:BorderRadius.circular(18),
+      onTap:()=>widget.shortcut('qr_security'),
+      borderRadius:BorderRadius.circular(20),
       child:Container(
-        height:102,clipBehavior:Clip.antiAlias,
-        decoration:card(gradient:light
-          ?const LinearGradient(colors:[Color(0xFFF1FFF8),Color(0xFFF8F5FF),Color(0xFFE9DEFF)])
-          :const LinearGradient(colors:[Color(0xFF082C24),Color(0xFF111329),Color(0xFF33187B)])),
+        height:116,
+        clipBehavior:Clip.antiAlias,
+        decoration:BoxDecoration(
+          color:light?const Color(0xFFFBFAFF):const Color(0xFF0D1322),
+          borderRadius:BorderRadius.circular(20),
+          border:Border.all(color:light?const Color(0xFFE7E2F2):const Color(0xFF28324A)),
+          boxShadow:light
+            ?[BoxShadow(color:Colors.black.withValues(alpha:.045),blurRadius:18,offset:const Offset(0,7))]
+            :null,
+        ),
         child:Stack(children:[
-          Positioned(right:-8,bottom:-13,child:Transform.rotate(angle:-.10,child:Container(width:102,height:78,padding:const EdgeInsets.all(7),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(10)),child:Image.asset('assets/Qrkod.png',fit:BoxFit.contain,errorBuilder:(_,__,___)=>const Icon(Icons.qr_code_2_rounded,color:Colors.black,size:60))))),
-          Positioned.fill(child:Padding(padding:const EdgeInsets.fromLTRB(15,13,112,11),child:Row(children:[
-            Container(width:44,height:44,decoration:BoxDecoration(color:const Color(0xFF28E27D).withValues(alpha:.18),shape:BoxShape.circle),child:const Icon(Icons.shield_rounded,color:Color(0xFF28E27D),size:28)),
-            const SizedBox(width:11),
-            Expanded(child:Column(mainAxisAlignment:MainAxisAlignment.center,crossAxisAlignment:CrossAxisAlignment.start,children:[
-              Row(children:[Flexible(child:Text('Aracınız güvende',style:TextStyle(color:text,fontSize:15,fontWeight:FontWeight.w900))),const SizedBox(width:4),const Icon(Icons.check_circle_rounded,color:Color(0xFF28D874),size:16)]),
-              const SizedBox(height:4),
-              Text('QR etiketiniz aktif ve aracınızla her zaman iletişimde kalabilirsiniz.',maxLines:3,style:TextStyle(color:muted,fontSize:10.2,height:1.22)),
-            ])),
-          ]))),
-          Positioned(right:9,top:33,child:Container(width:28,height:28,decoration:BoxDecoration(color:purple.withValues(alpha:.18),shape:BoxShape.circle),child:const Icon(Icons.chevron_right_rounded,color:purple,size:19))),
+          Positioned.fill(
+            child:IgnorePointer(
+              child:CustomPaint(
+                painter:_OwnerSafetyCardPainter(light:light),
+              ),
+            ),
+          ),
+          Positioned.fill(
+            child:Padding(
+              padding:const EdgeInsets.fromLTRB(17,14,126,14),
+              child:Row(children:[
+                Container(
+                  width:54,
+                  height:54,
+                  decoration:BoxDecoration(
+                    shape:BoxShape.circle,
+                    color:const Color(0xFF2ADC78).withValues(alpha:light ? .12 : .18),
+                  ),
+                  child:Stack(alignment:Alignment.center,children:[
+                    Icon(Icons.shield_rounded,color:const Color(0xFF2AD879),size:34),
+                    Positioned(
+                      bottom:8,
+                      right:7,
+                      child:Container(
+                        width:15,height:15,
+                        decoration:const BoxDecoration(color:Color(0xFF2AD879),shape:BoxShape.circle),
+                        child:const Icon(Icons.check_rounded,color:Colors.white,size:11),
+                      ),
+                    ),
+                  ]),
+                ),
+                const SizedBox(width:13),
+                Expanded(
+                  child:Column(
+                    mainAxisAlignment:MainAxisAlignment.center,
+                    crossAxisAlignment:CrossAxisAlignment.start,
+                    children:[
+                      Row(children:[
+                        Flexible(
+                          child:Text(
+                            'Aracınız güvende',
+                            maxLines:1,
+                            overflow:TextOverflow.ellipsis,
+                            style:TextStyle(color:text,fontSize:16,fontWeight:FontWeight.w900,letterSpacing:-.15),
+                          ),
+                        ),
+                        const SizedBox(width:5),
+                        const Icon(Icons.check_circle_rounded,color:Color(0xFF2AD879),size:18),
+                      ]),
+                      const SizedBox(height:7),
+                      Text(
+                        'QR etiketiniz aktif ve aracınızla\nher zaman iletişimde kalabilirsiniz.',
+                        maxLines:2,
+                        overflow:TextOverflow.ellipsis,
+                        style:TextStyle(color:muted,fontSize:11.2,height:1.28,fontWeight:FontWeight.w500),
+                      ),
+                    ],
+                  ),
+                ),
+              ]),
+            ),
+          ),
+          Positioned(
+            right:16,
+            top:13,
+            child:Transform.rotate(
+              angle:-.075,
+              child:Container(
+                width:88,
+                height:88,
+                padding:const EdgeInsets.fromLTRB(8,7,8,8),
+                decoration:BoxDecoration(
+                  color:Colors.white,
+                  borderRadius:BorderRadius.circular(11),
+                  boxShadow:[BoxShadow(color:Colors.black.withValues(alpha:.10),blurRadius:14,offset:const Offset(0,7))],
+                ),
+                child:Column(children:[
+                  const Text(
+                    'Cepqontag',
+                    style:TextStyle(color:Color(0xFF111111),fontSize:9.2,fontWeight:FontWeight.w900,letterSpacing:-.2),
+                  ),
+                  const SizedBox(height:3),
+                  Expanded(
+                    child:Image.asset(
+                      'assets/Qrkod.png',
+                      fit:BoxFit.contain,
+                      errorBuilder:(_,__,___)=>const Icon(Icons.qr_code_2_rounded,color:Colors.black,size:54),
+                    ),
+                  ),
+                ]),
+              ),
+            ),
+          ),
+          Positioned(
+            right:8,
+            top:38,
+            child:Container(
+              width:39,
+              height:39,
+              decoration:BoxDecoration(
+                shape:BoxShape.circle,
+                color:light
+                  ?const Color(0xFFECE4FF).withValues(alpha:.95)
+                  :Colors.white.withValues(alpha:.14),
+                border:Border.all(color:light?const Color(0xFFF4F0FF):Colors.white.withValues(alpha:.08)),
+              ),
+              child:Icon(Icons.chevron_right_rounded,color:light?purple:Colors.white,size:25),
+            ),
+          ),
         ]),
       ),
     ),
@@ -404,6 +509,78 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       ),
     ),
   );
+}
+
+class _OwnerSafetyCardPainter extends CustomPainter{
+  const _OwnerSafetyCardPainter({required this.light});
+  final bool light;
+
+  @override
+  void paint(Canvas canvas,Size size){
+    final w=size.width,h=size.height;
+
+    // Very soft premium purple glow, concentrated behind the QR area.
+    canvas.drawRect(
+      Offset.zero&size,
+      Paint()
+        ..shader=RadialGradient(
+          center:const Alignment(.82,.05),
+          radius:1.0,
+          colors:[
+            const Color(0xFF8B5CFF).withValues(alpha:light ? .15 : .24),
+            const Color(0xFFB599FF).withValues(alpha:light ? .06 : .10),
+            Colors.transparent,
+          ],
+          stops:const [0,.52,1],
+        ).createShader(Offset.zero&size),
+    );
+
+    final wave1=Path()
+      ..moveTo(w*.54,h*.12)
+      ..cubicTo(w*.67,h*.02,w*.77,h*.20,w*.87,h*.13)
+      ..cubicTo(w*.94,h*.08,w*.99,h*.04,w*1.06,h*.09)
+      ..lineTo(w*1.06,h*.37)
+      ..cubicTo(w*.96,h*.31,w*.90,h*.39,w*.82,h*.42)
+      ..cubicTo(w*.70,h*.47,w*.64,h*.27,w*.54,h*.34)
+      ..close();
+    canvas.drawPath(
+      wave1,
+      Paint()
+        ..shader=LinearGradient(
+          colors:[
+            const Color(0xFF713BFF).withValues(alpha:0),
+            const Color(0xFF8E63FF).withValues(alpha:light ? .05 : .10),
+            const Color(0xFFB69CFF).withValues(alpha:light ? .11 : .18),
+          ],
+          stops:const [0,.45,1],
+        ).createShader(Offset.zero&size),
+    );
+
+    final wave2=Path()
+      ..moveTo(w*.42,h*.77)
+      ..cubicTo(w*.58,h*.55,w*.71,h*.89,w*.82,h*.72)
+      ..cubicTo(w*.91,h*.59,w*.98,h*.62,w*1.06,h*.57)
+      ..lineTo(w*1.06,h)
+      ..lineTo(w*.42,h)
+      ..close();
+    canvas.drawPath(
+      wave2,
+      Paint()
+        ..shader=LinearGradient(
+          begin:Alignment.centerLeft,
+          end:Alignment.centerRight,
+          colors:[
+            const Color(0xFF713BFF).withValues(alpha:0),
+            const Color(0xFF8A56FF).withValues(alpha:light ? .06 : .12),
+            const Color(0xFF9D79FF).withValues(alpha:light ? .12 : .20),
+          ],
+          stops:const [0,.48,1],
+        ).createShader(Offset.zero&size),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _OwnerSafetyCardPainter oldDelegate)=>oldDelegate.light!=light;
 }
 
 class _OwnerHeaderWavePainter extends CustomPainter{
