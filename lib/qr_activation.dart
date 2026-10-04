@@ -155,7 +155,7 @@ class _RealQrScanPageState extends State<RealQrScanPage> {
                         'QR ETİKET',
                         style: TextStyle(
                           color: _purple,
-                          fontSize: 10,
+                          fontSize: 10.5,
                           fontWeight: FontWeight.w900,
                         ),
                       ),
@@ -177,7 +177,7 @@ class _RealQrScanPageState extends State<RealQrScanPage> {
                     ],
                   ),
                   style: TextStyle(
-                    fontSize: compact ? 27 : 30,
+                    fontSize: 25,
                     height: 1.02,
                     fontWeight: FontWeight.w900,
                     letterSpacing: -1,
@@ -188,7 +188,7 @@ class _RealQrScanPageState extends State<RealQrScanPage> {
                   'Kutudan çıkan etiketi kamerayla okut veya üzerindeki aktivasyon kodunu gir.',
                   style: TextStyle(
                     color: _muted,
-                    fontSize: 11.8,
+                    fontSize: 12,
                     height: 1.4,
                     fontWeight: FontWeight.w500,
                   ),
@@ -360,7 +360,7 @@ class _StageItem extends StatelessWidget {
                   '$index',
                   style: TextStyle(
                     color: active ? Colors.white : _muted,
-                    fontSize: 9,
+                    fontSize: 10.5,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -370,7 +370,7 @@ class _StageItem extends StatelessWidget {
           label,
           style: TextStyle(
             color: active ? _text : _muted,
-            fontSize: 10,
+            fontSize: 10.5,
             fontWeight: active ? FontWeight.w900 : FontWeight.w700,
           ),
         ),
@@ -752,7 +752,7 @@ class _ManualPanel extends StatelessWidget {
                   'Aktivasyon kodunu gir',
                   style: TextStyle(
                     color: _text,
-                    fontSize: 14,
+                    fontSize: 12.5,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -764,7 +764,7 @@ class _ManualPanel extends StatelessWidget {
             'Etiketin üzerinde yazan kodu eksiksiz gir.',
             style: TextStyle(
               color: _muted,
-              fontSize: 10.5,
+              fontSize: 10.5.5,
             ),
           ),
           const SizedBox(height: 13),
@@ -775,7 +775,7 @@ class _ManualPanel extends StatelessWidget {
             style: const TextStyle(
               color: _text,
               fontWeight: FontWeight.w800,
-              fontSize: 13.5,
+              fontSize: 12.5,
             ),
             decoration: InputDecoration(
               hintText: 'CP-QONTAG-XXXX',
@@ -865,7 +865,7 @@ class _ManualPanel extends StatelessWidget {
               style: TextButton.styleFrom(
                 foregroundColor: _purple,
                 textStyle: const TextStyle(
-                  fontSize: 10.5,
+                  fontSize: 10.5.5,
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -905,7 +905,7 @@ class _ErrorBox extends StatelessWidget {
               text,
               style: const TextStyle(
                 color: Color(0xFFB62842),
-                fontSize: 10.5,
+                fontSize: 10.5.5,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -947,7 +947,7 @@ class _NextHint extends StatelessWidget {
               text,
               style: const TextStyle(
                 color: _muted,
-                fontSize: 9.8,
+                fontSize: 10.5,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -1041,7 +1041,7 @@ class _RealQrConfirmPageState extends State<RealQrConfirmPage> {
                   'QR bulundu',
                   style: TextStyle(
                     color: _text,
-                    fontSize: 27,
+                    fontSize: 25,
                     fontWeight: FontWeight.w900,
                     letterSpacing: -.8,
                   ),
@@ -1203,7 +1203,7 @@ class _RealQrConfirmPageState extends State<RealQrConfirmPage> {
                               Text(
                                 'QR Etiketini Araca Bağla',
                                 style: TextStyle(
-                                  fontSize: 13,
+                                  fontSize: 12.5,
                                   fontWeight: FontWeight.w900,
                                 ),
                               ),
@@ -1246,7 +1246,7 @@ class _InfoRow extends StatelessWidget {
             label,
             style: const TextStyle(
               color: _muted,
-              fontSize: 10.5,
+              fontSize: 10.5.5,
             ),
           ),
         ),
