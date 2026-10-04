@@ -12,4 +12,95 @@ void locked(){showDialog(context:context,builder:(_)=>AlertDialog(backgroundColo
 Future<void> invite()async{if(!premium){locked();return;}setState(()=>loading=true);try{final r=await OwnerHttp.post(Uri.parse('$api/api/owner/vehicles/$vehicleId/driver-invites'));final j=jsonDecode(r.body);if(r.statusCode>=200&&r.statusCode<300){final code=j['code'].toString();if(!mounted)return;await showModalBottomSheet(context:context,isScrollControlled:true,builder:(c)=>Padding(padding:const EdgeInsets.all(22),child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('Sürücü davet kodu',style:TextStyle(fontSize:21,fontWeight:FontWeight.w900)),const SizedBox(height:8),const Text('Bu kodu aile üyenle paylaş. HeyCar giriş ekranında “Davet kodum var” seçeneğinden girebilir.'),const SizedBox(height:18),Center(child:SelectableText(code,style:const TextStyle(fontSize:30,fontWeight:FontWeight.w900,letterSpacing:3))),const SizedBox(height:8),const Center(child:Text('Kod 7 gün geçerlidir.',style:TextStyle(color:Color(0xFFA7B0C7)))),const SizedBox(height:18),SizedBox(width:double.infinity,child:FilledButton.icon(onPressed:(){Clipboard.setData(ClipboardData(text:code));ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Sürücü davet kodu kopyalandı')));},icon:const Icon(Icons.copy),label:const Text('Kodu Kopyala')))])));}else{throw Exception();}}catch(_){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Sürücü daveti oluşturulamadı.')));}finally{if(mounted)setState(()=>loading=false);}}
 Future<void> choose()async{if(!premium){locked();return;}await load();if(!mounted)return;if(drivers.isEmpty){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Önce bir sürücü davet et.')));return;}final d=await showModalBottomSheet<Map>(context:context,builder:(c)=>SafeArea(child:Column(mainAxisSize:MainAxisSize.min,children:[const ListTile(title:Text('Şu an kim kullanıyor?',style:TextStyle(fontWeight:FontWeight.w900)),subtitle:Text('Araç sahibinin yetkili sürücülerinden birini seç.')),for(final x in drivers)ListTile(leading:const CircleAvatar(child:Icon(Icons.person)),title:Text(x['driver_name'].toString()),trailing:const Icon(Icons.chevron_right),onTap:()=>Navigator.pop(c,x))])));if(d==null||!mounted)return;final h=await showModalBottomSheet<dynamic>(context:context,builder:(c)=>SafeArea(child:Wrap(children:[ListTile(title:Text('${d['driver_name']} ne kadar kullanacak?',style:const TextStyle(fontWeight:FontWeight.w900))),for(final x in [1,3,6,12,24])ListTile(title:Text('$x saat'),onTap:()=>Navigator.pop(c,x)),ListTile(title:const Text('Ben kapatana kadar'),onTap:()=>Navigator.pop(c,'forever'))])));if(h==null)return;setState(()=>loading=true);try{final r=await OwnerHttp.put(Uri.parse('$api/api/owner/vehicles/$vehicleId/selected-driver'),body:jsonEncode({'driverUserId':d['driver_user_id'],'hours':h=='forever'?null:h}));if(r.statusCode<200||r.statusCode>=300)throw Exception();await load();}catch(_){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Aktif sürücü seçilemedi.')));}finally{if(mounted)setState(()=>loading=false);}}
 Future<void> stop()async{if(!premium){locked();return;}setState(()=>loading=true);try{await OwnerHttp.delete(Uri.parse('$api/api/owner/vehicles/$vehicleId/selected-driver'),json:false);await load();}finally{if(mounted)setState(()=>loading=false);}}
-@override Widget build(BuildContext c)=>InkWell(onTap:premium?null:locked,borderRadius:BorderRadius.circular(20),child:Container(width:double.infinity,padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:const Color(0xFF6F3DE8),borderRadius:BorderRadius.circular(20),border:Border.all(color:const Color(0xFF8F6BFF))),child:Column(children:[Row(children:[const CircleAvatar(radius:24,backgroundColor:Color(0xFFF3EEFF),child:Icon(Icons.group_rounded,color:Color(0xFF4D347C))),const SizedBox(width:12),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Row(children:[const Flexible(child:Text('Şu an kim kullanıyor?',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w900))),if(!loading&&!premium)...[const SizedBox(width:7),const Icon(Icons.lock_rounded,color:Colors.white,size:14),const SizedBox(width:3),const Text('Premium',style:TextStyle(color:Colors.white,fontSize:10,fontWeight:FontWeight.w900))]]),const SizedBox(height:4),Text(active&&premium?'${name??''} aracı kullanıyor${until==null?'':' • ${until!.hour.toString().padLeft(2,'0')}:${until!.minute.toString().padLeft(2,'0')}’a kadar'}':'Araç sahibi aktif sürücüyü seçer.',style:const TextStyle(color:Colors.white70,fontSize:12))]))]),const SizedBox(height:12),Row(children:[Expanded(child:OutlinedButton.icon(style:OutlinedButton.styleFrom(foregroundColor:Colors.white,disabledForegroundColor:Colors.white54,side:const BorderSide(color:Colors.white70)),onPressed:loading?null:(premium?invite:locked),icon:Icon(premium?Icons.person_add:Icons.lock_rounded),label:Text(premium?'Sürücü Davet Et':'Premium'))),const SizedBox(width:8),Expanded(child:FilledButton(style:FilledButton.styleFrom(backgroundColor:const Color(0xFF5A4D86),foregroundColor:Colors.white,disabledBackgroundColor:const Color(0xFF5A4D86),disabledForegroundColor:Colors.white54),onPressed:loading?null:(premium?(active?stop:choose):locked),child:Text(premium?(active?'Sürüşü Bitir':'Sürücü Seç'):'Premium')))])])));}
+@override Widget build(BuildContext c)=>InkWell(
+  onTap:premium?null:locked,
+  borderRadius:BorderRadius.circular(16),
+  child:Container(
+    width:double.infinity,
+    padding:const EdgeInsets.fromLTRB(12,10,12,10),
+    decoration:BoxDecoration(
+      color:const Color(0xFF6F3DE8),
+      borderRadius:BorderRadius.circular(16),
+      border:Border.all(color:const Color(0xFF8F6BFF),width:1),
+    ),
+    child:Column(mainAxisSize:MainAxisSize.min,children:[
+      Row(children:[
+        const CircleAvatar(
+          radius:18,
+          backgroundColor:Color(0xFFF3EEFF),
+          child:Icon(Icons.group_rounded,color:Color(0xFF4D347C),size:20),
+        ),
+        const SizedBox(width:9),
+        Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          Row(children:[
+            const Flexible(child:Text(
+              'Şu an kim kullanıyor?',
+              maxLines:1,
+              overflow:TextOverflow.ellipsis,
+              style:TextStyle(color:Colors.white,fontSize:13,fontWeight:FontWeight.w900),
+            )),
+            if(!loading&&!premium)...[
+              const SizedBox(width:5),
+              const Icon(Icons.lock_rounded,color:Colors.white,size:12),
+              const SizedBox(width:2),
+              const Text('Premium',style:TextStyle(color:Colors.white,fontSize:8.5,fontWeight:FontWeight.w900)),
+            ],
+          ]),
+          const SizedBox(height:2),
+          Text(
+            active&&premium
+              ?'${name??''} aracı kullanıyor${until==null?'':' • ${until!.hour.toString().padLeft(2,'0')}:${until!.minute.toString().padLeft(2,'0')}’a kadar'}'
+              :'Araç sahibi aktif sürücüyü seçer.',
+            maxLines:1,
+            overflow:TextOverflow.ellipsis,
+            style:const TextStyle(color:Colors.white70,fontSize:10),
+          ),
+        ])),
+      ]),
+      const SizedBox(height:8),
+      Row(children:[
+        Expanded(child:SizedBox(
+          height:34,
+          child:OutlinedButton.icon(
+            style:OutlinedButton.styleFrom(
+              foregroundColor:Colors.white,
+              disabledForegroundColor:Colors.white54,
+              side:const BorderSide(color:Colors.white70),
+              padding:const EdgeInsets.symmetric(horizontal:6),
+              shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(11)),
+            ),
+            onPressed:loading?null:(premium?invite:locked),
+            icon:Icon(premium?Icons.person_add_rounded:Icons.lock_rounded,size:15),
+            label:Text(
+              premium?'Sürücü Davet Et':'Premium',
+              maxLines:1,
+              overflow:TextOverflow.ellipsis,
+              style:const TextStyle(fontSize:10.2,fontWeight:FontWeight.w800),
+            ),
+          ),
+        )),
+        const SizedBox(width:7),
+        Expanded(child:SizedBox(
+          height:34,
+          child:FilledButton(
+            style:FilledButton.styleFrom(
+              backgroundColor:const Color(0xFF5A4D86),
+              foregroundColor:Colors.white,
+              disabledBackgroundColor:const Color(0xFF5A4D86),
+              disabledForegroundColor:Colors.white54,
+              padding:const EdgeInsets.symmetric(horizontal:6),
+              shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(11)),
+            ),
+            onPressed:loading?null:(premium?(active?stop:choose):locked),
+            child:Text(
+              premium?(active?'Sürüşü Bitir':'Sürücü Seç'):'Premium',
+              maxLines:1,
+              overflow:TextOverflow.ellipsis,
+              style:const TextStyle(fontSize:10.2,fontWeight:FontWeight.w800),
+            ),
+          ),
+        )),
+      ]),
+    ]),
+  ),
+);}
