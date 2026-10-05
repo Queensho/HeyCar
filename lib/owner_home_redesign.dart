@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:geolocator/geolocator.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -311,11 +312,18 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         }
       }
 
-      if(mounted)setState((){
-        notices=nextNotices;
-        valetSession=nextValet;
-        valetDeliveryCode=nextDeliveryCode;
-      });
+      if(mounted){
+        final noticesChanged=jsonEncode(nextNotices)!=jsonEncode(notices);
+        final valetChanged=jsonEncode(nextValet)!=jsonEncode(valetSession);
+        final codeChanged=nextDeliveryCode!=valetDeliveryCode;
+        if(noticesChanged||valetChanged||codeChanged){
+          setState((){
+            notices=nextNotices;
+            valetSession=nextValet;
+            valetDeliveryCode=nextDeliveryCode;
+          });
+        }
+      }
     }catch(_){
       if(mounted&&!silent)setState(()=>loading=false);
     }finally{
@@ -359,7 +367,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     gradient:gradient,
     borderRadius:BorderRadius.circular(18),
     border:Border.all(color:line),
-    boxShadow:light?[BoxShadow(color:Colors.black.withValues(alpha:.045),blurRadius:16,offset:const Offset(0,6))]:null,
+    boxShadow:light&&!kIsWeb?[BoxShadow(color:Colors.black.withValues(alpha:.045),blurRadius:12,offset:const Offset(0,4))]:null,
   );
 
   Widget brand()=>Image.asset(
@@ -478,12 +486,12 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
               border:Border.all(
                 color:light?const Color(0xFFE7E3F0):const Color(0xFF2B3550),
               ),
-              boxShadow:light
+              boxShadow:light&&!kIsWeb
                 ?[
                     BoxShadow(
-                      color:const Color(0xFF5F38C9).withValues(alpha:.07),
-                      blurRadius:20,
-                      offset:const Offset(0,7),
+                      color:const Color(0xFF5F38C9).withValues(alpha:.06),
+                      blurRadius:12,
+                      offset:const Offset(0,4),
                     ),
                   ]
                 :null,
@@ -561,13 +569,15 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                         colors:[Color(0xFF5A1FE8),Color(0xFF8A3EFF)],
                       ),
                       borderRadius:BorderRadius.circular(11),
-                      boxShadow:[
-                        BoxShadow(
-                          color:const Color(0xFF6B2CF4).withValues(alpha:.22),
-                          blurRadius:10,
-                          offset:const Offset(0,4),
-                        ),
-                      ],
+                      boxShadow:kIsWeb
+                        ?null
+                        :[
+                            BoxShadow(
+                              color:const Color(0xFF6B2CF4).withValues(alpha:.18),
+                              blurRadius:8,
+                              offset:const Offset(0,3),
+                            ),
+                          ],
                     ),
                     child:const Text(
                       'PRO',
@@ -709,7 +719,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         color:panel,
         borderRadius:BorderRadius.circular(18),
         border:Border.all(color:accent.withValues(alpha:light ? .34 : .48)),
-        boxShadow:light?[BoxShadow(color:accent.withValues(alpha:.07),blurRadius:16,offset:const Offset(0,6))]:null,
+        boxShadow:light&&!kIsWeb?[BoxShadow(color:accent.withValues(alpha:.06),blurRadius:10,offset:const Offset(0,4))]:null,
       ),
       child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
         Row(children:[
@@ -938,13 +948,13 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       borderRadius:BorderRadius.circular(20),
       child:Container(
         height:116,
-        clipBehavior:Clip.antiAlias,
+        clipBehavior:Clip.hardEdge,
         decoration:BoxDecoration(
           color:light?const Color(0xFFFBFAFF):const Color(0xFF0D1322),
           borderRadius:BorderRadius.circular(20),
           border:Border.all(color:light?const Color(0xFFE7E2F2):const Color(0xFF28324A)),
-          boxShadow:light
-            ?[BoxShadow(color:Colors.black.withValues(alpha:.045),blurRadius:18,offset:const Offset(0,7))]
+          boxShadow:light&&!kIsWeb
+            ?[BoxShadow(color:Colors.black.withValues(alpha:.04),blurRadius:11,offset:const Offset(0,4))]
             :null,
         ),
         child:Stack(children:[
@@ -1022,7 +1032,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                 decoration:BoxDecoration(
                   color:Colors.white,
                   borderRadius:BorderRadius.circular(11),
-                  boxShadow:[BoxShadow(color:Colors.black.withValues(alpha:.10),blurRadius:14,offset:const Offset(0,7))],
+                  boxShadow:kIsWeb?null:[BoxShadow(color:Colors.black.withValues(alpha:.09),blurRadius:9,offset:const Offset(0,4))],
                 ),
                 child:Column(children:[
                   const Text(
@@ -1073,7 +1083,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   Widget service(IconData icon,String title,String subtitle,Color color,VoidCallback tap,{bool car=false})=>InkWell(
     onTap:tap,borderRadius:BorderRadius.circular(17),
     child:Container(
-      height:86,clipBehavior:Clip.antiAlias,decoration:card(),
+      height:86,clipBehavior:Clip.hardEdge,decoration:card(),
       child:Stack(children:[
         if(car)Positioned(right:-10,bottom:-6,child:Opacity(opacity:light ? 0.15 : 0.28,child:Image.asset('assets/Arac.png',width:108,height:66,fit:BoxFit.contain,errorBuilder:(_,__,___)=>const SizedBox.shrink()))),
         Positioned.fill(child:Padding(padding:const EdgeInsets.symmetric(horizontal:12,vertical:10),child:Row(children:[
@@ -1147,15 +1157,16 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       onRefresh:load,color:purple,
       child:ListView(
         padding:EdgeInsets.zero,
+        physics:const ClampingScrollPhysics(parent:AlwaysScrollableScrollPhysics()),
         children:[
-          header(),
-          Transform.translate(offset:const Offset(0,-3),child:vehicleQr()),
-          quickRow(),
-          monthly(),
+          RepaintBoundary(child:header()),
+          RepaintBoundary(child:Transform.translate(offset:const Offset(0,-3),child:vehicleQr())),
+          RepaintBoundary(child:quickRow()),
+          RepaintBoundary(child:monthly()),
           section('Hizmetler',widget.services),
-          servicesGrid(),
+          RepaintBoundary(child:servicesGrid()),
           section('Son Bildirimler',widget.notifications),
-          latestCard(),
+          RepaintBoundary(child:latestCard()),
           const SizedBox(height:20),
         ],
       ),
@@ -1381,7 +1392,7 @@ class OwnerServicesRedesign extends StatelessWidget{
             onTap:x.tap,borderRadius:BorderRadius.circular(18),
             child:Container(
               padding:const EdgeInsets.all(14),
-              decoration:BoxDecoration(color:panel,borderRadius:BorderRadius.circular(18),border:Border.all(color:line),boxShadow:light?[BoxShadow(color:Colors.black.withValues(alpha:.04),blurRadius:16,offset:const Offset(0,5))]:null),
+              decoration:BoxDecoration(color:panel,borderRadius:BorderRadius.circular(18),border:Border.all(color:line),boxShadow:light&&!kIsWeb?[BoxShadow(color:Colors.black.withValues(alpha:.04),blurRadius:10,offset:const Offset(0,4))]:null),
               child:Row(children:[
                 Container(width:48,height:48,decoration:BoxDecoration(color:x.color.withValues(alpha:.13),borderRadius:BorderRadius.circular(14)),child:Icon(x.icon,color:x.color,size:26)),
                 const SizedBox(width:12),
