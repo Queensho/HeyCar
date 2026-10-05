@@ -25,6 +25,8 @@ app.use(helmet());
 
 const defaultBrowserOrigins=[
   'https://queensho.github.io',
+  'https://cepqontag.com',
+  'https://www.cepqontag.com',
   'https://cepqar.com',
   'https://www.cepqar.com',
 ];
@@ -32,7 +34,9 @@ const configuredOrigins=String(process.env.CORS_ORIGINS||'')
   .split(',')
   .map(x=>x.trim())
   .filter(Boolean);
-const allowedOrigins=configuredOrigins.length?configuredOrigins:defaultBrowserOrigins;
+// Keep first-party web origins allowed even when CORS_ORIGINS is configured
+// on the VPS. Environment values extend the allow-list instead of replacing it.
+const allowedOrigins=[...new Set([...defaultBrowserOrigins,...configuredOrigins])];
 
 app.use(cors({
   origin(origin,callback){
