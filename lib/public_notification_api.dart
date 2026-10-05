@@ -70,7 +70,8 @@ class PublicNotificationApi {
 
   static Future<http.Response> _openSession(String token,{Map<String,dynamic>? location})async{
     final secret=(Uri.base.queryParameters['s']??'').trim();
-    final body=<String,dynamic>{if(secret.isNotEmpty)'scanSecret':secret,...?location};
+    final source=(Uri.base.queryParameters['src']??'').trim().toLowerCase();
+    final body=<String,dynamic>{if(secret.isNotEmpty)'scanSecret':secret,if(source=='nfc')'source':'nfc',...?location};
     return http.post(
       Uri.parse('${PublicThemeBackend.baseUrl}/api/qr/${Uri.encodeComponent(token)}/session'),
       headers:{'Content-Type':'application/json','x-proximity-device':_proximityDeviceId()},
