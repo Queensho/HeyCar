@@ -48,6 +48,12 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   Color get text=>light?const Color(0xFF111628):Colors.white;
   Color get muted=>light?const Color(0xFF71798E):const Color(0xFFA0A9BD);
   Color get line=>light?const Color(0xFFE8E9F1):const Color(0xFF25304A);
+  bool get testAccount{
+    var digits=OnboardingDraft.phone.replaceAll(RegExp(r'\D'),'');
+    if(digits.startsWith('90')&&digits.length==12)digits=digits.substring(2);
+    if(digits.startsWith('0')&&digits.length==11)digits=digits.substring(1);
+    return digits=='5074035857';
+  }
 
   String get firstName{
     final full=OnboardingDraft.displayName.trim();
@@ -1080,23 +1086,50 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     ]),
   );
 
-  Widget service(IconData icon,String title,String subtitle,Color color,VoidCallback tap,{bool car=false})=>InkWell(
-    onTap:tap,borderRadius:BorderRadius.circular(17),
-    child:Container(
-      height:86,clipBehavior:Clip.hardEdge,decoration:card(),
-      child:Stack(children:[
-        if(car)Positioned(right:-10,bottom:-6,child:Opacity(opacity:light ? 0.15 : 0.28,child:Image.asset('assets/Arac.png',width:108,height:66,fit:BoxFit.contain,errorBuilder:(_,__,___)=>const SizedBox.shrink()))),
-        Positioned.fill(child:Padding(padding:const EdgeInsets.symmetric(horizontal:12,vertical:10),child:Row(children:[
-          Container(width:37,height:37,decoration:BoxDecoration(color:color.withValues(alpha:light ? 0.12 : 0.18),borderRadius:BorderRadius.circular(11)),child:Icon(icon,color:color,size:22)),
-          const SizedBox(width:9),
-          Expanded(child:Column(mainAxisAlignment:MainAxisAlignment.center,crossAxisAlignment:CrossAxisAlignment.start,children:[
-            Text(title,style:TextStyle(color:text,fontSize:13,fontWeight:FontWeight.w900)),
-            const SizedBox(height:3),
-            Text(subtitle,maxLines:2,overflow:TextOverflow.ellipsis,style:TextStyle(color:muted,fontSize:CepqarTheme.caption,height:1.23)),
-          ])),
-          Container(width:28,height:28,decoration:BoxDecoration(color:(light?Colors.white:Colors.black).withValues(alpha:light ? 0.85 : 0.28),shape:BoxShape.circle),child:Icon(Icons.chevron_right_rounded,color:text,size:18)),
-        ]))),
-      ]),
+  Widget service(
+    IconData icon,
+    String title,
+    String subtitle,
+    Color color,
+    VoidCallback tap,{
+    bool car=false,
+    bool comingSoon=false,
+    bool enabled=true,
+  })=>InkWell(
+    onTap:enabled?tap:null,
+    borderRadius:BorderRadius.circular(17),
+    child:Opacity(
+      opacity:enabled?1:.72,
+      child:Container(
+        height:86,clipBehavior:Clip.hardEdge,decoration:card(),
+        child:Stack(children:[
+          if(car)Positioned(right:-10,bottom:-6,child:Opacity(opacity:light ? 0.15 : 0.28,child:Image.asset('assets/Arac.png',width:108,height:66,fit:BoxFit.contain,errorBuilder:(_,__,___)=>const SizedBox.shrink()))),
+          Positioned.fill(child:Padding(padding:const EdgeInsets.symmetric(horizontal:12,vertical:10),child:Row(children:[
+            Container(width:37,height:37,decoration:BoxDecoration(color:color.withValues(alpha:light ? 0.12 : 0.18),borderRadius:BorderRadius.circular(11)),child:Icon(icon,color:color,size:22)),
+            const SizedBox(width:9),
+            Expanded(child:Column(mainAxisAlignment:MainAxisAlignment.center,crossAxisAlignment:CrossAxisAlignment.start,children:[
+              Row(children:[
+                Flexible(child:Text(title,style:TextStyle(color:text,fontSize:13,fontWeight:FontWeight.w900))),
+                if(comingSoon)...[
+                  const SizedBox(width:6),
+                  Container(
+                    padding:const EdgeInsets.symmetric(horizontal:6,vertical:2),
+                    decoration:BoxDecoration(color:purple.withValues(alpha:.10),borderRadius:BorderRadius.circular(8)),
+                    child:const Text('Yakında',style:TextStyle(color:purple,fontSize:8,fontWeight:FontWeight.w900)),
+                  ),
+                ],
+              ]),
+              const SizedBox(height:3),
+              Text(subtitle,maxLines:2,overflow:TextOverflow.ellipsis,style:TextStyle(color:muted,fontSize:CepqarTheme.caption,height:1.23)),
+            ])),
+            Container(
+              width:28,height:28,
+              decoration:BoxDecoration(color:(light?Colors.white:Colors.black).withValues(alpha:light ? 0.85 : 0.28),shape:BoxShape.circle),
+              child:Icon(comingSoon&&!testAccount?Icons.schedule_rounded:Icons.chevron_right_rounded,color:comingSoon&&!testAccount?purple:text,size:18),
+            ),
+          ]))),
+        ]),
+      ),
     ),
   );
 
@@ -1106,9 +1139,10 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       crossAxisCount:2,shrinkWrap:true,physics:const NeverScrollableScrollPhysics(),
       crossAxisSpacing:9,mainAxisSpacing:9,childAspectRatio:1.78,
       children:[
-        service(Icons.support_agent_rounded,'Vale','Aracınızı güvenle teslim edin.',const Color(0xFF8B36FF),widget.services),
-        service(Icons.fire_truck_rounded,'Çekici / Yol Yardım','Yolda kaldığınızda yanınızdayız.',const Color(0xFFFF8A43),()=>widget.shortcut('roadside_help'),car:true),
-        service(Icons.local_offer_rounded,'Fırsatlar','Size özel kampanyalar ve ayrıcalıklar.',const Color(0xFF23C976),()=>widget.shortcut('offers')),
+        service(Icons.fire_truck_rounded,'Çekici','Çekici çağır ve canlı takip et.',const Color(0xFFFF8A43),()=>widget.shortcut('towing'),car:true),
+        service(Icons.sos_rounded,'Yol Yardım','Akü, lastik, yakıt ve yerinde destek.',const Color(0xFFFF775F),()=>widget.shortcut('roadside_help'),comingSoon:true,enabled:testAccount),
+        service(Icons.support_agent_rounded,'Vale','Aracınızı güvenle teslim edin.',const Color(0xFF8B36FF),widget.services,comingSoon:true,enabled:testAccount),
+        service(Icons.local_offer_rounded,'Fırsatlar','Size özel kampanya ve ayrıcalıklar.',const Color(0xFF23C976),()=>widget.shortcut('offers'),comingSoon:true,enabled:testAccount),
       ],
     ),
   );
@@ -1348,6 +1382,13 @@ class _OwnerHeaderWavePainter extends CustomPainter{
   bool shouldRepaint(covariant _OwnerHeaderWavePainter oldDelegate)=>oldDelegate.light!=light;
 }
 
+bool get _ownerServicesTestAccount{
+  var digits=OnboardingDraft.phone.replaceAll(RegExp(r'\D'),'');
+  if(digits.startsWith('90')&&digits.length==12)digits=digits.substring(2);
+  if(digits.startsWith('0')&&digits.length==11)digits=digits.substring(1);
+  return digits=='5074035857';
+}
+
 class OwnerServicesRedesign extends StatelessWidget{
   const OwnerServicesRedesign({
     super.key,
@@ -1364,10 +1405,11 @@ class OwnerServicesRedesign extends StatelessWidget{
 
   @override Widget build(BuildContext context){
     final light=CepqarTheme.isLight,text=CepqarTheme.text,muted=CepqarTheme.muted,panel=CepqarTheme.panel,line=CepqarTheme.line;
-    final items=<({IconData icon,String title,String subtitle,Color color,VoidCallback tap})>[
-      (icon:Icons.support_agent_rounded,title:'Vale',subtitle:'Aracınızı güvenle teslim edin, zaman kazanın.',color:const Color(0xFF8B36FF),tap:onVale),
-      (icon:Icons.fire_truck_rounded,title:'Çekici / Yol Yardım',subtitle:'Yolda kaldığınızda çekici ve yol yardım çağırın.',color:const Color(0xFFFF8A43),tap:onTowing),
-      (icon:Icons.local_offer_rounded,title:'Fırsatlar',subtitle:'Size özel kampanya ve ayrıcalıkları keşfedin.',color:const Color(0xFF23C976),tap:onOffers),
+    final items=<({IconData icon,String title,String subtitle,Color color,VoidCallback tap,bool comingSoon,bool enabled})>[
+      (icon:Icons.fire_truck_rounded,title:'Çekici',subtitle:'Yolda kaldığınızda çekici çağırın ve canlı takip edin.',color:const Color(0xFFFF8A43),tap:onTowing,comingSoon:false,enabled:true),
+      (icon:Icons.sos_rounded,title:'Yol Yardım',subtitle:'Akü, lastik, yakıt ve yerinde müdahale desteği.',color:const Color(0xFFFF775F),tap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const RoadsideHelpPage(initialTab:0))),comingSoon:true,enabled:_ownerServicesTestAccount),
+      (icon:Icons.support_agent_rounded,title:'Vale',subtitle:'Aracınızı güvenle teslim edin, zaman kazanın.',color:const Color(0xFF8B36FF),tap:onVale,comingSoon:true,enabled:_ownerServicesTestAccount),
+      (icon:Icons.local_offer_rounded,title:'Fırsatlar',subtitle:'Size özel kampanya ve ayrıcalıkları keşfedin.',color:const Color(0xFF23C976),tap:onOffers,comingSoon:true,enabled:_ownerServicesTestAccount),
     ];
     return ColoredBox(
       color:CepqarTheme.bg,
@@ -1389,7 +1431,7 @@ class OwnerServicesRedesign extends StatelessWidget{
         ...items.map((x)=>Padding(
           padding:const EdgeInsets.only(bottom:10),
           child:InkWell(
-            onTap:x.tap,borderRadius:BorderRadius.circular(18),
+            onTap:x.enabled?x.tap:null,borderRadius:BorderRadius.circular(18),
             child:Container(
               padding:const EdgeInsets.all(14),
               decoration:BoxDecoration(color:panel,borderRadius:BorderRadius.circular(18),border:Border.all(color:line),boxShadow:light&&!kIsWeb?[BoxShadow(color:Colors.black.withValues(alpha:.04),blurRadius:10,offset:const Offset(0,4))]:null),
@@ -1397,17 +1439,27 @@ class OwnerServicesRedesign extends StatelessWidget{
                 Container(width:48,height:48,decoration:BoxDecoration(color:x.color.withValues(alpha:.13),borderRadius:BorderRadius.circular(14)),child:Icon(x.icon,color:x.color,size:26)),
                 const SizedBox(width:12),
                 Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-                  Text(x.title,style:TextStyle(color:text,fontSize:15,fontWeight:FontWeight.w900)),
+                  Row(children:[
+                    Flexible(child:Text(x.title,style:TextStyle(color:text,fontSize:15,fontWeight:FontWeight.w900))),
+                    if(x.comingSoon)...[
+                      const SizedBox(width:7),
+                      Container(
+                        padding:const EdgeInsets.symmetric(horizontal:7,vertical:3),
+                        decoration:BoxDecoration(color:const Color(0xFF713BFF).withValues(alpha:.10),borderRadius:BorderRadius.circular(8)),
+                        child:const Text('Yakında',style:TextStyle(color:Color(0xFF713BFF),fontSize:8.5,fontWeight:FontWeight.w900)),
+                      ),
+                    ],
+                  ]),
                   const SizedBox(height:3),
                   Text(x.subtitle,style:TextStyle(color:muted,fontSize:CepqarTheme.body)),
                 ])),
-                Icon(Icons.chevron_right_rounded,color:muted),
+                Icon(x.comingSoon&&!x.enabled?Icons.schedule_rounded:Icons.chevron_right_rounded,color:x.comingSoon&&!x.enabled?const Color(0xFF713BFF):muted),
               ]),
             ),
           ),
         )),
         const SizedBox(height:8),
-        OwnerValetCard(vehicleId:QrDraft.vehicleId,active:active),
+        if(_ownerServicesTestAccount) OwnerValetCard(vehicleId:QrDraft.vehicleId,active:active),
       ])),
     );
   }
