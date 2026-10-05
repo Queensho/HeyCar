@@ -1,4 +1,6 @@
 const {ownerId: authenticatedOwnerId}=require('./owner-auth-service');
+const {driverId: authenticatedDriverId}=require('./driver-auth-service');
+const {driverVehicleEntitlement}=require('./premium-entitlements');
 const express = require('express');
 const {getAppSettings}=require('./app-settings-service');
 module.exports = function registerParkingRoutes(app, pool) {
@@ -78,19 +80,30 @@ module.exports = function registerParkingRoutes(app, pool) {
     }
   });
   const owner = req => authenticatedOwnerId(req);
+  const driver = req => authenticatedDriverId(req);
   const fields = 'area,floor,spot,note,parking_name,latitude,longitude,osm_id,started_at,updated_at';
-  async function owns(req, res) {
-    const o = owner(req), v = String(req.params.vehicleId || '');
-    if (!o) { res.status(401).json({ error: 'OWNER_REQUIRED' }); return null; }
-    const r = await pool.query('SELECT id FROM vehicles WHERE id::text=$1 AND owner_id::text=$2 LIMIT 1', [v, o]);
-    if (!r.rows.length) { res.status(403).json({ error: 'FORBIDDEN' }); return null; }
-    return String(r.rows[0].id);
+  async function access(req,res) {
+    const v=String(req.params.vehicleId||'');
+    const o=owner(req);
+    if(o){
+      const r=await pool.query('SELECT id,owner_id FROM vehicles WHERE id::text=$1 AND owner_id::text=$2 LIMIT 1',[v,o]);
+      if(!r.rows.length){res.status(403).json({error:'FORBIDDEN'});return null;}
+      return {vehicleId:String(r.rows[0].id),ownerId:String(r.rows[0].owner_id),role:'owner'};
+    }
+    const d=driver(req);
+    if(d){
+      const e=await driverVehicleEntitlement(pool,d,v);
+      if(!e){res.status(403).json({error:'DRIVER_NOT_AUTHORIZED'});return null;}
+      return {vehicleId:e.vehicleId,ownerId:e.ownerId,role:'driver',familyPremium:e.familyPremium,activeDriver:e.activeDriver};
+    }
+    res.status(401).json({error:'AUTH_REQUIRED'});
+    return null;
   }
   app.get('/api/vehicles/:vehicleId/parking', async (req, res) => {
     try {
       if(!await parkingEnabled(res))return;
-      const v = await owns(req, res); if (!v) return;
-      const r = await pool.query(`SELECT ${fields} FROM vehicle_parking_locations WHERE vehicle_id=$1 AND owner_id=$2 LIMIT 1`, [v, owner(req)]);
+      const a = await access(req, res); if (!a) return;
+      const r = await pool.query(`SELECT ${fields} FROM vehicle_parking_locations WHERE vehicle_id=$1 AND owner_id=$2 LIMIT 1`, [a.vehicleId, a.ownerId]);
       res.json({ ok: true, parking: r.rows[0] || null });
     } catch (e) { console.error(e); res.status(500).json({ error: 'SERVER_ERROR' }); }
   });
@@ -98,11 +111,11 @@ module.exports = function registerParkingRoutes(app, pool) {
     const client=await pool.connect();
     try {
       if(!await parkingEnabled(res))return;
-      const o=owner(req); if(!o)return res.status(401).json({error:'OWNER_REQUIRED'});
+      const a=await access(req,res);if(!a)return;
       await client.query('BEGIN');
-      const owned=await client.query('SELECT id FROM vehicles WHERE id::text=$1 AND owner_id::text=$2 FOR UPDATE',[String(req.params.vehicleId||''),o]);
+      const owned=await client.query('SELECT id,owner_id FROM vehicles WHERE id::text=$1 AND owner_id::text=$2 FOR UPDATE',[a.vehicleId,a.ownerId]);
       if(!owned.rowCount){await client.query('ROLLBACK');return res.status(403).json({error:'FORBIDDEN'});}
-      const v=String(owned.rows[0].id);
+      const v=String(owned.rows[0].id),o=String(owned.rows[0].owner_id);
       const body = req.body || {};
       const area = String(body.area || '').trim().slice(0, 40), floor = String(body.floor || '').trim().slice(0, 20);
       const spot = String(body.spot || '').trim().slice(0, 30), note = String(body.note || '').trim().slice(0, 180);
@@ -115,7 +128,7 @@ module.exports = function registerParkingRoutes(app, pool) {
         return res.status(400).json({ error: 'INVALID_PARKING_LOCATION' });
       }
       if (!hasLocation && !area && !floor && !spot) {
-        const existing = await client.query('SELECT 1 FROM vehicle_parking_locations WHERE vehicle_id=$1 AND owner_id=$2 AND latitude IS NOT NULL', [v, owner(req)]);
+        const existing = await client.query('SELECT 1 FROM vehicle_parking_locations WHERE vehicle_id=$1 AND owner_id=$2 AND latitude IS NOT NULL', [v, o]);
         if (!existing.rows.length) return res.status(400).json({ error: 'PARKING_FIELDS_REQUIRED' });
       }
       const r = await client.query(`INSERT INTO vehicle_parking_locations
@@ -129,7 +142,7 @@ module.exports = function registerParkingRoutes(app, pool) {
           osm_id=CASE WHEN $7 THEN EXCLUDED.osm_id ELSE vehicle_parking_locations.osm_id END,
           started_at=CASE WHEN $7 THEN NOW() ELSE vehicle_parking_locations.started_at END,
           updated_at=NOW() RETURNING ${fields}`,
-        [v, owner(req), area, floor, spot, note, hasLocation, hasLocation ? name : null,
+        [v, o, area, floor, spot, note, hasLocation, hasLocation ? name : null,
           hasLocation ? lat : null, hasLocation ? lon : null, hasLocation ? osmId : null]);
       await client.query('COMMIT');
       res.json({ ok: true, parking: r.rows[0] });
@@ -139,8 +152,8 @@ module.exports = function registerParkingRoutes(app, pool) {
   app.delete('/api/vehicles/:vehicleId/parking', async (req, res) => {
     try {
       if(!await parkingEnabled(res))return;
-      const v = await owns(req, res); if (!v) return;
-      await pool.query('DELETE FROM vehicle_parking_locations WHERE vehicle_id=$1 AND owner_id=$2', [v, owner(req)]);
+      const a = await access(req, res); if (!a) return;
+      await pool.query('DELETE FROM vehicle_parking_locations WHERE vehicle_id=$1 AND owner_id=$2', [a.vehicleId, a.ownerId]);
       res.json({ ok: true });
     } catch (e) { console.error(e); res.status(500).json({ error: 'SERVER_ERROR' }); }
   });
