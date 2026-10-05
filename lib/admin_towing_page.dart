@@ -1,10 +1,11 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'admin_ui.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 const _api='https://heycar-api-185-165-46-213.nip.io';
-const _purple=Color(0xFFB100FF),_bg=Color(0xFF040714),_card=Color(0xFF090E22),_muted=Color(0xFFA9AFC4),_lime=Color(0xFFB6FF2A);
+const _purple=AdminUi.purple,_bg=AdminUi.bg,_card=AdminUi.surface,_muted=AdminUi.muted,_lime=AdminUi.green,_ink=AdminUi.ink,_line=AdminUi.line;
 
 class AdminTowingPage extends StatefulWidget{
  const AdminTowingPage({super.key,required this.token,required this.admin});
