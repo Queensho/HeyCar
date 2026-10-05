@@ -5,6 +5,7 @@ import 'onboarding_backend.dart';
 import 'qr_backend.dart';
 import 'cepqar_theme.dart';
 import 'owner_auth.dart';
+import 'driver_auth.dart';
 import 'push_notifications.dart';
 
 Color get _bg => CepqarTheme.bg;
@@ -19,8 +20,9 @@ Color get _amber =>
     CepqarTheme.isLight ? const Color(0xFF996000) : const Color(0xFFFFB548);
 
 class VehicleRemindersPage extends StatefulWidget {
-  const VehicleRemindersPage({super.key, required this.vehicleId});
+  const VehicleRemindersPage({super.key, required this.vehicleId, this.driverMode = false});
   final String vehicleId;
+  final bool driverMode;
   @override
   State<VehicleRemindersPage> createState() => _VehicleRemindersPageState();
 }
@@ -49,13 +51,12 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
 
   Future<void> load() async {
     try {
-      final r = await OwnerHttp
-          .get(
-            Uri.parse(
-              '${QrBackend.baseUrl}/api/vehicles/${widget.vehicleId}/reminders',
-            ),
-            json: false,
-          )
+      final uri = Uri.parse(
+        '${QrBackend.baseUrl}/api/vehicles/${widget.vehicleId}/reminders',
+      );
+      final r = (widget.driverMode
+              ? await DriverHttp.get(uri, json: false)
+              : await OwnerHttp.get(uri, json: false))
           .timeout(const Duration(seconds: 12));
       if (r.statusCode == 200) {
         final d = jsonDecode(r.body);
@@ -102,14 +103,13 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
       final ds =
           '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
       final api = apiType(type);
-      final r = await OwnerHttp
-          .put(
-            Uri.parse(
-              '${QrBackend.baseUrl}/api/vehicles/${widget.vehicleId}/reminders/$api',
-            ),
-            headers: headers,
-            body: jsonEncode({'dueDate': ds}),
-          )
+      final uri = Uri.parse(
+        '${QrBackend.baseUrl}/api/vehicles/${widget.vehicleId}/reminders/$api',
+      );
+      final body = jsonEncode({'dueDate': ds});
+      final r = (widget.driverMode
+              ? await DriverHttp.put(uri, headers: headers, body: body)
+              : await OwnerHttp.put(uri, headers: headers, body: body))
           .timeout(const Duration(seconds: 12));
       if (!mounted) return;
       if (r.statusCode >= 200 && r.statusCode < 300) {
@@ -148,13 +148,12 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
   Future<void> clear(String type) async {
     setState(() => saving = true);
     try {
-      final r = await OwnerHttp
-          .delete(
-            Uri.parse(
-              '${QrBackend.baseUrl}/api/vehicles/${widget.vehicleId}/reminders/${apiType(type)}',
-            ),
-            json: false,
-          )
+      final uri = Uri.parse(
+        '${QrBackend.baseUrl}/api/vehicles/${widget.vehicleId}/reminders/${apiType(type)}',
+      );
+      final r = (widget.driverMode
+              ? await DriverHttp.delete(uri, json: false)
+              : await OwnerHttp.delete(uri, json: false))
           .timeout(const Duration(seconds: 12));
       if (!mounted) return;
       if (r.statusCode >= 200 && r.statusCode < 300) {
