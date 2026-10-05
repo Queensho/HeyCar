@@ -54,9 +54,9 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
       final uri = Uri.parse(
         '${QrBackend.baseUrl}/api/vehicles/${widget.vehicleId}/reminders',
       );
-      final r = (widget.driverMode
-              ? await DriverHttp.get(uri, json: false)
-              : await OwnerHttp.get(uri, json: false))
+      final r = await (widget.driverMode
+              ? DriverHttp.get(uri, json: false)
+              : OwnerHttp.get(uri, json: false))
           .timeout(const Duration(seconds: 12));
       if (r.statusCode == 200) {
         final d = jsonDecode(r.body);
@@ -107,9 +107,9 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
         '${QrBackend.baseUrl}/api/vehicles/${widget.vehicleId}/reminders/$api',
       );
       final body = jsonEncode({'dueDate': ds});
-      final r = (widget.driverMode
-              ? await DriverHttp.put(uri, headers: headers, body: body)
-              : await OwnerHttp.put(uri, headers: headers, body: body))
+      final r = await (widget.driverMode
+              ? DriverHttp.put(uri, headers: headers, body: body)
+              : OwnerHttp.put(uri, headers: headers, body: body))
           .timeout(const Duration(seconds: 12));
       if (!mounted) return;
       if (r.statusCode >= 200 && r.statusCode < 300) {
@@ -151,9 +151,9 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
       final uri = Uri.parse(
         '${QrBackend.baseUrl}/api/vehicles/${widget.vehicleId}/reminders/${apiType(type)}',
       );
-      final r = (widget.driverMode
-              ? await DriverHttp.delete(uri, json: false)
-              : await OwnerHttp.delete(uri, json: false))
+      final r = await (widget.driverMode
+              ? DriverHttp.delete(uri, json: false)
+              : OwnerHttp.delete(uri, json: false))
           .timeout(const Duration(seconds: 12));
       if (!mounted) return;
       if (r.statusCode >= 200 && r.statusCode < 300) {
