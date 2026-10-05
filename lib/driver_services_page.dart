@@ -240,7 +240,7 @@ class _DriverServicesPageState extends State<DriverServicesPage> {
   void openOffers() {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const CepqarOffersPage()),
+      MaterialPageRoute(builder: (_) => CepqarOffersPage(driverMode:true,vehiclePlate:plate)),
     );
   }
 
