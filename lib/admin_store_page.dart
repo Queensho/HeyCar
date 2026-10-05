@@ -2,17 +2,19 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'admin_ui.dart';
 import 'package:http/http.dart' as http;
 
-const _bg=Color(0xFF040714);
-const _card=Color(0xFF090E22);
-const _card2=Color(0xFF0C1230);
-const _purple=Color(0xFFB100FF);
-const _purple2=Color(0xFF7B2CFF);
-const _green=Color(0xFF28F39A);
-const _amber=Color(0xFFFFB62E);
-const _muted=Color(0xFFA9AFC4);
-const _line=Color(0xFF4A236C);
+const _bg=AdminUi.bg;
+const _card=AdminUi.surface;
+const _card2=AdminUi.surfaceSoft;
+const _purple=AdminUi.purple;
+const _purple2=AdminUi.purple2;
+const _green=AdminUi.green;
+const _amber=AdminUi.amber;
+const _muted=AdminUi.muted;
+const _line=AdminUi.line;
+const _ink=AdminUi.ink;
 const _api='https://heycar-api-185-165-46-213.nip.io';
 
 class AdminStorePage extends StatefulWidget{
@@ -280,7 +282,7 @@ class _AdminStorePageState extends State<AdminStorePage>{
       Container(width:41,height:41,decoration:BoxDecoration(color:color.withValues(alpha:.12),borderRadius:BorderRadius.circular(12)),child:Icon(icon,color:color,size:21)),
       const SizedBox(width:9),
       Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-        Text(value,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Colors.white,fontSize:18,fontWeight:FontWeight.w900)),
+        Text(value,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_ink,fontSize:18,fontWeight:FontWeight.w900)),
         Text(label,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_muted,fontSize:10.5)),
       ])),
     ]),
@@ -304,7 +306,7 @@ class _AdminStorePageState extends State<AdminStorePage>{
 
   Widget productsView()=>Column(children:[
     Row(children:[
-      const Expanded(child:Text('Ürünler',style:TextStyle(color:Colors.white,fontSize:17,fontWeight:FontWeight.w900))),
+      const Expanded(child:Text('Ürünler',style:TextStyle(color:_ink,fontSize:17,fontWeight:FontWeight.w900))),
       FilledButton.icon(onPressed:()=>editProduct(),style:FilledButton.styleFrom(backgroundColor:_purple,foregroundColor:Colors.white),icon:const Icon(Icons.add_rounded),label:const Text('Ürün Ekle')),
     ]),
     const SizedBox(height:10),
@@ -334,7 +336,7 @@ class _AdminStorePageState extends State<AdminStorePage>{
 
   Widget ordersView()=>Column(children:[
     Row(children:[
-      const Expanded(child:Text('Siparişler',style:TextStyle(color:Colors.white,fontSize:17,fontWeight:FontWeight.w900))),
+      const Expanded(child:Text('Siparişler',style:TextStyle(color:_ink,fontSize:17,fontWeight:FontWeight.w900))),
       SizedBox(width:190,child:DropdownButtonFormField<String>(
         value:orderStatus,decoration:const InputDecoration(labelText:'Durum',isDense:true),
         items:const[
