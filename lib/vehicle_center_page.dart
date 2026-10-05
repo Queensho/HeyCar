@@ -12,6 +12,8 @@ import 'maintenance_share_page.dart';
 import 'parking_location_card.dart';
 import 'vehicle_reminders_page.dart';
 import 'qr_security_page.dart';
+import 'nfc_setup_page.dart';
+import 'vehicle_analytics_page.dart';
 import 'cepqar_theme.dart';
 import 'owner_auth.dart';
 import 'owner_settings_detail.dart';
@@ -1295,6 +1297,8 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
                     decoration:_compactCard(),
                     child:Column(children:[
                       _menuItem(icon:Icons.directions_car_filled_rounded,title:'Araç Bilgileri',subtitle:'Marka, model ve diğer detaylar',tap:_editVehicle),
+                      _menuItem(icon:Icons.nfc_rounded,title:'NFC Etiketi',subtitle:'NFC etiketini hazırla ve güvenle yönet',tap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>NfcSetupPage(vehicleId:vid,plate:_plate)))),
+                      _menuItem(icon:Icons.analytics_outlined,title:'Etiket Analitiği',subtitle:'QR ve NFC kullanımını birlikte takip et',tap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>VehicleAnalyticsPage(vehicleId:vid,plate:_plate)))),
                       _menuItem(icon:Icons.build_rounded,title:'Bakım Kayıtları',subtitle:'Aracınızın bakım geçmişi',tap:maintenance),
                       _menuItem(icon:Icons.local_parking_rounded,title:'Park Geçmişi',subtitle:'Otopark ve park konumlarını yönetin',tap:_parking),
                       _menuItem(icon:Icons.notifications_none_rounded,title:'Bildirim Ayarları',subtitle:'Mesaj, arama ve park uyarı tercihleri',tap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const OwnerNotificationSettingsPage()))),
