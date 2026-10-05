@@ -1,4 +1,6 @@
 const {ownerId:authenticatedOwnerId}=require('./owner-auth-service');
+const {driverId:authenticatedDriverId}=require('./driver-auth-service');
+const {requireDriverVehicle,driverVehicleEntitlement}=require('./premium-entitlements');
 const fs=require('fs');
 const path=require('path');
 
@@ -114,6 +116,120 @@ module.exports=function registerTowingRoutes(app,pool,adminGuard){
       FROM towing_requests r LEFT JOIN towing_providers p ON p.id=r.accepted_provider_id LEFT JOIN towing_provider_drivers d ON d.id=r.accepted_driver_id LEFT JOIN towing_provider_vehicles v ON v.id=r.accepted_towing_vehicle_id
       WHERE r.id=$1 AND r.owner_id=$2 LIMIT 1`,[req.params.id,ownerId]);if(!r.rowCount)return res.status(404).json({error:'TOWING_REQUEST_NOT_FOUND'});return res.json({ok:true,tracking:r.rows[0]});}
     catch(e){console.error('owner towing tracking',e);return res.status(500).json({error:'SERVER_ERROR'});}
+  });
+
+
+  app.post('/api/driver/towing/quote',async(req,res)=>{
+    const driverId=authenticatedDriverId(req);
+    if(!driverId)return res.status(401).json({error:'DRIVER_REQUIRED'});
+    const distanceKm=n(req.body?.distanceKm);
+    const vehicleType=String(req.body?.vehicleType||'').trim();
+    const truckType=String(req.body?.truckType||'').trim();
+    const isNight=req.body?.isNight===true;
+    if(distanceKm===null||distanceKm<0||distanceKm>2000||!vehicleType||!truckType)return res.status(400).json({error:'INVALID_QUOTE_REQUEST'});
+    try{
+      const [v,t,sq]=await Promise.all([
+        pool.query('SELECT code,name,price_multiplier FROM towing_vehicle_types WHERE code=$1 AND active=TRUE',[vehicleType]),
+        pool.query('SELECT code,name,base_fee,per_km_fee,minimum_fee FROM towing_truck_types WHERE code=$1 AND active=TRUE',[truckType]),
+        pool.query('SELECT * FROM towing_pricing_settings WHERE id=1')
+      ]);
+      if(!v.rowCount||!t.rowCount||!sq.rowCount)return res.status(400).json({error:'TOWING_OPTION_NOT_AVAILABLE'});
+      const vehicle=v.rows[0],truck=t.rows[0],settings=sq.rows[0];
+      const raw=(Number(truck.base_fee)+distanceKm*Number(truck.per_km_fee))*Number(vehicle.price_multiplier);
+      const subtotal=Math.max(raw,Number(truck.minimum_fee));
+      const nightSurcharge=isNight?subtotal*Number(settings.night_surcharge_pct)/100:0;
+      const total=money(subtotal+nightSurcharge);
+      return res.json({ok:true,quote:{distanceKm:money(distanceKm),vehicleType:vehicle.code,vehicleTypeName:vehicle.name,truckType:truck.code,truckTypeName:truck.name,baseFee:money(truck.base_fee),perKmFee:money(truck.per_km_fee),vehicleMultiplier:Number(vehicle.price_multiplier),subtotal:money(subtotal),nightSurcharge:money(nightSurcharge),total,currency:settings.currency}});
+    }catch(e){console.error('driver towing quote',e);return res.status(500).json({error:'SERVER_ERROR'});}
+  });
+
+  app.post('/api/driver/towing/requests',async(req,res)=>{
+    const a=await requireDriverVehicle(req,res,pool,{active:true});
+    if(!a)return;
+    const ownerId=a.ownerId,vehicleId=a.vehicleId;
+    const vehicleType=String(req.body?.vehicleType||'').trim(),truckType=String(req.body?.truckType||'').trim();
+    const issueType=String(req.body?.issueType||'other').trim().slice(0,40),issueNote=String(req.body?.issueNote||'').trim().slice(0,500);
+    const pickupLat=n(req.body?.pickupLat),pickupLng=n(req.body?.pickupLng),destinationLat=n(req.body?.destinationLat),destinationLng=n(req.body?.destinationLng),distanceKm=n(req.body?.distanceKm);
+    const pickupAddress=String(req.body?.pickupAddress||'').trim().slice(0,300),destinationAddress=String(req.body?.destinationAddress||'').trim().slice(0,300);
+    if([pickupLat,pickupLng,destinationLat,destinationLng,distanceKm].some(x=>x===null)||distanceKm<0||distanceKm>2000)return res.status(400).json({error:'INVALID_ROUTE'});
+    if(pickupLat<-90||pickupLat>90||destinationLat<-90||destinationLat>90||pickupLng<-180||pickupLng>180||destinationLng<-180||destinationLng>180)return res.status(400).json({error:'INVALID_COORDINATES'});
+    const client=await pool.connect();
+    try{
+      await client.query('BEGIN');
+      const auth=await client.query('SELECT id FROM vehicles WHERE id::text=$1 AND owner_id::text=$2 FOR UPDATE',[vehicleId,ownerId]);
+      if(!auth.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'VEHICLE_NOT_FOUND'});}
+      const [v,t,sq]=await Promise.all([
+        client.query('SELECT code,name,price_multiplier FROM towing_vehicle_types WHERE code=$1 AND active=TRUE',[vehicleType]),
+        client.query('SELECT code,name,base_fee,per_km_fee,minimum_fee FROM towing_truck_types WHERE code=$1 AND active=TRUE',[truckType]),
+        client.query('SELECT * FROM towing_pricing_settings WHERE id=1')
+      ]);
+      if(!v.rowCount||!t.rowCount||!sq.rowCount){await client.query('ROLLBACK');return res.status(400).json({error:'TOWING_OPTION_NOT_AVAILABLE'});}
+      const vehicle=v.rows[0],truck=t.rows[0],settings=sq.rows[0];
+      const raw=(Number(truck.base_fee)+distanceKm*Number(truck.per_km_fee))*Number(vehicle.price_multiplier);
+      const subtotal=Math.max(raw,Number(truck.minimum_fee));
+      const total=money(subtotal);
+      const snapshot={baseFee:Number(truck.base_fee),perKmFee:Number(truck.per_km_fee),minimumFee:Number(truck.minimum_fee),vehicleMultiplier:Number(vehicle.price_multiplier),distanceKm:money(distanceKm),requestedBy:'driver',driverUserId:a.driverId};
+      const r=await client.query(`INSERT INTO towing_requests(owner_id,vehicle_id,vehicle_type,truck_type,issue_type,issue_note,pickup_lat,pickup_lng,pickup_address,destination_lat,destination_lng,destination_address,distance_km,quoted_total,currency,pricing_snapshot)
+        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb) RETURNING *`,[ownerId,vehicleId,vehicleType,truckType,issueType,issueNote||null,pickupLat,pickupLng,pickupAddress||null,destinationLat,destinationLng,destinationAddress||null,distanceKm,total,settings.currency,JSON.stringify(snapshot)]);
+      await client.query('COMMIT');
+      try{
+        const push=app.locals.heycarPush;
+        if(push&&typeof push.sendOwner==='function'){
+          const nearby=await pool.query(`SELECT DISTINCT d.user_id
+            FROM towing_provider_drivers d
+            JOIN towing_providers p ON p.id=d.provider_id
+            WHERE d.user_id IS NOT NULL AND d.status='active' AND d.online=TRUE AND p.status='active'
+              AND d.last_lat IS NOT NULL AND d.last_lng IS NOT NULL
+              AND EXISTS(SELECT 1 FROM towing_provider_vehicles tv WHERE tv.provider_id=d.provider_id AND tv.truck_type=$3 AND tv.status='active')
+              AND (6371*acos(LEAST(1,GREATEST(-1,cos(radians($1))*cos(radians(d.last_lat::float8))*cos(radians(d.last_lng::float8)-radians($2))+sin(radians($1))*sin(radians(d.last_lat::float8))))))<=30
+            LIMIT 100`,[pickupLat,pickupLng,truckType]);
+          const body=pickupAddress?'Yeni çekici talebi • '+pickupAddress:'Yakınında yeni bir çekici talebi var';
+          await Promise.allSettled(nearby.rows.map(row=>push.sendOwner(String(row.user_id),{type:'towing_request',requestId:String(r.rows[0].id),pickupAddress:pickupAddress||'',destinationAddress:destinationAddress||'',truckType:String(truckType)},'Yeni Çekici Talebi',body)));
+        }
+      }catch(pushError){console.error('driver towing request push',pushError);}
+      return res.status(201).json({ok:true,request:r.rows[0]});
+    }catch(e){
+      await client.query('ROLLBACK').catch(()=>{});
+      if(e?.code==='23505')return res.status(409).json({error:'ACTIVE_TOWING_REQUEST_EXISTS'});
+      console.error('driver towing request create',e);
+      return res.status(500).json({error:'SERVER_ERROR'});
+    }finally{client.release();}
+  });
+
+  app.get('/api/driver/towing/requests/:id/tracking',async(req,res)=>{
+    const driverId=authenticatedDriverId(req);
+    if(!driverId)return res.status(401).json({error:'DRIVER_REQUIRED'});
+    try{
+      const job=await pool.query('SELECT vehicle_id FROM towing_requests WHERE id=$1 LIMIT 1',[req.params.id]);
+      if(!job.rowCount)return res.status(404).json({error:'TOWING_REQUEST_NOT_FOUND'});
+      const access=await driverVehicleEntitlement(pool,driverId,String(job.rows[0].vehicle_id||''));
+      if(!access)return res.status(403).json({error:'DRIVER_NOT_AUTHORIZED'});
+      const r=await pool.query(`SELECT r.id,r.status,r.driver_lat,r.driver_lng,r.driver_location_at,r.pickup_eta_minutes,r.pickup_distance_km,r.destination_eta_minutes,r.destination_distance_km,
+        r.pickup_lat,r.pickup_lng,r.pickup_address,r.destination_lat,r.destination_lng,r.destination_address,r.distance_km,
+        p.display_name AS provider_name,p.provider_type,d.full_name AS driver_name,d.phone AS driver_phone,v.plate AS towing_plate,v.brand AS towing_brand,v.model AS towing_model,v.truck_type
+        FROM towing_requests r LEFT JOIN towing_providers p ON p.id=r.accepted_provider_id LEFT JOIN towing_provider_drivers d ON d.id=r.accepted_driver_id LEFT JOIN towing_provider_vehicles v ON v.id=r.accepted_towing_vehicle_id
+        WHERE r.id=$1 AND r.vehicle_id::text=$2 LIMIT 1`,[req.params.id,access.vehicleId]);
+      if(!r.rowCount)return res.status(404).json({error:'TOWING_REQUEST_NOT_FOUND'});
+      return res.json({ok:true,tracking:r.rows[0]});
+    }catch(e){console.error('driver towing tracking',e);return res.status(500).json({error:'SERVER_ERROR'});}
+  });
+
+  app.post('/api/driver/towing/requests/:id/cancel',async(req,res)=>{
+    const driverId=authenticatedDriverId(req);
+    if(!driverId)return res.status(401).json({error:'DRIVER_REQUIRED'});
+    const reason=String(req.body?.reason||'').trim().slice(0,300);
+    try{
+      const job=await pool.query('SELECT vehicle_id FROM towing_requests WHERE id=$1 LIMIT 1',[req.params.id]);
+      if(!job.rowCount)return res.status(404).json({error:'TOWING_REQUEST_NOT_FOUND'});
+      const access=await driverVehicleEntitlement(pool,driverId,String(job.rows[0].vehicle_id||''));
+      if(!access)return res.status(403).json({error:'DRIVER_NOT_AUTHORIZED'});
+      if(!access.activeDriver)return res.status(403).json({error:'DRIVER_NOT_ACTIVE'});
+      const r=await pool.query(`UPDATE towing_requests SET status='cancelled',cancelled_at=NOW(),cancel_reason=$3,updated_at=NOW()
+        WHERE id=$1 AND vehicle_id::text=$2 AND status IN ('searching','accepted','arriving','arrived') RETURNING *`,
+        [req.params.id,access.vehicleId,reason||null]);
+      if(!r.rowCount)return res.status(409).json({error:'TOWING_REQUEST_NOT_CANCELLABLE'});
+      return res.json({ok:true,request:r.rows[0]});
+    }catch(e){console.error('driver towing cancel',e);return res.status(500).json({error:'SERVER_ERROR'});}
   });
 
 
