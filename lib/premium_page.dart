@@ -48,7 +48,7 @@ class _PremiumPageState extends State<PremiumPage>{
     (Icons.local_parking_rounded,'Sürücü Park Özellikleri','Aile sürücüsü park konumu ve gelişmiş parkı kullanır.'),
     (Icons.build_rounded,'Sürücü Bakım Erişimi','Bakım kayıtları ve kilometre güncellemeleri aileye açılır.'),
     (Icons.event_available_rounded,'Sürücü Hatırlatmaları','Muayene, sigorta ve bakım tarihleri ortak kullanılır.'),
-    (Icons.support_agent_rounded,'Vale ve Çekici Erişimi','Aktif sürücü araç adına vale ve çekici akışını kullanabilir.'),
+    (Icons.manage_accounts_rounded,'Premium Özellikleri Paylaş','Araç sahibindeki premium araç özellikleri yetkili sürücülere de açılır.'),
     (Icons.shield_rounded,'Araç Sahibi Kontrolü','Satın alma ve aile yetkisi yalnızca araç sahibinde kalır.'),
   ];
 
