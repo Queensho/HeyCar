@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'admin_ui.dart';
 import 'package:http/http.dart' as http;
 
 const _base='https://heycar-api-185-165-46-213.nip.io';
-const _card=Color(0xFF0C1226),_line=Color(0xFF242D49),_muted=Color(0xFF8993AD),_purple=Color(0xFFA72BFF),_green=Color(0xFF28F39A);
+const _card=AdminUi.surface,_line=AdminUi.line,_muted=AdminUi.muted,_purple=AdminUi.purple,_green=AdminUi.green,_ink=AdminUi.ink;
 
 class AdminSettingsPage extends StatefulWidget{
   const AdminSettingsPage({super.key,required this.token,required this.admin});
@@ -88,7 +89,7 @@ class _AdminSettingsPageState extends State<AdminSettingsPage>{
         if(error!=null)...[const SizedBox(height:10),Text(error!,style:const TextStyle(color:Colors.redAccent))],
         const SizedBox(height:12),
         _section('Bakım Modu',Icons.build_circle_rounded,[
-          SwitchListTile.adaptive(contentPadding:EdgeInsets.zero,value:maintenance,onChanged:(v)=>setState(()=>maintenance=v),title:const Text('Bakım modunu aç',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w800)),subtitle:const Text('Kullanıcı uygulaması bakım ekranında kalır.',style:TextStyle(color:_muted,fontSize:11))),
+          SwitchListTile.adaptive(contentPadding:EdgeInsets.zero,value:maintenance,onChanged:(v)=>setState(()=>maintenance=v),title:const Text('Bakım modunu aç',style:TextStyle(color:_ink,fontWeight:FontWeight.w800)),subtitle:const Text('Kullanıcı uygulaması bakım ekranında kalır.',style:TextStyle(color:_muted,fontSize:11))),
           _field(maintenanceTitle,'Bakım başlığı'),const SizedBox(height:8),_field(maintenanceMessage,'Bakım açıklaması',lines:3),
         ]),
         const SizedBox(height:10),
@@ -119,7 +120,7 @@ class _AdminSettingsPageState extends State<AdminSettingsPage>{
             Icon(Icons.workspace_premium_rounded,color:_purple,size:20),
             SizedBox(width:9),
             Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-              Text('Premium Fiyatlandırma',style:TextStyle(color:Colors.white,fontSize:14,fontWeight:FontWeight.w900)),
+              Text('Premium Fiyatlandırma',style:TextStyle(color:_ink,fontSize:14,fontWeight:FontWeight.w900)),
               SizedBox(height:3),
               Text('Aylık ve yıllık fiyatları Premium Yönetimi ekranından değiştirebilirsin.',style:TextStyle(color:_muted,fontSize:10.5)),
             ])),
@@ -145,9 +146,9 @@ class _AdminSettingsPageState extends State<AdminSettingsPage>{
     ));
   }
 
-  Widget _hero()=>Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(gradient:const LinearGradient(colors:[Color(0xFF111A32),Color(0xFF1A092A)]),borderRadius:BorderRadius.circular(22),border:Border.all(color:_purple.withValues(alpha:.35))),child:const Row(children:[CircleAvatar(radius:24,backgroundColor:Color(0x222F8BFF),child:Icon(Icons.settings_suggest_rounded,color:_purple,size:26)),SizedBox(width:11),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('Uygulama Ayarları',style:TextStyle(color:Colors.white,fontSize:21,fontWeight:FontWeight.w900)),SizedBox(height:2),Text('Production davranışlarını backend’den yönet.',style:TextStyle(color:_muted,fontSize:11.5))]))]));
-  Widget _section(String title,IconData icon,List<Widget> children)=>Container(padding:const EdgeInsets.all(14),decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(19),border:Border.all(color:_line)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Row(children:[Icon(icon,color:_purple,size:20),const SizedBox(width:7),Text(title,style:const TextStyle(color:Colors.white,fontSize:15,fontWeight:FontWeight.w900))]),const SizedBox(height:12),...children]));
-  Widget _field(TextEditingController c,String label,{int lines=1,TextInputType? keyboard})=>TextField(controller:c,maxLines:lines,keyboardType:keyboard,style:const TextStyle(color:Colors.white),decoration:InputDecoration(labelText:label,alignLabelWithHint:lines>1,filled:true,fillColor:const Color(0xFF10172B)));
-  Widget _platform(String name,TextEditingController version,TextEditingController url,bool force,ValueChanged<bool> onForce)=>Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(name,style:const TextStyle(color:Colors.white,fontSize:13,fontWeight:FontWeight.w900)),const SizedBox(height:8),Row(children:[Expanded(child:_field(version,'Minimum sürüm')),const SizedBox(width:8),Expanded(child:_field(url,'Mağaza URL'))]),SwitchListTile.adaptive(contentPadding:EdgeInsets.zero,value:force,onChanged:onForce,title:Text('$name zorunlu güncelleme',style:const TextStyle(color:Colors.white,fontWeight:FontWeight.w700)),subtitle:const Text('Minimum sürüm altındaki uygulamayı bloke eder.',style:TextStyle(color:_muted,fontSize:10.5)))]);
-  Widget _feature(String key,String label,IconData icon)=>SwitchListTile.adaptive(contentPadding:EdgeInsets.zero,value:features[key]??true,onChanged:(v)=>setState(()=>features[key]=v),secondary:Icon(icon,color:(features[key]??true)?_green:_muted),title:Text(label,style:const TextStyle(color:Colors.white,fontWeight:FontWeight.w700)),subtitle:Text((features[key]??true)?'Aktif':'Kapalı',style:TextStyle(color:(features[key]??true)?_green:_muted,fontSize:10.5,fontWeight:FontWeight.w800)));
+  Widget _hero()=>Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(gradient:const LinearGradient(colors:[Color(0xFFFFFFFF),Color(0xFFF3EEFF)]),borderRadius:BorderRadius.circular(22),border:Border.all(color:_purple.withValues(alpha:.35))),child:const Row(children:[CircleAvatar(radius:24,backgroundColor:Color(0x222F8BFF),child:Icon(Icons.settings_suggest_rounded,color:_purple,size:26)),SizedBox(width:11),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('Uygulama Ayarları',style:TextStyle(color:_ink,fontSize:21,fontWeight:FontWeight.w900)),SizedBox(height:2),Text('Production davranışlarını backend’den yönet.',style:TextStyle(color:_muted,fontSize:11.5))]))]));
+  Widget _section(String title,IconData icon,List<Widget> children)=>Container(padding:const EdgeInsets.all(14),decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(19),border:Border.all(color:_line)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Row(children:[Icon(icon,color:_purple,size:20),const SizedBox(width:7),Text(title,style:const TextStyle(color:_ink,fontSize:15,fontWeight:FontWeight.w900))]),const SizedBox(height:12),...children]));
+  Widget _field(TextEditingController c,String label,{int lines=1,TextInputType? keyboard})=>TextField(controller:c,maxLines:lines,keyboardType:keyboard,style:const TextStyle(color:_ink),decoration:InputDecoration(labelText:label,alignLabelWithHint:lines>1,filled:true,fillColor:AdminUi.surfaceSoft));
+  Widget _platform(String name,TextEditingController version,TextEditingController url,bool force,ValueChanged<bool> onForce)=>Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(name,style:const TextStyle(color:_ink,fontSize:13,fontWeight:FontWeight.w900)),const SizedBox(height:8),Row(children:[Expanded(child:_field(version,'Minimum sürüm')),const SizedBox(width:8),Expanded(child:_field(url,'Mağaza URL'))]),SwitchListTile.adaptive(contentPadding:EdgeInsets.zero,value:force,onChanged:onForce,title:Text('$name zorunlu güncelleme',style:const TextStyle(color:_ink,fontWeight:FontWeight.w700)),subtitle:const Text('Minimum sürüm altındaki uygulamayı bloke eder.',style:TextStyle(color:_muted,fontSize:10.5)))]);
+  Widget _feature(String key,String label,IconData icon)=>SwitchListTile.adaptive(contentPadding:EdgeInsets.zero,value:features[key]??true,onChanged:(v)=>setState(()=>features[key]=v),secondary:Icon(icon,color:(features[key]??true)?_green:_muted),title:Text(label,style:const TextStyle(color:_ink,fontWeight:FontWeight.w700)),subtitle:Text((features[key]??true)?'Aktif':'Kapalı',style:TextStyle(color:(features[key]??true)?_green:_muted,fontSize:10.5,fontWeight:FontWeight.w800)));
 }
