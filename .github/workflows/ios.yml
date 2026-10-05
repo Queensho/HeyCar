@@ -43,6 +43,7 @@ jobs:
         run: |
           /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName CepQontag" ios/Runner/Info.plist || true
           /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'QR kod taramak ve araç görselleri için kamera erişimi gerekir.'" ios/Runner/Info.plist
+          /usr/libexec/PlistBuddy -c "Add :NFCReaderUsageDescription string 'CepQontag NFC etiketlerini okumak ve hazırlamak için NFC erişimi gerekir.'" ios/Runner/Info.plist
           /usr/libexec/PlistBuddy -c "Add :NSMicrophoneUsageDescription string 'CepQontag sesli görüşmeleri için mikrofon erişimi gerekir.'" ios/Runner/Info.plist
           /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'Araç görseli seçmek için fotoğraf arşivi erişimi gerekir.'" ios/Runner/Info.plist
           /usr/libexec/PlistBuddy -c "Add :NSLocationWhenInUseUsageDescription string 'Park yerinizi kaydetmek için konum erişimi gerekir.'" ios/Runner/Info.plist
@@ -56,6 +57,11 @@ jobs:
           <dict>
             <key>aps-environment</key>
             <string>development</string>
+            <key>com.apple.developer.nfc.readersession.formats</key>
+            <array>
+              <string>NDEF</string>
+              <string>TAG</string>
+            </array>
           </dict>
           </plist>
           EOF
