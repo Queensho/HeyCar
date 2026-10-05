@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'cepqar_offers_page.dart';
 import 'cepqar_theme.dart';
@@ -24,6 +25,7 @@ class _DriverServicesPageState extends State<DriverServicesPage> {
   String? error;
   List<Map<String, dynamic>> vehicles = [];
   String selectedVehicleId = '';
+  String driverPhone = '';
 
   Map<String, dynamic>? get selectedVehicle {
     if (vehicles.isEmpty) return null;
@@ -47,6 +49,8 @@ class _DriverServicesPageState extends State<DriverServicesPage> {
       });
     }
     try {
+      final prefs = await SharedPreferences.getInstance();
+      driverPhone = prefs.getString('driver_phone') ?? '';
       final r = await DriverHttp.get(
         Uri.parse('${OnboardingBackend.baseUrl}/api/driver/entitlements'),
         json: false,
@@ -88,6 +92,12 @@ class _DriverServicesPageState extends State<DriverServicesPage> {
 
   bool get familyPremium => selectedVehicle?['familyPremium'] == true;
   bool get activeDriver => selectedVehicle?['activeDriver'] == true;
+  bool get testAccount {
+    var digits = driverPhone.replaceAll(RegExp(r'\D'), '');
+    if (digits.startsWith('90') && digits.length == 12) digits = digits.substring(2);
+    if (digits.startsWith('0') && digits.length == 11) digits = digits.substring(1);
+    return digits == '5074035857';
+  }
 
   String get vehicleId => '${selectedVehicle?['vehicleId'] ?? ''}';
   String get plate => '${selectedVehicle?['plate'] ?? ''}';
@@ -185,6 +195,21 @@ class _DriverServicesPageState extends State<DriverServicesPage> {
         builder: (_) => RoadsideHelpPage(
           driverMode: true,
           vehicleId: vehicleId,
+          initialTab: 1,
+        ),
+      ),
+    );
+  }
+
+  void openRoadsideHelp() {
+    if (!testAccount || vehicleId.isEmpty) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => RoadsideHelpPage(
+          driverMode: true,
+          vehicleId: vehicleId,
+          initialTab: 0,
         ),
       ),
     );
@@ -335,12 +360,21 @@ class _DriverServicesPageState extends State<DriverServicesPage> {
                 ),
                 _serviceCard(
                   Icons.fire_truck_rounded,
-                  'Çekici / Yol Yardım',
+                  'Çekici',
                   activeDriver
                       ? 'Yolda kaldığında çekici çağır ve canlı takip et.'
                       : 'Görüntüle; çağrı başlatmak için aktif sürücü olmalısın.',
                   const Color(0xFFFF8A43),
                   openTowing,
+                ),
+                _serviceCard(
+                  Icons.sos_rounded,
+                  'Yol Yardım',
+                  'Akü, lastik, yakıt ve yerinde müdahale desteği.',
+                  const Color(0xFFFF775F),
+                  openRoadsideHelp,
+                  comingSoon: true,
+                  disabled: !testAccount,
                 ),
                 _serviceCard(
                   Icons.local_parking_outlined,
@@ -350,6 +384,8 @@ class _DriverServicesPageState extends State<DriverServicesPage> {
                       : 'Vale durumunu gör; aracı istemek için aktif sürücü olmalısın.',
                   const Color(0xFF8B36FF),
                   openValet,
+                  comingSoon: true,
+                  disabled: !testAccount,
                 ),
                 _serviceCard(
                   Icons.build_rounded,
@@ -377,6 +413,8 @@ class _DriverServicesPageState extends State<DriverServicesPage> {
                   'CepQontag fırsatlarını ve kampanyalarını keşfet.',
                   const Color(0xFF23C976),
                   openOffers,
+                  comingSoon: true,
+                  disabled: !testAccount,
                 ),
                 const SizedBox(height: 4),
                 Container(
@@ -570,11 +608,13 @@ class _DriverServicesPageState extends State<DriverServicesPage> {
     Color color,
     VoidCallback tap, {
     bool familyLocked = false,
+    bool comingSoon = false,
+    bool disabled = false,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 9),
       child: InkWell(
-        onTap: tap,
+        onTap: disabled ? null : tap,
         borderRadius: BorderRadius.circular(18),
         child: Container(
           padding: const EdgeInsets.all(14),
@@ -611,6 +651,24 @@ class _DriverServicesPageState extends State<DriverServicesPage> {
                             ),
                           ),
                         ),
+                        if (comingSoon) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: CepqarTheme.purple.withValues(alpha: .10),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Text(
+                              'Yakında',
+                              style: TextStyle(
+                                color: CepqarTheme.purple,
+                                fontSize: 8.5,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                        ],
                         if (familyLocked) ...[
                           const SizedBox(width: 6),
                           Container(
@@ -647,12 +705,16 @@ class _DriverServicesPageState extends State<DriverServicesPage> {
                 ),
               ),
               Icon(
-                familyLocked
-                    ? Icons.lock_outline_rounded
-                    : Icons.chevron_right_rounded,
-                color: familyLocked
-                    ? const Color(0xFFFFB928)
-                    : CepqarTheme.muted,
+                disabled
+                    ? Icons.schedule_rounded
+                    : familyLocked
+                        ? Icons.lock_outline_rounded
+                        : Icons.chevron_right_rounded,
+                color: disabled
+                    ? CepqarTheme.purple
+                    : familyLocked
+                        ? const Color(0xFFFFB928)
+                        : CepqarTheme.muted,
                 size: 20,
               ),
             ],
