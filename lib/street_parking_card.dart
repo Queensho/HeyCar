@@ -8,10 +8,12 @@ import 'package:url_launcher/url_launcher.dart';
 import 'cepqar_theme.dart';
 import 'onboarding_backend.dart';
 import 'owner_auth.dart';
+import 'driver_auth.dart';
 
 class StreetParkingCard extends StatefulWidget {
-  const StreetParkingCard({super.key, required this.vehicleId});
+  const StreetParkingCard({super.key, required this.vehicleId, this.driverMode = false});
   final String vehicleId;
+  final bool driverMode;
   @override State<StreetParkingCard> createState()=>_StreetParkingCardState();
 }
 
@@ -20,6 +22,7 @@ class _StreetParkingCardState extends State<StreetParkingCard>{
   double? lat,lng; DateTime? parkedAt; bool busy=false; Timer? timer;
   Map<String,dynamic>? parkNote; bool noteBusy=false;
   String get prefix=>'street_park_${widget.vehicleId}_';
+  Uri get _parkNoteUri=>Uri.parse('$base${widget.driverMode?'/api/driver/vehicles/':'/api/owner/vehicles/'}${Uri.encodeComponent(widget.vehicleId)}/park-note');
 
   @override void initState(){super.initState();_load();timer=Timer.periodic(const Duration(minutes:1),(_){if(mounted&&parkedAt!=null)setState((){});});}
   @override void didUpdateWidget(covariant StreetParkingCard old){super.didUpdateWidget(old);if(old.vehicleId!=widget.vehicleId)_load();}
@@ -33,9 +36,9 @@ class _StreetParkingCardState extends State<StreetParkingCard>{
   }
 
   Future<void> _loadParkNote()async{
-    final owner=OnboardingDraft.userId.trim();if(owner.isEmpty||widget.vehicleId.isEmpty)return;
+    final owner=OnboardingDraft.userId.trim();if((!widget.driverMode&&owner.isEmpty)||widget.vehicleId.isEmpty)return;
     try{
-      final r=await OwnerHttp.get(Uri.parse('$base/api/owner/vehicles/${Uri.encodeComponent(widget.vehicleId)}/park-note'),json:false).timeout(const Duration(seconds:12));
+      final r=(widget.driverMode?await DriverHttp.get(_parkNoteUri,json:false):await OwnerHttp.get(_parkNoteUri,json:false)).timeout(const Duration(seconds:12));
       if(r.statusCode<200||r.statusCode>=300)return;
       final d=jsonDecode(r.body);if(d is Map&&mounted)setState(()=>parkNote=d['parkNote'] is Map?Map<String,dynamic>.from(d['parkNote']):null);
     }catch(_){}
@@ -57,18 +60,19 @@ class _StreetParkingCardState extends State<StreetParkingCard>{
   }
 
   Future<void> _deactivateNote()async{
-    final owner=OnboardingDraft.userId.trim();if(owner.isEmpty||widget.vehicleId.isEmpty)return;
-    try{await OwnerHttp.delete(Uri.parse('$base/api/owner/vehicles/${Uri.encodeComponent(widget.vehicleId)}/park-note'),json:false).timeout(const Duration(seconds:12));}catch(_){}
+    final owner=OnboardingDraft.userId.trim();if((!widget.driverMode&&owner.isEmpty)||widget.vehicleId.isEmpty)return;
+    try{if(widget.driverMode){await DriverHttp.delete(_parkNoteUri,json:false).timeout(const Duration(seconds:12));}else{await OwnerHttp.delete(_parkNoteUri,json:false).timeout(const Duration(seconds:12));}}catch(_){}
     if(mounted)setState(()=>parkNote=null);
   }
 
   Future<bool> _saveNote(String message,int? minutes,bool active)async{
-    final owner=OnboardingDraft.userId.trim();if(owner.isEmpty||widget.vehicleId.isEmpty)return false;
+    final owner=OnboardingDraft.userId.trim();if((!widget.driverMode&&owner.isEmpty)||widget.vehicleId.isEmpty)return false;
     if(!active){await _deactivateNote();return true;}
     setState(()=>noteBusy=true);
     try{
       final expires=minutes==null?null:DateTime.now().toUtc().add(Duration(minutes:minutes)).toIso8601String();
-      final r=await OwnerHttp.post(Uri.parse('$base/api/owner/vehicles/${Uri.encodeComponent(widget.vehicleId)}/park-note'),body:jsonEncode({'message':message.trim(),'expiresAt':expires,'isActive':true})).timeout(const Duration(seconds:12));
+      final body=jsonEncode({'message':message.trim(),'expiresAt':expires,'isActive':true});
+      final r=(widget.driverMode?await DriverHttp.post(_parkNoteUri,body:body):await OwnerHttp.post(_parkNoteUri,body:body)).timeout(const Duration(seconds:12));
       if(r.statusCode<200||r.statusCode>=300)throw Exception();
       final d=jsonDecode(r.body);if(d is Map&&d['parkNote'] is Map&&mounted)setState(()=>parkNote=Map<String,dynamic>.from(d['parkNote']));
       return true;
@@ -128,23 +132,23 @@ class _StreetParkingCardState extends State<StreetParkingCard>{
                     return;
                   }
                   final owner=OnboardingDraft.userId.trim();
-                  if(owner.isEmpty||widget.vehicleId.isEmpty)return;
+                  if((!widget.driverMode&&owner.isEmpty)||widget.vehicleId.isEmpty)return;
                   FocusScope.of(modalContext).unfocus();
                   setSheet(()=>saving=true);
                   try{
-                    http.Response r;
+                    late http.Response r;
                     if(!showOnQr){
-                      r=await http.delete(
-                        Uri.parse('$base/api/owner/vehicles/${Uri.encodeComponent(widget.vehicleId)}/park-note'),
-                        headers:await OwnerAuth.headers(json:false),
+                      r=(widget.driverMode
+                        ?await DriverHttp.delete(_parkNoteUri,json:false)
+                        :await OwnerHttp.delete(_parkNoteUri,json:false)
                       ).timeout(const Duration(seconds:12));
                     }else{
                       final minutes=presets[selected];
                       final expires=minutes==null?null:DateTime.now().toUtc().add(Duration(minutes:minutes)).toIso8601String();
-                      r=await http.post(
-                        Uri.parse('$base/api/owner/vehicles/${Uri.encodeComponent(widget.vehicleId)}/park-note'),
-                        headers:await OwnerAuth.headers(),
-                        body:jsonEncode({'message':msg,'expiresAt':expires,'isActive':true}),
+                      final body=jsonEncode({'message':msg,'expiresAt':expires,'isActive':true});
+                      r=(widget.driverMode
+                        ?await DriverHttp.post(_parkNoteUri,body:body)
+                        :await OwnerHttp.post(_parkNoteUri,body:body)
                       ).timeout(const Duration(seconds:12));
                     }
                     if(r.statusCode<200||r.statusCode>=300)throw Exception();
