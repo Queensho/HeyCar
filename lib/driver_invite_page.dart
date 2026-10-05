@@ -8,6 +8,7 @@ import 'driver_auth.dart';
 import 'push_notifications.dart';
 import 'account_recovery_page.dart';
 import 'legal_pages.dart';
+import 'driver_services_page.dart';
 
 const _api = 'https://heycar-api-185-165-46-213.nip.io';
 const _bg = Color(0xFF07111F);
@@ -690,32 +691,34 @@ class _DriverHomePageState extends State<DriverHomePage> {
         notifications: notifications,
         loading: loading,
         onRefresh: () => load(),
-        onOpenNotifications: () => setState(() => current = 1),
-        onOpenVehicles: () => setState(() => current = 2),
-      ),
-      _DriverNotificationsPage(
-        items: notifications,
-        loading: loading,
-        onRefresh: () => load(),
+        onOpenNotifications: () => setState(() => current = 3),
+        onOpenVehicles: () => setState(() => current = 1),
       ),
       _DriverVehiclesPage(
         vehicles: vehicles,
         loading: loading,
         onRefresh: () => load(),
       ),
+      const DriverServicesPage(),
+      _DriverNotificationsPage(
+        items: notifications,
+        loading: loading,
+        onRefresh: () => load(),
+      ),
       _DriverSettingsPage(
         driverName: driverName,
-        onOpenVehicles: () => setState(() => current = 2),
-        onOpenNotifications: () => setState(() => current = 1),
+        onOpenVehicles: () => setState(() => current = 1),
+        onOpenNotifications: () => setState(() => current = 3),
         onRefresh: () => load(),
       ),
     ];
 
-    const labels = ['Ana Sayfa', 'Bildirimler', 'Araçlarım', 'Profil'];
+    const labels = ['Ana Sayfa', 'Araçlarım', 'Hizmetler', 'Bildirimler', 'Profil'];
     const icons = [
       Icons.home_rounded,
-      Icons.notifications_none_rounded,
       Icons.directions_car_outlined,
+      Icons.grid_view_rounded,
+      Icons.receipt_long_outlined,
       Icons.person_outline_rounded,
     ];
 
@@ -747,7 +750,7 @@ class _DriverHomePageState extends State<DriverHomePage> {
             ],
           ),
           child:Row(
-            children:List.generate(4,(i){
+            children:List.generate(5,(i){
               final selected=current==i;
               return Expanded(
                 child:InkWell(
@@ -772,7 +775,7 @@ class _DriverHomePageState extends State<DriverHomePage> {
                               color:selected?CepqarTheme.purple:navMuted,
                               size:22,
                             ),
-                            if(i==1&&unreadCount>0)
+                            if(i==3&&unreadCount>0)
                               Positioned(
                                 right:-6,
                                 top:-5,
