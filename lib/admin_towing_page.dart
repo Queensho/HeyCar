@@ -20,7 +20,8 @@ class _AdminTowingPage extends State<AdminTowingPage>{
  Future<void> status(String id,String value,[String note=''])async{await http.patch(Uri.parse('$_api/api/admin/manage/towing/providers/$id/status'),headers:h,body:jsonEncode({'status':value,'note':note}));await load();}
  Future<void> remove(String id)async{await http.delete(Uri.parse('$_api/api/admin/manage/towing/providers/$id'),headers:h);await load();}
  Future<void> open(Map<String,dynamic> row)async{final d=await detail('${row['id']}');if(!mounted)return;await showDialog(context:context,builder:(_)=>ProviderDialog(data:d,headers:h,onStatus:(v,n)=>status('${row['id']}',v,n),onReload:()=>detail('${row['id']}')));await load();}
- @override Widget build(BuildContext c)=>Container(color:_bg,child:Column(children:[Padding(padding:const EdgeInsets.all(14),child:Row(children:[const Expanded(child:Text('Çekici Yönetimi',style:TextStyle(fontSize:22,fontWeight:FontWeight.w900))),DropdownButton<String>(value:filter,items:const [('all','Tümü'),('pending','Başvurular'),('active','Aktif'),('suspended','Askıda'),('rejected','Reddedilen'),('banned','Banlı')].map((x)=>DropdownMenuItem(value:x.$1,child:Text(x.$2))).toList(),onChanged:(v){if(v!=null){filter=v;load();}}),IconButton(onPressed:load,icon:const Icon(Icons.refresh))])),Expanded(child:loading?const Center(child:CircularProgressIndicator()):rows.isEmpty?const Center(child:Text('Kayıt yok',style:TextStyle(color:_muted))):ListView.builder(padding:const EdgeInsets.all(14),itemCount:rows.length,itemBuilder:(_,i){final x=rows[i];return Card(color:_card,child:ListTile(onTap:()=>open(x),leading:CircleAvatar(backgroundColor:_purple.withValues(alpha:.18),child:const Icon(Icons.fire_truck,color:_purple)),title:Text('${x['display_name']??'-'}',style:const TextStyle(fontWeight:FontWeight.w900)),subtitle:Text('${x['provider_type']=='company'?'Firma':'Bireysel'} • ${x['phone']??'-'}\n${x['document_count']??0} belge • ${x['vehicle_count']??0} araç • ${x['driver_count']??0} sürücü'),isThreeLine:true,trailing:Chip(label:Text('${x['status']}'))));}))]));}
+ Future<void> pricing()async{try{final r=await http.get(Uri.parse('$_api/api/admin/manage/towing/pricing'),headers:h);if(r.statusCode!=200)throw Exception();final d=Map<String,dynamic>.from(jsonDecode(r.body));if(!mounted)return;await showDialog(context:context,builder:(_)=>TowingPricingDialog(data:d,headers:h));}catch(_){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Fiyatlandırma yüklenemedi.')));}}
+ @override Widget build(BuildContext c)=>Container(color:_bg,child:Column(children:[Padding(padding:const EdgeInsets.all(14),child:Row(children:[const Expanded(child:Text('Çekici Yönetimi',style:TextStyle(fontSize:22,fontWeight:FontWeight.w900))),OutlinedButton.icon(onPressed:pricing,icon:const Icon(Icons.payments_outlined),label:const Text('Fiyatlandırma')),const SizedBox(width:10),DropdownButton<String>(value:filter,items:const [('all','Tümü'),('pending','Başvurular'),('active','Aktif'),('suspended','Askıda'),('rejected','Reddedilen'),('banned','Banlı')].map((x)=>DropdownMenuItem(value:x.$1,child:Text(x.$2))).toList(),onChanged:(v){if(v!=null){filter=v;load();}}),IconButton(onPressed:load,icon:const Icon(Icons.refresh))])),Expanded(child:loading?const Center(child:CircularProgressIndicator()):rows.isEmpty?const Center(child:Text('Kayıt yok',style:TextStyle(color:_muted))):ListView.builder(padding:const EdgeInsets.all(14),itemCount:rows.length,itemBuilder:(_,i){final x=rows[i];return Card(color:_card,child:ListTile(onTap:()=>open(x),leading:CircleAvatar(backgroundColor:_purple.withValues(alpha:.18),child:const Icon(Icons.fire_truck,color:_purple)),title:Text('${x['display_name']??'-'}',style:const TextStyle(fontWeight:FontWeight.w900)),subtitle:Text('${x['provider_type']=='company'?'Firma':'Bireysel'} • ${x['phone']??'-'}\n${x['document_count']??0} belge • ${x['vehicle_count']??0} araç • ${x['driver_count']??0} sürücü'),isThreeLine:true,trailing:Chip(label:Text('${x['status']}'))));}))]));}
 
 class ProviderDialog extends StatefulWidget{const ProviderDialog({super.key,required this.data,required this.headers,required this.onStatus,required this.onReload});final Map<String,dynamic> data;final Map<String,String> headers;final Future<void> Function(String,String) onStatus;final Future<Map<String,dynamic>> Function() onReload;@override State<ProviderDialog> createState()=>_ProviderDialog();}
 class _ProviderDialog extends State<ProviderDialog>{late Map<String,dynamic>d;bool busy=false;@override void initState(){super.initState();d=widget.data;}
@@ -29,4 +30,170 @@ class _ProviderDialog extends State<ProviderDialog>{late Map<String,dynamic>d;bo
  Future<void> preview(Map x)async{final r=await http.get(Uri.parse('$_api/api/admin/manage/towing/documents/${x['id']}/file'),headers:widget.headers);if(!mounted||r.statusCode!=200)return;await showDialog(context:context,builder:(_)=>Dialog(child:InteractiveViewer(child:Image.memory(Uint8List.fromList(r.bodyBytes),fit:BoxFit.contain))));}
  @override Widget build(BuildContext c){final p=Map<String,dynamic>.from(d['provider']??{}),docs=List<Map<String,dynamic>>.from((d['documents']??[]).map((x)=>Map<String,dynamic>.from(x)));return AlertDialog(title:Row(children:[const Icon(Icons.fire_truck,color:_purple),const SizedBox(width:8),Expanded(child:Text('${p['display_name']??'Çekici'}'))]),content:SizedBox(width:720,child:SingleChildScrollView(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('${p['provider_type']=='company'?'Firma':'Bireysel'} • ${p['phone']??'-'} • ${p['email']??'-'}',style:const TextStyle(color:_muted)),if((p['company_title']??'').toString().isNotEmpty)Text('Firma: ${p['company_title']} • Vergi No: ${p['tax_number']??'-'}'),const SizedBox(height:16),const Text('Belgeler',style:TextStyle(fontSize:17,fontWeight:FontWeight.w900)),...docs.map((x)=>Card(child:ListTile(onTap:()=>preview(x),leading:const Icon(Icons.description,color:_purple),title:Text(label('${x['document_type']}')),subtitle:Text('${x['original_name']} • ${x['status']}'),trailing:Wrap(children:[IconButton(tooltip:'Onayla',onPressed:()=>reviewDoc(x,'approved'),icon:const Icon(Icons.check_circle,color:_lime)),IconButton(tooltip:'Reddet',onPressed:()=>reviewDoc(x,'rejected'),icon:const Icon(Icons.cancel,color:Colors.redAccent))])))),if(docs.isEmpty)const Text('Belge yüklenmemiş.',style:TextStyle(color:_muted)),const SizedBox(height:16),Text('Durum: ${p['status']}',style:const TextStyle(fontWeight:FontWeight.w900)),if((p['review_note']??'').toString().isNotEmpty)Text('Admin notu: ${p['review_note']}',style:const TextStyle(color:_muted))]))),actions:[TextButton(onPressed:busy?null:()=>act('banned'),child:const Text('Banla',style:TextStyle(color:Colors.redAccent))),TextButton(onPressed:busy?null:()=>act('suspended'),child:const Text('Askıya Al')),TextButton(onPressed:busy?null:()=>act('rejected'),child:const Text('Reddet')),FilledButton(onPressed:busy?null:()=>act('active'),child:const Text('Onayla')),TextButton(onPressed:()=>Navigator.pop(context),child:const Text('Kapat'))]);}
  String label(String k)=>{'identity_license':'Kimlik / Ehliyet','vehicle_registration':'Çekici Ruhsatı','authorization_certificate':'Yetki Belgesi','tax_certificate':'Vergi Levhası'}[k]??k;
+}
+
+
+class TowingPricingDialog extends StatefulWidget{
+ const TowingPricingDialog({super.key,required this.data,required this.headers});
+ final Map<String,dynamic> data;
+ final Map<String,String> headers;
+ @override State<TowingPricingDialog> createState()=>_TowingPricingDialogState();
+}
+
+class _TowingPricingDialogState extends State<TowingPricingDialog>{
+ late List<Map<String,dynamic>> vehicles;
+ final Map<String,TextEditingController> base={};
+ final Map<String,TextEditingController> km={};
+ final Set<String> saving={};
+
+ @override
+ void initState(){
+  super.initState();
+  vehicles=List<Map<String,dynamic>>.from(
+   (widget.data['vehicleTypes']??[]).map((x)=>Map<String,dynamic>.from(x)),
+  )..removeWhere((x)=>!['car','suv_pickup','light_commercial','motorcycle'].contains('${x['code']}'));
+  for(final v in vehicles){
+   final code='${v['code']}';
+   base[code]=TextEditingController(text:_n(v['base_fee']));
+   km[code]=TextEditingController(text:_n(v['per_km_fee']));
+  }
+ }
+
+ String _n(dynamic v){
+  final n=double.tryParse('${v??0}')??0;
+  return n==n.roundToDouble()?n.toInt().toString():n.toStringAsFixed(2);
+ }
+
+ @override
+ void dispose(){
+  for(final c in base.values)c.dispose();
+  for(final c in km.values)c.dispose();
+  super.dispose();
+ }
+
+ String _label(String code,String fallback)=>switch(code){
+  'car'=>'Binek Otomobil',
+  'suv_pickup'=>'SUV / 4x4',
+  'light_commercial'=>'Hafif Ticari',
+  'motorcycle'=>'Motosiklet',
+  _=>fallback,
+ };
+
+ IconData _icon(String code)=>switch(code){
+  'car'=>Icons.directions_car_filled_rounded,
+  'suv_pickup'=>Icons.directions_car_rounded,
+  'light_commercial'=>Icons.local_shipping_rounded,
+  'motorcycle'=>Icons.two_wheeler_rounded,
+  _=>Icons.directions_car_outlined,
+ };
+
+ Future<void> save(Map<String,dynamic> v)async{
+  final code='${v['code']}';
+  final b=double.tryParse((base[code]?.text??'').replaceAll(',','.'));
+  final k=double.tryParse((km[code]?.text??'').replaceAll(',','.'));
+  if(b==null||k==null||b<0||k<0){
+   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Geçerli başlangıç ve km ücreti gir.')));
+   return;
+  }
+  setState(()=>saving.add(code));
+  try{
+   final r=await http.put(
+    Uri.parse('$_api/api/admin/manage/towing/vehicle-types/$code'),
+    headers:widget.headers,
+    body:jsonEncode({'baseFee':b,'perKmFee':k,'minimumFee':b}),
+   );
+   if(r.statusCode<200||r.statusCode>=300)throw Exception();
+   final d=Map<String,dynamic>.from(jsonDecode(r.body));
+   final updated=Map<String,dynamic>.from(d['vehicleType']??{});
+   final i=vehicles.indexWhere((x)=>'${x['code']}'==code);
+   if(i>=0)vehicles[i]=updated;
+   if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('${_label(code,'Araç')} fiyatı kaydedildi.')));
+  }catch(_){
+   if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Fiyat kaydedilemedi.')));
+  }finally{
+   if(mounted)setState(()=>saving.remove(code));
+  }
+ }
+
+ Widget field(TextEditingController c,String label)=>TextField(
+  controller:c,
+  keyboardType:const TextInputType.numberWithOptions(decimal:true),
+  decoration:InputDecoration(
+   labelText:label,
+   prefixText:'₺ ',
+   filled:true,
+   fillColor:Colors.white.withValues(alpha:.04),
+   border:OutlineInputBorder(borderRadius:BorderRadius.circular(12)),
+  ),
+ );
+
+ @override
+ Widget build(BuildContext context)=>AlertDialog(
+  backgroundColor:_card,
+  title:const Row(children:[
+   Icon(Icons.payments_rounded,color:_purple),
+   SizedBox(width:9),
+   Text('Çekici Fiyatlandırma',style:TextStyle(fontWeight:FontWeight.w900)),
+  ]),
+  content:SizedBox(
+   width:760,
+   child:SingleChildScrollView(
+    child:Column(
+     crossAxisAlignment:CrossAxisAlignment.start,
+     children:[
+      const Text(
+       'Fiyatlar araç tipine göre hesaplanır: Başlangıç ücreti + (mesafe × km ücreti).',
+       style:TextStyle(color:_muted),
+      ),
+      const SizedBox(height:14),
+      ...vehicles.map((v){
+       final code='${v['code']}';
+       final busy=saving.contains(code);
+       return Container(
+        margin:const EdgeInsets.only(bottom:12),
+        padding:const EdgeInsets.all(14),
+        decoration:BoxDecoration(
+         color:_bg,
+         borderRadius:BorderRadius.circular(16),
+         border:Border.all(color:Colors.white.withValues(alpha:.08)),
+        ),
+        child:Row(
+         children:[
+          Container(
+           width:48,height:48,
+           decoration:BoxDecoration(color:_purple.withValues(alpha:.14),borderRadius:BorderRadius.circular(13)),
+           child:Icon(_icon(code),color:_purple),
+          ),
+          const SizedBox(width:12),
+          SizedBox(
+           width:150,
+           child:Text(_label(code,'${v['name']??code}'),style:const TextStyle(fontWeight:FontWeight.w900)),
+          ),
+          const SizedBox(width:12),
+          Expanded(child:field(base[code]!,'Başlangıç ücreti')),
+          const SizedBox(width:10),
+          Expanded(child:field(km[code]!,'Km ücreti')),
+          const SizedBox(width:10),
+          SizedBox(
+           width:96,
+           height:48,
+           child:FilledButton(
+            onPressed:busy?null:()=>save(v),
+            child:busy
+             ?const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2))
+             :const Text('Kaydet'),
+           ),
+          ),
+         ],
+        ),
+       );
+      }),
+     ],
+    ),
+   ),
+  ),
+  actions:[
+   TextButton(onPressed:()=>Navigator.pop(context),child:const Text('Kapat')),
+  ],
+ );
 }
