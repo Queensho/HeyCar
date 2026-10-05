@@ -64,8 +64,20 @@ class _PasswordOwnerLoginScreenState extends State<PasswordOwnerLoginScreen> {
         body: jsonEncode({'phone': normalized, 'password': password.text}),
       ).timeout(const Duration(seconds: 15));
 
-      final data = r.body.isEmpty ? <String, dynamic>{} : jsonDecode(r.body);
-      if (r.statusCode >= 200 && r.statusCode < 300 && data is Map<String, dynamic>) {
+      Map<String, dynamic> data = <String, dynamic>{};
+      if (r.body.isNotEmpty) {
+        try {
+          final decoded = jsonDecode(r.body);
+          if (decoded is Map) data = Map<String, dynamic>.from(decoded);
+        } catch (_) {
+          throw Exception(
+            r.statusCode == 403
+                ? 'Web giriş bağlantısı engellendi. Sunucu erişim ayarı güncellenmeli.'
+                : 'Sunucudan geçersiz yanıt alındı. Tekrar dene.',
+          );
+        }
+      }
+      if (r.statusCode >= 200 && r.statusCode < 300) {
         await OwnerAuth.saveFrom(data);
         final user = data['user'];
         final vehicles = data['vehicles'];
@@ -100,13 +112,16 @@ class _PasswordOwnerLoginScreenState extends State<PasswordOwnerLoginScreen> {
         return;
       }
 
-      final code = data is Map ? data['error']?.toString() ?? '' : '';
+      final code = data['error']?.toString() ?? '';
       final message = switch (code) {
         'USER_NOT_FOUND' => 'Telefon numarası veya şifre hatalı.',
         'INVALID_CREDENTIALS' => 'Telefon numarası veya şifre hatalı.',
         'USER_SUSPENDED' => 'Bu hesap şu anda kullanıma kapalı.',
         'PASSWORD_INVALID' => 'Telefon numarası veya şifre hatalı.',
         'INVALID_PHONE' => 'Geçerli bir cep telefonu numarası gir.',
+        'TOO_MANY_ATTEMPTS' => 'Çok fazla başarısız deneme yapıldı. 15 dakika sonra tekrar dene.',
+        'CORS_ORIGIN_DENIED' => 'Web giriş bağlantısı sunucu tarafından engellendi.',
+        'SERVER_ERROR' => 'Sunucuda geçici bir hata oluştu. Tekrar dene.',
         _ => 'Giriş yapılamadı. Tekrar dene.',
       };
       throw Exception(message);
