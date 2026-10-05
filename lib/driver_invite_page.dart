@@ -716,12 +716,12 @@ class _DriverHomePageState extends State<DriverHomePage> {
       Icons.home_rounded,
       Icons.notifications_none_rounded,
       Icons.directions_car_outlined,
-      Icons.settings_outlined,
+      Icons.person_outline_rounded,
     ];
 
     final light=CepqarTheme.isLight;
-    final navBg=light?Colors.white:const Color(0xFF0B1426);
-    final navMuted=light?const Color(0xFF7D879C):const Color(0xFF8F9AB7);
+    final navBg=light?Colors.white:const Color(0xFF090F1D);
+    final navMuted=CepqarTheme.muted;
 
     return Scaffold(
       backgroundColor:CepqarTheme.bg,
@@ -729,16 +729,22 @@ class _DriverHomePageState extends State<DriverHomePage> {
       bottomNavigationBar:SafeArea(
         top:false,
         child:Container(
-          height:78,
-          margin:const EdgeInsets.fromLTRB(14,0,14,10),
-          padding:const EdgeInsets.symmetric(horizontal:5,vertical:6),
+          height:66,
+          margin:const EdgeInsets.fromLTRB(14,0,14,8),
+          padding:const EdgeInsets.symmetric(horizontal:5,vertical:5),
           decoration:BoxDecoration(
             color:navBg,
-            borderRadius:BorderRadius.circular(28),
-            border:Border.all(color:CepqarTheme.line),
-            boxShadow:light
-              ?[BoxShadow(color:Colors.black.withValues(alpha:.06),blurRadius:18,offset:const Offset(0,6))]
-              :null,
+            borderRadius:BorderRadius.circular(25),
+            border:Border.all(
+              color:light?const Color(0xFFE6E6F0):const Color(0xFF1B2540),
+            ),
+            boxShadow:[
+              BoxShadow(
+                color:Colors.black.withValues(alpha:light ? .08 : .30),
+                blurRadius:22,
+                offset:const Offset(0,8),
+              ),
+            ],
           ),
           child:Row(
             children:List.generate(4,(i){
@@ -746,13 +752,14 @@ class _DriverHomePageState extends State<DriverHomePage> {
               return Expanded(
                 child:InkWell(
                   onTap:()=>setState(()=>current=i),
-                  borderRadius:BorderRadius.circular(22),
-                  child:Container(
+                  borderRadius:BorderRadius.circular(18),
+                  child:AnimatedContainer(
+                    duration:const Duration(milliseconds:180),
                     decoration:BoxDecoration(
                       color:selected
-                        ?(light?const Color(0xFFF1E9FF):const Color(0xFF22164A))
+                        ?CepqarTheme.purple.withValues(alpha:light ? .10 : .18)
                         :Colors.transparent,
-                      borderRadius:BorderRadius.circular(22),
+                      borderRadius:BorderRadius.circular(20),
                     ),
                     child:Column(
                       mainAxisAlignment:MainAxisAlignment.center,
@@ -760,13 +767,17 @@ class _DriverHomePageState extends State<DriverHomePage> {
                         Stack(
                           clipBehavior:Clip.none,
                           children:[
-                            Icon(icons[i],color:selected?_purple:navMuted,size:24),
+                            Icon(
+                              icons[i],
+                              color:selected?CepqarTheme.purple:navMuted,
+                              size:22,
+                            ),
                             if(i==1&&unreadCount>0)
                               Positioned(
-                                right:-8,
-                                top:-7,
+                                right:-6,
+                                top:-5,
                                 child:Container(
-                                  constraints:const BoxConstraints(minWidth:17,minHeight:17),
+                                  constraints:const BoxConstraints(minWidth:16,minHeight:16),
                                   padding:const EdgeInsets.symmetric(horizontal:4),
                                   alignment:Alignment.center,
                                   decoration:const BoxDecoration(
@@ -776,8 +787,8 @@ class _DriverHomePageState extends State<DriverHomePage> {
                                   child:Text(
                                     unreadCount>99?'99+':'$unreadCount',
                                     style:const TextStyle(
-                                      color:Color(0xFFFFFFFF),
-                                      fontSize:8.5,
+                                      color:Colors.white,
+                                      fontSize:8,
                                       fontWeight:FontWeight.w900,
                                     ),
                                   ),
@@ -791,9 +802,9 @@ class _DriverHomePageState extends State<DriverHomePage> {
                           maxLines:1,
                           overflow:TextOverflow.ellipsis,
                           style:TextStyle(
-                            color:selected?_purple:navMuted,
-                            fontSize:9.8,
-                            fontWeight:selected?FontWeight.w900:FontWeight.w700,
+                            color:selected?CepqarTheme.purple:navMuted,
+                            fontSize:CepqarTheme.navText,
+                            fontWeight:selected?FontWeight.w800:FontWeight.w600,
                           ),
                         ),
                       ],
