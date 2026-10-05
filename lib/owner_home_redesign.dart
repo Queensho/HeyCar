@@ -19,9 +19,11 @@ class OwnerHomeRedesign extends StatefulWidget{
     required this.services,
     required this.park,
     required this.shortcut,
+    this.active=true,
   });
   final VoidCallback notifications,vehicles,services,park;
   final ValueChanged<String> shortcut;
+  final bool active;
   @override State<OwnerHomeRedesign> createState()=>_OwnerHomeRedesignState();
 }
 
@@ -37,6 +39,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   List<String> quickAccessIds=const ['parking','maintenance','drivers','inspection'];
   bool valetRequesting=false;
   bool loading=true;
+  bool _refreshing=false;
 
   bool get light=>CepqarTheme.isLight;
   Color get bg=>light?const Color(0xFFF7F7FC):const Color(0xFF050913);
@@ -76,9 +79,29 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
 
   @override void initState(){
     super.initState();
-    load();
     _loadQuickAccess();
-    timer=Timer.periodic(const Duration(seconds:8),(_)=>load(silent:true));
+    if(widget.active){
+      load();
+      _startPolling();
+    }else{
+      loading=false;
+    }
+  }
+  void _startPolling(){
+    timer?.cancel();
+    if(!widget.active)return;
+    timer=Timer.periodic(const Duration(seconds:20),(_)=>load(silent:true));
+  }
+  @override void didUpdateWidget(covariant OwnerHomeRedesign oldWidget){
+    super.didUpdateWidget(oldWidget);
+    if(oldWidget.active!=widget.active){
+      if(widget.active){
+        load(silent:true);
+        _startPolling();
+      }else{
+        timer?.cancel();
+      }
+    }
   }
   @override void dispose(){timer?.cancel();super.dispose();}
 
@@ -218,6 +241,8 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   }
 
   Future<void> load({bool silent=false})async{
+    if(_refreshing||(!widget.active&&silent))return;
+    _refreshing=true;
     if(!silent&&mounted)setState(()=>loading=true);
     try{
       final vehicleId=QrDraft.vehicleId.trim();
@@ -291,8 +316,12 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         valetSession=nextValet;
         valetDeliveryCode=nextDeliveryCode;
       });
-    }catch(_){}
-    if(mounted)setState(()=>loading=false);
+    }catch(_){
+      if(mounted&&!silent)setState(()=>loading=false);
+    }finally{
+      _refreshing=false;
+    }
+    if(mounted&&loading)setState(()=>loading=false);
   }
 
   List<Map<String,dynamic>> get monthItems{
@@ -1317,8 +1346,10 @@ class OwnerServicesRedesign extends StatelessWidget{
     required this.onOffers,
     required this.onMaintenance,
     required this.onReminders,
+    this.active=true,
   });
   final VoidCallback onVale,onTowing,onPark,onOffers,onMaintenance,onReminders;
+  final bool active;
 
   @override Widget build(BuildContext context){
     final light=CepqarTheme.isLight,text=CepqarTheme.text,muted=CepqarTheme.muted,panel=CepqarTheme.panel,line=CepqarTheme.line;
@@ -1365,7 +1396,7 @@ class OwnerServicesRedesign extends StatelessWidget{
           ),
         )),
         const SizedBox(height:8),
-        OwnerValetCard(vehicleId:QrDraft.vehicleId),
+        OwnerValetCard(vehicleId:QrDraft.vehicleId,active:active),
       ])),
     );
   }
