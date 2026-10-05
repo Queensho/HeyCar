@@ -447,9 +447,9 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
   Widget _map() {
     final center = LatLng(a ?? 41.0, b ?? 28.9);
     return SizedBox(
-      height: 246,
+      height: 164,
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(25),
+        borderRadius: BorderRadius.circular(20),
         child: Stack(
           children: [
             Positioned.fill(
@@ -496,20 +496,20 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
                       if (a != null)
                         Marker(
                           point: LatLng(a!, b!),
-                          width: 62,
-                          height: 62,
+                          width: 48,
+                          height: 48,
                           child: Container(
                             decoration: BoxDecoration(
                               color: _purple.withValues(alpha: .24),
                               shape: BoxShape.circle,
                             ),
-                            padding: const EdgeInsets.all(11),
+                            padding: const EdgeInsets.all(8),
                             child: Container(
                               decoration: BoxDecoration(
                                 color: _purple,
                                 shape: BoxShape.circle,
                                 border:
-                                    Border.all(color: Colors.white, width: 5),
+                                    Border.all(color: Colors.white, width: 4),
                                 boxShadow: [
                                   BoxShadow(
                                     color: _purple.withValues(alpha: .45),
@@ -538,8 +538,8 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
               ),
             ),
             Positioned(
-              right: 14,
-              bottom: 14,
+              right: 10,
+              bottom: 10,
               child: Material(
                 color: Colors.white,
                 shape: const CircleBorder(),
@@ -548,18 +548,18 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
                   customBorder: const CircleBorder(),
                   onTap: locating ? null : () => locate(),
                   child: SizedBox(
-                    width: 54,
-                    height: 54,
+                    width: 46,
+                    height: 46,
                     child: locating
                         ? const Padding(
-                            padding: EdgeInsets.all(17),
+                            padding: EdgeInsets.all(14),
                             child:
                                 CircularProgressIndicator(strokeWidth: 2.2),
                           )
                         : const Icon(
                             Icons.my_location_rounded,
                             color: _purple,
-                            size: 27,
+                            size: 23,
                           ),
                   ),
                 ),
@@ -573,17 +573,17 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
 
   Widget _pickupCard() {
     return Container(
-      height: 80,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
+      height: 62,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(15),
         border: Border.all(color: _line),
       ),
       child: Row(
         children: [
-          const Icon(Icons.location_on_rounded, color: _purple, size: 30),
-          const SizedBox(width: 12),
+          const Icon(Icons.location_on_rounded, color: _purple, size: 25),
+          const SizedBox(width: 9),
           Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -595,7 +595,7 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: _ink,
-                    fontSize: 16,
+                    fontSize: 14,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -606,27 +606,27 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: _muted,
-                    fontSize: 13,
+                    fontSize: 11.5,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
             ),
           ),
-          Container(width: 1, height: 46, color: _line),
-          const SizedBox(width: 12),
+          Container(width: 1, height: 36, color: _line),
+          const SizedBox(width: 9),
           const Text(
             'Konumu\nharitada gör',
             textAlign: TextAlign.left,
             style: TextStyle(
               color: _purple,
-              fontSize: 12.5,
-              height: 1.15,
+              fontSize: 9.2,
+              height: 1.12,
               fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(width: 4),
-          const Icon(Icons.chevron_right_rounded, color: _purple, size: 23),
+          const SizedBox(width: 3),
+          const Icon(Icons.chevron_right_rounded, color: _purple, size: 20),
         ],
       ),
     );
@@ -640,8 +640,8 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
             borderRadius: BorderRadius.circular(18),
             onTap: locating ? null : () => locate(),
             child: Container(
-              height: 70,
-              padding: const EdgeInsets.symmetric(horizontal: 14),
+              height: 56,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(18),
@@ -650,8 +650,8 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
               child: Row(
                 children: [
                   const Icon(Icons.gps_fixed_rounded,
-                      color: _purple, size: 29),
-                  const SizedBox(width: 12),
+                      color: _purple, size: 24),
+                  const SizedBox(width: 9),
                   Expanded(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -661,7 +661,7 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
                           'Konumum',
                           style: TextStyle(
                             color: _ink,
-                            fontSize: 15.5,
+                            fontSize: 13.5,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
@@ -672,7 +672,7 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: _muted,
-                            fontSize: 12.5,
+                            fontSize: 9.2,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -684,20 +684,20 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
             ),
           ),
         ),
-        const SizedBox(width: 9),
+        const SizedBox(width: 5),
         InkWell(
           borderRadius: BorderRadius.circular(17),
           onTap: _swapLocations,
           child: Container(
-            width: 68,
-            height: 70,
+            width: 56,
+            height: 56,
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(17),
               border: Border.all(color: _purple, width: 1.7),
             ),
             child:
-                const Icon(Icons.swap_vert_rounded, color: _purple, size: 30),
+                const Icon(Icons.swap_vert_rounded, color: _purple, size: 25),
           ),
         ),
       ],
@@ -712,7 +712,7 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
           onChanged: searchDestination,
           style: const TextStyle(
             color: _ink,
-            fontSize: 15,
+            fontSize: 13.5,
             fontWeight: FontWeight.w700,
           ),
           decoration: InputDecoration(
@@ -722,7 +722,7 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
               fontWeight: FontWeight.w600,
             ),
             prefixIcon:
-                const Icon(Icons.location_on_rounded, color: _purple, size: 29),
+                const Icon(Icons.location_on_rounded, color: _purple, size: 24),
             suffixIcon: destSearching
                 ? const Padding(
                     padding: EdgeInsets.all(15),
@@ -750,18 +750,18 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
             filled: true,
             fillColor: Colors.white,
             contentPadding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 20),
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(15),
               borderSide: const BorderSide(color: _line),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(15),
               borderSide: const BorderSide(color: _line),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(18),
-              borderSide: const BorderSide(color: _purple, width: 1.8),
+              borderRadius: BorderRadius.circular(15),
+              borderSide: const BorderSide(color: _purple, width: 1.6),
             ),
           ),
         ),
@@ -815,8 +815,8 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
         .where((e) => e.trim().isNotEmpty)
         .join(' ');
     return Container(
-      height: 78,
-      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+      height: 62,
+      padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
@@ -825,8 +825,8 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
       child: Row(
         children: [
           Container(
-            width: 105,
-            height: 60,
+            width: 88,
+            height: 48,
             decoration: BoxDecoration(
               color: const Color(0xFFF2EEFF),
               borderRadius: BorderRadius.circular(13),
@@ -835,12 +835,12 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
             child: VehiclePhoto(
               make: vehicleMake,
               model: vehicleModel,
-              width: 102,
-              height: 58,
+              width: 86,
+              height: 46,
               borderRadius: 13,
             ),
           ),
-          const SizedBox(width: 11),
+          const SizedBox(width: 9),
           Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -850,7 +850,7 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
                   'Binek Otomobil',
                   style: TextStyle(
                     color: _ink,
-                    fontSize: 15.5,
+                    fontSize: 13.5,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -869,7 +869,7 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: _muted,
-                    fontSize: 12.8,
+                    fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -877,7 +877,7 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
             ),
           ),
           const Icon(Icons.chevron_right_rounded,
-              color: Color(0xFF747B8C), size: 25),
+              color: Color(0xFF747B8C), size: 21),
         ],
       ),
     );
@@ -894,7 +894,7 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
         }),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
-          height: 72,
+          height: 54,
           decoration: BoxDecoration(
             gradient: selected
                 ? const LinearGradient(
@@ -924,9 +924,9 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
               Icon(
                 icon,
                 color: selected ? Colors.white : const Color(0xFF3E4658),
-                size: 25,
+                size: 21,
               ),
-              const SizedBox(height: 5),
+              const SizedBox(height: 3),
               Text(
                 label,
                 maxLines: 1,
@@ -946,10 +946,10 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
 
   Widget _towOptionCard() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(11, 11, 12, 12),
+      padding: const EdgeInsets.fromLTRB(9, 9, 10, 9),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(19),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: _line),
       ),
       child: Column(
@@ -957,19 +957,19 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
           Row(
             children: [
               Container(
-                width: 112,
-                height: 78,
+                width: 94,
+                height: 62,
                 decoration: BoxDecoration(
                   color: const Color(0xFFF0F2FA),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
                   Icons.fire_truck_rounded,
-                  size: 62,
+                  size: 48,
                   color: Color(0xFF556071),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 9),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -978,7 +978,7 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
                       truckName.isEmpty ? 'Standart çekici' : truckName,
                       style: const TextStyle(
                         color: _ink,
-                        fontSize: 16,
+                        fontSize: 14,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -987,7 +987,7 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
                       'Binek araçlar için uygundur',
                       style: TextStyle(
                         color: _muted,
-                        fontSize: 12.5,
+                        fontSize: 10.8,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -996,17 +996,17 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 7),
           Container(height: 1, color: _line),
-          const SizedBox(height: 10),
+          const SizedBox(height: 7),
           Row(
             children: [
               Expanded(
                 child: Row(
                   children: [
                     Container(
-                      width: 37,
-                      height: 37,
+                      width: 31,
+                      height: 31,
                       decoration: const BoxDecoration(
                         color: Color(0xFFEAF9EF),
                         shape: BoxShape.circle,
@@ -1014,10 +1014,10 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
                       child: const Icon(
                         Icons.schedule_rounded,
                         color: Color(0xFF12A84D),
-                        size: 24,
+                        size: 20,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6),
                     const Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -1034,7 +1034,7 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
                           '12 dk',
                           style: TextStyle(
                             color: _ink,
-                            fontSize: 16,
+                            fontSize: 14,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
@@ -1043,8 +1043,8 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
                   ],
                 ),
               ),
-              Container(width: 1, height: 43, color: _line),
-              const SizedBox(width: 13),
+              Container(width: 1, height: 34, color: _line),
+              const SizedBox(width: 10),
               Expanded(
                 child: Row(
                   children: [
@@ -1101,20 +1101,20 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
   Widget _mainForm() {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final side = constraints.maxWidth > 600 ? 24.0 : 14.0;
+        final side = constraints.maxWidth > 600 ? 22.0 : 12.0;
         return SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(side, 0, side, 18),
+          padding: EdgeInsets.fromLTRB(side, 0, side, 10),
           child: Column(
             children: [
               _map(),
               Transform.translate(
-                offset: const Offset(0, -16),
+                offset: const Offset(0, -12),
                 child: Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
+                  padding: const EdgeInsets.fromLTRB(13, 13, 13, 12),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(25),
+                    borderRadius: BorderRadius.circular(22),
                     boxShadow: const [
                       BoxShadow(
                         color: Color(0x10000000),
@@ -1130,15 +1130,15 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
                         'Nereden alınacak?',
                         style: TextStyle(
                           color: _ink,
-                          fontSize: 20,
+                          fontSize: 17,
                           fontWeight: FontWeight.w900,
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 7),
                       _pickupCard(),
-                      const SizedBox(height: 9),
+                      const SizedBox(height: 7),
                       _currentLocationRow(),
-                      const SizedBox(height: 18),
+                      const SizedBox(height: 12),
                       const Text(
                         'Nereye bırakılacak?',
                         style: TextStyle(
@@ -1147,18 +1147,18 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
                           fontWeight: FontWeight.w900,
                         ),
                       ),
-                      const SizedBox(height: 10),
-                      _destinationField(),
                       const SizedBox(height: 7),
+                      _destinationField(),
+                      const SizedBox(height: 5),
                       const Text(
                         'İstersen bırakma noktasını haritada seçebilirsin.',
                         style: TextStyle(
                           color: _muted,
-                          fontSize: 11.5,
+                          fontSize: 10.2,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      const SizedBox(height: 18),
+                      const SizedBox(height: 12),
                       Row(
                         children: [
                           const Expanded(
@@ -1166,7 +1166,7 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
                               'Araç tipi',
                               style: TextStyle(
                                 color: _ink,
-                                fontSize: 20,
+                                fontSize: 17,
                                 fontWeight: FontWeight.w900,
                               ),
                             ),
@@ -1184,14 +1184,14 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
                                   Icon(
                                     Icons.info_outline_rounded,
                                     color: _purple,
-                                    size: 19,
+                                    size: 17,
                                   ),
                                   SizedBox(width: 5),
                                   Text(
                                     'Hangi aracı seçmeliyim?',
                                     style: TextStyle(
                                       color: _purple,
-                                      fontSize: 11.5,
+                                      fontSize: 10.2,
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
@@ -1201,9 +1201,9 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 7),
                       _vehicleSummaryCard(),
-                      const SizedBox(height: 9),
+                      const SizedBox(height: 7),
                       Row(
                         children: [
                           _vehicleChip(
@@ -1231,7 +1231,7 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 18),
+                      const SizedBox(height: 12),
                       const Text(
                         'Çekici seçeneği',
                         style: TextStyle(
@@ -1240,19 +1240,19 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
                           fontWeight: FontWeight.w900,
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 7),
                       _towOptionCard(),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 10),
                       Container(
                         width: double.infinity,
-                        height: 58,
+                        height: 50,
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
                             colors: [_purple2, _purple],
                             begin: Alignment.centerLeft,
                             end: Alignment.centerRight,
                           ),
-                          borderRadius: BorderRadius.circular(18),
+                          borderRadius: BorderRadius.circular(15),
                           boxShadow: [
                             BoxShadow(
                               color: _purple.withValues(alpha: .24),
@@ -1264,7 +1264,7 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
                         child: Material(
                           color: Colors.transparent,
                           child: InkWell(
-                            borderRadius: BorderRadius.circular(18),
+                            borderRadius: BorderRadius.circular(15),
                             onTap: busy ? null : price,
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -1283,7 +1283,7 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
                                     'Devam Et',
                                     style: TextStyle(
                                       color: Colors.white,
-                                      fontSize: 18,
+                                      fontSize: 16,
                                       fontWeight: FontWeight.w900,
                                     ),
                                   ),
@@ -1291,7 +1291,7 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
                                   const Icon(
                                     Icons.chevron_right_rounded,
                                     color: Colors.white,
-                                    size: 27,
+                                    size: 23,
                                   ),
                                 ],
                               ],
@@ -1433,7 +1433,7 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
         title: Text(
           step == 0 ? 'Çekici Çağır' : 'Tahmini Ücret',
           style: const TextStyle(
-            fontSize: 21,
+            fontSize: 19,
             fontWeight: FontWeight.w900,
           ),
         ),
@@ -1445,7 +1445,7 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
               Navigator.maybePop(context);
             }
           },
-          icon: const Icon(Icons.arrow_back_rounded, size: 29),
+          icon: const Icon(Icons.arrow_back_rounded, size: 26),
         ),
       ),
       body: SafeArea(
