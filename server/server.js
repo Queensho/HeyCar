@@ -7,6 +7,7 @@ const helmet=require('helmet');
 
 const registerQrRoutes=require('./qr-routes');
 const registerTouchpointRoutes=require('./touchpoint-routes');
+const registerStoreRoutes=require('./store-routes');
 const registerOnboardingRoutes=require('./onboarding-routes');
 const registerOwnerAuthRoutes=require('./owner-auth-routes');
 const registerBusinessRoutes=require('./business-routes');
@@ -121,6 +122,7 @@ const adminAuth=registerAdminAuthRoutes(app,pool);
 // reminders, parking and vehicle-management exactly once.
 registerQrRoutes(app,pool);
 registerTouchpointRoutes(app,pool);
+registerStoreRoutes(app,pool,adminAuth);
 registerOnboardingRoutes(app,pool);
 registerOwnerAuthRoutes(app,pool);
 registerBusinessRoutes(app,pool);
