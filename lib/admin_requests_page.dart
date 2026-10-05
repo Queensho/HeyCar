@@ -170,7 +170,7 @@ class _AdminCorrectionRequestsPageState extends State<AdminCorrectionRequestsPag
                   FilledButton(onPressed: () async { Navigator.pop(ctx); await updateStatus(item, 'resolved', note: note.text.trim()); }, child: const Text('Çözüldü')),
                   if (item['request_type'] == 'qr_change' && item['qr_token'] != null)
                     FilledButton.icon(
-                      style: FilledButton.styleFrom(backgroundColor: _orange, foregroundColor: Colors.black),
+                      style: FilledButton.styleFrom(backgroundColor: _orange, foregroundColor: Colors.white),
                       onPressed: () async { Navigator.pop(ctx); await applyQr(item); },
                       icon: const Icon(Icons.qr_code_2_rounded),
                       label: const Text('QR değişikliğini uygula'),
@@ -222,7 +222,7 @@ class _AdminCorrectionRequestsPageState extends State<AdminCorrectionRequestsPag
                 decoration: BoxDecoration(color: _card, borderRadius: BorderRadius.circular(18), border: Border.all(color: _line)),
                 child: ListTile(
                   onTap: () => openRequest(e),
-                  leading: CircleAvatar(backgroundColor: const Color(0xFF26103E), child: Icon(e['request_type'] == 'qr_change' ? Icons.qr_code_2_rounded : Icons.build_circle_outlined, color: _orange)),
+                  leading: CircleAvatar(backgroundColor: AdminUi.surfaceTint, child: Icon(e['request_type'] == 'qr_change' ? Icons.qr_code_2_rounded : Icons.build_circle_outlined, color: _orange)),
                   title: Text(e['plate']?.toString() ?? 'Araç belirtilmedi', style: const TextStyle(fontWeight: FontWeight.w900)),
                   subtitle: Text('${e['owner_name'] ?? '-'} • ${_typeLabel(e['request_type']?.toString() ?? '')}\n${e['qr_token'] ?? ''}'),
                   isThreeLine: true,
