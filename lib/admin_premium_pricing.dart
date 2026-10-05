@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'admin_ui.dart';
 import 'package:http/http.dart' as http;
 
 const _base='https://heycar-api-185-165-46-213.nip.io';
-const _card=Color(0xFF0C1226),_line=Color(0xFF242D49),_muted=Color(0xFF8993AD),_purple=Color(0xFFA72BFF),_amber=Color(0xFFFFBF55),_green=Color(0xFF28F39A);
+const _card=AdminUi.surface,_line=AdminUi.line,_muted=AdminUi.muted,_purple=AdminUi.purple,_amber=AdminUi.amber,_green=AdminUi.green,_ink=AdminUi.ink;
 
 class AdminPremiumPricingCard extends StatefulWidget{
   const AdminPremiumPricingCard({super.key,required this.token,required this.admin});
@@ -118,14 +119,14 @@ class _AdminPremiumPricingCardState extends State<AdminPremiumPricingCard>{
             Container(width:40,height:40,decoration:BoxDecoration(color:_amber.withValues(alpha:.12),borderRadius:BorderRadius.circular(12)),child:const Icon(Icons.sell_rounded,color:_amber)),
             const SizedBox(width:10),
             const Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-              Text('Premium Fiyatlandırma',style:TextStyle(color:Colors.white,fontSize:15,fontWeight:FontWeight.w900)),
+              Text('Premium Fiyatlandırma',style:TextStyle(color:_ink,fontSize:15,fontWeight:FontWeight.w900)),
               SizedBox(height:2),
               Text('Bireysel ve Aile Premium aylık/yıllık fiyatlarını ayrı yönet.',style:TextStyle(color:_muted,fontSize:10.5)),
             ])),
             IconButton(onPressed:saving?null:load,icon:const Icon(Icons.refresh_rounded,color:_muted)),
           ]),
           const SizedBox(height:12),
-          const Text('Bireysel Premium',style:TextStyle(color:Colors.white,fontSize:12,fontWeight:FontWeight.w900)),
+          const Text('Bireysel Premium',style:TextStyle(color:_ink,fontSize:12,fontWeight:FontWeight.w900)),
           const SizedBox(height:7),
           Row(children:[
             Expanded(child:_priceField(monthly,'Aylık fiyat')),
@@ -133,7 +134,7 @@ class _AdminPremiumPricingCardState extends State<AdminPremiumPricingCard>{
             Expanded(child:_priceField(yearly,'Yıllık fiyat')),
           ]),
           const SizedBox(height:10),
-          const Text('Aile Premium',style:TextStyle(color:Colors.white,fontSize:12,fontWeight:FontWeight.w900)),
+          const Text('Aile Premium',style:TextStyle(color:_ink,fontSize:12,fontWeight:FontWeight.w900)),
           const SizedBox(height:7),
           Row(children:[
             Expanded(child:_priceField(familyMonthly,'Aile aylık')),
@@ -168,12 +169,12 @@ class _AdminPremiumPricingCardState extends State<AdminPremiumPricingCard>{
   Widget _priceField(TextEditingController c,String label)=>TextField(
     controller:c,
     keyboardType:const TextInputType.numberWithOptions(decimal:true),
-    style:const TextStyle(color:Colors.white,fontSize:16,fontWeight:FontWeight.w900),
+    style:const TextStyle(color:_ink,fontSize:16,fontWeight:FontWeight.w900),
     decoration:InputDecoration(
       labelText:label,
       prefixText:'₺ ',
       filled:true,
-      fillColor:const Color(0xFF10172B),
+      fillColor:AdminUi.surfaceSoft,
       border:OutlineInputBorder(borderRadius:BorderRadius.circular(13),borderSide:const BorderSide(color:_line)),
       enabledBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(13),borderSide:const BorderSide(color:_line)),
       focusedBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(13),borderSide:const BorderSide(color:_amber)),
