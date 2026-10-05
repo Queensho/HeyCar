@@ -1,3 +1,4 @@
+// Qontag Admin UI v4 — responsive web/mobile frontend only.
 import 'package:flutter/material.dart';
 
 class AdminUi {
