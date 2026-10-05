@@ -1,10 +1,11 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'admin_ui.dart';
 import 'package:http/http.dart' as http;
 
 const _base='https://heycar-api-185-165-46-213.nip.io';
-const _bg=Color(0xFF060A18),_card=Color(0xFF0C1226),_card2=Color(0xFF111A31),_line=Color(0xFF242D49),_muted=Color(0xFF8993AD),_purple=Color(0xFFA72BFF),_green=Color(0xFF28F39A),_blue=Color(0xFF499DFF),_amber=Color(0xFFFFBF55);
+const _bg=AdminUi.bg,_card=AdminUi.surface,_card2=AdminUi.surfaceSoft,_line=AdminUi.line,_muted=AdminUi.muted,_purple=AdminUi.purple,_green=AdminUi.green,_blue=AdminUi.blue,_amber=AdminUi.amber,_ink=AdminUi.ink;
 
 const _categories=<String,String>{
   'technical':'Teknik sorun',
@@ -72,12 +73,12 @@ class _AdminSupportPageState extends State<AdminSupportPage>{
       return ListView(physics:const AlwaysScrollableScrollPhysics(),padding:EdgeInsets.fromLTRB(pad,14,pad,28),children:[
         Container(
           padding:const EdgeInsets.all(16),
-          decoration:BoxDecoration(gradient:const LinearGradient(colors:[Color(0xFF111A32),Color(0xFF1A092A)]),borderRadius:BorderRadius.circular(22),border:Border.all(color:_purple.withValues(alpha:.35))),
+          decoration:BoxDecoration(gradient:const LinearGradient(colors:[Color(0xFFFFFFFF),Color(0xFFF3EEFF)]),borderRadius:BorderRadius.circular(22),border:Border.all(color:_purple.withValues(alpha:.35))),
           child:const Row(children:[
             CircleAvatar(radius:24,backgroundColor:Color(0x222F8BFF),child:Icon(Icons.support_agent_rounded,color:_purple,size:26)),
             SizedBox(width:11),
             Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-              Text('Destek Talepleri',style:TextStyle(color:Colors.white,fontSize:21,fontWeight:FontWeight.w900)),
+              Text('Destek Talepleri',style:TextStyle(color:_ink,fontSize:21,fontWeight:FontWeight.w900)),
               SizedBox(height:2),
               Text('Kullanıcı sorunlarını incele, yanıtla ve çöz.',style:TextStyle(color:_muted,fontSize:11.5)),
             ])),
@@ -117,13 +118,13 @@ class _AdminSupportPageState extends State<AdminSupportPage>{
           const SizedBox(width:10),
           Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
             Row(children:[
-              Expanded(child:Text('#${x['id']} • ${_categories[(x['category']??'').toString()]??x['category']??'Destek'}',style:const TextStyle(color:Colors.white,fontSize:13.5,fontWeight:FontWeight.w900))),
+              Expanded(child:Text('#${x['id']} • ${_categories[(x['category']??'').toString()]??x['category']??'Destek'}',style:const TextStyle(color:_ink,fontSize:13.5,fontWeight:FontWeight.w900))),
               _pill(_statusLabel(st),color),
             ]),
             const SizedBox(height:4),
             Text('${x['display_name']??'İsimsiz'} • ${x['phone']??x['email']??'-'}',style:const TextStyle(color:_blue,fontSize:10.5,fontWeight:FontWeight.w700)),
             const SizedBox(height:4),
-            Text((x['message']??'').toString(),maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Colors.white70,fontSize:11.5,height:1.3)),
+            Text((x['message']??'').toString(),maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_muted,fontSize:11.5,height:1.3)),
             const SizedBox(height:5),
             Text('${_date(x['created_at'])}${(x['attachment_count']??0)!=0?' • Ekran görüntüsü var':''}',style:const TextStyle(color:_muted,fontSize:9.5)),
           ])),
@@ -156,7 +157,7 @@ class _AdminSupportPageState extends State<AdminSupportPage>{
         const SizedBox(height:5),
         Text(_categories[(x['category']??'').toString()]??(x['category']??'-').toString(),style:const TextStyle(color:_muted,fontSize:11)),
         const SizedBox(height:10),
-        Container(width:double.infinity,padding:const EdgeInsets.all(12),decoration:BoxDecoration(color:_card2,borderRadius:BorderRadius.circular(14)),child:SelectableText((x['message']??'').toString(),style:const TextStyle(color:Colors.white,height:1.4))),
+        Container(width:double.infinity,padding:const EdgeInsets.all(12),decoration:BoxDecoration(color:_card2,borderRadius:BorderRadius.circular(14)),child:SelectableText((x['message']??'').toString(),style:const TextStyle(color:_ink,height:1.4))),
         if((x['attachment_count']??0)!=0)...[
           const SizedBox(height:12),
           if(attachmentBytes!=null)
@@ -203,7 +204,7 @@ class _AdminSupportPageState extends State<AdminSupportPage>{
     reply.dispose();
   }
 
-  Widget _metric(String value,String label,IconData icon,Color color)=>Container(height:88,padding:const EdgeInsets.all(11),decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(17),border:Border.all(color:color.withValues(alpha:.25))),child:Row(children:[Icon(icon,color:color,size:24),const SizedBox(width:8),Expanded(child:Column(mainAxisAlignment:MainAxisAlignment.center,crossAxisAlignment:CrossAxisAlignment.start,children:[Text(value,style:const TextStyle(color:Colors.white,fontSize:19,fontWeight:FontWeight.w900)),Text(label,maxLines:2,style:const TextStyle(color:_muted,fontSize:10.5,fontWeight:FontWeight.w700))]))]));
+  Widget _metric(String value,String label,IconData icon,Color color)=>Container(height:88,padding:const EdgeInsets.all(11),decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(17),border:Border.all(color:color.withValues(alpha:.25))),child:Row(children:[Icon(icon,color:color,size:24),const SizedBox(width:8),Expanded(child:Column(mainAxisAlignment:MainAxisAlignment.center,crossAxisAlignment:CrossAxisAlignment.start,children:[Text(value,style:const TextStyle(color:_ink,fontSize:19,fontWeight:FontWeight.w900)),Text(label,maxLines:2,style:const TextStyle(color:_muted,fontSize:10.5,fontWeight:FontWeight.w700))]))]));
   Widget _pill(String text,Color color)=>Container(padding:const EdgeInsets.symmetric(horizontal:8,vertical:4),decoration:BoxDecoration(color:color.withValues(alpha:.12),borderRadius:BorderRadius.circular(20)),child:Text(text,style:TextStyle(color:color,fontSize:9.5,fontWeight:FontWeight.w900)));
   Widget _empty(String text)=>Container(width:double.infinity,padding:const EdgeInsets.symmetric(vertical:40,horizontal:16),decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(18),border:Border.all(color:_line)),child:Column(children:[const Icon(Icons.support_agent_outlined,color:_muted,size:38),const SizedBox(height:8),Text(text,style:const TextStyle(color:_muted,fontWeight:FontWeight.w700))]));
 }
