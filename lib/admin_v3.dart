@@ -1590,6 +1590,14 @@ class _QrPageState extends State<QrPage>{
 
   String _tokenOf(Map<String,dynamic> e)=>(e['token']??'').toString();
 
+  String _labelCodeOf(Map<String,dynamic> e){
+    final raw=e['serial_no'];
+    final serial=raw is num?raw.toInt():int.tryParse((raw??'').toString());
+    if(serial!=null&&serial>0)return 'CP-QAR-$serial';
+    final token=_tokenOf(e);
+    return token.isEmpty?'-':token;
+  }
+
   List<Map<String,dynamic>> _selectedRows(){
     if(selectedTokens.isEmpty)return const <Map<String,dynamic>>[];
     return widget.rows.where((e)=>selectedTokens.contains(_tokenOf(e))).toList();
@@ -1627,7 +1635,7 @@ class _QrPageState extends State<QrPage>{
     final out=<String>[
       ['Etiket Kodu','Seri No','Baskı Partisi','Parti Sırası','Baskı Durumu','Durum','Plaka','Araç Sahibi','Aktivasyon','QR Linki'].map(_csvCell).join(','),
       ...rows.map((e)=>[
-        e['token'],e['serial_no'],e['batch_code'],e['batch_serial'],_printStatusLabel(_printStatus(e)),e['status'],e['plate'],e['owner_name'],e['activated_at'],publicUrl((e['token']??'').toString())
+        _labelCodeOf(e),e['serial_no'],e['batch_code'],e['batch_serial'],_printStatusLabel(_printStatus(e)),e['status'],e['plate'],e['owner_name'],e['activated_at'],publicUrl((e['token']??'').toString())
       ].map(_csvCell).join(',')),
     ];
     final bytes=Uint8List.fromList(utf8.encode('\uFEFF${out.join('\n')}'));
@@ -1674,6 +1682,7 @@ class _QrPageState extends State<QrPage>{
 
     pw.Widget labelCard(Map<String,dynamic> e){
       final token=_tokenOf(e);
+      final labelCode=_labelCodeOf(e);
       final artworkWidth=labelWidth;
       final artworkHeight=artworkWidth/templateAspect;
       final artworkTop=(labelHeight-artworkHeight)/2;
@@ -1724,7 +1733,7 @@ class _QrPageState extends State<QrPage>{
                     style:pw.TextStyle(color:PdfColors.black,fontSize:5.0),
                   ),
                   pw.TextSpan(
-                    text:token,
+                    text:labelCode,
                     style:pw.TextStyle(color:purple,fontSize:6.2,fontWeight:pw.FontWeight.bold),
                   ),
                 ])),
@@ -1777,7 +1786,7 @@ class _QrPageState extends State<QrPage>{
       await widget.itemPrintStatus(newlyDownloaded,'pdf_downloaded');
     }
   }
-  Future<void> _downloadSticker(String token) async{
+  Future<void> _downloadSticker(String token,String labelCode) async{
     try{
       await WidgetsBinding.instance.endOfFrame;
       final boundary=_stickerKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
@@ -1786,13 +1795,13 @@ class _QrPageState extends State<QrPage>{
       final data=await image.toByteData(format:ui.ImageByteFormat.png);
       image.dispose();
       if(data==null)throw Exception('PNG oluşturulamadı.');
-      await saveAdminPng(data.buffer.asUint8List(),'cepqar-etiket-$token.png');
+      await saveAdminPng(data.buffer.asUint8List(),'cepqar-etiket-$labelCode.png');
     }catch(e){
       if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString().replaceFirst('Exception: ',''))));
     }
   }
 
-  Widget _sticker(String token,String url)=>LayoutBuilder(builder:(context,c){
+  Widget _sticker(String token,String labelCode,String url)=>LayoutBuilder(builder:(context,c){
     final w=c.maxWidth;
     final h=c.maxHeight;
     const templateAspect=1315/864;
@@ -1860,7 +1869,7 @@ class _QrPageState extends State<QrPage>{
             fit:BoxFit.scaleDown,
             child:RichText(textAlign:TextAlign.center,text:TextSpan(children:[
               const TextSpan(text:'Etiket Kodu: ',style:TextStyle(color:Colors.black87,fontSize:8.2,fontWeight:FontWeight.w600)),
-              TextSpan(text:token,style:const TextStyle(color:Color(0xFF4B10F6),fontSize:10.8,fontWeight:FontWeight.w900)),
+              TextSpan(text:labelCode,style:const TextStyle(color:Color(0xFF4B10F6),fontSize:10.8,fontWeight:FontWeight.w900)),
             ])),
           )),
         ),
@@ -1874,6 +1883,7 @@ class _QrPageState extends State<QrPage>{
 
   Future<void> showQr(Map<String,dynamic> e) async{
     final token=e['token']?.toString()??'';if(token.isEmpty)return;
+    final labelCode=_labelCodeOf(e);
     final url=publicUrl(token);
     if(!mounted)return;
     await showDialog(context:context,builder:(ctx)=>Dialog(
@@ -1884,14 +1894,14 @@ class _QrPageState extends State<QrPage>{
         child:Padding(padding:const EdgeInsets.all(18),child:Column(mainAxisSize:MainAxisSize.min,children:[
           const Text('QR Etiketi',style:TextStyle(fontSize:22,fontWeight:FontWeight.w900,color:_ink)),
           const SizedBox(height:4),
-          Text(token,style:const TextStyle(fontWeight:FontWeight.w800,color:_muted,fontSize:13)),
+          Text(labelCode,style:const TextStyle(fontWeight:FontWeight.w800,color:_muted,fontSize:13)),
           if((e['batch_code']??'').toString().isNotEmpty)Text('${e['batch_code']} • Parti sıra ${e['batch_serial']??'-'}',style:const TextStyle(color:_muted,fontSize:11)),
           const SizedBox(height:12),
           SizedBox(
             width:325,
             child:AspectRatio(
               aspectRatio:55/46,
-              child:RepaintBoundary(key:_stickerKey,child:_sticker(token,url)),
+              child:RepaintBoundary(key:_stickerKey,child:_sticker(token,labelCode,url)),
             ),
           ),
           const SizedBox(height:7),
@@ -1900,7 +1910,7 @@ class _QrPageState extends State<QrPage>{
           Row(children:[
             Expanded(child:OutlinedButton.icon(onPressed:()=>launchUrl(Uri.parse(url),mode:LaunchMode.externalApplication),icon:const Icon(Icons.open_in_new_rounded),label:const Text('QR sayfasını aç',textAlign:TextAlign.center))),
             const SizedBox(width:10),
-            Expanded(child:FilledButton.icon(style:FilledButton.styleFrom(backgroundColor:_purple,foregroundColor:Colors.white),onPressed:()=>_downloadSticker(token),icon:const Icon(Icons.download_rounded),label:const Text('Etiket PNG indir',textAlign:TextAlign.center))),
+            Expanded(child:FilledButton.icon(style:FilledButton.styleFrom(backgroundColor:_purple,foregroundColor:Colors.white),onPressed:()=>_downloadSticker(token,labelCode),icon:const Icon(Icons.download_rounded),label:const Text('Etiket PNG indir',textAlign:TextAlign.center))),
           ]),
         ])),
       ),
@@ -2032,6 +2042,7 @@ class _QrPageState extends State<QrPage>{
 
   Widget _frontPreview(Map<String,dynamic>? sample){
     final token=(sample?['token']??'').toString();
+    final labelCode=sample==null?'-':_labelCodeOf(sample);
     return _previewCard(
       title:'Ön Yüz (5,5 × 4,6 cm)',
       child:AspectRatio(
@@ -2047,7 +2058,7 @@ class _QrPageState extends State<QrPage>{
             : Container(
                 color:Colors.white,
                 padding:const EdgeInsets.all(2),
-                child:_sticker(token,publicUrl(token)),
+                child:_sticker(token,labelCode,publicUrl(token)),
               ),
         ),
       ),
@@ -2086,6 +2097,7 @@ class _QrPageState extends State<QrPage>{
 
   Widget _qrInfoCard(Map<String,dynamic>? sample){
     final token=(sample?['token']??'').toString();
+    final labelCode=sample==null?'':_labelCodeOf(sample);
     return Container(
       padding:const EdgeInsets.all(13),
       decoration:AdminUi.card(radius:15),
@@ -2097,7 +2109,7 @@ class _QrPageState extends State<QrPage>{
           _compactField(
             label:'Etiket Kodu',
             child:Row(children:[
-              Expanded(child:Text(token.isEmpty?'CP-QAR-000123':token,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_ink,fontSize:10,fontWeight:FontWeight.w700))),
+              Expanded(child:Text(labelCode.isEmpty?'CP-QAR-54':labelCode,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_ink,fontSize:10,fontWeight:FontWeight.w700))),
               IconButton(
                 visualDensity:VisualDensity.compact,
                 tooltip:'Yenile',
@@ -2221,7 +2233,7 @@ class _QrPageState extends State<QrPage>{
           const SizedBox(height:10),
           ClipRRect(
             borderRadius:BorderRadius.circular(9),
-            child:Image.asset('assets/Etiket4.png',fit:BoxFit.cover),
+            child:Image.asset('assets/Etiketbeyaz.png',fit:BoxFit.contain),
           ),
           const SizedBox(height:10),
           ClipRRect(
@@ -2369,6 +2381,7 @@ class _QrPageState extends State<QrPage>{
 
   Widget _tableRow(Map<String,dynamic> e,{required bool compact}){
     final token=_tokenOf(e);
+    final labelCode=_labelCodeOf(e);
     final st=(e['status']??'').toString();
     final ps=_printStatus(e);
     final statusColor=st=='active'?_green:ps=='printed'?const Color(0xFF7B8AA7):_amber;
@@ -2389,7 +2402,7 @@ class _QrPageState extends State<QrPage>{
             const Icon(Icons.qr_code_2_rounded,color:_purple,size:22),
             const SizedBox(width:8),
             Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-              Text(token,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_ink,fontSize:10.5,fontWeight:FontWeight.w900)),
+              Text(labelCode,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_ink,fontSize:10.5,fontWeight:FontWeight.w900)),
               Text((e['plate']??'Bağlı araç yok').toString()+' • '+date,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_muted,fontSize:9)),
             ])),
             AdminUi.statusDot(statusColor),
@@ -2410,7 +2423,7 @@ class _QrPageState extends State<QrPage>{
           value:selectedTokens.contains(token),
           onChanged:ps=='printed'?null:(v)=>setState((){if(v==true)selectedTokens.add(token);else selectedTokens.remove(token);}),
         )),
-        Expanded(flex:3,child:Text(token,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_ink,fontSize:9.5,fontWeight:FontWeight.w800))),
+        Expanded(flex:3,child:Text(labelCode,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_ink,fontSize:9.5,fontWeight:FontWeight.w800))),
         Expanded(flex:2,child:Text((e['plate']??'-').toString(),maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_ink,fontSize:9.5))),
         Expanded(flex:2,child:Row(children:[
           AdminUi.statusDot(statusColor),
@@ -2421,7 +2434,7 @@ class _QrPageState extends State<QrPage>{
         SizedBox(width:126,child:Row(children:[
           _tableIcon(Icons.visibility_outlined,()=>showQr(e)),
           _tableIcon(Icons.print_outlined,ps=='printed'?null:()=>widget.itemPrintStatus([token],'sent_to_print')),
-          _tableIcon(Icons.download_outlined,()=>_downloadSticker(token)),
+          _tableIcon(Icons.download_outlined,()=>_downloadSticker(token,labelCode)),
           PopupMenuButton<String>(
             padding:EdgeInsets.zero,
             iconSize:18,
@@ -2537,7 +2550,7 @@ class _QrPageState extends State<QrPage>{
   Widget build(BuildContext context){
     final query=search.text.toLowerCase();
     final rows=widget.rows.where((e){
-      final text=((e['token']??'').toString()+' '+(e['plate']??'').toString()+' '+(e['owner_name']??'').toString()+' '+(e['batch_code']??'').toString()).toLowerCase();
+      final text=(_labelCodeOf(e)+' '+(e['token']??'').toString()+' '+(e['plate']??'').toString()+' '+(e['owner_name']??'').toString()+' '+(e['batch_code']??'').toString()).toLowerCase();
       final matchesSearch=text.contains(query);
       final ps=_printStatus(e);
       final matchesPrint=switch(printFilter){

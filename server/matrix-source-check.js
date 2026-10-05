@@ -202,6 +202,12 @@ if(admin.includes("const token = 'CP-QAR-' + String(serialNo)")){
 if(!admin.includes('serial_no')){
   throw new Error('QR_SERIAL_TRACKING_MISSING');
 }
+if(!admin.includes("String _labelCodeOf(Map<String,dynamic> e)")){
+  throw new Error('QR_HUMAN_LABEL_CODE_HELPER_MISSING');
+}
+if(!admin.includes("return 'CP-QAR-$serial';")){
+  throw new Error('QR_HUMAN_LABEL_CODE_FORMAT_MISSING');
+}
 
 rejectText(
   'business-routes.js',
