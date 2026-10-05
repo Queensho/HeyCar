@@ -243,7 +243,8 @@ module.exports = function registerNotificationRoutes(app, pool) {
       }
 
       const session = await createScanSession(pool, qr, security.visitorKey);
-      await qrSecurity.recordScan({qr,req,scanSessionHash:hashScanToken(session.token),visitorKey:security.visitorKey});
+      const scanSource=['nfc','qr'].includes(String(req.body?.source||'').toLowerCase())?String(req.body.source).toLowerCase():'qr';
+      await qrSecurity.recordScan({qr,req,scanSessionHash:hashScanToken(session.token),visitorKey:security.visitorKey,source:scanSource});
       res.set('Cache-Control', 'no-store');
       return res.status(201).json({
         ok:true,
