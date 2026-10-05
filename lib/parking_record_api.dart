@@ -4,25 +4,27 @@ import 'onboarding_backend.dart';
 import 'qr_backend.dart';
 import 'parking_place.dart';
 import 'owner_auth.dart';
+import 'driver_auth.dart';
 
 class ParkingRecordApi {
   static Future<Map<String, dynamic>> save(
     String vehicleId, {
     ParkingPlace? place,
+    bool driverMode = false,
     String area = '',
     String floor = '',
     String spot = '',
     String note = '',
   }) async {
     final owner = OnboardingDraft.userId.trim();
-    if (owner.isEmpty || vehicleId.isEmpty)
+    if ((!driverMode && owner.isEmpty) || vehicleId.isEmpty)
       throw Exception('Önce giriş yapıp aracını seç.');
     final r = await http
         .put(
           Uri.parse(
             '${QrBackend.baseUrl}/api/vehicles/${Uri.encodeComponent(vehicleId)}/parking',
           ),
-          headers: await OwnerAuth.headers(),
+          headers: driverMode ? await DriverAuth.headers() : await OwnerAuth.headers(),
           body: jsonEncode({
             'area': area.trim(),
             'floor': floor.trim(),
