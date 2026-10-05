@@ -3,6 +3,7 @@ const rateLimit=require('express-rate-limit');
 const {ownerId:authenticatedOwnerId}=require('./owner-auth-service');
 const {issueTokens,rotateRefresh,revokeRefresh,revokeAll,driverId:authenticatedDriverId}=require('./driver-auth-service');
 const {issueRecoveryCode,verifyPassword,deleteAccount}=require('./account-lifecycle-service');
+const {driverEntitlements}=require('./premium-entitlements');
 const LEGAL_VERSION='1.0';
 function requestIp(req){return String(req.headers['x-forwarded-for']||req.socket?.remoteAddress||'').split(',')[0].trim().slice(0,120);}
 function normalizeTrMobile(raw){let d=String(raw||'').replace(/\D/g,'');if(d.startsWith('90')&&d.length===12)d=d.slice(2);else if(d.startsWith('0')&&d.length===11)d=d.slice(1);return /^5\d{9}$/.test(d)?`+90${d}`:null;}
@@ -46,6 +47,24 @@ if(existingDriver.rows.length){
   }
   return res.status(500).json({error:'SERVER_ERROR'});
 }finally{c.release();}});
+ app.get('/api/driver/entitlements',async(req,res)=>{
+  const u=authenticatedDriverId(req);
+  if(!u)return res.status(401).json({error:'DRIVER_REQUIRED'});
+  try{
+    const vehicles=await driverEntitlements(pool,u);
+    const familyPremium=vehicles.some(x=>x.familyPremium===true);
+    return res.json({
+      ok:true,
+      purchaseBy:'owner',
+      familyPremium,
+      vehicles,
+    });
+  }catch(e){
+    console.error('driver entitlements failed',e);
+    return res.status(500).json({error:'SERVER_ERROR'});
+  }
+ });
+
  app.get('/api/driver/vehicles',async(req,res)=>{const u=authenticatedDriverId(req);if(!u)return res.status(401).json({error:'USER_REQUIRED'});try{const r=await pool.query(`SELECT d.vehicle_id,d.driver_name,v.plate,v.make,v.model,(a.driver_user_id=$1 AND (a.active_until IS NULL OR a.active_until>NOW())) active,a.active_until FROM vehicle_drivers d JOIN vehicles v ON v.id::text=d.vehicle_id::text LEFT JOIN vehicle_active_drivers a ON a.vehicle_id=d.vehicle_id WHERE d.driver_user_id=$1 ORDER BY d.created_at DESC`,[u]);res.json({ok:true,vehicles:r.rows});}catch(e){console.error(e);res.status(500).json({error:'SERVER_ERROR'});}});
  app.get('/api/driver/vehicles/:vehicleId/park-note',async(req,res)=>{const u=authenticatedDriverId(req),v=String(req.params.vehicleId||'').trim();if(!u)return res.status(401).json({error:'USER_REQUIRED'});try{const d=await pool.query('SELECT 1 FROM vehicle_drivers WHERE vehicle_id::text=$1 AND driver_user_id=$2 LIMIT 1',[v,u]);if(!d.rows.length)return res.status(403).json({error:'DRIVER_NOT_AUTHORIZED'});const r=await pool.query(`SELECT id,message,created_at AS "createdAt",expires_at AS "expiresAt",is_active AS "isActive" FROM vehicle_park_notes WHERE vehicle_id::text=$1 AND is_active=TRUE AND (expires_at IS NULL OR expires_at>NOW()) ORDER BY created_at DESC LIMIT 1`,[v]);res.json({ok:true,parkNote:r.rows[0]||null});}catch(e){console.error('driver park note load failed',e);res.status(500).json({error:'SERVER_ERROR'});}});
  app.post('/api/driver/vehicles/:vehicleId/park-note',async(req,res)=>{const u=authenticatedDriverId(req),v=String(req.params.vehicleId||'').trim(),message=String(req.body?.message||'').trim().slice(0,180),expiresAt=req.body?.expiresAt?new Date(req.body.expiresAt):null;if(!u)return res.status(401).json({error:'USER_REQUIRED'});if(!message)return res.status(400).json({error:'MESSAGE_REQUIRED'});if(expiresAt&&Number.isNaN(expiresAt.getTime()))return res.status(400).json({error:'EXPIRES_AT_INVALID'});try{const a=await pool.query(`SELECT 1 FROM vehicle_active_drivers WHERE vehicle_id::text=$1 AND driver_user_id=$2 AND (active_until IS NULL OR active_until>NOW()) LIMIT 1`,[v,u]);if(!a.rows.length)return res.status(403).json({error:'DRIVER_NOT_ACTIVE'});await pool.query('UPDATE vehicle_park_notes SET is_active=FALSE WHERE vehicle_id::text=$1 AND is_active=TRUE',[v]);const r=await pool.query(`INSERT INTO vehicle_park_notes(vehicle_id,message,expires_at,is_active) VALUES($1::uuid,$2,$3,TRUE) RETURNING id,message,created_at AS "createdAt",expires_at AS "expiresAt",is_active AS "isActive"`,[v,message,expiresAt?expiresAt.toISOString():null]);res.status(201).json({ok:true,parkNote:r.rows[0]});}catch(e){console.error('driver park note save failed',e);res.status(500).json({error:'SERVER_ERROR'});}});
