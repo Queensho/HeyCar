@@ -342,7 +342,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   );
 
   Widget header()=>SizedBox(
-    height:205,
+    height:218,
     child:Stack(children:[
       Positioned.fill(
         child:Container(
@@ -393,7 +393,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         ),
       ),
       Padding(
-        padding:EdgeInsets.fromLTRB(20,MediaQuery.paddingOf(context).top+2,18,0),
+        padding:EdgeInsets.fromLTRB(20,MediaQuery.paddingOf(context).top+8,18,0),
         child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
           Row(children:[
             brand(),
@@ -438,11 +438,11 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
               ),
             ),
           ]),
-          const SizedBox(height:13),
+          const SizedBox(height:18),
           Container(
             width:double.infinity,
-            height:98,
-            padding:const EdgeInsets.fromLTRB(18,14,15,13),
+            height:102,
+            padding:const EdgeInsets.fromLTRB(18,16,15,14),
             decoration:BoxDecoration(
               color:light?Colors.white.withValues(alpha:.88):const Color(0xFF0D1425).withValues(alpha:.94),
               borderRadius:BorderRadius.circular(21),
