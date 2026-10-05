@@ -14,6 +14,7 @@ BACKUP="$ROOT/matrix-sync-backup-$RUN_ID"
 TMP="$(mktemp -d)"
 chmod 755 "$TMP"
 BASE="https://raw.githubusercontent.com/Queensho/HeyCar/$COMMIT/server"
+DEPLOY_BASE="https://raw.githubusercontent.com/Queensho/HeyCar/$COMMIT/deploy"
 ROLLBACK_SQL="$BACKUP/db-rollback.sql"
 QR_ROLLBACK_TABLE="_matrix_sync_qr_backup_$RUN_ID"
 ROLLBACK_ARMED=0
@@ -228,6 +229,12 @@ for m in 053_admin_audit_canonical.sql 054_qr_opaque_tokens.sql 057_web_push_sub
 done
 fetch_https "$BASE/matrix-schema-check.sql" -o "$TMP/matrix-schema-check.sql" || fail "matrix schema check indirilemedi"
 chmod 644 "$TMP/matrix-schema-check.sql"
+
+for f in heycar-backup.sh heycar-backup.service heycar-backup.timer; do
+  fetch_https "$DEPLOY_BASE/$f" -o "$TMP/$f" || fail "backup dosyasi indirilemedi: $f"
+done
+bash -n "$TMP/heycar-backup.sh" || fail "backup script syntax hatasi"
+grep -q 'OnCalendar=.*Europe/Istanbul' "$TMP/heycar-backup.timer" || fail "backup timer takvimi gecersiz"
 
 STAGE="code_backup"
 echo "=== CODE BACKUP ==="
@@ -489,6 +496,26 @@ fi
 
 ROLLBACK_ARMED=0
 SUCCESS=1
+
+STAGE="backup_setup"
+echo "=== DAILY BACKUP SETUP ==="
+sudo install -d -m 700 "$ROOT/backups"
+sudo install -m 700 "$TMP/heycar-backup.sh" /usr/local/sbin/heycar-backup
+sudo install -m 644 "$TMP/heycar-backup.service" /etc/systemd/system/heycar-backup.service
+sudo install -m 644 "$TMP/heycar-backup.timer" /etc/systemd/system/heycar-backup.timer
+sudo systemctl daemon-reload
+sudo systemctl enable --now heycar-backup.timer
+sudo systemctl start heycar-backup.service
+sudo systemctl is-active --quiet heycar-backup.timer || fail "backup timer aktif degil"
+
+LATEST_DB="$(find "$ROOT/backups" -maxdepth 1 -type f -name 'heycar-db-*.dump' -printf '%T@ %p\n' | sort -nr | head -1 | cut -d' ' -f2-)"
+LATEST_APP="$(find "$ROOT/backups" -maxdepth 1 -type f -name 'heycar-app-*.tgz' -printf '%T@ %p\n' | sort -nr | head -1 | cut -d' ' -f2-)"
+[ -n "$LATEST_DB" ] && [ -s "$LATEST_DB" ] || fail "ilk PostgreSQL yedegi olusmadi"
+[ -n "$LATEST_APP" ] && [ -s "$LATEST_APP" ] || fail "ilk VPS uygulama yedegi olusmadi"
+echo "BACKUP_SETUP_OK"
+echo "Latest DB: $LATEST_DB"
+echo "Latest app: $LATEST_APP"
+sudo systemctl list-timers heycar-backup.timer --no-pager || true
 
 STAGE="complete"
 echo "=== SERVICE ==="

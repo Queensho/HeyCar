@@ -5,13 +5,13 @@ on:
     branches: [main]
     paths:
       - 'server/**'
-      - 'deploy/matrix-live-sync.sh'
+      - 'deploy/**'
       - '.github/workflows/matrix-backend.yml'
   pull_request:
     branches: [main]
     paths:
       - 'server/**'
-      - 'deploy/matrix-live-sync.sh'
+      - 'deploy/**'
       - '.github/workflows/matrix-backend.yml'
   workflow_dispatch:
 
@@ -78,9 +78,13 @@ jobs:
         run: |
           set -euo pipefail
           bash -n deploy/matrix-live-sync.sh
+          bash -n deploy/heycar-backup.sh
           grep -q 'DB ROLLBACK' deploy/matrix-live-sync.sh
           grep -q 'matrix-schema-check.sql' deploy/matrix-live-sync.sh
           grep -q '087_valet_audit_runtime_acl_repair.sql' deploy/matrix-live-sync.sh
+          grep -q 'heycar-backup.service' deploy/matrix-live-sync.sh
+          grep -q 'OnCalendar=.*Europe/Istanbul' deploy/heycar-backup.timer
+          grep -q 'HEYCAR_BACKUP_RETENTION_DAYS=14' deploy/heycar-backup.service
 
       - name: Verify token role isolation
         working-directory: server
