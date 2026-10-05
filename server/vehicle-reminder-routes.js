@@ -1,9 +1,12 @@
 const express=require('express');
 const crypto=require('crypto');
 const {ownerId:authenticatedOwnerId}=require('./owner-auth-service');
+const {driverId:authenticatedDriverId}=require('./driver-auth-service');
+const {ownerPremiumPlan,driverVehicleEntitlement}=require('./premium-entitlements');
 
 module.exports=function registerVehicleReminderRoutes(app,pool){
   const owner=req=>authenticatedOwnerId(req);
+  const driver=req=>authenticatedDriverId(req);
   const meta={
     inspection:{label:'Muayene',days:[30,7,1]},
     traffic_insurance:{label:'Trafik sigortası',days:[30,7,1]},
@@ -74,33 +77,47 @@ module.exports=function registerVehicleReminderRoutes(app,pool){
     return value==='casco'?'kasko':value;
   }
 
-  async function premium(ownerId){
-    const r=await pool.query('SELECT (COALESCE(premium,false)=TRUE AND (premium_expires_at IS NULL OR premium_expires_at>NOW())) AS premium FROM users WHERE id::text=$1 LIMIT 1',[ownerId]);
-    return r.rows[0]?.premium===true;
-  }
-
-  async function owned(req,res){
-    const o=owner(req),id=String(req.params.vehicleId||'');
-    if(!o){res.status(401).json({error:'OWNER_REQUIRED'});return null;}
-    const r=await pool.query(
-      'SELECT id,plate,make,model FROM vehicles WHERE id::text=$1 AND owner_id::text=$2 LIMIT 1',
-      [id,o]
-    );
-    if(!r.rows.length){res.status(403).json({error:'FORBIDDEN'});return null;}
-    return r.rows[0];
+  async function access(req,res,{premiumRequired=false}={}){
+    const id=String(req.params.vehicleId||'');
+    const o=owner(req);
+    if(o){
+      const r=await pool.query(
+        'SELECT id,plate,make,model,owner_id FROM vehicles WHERE id::text=$1 AND owner_id::text=$2 LIMIT 1',
+        [id,o]
+      );
+      if(!r.rows.length){res.status(403).json({error:'FORBIDDEN'});return null;}
+      const p=await ownerPremiumPlan(pool,o);
+      if(premiumRequired&&!p.premium){res.status(403).json({error:'PREMIUM_REQUIRED',purchaseBy:'owner'});return null;}
+      return {vehicle:r.rows[0],ownerId:String(o),premium:p.premium,plan:p.plan,role:'owner'};
+    }
+    const d=driver(req);
+    if(d){
+      const e=await driverVehicleEntitlement(pool,d,id);
+      if(!e){res.status(403).json({error:'DRIVER_NOT_AUTHORIZED'});return null;}
+      if(premiumRequired&&!e.familyPremium){res.status(403).json({error:'FAMILY_PREMIUM_REQUIRED',ownerPlan:e.ownerPlan,purchaseBy:'owner'});return null;}
+      return {
+        vehicle:{id:e.vehicleId,plate:e.plate,make:e.make,model:e.model,owner_id:e.ownerId},
+        ownerId:e.ownerId,
+        premium:e.familyPremium,
+        plan:e.ownerPlan,
+        role:'driver',
+      };
+    }
+    res.status(401).json({error:'AUTH_REQUIRED'});
+    return null;
   }
 
   app.get('/api/vehicles/:vehicleId/reminders',async(req,res)=>{
     try{
       await ensureSchema();
-      const v=await owned(req,res);if(!v)return;
-      const isPremium=await premium(owner(req));
+      const a=await access(req,res);if(!a)return;
+      const v=a.vehicle,isPremium=a.premium;
       const r=await pool.query(
         `SELECT type,type AS reminder_type,due_date,enabled,updated_at
            FROM vehicle_reminders
           WHERE vehicle_id=$1 AND owner_id=$2
           ORDER BY due_date`,
-        [String(v.id),owner(req)]
+        [String(v.id),a.ownerId]
       );
       const today=new Date();today.setHours(0,0,0,0);
       const reminders=r.rows.map(x=>{
@@ -116,9 +133,8 @@ module.exports=function registerVehicleReminderRoutes(app,pool){
   app.put('/api/vehicles/:vehicleId/reminders',express.json(),async(req,res)=>{
     try{
       await ensureSchema();
-      const v=await owned(req,res);if(!v)return;
-      const o=owner(req);
-      if(!await premium(o))return res.status(403).json({error:'PREMIUM_REQUIRED'});
+      const a=await access(req,res,{premiumRequired:true});if(!a)return;
+      const v=a.vehicle,o=a.ownerId;
       const type=normalizeType(req.body.type);
       const dueDate=String(req.body.dueDate||'').slice(0,10);
       if(!meta[type]||!/^\d{4}-\d{2}-\d{2}$/.test(dueDate))return res.status(400).json({error:'INVALID_REMINDER'});
@@ -137,9 +153,8 @@ module.exports=function registerVehicleReminderRoutes(app,pool){
   app.put('/api/vehicles/:vehicleId/reminders/:type',express.json(),async(req,res)=>{
     try{
       await ensureSchema();
-      const v=await owned(req,res);if(!v)return;
-      const o=owner(req);
-      if(!await premium(o))return res.status(403).json({error:'PREMIUM_REQUIRED'});
+      const a=await access(req,res,{premiumRequired:true});if(!a)return;
+      const v=a.vehicle,o=a.ownerId;
       const type=normalizeType(req.params.type);
       const dueDate=String(req.body.dueDate||'').slice(0,10);
       if(!meta[type]||!/^\d{4}-\d{2}-\d{2}$/.test(dueDate))return res.status(400).json({error:'INVALID_REMINDER'});
@@ -158,9 +173,9 @@ module.exports=function registerVehicleReminderRoutes(app,pool){
   app.delete('/api/vehicles/:vehicleId/reminders/:type',async(req,res)=>{
     try{
       await ensureSchema();
-      const v=await owned(req,res);if(!v)return;
-      const o=owner(req);
-      if(!await premium(o))return res.status(403).json({error:'PREMIUM_REQUIRED'});
+      const a=await access(req,res);if(!a)return;const v=a.vehicle;
+      const o=a.ownerId;
+      if(!a.premium)return res.status(403).json({error:a.role==='driver'?'FAMILY_PREMIUM_REQUIRED':'PREMIUM_REQUIRED',purchaseBy:'owner'});
       const type=normalizeType(req.params.type);
       if(!meta[type])return res.status(400).json({error:'INVALID_REMINDER'});
       await pool.query(
@@ -176,7 +191,7 @@ module.exports=function registerVehicleReminderRoutes(app,pool){
       await ensureSchema();
       const o=owner(req);
       if(!o)return res.status(401).json({error:'OWNER_REQUIRED'});
-      if(!await premium(o))return res.json({ok:true,due:[]});
+      if(!(await ownerPremiumPlan(pool,o)).premium)return res.json({ok:true,due:[]});
       const r=await pool.query(
         `SELECT vr.*,vr.type AS reminder_type,v.plate
            FROM vehicle_reminders vr
