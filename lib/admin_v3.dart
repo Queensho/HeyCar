@@ -715,7 +715,13 @@ class _AdminHomeState extends State<AdminHome> {
           ),
           const SizedBox(height:2),
           Text(
-            tab==0 ? 'Qontag yönetim paneline hoş geldiniz. Bugün neler oluyor, hemen bakalım.' : 'Qontag yönetim merkezi',
+            tab==0
+              ? 'Qontag yönetim paneline hoş geldiniz. Bugün neler oluyor, hemen bakalım.'
+              : tab==3
+                ? 'Araç etiketleri oluşturun, yönetin ve baskıya hazırlayın.'
+                : tab==22
+                  ? 'Baskı listelerini hazırlayın, PDF oluşturun ve baskı durumlarını yönetin.'
+                  : 'Qontag yönetim merkezi',
             style:const TextStyle(color:_muted,fontSize:11.5),
           ),
         ],
