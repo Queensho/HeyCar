@@ -97,33 +97,78 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor:_bg,
-    body:Center(child:SingleChildScrollView(padding:const EdgeInsets.all(20),child:Container(
-      width:420,padding:const EdgeInsets.all(24),
-      decoration:BoxDecoration(
-        color:_card,borderRadius:BorderRadius.circular(24),
-        border:Border.all(color:_purple.withValues(alpha:.45)),
-        boxShadow:[BoxShadow(color:_purple.withValues(alpha:.16),blurRadius:34)],
+    body:Center(
+      child:SingleChildScrollView(
+        padding:const EdgeInsets.all(20),
+        child:Container(
+          width:880,
+          constraints:const BoxConstraints(minHeight:470),
+          decoration:AdminUi.card(radius:28),
+          clipBehavior:Clip.antiAlias,
+          child:LayoutBuilder(builder:(context,c){
+            final compact=c.maxWidth<720;
+            final form=Padding(
+              padding:EdgeInsets.all(compact?24:34),
+              child:Column(
+                mainAxisAlignment:MainAxisAlignment.center,
+                crossAxisAlignment:CrossAxisAlignment.start,
+                children:[
+                  _brand(fontSize:38),
+                  const SizedBox(height:10),
+                  const Text('Yönetim Paneli',style:TextStyle(color:_ink,fontSize:25,fontWeight:FontWeight.w900,letterSpacing:-.6)),
+                  const SizedBox(height:5),
+                  const Text('CepQontag operasyonlarını tek merkezden yönetin.',style:TextStyle(color:_muted,fontSize:12)),
+                  const SizedBox(height:26),
+                  TextField(controller:email,keyboardType:TextInputType.emailAddress,decoration:const InputDecoration(labelText:'E-posta',prefixIcon:Icon(Icons.mail_outline_rounded))),
+                  const SizedBox(height:12),
+                  TextField(controller:password,obscureText:true,onSubmitted:(_)=>submit(),decoration:const InputDecoration(labelText:'Şifre',prefixIcon:Icon(Icons.lock_outline_rounded))),
+                  if(error!=null)...[
+                    const SizedBox(height:12),
+                    Container(
+                      width:double.infinity,
+                      padding:const EdgeInsets.all(10),
+                      decoration:BoxDecoration(color:Colors.redAccent.withValues(alpha:.08),borderRadius:BorderRadius.circular(12)),
+                      child:Text(error!,style:const TextStyle(color:Colors.redAccent,fontWeight:FontWeight.w700,fontSize:11)),
+                    ),
+                  ],
+                  const SizedBox(height:18),
+                  SizedBox(
+                    width:double.infinity,
+                    height:50,
+                    child:FilledButton(
+                      onPressed:busy?null:submit,
+                      child:busy
+                        ?const SizedBox(width:20,height:20,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white))
+                        :const Text('Giriş Yap',style:TextStyle(fontWeight:FontWeight.w900)),
+                    ),
+                  ),
+                ],
+              ),
+            );
+            if(compact)return form;
+            return Row(children:[
+              Expanded(child:form),
+              Expanded(child:Container(
+                constraints:const BoxConstraints(minHeight:470),
+                padding:const EdgeInsets.all(34),
+                decoration:BoxDecoration(
+                  gradient:const LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:[Color(0xFF4A20F5),Color(0xFF7A3CFF)]),
+                ),
+                child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                  const Spacer(),
+                  const Icon(Icons.qr_code_2_rounded,color:Colors.white,size:58),
+                  const SizedBox(height:18),
+                  const Text('Araç sahiplerine\nulaşmanın yeni yolu.',style:TextStyle(color:Colors.white,fontSize:31,height:1.05,fontWeight:FontWeight.w900)),
+                  const SizedBox(height:12),
+                  Text('QR, baskı, kullanıcı, çekici, vale ve mağaza operasyonlarını modern Qontag panelinden yönetin.',style:TextStyle(color:Colors.white.withValues(alpha:.82),fontSize:12.5,height:1.45)),
+                  const Spacer(),
+                ]),
+              )),
+            ]);
+          }),
+        ),
       ),
-      child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-        RichText(text:const TextSpan(children:[
-          TextSpan(text:'Cep',style:TextStyle(color:Colors.white,fontSize:32,fontWeight:FontWeight.w900)),
-          TextSpan(text:'Qar',style:TextStyle(color:_purple,fontSize:32,fontWeight:FontWeight.w900)),
-        ])),
-        const SizedBox(height:4),
-        const Text('Yönetim merkezi',style:TextStyle(fontSize:18,fontWeight:FontWeight.w800,color:Colors.white)),
-        const SizedBox(height:22),
-        TextField(controller:email,keyboardType:TextInputType.emailAddress,decoration:const InputDecoration(labelText:'E-posta',prefixIcon:Icon(Icons.mail_outline_rounded))),
-        const SizedBox(height:12),
-        TextField(controller:password,obscureText:true,onSubmitted:(_)=>submit(),decoration:const InputDecoration(labelText:'Şifre',prefixIcon:Icon(Icons.lock_outline_rounded))),
-        if(error!=null)...[const SizedBox(height:12),Text(error!,style:const TextStyle(color:Colors.redAccent,fontWeight:FontWeight.w700))],
-        const SizedBox(height:18),
-        SizedBox(width:double.infinity,height:50,child:FilledButton(
-          style:FilledButton.styleFrom(backgroundColor:_purple,foregroundColor:Colors.white,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(14))),
-          onPressed:busy?null:submit,
-          child:busy?const SizedBox(width:20,height:20,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)):const Text('Giriş yap',style:TextStyle(fontWeight:FontWeight.w900)),
-        )),
-      ]),
-    ))),
+    ),
   );
 }
 
@@ -1259,7 +1304,7 @@ class Dashboard extends StatelessWidget{
     var owners=_roleCount('owner');
     var drivers=_roleCount('driver');
     if(owners==0&&drivers==0){owners=(users.length*.65).round();drivers=(users.length*.25).round();}
-    final other=(users.length-owners-drivers).clamp(0,users.length);
+    final other=(users.length-owners-drivers).clamp(0,users.length).toInt();
     final total=owners+drivers+other;
     return AdminPanel(
       child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
@@ -1789,7 +1834,7 @@ class _QrPageState extends State<QrPage>{
       child:ConstrainedBox(
         constraints:const BoxConstraints(maxWidth:460),
         child:Padding(padding:const EdgeInsets.all(18),child:Column(mainAxisSize:MainAxisSize.min,children:[
-          const Text('QR Etiketi',style:TextStyle(fontSize:22,fontWeight:FontWeight.w900,color:Colors.white)),
+          const Text('QR Etiketi',style:TextStyle(fontSize:22,fontWeight:FontWeight.w900,color:_ink)),
           const SizedBox(height:4),
           Text(token,style:const TextStyle(fontWeight:FontWeight.w800,color:_muted,fontSize:13)),
           if((e['batch_code']??'').toString().isNotEmpty)Text('${e['batch_code']} • Parti sıra ${e['batch_serial']??'-'}',style:const TextStyle(color:_muted,fontSize:11)),
@@ -1846,7 +1891,7 @@ class _QrPageState extends State<QrPage>{
 
     return ListView(padding:const EdgeInsets.fromLTRB(14,14,14,24),children:[
       Wrap(spacing:8,runSpacing:8,crossAxisAlignment:WrapCrossAlignment.center,children:[
-        const Text('QR Yönetimi',style:TextStyle(fontSize:22,fontWeight:FontWeight.w900,color:Colors.white)),
+        const Text('QR Yönetimi',style:TextStyle(fontSize:22,fontWeight:FontWeight.w900,color:_ink)),
         PopupMenuButton<int>(
           onSelected:widget.create,
           itemBuilder:(_)=>const[
@@ -2016,7 +2061,7 @@ class _QrPageState extends State<QrPage>{
 }
 class ModerationPage extends StatelessWidget{
   const ModerationPage({super.key,required this.rows,required this.removeBackground,required this.resetTheme});final List<Map<String,dynamic>> rows;final Future<void> Function(String) removeBackground,resetTheme;
-  @override Widget build(BuildContext context)=>ListView(padding:const EdgeInsets.all(22),children:[const Text('Kişiselleştirme Moderasyonu',style:TextStyle(fontSize:22,fontWeight:FontWeight.w900,color:Colors.white)),const SizedBox(height:14),...rows.map((e){final bg=e['background_path']?.toString();return Container(margin:const EdgeInsets.only(bottom:12),padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(18),border:Border.all(color:_line)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(e['plate']?.toString()??'-',style:const TextStyle(fontSize:17,fontWeight:FontWeight.w900)),Text('${e['owner_name']??'-'} • ${e['preset']??'classic'}',style:const TextStyle(color:_muted)),const SizedBox(height:8),Text(e['public_message']?.toString()??''),if(bg!=null&&bg.isNotEmpty)...[const SizedBox(height:10),ClipRRect(borderRadius:BorderRadius.circular(14),child:Image.network('$_baseUrl$bg',height:150,width:double.infinity,fit:BoxFit.cover))],const SizedBox(height:10),Wrap(spacing:8,children:[if(bg!=null&&bg.isNotEmpty)OutlinedButton(onPressed:()=>removeBackground(e['vehicle_id'].toString()),child:const Text('Arka planı kaldır')),FilledButton(onPressed:()=>resetTheme(e['vehicle_id'].toString()),child:const Text('Temayı sıfırla'))]) ]));})]);
+  @override Widget build(BuildContext context)=>ListView(padding:const EdgeInsets.all(22),children:[const Text('Kişiselleştirme Moderasyonu',style:TextStyle(fontSize:22,fontWeight:FontWeight.w900,color:_ink)),const SizedBox(height:14),...rows.map((e){final bg=e['background_path']?.toString();return Container(margin:const EdgeInsets.only(bottom:12),padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(18),border:Border.all(color:_line)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(e['plate']?.toString()??'-',style:const TextStyle(fontSize:17,fontWeight:FontWeight.w900)),Text('${e['owner_name']??'-'} • ${e['preset']??'classic'}',style:const TextStyle(color:_muted)),const SizedBox(height:8),Text(e['public_message']?.toString()??''),if(bg!=null&&bg.isNotEmpty)...[const SizedBox(height:10),ClipRRect(borderRadius:BorderRadius.circular(14),child:Image.network('$_baseUrl$bg',height:150,width:double.infinity,fit:BoxFit.cover))],const SizedBox(height:10),Wrap(spacing:8,children:[if(bg!=null&&bg.isNotEmpty)OutlinedButton(onPressed:()=>removeBackground(e['vehicle_id'].toString()),child:const Text('Arka planı kaldır')),FilledButton(onPressed:()=>resetTheme(e['vehicle_id'].toString()),child:const Text('Temayı sıfırla'))]) ]));})]);
 }
 
 
@@ -2112,7 +2157,7 @@ class _AdminPromoPageState extends State<AdminPromoPage>{
   @override Widget build(BuildContext context){
     final rows=filter=='all'?widget.rows:widget.rows.where((x)=>x['audience']==filter||x['audience']=='both').toList();
     return ListView(padding:const EdgeInsets.fromLTRB(14,14,14,24),children:[
-      Row(children:[const Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('Promo & Duyurular',style:TextStyle(fontSize:22,fontWeight:FontWeight.w900,color:Colors.white)),SizedBox(height:4),Text('Araç sahipleri ve işletmelere tek panelden içerik yayınla.',style:TextStyle(color:_muted))])),FilledButton.icon(onPressed:createDialog,style:FilledButton.styleFrom(backgroundColor:_orange,foregroundColor:Colors.black),icon:const Icon(Icons.add_rounded),label:const Text('Yeni Ekle',style:TextStyle(fontWeight:FontWeight.w900)))]),
+      Row(children:[const Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('Promo & Duyurular',style:TextStyle(fontSize:22,fontWeight:FontWeight.w900,color:_ink)),SizedBox(height:4),Text('Araç sahipleri ve işletmelere tek panelden içerik yayınla.',style:TextStyle(color:_muted))])),FilledButton.icon(onPressed:createDialog,style:FilledButton.styleFrom(backgroundColor:_orange,foregroundColor:Colors.black),icon:const Icon(Icons.add_rounded),label:const Text('Yeni Ekle',style:TextStyle(fontWeight:FontWeight.w900)))]),
       const SizedBox(height:16),
       Wrap(spacing:8,children:[('all','Tümü'),('owner','Araç Sahipleri'),('business','İşletmeler')].map((e)=>ChoiceChip(label:Text(e.$2),selected:filter==e.$1,onSelected:(_)=>setState(()=>filter=e.$1))).toList()),
       const SizedBox(height:16),
@@ -2343,7 +2388,7 @@ class ComplaintModerationPage extends StatelessWidget{
               Container(padding:const EdgeInsets.symmetric(horizontal:8,vertical:4),decoration:BoxDecoration(color:color.withValues(alpha:.12),borderRadius:BorderRadius.circular(20)),child:Text(_complaintStatusLabel(st),style:TextStyle(color:color,fontSize:9.5,fontWeight:FontWeight.w900))),
             ]),
             const SizedBox(height:4),
-            Text('${r['plate']??'-'} • ${_reporterLabel((r['reporter_type']??'').toString())} • ${r['owner_name']??r['owner_phone']??'Araç sahibi'}',style:const TextStyle(color:Colors.white70,fontSize:11.5,fontWeight:FontWeight.w700)),
+            Text('${r['plate']??'-'} • ${_reporterLabel((r['reporter_type']??'').toString())} • ${r['owner_name']??r['owner_phone']??'Araç sahibi'}',style:const TextStyle(color:_muted,fontSize:11.5,fontWeight:FontWeight.w700)),
             if(preview.isNotEmpty)...[
               const SizedBox(height:5),
               Container(width:double.infinity,padding:const EdgeInsets.all(9),decoration:BoxDecoration(color:_card2,borderRadius:BorderRadius.circular(10)),child:Text('“$preview”',maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_muted,fontSize:11.5,fontStyle:FontStyle.italic))),
@@ -2471,7 +2516,7 @@ class _ComplaintDetailPageState extends State<ComplaintDetailPage>{
                   Text(_adminDate(m['created_at']),style:const TextStyle(color:_muted,fontSize:9.5)),
                 ]),
                 const SizedBox(height:5),
-                SelectableText((m['message']??'').toString(),style:const TextStyle(color:Colors.white,fontSize:12.5,height:1.4)),
+                SelectableText((m['message']??'').toString(),style:const TextStyle(color:_ink,fontSize:12.5,height:1.4)),
               ]),
             );
           }).toList()),
@@ -2837,7 +2882,7 @@ class _AdminPushPageState extends State<AdminPushPage>{
                   const SizedBox(height:8),
                   Container(
                     constraints:const BoxConstraints(maxHeight:300),
-                    decoration:BoxDecoration(color:_card2,borderRadius:BorderRadius.circular(14),border:Border.all(color:Colors.white.withValues(alpha:.05))),
+                    decoration:BoxDecoration(color:_card2,borderRadius:BorderRadius.circular(14),border:Border.all(color:_line)),
                     child:ListView(
                       shrinkWrap:true,
                       children:userRows.map((u){
@@ -3205,7 +3250,7 @@ class SystemHealthPage extends StatelessWidget{
               child:lastError.isEmpty
                 ? const Row(children:[Icon(Icons.check_circle_rounded,color:_green),SizedBox(width:9),Expanded(child:Text('Bu servis başlangıcından beri yakalanmış runtime hata yok.',style:TextStyle(color:_muted,fontSize:12)))])
                 : Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-                    Text(lastError['message']?.toString()??'-',style:const TextStyle(color:Colors.white,fontSize:12,height:1.35,fontWeight:FontWeight.w700)),
+                    Text(lastError['message']?.toString()??'-',style:const TextStyle(color:_ink,fontSize:12,height:1.35,fontWeight:FontWeight.w700)),
                     const SizedBox(height:7),
                     Text(_adminDate(lastError['at']),style:const TextStyle(color:_muted,fontSize:10.5)),
                   ]),
@@ -3224,7 +3269,7 @@ class SystemHealthPage extends StatelessWidget{
                     child:Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
                       const Icon(Icons.error_outline_rounded,color:Colors.redAccent,size:16),
                       const SizedBox(width:7),
-                      Expanded(child:Text(e['message']?.toString()??'-',style:const TextStyle(color:Colors.white70,fontSize:10.5,height:1.35))),
+                      Expanded(child:Text(e['message']?.toString()??'-',style:const TextStyle(color:_muted,fontSize:10.5,height:1.35))),
                       const SizedBox(width:8),
                       Text(_adminDate(e['at']),style:const TextStyle(color:_muted,fontSize:9)),
                     ]),
@@ -3260,7 +3305,7 @@ class SystemHealthPage extends StatelessWidget{
           padding:const EdgeInsets.only(bottom:7),
           child:Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
             SizedBox(width:96,child:Text(r.$1,style:const TextStyle(color:_muted,fontSize:10.5,fontWeight:FontWeight.w700))),
-            Expanded(child:Text(r.$2,maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Colors.white,fontSize:11.5,fontWeight:FontWeight.w800))),
+            Expanded(child:Text(r.$2,maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_ink,fontSize:11.5,fontWeight:FontWeight.w800))),
           ]),
         )),
       ]),
@@ -3279,7 +3324,7 @@ class SystemHealthPage extends StatelessWidget{
         Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
           Row(children:[Text(title,style:const TextStyle(fontSize:13,fontWeight:FontWeight.w900)),const Spacer(),Text('${value.toStringAsFixed(1)}%',style:TextStyle(color:color,fontSize:12,fontWeight:FontWeight.w900))]),
           const SizedBox(height:6),
-          ClipRRect(borderRadius:BorderRadius.circular(8),child:LinearProgressIndicator(value:v/100,minHeight:7,backgroundColor:Colors.white.withValues(alpha:.06),valueColor:AlwaysStoppedAnimation(color))),
+          ClipRRect(borderRadius:BorderRadius.circular(8),child:LinearProgressIndicator(value:v/100,minHeight:7,backgroundColor:_line,valueColor:AlwaysStoppedAnimation(color))),
           const SizedBox(height:5),
           Text(detail,style:const TextStyle(color:_muted,fontSize:10.5)),
         ])),
@@ -3608,7 +3653,7 @@ class _AuditLogPageState extends State<AuditLogPage>{
         subtitle:Padding(
           padding:const EdgeInsets.only(top:4),
           child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-            Text('${_auditTargetLabel((row['target_type']??'').toString())}: $target',maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Colors.white70,fontSize:11.5,fontWeight:FontWeight.w700)),
+            Text('${_auditTargetLabel((row['target_type']??'').toString())}: $target',maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_muted,fontSize:11.5,fontWeight:FontWeight.w700)),
             const SizedBox(height:2),
             Text('$actor • ${_adminDate(row['created_at'])}',maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_muted,fontSize:10.5)),
           ]),
@@ -3643,7 +3688,7 @@ class _AuditLogPageState extends State<AuditLogPage>{
     padding:const EdgeInsets.only(bottom:6),
     child:Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
       SizedBox(width:92,child:Text(label,style:const TextStyle(color:_muted,fontSize:10.5,fontWeight:FontWeight.w700))),
-      Expanded(child:SelectableText(value,style:const TextStyle(color:Colors.white,fontSize:11.5,fontWeight:FontWeight.w700))),
+      Expanded(child:SelectableText(value,style:const TextStyle(color:_ink,fontSize:11.5,fontWeight:FontWeight.w700))),
     ]),
   );
 }
@@ -3990,7 +4035,7 @@ class _ReportLinePainter extends CustomPainter{
     if(maxValue<=0)maxValue=1;
     final roundedMax=maxValue<=5?5.0:(maxValue/5).ceil()*5.0;
 
-    final gridPaint=Paint()..color=Colors.white.withValues(alpha:.07)..strokeWidth=1;
+    final gridPaint=Paint()..color=_line..strokeWidth=1;
     for(var i=0;i<=4;i++){
       final y=top+h*(i/4);
       canvas.drawLine(Offset(left,y),Offset(left+w,y),gridPaint);
@@ -4094,7 +4139,7 @@ class _ReportRankingCard extends StatelessWidget{
                 padding:const EdgeInsets.only(left:31),
                 child:ClipRRect(
                   borderRadius:BorderRadius.circular(8),
-                  child:LinearProgressIndicator(value:fraction,minHeight:6,backgroundColor:Colors.white.withValues(alpha:.06),valueColor:const AlwaysStoppedAnimation(_purple)),
+                  child:LinearProgressIndicator(value:fraction,minHeight:6,backgroundColor:_line,valueColor:const AlwaysStoppedAnimation(_purple)),
                 ),
               ),
             ]),
@@ -4164,7 +4209,7 @@ Widget _adminHistoryRow({
 })=>Container(
   margin:const EdgeInsets.only(bottom:8),
   padding:const EdgeInsets.all(11),
-  decoration:BoxDecoration(color:_card2,borderRadius:BorderRadius.circular(14),border:Border.all(color:Colors.white.withValues(alpha:.05))),
+  decoration:BoxDecoration(color:_card2,borderRadius:BorderRadius.circular(14),border:Border.all(color:_line)),
   child:Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
     Container(width:34,height:34,decoration:BoxDecoration(color:color.withValues(alpha:.13),shape:BoxShape.circle),child:Icon(icon,color:color,size:18)),
     const SizedBox(width:10),
@@ -4452,7 +4497,7 @@ class VehicleDetail extends StatelessWidget{
 }
 
 Widget detail(String title,Object? value)=>Container(margin:const EdgeInsets.only(bottom:9),padding:const EdgeInsets.all(15),decoration:BoxDecoration(color:_card2,borderRadius:BorderRadius.circular(16),border:Border.all(color:_line)),child:Row(children:[SizedBox(width:120,child:Text(title,style:const TextStyle(color:_muted))),Expanded(child:Text(value?.toString()??'-',style:const TextStyle(fontWeight:FontWeight.w800)))]));
-Widget listPage(String title,TextEditingController s,VoidCallback refresh,List<Widget> children)=>ListView(padding:const EdgeInsets.fromLTRB(14,14,14,24),children:[Text(title,style:const TextStyle(fontSize:22,fontWeight:FontWeight.w900,color:Colors.white)),const SizedBox(height:12),TextField(controller:s,onChanged:(_)=>refresh(),decoration:InputDecoration(prefixIcon:const Icon(Icons.search),hintText:'$title içinde ara',filled:true,fillColor:_card2,border:const OutlineInputBorder(borderSide:BorderSide.none))),const SizedBox(height:14),...children]);
+Widget listPage(String title,TextEditingController s,VoidCallback refresh,List<Widget> children)=>ListView(padding:const EdgeInsets.fromLTRB(14,14,14,24),children:[Text(title,style:const TextStyle(fontSize:22,fontWeight:FontWeight.w900,color:_ink)),const SizedBox(height:12),TextField(controller:s,onChanged:(_)=>refresh(),decoration:InputDecoration(prefixIcon:const Icon(Icons.search),hintText:'$title içinde ara',filled:true,fillColor:_card2,border:const OutlineInputBorder(borderSide:BorderSide.none))),const SizedBox(height:14),...children]);
 Widget rowCard(IconData icon,String title,String sub,Widget trailing,VoidCallback onTap)=>Container(margin:const EdgeInsets.only(bottom:9),decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(18),border:Border.all(color:_line)),child:ListTile(onTap:onTap,leading:CircleAvatar(backgroundColor:_purple.withValues(alpha:.14),child:Icon(icon,color:_purple)),title:Text(title,style:const TextStyle(fontWeight:FontWeight.w900)),subtitle:Text(sub),trailing:trailing));
 Widget status(String v){final good=v=='active';final bad=v=='disabled'||v=='suspended';final c=good?Colors.green:bad?Colors.red:_orange;return Container(padding:const EdgeInsets.symmetric(horizontal:9,vertical:5),decoration:BoxDecoration(color:c.withValues(alpha:.12),borderRadius:BorderRadius.circular(20)),child:Text(v.isEmpty?'-':v,style:TextStyle(color:c,fontWeight:FontWeight.w800,fontSize:12)));}
 Map<String,dynamic> _decode(http.Response r){if(r.body.isEmpty)return{};final d=jsonDecode(r.body);if(d is Map)return Map<String,dynamic>.from(d);if(d is List)return{'items':d};return{};}
