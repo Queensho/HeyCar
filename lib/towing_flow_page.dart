@@ -1518,6 +1518,7 @@ class _TowingTrackingPageState extends State<TowingTrackingPage> {
 
   Map<String, dynamic>? data;
   Timer? timer;
+  final ScrollController scrollController = ScrollController();
   bool cancelling = false;
 
   @override
@@ -1530,6 +1531,7 @@ class _TowingTrackingPageState extends State<TowingTrackingPage> {
   @override
   void dispose() {
     timer?.cancel();
+    scrollController.dispose();
     super.dispose();
   }
 
@@ -1769,10 +1771,13 @@ class _TowingTrackingPageState extends State<TowingTrackingPage> {
   }
 
   Widget _trackingMap() {
+    final status = '${data?['status'] ?? ''}';
     final driverLat = _number(data?['driver_lat']);
     final driverLng = _number(data?['driver_lng']);
     final pickupLat = _number(data?['pickup_lat']);
     final pickupLng = _number(data?['pickup_lng']);
+    final destinationLat = _number(data?['destination_lat']);
+    final destinationLng = _number(data?['destination_lng']);
 
     final driver = driverLat == null || driverLng == null
         ? null
@@ -1780,7 +1785,23 @@ class _TowingTrackingPageState extends State<TowingTrackingPage> {
     final pickup = pickupLat == null || pickupLng == null
         ? null
         : LatLng(pickupLat, pickupLng);
-    final center = driver ?? pickup ?? const LatLng(41.0, 28.9);
+    final destination = destinationLat == null || destinationLng == null
+        ? null
+        : LatLng(destinationLat, destinationLng);
+
+    final goingToDestination =
+        status == 'vehicle_loaded' || status == 'in_transit';
+    final target = goingToDestination ? destination : pickup;
+
+    LatLng center;
+    if (driver != null && target != null) {
+      center = LatLng(
+        (driver.latitude + target.latitude) / 2,
+        (driver.longitude + target.longitude) / 2,
+      );
+    } else {
+      center = driver ?? target ?? const LatLng(41.0, 28.9);
+    }
 
     return Container(
       height: 255,
@@ -1800,7 +1821,7 @@ class _TowingTrackingPageState extends State<TowingTrackingPage> {
         child: FlutterMap(
           options: MapOptions(
             initialCenter: center,
-            initialZoom: 13.5,
+            initialZoom: 13.2,
             minZoom: 10,
             maxZoom: 18,
             interactionOptions: const InteractionOptions(
@@ -1810,9 +1831,9 @@ class _TowingTrackingPageState extends State<TowingTrackingPage> {
           children: [
             ColorFiltered(
               colorFilter: const ColorFilter.matrix([
-                .72, .12, .12, 0, 40,
-                .12, .72, .12, 0, 40,
-                .12, .12, .72, 0, 40,
+                .82, .08, .08, 0, 45,
+                .08, .82, .08, 0, 45,
+                .08, .08, .82, 0, 45,
                 0, 0, 0, 1, 0,
               ]),
               child: TileLayer(
@@ -1823,11 +1844,11 @@ class _TowingTrackingPageState extends State<TowingTrackingPage> {
                 panBuffer: 0,
               ),
             ),
-            if (driver != null && pickup != null)
+            if (driver != null && target != null)
               PolylineLayer(
                 polylines: [
                   Polyline(
-                    points: [driver, pickup],
+                    points: [driver, target],
                     strokeWidth: 5,
                     color: _purple,
                   ),
@@ -1865,9 +1886,9 @@ class _TowingTrackingPageState extends State<TowingTrackingPage> {
                       ),
                     ),
                   ),
-                if (pickup != null)
+                if (target != null)
                   Marker(
-                    point: pickup,
+                    point: target,
                     width: 72,
                     height: 72,
                     child: Container(
@@ -1946,7 +1967,7 @@ class _TowingTrackingPageState extends State<TowingTrackingPage> {
     );
   }
 
-  Widget _driverInfo() {
+  Widget _driverInfo({bool towingAvatar = false}) {
     final provider = '${data?['provider_name'] ?? ''}'.trim();
     final driver = '${data?['driver_name'] ?? ''}'.trim();
     final plate = '${data?['towing_plate'] ?? ''}'.trim();
@@ -1970,10 +1991,10 @@ class _TowingTrackingPageState extends State<TowingTrackingPage> {
             color: Color(0xFFF1E9FF),
             shape: BoxShape.circle,
           ),
-          child: const Icon(
-            Icons.person_outline_rounded,
+          child: Icon(
+            towingAvatar ? Icons.fire_truck_rounded : Icons.person_outline_rounded,
             color: _purple,
-            size: 30,
+            size: towingAvatar ? 31 : 30,
           ),
         ),
         const SizedBox(width: 13),
@@ -2110,6 +2131,207 @@ class _TowingTrackingPageState extends State<TowingTrackingPage> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _postPickupCard(String status) {
+    final loaded = status == 'vehicle_loaded';
+    final delivered = status == 'delivered';
+
+    final title = delivered
+        ? 'Araç teslim edildi'
+        : loaded
+            ? 'Aracınız yüklendi'
+            : 'Aracınız yolda';
+
+    final badge = delivered
+        ? 'Teslimat tamamlandı'
+        : loaded
+            ? 'Yükleme tamam'
+            : 'Taşıma devam ediyor';
+
+    final infoTitle = delivered
+        ? 'Taşıma başarıyla tamamlandı'
+        : 'Aracınız güvenle taşınıyor';
+
+    final infoText = delivered
+        ? 'Aracınız bırakma noktasına teslim edildi.'
+        : 'Varış noktasına doğru yola çıktı. Canlı konumdan takip edebilirsiniz.';
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 14, 16, 20),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(27),
+        border: Border.all(color: const Color(0xFFF0F1F5)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0D000000),
+            blurRadius: 18,
+            offset: Offset(0, 7),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              color: _ink,
+              fontSize: 25,
+              fontWeight: FontWeight.w900,
+              height: 1.04,
+            ),
+          ),
+          const SizedBox(height: 9),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+            decoration: BoxDecoration(
+              color: delivered || loaded
+                  ? const Color(0xFFE2F8E8)
+                  : const Color(0xFFF1E9FF),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  delivered || loaded
+                      ? Icons.check_circle_rounded
+                      : Icons.route_rounded,
+                  color: delivered || loaded
+                      ? const Color(0xFF16A34A)
+                      : _purple,
+                  size: 20,
+                ),
+                const SizedBox(width: 7),
+                Text(
+                  badge,
+                  style: TextStyle(
+                    color: delivered || loaded
+                        ? const Color(0xFF168A3F)
+                        : _purple,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Divider(height: 1, color: _line),
+          const SizedBox(height: 14),
+          _driverInfo(towingAvatar: true),
+          const SizedBox(height: 17),
+          _routeInfo(),
+          const SizedBox(height: 18),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF2EEFF),
+              borderRadius: BorderRadius.circular(17),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFE8DEFF),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    delivered
+                        ? Icons.check_circle_outline_rounded
+                        : Icons.schedule_rounded,
+                    color: _purple,
+                    size: 25,
+                  ),
+                ),
+                const SizedBox(width: 11),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        infoTitle,
+                        style: const TextStyle(
+                          color: Color(0xFF4C1FA9),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        infoText,
+                        style: const TextStyle(
+                          color: _muted,
+                          fontSize: 11.5,
+                          height: 1.35,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 13),
+          SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [_purple2, _purple],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
+                borderRadius: BorderRadius.circular(17),
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(17),
+                  onTap: delivered
+                      ? () => Navigator.maybePop(context)
+                      : () => scrollController.animateTo(
+                            0,
+                            duration: const Duration(milliseconds: 350),
+                            curve: Curves.easeOutCubic,
+                          ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        delivered
+                            ? Icons.check_rounded
+                            : Icons.location_on_rounded,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        delivered ? 'Tamam' : 'Canlı Takibi Gör',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -2305,6 +2527,7 @@ class _TowingTrackingPageState extends State<TowingTrackingPage> {
       body: SafeArea(
         top: false,
         child: ListView(
+          controller: scrollController,
           padding: const EdgeInsets.only(top: 8),
           children: [
             searchingNow ? _searching() : _trackingMap(),
@@ -2364,6 +2587,10 @@ class _TowingTrackingPageState extends State<TowingTrackingPage> {
                   ],
                 ),
               )
+            else if (status == 'vehicle_loaded' ||
+                status == 'in_transit' ||
+                status == 'delivered')
+              _postPickupCard(status)
             else
               _foundCard(status),
           ],
