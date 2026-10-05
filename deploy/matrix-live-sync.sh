@@ -24,6 +24,7 @@ MIGRATION_058_APPLIED=0
 MIGRATION_082_APPLIED=0
 MIGRATION_083_APPLIED=0
 MIGRATION_084_APPLIED=0
+MIGRATION_085_APPLIED=0
 SUCCESS=0
 STAGE="init"
 LOG="/tmp/matrix-live-sync-$RUN_ID.log"
@@ -70,6 +71,7 @@ FILES=(
   web-push-service.js
   qr-routes.js
   qr-security-routes.js
+  touchpoint-routes.js
   security-service.js
   vehicle-management-routes.js
   vehicle-reminder-routes.js
@@ -116,7 +118,7 @@ rollback_all() {
   echo "Reason: $reason"
   sudo systemctl stop heycar >/dev/null 2>&1 || true
 
-  if [ "$MIGRATION_053_APPLIED" -eq 1 ] || [ "$MIGRATION_054_APPLIED" -eq 1 ] || [ "$MIGRATION_057_APPLIED" -eq 1 ] || [ "$MIGRATION_058_APPLIED" -eq 1 ] || [ "$MIGRATION_082_APPLIED" -eq 1 ] || [ "$MIGRATION_083_APPLIED" -eq 1 ] || [ "$MIGRATION_084_APPLIED" -eq 1 ]; then
+  if [ "$MIGRATION_053_APPLIED" -eq 1 ] || [ "$MIGRATION_054_APPLIED" -eq 1 ] || [ "$MIGRATION_057_APPLIED" -eq 1 ] || [ "$MIGRATION_058_APPLIED" -eq 1 ] || [ "$MIGRATION_082_APPLIED" -eq 1 ] || [ "$MIGRATION_083_APPLIED" -eq 1 ] || [ "$MIGRATION_084_APPLIED" -eq 1 ] || [ "$MIGRATION_085_APPLIED" -eq 1 ]; then
     if [ -s "$ROLLBACK_SQL" ]; then
       sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$ROLLBACK_SQL"
       DB_ROLLBACK_RC=$?
@@ -218,7 +220,7 @@ for f in "${FILES[@]}"; do
   fi
 done
 
-for m in 053_admin_audit_canonical.sql 054_qr_opaque_tokens.sql 057_web_push_subscriptions.sql 058_qr_proximity_security.sql 082_family_premium.sql 083_towing_vehicle_pricing.sql 084_owner_login_dependencies.sql; do
+for m in 053_admin_audit_canonical.sql 054_qr_opaque_tokens.sql 057_web_push_subscriptions.sql 058_qr_proximity_security.sql 082_family_premium.sql 083_towing_vehicle_pricing.sql 084_owner_login_dependencies.sql 085_vehicle_product_page_nfc_analytics.sql; do
   fetch_https "$BASE/migrations/$m" -o "$TMP/$m" || fail "migration indirilemedi: $m"
   chmod 644 "$TMP/$m"
 done
@@ -262,6 +264,12 @@ FAMILY_PREMIUM_YEARLY_TEXT_EXISTS="$(db_scalar "SELECT CASE WHEN EXISTS (SELECT 
 TOWING_VEHICLE_BASE_FEE_EXISTS="$(db_scalar "SELECT CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='towing_vehicle_types' AND column_name='base_fee') THEN 1 ELSE 0 END")"
 TOWING_VEHICLE_PER_KM_EXISTS="$(db_scalar "SELECT CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='towing_vehicle_types' AND column_name='per_km_fee') THEN 1 ELSE 0 END")"
 TOWING_VEHICLE_MINIMUM_EXISTS="$(db_scalar "SELECT CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='towing_vehicle_types' AND column_name='minimum_fee') THEN 1 ELSE 0 END")"
+VEHICLE_PAGES_EXISTS="$(db_scalar "SELECT CASE WHEN to_regclass('public.vehicle_pages') IS NULL THEN 0 ELSE 1 END")"
+VEHICLE_PRODUCTS_EXISTS="$(db_scalar "SELECT CASE WHEN to_regclass('public.vehicle_products') IS NULL THEN 0 ELSE 1 END")"
+TOUCHPOINT_EVENTS_EXISTS="$(db_scalar "SELECT CASE WHEN to_regclass('public.vehicle_touchpoint_events') IS NULL THEN 0 ELSE 1 END")"
+QR_SCAN_SOURCE_EXISTS="$(db_scalar "SELECT CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='qr_scan_history' AND column_name='source') THEN 1 ELSE 0 END")"
+QR_SCAN_PAGE_ID_EXISTS="$(db_scalar "SELECT CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='qr_scan_history' AND column_name='page_id') THEN 1 ELSE 0 END")"
+QR_SCAN_PRODUCT_ID_EXISTS="$(db_scalar "SELECT CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='qr_scan_history' AND column_name='product_id') THEN 1 ELSE 0 END")"
 
 if [ "$QR_SERIAL_EXISTS" -eq 1 ]; then
   sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -c     "CREATE UNLOGGED TABLE public.$QR_ROLLBACK_TABLE AS SELECT id FROM public.qr_tags WHERE serial_no IS NULL AND token ~ '^CP-QAR-[0-9]+$';"
@@ -365,6 +373,25 @@ fi
     echo "ALTER TABLE public.towing_vehicle_types DROP COLUMN IF EXISTS minimum_fee CASCADE;"
   fi
 
+  if [ "$TOUCHPOINT_EVENTS_EXISTS" -eq 0 ]; then
+    echo "DROP TABLE IF EXISTS public.vehicle_touchpoint_events CASCADE;"
+  fi
+  if [ "$QR_SCAN_PRODUCT_ID_EXISTS" -eq 0 ]; then
+    echo "ALTER TABLE public.qr_scan_history DROP COLUMN IF EXISTS product_id CASCADE;"
+  fi
+  if [ "$QR_SCAN_PAGE_ID_EXISTS" -eq 0 ]; then
+    echo "ALTER TABLE public.qr_scan_history DROP COLUMN IF EXISTS page_id CASCADE;"
+  fi
+  if [ "$QR_SCAN_SOURCE_EXISTS" -eq 0 ]; then
+    echo "ALTER TABLE public.qr_scan_history DROP COLUMN IF EXISTS source CASCADE;"
+  fi
+  if [ "$VEHICLE_PRODUCTS_EXISTS" -eq 0 ]; then
+    echo "DROP TABLE IF EXISTS public.vehicle_products CASCADE;"
+  fi
+  if [ "$VEHICLE_PAGES_EXISTS" -eq 0 ]; then
+    echo "DROP TABLE IF EXISTS public.vehicle_pages CASCADE;"
+  fi
+
   echo "COMMIT;"
 } > "$ROLLBACK_SQL"
 
@@ -386,6 +413,8 @@ sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$TMP/083_towing_vehicle_pr
 MIGRATION_083_APPLIED=1
 sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$TMP/084_owner_login_dependencies.sql"
 MIGRATION_084_APPLIED=1
+sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$TMP/085_vehicle_product_page_nfc_analytics.sql"
+MIGRATION_085_APPLIED=1
 
 STAGE="schema_verify"
 echo "=== LIVE SCHEMA VERIFY ==="
