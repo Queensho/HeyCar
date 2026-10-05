@@ -1659,10 +1659,10 @@ class _QrPageState extends State<QrPage>{
     final pageHorizontalMargin=(PdfPageFormat.a4.width-(labelWidth*3))/2;
     final pageVerticalMargin=(PdfPageFormat.a4.height-(labelHeight*6))/2;
 
-    // Etiketbeyaz.png has two intentionally empty white areas on the right:
-    // the large upper area is for the QR and the lower area is for the label code.
-    // Ratios come from the actual template geometry and are shared with the
-    // Flutter preview so preview / PNG / PDF stay aligned at 55 x 46 mm.
+    // Etiketbeyaz.png source is 1315 x 864. Keep that source ratio intact.
+    // The final print canvas remains exactly 55 x 46 mm; the artwork is centered
+    // vertically instead of being stretched downwards.
+    const templateAspect=1315/864;
     const qrAreaLeftRatio=.5221;
     const qrAreaTopRatio=.0991;
     const qrAreaWidthRatio=.4303;
@@ -1674,17 +1674,24 @@ class _QrPageState extends State<QrPage>{
 
     pw.Widget labelCard(Map<String,dynamic> e){
       final token=_tokenOf(e);
-      final qrAreaWidth=55*qrAreaWidthRatio*PdfPageFormat.mm;
-      final qrAreaHeight=46*qrAreaHeightRatio*PdfPageFormat.mm;
+      final artworkWidth=labelWidth;
+      final artworkHeight=artworkWidth/templateAspect;
+      final artworkTop=(labelHeight-artworkHeight)/2;
+      final qrAreaWidth=artworkWidth*qrAreaWidthRatio;
+      final qrAreaHeight=artworkHeight*qrAreaHeightRatio;
       final qrSize=(qrAreaWidth<qrAreaHeight?qrAreaWidth:qrAreaHeight)*.86;
-      final qrLeft=(55*qrAreaLeftRatio*PdfPageFormat.mm)+((qrAreaWidth-qrSize)/2);
-      final qrTop=(46*qrAreaTopRatio*PdfPageFormat.mm)+((qrAreaHeight-qrSize)/2);
+      final qrLeft=(artworkWidth*qrAreaLeftRatio)+((qrAreaWidth-qrSize)/2);
+      final qrTop=artworkTop+(artworkHeight*qrAreaTopRatio)+((qrAreaHeight-qrSize)/2);
       return pw.SizedBox(
         width:labelWidth,
         height:labelHeight,
         child:pw.Stack(children:[
-          pw.Positioned.fill(
-            child:pw.Image(template,fit:pw.BoxFit.fill),
+          pw.Positioned(
+            left:0,
+            top:artworkTop,
+            width:artworkWidth,
+            height:artworkHeight,
+            child:pw.Image(template,fit:pw.BoxFit.contain),
           ),
           pw.Positioned(
             left:qrLeft,
@@ -1700,11 +1707,11 @@ class _QrPageState extends State<QrPage>{
             ),
           ),
           pw.Positioned(
-            left:55*codeLeftRatio*PdfPageFormat.mm,
-            top:46*codeTopRatio*PdfPageFormat.mm,
+            left:artworkWidth*codeLeftRatio,
+            top:artworkTop+(artworkHeight*codeTopRatio),
             child:pw.Container(
-              width:55*codeWidthRatio*PdfPageFormat.mm,
-              height:46*codeHeightRatio*PdfPageFormat.mm,
+              width:artworkWidth*codeWidthRatio,
+              height:artworkHeight*codeHeightRatio,
               alignment:pw.Alignment.center,
               padding:pw.EdgeInsets.symmetric(horizontal:.9*PdfPageFormat.mm),
               child:pw.FittedBox(
@@ -1786,6 +1793,7 @@ class _QrPageState extends State<QrPage>{
   Widget _sticker(String token,String url)=>LayoutBuilder(builder:(context,c){
     final w=c.maxWidth;
     final h=c.maxHeight;
+    const templateAspect=1315/864;
     const qrAreaLeftRatio=.5221;
     const qrAreaTopRatio=.0991;
     const qrAreaWidthRatio=.4303;
@@ -1794,16 +1802,24 @@ class _QrPageState extends State<QrPage>{
     const codeTopRatio=.7592;
     const codeWidthRatio=.4303;
     const codeHeightRatio=.1546;
-    final qrAreaWidth=w*qrAreaWidthRatio;
-    final qrAreaHeight=h*qrAreaHeightRatio;
+    final artworkWidth=w;
+    final artworkHeight=artworkWidth/templateAspect;
+    final artworkTop=(h-artworkHeight)/2;
+    final qrAreaWidth=artworkWidth*qrAreaWidthRatio;
+    final qrAreaHeight=artworkHeight*qrAreaHeightRatio;
     final qrSize=(qrAreaWidth<qrAreaHeight?qrAreaWidth:qrAreaHeight)*.86;
-    final qrLeft=(w*qrAreaLeftRatio)+((qrAreaWidth-qrSize)/2);
-    final qrTop=(h*qrAreaTopRatio)+((qrAreaHeight-qrSize)/2);
+    final qrLeft=(artworkWidth*qrAreaLeftRatio)+((qrAreaWidth-qrSize)/2);
+    final qrTop=artworkTop+(artworkHeight*qrAreaTopRatio)+((qrAreaHeight-qrSize)/2);
     return Stack(children:[
-      Positioned.fill(
+      Positioned.fill(child:ColoredBox(color:Colors.white)),
+      Positioned(
+        left:0,
+        top:artworkTop,
+        width:artworkWidth,
+        height:artworkHeight,
         child:Image.asset(
           'assets/Etiketbeyaz.png',
-          fit:BoxFit.fill,
+          fit:BoxFit.contain,
           alignment:Alignment.center,
         ),
       ),
@@ -1832,10 +1848,10 @@ class _QrPageState extends State<QrPage>{
         }),
       ),
       Positioned(
-        left:w*codeLeftRatio,
-        top:h*codeTopRatio,
-        width:w*codeWidthRatio,
-        height:h*codeHeightRatio,
+        left:artworkWidth*codeLeftRatio,
+        top:artworkTop+(artworkHeight*codeTopRatio),
+        width:artworkWidth*codeWidthRatio,
+        height:artworkHeight*codeHeightRatio,
         child:Padding(
           padding:EdgeInsets.symmetric(horizontal:w*.012,vertical:h*.010),
           child:Center(child:FittedBox(
@@ -2021,7 +2037,11 @@ class _QrPageState extends State<QrPage>{
         child:ClipRRect(
           borderRadius:BorderRadius.circular(15),
           child:token.isEmpty
-            ? Image.asset('assets/Etiketbeyaz.png',fit:BoxFit.fill)
+            ? Container(
+                color:Colors.white,
+                alignment:Alignment.center,
+                child:Image.asset('assets/Etiketbeyaz.png',fit:BoxFit.contain),
+              )
             : Container(
                 color:Colors.white,
                 padding:const EdgeInsets.all(2),
