@@ -17,9 +17,10 @@ class _CepqontagStorePageState extends State<CepqontagStorePage> {
   static const _purple = Color(0xFF713BFF);
   static const _lime = Color(0xFFB6FF2A);
 
-  final List<_StoreProduct> products = const [
+  static const List<_StoreProduct> _fallbackProducts = [
     _StoreProduct(
       id: 'vehicle_qr',
+      sku: 'CQ-VEHICLE-QR',
       title: 'CepQontag Araç Etiketi',
       subtitle: 'Anonim mesaj ve arama için QR araç etiketi.',
       category: 'Etiketler',
@@ -35,6 +36,7 @@ class _CepqontagStorePageState extends State<CepqontagStorePage> {
     ),
     _StoreProduct(
       id: 'second_vehicle_qr',
+      sku: 'CQ-EXTRA-QR',
       title: 'Ek Araç Etiketi',
       subtitle: 'İkinci aracınız veya yedek kullanım için.',
       category: 'Etiketler',
@@ -48,6 +50,7 @@ class _CepqontagStorePageState extends State<CepqontagStorePage> {
     ),
     _StoreProduct(
       id: 'nfc_qr',
+      sku: 'CQ-NFC-QR',
       title: 'NFC + QR Akıllı Etiket',
       subtitle: 'Telefonu yaklaştır veya QR kodu okut.',
       category: 'Yakında',
@@ -62,6 +65,7 @@ class _CepqontagStorePageState extends State<CepqontagStorePage> {
     ),
     _StoreProduct(
       id: 'motorcycle',
+      sku: 'CQ-MOTORCYCLE',
       title: 'Motosiklet Etiketi',
       subtitle: 'Motosiklet ve scooter için kompakt CepQontag.',
       category: 'Yakında',
@@ -75,6 +79,9 @@ class _CepqontagStorePageState extends State<CepqontagStorePage> {
       ],
     ),
   ];
+
+  List<_StoreProduct> products = List<_StoreProduct>.from(_fallbackProducts);
+  bool loadingProducts = true;
 
   final List<_CartLine> cart = [];
   List<_StoreVehicle> vehicles = [];
@@ -90,7 +97,27 @@ class _CepqontagStorePageState extends State<CepqontagStorePage> {
   @override
   void initState() {
     super.initState();
+    _loadProducts();
     _loadVehicles();
+  }
+
+  Future<void> _loadProducts() async {
+    try {
+      final r = await OwnerHttp.get(
+        Uri.parse('${OnboardingBackend.baseUrl}/api/store/products'),
+        json: false,
+      ).timeout(const Duration(seconds: 12));
+      final d = r.body.isEmpty ? <String, dynamic>{} : jsonDecode(r.body);
+      if (r.statusCode == 200 && d is Map && d['items'] is List) {
+        final next = (d['items'] as List)
+            .whereType<Map>()
+            .map((x) => _StoreProduct.fromJson(Map<String, dynamic>.from(x)))
+            .where((x) => x.id.isNotEmpty && x.title.isNotEmpty)
+            .toList();
+        if (next.isNotEmpty) products = next;
+      }
+    } catch (_) {}
+    if (mounted) setState(() => loadingProducts = false);
   }
 
   Future<void> _loadVehicles() async {
@@ -358,14 +385,10 @@ class _CepqontagStorePageState extends State<CepqontagStorePage> {
                       Positioned.fill(
                         child: Padding(
                           padding: const EdgeInsets.all(11),
-                          child: Image.asset(
-                            p.asset,
+                          child: _storeProductImage(
+                            p,
                             fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) => Icon(
-                              Icons.qr_code_2_rounded,
-                              color: _purple,
-                              size: 54,
-                            ),
+                            fallbackSize: 54,
                           ),
                         ),
                       ),
@@ -672,14 +695,10 @@ class _ProductDetailSheetState extends State<_ProductDetailSheet> {
               ),
               child: Padding(
                 padding: const EdgeInsets.all(18),
-                child: Image.asset(
-                  p.asset,
+                child: _storeProductImage(
+                  p,
                   fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => const Icon(
-                    Icons.qr_code_2_rounded,
-                    color: Color(0xFF713BFF),
-                    size: 80,
-                  ),
+                  fallbackSize: 80,
                 ),
               ),
             ),
@@ -1002,11 +1021,10 @@ class _CartSheet extends StatelessWidget {
                                       .withValues(alpha: .06),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
-                                child: Image.asset(
-                                  x.product.asset,
+                                child: _storeProductImage(
+                                  x.product,
                                   fit: BoxFit.contain,
-                                  errorBuilder: (_, __, ___) =>
-                                      const Icon(Icons.qr_code_2_rounded),
+                                  fallbackSize: 34,
                                 ),
                               ),
                               const SizedBox(width: 9),
@@ -1355,7 +1373,11 @@ class _StoreCheckoutPageState extends State<StoreCheckoutPage> {
                       color: const Color(0xFF713BFF).withValues(alpha: .06),
                       borderRadius: BorderRadius.circular(11),
                     ),
-                    child: Image.asset(x.product.asset, fit: BoxFit.contain),
+                    child: _storeProductImage(
+                      x.product,
+                      fit: BoxFit.contain,
+                      fallbackSize: 30,
+                    ),
                   ),
                   const SizedBox(width: 9),
                   Expanded(
@@ -1631,25 +1653,92 @@ class _StoreCheckoutPageState extends State<StoreCheckoutPage> {
 class _StoreProduct {
   const _StoreProduct({
     required this.id,
+    required this.sku,
     required this.title,
     required this.subtitle,
     required this.category,
     required this.asset,
     required this.features,
+    this.imageUrl,
     this.price,
+    this.currency = 'TRY',
     this.badge,
     this.comingSoon = false,
+    this.trackStock = false,
+    this.stockQuantity,
   });
 
+  factory _StoreProduct.fromJson(Map<String, dynamic> json) {
+    final rawFeatures = json['features'];
+    return _StoreProduct(
+      id: '${json['id'] ?? ''}',
+      sku: '${json['sku'] ?? ''}',
+      title: '${json['title'] ?? ''}',
+      subtitle: '${json['subtitle'] ?? ''}',
+      category: '${json['category'] ?? 'Etiketler'}',
+      asset: '${json['imageAsset'] ?? 'assets/Etiket4.png'}',
+      imageUrl: json['imageUrl']?.toString(),
+      features: rawFeatures is List
+          ? rawFeatures.map((e) => e.toString()).where((e) => e.isNotEmpty).toList()
+          : const [],
+      price: json['price'] is num
+          ? (json['price'] as num).toDouble()
+          : double.tryParse('${json['price'] ?? ''}'),
+      currency: '${json['currency'] ?? 'TRY'}',
+      badge: json['badge']?.toString(),
+      comingSoon: json['comingSoon'] == true,
+      trackStock: json['trackStock'] == true,
+      stockQuantity: json['stockQuantity'] is num
+          ? (json['stockQuantity'] as num).toInt()
+          : int.tryParse('${json['stockQuantity'] ?? ''}'),
+    );
+  }
+
   final String id;
+  final String sku;
   final String title;
   final String subtitle;
   final String category;
   final String asset;
+  final String? imageUrl;
   final List<String> features;
   final double? price;
+  final String currency;
   final String? badge;
   final bool comingSoon;
+  final bool trackStock;
+  final int? stockQuantity;
+
+  bool get soldOut =>
+      trackStock && stockQuantity != null && stockQuantity! <= 0;
+}
+
+Widget _storeProductImage(
+  _StoreProduct product, {
+  BoxFit fit = BoxFit.contain,
+  double fallbackSize = 42,
+}) {
+  final url = (product.imageUrl ?? '').trim();
+  if (url.isNotEmpty) {
+    return Image.network(
+      url,
+      fit: fit,
+      errorBuilder: (_, __, ___) => Icon(
+        Icons.qr_code_2_rounded,
+        color: const Color(0xFF713BFF),
+        size: fallbackSize,
+      ),
+    );
+  }
+  return Image.asset(
+    product.asset,
+    fit: fit,
+    errorBuilder: (_, __, ___) => Icon(
+      Icons.qr_code_2_rounded,
+      color: const Color(0xFF713BFF),
+      size: fallbackSize,
+    ),
+  );
 }
 
 class _StoreVehicle {
