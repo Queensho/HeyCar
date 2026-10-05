@@ -12,8 +12,9 @@ import 'parking_style.dart';
 import 'cepqar_theme.dart';
 
 class ParkingPlacesPage extends StatefulWidget {
-  const ParkingPlacesPage({super.key, required this.vehicleId});
+  const ParkingPlacesPage({super.key, required this.vehicleId, this.driverMode = false});
   final String vehicleId;
+  final bool driverMode;
   @override
   State<ParkingPlacesPage> createState() => _ParkingPlacesPageState();
 }
@@ -225,6 +226,7 @@ class _ParkingPlacesPageState extends State<ParkingPlacesPage>
           vehicleId: widget.vehicleId,
           userLatitude: _user!.latitude,
           userLongitude: _user!.longitude,
+          driverMode: widget.driverMode,
         ),
       ),
     );
