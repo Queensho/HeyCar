@@ -1689,9 +1689,11 @@ class _QrPageState extends State<QrPage>{
           pw.Positioned(
             left:0,
             top:artworkTop,
-            width:artworkWidth,
-            height:artworkHeight,
-            child:pw.Image(template,fit:pw.BoxFit.contain),
+            child:pw.SizedBox(
+              width:artworkWidth,
+              height:artworkHeight,
+              child:pw.Image(template,fit:pw.BoxFit.contain),
+            ),
           ),
           pw.Positioned(
             left:qrLeft,
