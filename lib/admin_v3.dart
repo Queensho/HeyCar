@@ -2555,6 +2555,7 @@ class _QrPageState extends State<QrPage>{
       );
     });
   }
+}
 
 class ModerationPage extends StatelessWidget{
   const ModerationPage({super.key,required this.rows,required this.removeBackground,required this.resetTheme});final List<Map<String,dynamic>> rows;final Future<void> Function(String) removeBackground,resetTheme;
