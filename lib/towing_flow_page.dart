@@ -55,6 +55,8 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
 
   double? a, b, x, y;
   double startingFee = 750;
+  double perKmFee = 25;
+  Map<String, Map<String, dynamic>> vehiclePricing = {};
   String pickup = 'Konumum';
   String dropoff = 'Adres veya yer adı yaz';
 
@@ -143,29 +145,64 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
           .timeout(const Duration(seconds: 10));
       if (r.statusCode != 200) return;
       final d = jsonDecode(r.body);
-      if (d is! Map || d['truckTypes'] is! List) return;
+      if (d is! Map || d['truckTypes'] is! List || d['vehicleTypes'] is! List) {
+        return;
+      }
+
       final trucks = (d['truckTypes'] as List)
           .whereType<Map>()
           .map((e) => Map<String, dynamic>.from(e))
           .toList();
-      if (trucks.isEmpty) return;
+      final vehicles = (d['vehicleTypes'] as List)
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+      if (trucks.isEmpty || vehicles.isEmpty) return;
 
-      Map<String, dynamic> selected = trucks.first;
+      Map<String, dynamic> selectedTruck = trucks.first;
       for (final item in trucks) {
         if ('${item['code']}' == truck) {
-          selected = item;
+          selectedTruck = item;
           break;
         }
       }
+
+      final pricing = <String, Map<String, dynamic>>{};
+      for (final item in vehicles) {
+        final code = '${item['code'] ?? ''}'.trim();
+        if (code.isNotEmpty) pricing[code] = item;
+      }
+      final selectedVehicle = pricing[vehicleType];
+
       if (!mounted) return;
       setState(() {
-        truck = '${selected['code'] ?? truck}';
-        truckName = '${selected['name'] ?? 'Standart çekici'}';
-        startingFee =
-            double.tryParse('${selected['base_fee'] ?? selected['minimum_fee'] ?? 750}') ??
-                750;
+        vehiclePricing = pricing;
+        truck = '${selectedTruck['code'] ?? truck}';
+        truckName = '${selectedTruck['name'] ?? 'Standart çekici'}';
+        startingFee = double.tryParse(
+              '${selectedVehicle?['base_fee'] ?? selectedVehicle?['minimum_fee'] ?? 750}',
+            ) ??
+            750;
+        perKmFee =
+            double.tryParse('${selectedVehicle?['per_km_fee'] ?? 25}') ?? 25;
       });
     } catch (_) {}
+  }
+
+  void _selectVehicleType(String id) {
+    final pricing = vehiclePricing[id];
+    setState(() {
+      vehicleType = id;
+      quote = null;
+      if (pricing != null) {
+        startingFee = double.tryParse(
+              '${pricing['base_fee'] ?? pricing['minimum_fee'] ?? startingFee}',
+            ) ??
+            startingFee;
+        perKmFee =
+            double.tryParse('${pricing['per_km_fee'] ?? perKmFee}') ?? perKmFee;
+      }
+    });
   }
 
   Future<String> address(double lat, double lng) async {
@@ -390,7 +427,10 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
   }
 
   Future<void> call() async {
-    if (quote == null) return;
+    if (a == null || b == null || x == null || y == null) {
+      msg('Alım ve bırakma konumunu seç.');
+      return;
+    }
     setState(() => busy = true);
     try {
       final selectedVehicle = vehicleIdResolved.isNotEmpty
@@ -888,10 +928,7 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
     return Expanded(
       child: InkWell(
         borderRadius: BorderRadius.circular(15),
-        onTap: () => setState(() {
-          vehicleType = id;
-          quote = null;
-        }),
+        onTap: () => _selectVehicleType(id),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
           height: 54,
@@ -1265,7 +1302,7 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
                           color: Colors.transparent,
                           child: InkWell(
                             borderRadius: BorderRadius.circular(15),
-                            onTap: busy ? null : price,
+                            onTap: busy ? null : call,
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
@@ -1279,19 +1316,19 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
                                     ),
                                   )
                                 else ...[
+                                  const Icon(
+                                    Icons.fire_truck_rounded,
+                                    color: Colors.white,
+                                    size: 21,
+                                  ),
+                                  const SizedBox(width: 7),
                                   const Text(
-                                    'Devam Et',
+                                    'Çekici Çağır',
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontSize: 16,
                                       fontWeight: FontWeight.w900,
                                     ),
-                                  ),
-                                  const SizedBox(width: 7),
-                                  const Icon(
-                                    Icons.chevron_right_rounded,
-                                    color: Colors.white,
-                                    size: 23,
                                   ),
                                 ],
                               ],
