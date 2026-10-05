@@ -24,7 +24,10 @@ BEGIN
         ('vehicle_parking_locations'),
         ('vehicle_transfers'),
         ('admin_audit_logs'),
-        ('qr_proximity_proofs')
+        ('qr_proximity_proofs'),
+        ('vehicle_pages'),
+        ('vehicle_products'),
+        ('vehicle_touchpoint_events')
       ) AS required(name)
       WHERE to_regclass('public.' || name) IS NULL
     ) q;
@@ -124,6 +127,24 @@ BEGIN
 
   IF to_regclass('public.vehicle_transfers_one_pending_per_vehicle') IS NULL THEN
     RAISE EXCEPTION 'MISSING_ONE_PENDING_TRANSFER_INDEX';
+  END IF;
+
+  SELECT COUNT(*) INTO bad_count
+    FROM information_schema.columns
+   WHERE table_schema='public'
+     AND table_name='qr_scan_history'
+     AND column_name IN ('source','page_id','product_id');
+
+  IF bad_count <> 3 THEN
+    RAISE EXCEPTION 'QR_SCAN_TOUCHPOINT_COLUMNS_INVALID: expected 3, found %', bad_count;
+  END IF;
+
+  IF to_regclass('public.idx_qr_scan_history_vehicle_source_created') IS NULL THEN
+    RAISE EXCEPTION 'MISSING_QR_NFC_SOURCE_INDEX';
+  END IF;
+
+  IF to_regclass('public.vehicle_products_one_primary_tag') IS NULL THEN
+    RAISE EXCEPTION 'MISSING_PRIMARY_VEHICLE_PRODUCT_INDEX';
   END IF;
 
   SELECT COUNT(*) INTO bad_count
