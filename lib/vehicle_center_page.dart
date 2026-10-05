@@ -987,15 +987,15 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
         onTap:tap,
         borderRadius:BorderRadius.circular(14),
         child:Container(
-          height:78,
-          padding:const EdgeInsets.fromLTRB(9,9,7,7),
+          height:82,
+          padding:const EdgeInsets.fromLTRB(8,7,7,6),
           decoration:_compactCard(),
           child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
             Row(children:[
               Container(
-                width:30,height:30,
+                width:28,height:28,
                 decoration:BoxDecoration(color:_purple.withValues(alpha:CepqarTheme.isLight ? .09 : .18),borderRadius:BorderRadius.circular(9)),
-                child:Icon(icon,color:_accent,size:17),
+                child:Icon(icon,color:_accent,size:16),
               ),
               const Spacer(),
               Icon(Icons.chevron_right_rounded,color:_muted,size:17),
@@ -1082,21 +1082,47 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
 
   Widget _stat(IconData icon,String value,String label,Color color)=>Expanded(
     child:Container(
-      height:64,
-      padding:const EdgeInsets.symmetric(horizontal:8,vertical:8),
+      height:70,
+      padding:const EdgeInsets.symmetric(horizontal:6,vertical:7),
       decoration:_compactCard(),
-      child:Row(children:[
-        Container(
-          width:30,height:30,
-          decoration:BoxDecoration(color:color.withValues(alpha:CepqarTheme.isLight ? .10 : .18),borderRadius:BorderRadius.circular(9)),
-          child:Icon(icon,color:color,size:17),
-        ),
-        const SizedBox(width:7),
-        Expanded(child:Column(mainAxisAlignment:MainAxisAlignment.center,crossAxisAlignment:CrossAxisAlignment.start,children:[
-          Text(value,style:TextStyle(color:CepqarTheme.text,fontSize:15,fontWeight:FontWeight.w900)),
-          Text(label,maxLines:2,overflow:TextOverflow.ellipsis,style:TextStyle(color:_muted,fontSize:CepqarTheme.caption,height:1.12,fontWeight:FontWeight.w600)),
-        ])),
-      ]),
+      child:Column(
+        mainAxisAlignment:MainAxisAlignment.center,
+        children:[
+          Row(
+            mainAxisAlignment:MainAxisAlignment.center,
+            children:[
+              Container(
+                width:28,
+                height:28,
+                decoration:BoxDecoration(
+                  color:color.withValues(alpha:CepqarTheme.isLight ? .10 : .18),
+                  borderRadius:BorderRadius.circular(9),
+                ),
+                child:Icon(icon,color:color,size:16),
+              ),
+              const SizedBox(width:6),
+              Text(
+                value,
+                maxLines:1,
+                style:TextStyle(color:CepqarTheme.text,fontSize:15,fontWeight:FontWeight.w900),
+              ),
+            ],
+          ),
+          const SizedBox(height:4),
+          Text(
+            label,
+            maxLines:2,
+            overflow:TextOverflow.ellipsis,
+            textAlign:TextAlign.center,
+            style:TextStyle(
+              color:_muted,
+              fontSize:CepqarTheme.caption,
+              height:1.05,
+              fontWeight:FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     ),
   );
 
