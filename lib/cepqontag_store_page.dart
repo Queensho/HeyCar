@@ -448,7 +448,11 @@ class _CepqontagStorePageState extends State<CepqontagStorePage> {
                 children: [
                   Expanded(
                     child: Text(
-                      p.comingSoon ? 'Yakında' : _money(p.price ?? 0),
+                      p.comingSoon
+                          ? 'Yakında'
+                          : p.soldOut
+                              ? 'Stokta yok'
+                              : _money(p.price ?? 0),
                       style: TextStyle(
                         color: p.comingSoon ? _purple : text,
                         fontSize: 13,
@@ -866,7 +870,7 @@ class _ProductDetailSheetState extends State<_ProductDetailSheet> {
               SizedBox(
                 height: 49,
                 child: FilledButton.icon(
-                  onPressed: () => widget.onAdd(selected),
+                  onPressed: p.soldOut ? null : () => widget.onAdd(selected),
                   style: FilledButton.styleFrom(
                     backgroundColor: const Color(0xFF713BFF),
                     foregroundColor: Colors.white,
@@ -875,9 +879,9 @@ class _ProductDetailSheetState extends State<_ProductDetailSheet> {
                     ),
                   ),
                   icon: const Icon(Icons.add_shopping_cart_rounded),
-                  label: const Text(
-                    'Sepete Ekle',
-                    style: TextStyle(fontWeight: FontWeight.w900),
+                  label: Text(
+                    p.soldOut ? 'Stokta Yok' : 'Sepete Ekle',
+                    style: const TextStyle(fontWeight: FontWeight.w900),
                   ),
                 ),
               ),
@@ -1170,6 +1174,8 @@ class StoreCheckoutPage extends StatefulWidget {
 
 class _StoreCheckoutPageState extends State<StoreCheckoutPage> {
   int step = 0;
+  bool creatingOrder = false;
+  Map<String, dynamic>? createdOrder;
   final name = TextEditingController(text: OnboardingDraft.displayName);
   final phone = TextEditingController(text: OnboardingDraft.phone);
   final address = TextEditingController();
@@ -1204,14 +1210,79 @@ class _StoreCheckoutPageState extends State<StoreCheckoutPage> {
       district.text.trim().isNotEmpty &&
       city.text.trim().isNotEmpty;
 
-  void _next() {
-    if (step == 0 && !_deliveryValid()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Teslimat bilgilerini eksiksiz doldurun.')),
-      );
+  Future<void> _next() async {
+    if (step == 0) {
+      if (!_deliveryValid()) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Teslimat bilgilerini eksiksiz doldurun.')),
+        );
+        return;
+      }
+      setState(() => step = 1);
       return;
     }
-    if (step < 2) setState(() => step++);
+
+    if (step == 1) {
+      if (createdOrder != null) {
+        setState(() => step = 2);
+        return;
+      }
+      if (creatingOrder) return;
+      setState(() => creatingOrder = true);
+      try {
+        final response = await OwnerHttp.post(
+          Uri.parse('${OnboardingBackend.baseUrl}/api/owner/store/orders'),
+          body: jsonEncode({
+            'deliveryName': name.text.trim(),
+            'deliveryPhone': phone.text.trim(),
+            'deliveryAddress': address.text.trim(),
+            'deliveryDistrict': district.text.trim(),
+            'deliveryCity': city.text.trim(),
+            'deliveryNote': note.text.trim(),
+            'items': widget.lines
+                .map((x) => {
+                      'productId': x.product.id,
+                      if (x.vehicle != null) 'vehicleId': x.vehicle!.id,
+                      'quantity': x.quantity,
+                    })
+                .toList(),
+          }),
+        ).timeout(const Duration(seconds: 20));
+        final d = response.body.isEmpty
+            ? <String, dynamic>{}
+            : jsonDecode(response.body);
+        if (response.statusCode < 200 ||
+            response.statusCode >= 300 ||
+            d is! Map) {
+          throw Exception(
+            d is Map ? (d['error'] ?? 'Sipariş oluşturulamadı.') : 'Sipariş oluşturulamadı.',
+          );
+        }
+        if (!mounted) return;
+        setState(() {
+          createdOrder = d['order'] is Map
+              ? Map<String, dynamic>.from(d['order'] as Map)
+              : <String, dynamic>{};
+          step = 2;
+        });
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                e.toString()
+                    .replaceFirst('Exception: ', '')
+                    .replaceAll('PRODUCT_NOT_FOUND', 'Ürün bilgisi güncel değil. Mağazayı yenileyip tekrar deneyin.')
+                    .replaceAll('PRODUCT_NOT_FOR_SALE', 'Bu ürün şu anda satışta değil.')
+                    .replaceAll('OUT_OF_STOCK', 'Ürün stokta kalmadı.'),
+              ),
+            ),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => creatingOrder = false);
+      }
+    }
   }
 
   Widget _indicator(int i, String label) {
@@ -1530,7 +1601,9 @@ class _StoreCheckoutPageState extends State<StoreCheckoutPage> {
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  'Mağaza akışı hazır. Kartla ödeme ve gerçek sipariş oluşturma entegrasyonu açıldığında bu adım aktif olacak.',
+                  createdOrder == null
+                      ? 'Mağaza akışı hazır. Kartla ödeme entegrasyonu açıldığında bu adım aktif olacak.'
+                      : 'Siparişiniz admin paneline kaydedildi. Sipariş no: ${createdOrder!['orderNo'] ?? '-'}. Kartla ödeme entegrasyonu açıldığında buradan tamamlanacak.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: muted, fontSize: 10.5, height: 1.4),
                 ),
@@ -1621,7 +1694,7 @@ class _StoreCheckoutPageState extends State<StoreCheckoutPage> {
                   Expanded(
                     flex: 2,
                     child: FilledButton(
-                      onPressed: step < 2 ? _next : null,
+                      onPressed: step < 2 && !creatingOrder ? _next : null,
                       style: FilledButton.styleFrom(
                         backgroundColor: const Color(0xFF713BFF),
                         foregroundColor: Colors.white,
@@ -1631,11 +1704,13 @@ class _StoreCheckoutPageState extends State<StoreCheckoutPage> {
                         ),
                       ),
                       child: Text(
-                        step == 0
-                            ? 'Sipariş Özetine Geç'
-                            : step == 1
-                                ? 'Ödemeye Geç'
-                                : 'Ödeme Yakında',
+                        creatingOrder
+                            ? 'Sipariş oluşturuluyor...'
+                            : step == 0
+                                ? 'Sipariş Özetine Geç'
+                                : step == 1
+                                    ? 'Ödemeye Geç'
+                                    : 'Ödeme Yakında',
                         style: const TextStyle(fontWeight: FontWeight.w900),
                       ),
                     ),
