@@ -470,8 +470,8 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                     shape:BoxShape.circle,
                     gradient:RadialGradient(
                       colors:[
-                        const Color(0xFF9A6CFF).withValues(alpha:light?.14:.17),
-                        const Color(0xFF9A6CFF).withValues(alpha:light?.04:.06),
+                        const Color(0xFF9A6CFF).withValues(alpha:light ? .14 : .17),
+                        const Color(0xFF9A6CFF).withValues(alpha:light ? .04 : .06),
                         Colors.transparent,
                       ],
                       stops:const [0,.56,1],
