@@ -283,6 +283,7 @@ class _DriverLoginPageState extends State<DriverLoginPage> {
         final displayName = '${user['displayName'] ?? ''}';
         await prefs.setBool('driver_logged_in', true);
         await prefs.setString('driver_user_id', id);
+        await prefs.setString('driver_phone', phone.text.trim());
         if (displayName.isNotEmpty) await prefs.setString('driver_name', displayName);
         await PushNotifications.registerToken();
         if (mounted) {
@@ -438,6 +439,7 @@ class _DriverInvitePageState extends State<DriverInvitePage> {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('driver_logged_in', true);
         await prefs.setString('driver_user_id', data['user']['id'].toString());
+        await prefs.setString('driver_phone', phone.text.trim());
         await prefs.setString('driver_name', data['user']['displayName'].toString());
         await DriverAuth.saveFrom(data);
         await PushNotifications.registerToken();
@@ -1945,7 +1947,7 @@ class _DriverSettingsPage extends StatelessWidget {
     await PushNotifications.unregisterDriverToken();
     await DriverAuth.logout();
     final prefs = await SharedPreferences.getInstance();
-    for (final key in ['driver_logged_in', 'driver_user_id', 'driver_name']) {
+    for (final key in ['driver_logged_in', 'driver_user_id', 'driver_name', 'driver_phone']) {
       await prefs.remove(key);
     }
     if (context.mounted) {
