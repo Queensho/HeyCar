@@ -113,23 +113,10 @@ jobs:
               | sort -u | head -1800 || true
           } >> report.txt
 
-      - name: Print focused report
-        shell: bash
-        run: |
-          echo '===== FRAMEWORK ====='
-          sed -n '/=== FRAMEWORK MARKERS ===/,/=== NATIVE LIBRARIES ===/p' report.txt
-          echo '===== NATIVE LIBS ====='
-          sed -n '/=== NATIVE LIBRARIES ===/,/=== FLUTTER ASSETS ===/p' report.txt
-          echo '===== PLUGINS ====='
-          sed -n '/=== FLUTTER \/ NATIVE PLUGIN MARKERS FROM DEX ===/,/=== DART AOT URLS/p' report.txt | head -900
-          echo '===== AOT URLS ====='
-          sed -n '/=== DART AOT URLS \/ DOMAINS ===/,/=== DART AOT MEO/p' report.txt
-          echo '===== AOT API CLUES ====='
-          sed -n '/=== DART AOT MEO \/ API \/ AUTH \/ SOCKET CLUES ===/,/=== ASSET CONFIG/p' report.txt | head -1800
-
       - name: Upload report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: meo-static-analysis-report-v2
+          name: meo-static-analysis-report-v3
           path: report.txt
           retention-days: 1
