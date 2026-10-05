@@ -12,7 +12,7 @@ module.exports=function registerTowingRoutes(app,pool,adminGuard){
   app.get('/api/towing/options',async(_req,res)=>{
     try{
       const [vehicles,trucks,settings]=await Promise.all([
-        pool.query('SELECT code,name,price_multiplier FROM towing_vehicle_types WHERE active=TRUE ORDER BY sort_order,name'),
+        pool.query('SELECT code,name,price_multiplier,base_fee,per_km_fee,minimum_fee FROM towing_vehicle_types WHERE active=TRUE ORDER BY sort_order,name'),
         pool.query('SELECT code,name,base_fee,per_km_fee,minimum_fee FROM towing_truck_types WHERE active=TRUE ORDER BY sort_order,name'),
         pool.query('SELECT * FROM towing_pricing_settings WHERE id=1')
       ]);
@@ -30,17 +30,17 @@ module.exports=function registerTowingRoutes(app,pool,adminGuard){
     if(distanceKm===null||distanceKm<0||distanceKm>2000||!vehicleType||!truckType)return res.status(400).json({error:'INVALID_QUOTE_REQUEST'});
     try{
       const [v,t,s]=await Promise.all([
-        pool.query('SELECT code,name,price_multiplier FROM towing_vehicle_types WHERE code=$1 AND active=TRUE',[vehicleType]),
+        pool.query('SELECT code,name,price_multiplier,base_fee,per_km_fee,minimum_fee FROM towing_vehicle_types WHERE code=$1 AND active=TRUE',[vehicleType]),
         pool.query('SELECT code,name,base_fee,per_km_fee,minimum_fee FROM towing_truck_types WHERE code=$1 AND active=TRUE',[truckType]),
         pool.query('SELECT * FROM towing_pricing_settings WHERE id=1')
       ]);
       if(!v.rowCount||!t.rowCount||!s.rowCount)return res.status(400).json({error:'TOWING_OPTION_NOT_AVAILABLE'});
       const vehicle=v.rows[0],truck=t.rows[0],settings=s.rows[0];
-      const raw=(Number(truck.base_fee)+distanceKm*Number(truck.per_km_fee))*Number(vehicle.price_multiplier);
-      const subtotal=Math.max(raw,Number(truck.minimum_fee));
+      const raw=Number(vehicle.base_fee)+distanceKm*Number(vehicle.per_km_fee);
+      const subtotal=Math.max(raw,Number(vehicle.minimum_fee));
       const nightSurcharge=isNight?subtotal*Number(settings.night_surcharge_pct)/100:0;
       const total=money(subtotal+nightSurcharge);
-      return res.json({ok:true,quote:{distanceKm:money(distanceKm),vehicleType:vehicle.code,vehicleTypeName:vehicle.name,truckType:truck.code,truckTypeName:truck.name,baseFee:money(truck.base_fee),perKmFee:money(truck.per_km_fee),vehicleMultiplier:Number(vehicle.price_multiplier),subtotal:money(subtotal),nightSurcharge:money(nightSurcharge),total,currency:settings.currency}});
+      return res.json({ok:true,quote:{distanceKm:money(distanceKm),vehicleType:vehicle.code,vehicleTypeName:vehicle.name,truckType:truck.code,truckTypeName:truck.name,baseFee:money(vehicle.base_fee),perKmFee:money(vehicle.per_km_fee),vehicleMultiplier:Number(vehicle.price_multiplier),subtotal:money(subtotal),nightSurcharge:money(nightSurcharge),total,currency:settings.currency}});
     }catch(e){console.error('towing quote',e);return res.status(500).json({error:'SERVER_ERROR'});}
   });
 
@@ -57,16 +57,16 @@ module.exports=function registerTowingRoutes(app,pool,adminGuard){
       await client.query('BEGIN');
       if(vehicleId){const own=await client.query('SELECT id FROM vehicles WHERE id::text=$1 AND owner_id::text=$2 FOR UPDATE',[vehicleId,ownerId]);if(!own.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'VEHICLE_NOT_FOUND'});}}
       const [v,t,s]=await Promise.all([
-        client.query('SELECT code,name,price_multiplier FROM towing_vehicle_types WHERE code=$1 AND active=TRUE',[vehicleType]),
+        client.query('SELECT code,name,price_multiplier,base_fee,per_km_fee,minimum_fee FROM towing_vehicle_types WHERE code=$1 AND active=TRUE',[vehicleType]),
         client.query('SELECT code,name,base_fee,per_km_fee,minimum_fee FROM towing_truck_types WHERE code=$1 AND active=TRUE',[truckType]),
         client.query('SELECT * FROM towing_pricing_settings WHERE id=1')
       ]);
       if(!v.rowCount||!t.rowCount||!s.rowCount){await client.query('ROLLBACK');return res.status(400).json({error:'TOWING_OPTION_NOT_AVAILABLE'});}
       const vehicle=v.rows[0],truck=t.rows[0],settings=s.rows[0];
-      const raw=(Number(truck.base_fee)+distanceKm*Number(truck.per_km_fee))*Number(vehicle.price_multiplier);
-      const subtotal=Math.max(raw,Number(truck.minimum_fee));
+      const raw=Number(vehicle.base_fee)+distanceKm*Number(vehicle.per_km_fee);
+      const subtotal=Math.max(raw,Number(vehicle.minimum_fee));
       const total=money(subtotal);
-      const snapshot={baseFee:Number(truck.base_fee),perKmFee:Number(truck.per_km_fee),minimumFee:Number(truck.minimum_fee),vehicleMultiplier:Number(vehicle.price_multiplier),distanceKm:money(distanceKm)};
+      const snapshot={baseFee:Number(vehicle.base_fee),perKmFee:Number(vehicle.per_km_fee),minimumFee:Number(vehicle.minimum_fee),vehicleMultiplier:Number(vehicle.price_multiplier),distanceKm:money(distanceKm),pricingSource:'vehicle_type'};
       const r=await client.query(`INSERT INTO towing_requests(owner_id,vehicle_id,vehicle_type,truck_type,issue_type,issue_note,pickup_lat,pickup_lng,pickup_address,destination_lat,destination_lng,destination_address,distance_km,quoted_total,currency,pricing_snapshot)
         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb) RETURNING *`,[ownerId,vehicleId,vehicleType,truckType,issueType,issueNote||null,pickupLat,pickupLng,pickupAddress||null,destinationLat,destinationLng,destinationAddress||null,distanceKm,total,settings.currency,JSON.stringify(snapshot)]);
       await client.query('COMMIT');
@@ -129,17 +129,17 @@ module.exports=function registerTowingRoutes(app,pool,adminGuard){
     if(distanceKm===null||distanceKm<0||distanceKm>2000||!vehicleType||!truckType)return res.status(400).json({error:'INVALID_QUOTE_REQUEST'});
     try{
       const [v,t,sq]=await Promise.all([
-        pool.query('SELECT code,name,price_multiplier FROM towing_vehicle_types WHERE code=$1 AND active=TRUE',[vehicleType]),
+        pool.query('SELECT code,name,price_multiplier,base_fee,per_km_fee,minimum_fee FROM towing_vehicle_types WHERE code=$1 AND active=TRUE',[vehicleType]),
         pool.query('SELECT code,name,base_fee,per_km_fee,minimum_fee FROM towing_truck_types WHERE code=$1 AND active=TRUE',[truckType]),
         pool.query('SELECT * FROM towing_pricing_settings WHERE id=1')
       ]);
       if(!v.rowCount||!t.rowCount||!sq.rowCount)return res.status(400).json({error:'TOWING_OPTION_NOT_AVAILABLE'});
       const vehicle=v.rows[0],truck=t.rows[0],settings=sq.rows[0];
-      const raw=(Number(truck.base_fee)+distanceKm*Number(truck.per_km_fee))*Number(vehicle.price_multiplier);
-      const subtotal=Math.max(raw,Number(truck.minimum_fee));
+      const raw=Number(vehicle.base_fee)+distanceKm*Number(vehicle.per_km_fee);
+      const subtotal=Math.max(raw,Number(vehicle.minimum_fee));
       const nightSurcharge=isNight?subtotal*Number(settings.night_surcharge_pct)/100:0;
       const total=money(subtotal+nightSurcharge);
-      return res.json({ok:true,quote:{distanceKm:money(distanceKm),vehicleType:vehicle.code,vehicleTypeName:vehicle.name,truckType:truck.code,truckTypeName:truck.name,baseFee:money(truck.base_fee),perKmFee:money(truck.per_km_fee),vehicleMultiplier:Number(vehicle.price_multiplier),subtotal:money(subtotal),nightSurcharge:money(nightSurcharge),total,currency:settings.currency}});
+      return res.json({ok:true,quote:{distanceKm:money(distanceKm),vehicleType:vehicle.code,vehicleTypeName:vehicle.name,truckType:truck.code,truckTypeName:truck.name,baseFee:money(vehicle.base_fee),perKmFee:money(vehicle.per_km_fee),vehicleMultiplier:Number(vehicle.price_multiplier),subtotal:money(subtotal),nightSurcharge:money(nightSurcharge),total,currency:settings.currency}});
     }catch(e){console.error('driver towing quote',e);return res.status(500).json({error:'SERVER_ERROR'});}
   });
 
@@ -159,16 +159,16 @@ module.exports=function registerTowingRoutes(app,pool,adminGuard){
       const auth=await client.query('SELECT id FROM vehicles WHERE id::text=$1 AND owner_id::text=$2 FOR UPDATE',[vehicleId,ownerId]);
       if(!auth.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'VEHICLE_NOT_FOUND'});}
       const [v,t,sq]=await Promise.all([
-        client.query('SELECT code,name,price_multiplier FROM towing_vehicle_types WHERE code=$1 AND active=TRUE',[vehicleType]),
+        client.query('SELECT code,name,price_multiplier,base_fee,per_km_fee,minimum_fee FROM towing_vehicle_types WHERE code=$1 AND active=TRUE',[vehicleType]),
         client.query('SELECT code,name,base_fee,per_km_fee,minimum_fee FROM towing_truck_types WHERE code=$1 AND active=TRUE',[truckType]),
         client.query('SELECT * FROM towing_pricing_settings WHERE id=1')
       ]);
       if(!v.rowCount||!t.rowCount||!sq.rowCount){await client.query('ROLLBACK');return res.status(400).json({error:'TOWING_OPTION_NOT_AVAILABLE'});}
       const vehicle=v.rows[0],truck=t.rows[0],settings=sq.rows[0];
-      const raw=(Number(truck.base_fee)+distanceKm*Number(truck.per_km_fee))*Number(vehicle.price_multiplier);
-      const subtotal=Math.max(raw,Number(truck.minimum_fee));
+      const raw=Number(vehicle.base_fee)+distanceKm*Number(vehicle.per_km_fee);
+      const subtotal=Math.max(raw,Number(vehicle.minimum_fee));
       const total=money(subtotal);
-      const snapshot={baseFee:Number(truck.base_fee),perKmFee:Number(truck.per_km_fee),minimumFee:Number(truck.minimum_fee),vehicleMultiplier:Number(vehicle.price_multiplier),distanceKm:money(distanceKm),requestedBy:'driver',driverUserId:a.driverId};
+      const snapshot={baseFee:Number(vehicle.base_fee),perKmFee:Number(vehicle.per_km_fee),minimumFee:Number(vehicle.minimum_fee),vehicleMultiplier:Number(vehicle.price_multiplier),distanceKm:money(distanceKm),pricingSource:'vehicle_type',requestedBy:'driver',driverUserId:a.driverId};
       const r=await client.query(`INSERT INTO towing_requests(owner_id,vehicle_id,vehicle_type,truck_type,issue_type,issue_note,pickup_lat,pickup_lng,pickup_address,destination_lat,destination_lng,destination_address,distance_km,quoted_total,currency,pricing_snapshot)
         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb) RETURNING *`,[ownerId,vehicleId,vehicleType,truckType,issueType,issueNote||null,pickupLat,pickupLng,pickupAddress||null,destinationLat,destinationLng,destinationAddress||null,distanceKm,total,settings.currency,JSON.stringify(snapshot)]);
       await client.query('COMMIT');
@@ -322,9 +322,18 @@ module.exports=function registerTowingRoutes(app,pool,adminGuard){
   });
 
   app.put('/api/admin/manage/towing/vehicle-types/:code',adminGuard,async(req,res)=>{
-    const code=String(req.params.code||'').trim(),mult=n(req.body?.priceMultiplier);
-    if(mult===null||mult<=0||mult>10)return res.status(400).json({error:'INVALID_MULTIPLIER'});
-    try{const r=await pool.query('UPDATE towing_vehicle_types SET price_multiplier=$2 WHERE code=$1 RETURNING *',[code,mult]);if(!r.rowCount)return res.status(404).json({error:'VEHICLE_TYPE_NOT_FOUND'});return res.json({ok:true,vehicleType:r.rows[0]});}
-    catch(e){console.error('admin towing vehicle pricing',e);return res.status(500).json({error:'SERVER_ERROR'});}
+    const code=String(req.params.code||'').trim();
+    const base=n(req.body?.baseFee),km=n(req.body?.perKmFee),min=n(req.body?.minimumFee);
+    const mult=req.body?.priceMultiplier===undefined?null:n(req.body?.priceMultiplier);
+    if(base===null||km===null||min===null||base<0||km<0||min<0)return res.status(400).json({error:'INVALID_PRICING'});
+    if(mult!==null&&(mult<=0||mult>10))return res.status(400).json({error:'INVALID_MULTIPLIER'});
+    try{
+      const r=await pool.query(
+        'UPDATE towing_vehicle_types SET base_fee=$2,per_km_fee=$3,minimum_fee=$4,price_multiplier=COALESCE($5,price_multiplier) WHERE code=$1 RETURNING *',
+        [code,base,km,min,mult]
+      );
+      if(!r.rowCount)return res.status(404).json({error:'VEHICLE_TYPE_NOT_FOUND'});
+      return res.json({ok:true,vehicleType:r.rows[0]});
+    }catch(e){console.error('admin towing vehicle pricing',e);return res.status(500).json({error:'SERVER_ERROR'});}
   });
 };
