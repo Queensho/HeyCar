@@ -8,10 +8,12 @@ import 'street_parking_card.dart';
 import 'parking_places_page.dart';
 import 'saved_parking_card.dart';
 import 'owner_auth.dart';
+import 'driver_auth.dart';
 
 class ParkingLocationCard extends StatefulWidget {
-  const ParkingLocationCard({super.key, required this.vehicleId});
+  const ParkingLocationCard({super.key, required this.vehicleId, this.driverMode = false});
   final String vehicleId;
+  final bool driverMode;
   @override
   State<ParkingLocationCard> createState() => _ParkingLocationCardState();
 }
@@ -28,12 +30,12 @@ class _ParkingLocationCardState extends State<ParkingLocationCard> {
 
   Future<void> _loadPremium() async {
     try {
-      final r = await http.get(
-        Uri.parse(
-          '${QrBackend.baseUrl}/api/vehicles/${widget.vehicleId}/maintenance',
-        ),
-        headers: await OwnerAuth.headers(json:false),
+      final uri = Uri.parse(
+        '${QrBackend.baseUrl}/api/vehicles/${widget.vehicleId}/maintenance',
       );
+      final r = widget.driverMode
+          ? await DriverHttp.get(uri, json: false)
+          : await OwnerHttp.get(uri, json: false);
       final d = jsonDecode(r.body);
       if (mounted)
         setState(() {
@@ -49,7 +51,7 @@ class _ParkingLocationCardState extends State<ParkingLocationCard> {
     final saved = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
-        builder: (_) => ParkingPlacesPage(vehicleId: widget.vehicleId),
+        builder: (_) => ParkingPlacesPage(vehicleId: widget.vehicleId, driverMode: widget.driverMode),
       ),
     );
     if (saved == true && mounted) setState(() => selected = 1);
@@ -74,7 +76,9 @@ class _ParkingLocationCardState extends State<ParkingLocationCard> {
           ],
         ),
         content: Text(
-          'Sokakta park konumunu kaydetme, park süresini görme ve aracına geri dönme Premium üyelikle kullanılabilir.',
+          widget.driverMode
+              ? 'Bu özellik sürücü hesabında Aile Premium ile kullanılabilir. Paketi yalnızca araç sahibi hesabından yükseltebilir.'
+              : 'Sokakta park konumunu kaydetme, park süresini görme ve aracına geri dönme Premium üyelikle kullanılabilir.',
           style: TextStyle(color: CepqarTheme.muted, height: 1.4),
         ),
         actions: [
@@ -90,9 +94,9 @@ class _ParkingLocationCardState extends State<ParkingLocationCard> {
   @override
   Widget build(BuildContext context) {
     if (selected == 0)
-      return _back(StreetParkingCard(vehicleId: widget.vehicleId));
+      return _back(StreetParkingCard(vehicleId: widget.vehicleId, driverMode: widget.driverMode));
     if (selected == 1)
-      return _back(SavedParkingCard(vehicleId: widget.vehicleId));
+      return _back(SavedParkingCard(vehicleId: widget.vehicleId, driverMode: widget.driverMode));
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 10, 18, 22),
       decoration: BoxDecoration(
@@ -227,7 +231,7 @@ class _ParkingLocationCardState extends State<ParkingLocationCard> {
             const Icon(Icons.lock_rounded, color: Color(0xFFFFB800), size: 17),
             const SizedBox(width: 5),
             const Text(
-              'Premium',
+              widget.driverMode ? 'Aile' : 'Premium',
               style: TextStyle(
                 color: Color(0xFFFFB800),
                 fontSize: 10,
