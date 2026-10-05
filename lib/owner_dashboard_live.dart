@@ -37,7 +37,7 @@ void action(String a){
   else if(a=='vehicles'||a=='drivers')setState(()=>tab=1);
   else if(a=='services')setState(()=>tab=2);
   else if(a=='settings')setState(()=>tab=4);
-  else if(a=='towing')Navigator.push(context,MaterialPageRoute(builder:(_)=>const RoadsideHelpPage(initialTab:1)));
+  else if(a=='towing'&&testAccount)Navigator.push(context,MaterialPageRoute(builder:(_)=>const RoadsideHelpPage(initialTab:1)));
   else if(a=='offers'&&testAccount)Navigator.push(context,MaterialPageRoute(builder:(_)=>const CepqarOffersPage()));
   else if(a=='roadside_help'&&testAccount)Navigator.push(context,MaterialPageRoute(builder:(_)=>const RoadsideHelpPage(initialTab:0)));
   else if(a=='maintenance')Navigator.push(context,MaterialPageRoute(builder:(_)=>MaintenancePage(plate:QrDraft.plate,title:'${QrDraft.make} ${QrDraft.model}'.trim())));
