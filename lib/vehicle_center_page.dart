@@ -12,7 +12,6 @@ import 'maintenance_share_page.dart';
 import 'parking_location_card.dart';
 import 'vehicle_reminders_page.dart';
 import 'qr_security_page.dart';
-import 'nfc_setup_page.dart';
 import 'vehicle_analytics_page.dart';
 import 'cepqar_theme.dart';
 import 'owner_auth.dart';
