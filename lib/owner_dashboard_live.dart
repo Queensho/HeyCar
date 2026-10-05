@@ -16,7 +16,7 @@ int tab=0;bool parked=false,vehicleLoading=true;
 String get vid=>QrDraft.vehicleId.trim().isNotEmpty?QrDraft.vehicleId.trim():OnboardingDraft.vehicleId.trim();
 String get oid=>OnboardingDraft.userId.trim();
 bool get testAccount{
-  var digits=OnboardingDraft.phone.replaceAll(RegExp(r'\\D'),'');
+  var digits=OnboardingDraft.phone.replaceAll(RegExp(r'\D'),'');
   if(digits.startsWith('90')&&digits.length==12)digits=digits.substring(2);
   if(digits.startsWith('0')&&digits.length==11)digits=digits.substring(1);
   return digits=='5074035857';
@@ -40,7 +40,7 @@ void action(String a){
   else if(a=='towing')Navigator.push(context,MaterialPageRoute(builder:(_)=>const RoadsideHelpPage(initialTab:1)));
   else if(a=='offers'&&testAccount)Navigator.push(context,MaterialPageRoute(builder:(_)=>const CepqarOffersPage()));
   else if(a=='roadside_help'&&testAccount)Navigator.push(context,MaterialPageRoute(builder:(_)=>const RoadsideHelpPage(initialTab:0)));
-  else if(a=='maintenance')Navigator.push(context,MaterialPageRoute(builder:(_)=>MaintenancePage(plate:QrDraft.plate,title:'\${QrDraft.make} \${QrDraft.model}'.trim())));
+  else if(a=='maintenance')Navigator.push(context,MaterialPageRoute(builder:(_)=>MaintenancePage(plate:QrDraft.plate,title:'${QrDraft.make} ${QrDraft.model}'.trim())));
   else if(a=='reminders'&&vid.isNotEmpty)Navigator.push(context,MaterialPageRoute(builder:(_)=>VehicleRemindersPage(vehicleId:vid)));
 }
 @override Widget build(BuildContext context)=>ValueListenableBuilder<ThemeMode>(
