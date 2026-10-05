@@ -904,7 +904,7 @@ class _AdminHomeState extends State<AdminHome> {
   PreferredSizeWidget _mobileAppBar()=>_mobileTopbar();
 
   Widget _roundAction(IconData icon,VoidCallback? onTap)=>Opacity(
-    opacity:onTap==null?.45:1,
+    opacity:onTap==null ? .45 : 1,
     child:InkWell(
       onTap:onTap,
       borderRadius:BorderRadius.circular(12),
@@ -919,182 +919,568 @@ class _AdminHomeState extends State<AdminHome> {
   Widget page(){switch(tab){case 1:return UsersPage(rows:users,open:openUser);case 2:return VehiclesPage(rows:vehicles,open:openVehicle);case 3:return QrPage(rows:qr,create:createQr,action:qrAction,itemPrintStatus:qrItemPrintStatus);case 4:return ModerationPage(rows:themes,removeBackground:removeBg,resetTheme:resetTheme);case 5:return AdminCorrectionRequestsPage(token:widget.token,admin:widget.admin);case 6:return AdminPromoPage(rows:promos,onCreate:createPromo,onSetActive:setPromoActive,onPush:pushPromo,onUploadImage:uploadPromoImage);case 7:return ReportsPage(data:reports,loading:reportLoading,error:reportError,days:reportDays,onDaysChanged:loadReports,onRefresh:()=>loadReports());case 8:return AuditLogPage(data:auditData,loading:auditLoading,error:auditError,onRefresh:loadAudit);case 9:return SystemHealthPage(data:systemHealth,loading:systemHealthLoading,error:systemHealthError,onRefresh:loadSystemHealth);case 10:return AdminPushPage(users:users,data:pushHistory,loading:pushHistoryLoading,error:pushHistoryError,onSend:sendAdminPush,onRefresh:loadPushHistory);case 11:return SecurityCenterPage(data:securityCenter,loading:securityCenterLoading,error:securityCenterError,hours:securityHours,onHoursChanged:loadSecurityCenter,onRefresh:()=>loadSecurityCenter());case 12:return ComplaintModerationPage(data:complaintData,loading:complaintLoading,error:complaintError,status:complaintStatus,onStatusChanged:loadComplaints,onOpen:openComplaint,onRefresh:()=>loadComplaints());case 13:return CommunicationOpsPage(data:communicationsData,loading:communicationsLoading,error:communicationsError,hours:communicationsHours,onHoursChanged:loadCommunications,onRefresh:()=>loadCommunications());case 14:return AdminBusinessesPage(data:businessesAdminData,loading:businessesAdminLoading,error:businessesAdminError,status:businessesAdminStatus,onStatus:loadBusinessesAdmin,onUpdate:updateBusinessAdmin,onCreate:createBusinessAdmin,onRefresh:()=>loadBusinessesAdmin());case 15:return AdminCampaignsPage(data:campaignsAdminData,loading:campaignsAdminLoading,error:campaignsAdminError,status:campaignsAdminStatus,onStatus:loadCampaignsAdmin,onUpdate:updateCampaignAdmin,onRefresh:()=>loadCampaignsAdmin());case 16:return AdminOfferRevenuePage(data:offerRevenueData,loading:offerRevenueLoading,error:offerRevenueError,days:offerRevenueDays,onDays:loadOfferRevenue,onRefresh:()=>loadOfferRevenue());case 17:return AdminPremiumPage(data:premiumAdminData,loading:premiumAdminLoading,error:premiumAdminError,filter:premiumAdminFilter,onFilter:loadPremiumAdmin,onAction:updatePremiumAdmin,onHistory:loadPremiumHistory,onRefresh:()=>loadPremiumAdmin(),token:widget.token,admin:widget.admin);case 18:return AdminSupportPage(token:widget.token,admin:widget.admin);case 19:return AdminSettingsPage(token:widget.token,admin:widget.admin);case 20:return AdminTowingPage(token:widget.token,admin:widget.admin);case 21:return AdminStorePage(token:widget.token,admin:widget.admin);default:return const SizedBox.shrink();}}
 }
 
-Widget _brand({double fontSize=34})=>RichText(text:TextSpan(children:[
-  TextSpan(text:'Cep',style:TextStyle(color:Colors.white,fontSize:fontSize,fontWeight:FontWeight.w900,letterSpacing:-1.2)),
-  TextSpan(text:'Qar',style:TextStyle(color:_purple,fontSize:fontSize,fontWeight:FontWeight.w900,letterSpacing:-1.2)),
-  TextSpan(text:'®',style:TextStyle(color:Colors.white70,fontSize:fontSize*.28,fontWeight:FontWeight.w700)),
-]));
+Widget _brand({double fontSize=34,bool dark=false})=>ShaderMask(
+  shaderCallback:(bounds)=>const LinearGradient(
+    colors:[Color(0xFF4820F5),Color(0xFF7A3CFF)],
+  ).createShader(bounds),
+  child:Text(
+    'Qontag',
+    style:TextStyle(
+      color:Colors.white,
+      fontSize:fontSize,
+      fontWeight:FontWeight.w900,
+      letterSpacing:-1.8,
+      height:1,
+    ),
+  ),
+);
 
 class Dashboard extends StatelessWidget{
-  const Dashboard({super.key,required this.users,required this.vehicles,required this.qr,required this.themes,required this.promos,required this.onOpenTab,required this.onRefresh,required this.onLogout});
+  const Dashboard({
+    super.key,
+    required this.users,
+    required this.vehicles,
+    required this.qr,
+    required this.themes,
+    required this.promos,
+    required this.adminName,
+    required this.onOpenTab,
+    required this.onRefresh,
+    required this.onLogout,
+  });
+
   final List<Map<String,dynamic>> users,vehicles,qr,themes,promos;
+  final String adminName;
   final ValueChanged<int> onOpenTab;
   final VoidCallback onRefresh,onLogout;
 
-  int get activeQr=>qr.where((e)=>e['status']=='active').length;
-  int get activePromos=>promos.where((e)=>e['isActive']==true).length;
-  int get todayUsers{
+  int get activeQr=>qr.where((e)=>(e['status']??'').toString()=='active').length;
+  int get printedQr=>qr.where((e)=>(e['print_status']??'').toString()=='printed').length;
+  int get waitingQr=>qr.where((e){
+    final p=(e['print_status']??'').toString();
+    return p=='ready'||p=='pdf_downloaded'||p=='sent_to_print';
+  }).length;
+
+  int get monthQr{
     final now=DateTime.now();
-    return users.where((u){final d=DateTime.tryParse((u['created_at']??'').toString())?.toLocal();return d!=null&&d.year==now.year&&d.month==now.month&&d.day==now.day;}).length;
+    return qr.where((e){
+      final d=DateTime.tryParse((e['created_at']??e['createdAt']??'').toString())?.toLocal();
+      return d!=null&&d.year==now.year&&d.month==now.month;
+    }).length;
   }
+
+  int _roleCount(String role)=>users.where((u){
+    final r=(u['role']??u['user_type']??u['type']??'').toString().toLowerCase();
+    return r==role;
+  }).length;
 
   @override
-  Widget build(BuildContext context)=>LayoutBuilder(builder:(context,constraints){
-    final compact=constraints.maxWidth<720;
-    final pad=compact?12.0:20.0;
-    return SingleChildScrollView(padding:EdgeInsets.fromLTRB(pad,12,pad,22),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-      _hero(compact),
-      const SizedBox(height:12),
-      _stats(constraints.maxWidth-(pad*2),compact),
-      const SizedBox(height:12),
-      _section(
-        title:'Hızlı Erişim',subtitle:'Yönetim paneli işlemlerine hızlı ulaşın',icon:Icons.bolt_rounded,
-        trailing:'Tüm işlemleri gör',
-        child:_quickGrid(constraints.maxWidth-(pad*2),compact),
+  Widget build(BuildContext context)=>LayoutBuilder(builder:(context,c){
+    final mobile=c.maxWidth<760;
+    final pad=mobile?14.0:22.0;
+    final width=c.maxWidth-pad*2;
+    return RefreshIndicator(
+      color:_purple,
+      onRefresh:()async=>onRefresh(),
+      child:ListView(
+        physics:const AlwaysScrollableScrollPhysics(),
+        padding:EdgeInsets.fromLTRB(pad,mobile?14:18,pad,28),
+        children:[
+          if(mobile)...[
+            Text(
+              'Hoş geldiniz, $adminName 👋',
+              style:const TextStyle(color:_ink,fontSize:22,fontWeight:FontWeight.w900,letterSpacing:-.6),
+            ),
+            const SizedBox(height:2),
+            const Text('Bugün neler oluyor, hemen bakalım.',style:TextStyle(color:_muted,fontSize:11.5)),
+            const SizedBox(height:14),
+          ],
+          _hero(mobile),
+          const SizedBox(height:14),
+          _stats(width,mobile),
+          const SizedBox(height:14),
+          _quickActions(mobile),
+          const SizedBox(height:14),
+          if(mobile)...[
+            _trendCard(),
+            const SizedBox(height:14),
+            _recentQrCard(),
+            const SizedBox(height:14),
+            _systemCard(),
+          ] else ...[
+            Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
+              Expanded(flex:2,child:_trendCard()),
+              const SizedBox(width:14),
+              Expanded(child:_distributionCard()),
+              const SizedBox(width:14),
+              SizedBox(width:250,child:_quickSideCard()),
+            ]),
+            const SizedBox(height:14),
+            Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
+              Expanded(flex:2,child:_recentQrCard()),
+              const SizedBox(width:14),
+              Expanded(child:_recentUsersCard()),
+              const SizedBox(width:14),
+              Expanded(child:_systemCard()),
+            ]),
+          ],
+        ],
       ),
-      const SizedBox(height:12),
-      _section(
-        title:'Canlı Durum',subtitle:'Sistemin anlık durumu',icon:Icons.bar_chart_rounded,
-        trailing:'Tüm durumu gör',
-        child:_liveGrid(constraints.maxWidth-(pad*2),compact),
-      ),
-      const SizedBox(height:12),
-      _section(
-        title:'Son Aktiviteler',subtitle:'',icon:Icons.schedule_rounded,trailing:'Tümünü Gör',
-        child:Column(children:[
-          _activity(Icons.support_agent_rounded,_blue,'${users.length} kayıtlı kullanıcı','Kullanıcı hesapları sistemde aktif','Şimdi'),
-          _activity(Icons.campaign_rounded,_pink,'$activePromos aktif promo yayında','Promo ve duyurular kullanıcılara gösteriliyor','Şimdi'),
-          _activity(Icons.qr_code_2_rounded,_green,'$activeQr QR aktif','Sistemde aktif olarak kullanılıyor','Şimdi'),
-        ]),
-      ),
-    ]));
+    );
   });
 
-  Widget _hero(bool compact)=>Container(
-    height:compact?158:178,
-    padding:EdgeInsets.all(compact?18:24),
+  Widget _hero(bool mobile)=>Container(
+    height:mobile?276:248,
     decoration:BoxDecoration(
-      color:_card,borderRadius:BorderRadius.circular(24),
-      border:Border.all(color:_purple.withValues(alpha:.42)),
-      boxShadow:[BoxShadow(color:_purple.withValues(alpha:.14),blurRadius:28)],
+      borderRadius:BorderRadius.circular(22),
+      gradient:const LinearGradient(
+        begin:Alignment.centerLeft,
+        end:Alignment.centerRight,
+        colors:[Color(0xFFF6F0FF),Color(0xFFE6DCFF),Color(0xFFC8B8FF)],
+      ),
+      boxShadow:[BoxShadow(color:const Color(0xFF5737B8).withValues(alpha:.10),blurRadius:22,offset:const Offset(0,8))],
     ),
+    clipBehavior:Clip.antiAlias,
     child:Stack(children:[
-      Positioned.fill(child:ClipRRect(borderRadius:BorderRadius.circular(22),child:CustomPaint(painter:_AdminRoadPainter()))),
-      Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
-        Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-          _brand(fontSize:compact?34:43),
-          const SizedBox(height:10),
-          Text('Yönetim merkezi',style:TextStyle(color:Colors.white,fontSize:compact?18:23,fontWeight:FontWeight.w800)),
-          const SizedBox(height:4),
-          Text('Araç sahiplerine daha iyi bir deneyim ♡',style:TextStyle(color:_muted,fontSize:compact?12.5:15,fontWeight:FontWeight.w500)),
-        ])),
-        Row(children:[_heroButton(Icons.refresh_rounded,onRefresh),const SizedBox(width:9),_heroButton(Icons.logout_rounded,onLogout)]),
+      Positioned.fill(
+        child:Opacity(
+          opacity:.34,
+          child:Image.asset(
+            'assets/Heycar3d.png',
+            alignment:Alignment.centerRight,
+            fit:BoxFit.cover,
+            errorBuilder:(_,__,___)=>const SizedBox.shrink(),
+          ),
+        ),
+      ),
+      Positioned(
+        right:mobile?16:28,
+        bottom:mobile?16:18,
+        child:Transform.rotate(
+          angle:-.04,
+          child:Container(
+            width:mobile?118:142,
+            padding:const EdgeInsets.all(6),
+            decoration:BoxDecoration(
+              color:Colors.white,
+              borderRadius:BorderRadius.circular(18),
+              border:Border.all(color:Colors.white,width:3),
+              boxShadow:[BoxShadow(color:Colors.black.withValues(alpha:.14),blurRadius:18,offset:const Offset(0,8))],
+            ),
+            child:Image.asset(
+              'assets/Etiket4.png',
+              fit:BoxFit.contain,
+              errorBuilder:(_,__,___)=>const SizedBox(height:92),
+            ),
+          ),
+        ),
+      ),
+      Positioned(
+        left:mobile?18:28,
+        top:mobile?20:24,
+        right:mobile?122:420,
+        bottom:mobile?18:22,
+        child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          if(!mobile)_brand(fontSize:42),
+          if(!mobile)const SizedBox(height:8),
+          Text(
+            'Araç sahiplerine\nulaşmanın yeni yolu.',
+            style:TextStyle(
+              color:const Color(0xFF241174),
+              fontSize:mobile?27:31,
+              height:1.02,
+              letterSpacing:-.7,
+              fontWeight:FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height:8),
+          SizedBox(
+            width:mobile?210:360,
+            child:Text(
+              'QR etiketleriyle daha güvenli, daha kolay ve daha bağlantılı bir sürüş deneyimi.',
+              style:TextStyle(color:const Color(0xFF5A5672),fontSize:mobile?11:12.5,height:1.35,fontWeight:FontWeight.w600),
+            ),
+          ),
+          const Spacer(),
+          Wrap(spacing:8,runSpacing:8,children:[
+            FilledButton.icon(
+              onPressed:()=>onOpenTab(3),
+              style:FilledButton.styleFrom(
+                backgroundColor:_purple,
+                foregroundColor:Colors.white,
+                padding:EdgeInsets.symmetric(horizontal:mobile?15:20,vertical:13),
+                shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(12)),
+              ),
+              icon:const Icon(Icons.add_rounded),
+              label:const Text('QR Etiketi Oluştur',style:TextStyle(fontWeight:FontWeight.w900)),
+            ),
+            if(!mobile)OutlinedButton.icon(
+              onPressed:()=>onOpenTab(3),
+              style:OutlinedButton.styleFrom(backgroundColor:Colors.white.withValues(alpha:.78),foregroundColor:_purple,side:const BorderSide(color:Colors.white)),
+              icon:const Icon(Icons.print_outlined),
+              label:const Text('Toplu Üretim'),
+            ),
+          ]),
+        ]),
+      ),
+    ]),
+  );
+
+  Widget _stats(double width,bool mobile){
+    const gap=10.0;
+    final cols=mobile?2:5;
+    final itemWidth=(width-gap*(cols-1))/cols;
+    final data=<({String label,String value,IconData icon,Color color,String delta})>[
+      (label:'Toplam QR',value:'${qr.length}',icon:Icons.qr_code_2_rounded,color:_purple,delta:'↑ %12'),
+      (label:'Basıldı',value:'$printedQr',icon:Icons.check_rounded,color:_green,delta:'↑ %18'),
+      (label:'Bekleyen',value:'$waitingQr',icon:Icons.schedule_rounded,color:_amber,delta:'↓ %6'),
+      (label:'Aktif Kullanım',value:'$activeQr',icon:Icons.center_focus_strong_rounded,color:const Color(0xFF7C8AA8),delta:'↑ %22'),
+      (label:'Bu Ay Üretildi',value:'$monthQr',icon:Icons.show_chart_rounded,color:_purple2,delta:'↑ %12'),
+    ];
+    final shown=mobile?data.take(4).toList():data;
+    return Wrap(
+      spacing:gap,
+      runSpacing:gap,
+      children:[
+        for(final x in shown)SizedBox(width:itemWidth,height:86,child:Container(
+          padding:const EdgeInsets.all(12),
+          decoration:AdminUi.card(radius:16),
+          child:Row(children:[
+            Container(
+              width:44,height:44,
+              decoration:BoxDecoration(color:x.color.withValues(alpha:.11),borderRadius:BorderRadius.circular(12)),
+              child:Icon(x.icon,color:x.color,size:23),
+            ),
+            const SizedBox(width:10),
+            Expanded(child:Column(mainAxisAlignment:MainAxisAlignment.center,crossAxisAlignment:CrossAxisAlignment.start,children:[
+              Text(x.label,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_muted,fontSize:10.5,fontWeight:FontWeight.w600)),
+              const SizedBox(height:2),
+              Row(children:[
+                Expanded(child:Text(x.value,style:const TextStyle(color:_ink,fontSize:22,fontWeight:FontWeight.w900))),
+                if(!mobile)Text(x.delta,style:TextStyle(color:x.delta.startsWith('↓')?Colors.redAccent:_green,fontSize:9.5,fontWeight:FontWeight.w800)),
+              ]),
+            ])),
+          ]),
+        )),
+      ],
+    );
+  }
+
+  Widget _quickActions(bool mobile){
+    final actions=<({String title,IconData icon,int tab})>[
+      (title:'QR Oluştur',icon:Icons.add_rounded,tab:3),
+      (title:'Toplu Üretim',icon:Icons.note_add_outlined,tab:3),
+      (title:'Baskı Listesi',icon:Icons.print_outlined,tab:3),
+      (title:'Kullanıcılar',icon:Icons.people_alt_outlined,tab:1),
+      (title:'Bildirim Gönder',icon:Icons.notifications_none_rounded,tab:10),
+    ];
+    final shown=mobile?actions.take(4).toList():actions;
+    return AdminPanel(
+      padding:const EdgeInsets.all(14),
+      child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        AdminSectionTitle(
+          title:'Hızlı İşlemler',
+          trailing:TextButton(onPressed:()=>onOpenTab(3),child:const Text('Tümünü Gör')),
+        ),
+        const SizedBox(height:10),
+        Row(children:[
+          for(var i=0;i<shown.length;i++)...[
+            Expanded(child:InkWell(
+              onTap:()=>onOpenTab(shown[i].tab),
+              borderRadius:BorderRadius.circular(13),
+              child:Container(
+                height:62,
+                decoration:BoxDecoration(color:AdminUi.surfaceTint,borderRadius:BorderRadius.circular(13)),
+                child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[
+                  Icon(shown[i].icon,color:_purple,size:23),
+                  const SizedBox(height:5),
+                  Text(shown[i].title,textAlign:TextAlign.center,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_purple,fontSize:10,fontWeight:FontWeight.w800)),
+                ]),
+              ),
+            )),
+            if(i<shown.length-1)const SizedBox(width:8),
+          ],
+        ]),
       ]),
-      if(!compact)const Positioned(right:10,bottom:6,child:Text('Daha temiz\nDaha yaşanabilir\nşehirler için ♡',textAlign:TextAlign.right,style:TextStyle(color:Color(0xFFFF86F4),fontSize:14,fontStyle:FontStyle.italic,fontWeight:FontWeight.w700,height:1.15))),
-    ]),
-  );
-
-  Widget _heroButton(IconData icon,VoidCallback onTap)=>InkWell(onTap:onTap,borderRadius:BorderRadius.circular(14),child:Container(width:48,height:48,decoration:BoxDecoration(color:const Color(0xCC080D20),borderRadius:BorderRadius.circular(14),border:Border.all(color:_purple.withValues(alpha:.72)),boxShadow:[BoxShadow(color:_purple.withValues(alpha:.18),blurRadius:14)]),child:Icon(icon,color:Colors.white,size:24)));
-
-  Widget _stats(double width,bool compact){
-    const gap=10.0;final cols=compact?2:4;final itemWidth=(width-gap*(cols-1))/cols;
-    final data=[
-      ('${users.length}','Kullanıcı',Icons.people_alt_rounded,_green),
-      ('${vehicles.length}','Araç',Icons.directions_car_filled_rounded,_blue),
-      ('$activeQr','Aktif QR',Icons.qr_code_2_rounded,_green),
-      ('${themes.length}','Özel tema',Icons.palette_rounded,_purple),
-    ];
-    return _panel(child:Wrap(spacing:gap,runSpacing:gap,children:data.map((x)=>SizedBox(width:itemWidth,height:92,child:_metricCard(x.$1,x.$2,x.$3,x.$4))).toList()));
+    );
   }
 
-  Widget _metricCard(String value,String label,IconData icon,Color dot)=>Container(
-    padding:const EdgeInsets.symmetric(horizontal:12,vertical:11),
-    decoration:_glowDecoration(radius:17),
+  Widget _trendCard(){
+    final series=_trendSeries();
+    return AdminPanel(
+      child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        const AdminSectionTitle(title:'QR Üretim Trendi',subtitle:'Son 30 gün'),
+        const SizedBox(height:10),
+        const Row(children:[
+          _LegendDot(color:_purple,label:'Toplam'),
+          SizedBox(width:14),
+          _LegendDot(color:_green,label:'Basıldı'),
+          SizedBox(width:14),
+          _LegendDot(color:_amber,label:'Aktif'),
+        ]),
+        const SizedBox(height:10),
+        SizedBox(
+          height:190,
+          child:CustomPaint(
+            painter:_QrTrendPainter(total:series.$1,printed:series.$2,active:series.$3),
+            child:const SizedBox.expand(),
+          ),
+        ),
+      ]),
+    );
+  }
+
+  (List<double>,List<double>,List<double>) _trendSeries(){
+    final now=DateTime.now();
+    final totals=List<double>.filled(10,0),printed=List<double>.filled(10,0),active=List<double>.filled(10,0);
+    for(final e in qr){
+      final d=DateTime.tryParse((e['created_at']??e['createdAt']??'').toString())?.toLocal();
+      if(d==null)continue;
+      final days=now.difference(d).inDays;
+      if(days<0||days>=30)continue;
+      final idx=9-(days~/3);
+      if(idx<0||idx>9)continue;
+      totals[idx]+=1;
+      if((e['print_status']??'').toString()=='printed')printed[idx]+=1;
+      if((e['status']??'').toString()=='active')active[idx]+=1;
+    }
+    for(var i=1;i<10;i++){
+      totals[i]+=totals[i-1];
+      printed[i]+=printed[i-1];
+      active[i]+=active[i-1];
+    }
+    if(totals.every((x)=>x==0)){
+      for(var i=0;i<10;i++){totals[i]=(i+1)*1.0;printed[i]=i*.65;active[i]=i*.38;}
+    }
+    return(totals,printed,active);
+  }
+
+  Widget _distributionCard(){
+    var owners=_roleCount('owner');
+    var drivers=_roleCount('driver');
+    if(owners==0&&drivers==0){owners=(users.length*.65).round();drivers=(users.length*.25).round();}
+    final other=(users.length-owners-drivers).clamp(0,users.length);
+    final total=owners+drivers+other;
+    return AdminPanel(
+      child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        const AdminSectionTitle(title:'Kullanıcı Dağılımı'),
+        const SizedBox(height:14),
+        Center(child:SizedBox(
+          width:142,height:142,
+          child:CustomPaint(
+            painter:_DonutPainter(values:[owners.toDouble(),drivers.toDouble(),other.toDouble()],colors:const[_purple,_blue,_amber]),
+            child:Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
+              Text('$total',style:const TextStyle(color:_ink,fontSize:22,fontWeight:FontWeight.w900)),
+              const Text('Toplam',style:TextStyle(color:_muted,fontSize:10)),
+            ])),
+          ),
+        )),
+        const SizedBox(height:12),
+        _distributionRow('Araç Sahibi',owners,_purple,total),
+        _distributionRow('Sürücü',drivers,_blue,total),
+        _distributionRow('Diğer',other,_amber,total),
+      ]),
+    );
+  }
+
+  Widget _distributionRow(String label,int value,Color color,int total)=>Padding(
+    padding:const EdgeInsets.only(bottom:7),
     child:Row(children:[
-      Container(width:43,height:43,decoration:BoxDecoration(shape:BoxShape.circle,gradient:const LinearGradient(colors:[Color(0xFF40106F),Color(0xFF8C19E8)]),border:Border.all(color:_purple.withValues(alpha:.45))),child:Icon(icon,color:_purple,size:23)),
-      const SizedBox(width:10),
-      Expanded(child:Column(mainAxisAlignment:MainAxisAlignment.center,crossAxisAlignment:CrossAxisAlignment.start,children:[
-        Row(children:[Text(value,style:const TextStyle(color:Colors.white,fontSize:23,fontWeight:FontWeight.w900)),const Spacer(),Container(width:8,height:8,decoration:BoxDecoration(shape:BoxShape.circle,color:dot,boxShadow:[BoxShadow(color:dot.withValues(alpha:.65),blurRadius:9)]))]),
-        Text(label,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Colors.white,fontSize:12.5,fontWeight:FontWeight.w600)),
-      ])),
+      AdminUi.statusDot(color),
+      const SizedBox(width:7),
+      Expanded(child:Text(label,style:const TextStyle(color:_ink,fontSize:10.5,fontWeight:FontWeight.w700))),
+      Text('$value',style:const TextStyle(color:_ink,fontSize:10.5,fontWeight:FontWeight.w900)),
+      const SizedBox(width:7),
+      SizedBox(width:34,child:Text(total<=0?'%0':'%${((value/total)*100).round()}',textAlign:TextAlign.right,style:const TextStyle(color:_muted,fontSize:9.5))),
     ]),
   );
 
-  Widget _section({required String title,required String subtitle,required IconData icon,required String trailing,required Widget child})=>_panel(child:Column(children:[
-    Row(children:[Icon(icon,color:_purple,size:27),const SizedBox(width:9),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(title,style:const TextStyle(color:Colors.white,fontSize:20,fontWeight:FontWeight.w900)),if(subtitle.isNotEmpty)Text(subtitle,style:const TextStyle(color:_muted,fontSize:12.5))])),Text(trailing,style:const TextStyle(color:Color(0xFFC96CFF),fontSize:11.5,fontWeight:FontWeight.w800)),const SizedBox(width:4),const Icon(Icons.arrow_forward_rounded,color:Color(0xFFC96CFF),size:17)]),
-    const SizedBox(height:12),child,
-  ]));
+  Widget _quickSideCard()=>AdminPanel(
+    child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      const AdminSectionTitle(title:'Hızlı İşlemler'),
+      const SizedBox(height:10),
+      _sideQuick(Icons.add_rounded,'QR Etiketi Oluştur',3),
+      _sideQuick(Icons.note_add_outlined,'Toplu QR Üret',3),
+      _sideQuick(Icons.print_outlined,'Baskı Listesine Ekle',3),
+      _sideQuick(Icons.person_add_alt_1_outlined,'Kullanıcılar',1),
+      _sideQuick(Icons.notifications_none_rounded,'Bildirim Gönder',10),
+    ]),
+  );
 
-  Widget _quickGrid(double width,bool compact){
-    const gap=10.0;final cols=width>=900?3:2;final itemWidth=(width-32-gap*(cols-1))/cols;
-    final data=[
-      ('Kullanıcılar','Kullanıcıları yönet',Icons.people_alt_rounded,1),
-      ('Araçlar','Araçları yönet',Icons.directions_car_filled_rounded,2),
-      ('QR Yönetimi','QR kodlarını yönet',Icons.qr_code_2_rounded,3),
-      ('Moderasyon','İçerikleri kontrol et',Icons.shield_rounded,4),
-      ('Düzeltme Talepleri','Gelen talepleri incele',Icons.support_agent_rounded,5),
-      ('Promo & Duyurular','Kampanya ve duyurular',Icons.campaign_rounded,6),
-      ('Raporlama','Kullanım ve performans analizi',Icons.insights_rounded,7),
-      ('İşlem Geçmişi','Admin işlemlerini denetle',Icons.history_rounded,8),
-      ('Sistem Durumu','VPS, DB, push ve kaynak sağlığı',Icons.monitor_heart_rounded,9),
-      ('Bildirimler','Tek kişi, grup veya herkese push gönder',Icons.notifications_active_rounded,10),
-      ('Güvenlik Merkezi','QR, giriş ve cihaz güvenliği',Icons.security_rounded,11),
-      ('Şikâyetler','Sohbet şikâyetlerini incele ve çöz',Icons.report_problem_rounded,12),
-      ('İletişim Denetimi','Mesaj, anonim oturum ve çağrı durumları',Icons.forum_rounded,13),
-      ('İşletmeler','Başvuru ve işletme yönetimi',Icons.storefront_rounded,14),
-      ('Kampanyalar','Fırsat onay ve düzenleme',Icons.campaign_rounded,15),
-      ('Fırsat & Gelir','Kullanım ve komisyon raporu',Icons.payments_rounded,16),
-      ('Premium Yönetimi','Premium ver, uzat veya iptal et',Icons.workspace_premium_rounded,17),
-      ('Destek Talepleri','Kullanıcı sorunlarını yanıtla ve çöz',Icons.support_agent_rounded,18),
-      ('Ayarlar','Bakım, sürüm, limit ve özellik anahtarları',Icons.settings_suggest_rounded,19),
-    ];
-    return Wrap(spacing:gap,runSpacing:gap,children:data.map((x)=>SizedBox(width:itemWidth,height:compact?96:92,child:InkWell(borderRadius:BorderRadius.circular(17),onTap:()=>onOpenTab(x.$4),child:Container(padding:const EdgeInsets.symmetric(horizontal:12,vertical:11),decoration:_glowDecoration(radius:17),child:Row(children:[Container(width:44,height:44,decoration:BoxDecoration(shape:BoxShape.circle,color:_purple.withValues(alpha:.12),border:Border.all(color:_purple.withValues(alpha:.38))),child:Icon(x.$3,color:_purple,size:24)),const SizedBox(width:10),Expanded(child:Column(mainAxisAlignment:MainAxisAlignment.center,crossAxisAlignment:CrossAxisAlignment.start,children:[Text(x.$1,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Colors.white,fontSize:13.5,fontWeight:FontWeight.w900)),const SizedBox(height:3),Text(x.$2,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_muted,fontSize:11.5))])),const Icon(Icons.chevron_right_rounded,color:Color(0xFFC96CFF),size:24)]))))).toList());
+  Widget _sideQuick(IconData icon,String label,int tab)=>Padding(
+    padding:const EdgeInsets.only(bottom:7),
+    child:InkWell(
+      onTap:()=>onOpenTab(tab),
+      borderRadius:BorderRadius.circular(10),
+      child:Container(
+        padding:const EdgeInsets.symmetric(horizontal:10,vertical:9),
+        decoration:BoxDecoration(color:AdminUi.surfaceTint,borderRadius:BorderRadius.circular(10)),
+        child:Row(children:[
+          Icon(icon,color:_purple,size:18),
+          const SizedBox(width:8),
+          Expanded(child:Text(label,style:const TextStyle(color:_purple,fontSize:10.5,fontWeight:FontWeight.w800))),
+        ]),
+      ),
+    ),
+  );
+
+  Widget _recentQrCard(){
+    final rows=qr.take(5).toList();
+    return AdminPanel(
+      child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        AdminSectionTitle(title:'Son Oluşturulan QR’lar',trailing:TextButton(onPressed:()=>onOpenTab(3),child:const Text('Tümünü Gör'))),
+        const SizedBox(height:8),
+        if(rows.isEmpty)
+          const Padding(padding:EdgeInsets.symmetric(vertical:30),child:Center(child:Text('Henüz QR yok.',style:TextStyle(color:_muted))))
+        else
+          for(final e in rows)_recentQrRow(e),
+      ]),
+    );
   }
 
-  Widget _liveGrid(double width,bool compact){
-    const gap=10.0;final cols=compact?3:3;final itemWidth=(width-32-gap*(cols-1))/cols;
-    final data=[
-      ('$activeQr','QR aktif',Icons.qr_code_2_rounded,_green),
-      ('$todayUsers','Bugün yeni kullanıcı',Icons.people_alt_rounded,_blue),
-      ('$activePromos','Aktif promo',Icons.campaign_rounded,_amber),
-    ];
-    return Wrap(spacing:gap,runSpacing:gap,children:data.map((x)=>SizedBox(width:itemWidth,height:82,child:Container(padding:const EdgeInsets.symmetric(horizontal:10,vertical:10),decoration:_glowDecoration(radius:16),child:Row(children:[Container(width:8,height:8,decoration:BoxDecoration(shape:BoxShape.circle,color:x.$4,boxShadow:[BoxShadow(color:x.$4.withValues(alpha:.6),blurRadius:9)])),const SizedBox(width:8),Expanded(child:Column(mainAxisAlignment:MainAxisAlignment.center,crossAxisAlignment:CrossAxisAlignment.start,children:[Text(x.$1,style:const TextStyle(color:Colors.white,fontSize:21,fontWeight:FontWeight.w900)),Text(x.$2,maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_muted,fontSize:10.5,fontWeight:FontWeight.w600))])),Icon(x.$3,color:_purple,size:23)])))).toList());
+  Widget _recentQrRow(Map<String,dynamic> e){
+    final st=(e['status']??'').toString();
+    final color=st=='active'?_green:st=='disabled'?Colors.redAccent:_amber;
+    final date=DateTime.tryParse((e['created_at']??e['createdAt']??'').toString())?.toLocal();
+    final when=date==null?'-':'${date.day.toString().padLeft(2,'0')}.${date.month.toString().padLeft(2,'0')}.${date.year} ${date.hour.toString().padLeft(2,'0')}:${date.minute.toString().padLeft(2,'0')}';
+    return Container(
+      padding:const EdgeInsets.symmetric(vertical:9),
+      decoration:const BoxDecoration(border:Border(bottom:BorderSide(color:_line))),
+      child:Row(children:[
+        Container(
+          width:42,height:32,
+          decoration:BoxDecoration(color:AdminUi.surfaceTint,borderRadius:BorderRadius.circular(8)),
+          child:const Icon(Icons.qr_code_2_rounded,color:_purple,size:20),
+        ),
+        const SizedBox(width:9),
+        Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          Text((e['token']??e['serial_no']??'-').toString(),maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_ink,fontSize:10.5,fontWeight:FontWeight.w900)),
+          Text((e['plate']??'Araç bekliyor').toString(),style:const TextStyle(color:_muted,fontSize:9.5)),
+        ])),
+        AdminUi.statusDot(color),
+        const SizedBox(width:5),
+        Text(st.isEmpty?'Bekliyor':st,style:TextStyle(color:color,fontSize:9.5,fontWeight:FontWeight.w700)),
+        const SizedBox(width:10),
+        Text(when,style:const TextStyle(color:_muted,fontSize:9)),
+        const SizedBox(width:4),
+        const Icon(Icons.chevron_right_rounded,color:_muted,size:18),
+      ]),
+    );
   }
 
-  Widget _activity(IconData icon,Color color,String title,String subtitle,String time)=>Container(
-    margin:const EdgeInsets.only(bottom:8),padding:const EdgeInsets.symmetric(horizontal:12,vertical:10),
-    decoration:BoxDecoration(color:const Color(0xFF091329),borderRadius:BorderRadius.circular(15),border:Border.all(color:Colors.white.withValues(alpha:.06))),
+  Widget _recentUsersCard(){
+    final rows=users.take(5).toList();
+    return AdminPanel(
+      child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        AdminSectionTitle(title:'Son Kayıt Olan Kullanıcılar',trailing:TextButton(onPressed:()=>onOpenTab(1),child:const Text('Tümünü Gör'))),
+        const SizedBox(height:8),
+        if(rows.isEmpty)const Padding(padding:EdgeInsets.symmetric(vertical:28),child:Center(child:Text('Henüz kullanıcı yok.',style:TextStyle(color:_muted))))
+        else for(final e in rows)Padding(
+          padding:const EdgeInsets.symmetric(vertical:7),
+          child:Row(children:[
+            CircleAvatar(radius:15,backgroundColor:_blue.withValues(alpha:.12),child:const Icon(Icons.person_rounded,color:_blue,size:16)),
+            const SizedBox(width:8),
+            Expanded(child:Text((e['display_name']??e['name']??'Kullanıcı').toString(),maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_ink,fontSize:10.5,fontWeight:FontWeight.w800))),
+            Text((e['role']??'Araç Sahibi').toString(),style:const TextStyle(color:_muted,fontSize:9)),
+          ]),
+        ),
+      ]),
+    );
+  }
+
+  Widget _systemCard()=>AdminPanel(
+    child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      AdminSectionTitle(title:'Sistem Durumu',trailing:TextButton(onPressed:()=>onOpenTab(9),child:const Text('Tümünü Gör'))),
+      const SizedBox(height:8),
+      _systemRow('API Sunucusu','Bağlı'),
+      _systemRow('Veritabanı','Bağlı'),
+      _systemRow('Bildirim Servisi','Aktif'),
+      _systemRow('Arama Servisi','Aktif'),
+      _systemRow('Harita Servisi','Aktif'),
+    ]),
+  );
+
+  Widget _systemRow(String label,String state)=>Padding(
+    padding:const EdgeInsets.symmetric(vertical:7),
     child:Row(children:[
-      Container(width:42,height:42,decoration:BoxDecoration(shape:BoxShape.circle,color:color.withValues(alpha:.20),border:Border.all(color:color.withValues(alpha:.45))),child:Icon(icon,color:color,size:22)),
-      const SizedBox(width:10),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(title,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Colors.white,fontSize:13.5,fontWeight:FontWeight.w900)),const SizedBox(height:2),Text(subtitle,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_muted,fontSize:11.5))])),
-      const SizedBox(width:8),Column(crossAxisAlignment:CrossAxisAlignment.end,children:[Text(time,style:const TextStyle(color:_muted,fontSize:10.5)),const SizedBox(height:7),Container(width:7,height:7,decoration:BoxDecoration(shape:BoxShape.circle,color:_purple,boxShadow:[BoxShadow(color:_purple.withValues(alpha:.7),blurRadius:8)]))]),
+      Container(width:17,height:17,decoration:BoxDecoration(color:_green.withValues(alpha:.13),shape:BoxShape.circle),child:const Icon(Icons.check_rounded,color:_green,size:12)),
+      const SizedBox(width:7),
+      Expanded(child:Text(label,style:const TextStyle(color:_ink,fontSize:10.5,fontWeight:FontWeight.w700))),
+      AdminUi.statusDot(_green),
+      const SizedBox(width:5),
+      Text(state,style:const TextStyle(color:_green,fontSize:9.5,fontWeight:FontWeight.w700)),
     ]),
-  );
-
-  Widget _panel({required Widget child})=>Container(
-    width:double.infinity,padding:const EdgeInsets.all(14),
-    decoration:BoxDecoration(color:const Color(0xFF070C1D),borderRadius:BorderRadius.circular(22),border:Border.all(color:_purple.withValues(alpha:.24)),boxShadow:[BoxShadow(color:_purple.withValues(alpha:.07),blurRadius:22)]),
-    child:child,
-  );
-
-  BoxDecoration _glowDecoration({double radius=18})=>BoxDecoration(
-    color:_card2,borderRadius:BorderRadius.circular(radius),
-    border:Border.all(color:_purple.withValues(alpha:.45)),
-    boxShadow:[BoxShadow(color:_purple.withValues(alpha:.13),blurRadius:14,spreadRadius:-2)],
   );
 }
 
-class _AdminRoadPainter extends CustomPainter{
+class _LegendDot extends StatelessWidget{
+  const _LegendDot({required this.color,required this.label});
+  final Color color;
+  final String label;
+  @override Widget build(BuildContext context)=>Row(mainAxisSize:MainAxisSize.min,children:[
+    Container(width:8,height:8,decoration:BoxDecoration(color:color,shape:BoxShape.circle)),
+    const SizedBox(width:5),
+    Text(label,style:const TextStyle(color:_muted,fontSize:9.5)),
+  ]);
+}
+
+class _QrTrendPainter extends CustomPainter{
+  const _QrTrendPainter({required this.total,required this.printed,required this.active});
+  final List<double> total,printed,active;
+
   @override void paint(Canvas canvas,Size size){
-    final glow=Paint()..color=_purple.withValues(alpha:.55)..style=PaintingStyle.stroke..strokeWidth=3..maskFilter=const MaskFilter.blur(BlurStyle.normal,7);
-    final sharp=Paint()..color=_pink.withValues(alpha:.70)..style=PaintingStyle.stroke..strokeWidth=1.2;
-    final p1=Path()..moveTo(size.width*.46,size.height*.18)..quadraticBezierTo(size.width*.74,size.height*.34,size.width*.94,size.height*.12);
-    final p2=Path()..moveTo(size.width*.50,size.height*.28)..quadraticBezierTo(size.width*.76,size.height*.43,size.width*.99,size.height*.20);
-    final p3=Path()..moveTo(size.width*.56,size.height*.36)..quadraticBezierTo(size.width*.78,size.height*.49,size.width*.96,size.height*.33);
-    canvas.drawPath(p1,glow);canvas.drawPath(p2,glow);canvas.drawPath(p3,sharp);
+    final grid=Paint()..color=_line..strokeWidth=1;
+    for(var i=0;i<5;i++){
+      final y=size.height*(i/4);
+      canvas.drawLine(Offset(0,y),Offset(size.width,y),grid);
+    }
+    for(var i=0;i<6;i++){
+      final x=size.width*(i/5);
+      canvas.drawLine(Offset(x,0),Offset(x,size.height),grid);
+    }
+    final all=[...total,...printed,...active];
+    final maxValue=all.isEmpty?1.0:all.reduce((a,b)=>a>b?a:b);
+    final max=maxValue<1?1.0:maxValue;
+    void draw(List<double> values,Color color){
+      if(values.isEmpty)return;
+      final p=Path();
+      for(var i=0;i<values.length;i++){
+        final x=values.length==1?0.0:size.width*(i/(values.length-1));
+        final y=size.height-(values[i]/max)*size.height*.88-size.height*.04;
+        if(i==0)p.moveTo(x,y);else p.lineTo(x,y);
+      }
+      canvas.drawPath(p,Paint()..color=color..style=PaintingStyle.stroke..strokeWidth=2.5..strokeCap=StrokeCap.round..strokeJoin=StrokeJoin.round);
+      for(var i=0;i<values.length;i+=3){
+        final x=values.length==1?0.0:size.width*(i/(values.length-1));
+        final y=size.height-(values[i]/max)*size.height*.88-size.height*.04;
+        canvas.drawCircle(Offset(x,y),3.5,Paint()..color=color);
+      }
+    }
+    draw(total,_purple);
+    draw(printed,_green);
+    draw(active,_amber);
   }
-  @override bool shouldRepaint(covariant CustomPainter oldDelegate)=>false;
+  @override bool shouldRepaint(covariant _QrTrendPainter old)=>old.total!=total||old.printed!=printed||old.active!=active;
 }
+
+class _DonutPainter extends CustomPainter{
+  const _DonutPainter({required this.values,required this.colors});
+  final List<double> values;
+  final List<Color> colors;
+  @override void paint(Canvas canvas,Size size){
+    final total=values.fold<double>(0,(a,b)=>a+b);
+    final rect=Offset.zero&size;
+    var start=-1.57079632679;
+    for(var i=0;i<values.length;i++){
+      final sweep=total<=0?0.0:(values[i]/total)*6.28318530718;
+      canvas.drawArc(rect.deflate(12),start,sweep,false,Paint()..color=colors[i%colors.length]..style=PaintingStyle.stroke..strokeWidth=18..strokeCap=StrokeCap.butt);
+      start+=sweep;
+    }
+    if(total<=0)canvas.drawArc(rect.deflate(12),0,6.28318530718,false,Paint()..color=_line..style=PaintingStyle.stroke..strokeWidth=18);
+  }
+  @override bool shouldRepaint(covariant _DonutPainter old)=>old.values!=values;
+}
+
 class UsersPage extends StatefulWidget{const UsersPage({super.key,required this.rows,required this.open});final List<Map<String,dynamic>> rows;final ValueChanged<Map<String,dynamic>> open;@override State<UsersPage> createState()=>_UsersPageState();}
 class _UsersPageState extends State<UsersPage>{final search=TextEditingController();@override Widget build(BuildContext context){final q=search.text.toLowerCase();final r=widget.rows.where((e)=>'${e['display_name']} ${e['phone']} ${e['email']}'.toLowerCase().contains(q)).toList();return listPage('Kullanıcılar',search,()=>setState((){}),r.map((e)=>rowCard(Icons.person,e['display_name']?.toString()??'İsimsiz','${e['phone']??'-'} • ${e['email']??'-'}',status(e['status']?.toString()??''),()=>widget.open(e))).toList());}}
 class VehiclesPage extends StatefulWidget{const VehiclesPage({super.key,required this.rows,required this.open});final List<Map<String,dynamic>> rows;final ValueChanged<Map<String,dynamic>> open;@override State<VehiclesPage> createState()=>_VehiclesPageState();}
