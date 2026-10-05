@@ -78,7 +78,7 @@ module.exports=function registerTowingRoutes(app,pool,adminGuard){
             JOIN towing_providers p ON p.id=d.provider_id
             WHERE d.user_id IS NOT NULL AND d.status='active' AND d.online=TRUE AND p.status='active'
               AND d.last_lat IS NOT NULL AND d.last_lng IS NOT NULL
-              AND EXISTS(SELECT 1 FROM towing_provider_vehicles tv WHERE tv.provider_id=d.provider_id AND tv.truck_type=$3 AND tv.status='active')
+              AND EXISTS(SELECT 1 FROM towing_provider_vehicles tv WHERE tv.provider_id=d.provider_id AND tv.status='active')
               AND (6371*acos(LEAST(1,GREATEST(-1,cos(radians($1))*cos(radians(d.last_lat::float8))*cos(radians(d.last_lng::float8)-radians($2))+sin(radians($1))*sin(radians(d.last_lat::float8))))))<=30
             LIMIT 100`,[pickupLat,pickupLng,truckType]);
           const body=pickupAddress?'Yeni çekici talebi • '+pickupAddress:'Yakınında yeni bir çekici talebi var';
@@ -180,7 +180,7 @@ module.exports=function registerTowingRoutes(app,pool,adminGuard){
             JOIN towing_providers p ON p.id=d.provider_id
             WHERE d.user_id IS NOT NULL AND d.status='active' AND d.online=TRUE AND p.status='active'
               AND d.last_lat IS NOT NULL AND d.last_lng IS NOT NULL
-              AND EXISTS(SELECT 1 FROM towing_provider_vehicles tv WHERE tv.provider_id=d.provider_id AND tv.truck_type=$3 AND tv.status='active')
+              AND EXISTS(SELECT 1 FROM towing_provider_vehicles tv WHERE tv.provider_id=d.provider_id AND tv.status='active')
               AND (6371*acos(LEAST(1,GREATEST(-1,cos(radians($1))*cos(radians(d.last_lat::float8))*cos(radians(d.last_lng::float8)-radians($2))+sin(radians($1))*sin(radians(d.last_lat::float8))))))<=30
             LIMIT 100`,[pickupLat,pickupLng,truckType]);
           const body=pickupAddress?'Yeni çekici talebi • '+pickupAddress:'Yakınında yeni bir çekici talebi var';
