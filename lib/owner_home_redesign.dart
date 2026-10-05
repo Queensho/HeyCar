@@ -1150,7 +1150,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
           ),
           Positioned(
             left:11,
-            right:11,
+            right:enabled?40:11,
             bottom:9,
             child:Column(
               crossAxisAlignment:CrossAxisAlignment.start,
