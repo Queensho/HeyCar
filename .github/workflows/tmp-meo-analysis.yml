@@ -23,76 +23,113 @@ jobs:
           ls -lh meo.xapk
           sha256sum meo.xapk
 
-      - name: Extract package and detect framework
+      - name: Extract base and split APKs
         shell: bash
         run: |
           set -euxo pipefail
-          mkdir -p xapk base
+          mkdir -p xapk base arm64
           unzip -q meo.xapk -d xapk
-          echo '=== XAPK TOP LEVEL ===' | tee report.txt
-          find xapk -maxdepth 2 -type f -printf '%p %s bytes\n' | sort | tee -a report.txt
-          BASE="$(find xapk -type f -name 'com.meonow.meo.apk' -o -name 'base.apk' | head -1)"
-          if [ -z "$BASE" ]; then BASE="$(find xapk -type f -name '*.apk' | head -1)"; fi
-          echo "BASE_APK=$BASE" | tee -a report.txt
-          unzip -q "$BASE" -d base || true
+          BASE="$(find xapk -type f -name 'com.meonow.meo.apk' | head -1)"
+          SPLIT="$(find xapk -type f -name 'config.arm64_v8a.apk' | head -1)"
+          unzip -q "$BASE" -d base
+          unzip -q "$SPLIT" -d arm64
 
-          echo '' | tee -a report.txt
-          echo '=== FRAMEWORK MARKERS ===' | tee -a report.txt
-          test -f base/lib/arm64-v8a/libflutter.so && echo 'FOUND libflutter.so => Flutter' | tee -a report.txt || true
-          test -f base/lib/arm64-v8a/libapp.so && echo 'FOUND libapp.so => Flutter AOT app library' | tee -a report.txt || true
-          test -d base/assets/flutter_assets && echo 'FOUND assets/flutter_assets => Flutter' | tee -a report.txt || true
-          find base -type f \( -name 'libhermes.so' -o -name 'libreactnativejni.so' -o -name 'index.android.bundle' \) -print | tee -a report.txt || true
-          find base -type d \( -path '*/assets/public' -o -path '*/assets/www' \) -print | tee -a report.txt || true
+          {
+            echo '=== PACKAGE FILES ==='
+            find xapk -maxdepth 1 -type f -printf '%f %s bytes\n' | sort
+            echo "BASE_APK=$BASE"
+            echo "ARM64_APK=$SPLIT"
+            echo
+            echo '=== FRAMEWORK MARKERS ==='
+            test -d base/assets/flutter_assets && echo 'FOUND assets/flutter_assets => Flutter'
+            test -f arm64/lib/arm64-v8a/libflutter.so && echo 'FOUND libflutter.so => Flutter engine'
+            test -f arm64/lib/arm64-v8a/libapp.so && echo 'FOUND libapp.so => Flutter/Dart AOT app'
+            find base arm64 -type f \( -name 'libhermes.so' -o -name 'libreactnativejni.so' -o -name 'index.android.bundle' \) -print || true
+            echo
+            echo '=== NATIVE LIBRARIES ==='
+            find arm64/lib -type f -name '*.so' -printf '%P %s bytes\n' 2>/dev/null | sort || true
+            echo
+            echo '=== FLUTTER ASSETS ==='
+            find base/assets/flutter_assets -type f -printf '%P %s bytes\n' | sort | head -500
+          } > report.txt
 
-          echo '' | tee -a report.txt
-          echo '=== NATIVE LIBRARIES ===' | tee -a report.txt
-          find base/lib -type f -name '*.so' -printf '%P\n' 2>/dev/null | sort | tee -a report.txt || true
-
-          echo '' | tee -a report.txt
-          echo '=== DEX / ASSET MARKERS ===' | tee -a report.txt
-          find base -maxdepth 3 -type f | sed 's#^base/##' | grep -Ei 'flutter|react|hermes|expo|capacitor|cordova|firebase|sentry|onesignal|realm|sqlite|webview' | sort | head -300 | tee -a report.txt || true
-
-      - name: Manifest and package metadata
+      - name: App metadata and manifest
         shell: bash
         run: |
           set -euxo pipefail
           BASE="$(grep '^BASE_APK=' report.txt | cut -d= -f2-)"
           AAPT2="$(find "$ANDROID_HOME/build-tools" -type f -name aapt2 | sort -V | tail -1)"
-          echo '' | tee -a report.txt
-          echo '=== AAPT BADGING ===' | tee -a report.txt
-          "$AAPT2" dump badging "$BASE" 2>&1 | head -120 | tee -a report.txt || true
-          echo '' | tee -a report.txt
-          echo '=== MANIFEST COMPONENTS / SDK MARKERS ===' | tee -a report.txt
-          "$AAPT2" dump xmltree "$BASE" AndroidManifest.xml 2>&1 \
-            | grep -Ei 'package=|uses-permission|activity|service|receiver|provider|io.flutter|com.facebook.react|expo|capacitor|firebase|onesignal|sentry|nfc|camera|location' \
-            | head -500 | tee -a report.txt || true
+          {
+            echo
+            echo '=== AAPT BADGING ==='
+            "$AAPT2" dump badging "$BASE" 2>&1 | head -160
+            echo
+            echo '=== ANDROID MANIFEST STRINGS ==='
+            strings -a base/AndroidManifest.xml | grep -Ei 'flutter|firebase|nfc|camera|location|activity|service|receiver|provider|permission|meonow' | sort -u | head -500 || true
+          } >> report.txt
 
-      - name: Extract URLs and API clues
+      - name: Detect Flutter plugins
         shell: bash
         run: |
           set -euxo pipefail
-          echo '' | tee -a report.txt
-          echo '=== URL / DOMAIN STRINGS ===' | tee -a report.txt
-
           {
-            find base -type f \( -name '*.dex' -o -name '*.so' -o -name '*.json' -o -name '*.js' -o -name '*.xml' -o -name '*.txt' \) -print0 \
+            echo
+            echo '=== FLUTTER / NATIVE PLUGIN MARKERS FROM DEX ==='
+            find base -maxdepth 1 -type f -name 'classes*.dex' -print0 \
               | xargs -0 -r strings -a 2>/dev/null \
-              | grep -Eo 'https?://[^"<>[:space:]]+' || true
-          } | sed 's/[),;]*$//' | sort -u | head -500 | tee -a report.txt
+              | grep -Ei 'io/flutter/plugins|flutter/plugins|permission_handler|geolocator|google_maps|image_picker|url_launcher|shared_preferences|path_provider|contacts|nfc|firebase|webview|camera|package_info|device_info|share_plus|local_notifications|sqflite|secure_storage|sign_in|barcode|qr|maps' \
+              | sort -u | head -1600 || true
+          } >> report.txt
 
-          echo '' | tee -a report.txt
-          echo '=== MEONOW / API / AUTH STRINGS ===' | tee -a report.txt
-          find base -type f \( -name '*.dex' -o -name '*.so' -o -name '*.json' -o -name '*.js' -o -name '*.xml' \) -print0 \
-            | xargs -0 -r strings -a 2>/dev/null \
-            | grep -Ei 'meonow|/api/|graphql|bearer|authorization|access[_-]?token|refresh[_-]?token|firebase|supabase|socket|websocket|wss://|stripe|iyzico|sentry|onesignal' \
-            | sort -u | head -1000 | tee -a report.txt || true
+      - name: Extract Dart AOT URLs and API clues
+        shell: bash
+        run: |
+          set -euxo pipefail
+          APP='arm64/lib/arm64-v8a/libapp.so'
+          {
+            echo
+            echo '=== DART AOT URLS / DOMAINS ==='
+            strings -a -n 5 "$APP" \
+              | grep -Eo 'https?://[^"<>[:space:]]+' \
+              | sed 's/[),;]*$//' | sort -u | head -1000 || true
 
-      - name: Print report
-        run: cat report.txt
+            echo
+            echo '=== DART AOT MEO / API / AUTH / SOCKET CLUES ==='
+            strings -a -n 4 "$APP" \
+              | grep -Ei 'meonow|api\.|/api/|/v[0-9]+/|graphql|socket|websocket|wss://|bearer|authorization|access.?token|refresh.?token|login|register|auth/|otp|verify|notification|message|vehicle|contact|nfc|qr|stripe|iyzico|firebase|analytics|upload|profile|page|product|scan' \
+              | sort -u | head -3000 || true
+          } >> report.txt
+
+      - name: Search app assets for config and endpoints
+        shell: bash
+        run: |
+          set -euxo pipefail
+          {
+            echo
+            echo '=== ASSET CONFIG / URL CLUES ==='
+            find base/assets/flutter_assets -type f -print0 \
+              | xargs -0 -r strings -a 2>/dev/null \
+              | grep -Ei 'https?://|meonow|api\.|/api/|graphql|socket|wss://|firebase|stripe|iyzico|supabase|baseUrl|base_url|endpoint|access.?token|refresh.?token' \
+              | sort -u | head -1800 || true
+          } >> report.txt
+
+      - name: Print focused report
+        shell: bash
+        run: |
+          echo '===== FRAMEWORK ====='
+          sed -n '/=== FRAMEWORK MARKERS ===/,/=== NATIVE LIBRARIES ===/p' report.txt
+          echo '===== NATIVE LIBS ====='
+          sed -n '/=== NATIVE LIBRARIES ===/,/=== FLUTTER ASSETS ===/p' report.txt
+          echo '===== PLUGINS ====='
+          sed -n '/=== FLUTTER \/ NATIVE PLUGIN MARKERS FROM DEX ===/,/=== DART AOT URLS/p' report.txt | head -900
+          echo '===== AOT URLS ====='
+          sed -n '/=== DART AOT URLS \/ DOMAINS ===/,/=== DART AOT MEO/p' report.txt
+          echo '===== AOT API CLUES ====='
+          sed -n '/=== DART AOT MEO \/ API \/ AUTH \/ SOCKET CLUES ===/,/=== ASSET CONFIG/p' report.txt | head -1800
 
       - name: Upload report
         uses: actions/upload-artifact@v4
         with:
-          name: meo-static-analysis-report
+          name: meo-static-analysis-report-v2
           path: report.txt
           retention-days: 1
