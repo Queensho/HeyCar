@@ -4,9 +4,10 @@ import 'cepqar_theme.dart';
 import 'owner_valet_card.dart';
 
 class ValetInfoPage extends StatelessWidget {
-  const ValetInfoPage({super.key, required this.vehicleId});
+  const ValetInfoPage({super.key, required this.vehicleId, this.driverMode = false});
 
   final String vehicleId;
+  final bool driverMode;
 
   static const _purple = Color(0xFF7A35F5);
   static const _lime = Color(0xFFB6FF2A);
@@ -223,7 +224,7 @@ class ValetInfoPage extends StatelessWidget {
                     ),
                     if (vehicleId.trim().isNotEmpty) ...[
                       const SizedBox(height: 12),
-                      OwnerValetCard(vehicleId: vehicleId),
+                      OwnerValetCard(vehicleId: vehicleId, driverMode: driverMode),
                     ],
                     const SizedBox(height: 12),
                     Container(
