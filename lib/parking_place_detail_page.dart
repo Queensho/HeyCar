@@ -13,10 +13,12 @@ class ParkingPlaceDetailPage extends StatefulWidget {
     required this.vehicleId,
     required this.userLatitude,
     required this.userLongitude,
+    this.driverMode = false,
   });
   final ParkingPlace place;
   final String vehicleId;
   final double userLatitude, userLongitude;
+  final bool driverMode;
   @override
   State<ParkingPlaceDetailPage> createState() => _ParkingPlaceDetailPageState();
 }
@@ -43,6 +45,7 @@ class _ParkingPlaceDetailPageState extends State<ParkingPlaceDetailPage> {
       final record = await ParkingRecordApi.save(
         widget.vehicleId,
         place: widget.place,
+        driverMode: widget.driverMode,
       );
       if (!mounted) return;
       await showParkingRecordEditor(
@@ -50,6 +53,7 @@ class _ParkingPlaceDetailPageState extends State<ParkingPlaceDetailPage> {
         widget.vehicleId,
         initial: record,
         dark: !CepqarTheme.isLight,
+        driverMode: widget.driverMode,
       );
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
