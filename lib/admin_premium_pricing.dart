@@ -15,6 +15,8 @@ class AdminPremiumPricingCard extends StatefulWidget{
 class _AdminPremiumPricingCardState extends State<AdminPremiumPricingCard>{
   final monthly=TextEditingController();
   final yearly=TextEditingController();
+  final familyMonthly=TextEditingController();
+  final familyYearly=TextEditingController();
   bool loading=true,saving=false;
   String? error;
 
@@ -27,7 +29,7 @@ class _AdminPremiumPricingCardState extends State<AdminPremiumPricingCard>{
   };
 
   @override void initState(){super.initState();load();}
-  @override void dispose(){monthly.dispose();yearly.dispose();super.dispose();}
+  @override void dispose(){monthly.dispose();yearly.dispose();familyMonthly.dispose();familyYearly.dispose();super.dispose();}
 
   Future<void> load()async{
     if(mounted)setState((){loading=true;error=null;});
@@ -38,6 +40,8 @@ class _AdminPremiumPricingCardState extends State<AdminPremiumPricingCard>{
       final s=d is Map&&d['settings'] is Map?Map<String,dynamic>.from(d['settings'] as Map):<String,dynamic>{};
       monthly.text=_priceText(s['premium_monthly_price']??49.99);
       yearly.text=_priceText(s['premium_yearly_price']??499.99);
+      familyMonthly.text=_priceText(s['family_premium_monthly_price']??79.99);
+      familyYearly.text=_priceText(s['family_premium_yearly_price']??799.99);
       if(mounted)setState((){});
     }catch(e){
       if(mounted)setState(()=>error=e.toString().replaceFirst('Exception: ',''));
@@ -62,8 +66,11 @@ class _AdminPremiumPricingCardState extends State<AdminPremiumPricingCard>{
 
   Future<void> save()async{
     final m=_parse(monthly.text),y=_parse(yearly.text);
-    if(m==null||m<0){_snack('Geçerli bir aylık fiyat gir.');return;}
-    if(y==null||y<0){_snack('Geçerli bir yıllık fiyat gir.');return;}
+    final fm=_parse(familyMonthly.text),fy=_parse(familyYearly.text);
+    if(m==null||m<0){_snack('Geçerli bir bireysel aylık fiyat gir.');return;}
+    if(y==null||y<0){_snack('Geçerli bir bireysel yıllık fiyat gir.');return;}
+    if(fm==null||fm<0){_snack('Geçerli bir aile aylık fiyat gir.');return;}
+    if(fy==null||fy<0){_snack('Geçerli bir aile yıllık fiyat gir.');return;}
     setState(()=>saving=true);
     try{
       final r=await http.patch(
@@ -72,6 +79,8 @@ class _AdminPremiumPricingCardState extends State<AdminPremiumPricingCard>{
         body:jsonEncode({
           'premiumMonthlyPrice':m,
           'premiumYearlyPrice':y,
+          'familyPremiumMonthlyPrice':fm,
+          'familyPremiumYearlyPrice':fy,
           'premiumCurrency':'TRY',
         }),
       );
@@ -80,6 +89,8 @@ class _AdminPremiumPricingCardState extends State<AdminPremiumPricingCard>{
       final s=d is Map&&d['settings'] is Map?Map<String,dynamic>.from(d['settings'] as Map):<String,dynamic>{};
       monthly.text=_priceText(s['premium_monthly_price']??m);
       yearly.text=_priceText(s['premium_yearly_price']??y);
+      familyMonthly.text=_priceText(s['family_premium_monthly_price']??fm);
+      familyYearly.text=_priceText(s['family_premium_yearly_price']??fy);
       _snack('Premium fiyatları güncellendi.');
       if(mounted)setState(()=>error=null);
     }catch(e){
@@ -109,15 +120,25 @@ class _AdminPremiumPricingCardState extends State<AdminPremiumPricingCard>{
             const Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
               Text('Premium Fiyatlandırma',style:TextStyle(color:Colors.white,fontSize:15,fontWeight:FontWeight.w900)),
               SizedBox(height:2),
-              Text('Kullanıcı uygulamasında gösterilecek aylık ve yıllık fiyatı değiştir.',style:TextStyle(color:_muted,fontSize:10.5)),
+              Text('Bireysel ve Aile Premium aylık/yıllık fiyatlarını ayrı yönet.',style:TextStyle(color:_muted,fontSize:10.5)),
             ])),
             IconButton(onPressed:saving?null:load,icon:const Icon(Icons.refresh_rounded,color:_muted)),
           ]),
           const SizedBox(height:12),
+          const Text('Bireysel Premium',style:TextStyle(color:Colors.white,fontSize:12,fontWeight:FontWeight.w900)),
+          const SizedBox(height:7),
           Row(children:[
             Expanded(child:_priceField(monthly,'Aylık fiyat')),
             const SizedBox(width:9),
             Expanded(child:_priceField(yearly,'Yıllık fiyat')),
+          ]),
+          const SizedBox(height:10),
+          const Text('Aile Premium',style:TextStyle(color:Colors.white,fontSize:12,fontWeight:FontWeight.w900)),
+          const SizedBox(height:7),
+          Row(children:[
+            Expanded(child:_priceField(familyMonthly,'Aile aylık')),
+            const SizedBox(width:9),
+            Expanded(child:_priceField(familyYearly,'Aile yıllık')),
           ]),
           const SizedBox(height:10),
           Row(children:[
