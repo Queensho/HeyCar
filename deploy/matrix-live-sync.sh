@@ -21,6 +21,7 @@ MIGRATION_053_APPLIED=0
 MIGRATION_054_APPLIED=0
 MIGRATION_057_APPLIED=0
 MIGRATION_058_APPLIED=0
+MIGRATION_082_APPLIED=0
 SUCCESS=0
 STAGE="init"
 LOG="/tmp/matrix-live-sync-$RUN_ID.log"
@@ -61,6 +62,9 @@ FILES=(
   onboarding-routes.js
   owner-auth-routes.js
   push-routes.js
+  premium-entitlements.js
+  parking-routes.js
+  towing-routes.js
   web-push-service.js
   qr-routes.js
   qr-security-routes.js
@@ -110,7 +114,7 @@ rollback_all() {
   echo "Reason: $reason"
   sudo systemctl stop heycar >/dev/null 2>&1 || true
 
-  if [ "$MIGRATION_053_APPLIED" -eq 1 ] || [ "$MIGRATION_054_APPLIED" -eq 1 ] || [ "$MIGRATION_057_APPLIED" -eq 1 ] || [ "$MIGRATION_058_APPLIED" -eq 1 ]; then
+  if [ "$MIGRATION_053_APPLIED" -eq 1 ] || [ "$MIGRATION_054_APPLIED" -eq 1 ] || [ "$MIGRATION_057_APPLIED" -eq 1 ] || [ "$MIGRATION_058_APPLIED" -eq 1 ] || [ "$MIGRATION_082_APPLIED" -eq 1 ]; then
     if [ -s "$ROLLBACK_SQL" ]; then
       sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$ROLLBACK_SQL"
       DB_ROLLBACK_RC=$?
@@ -212,7 +216,7 @@ for f in "${FILES[@]}"; do
   fi
 done
 
-for m in 053_admin_audit_canonical.sql 054_qr_opaque_tokens.sql 057_web_push_subscriptions.sql 058_qr_proximity_security.sql; do
+for m in 053_admin_audit_canonical.sql 054_qr_opaque_tokens.sql 057_web_push_subscriptions.sql 058_qr_proximity_security.sql 082_family_premium.sql; do
   fetch_https "$BASE/migrations/$m" -o "$TMP/$m" || fail "migration indirilemedi: $m"
   chmod 644 "$TMP/$m"
 done
@@ -248,6 +252,11 @@ QR_INDEX_EXISTS="$(db_scalar "SELECT CASE WHEN to_regclass('public.uq_qr_tags_se
 QR_SCAN_SECRET_EXISTS="$(db_scalar "SELECT CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='qr_tags' AND column_name='scan_secret') THEN 1 ELSE 0 END")"
 QR_PROXIMITY_TABLE_EXISTS="$(db_scalar "SELECT CASE WHEN to_regclass('public.qr_proximity_proofs') IS NULL THEN 0 ELSE 1 END")"
 QR_SCAN_SECRET_INDEX_EXISTS="$(db_scalar "SELECT CASE WHEN to_regclass('public.qr_tags_scan_secret_unique') IS NULL THEN 0 ELSE 1 END")"
+PREMIUM_PLAN_EXISTS="$(db_scalar "SELECT CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='users' AND column_name='premium_plan') THEN 1 ELSE 0 END")"
+FAMILY_PREMIUM_MONTHLY_EXISTS="$(db_scalar "SELECT CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='app_settings' AND column_name='family_premium_monthly_price') THEN 1 ELSE 0 END")"
+FAMILY_PREMIUM_YEARLY_EXISTS="$(db_scalar "SELECT CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='app_settings' AND column_name='family_premium_yearly_price') THEN 1 ELSE 0 END")"
+FAMILY_PREMIUM_MONTHLY_TEXT_EXISTS="$(db_scalar "SELECT CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='app_settings' AND column_name='family_premium_monthly_price_text') THEN 1 ELSE 0 END")"
+FAMILY_PREMIUM_YEARLY_TEXT_EXISTS="$(db_scalar "SELECT CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='app_settings' AND column_name='family_premium_yearly_price_text') THEN 1 ELSE 0 END")"
 
 if [ "$QR_SERIAL_EXISTS" -eq 1 ]; then
   sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -c     "CREATE UNLOGGED TABLE public.$QR_ROLLBACK_TABLE AS SELECT id FROM public.qr_tags WHERE serial_no IS NULL AND token ~ '^CP-QAR-[0-9]+$';"
@@ -326,6 +335,22 @@ fi
     echo "ALTER TABLE public.qr_tags DROP COLUMN IF EXISTS scan_secret;"
   fi
 
+  if [ "$PREMIUM_PLAN_EXISTS" -eq 0 ]; then
+    echo "ALTER TABLE public.users DROP COLUMN IF EXISTS premium_plan CASCADE;"
+  fi
+  if [ "$FAMILY_PREMIUM_MONTHLY_EXISTS" -eq 0 ]; then
+    echo "ALTER TABLE public.app_settings DROP COLUMN IF EXISTS family_premium_monthly_price CASCADE;"
+  fi
+  if [ "$FAMILY_PREMIUM_YEARLY_EXISTS" -eq 0 ]; then
+    echo "ALTER TABLE public.app_settings DROP COLUMN IF EXISTS family_premium_yearly_price CASCADE;"
+  fi
+  if [ "$FAMILY_PREMIUM_MONTHLY_TEXT_EXISTS" -eq 0 ]; then
+    echo "ALTER TABLE public.app_settings DROP COLUMN IF EXISTS family_premium_monthly_price_text CASCADE;"
+  fi
+  if [ "$FAMILY_PREMIUM_YEARLY_TEXT_EXISTS" -eq 0 ]; then
+    echo "ALTER TABLE public.app_settings DROP COLUMN IF EXISTS family_premium_yearly_price_text CASCADE;"
+  fi
+
   echo "COMMIT;"
 } > "$ROLLBACK_SQL"
 
@@ -341,6 +366,8 @@ sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$TMP/057_web_push_subscrip
 MIGRATION_057_APPLIED=1
 sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$TMP/058_qr_proximity_security.sql"
 MIGRATION_058_APPLIED=1
+sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$TMP/082_family_premium.sql"
+MIGRATION_082_APPLIED=1
 
 STAGE="schema_verify"
 echo "=== LIVE SCHEMA VERIFY ==="
