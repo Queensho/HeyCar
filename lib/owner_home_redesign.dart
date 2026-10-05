@@ -1100,35 +1100,91 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     onTap:enabled?tap:null,
     borderRadius:BorderRadius.circular(17),
     child:Opacity(
-      opacity:enabled?1:.72,
+      opacity:enabled?1:.78,
       child:Container(
-        height:86,clipBehavior:Clip.hardEdge,decoration:card(),
+        height:86,
+        clipBehavior:Clip.hardEdge,
+        decoration:card(),
         child:Stack(children:[
-          if(car)Positioned(right:-10,bottom:-6,child:Opacity(opacity:light ? 0.15 : 0.28,child:Image.asset('assets/Arac.png',width:108,height:66,fit:BoxFit.contain,errorBuilder:(_,__,___)=>const SizedBox.shrink()))),
-          Positioned.fill(child:Padding(padding:const EdgeInsets.symmetric(horizontal:12,vertical:10),child:Row(children:[
-            Container(width:37,height:37,decoration:BoxDecoration(color:color.withValues(alpha:light ? 0.12 : 0.18),borderRadius:BorderRadius.circular(11)),child:Icon(icon,color:color,size:22)),
-            const SizedBox(width:9),
-            Expanded(child:Column(mainAxisAlignment:MainAxisAlignment.center,crossAxisAlignment:CrossAxisAlignment.start,children:[
-              Row(children:[
-                Flexible(child:Text(title,style:TextStyle(color:text,fontSize:13,fontWeight:FontWeight.w900))),
-                if(comingSoon)...[
-                  const SizedBox(width:6),
-                  Container(
-                    padding:const EdgeInsets.symmetric(horizontal:6,vertical:2),
-                    decoration:BoxDecoration(color:purple.withValues(alpha:.10),borderRadius:BorderRadius.circular(8)),
-                    child:const Text('Yakında',style:TextStyle(color:purple,fontSize:8,fontWeight:FontWeight.w900)),
-                  ),
-                ],
-              ]),
-              const SizedBox(height:3),
-              Text(subtitle,maxLines:2,overflow:TextOverflow.ellipsis,style:TextStyle(color:muted,fontSize:CepqarTheme.caption,height:1.23)),
-            ])),
-            Container(
-              width:28,height:28,
-              decoration:BoxDecoration(color:(light?Colors.white:Colors.black).withValues(alpha:light ? 0.85 : 0.28),shape:BoxShape.circle),
-              child:Icon(comingSoon&&!testAccount?Icons.schedule_rounded:Icons.chevron_right_rounded,color:comingSoon&&!testAccount?purple:text,size:18),
+          if(car)Positioned(
+            right:-10,
+            bottom:-6,
+            child:Opacity(
+              opacity:light ? 0.15 : 0.28,
+              child:Image.asset(
+                'assets/Arac.png',
+                width:108,
+                height:66,
+                fit:BoxFit.contain,
+                errorBuilder:(_,__,___)=>const SizedBox.shrink(),
+              ),
             ),
-          ]))),
+          ),
+          Positioned(
+            left:11,
+            top:11,
+            child:Container(
+              width:36,
+              height:36,
+              decoration:BoxDecoration(
+                color:color.withValues(alpha:light ? 0.12 : 0.18),
+                borderRadius:BorderRadius.circular(11),
+              ),
+              child:Icon(icon,color:color,size:21),
+            ),
+          ),
+          if(comingSoon)Positioned(
+            right:10,
+            top:10,
+            child:Container(
+              padding:const EdgeInsets.symmetric(horizontal:7,vertical:3),
+              decoration:BoxDecoration(
+                color:purple.withValues(alpha:.10),
+                borderRadius:BorderRadius.circular(8),
+              ),
+              child:const Text(
+                'Yakında',
+                style:TextStyle(color:purple,fontSize:8,fontWeight:FontWeight.w900),
+              ),
+            ),
+          ),
+          Positioned(
+            left:11,
+            right:11,
+            bottom:9,
+            child:Column(
+              crossAxisAlignment:CrossAxisAlignment.start,
+              mainAxisSize:MainAxisSize.min,
+              children:[
+                Text(
+                  title,
+                  maxLines:1,
+                  overflow:TextOverflow.ellipsis,
+                  style:TextStyle(color:text,fontSize:12.5,fontWeight:FontWeight.w900,height:1.05),
+                ),
+                const SizedBox(height:3),
+                Text(
+                  subtitle,
+                  maxLines:1,
+                  overflow:TextOverflow.ellipsis,
+                  style:TextStyle(color:muted,fontSize:CepqarTheme.caption,height:1.08),
+                ),
+              ],
+            ),
+          ),
+          if(enabled)Positioned(
+            right:9,
+            bottom:9,
+            child:Container(
+              width:24,
+              height:24,
+              decoration:BoxDecoration(
+                color:(light?Colors.white:Colors.black).withValues(alpha:light ? .86 : .28),
+                shape:BoxShape.circle,
+              ),
+              child:Icon(Icons.chevron_right_rounded,color:text,size:16),
+            ),
+          ),
         ]),
       ),
     ),
