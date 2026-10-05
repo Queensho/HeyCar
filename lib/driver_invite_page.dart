@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'vehicle_api.dart';
+import 'cepqar_theme.dart';
 import 'driver_auth.dart';
 import 'push_notifications.dart';
 import 'account_recovery_page.dart';
@@ -718,68 +719,85 @@ class _DriverHomePageState extends State<DriverHomePage> {
       Icons.settings_outlined,
     ];
 
+    final light=CepqarTheme.isLight;
+    final navBg=light?Colors.white:const Color(0xFF0B1426);
+    final navMuted=light?const Color(0xFF7D879C):const Color(0xFF8F9AB7);
+
     return Scaffold(
-      backgroundColor: _bg,
-      body: IndexedStack(index: current, children: screens),
-      bottomNavigationBar: Container(
-        height: 82,
-        decoration: const BoxDecoration(
-          color: Color(0xFF0B1426),
-          border: Border(top: BorderSide(color: _line)),
-        ),
-        child: SafeArea(
-          top: false,
-          child: Row(
-            children: List.generate(4, (i) {
-              final selected = current == i;
+      backgroundColor:CepqarTheme.bg,
+      body:IndexedStack(index:current,children:screens),
+      bottomNavigationBar:SafeArea(
+        top:false,
+        child:Container(
+          height:78,
+          margin:const EdgeInsets.fromLTRB(14,0,14,10),
+          padding:const EdgeInsets.symmetric(horizontal:5,vertical:6),
+          decoration:BoxDecoration(
+            color:navBg,
+            borderRadius:BorderRadius.circular(28),
+            border:Border.all(color:CepqarTheme.line),
+            boxShadow:light
+              ?[BoxShadow(color:Colors.black.withValues(alpha:.06),blurRadius:18,offset:const Offset(0,6))]
+              :null,
+          ),
+          child:Row(
+            children:List.generate(4,(i){
+              final selected=current==i;
               return Expanded(
-                child: InkWell(
-                  onTap: () => setState(() => current = i),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          Icon(
-                            icons[i],
-                            color: selected ? _purple : const Color(0xFF8F9AB7),
-                            size: 28,
-                          ),
-                          if (i == 1 && unreadCount > 0)
-                            Positioned(
-                              right: -8,
-                              top: -7,
-                              child: Container(
-                                constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
-                                padding: const EdgeInsets.symmetric(horizontal: 5),
-                                alignment: Alignment.center,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFFFF4D63),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Text(
-                                  unreadCount > 99 ? '99+' : '$unreadCount',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w900,
+                child:InkWell(
+                  onTap:()=>setState(()=>current=i),
+                  borderRadius:BorderRadius.circular(22),
+                  child:Container(
+                    decoration:BoxDecoration(
+                      color:selected
+                        ?(light?const Color(0xFFF1E9FF):const Color(0xFF22164A))
+                        :Colors.transparent,
+                      borderRadius:BorderRadius.circular(22),
+                    ),
+                    child:Column(
+                      mainAxisAlignment:MainAxisAlignment.center,
+                      children:[
+                        Stack(
+                          clipBehavior:Clip.none,
+                          children:[
+                            Icon(icons[i],color:selected?_purple:navMuted,size:24),
+                            if(i==1&&unreadCount>0)
+                              Positioned(
+                                right:-8,
+                                top:-7,
+                                child:Container(
+                                  constraints:const BoxConstraints(minWidth:17,minHeight:17),
+                                  padding:const EdgeInsets.symmetric(horizontal:4),
+                                  alignment:Alignment.center,
+                                  decoration:const BoxDecoration(
+                                    color:Color(0xFFFF4D63),
+                                    shape:BoxShape.circle,
+                                  ),
+                                  child:Text(
+                                    unreadCount>99?'99+':'$unreadCount',
+                                    style:const TextStyle(
+                                      color:Color(0xFFFFFFFF),
+                                      fontSize:8.5,
+                                      fontWeight:FontWeight.w900,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 5),
-                      Text(
-                        labels[i],
-                        style: TextStyle(
-                          color: selected ? _purple : const Color(0xFF8F9AB7),
-                          fontSize: 11.5,
-                          fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
+                          ],
                         ),
-                      ),
-                    ],
+                        const SizedBox(height:3),
+                        Text(
+                          labels[i],
+                          maxLines:1,
+                          overflow:TextOverflow.ellipsis,
+                          style:TextStyle(
+                            color:selected?_purple:navMuted,
+                            fontSize:9.8,
+                            fontWeight:selected?FontWeight.w900:FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               );
@@ -788,8 +806,6 @@ class _DriverHomePageState extends State<DriverHomePage> {
         ),
       ),
     );
-  }
-}
 
 class _DriverHome extends StatelessWidget {
   const _DriverHome({
@@ -1047,244 +1063,380 @@ class _DriverHome extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final h = MediaQuery.sizeOf(context).height;
-    final compact = h < 760;
-    final topInset = MediaQuery.paddingOf(context).top;
-    final heroHeight = compact ? 500.0 : 555.0;
+  Widget build(BuildContext context){
+    final light=CepqarTheme.isLight;
+    final bg=CepqarTheme.bg;
+    final panel=CepqarTheme.panel;
+    final text=CepqarTheme.text;
+    final muted=CepqarTheme.muted;
+    final line=CepqarTheme.line;
+    final name=driverName.trim().isEmpty?'Sürücü':driverName.trim();
+    final parts=name.split(RegExp(r'\s+')).where((e)=>e.isNotEmpty).toList();
+    final initials=parts.isEmpty?'S':parts.take(2).map((e)=>e[0].toUpperCase()).join();
 
-    return RefreshIndicator(
-      color: _purple,
-      onRefresh: onRefresh,
-      child: ListView(
-        padding: EdgeInsets.zero,
-        physics: const AlwaysScrollableScrollPhysics(),
-        children: [
-          SizedBox(
-            height: heroHeight,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Image.asset(
-                  'assets/Aracsahibi.png',
-                  fit: BoxFit.cover,
-                  alignment: Alignment.topCenter,
-                  filterQuality: FilterQuality.high,
-                  errorBuilder: (_, __, ___) => const DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [Color(0xFF111B5D), Color(0xFF07111F)],
+    Widget quick(IconData icon,String label,Color color,VoidCallback tap)=>Expanded(
+      child:InkWell(
+        onTap:tap,
+        borderRadius:BorderRadius.circular(17),
+        child:Container(
+          height:88,
+          decoration:BoxDecoration(
+            color:panel,
+            borderRadius:BorderRadius.circular(17),
+            border:Border.all(color:line),
+          ),
+          child:Column(
+            mainAxisAlignment:MainAxisAlignment.center,
+            children:[
+              Container(
+                width:39,height:39,
+                decoration:BoxDecoration(
+                  color:color.withValues(alpha:light?.11:.17),
+                  shape:BoxShape.circle,
+                ),
+                child:Icon(icon,color:color,size:20),
+              ),
+              const SizedBox(height:7),
+              Text(
+                label,
+                maxLines:1,
+                overflow:TextOverflow.ellipsis,
+                style:TextStyle(color:text,fontSize:10.5,fontWeight:FontWeight.w800),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    Widget stat(IconData icon,int value,String label,Color color)=>Expanded(
+      child:Column(
+        children:[
+          Row(
+            mainAxisAlignment:MainAxisAlignment.center,
+            children:[
+              Container(
+                width:28,height:28,
+                decoration:BoxDecoration(
+                  color:color.withValues(alpha:light?.11:.16),
+                  shape:BoxShape.circle,
+                ),
+                child:Icon(icon,color:color,size:15),
+              ),
+              const SizedBox(width:5),
+              Text('$value',style:TextStyle(color:text,fontSize:17,fontWeight:FontWeight.w900)),
+            ],
+          ),
+          const SizedBox(height:5),
+          Text(label,textAlign:TextAlign.center,style:TextStyle(color:muted,fontSize:9.5,height:1.12,fontWeight:FontWeight.w600)),
+        ],
+      ),
+    );
+
+    Widget vline()=>Container(width:1,height:40,color:line);
+
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable:CepqarTheme.mode,
+      builder:(context,_,__)=>ColoredBox(
+        color:bg,
+        child:RefreshIndicator(
+          color:_purple,
+          onRefresh:onRefresh,
+          child:ListView(
+            padding:EdgeInsets.zero,
+            physics:const ClampingScrollPhysics(parent:AlwaysScrollableScrollPhysics()),
+            children:[
+              Container(
+                height:210,
+                padding:EdgeInsets.fromLTRB(20,MediaQuery.paddingOf(context).top+7,18,0),
+                decoration:BoxDecoration(
+                  gradient:light
+                    ?const LinearGradient(
+                        begin:Alignment.topLeft,
+                        end:Alignment.bottomRight,
+                        colors:[Color(0xFFFBFAFF),Color(0xFFF3EEFF),Color(0xFFF9F8FF)],
+                      )
+                    :const LinearGradient(
+                        begin:Alignment.topLeft,
+                        end:Alignment.bottomRight,
+                        colors:[Color(0xFF050913),Color(0xFF0B1020),Color(0xFF17102E)],
                       ),
-                    ),
-                  ),
                 ),
-                const DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      stops: [0.0, .54, 1.0],
-                      colors: [Color(0x16000000), Color(0x08000000), Color(0xA807111F)],
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 20,
-                  right: 18,
-                  top: topInset + 14,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _brand(),
-                      const Spacer(),
-                      Flexible(child: _profile()),
-                    ],
-                  ),
-                ),
-                Positioned(
-                  left: 26,
-                  bottom: compact ? 24 : 28,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Merhaba',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 32,
-                          fontWeight: FontWeight.w900,
-                          height: .95,
-                          letterSpacing: -.8,
+                child:Column(
+                  crossAxisAlignment:CrossAxisAlignment.start,
+                  children:[
+                    Row(
+                      children:[
+                        Image.asset(
+                          light
+                            ?'assets/file_00000000b130820abb8d411e67ab0d25.png'
+                            :'assets/Logoyeni.png',
+                          key:ValueKey(light),
+                          height:31,
+                          fit:BoxFit.contain,
                         ),
-                      ),
-                      Text(
-                        firstName,
-                        style: const TextStyle(
-                          color: _purple,
-                          fontSize: 43,
-                          fontWeight: FontWeight.w900,
-                          height: 1,
-                          letterSpacing: -1.2,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      const SizedBox(
-                        width: 190,
-                        child: Text(
-                          'Aracınla ilgili\ntüm bildirimler\nburada.',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 17,
-                            height: 1.28,
-                            fontWeight: FontWeight.w700,
+                        const Spacer(),
+                        InkWell(
+                          onTap:onOpenNotifications,
+                          borderRadius:BorderRadius.circular(22),
+                          child:Stack(
+                            clipBehavior:Clip.none,
+                            children:[
+                              Padding(
+                                padding:const EdgeInsets.all(8),
+                                child:Icon(Icons.notifications_none_rounded,color:text,size:24),
+                              ),
+                              if(unread>0)
+                                const Positioned(
+                                  right:5,top:5,
+                                  child:CircleAvatar(radius:4.3,backgroundColor:Color(0xFFFF4D63)),
+                                ),
+                            ],
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Transform.translate(
-            offset: const Offset(0, -12),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(10, 0, 10, 14),
-              child: InkWell(
-                onTap: onOpenVehicles,
-                borderRadius: BorderRadius.circular(26),
-                child: Container(
-                  constraints: const BoxConstraints(minHeight: 108),
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 17),
-                  decoration: BoxDecoration(
-                    color: _panel,
-                    borderRadius: BorderRadius.circular(26),
-                    border: Border.all(color: _line),
-                  ),
-                  child: Row(
-                    children: [
-                      _brandLogo(),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              plate,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 19,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                            const SizedBox(height: 5),
-                            Text(carName, style: const TextStyle(color: _muted, fontSize: 14)),
-                          ],
+                        const SizedBox(width:7),
+                        Container(
+                          width:42,height:42,
+                          alignment:Alignment.center,
+                          decoration:const BoxDecoration(
+                            shape:BoxShape.circle,
+                            gradient:LinearGradient(colors:[Color(0xFF5A20D8),Color(0xFF8B47FF)]),
+                          ),
+                          child:Text(
+                            initials,
+                            style:const TextStyle(color:Color(0xFFFFFFFF),fontSize:14,fontWeight:FontWeight.w900),
+                          ),
                         ),
-                      ),
-                      const Icon(Icons.chevron_right_rounded, color: Colors.white70, size: 29),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(10, 0, 10, 26),
-            child: Column(
-              children: [
-                _DriverStatsRow(
-                  unread: unread,
-                  messages: notifications.length,
-                  locations: locations,
-                  calls: calls,
-                  onTap: onOpenNotifications,
-                ),
-                const SizedBox(height: 14),
-                SizedBox(
-                  height: 58,
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: onOpenNotifications,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: _purple,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                    ),
-                    icon: const Icon(Icons.notifications_rounded),
-                    label: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text('Bildirimleri Gör', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
-                        SizedBox(width: 8),
-                        Icon(Icons.chevron_right_rounded),
                       ],
                     ),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _Shortcut(
-                        icon: Icons.notifications_active_outlined,
-                        title: 'Bildirimlerim',
-                        sub: unread > 0 ? '$unread yeni bildirim' : 'Yeni bildirim yok',
-                        onTap: onOpenNotifications,
+                    const SizedBox(height:24),
+                    Container(
+                      height:96,
+                      width:double.infinity,
+                      padding:const EdgeInsets.fromLTRB(17,14,14,13),
+                      decoration:BoxDecoration(
+                        color:light?Colors.white.withValues(alpha:.92):const Color(0xFF0D1425),
+                        borderRadius:BorderRadius.circular(21),
+                        border:Border.all(color:line),
+                        boxShadow:light
+                          ?[BoxShadow(color:const Color(0xFF6338D0).withValues(alpha:.06),blurRadius:14,offset:const Offset(0,5))]
+                          :null,
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _Shortcut(
-                        icon: Icons.directions_car_filled_rounded,
-                        title: 'Araç Bilgilerim',
-                        sub: 'Sadece görüntüle',
-                        onTap: onOpenVehicles,
+                      child:Row(
+                        children:[
+                          Expanded(
+                            child:Column(
+                              mainAxisAlignment:MainAxisAlignment.center,
+                              crossAxisAlignment:CrossAxisAlignment.start,
+                              children:[
+                                Text(
+                                  name,
+                                  maxLines:1,
+                                  overflow:TextOverflow.ellipsis,
+                                  style:TextStyle(color:text,fontSize:23,height:1.05,fontWeight:FontWeight.w900,letterSpacing:-.6),
+                                ),
+                                const SizedBox(height:7),
+                                Text('Yetkili sürücü hesabı',style:TextStyle(color:muted,fontSize:12.3,fontWeight:FontWeight.w600)),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width:10),
+                          Container(
+                            padding:const EdgeInsets.symmetric(horizontal:10,vertical:6),
+                            decoration:BoxDecoration(
+                              color:(active?const Color(0xFF24C77A):const Color(0xFFFF6075)).withValues(alpha:.12),
+                              borderRadius:BorderRadius.circular(12),
+                              border:Border.all(
+                                color:(active?const Color(0xFF24C77A):const Color(0xFFFF6075)).withValues(alpha:.30),
+                              ),
+                            ),
+                            child:Row(
+                              mainAxisSize:MainAxisSize.min,
+                              children:[
+                                CircleAvatar(radius:3.8,backgroundColor:active?const Color(0xFF24C77A):const Color(0xFFFF6075)),
+                                const SizedBox(width:5),
+                                Text(
+                                  active?'Aktif':'Pasif',
+                                  style:TextStyle(
+                                    color:active?const Color(0xFF16945B):const Color(0xFFD94358),
+                                    fontSize:10,
+                                    fontWeight:FontWeight.w900,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: _Shortcut(
-                    icon: Icons.edit_note_rounded,
-                    title: 'Park Notu',
-                    sub: active ? 'QR ekranına not ekle / değiştir' : 'Yalnızca aktif sürücü kullanabilir',
-                    onTap: () => _parkNote(context),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                const _Card(
-                  child: Row(
-                    children: [
-                      Icon(Icons.info_outline_rounded, color: _purple),
-                      SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'Aktif sürücüyü ve sürücü davetlerini yalnızca araç sahibi yönetir.',
-                          style: TextStyle(color: _muted, height: 1.35),
+              ),
+              Padding(
+                padding:const EdgeInsets.fromLTRB(16,14,16,0),
+                child:InkWell(
+                  onTap:onOpenVehicles,
+                  borderRadius:BorderRadius.circular(19),
+                  child:Container(
+                    height:116,
+                    padding:const EdgeInsets.fromLTRB(14,13,12,12),
+                    decoration:BoxDecoration(
+                      color:panel,
+                      borderRadius:BorderRadius.circular(19),
+                      border:Border.all(color:line),
+                      boxShadow:light
+                        ?[BoxShadow(color:Colors.black.withValues(alpha:.04),blurRadius:12,offset:const Offset(0,4))]
+                        :null,
+                    ),
+                    child:Row(
+                      children:[
+                        Container(
+                          width:62,height:62,
+                          decoration:BoxDecoration(
+                            color:const Color(0xFF713BFF).withValues(alpha:light?.09:.16),
+                            borderRadius:BorderRadius.circular(16),
+                          ),
+                          child:_brandLogo(),
                         ),
-                      ),
-                    ],
+                        const SizedBox(width:12),
+                        Expanded(
+                          child:Column(
+                            mainAxisAlignment:MainAxisAlignment.center,
+                            crossAxisAlignment:CrossAxisAlignment.start,
+                            children:[
+                              Text(plate,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:text,fontSize:20,fontWeight:FontWeight.w900)),
+                              const SizedBox(height:4),
+                              Text(carName,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:muted,fontSize:12.5,fontWeight:FontWeight.w600)),
+                              const SizedBox(height:7),
+                              Row(
+                                children:[
+                                  Icon(active?Icons.verified_rounded:Icons.lock_outline_rounded,color:active?const Color(0xFF24C77A):muted,size:15),
+                                  const SizedBox(width:5),
+                                  Text(
+                                    active?'Aktif sürücü sensin':'Araç sahibi tarafından pasif',
+                                    style:TextStyle(color:active?const Color(0xFF16945B):muted,fontSize:9.8,fontWeight:FontWeight.w800),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(Icons.chevron_right_rounded,color:muted,size:23),
+                      ],
+                    ),
                   ),
                 ),
-                if (loading) ...[
-                  const SizedBox(height: 14),
-                  const LinearProgressIndicator(color: _purple),
-                ],
-              ],
-            ),
+              ),
+              Padding(
+                padding:const EdgeInsets.fromLTRB(16,13,16,0),
+                child:Row(
+                  children:[
+                    quick(Icons.notifications_none_rounded,'Bildirimler',const Color(0xFFFF5E76),onOpenNotifications),
+                    const SizedBox(width:7),
+                    quick(Icons.directions_car_filled_rounded,'Araçlarım',const Color(0xFF397DFF),onOpenVehicles),
+                    const SizedBox(width:7),
+                    quick(Icons.edit_note_rounded,'Park Notu',const Color(0xFF24BFA6),()=>_parkNote(context)),
+                  ],
+                ),
+              ),
+              Container(
+                margin:const EdgeInsets.fromLTRB(16,14,16,0),
+                padding:const EdgeInsets.fromLTRB(13,12,13,13),
+                decoration:BoxDecoration(
+                  color:panel,
+                  borderRadius:BorderRadius.circular(19),
+                  border:Border.all(color:line),
+                ),
+                child:Column(
+                  children:[
+                    Row(
+                      children:[
+                        const Icon(Icons.bar_chart_rounded,color:_purple,size:21),
+                        const SizedBox(width:7),
+                        Expanded(child:Text('Sürücü Özeti',style:TextStyle(color:text,fontSize:15,fontWeight:FontWeight.w900))),
+                        InkWell(
+                          onTap:onOpenNotifications,
+                          child:const Row(
+                            children:[
+                              Text('Tümünü Gör',style:TextStyle(color:_purple,fontSize:10.5,fontWeight:FontWeight.w900)),
+                              Icon(Icons.chevron_right_rounded,color:_purple,size:18),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height:14),
+                    Row(
+                      children:[
+                        stat(Icons.notifications_active_rounded,unread,'Yeni\nBildirim',const Color(0xFFFF5E76)),
+                        vline(),
+                        stat(Icons.chat_bubble_rounded,notifications.length,'Mesaj\nTalebi',const Color(0xFF397DFF)),
+                        vline(),
+                        stat(Icons.phone_in_talk_rounded,calls,'Arama\nTalebi',const Color(0xFF8B36FF)),
+                        vline(),
+                        stat(Icons.location_on_rounded,locations,'Konum\nPaylaşımı',const Color(0xFF24BFA6)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding:const EdgeInsets.fromLTRB(16,17,16,0),
+                child:Row(
+                  children:[
+                    Expanded(child:Text('Son Bildirim',style:TextStyle(color:text,fontSize:17,fontWeight:FontWeight.w900))),
+                    InkWell(onTap:onOpenNotifications,child:const Text('Tümünü Gör',style:TextStyle(color:_purple,fontSize:10.5,fontWeight:FontWeight.w900))),
+                  ],
+                ),
+              ),
+              if(notifications.isEmpty)
+                Container(
+                  margin:const EdgeInsets.fromLTRB(16,10,16,0),
+                  height:64,
+                  alignment:Alignment.center,
+                  decoration:BoxDecoration(color:panel,borderRadius:BorderRadius.circular(17),border:Border.all(color:line)),
+                  child:Text('Henüz yeni bildirim yok.',style:TextStyle(color:muted,fontSize:11,fontWeight:FontWeight.w700)),
+                )
+              else
+                InkWell(
+                  onTap:onOpenNotifications,
+                  borderRadius:BorderRadius.circular(17),
+                  child:Container(
+                    margin:const EdgeInsets.fromLTRB(16,10,16,0),
+                    padding:const EdgeInsets.all(12),
+                    decoration:BoxDecoration(color:panel,borderRadius:BorderRadius.circular(17),border:Border.all(color:line)),
+                    child:Row(
+                      children:[
+                        Container(
+                          width:40,height:40,
+                          decoration:BoxDecoration(
+                            color:const Color(0xFF713BFF).withValues(alpha:light?.10:.17),
+                            borderRadius:BorderRadius.circular(12),
+                          ),
+                          child:const Icon(Icons.notifications_rounded,color:_purple,size:21),
+                        ),
+                        const SizedBox(width:10),
+                        Expanded(
+                          child:Text(
+                            (notifications.first['message']??'Araçla ilgili yeni bir bildirim var.').toString(),
+                            maxLines:2,
+                            overflow:TextOverflow.ellipsis,
+                            style:TextStyle(color:text,fontSize:11.5,fontWeight:FontWeight.w700),
+                          ),
+                        ),
+                        Icon(Icons.chevron_right_rounded,color:muted,size:20),
+                      ],
+                    ),
+                  ),
+                ),
+              const SizedBox(height:22),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 }
-
 class _DriverStatsRow extends StatelessWidget {
   const _DriverStatsRow({
     required this.unread,
