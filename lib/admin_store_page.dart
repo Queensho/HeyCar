@@ -76,8 +76,8 @@ class _AdminStorePageState extends State<AdminStorePage>{
       ]);
       if(!mounted)return;
       setState((){
-        products=(r[0]['items'] as List???const[]).whereType<Map>().map((x)=>Map<String,dynamic>.from(x)).toList();
-        orders=(r[1]['items'] as List???const[]).whereType<Map>().map((x)=>Map<String,dynamic>.from(x)).toList();
+        products=(r[0]['items'] as List? ?? const []).whereType<Map>().map((x)=>Map<String,dynamic>.from(x)).toList();
+        orders=(r[1]['items'] as List? ?? const []).whereType<Map>().map((x)=>Map<String,dynamic>.from(x)).toList();
         stats=r[2];
       });
     }catch(e){if(mounted)setState(()=>error=e.toString().replaceFirst('Exception: ',''));}
@@ -87,7 +87,7 @@ class _AdminStorePageState extends State<AdminStorePage>{
     setState((){orderStatus=status;loading=true;});
     try{
       final d=await getJson('/api/admin/manage/store/orders?status='+status);
-      if(mounted)setState(()=>orders=(d['items'] as List???const[]).whereType<Map>().map((x)=>Map<String,dynamic>.from(x)).toList());
+      if(mounted)setState(()=>orders=(d['items'] as List? ?? const []).whereType<Map>().map((x)=>Map<String,dynamic>.from(x)).toList());
     }catch(e){snack(e);}finally{if(mounted)setState(()=>loading=false);}
   }
   void snack(Object e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString().replaceFirst('Exception: ',''))));}
@@ -195,8 +195,8 @@ class _AdminStorePageState extends State<AdminStorePage>{
     try{
       final d=await getJson('/api/admin/manage/store/orders/'+row['id'].toString());
       if(!mounted)return;
-      final order=Map<String,dynamic>.from(d['order'] as Map???const{});
-      final items=(d['items'] as List???const[]).whereType<Map>().map((x)=>Map<String,dynamic>.from(x)).toList();
+      final order=Map<String,dynamic>.from(d['order'] as Map? ?? const {});
+      final items=(d['items'] as List? ?? const []).whereType<Map>().map((x)=>Map<String,dynamic>.from(x)).toList();
       var status=(order['status']??'pending_payment').toString();
       final shipping=TextEditingController(text:(order['shippingCompany']??'').toString());
       final tracking=TextEditingController(text:(order['trackingNumber']??'').toString());
