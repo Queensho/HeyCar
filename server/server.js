@@ -87,7 +87,7 @@ app.use('/api',async(req,res,next)=>{
   try{
     if(owner){
       const r=await pool.query(
-        "SELECT u.status,COALESCE(p.security_version,1)::int AS security_version FROM users u LEFT JOIN owner_privacy_settings p ON p.owner_id=u.id WHERE u.id=$1 LIMIT 1",
+        "SELECT u.status,COALESCE(p.security_version,1)::int AS security_version FROM users u LEFT JOIN owner_privacy_settings p ON p.owner_id=u.id::text WHERE u.id=$1 LIMIT 1",
         [String(owner.sub)]
       );
       if(!r.rows.length||r.rows[0].status!=='active')return res.status(401).json({error:'AUTH_SESSION_REVOKED'});
