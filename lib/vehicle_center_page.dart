@@ -1134,27 +1134,44 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
     required String subtitle,
     required VoidCallback tap,
     bool divider=true,
+    bool enabled=true,
+    String? badge,
   })=>Column(children:[
-    InkWell(
-      onTap:tap,
-      child:SizedBox(
-        height:52,
-        child:Padding(
-          padding:const EdgeInsets.symmetric(horizontal:11),
-          child:Row(children:[
-            Container(
-              width:31,height:31,
-              decoration:BoxDecoration(color:_purple.withValues(alpha:CepqarTheme.isLight ? .09 : .18),borderRadius:BorderRadius.circular(9)),
-              child:Icon(icon,color:_accent,size:17),
-            ),
-            const SizedBox(width:10),
-            Expanded(child:Column(mainAxisAlignment:MainAxisAlignment.center,crossAxisAlignment:CrossAxisAlignment.start,children:[
-              Text(title,style:TextStyle(color:CepqarTheme.text,fontSize:CepqarTheme.body,fontWeight:FontWeight.w800)),
-              const SizedBox(height:2),
-              Text(subtitle,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:_muted,fontSize:CepqarTheme.caption,fontWeight:FontWeight.w500)),
-            ])),
-            Icon(Icons.chevron_right_rounded,color:_muted,size:18),
-          ]),
+    Opacity(
+      opacity:enabled?1:.72,
+      child:InkWell(
+        onTap:enabled?tap:null,
+        child:SizedBox(
+          height:52,
+          child:Padding(
+            padding:const EdgeInsets.symmetric(horizontal:11),
+            child:Row(children:[
+              Container(
+                width:31,height:31,
+                decoration:BoxDecoration(color:_purple.withValues(alpha:CepqarTheme.isLight ? .09 : .18),borderRadius:BorderRadius.circular(9)),
+                child:Icon(icon,color:_accent,size:17),
+              ),
+              const SizedBox(width:10),
+              Expanded(child:Column(mainAxisAlignment:MainAxisAlignment.center,crossAxisAlignment:CrossAxisAlignment.start,children:[
+                Text(title,style:TextStyle(color:CepqarTheme.text,fontSize:CepqarTheme.body,fontWeight:FontWeight.w800)),
+                const SizedBox(height:2),
+                Text(subtitle,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:_muted,fontSize:CepqarTheme.caption,fontWeight:FontWeight.w500)),
+              ])),
+              if(badge!=null)Container(
+                margin:const EdgeInsets.only(left:8),
+                padding:const EdgeInsets.symmetric(horizontal:8,vertical:4),
+                decoration:BoxDecoration(
+                  color:_purple.withValues(alpha:.10),
+                  borderRadius:BorderRadius.circular(9),
+                ),
+                child:Text(
+                  badge,
+                  style:const TextStyle(color:_purple,fontSize:9,fontWeight:FontWeight.w900),
+                ),
+              ),
+              if(enabled)Icon(Icons.chevron_right_rounded,color:_muted,size:18),
+            ]),
+          ),
         ),
       ),
     ),
@@ -1297,7 +1314,7 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
                     decoration:_compactCard(),
                     child:Column(children:[
                       _menuItem(icon:Icons.directions_car_filled_rounded,title:'Araç Bilgileri',subtitle:'Marka, model ve diğer detaylar',tap:_editVehicle),
-                      _menuItem(icon:Icons.nfc_rounded,title:'NFC Etiketi',subtitle:'NFC etiketini hazırla ve güvenle yönet',tap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>NfcSetupPage(vehicleId:vid,plate:_plate)))),
+                      _menuItem(icon:Icons.nfc_rounded,title:'NFC Etiketi',subtitle:'NFC desteği yakında kullanıma açılacak',tap:(){},enabled:false,badge:'Yakında'),
                       _menuItem(icon:Icons.analytics_outlined,title:'Etiket Analitiği',subtitle:'QR ve NFC kullanımını birlikte takip et',tap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>VehicleAnalyticsPage(vehicleId:vid,plate:_plate)))),
                       _menuItem(icon:Icons.build_rounded,title:'Bakım Kayıtları',subtitle:'Aracınızın bakım geçmişi',tap:maintenance),
                       _menuItem(icon:Icons.local_parking_rounded,title:'Park Geçmişi',subtitle:'Otopark ve park konumlarını yönetin',tap:_parking),
