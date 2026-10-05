@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'cepqar_theme.dart';
 import 'owner_auth.dart';
@@ -1494,98 +1495,880 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
 }
 
 class TowingTrackingPage extends StatefulWidget {
-  const TowingTrackingPage({super.key, required this.id, this.driverMode=false});
+  const TowingTrackingPage({
+    super.key,
+    required this.id,
+    this.driverMode = false,
+  });
+
   final String id;
   final bool driverMode;
-  @override State<TowingTrackingPage> createState() => _T();
+
+  @override
+  State<TowingTrackingPage> createState() => _TowingTrackingPageState();
 }
-class _T extends State<TowingTrackingPage> {
-  Map<String,dynamic>? d; Timer? t;
-  @override void initState(){super.initState();load();t=Timer.periodic(const Duration(seconds:5),(_)=>load());}
-  @override void dispose(){t?.cancel();super.dispose();}
-  Future<void> load()async{try{final uri=Uri.parse('${OnboardingBackend.baseUrl}${widget.driverMode?'/api/driver/towing/requests/':'/api/owner/towing/requests/'}${widget.id}/tracking');final r=widget.driverMode?await DriverHttp.get(uri):await OwnerHttp.get(uri);if(r.statusCode==200&&mounted)setState(()=>d=Map<String,dynamic>.from(jsonDecode(r.body)['tracking']));}catch(_){}}
-  double? n(dynamic v)=>double.tryParse('${v??''}');
-  bool cancelling=false;
-  Future<void> cancelRequest() async {
-    final ok=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(
-      title:const Text('Çekici çağrısını iptal et?'),
-      content:const Text('Aktif çekici çağrın iptal edilecek. Sonrasında yeni bir çağrı oluşturabilirsin.'),
-      actions:[
-        TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('Vazgeç')),
-        FilledButton(onPressed:()=>Navigator.pop(ctx,true),style:FilledButton.styleFrom(backgroundColor:Colors.red),child:const Text('Çağrıyı İptal Et')),
-      ],
-    ))??false;
-    if(!ok||!mounted)return;
-    setState(()=>cancelling=true);
-    try{
-      final uri=Uri.parse('${OnboardingBackend.baseUrl}${widget.driverMode?'/api/driver/towing/requests/':'/api/owner/towing/requests/'}${widget.id}/cancel');
-      final r=widget.driverMode
-        ?await DriverHttp.post(uri,body:jsonEncode({'reason':'Kullanıcı tarafından iptal edildi'}))
-        :await OwnerHttp.post(uri,body:jsonEncode({'reason':'Kullanıcı tarafından iptal edildi'}));
-      final body=r.body.isEmpty?<String,dynamic>{}:Map<String,dynamic>.from(jsonDecode(r.body));
-      if(r.statusCode>=200&&r.statusCode<300){
-        t?.cancel();
-        await load();
-        if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Çekici çağrısı iptal edildi.')));
-      }else if(mounted){
-        final e='${body['error']??''}';
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e=='TOWING_REQUEST_NOT_CANCELLABLE'?'Bu aşamada çağrı artık iptal edilemiyor.':'Çağrı iptal edilemedi.')));
-      }
-    }catch(_){
-      if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Çağrı iptal edilemedi. Bağlantını kontrol et.')));
-    }finally{if(mounted)setState(()=>cancelling=false);}
+
+class _TowingTrackingPageState extends State<TowingTrackingPage> {
+  static const _purple = Color(0xFF6C31F4);
+  static const _purple2 = Color(0xFF8A4DFF);
+  static const _ink = Color(0xFF0F172A);
+  static const _muted = Color(0xFF7D8496);
+  static const _line = Color(0xFFE7E9F0);
+  static const _bg = Color(0xFFF8F9FD);
+
+  Map<String, dynamic>? data;
+  Timer? timer;
+  bool cancelling = false;
+
+  @override
+  void initState() {
+    super.initState();
+    load();
+    timer = Timer.periodic(const Duration(seconds: 5), (_) => load());
   }
-  String label(String s)=>{'searching':'Yakındaki çekiciler aranıyor','accepted':'Çekici bulundu','arriving':'Çekici size geliyor','arrived':'Çekici geldi','vehicle_loaded':'Aracınız yüklendi','in_transit':'Aracınız hedefe gidiyor','delivered':'Teslim edildi','cancelled':'İptal edildi'}[s]??s;
-  Widget searching(){
+
+  @override
+  void dispose() {
+    timer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> load() async {
+    try {
+      final uri = Uri.parse(
+        '${OnboardingBackend.baseUrl}'
+        '${widget.driverMode ? '/api/driver/towing/requests/' : '/api/owner/towing/requests/'}'
+        '${widget.id}/tracking',
+      );
+      final r = widget.driverMode
+          ? await DriverHttp.get(uri)
+          : await OwnerHttp.get(uri);
+      if (r.statusCode == 200 && mounted) {
+        setState(() {
+          data = Map<String, dynamic>.from(
+            jsonDecode(r.body)['tracking'],
+          );
+        });
+      }
+    } catch (_) {}
+  }
+
+  double? _number(dynamic value) => double.tryParse('${value ?? ''}');
+
+  String _statusLabel(String status) => {
+        'searching': 'Yakındaki çekiciler aranıyor',
+        'accepted': 'Çekici bulundu',
+        'arriving': 'Çekici size geliyor',
+        'arrived': 'Çekici geldi',
+        'vehicle_loaded': 'Aracınız yüklendi',
+        'in_transit': 'Aracınız hedefe gidiyor',
+        'delivered': 'Teslim edildi',
+        'cancelled': 'İptal edildi',
+      }[status] ??
+      status;
+
+  String _etaText(String status) {
+    dynamic value;
+    if (status == 'vehicle_loaded' || status == 'in_transit') {
+      value = data?['destination_eta_minutes'];
+    } else {
+      value = data?['pickup_eta_minutes'];
+    }
+    final parsed = _number(value);
+    if (parsed == null) return '-';
+    final minutes = parsed <= 1 ? 1 : parsed.round();
+    return '$minutes dk';
+  }
+
+  String _distanceText(String status) {
+    dynamic value;
+    if (status == 'vehicle_loaded' || status == 'in_transit') {
+      value = data?['destination_distance_km'];
+    } else {
+      value = data?['pickup_distance_km'];
+    }
+    final parsed = _number(value);
+    if (parsed == null) return '-';
+    return '${parsed.toStringAsFixed(2)} km';
+  }
+
+  String _shortAddress(dynamic value) {
+    final text = '${value ?? ''}'.trim();
+    if (text.isEmpty) return '-';
+    final parts = text
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+    if (parts.length >= 2) return '${parts[0]}, ${parts[1]}';
+    return parts.first;
+  }
+
+  Future<void> callDriver() async {
+    final phone = '${data?['driver_phone'] ?? ''}'.trim();
+    if (phone.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sürücü telefon numarası bulunamadı.')),
+      );
+      return;
+    }
+    final uri = Uri(scheme: 'tel', path: phone);
+    final opened = await launchUrl(uri);
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Telefon araması başlatılamadı.')),
+      );
+    }
+  }
+
+  Future<void> cancelRequest() async {
+    final ok = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Çekici çağrısını iptal et?'),
+            content: const Text(
+              'Aktif çekici çağrın iptal edilecek. Sonrasında yeni bir çağrı oluşturabilirsin.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Vazgeç'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                child: const Text('Çağrıyı İptal Et'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+
+    if (!ok || !mounted) return;
+    setState(() => cancelling = true);
+
+    try {
+      final uri = Uri.parse(
+        '${OnboardingBackend.baseUrl}'
+        '${widget.driverMode ? '/api/driver/towing/requests/' : '/api/owner/towing/requests/'}'
+        '${widget.id}/cancel',
+      );
+      final r = widget.driverMode
+          ? await DriverHttp.post(
+              uri,
+              body: jsonEncode({'reason': 'Kullanıcı tarafından iptal edildi'}),
+            )
+          : await OwnerHttp.post(
+              uri,
+              body: jsonEncode({'reason': 'Kullanıcı tarafından iptal edildi'}),
+            );
+      final body = r.body.isEmpty
+          ? <String, dynamic>{}
+          : Map<String, dynamic>.from(jsonDecode(r.body));
+
+      if (r.statusCode >= 200 && r.statusCode < 300) {
+        timer?.cancel();
+        await load();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Çekici çağrısı iptal edildi.')),
+          );
+        }
+      } else if (mounted) {
+        final error = '${body['error'] ?? ''}';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              error == 'TOWING_REQUEST_NOT_CANCELLABLE'
+                  ? 'Bu aşamada çağrı artık iptal edilemiyor.'
+                  : 'Çağrı iptal edilemedi.',
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Çağrı iptal edilemedi. Bağlantını kontrol et.'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => cancelling = false);
+    }
+  }
+
+  Widget _searching() {
     return Container(
-      height:360,color:const Color(0xFF111318),
-      child:Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
-        Container(width:150,height:150,decoration:BoxDecoration(shape:BoxShape.circle,border:Border.all(color:CepqarTheme.purple.withValues(alpha:.25),width:18)),child:Center(child:Container(width:92,height:92,decoration:BoxDecoration(shape:BoxShape.circle,border:Border.all(color:CepqarTheme.purple.withValues(alpha:.55),width:12)),child:Icon(Icons.radar_rounded,color:CepqarTheme.purple,size:62)))),
-        const SizedBox(height:24),
-        const Text('Yakındaki çekiciler aranıyor',style:TextStyle(color:Colors.white,fontSize:21,fontWeight:FontWeight.w900)),
-        const SizedBox(height:8),
-        const Text('Uygun bir çekici bulunduğunda burada göreceksiniz.',textAlign:TextAlign.center,style:TextStyle(color:Color(0xFF9CA3AF))),
-      ])),
+      height: 255,
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+      decoration: BoxDecoration(
+        color: const Color(0xFF111318),
+        borderRadius: BorderRadius.circular(28),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 104,
+              height: 104,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: _purple.withValues(alpha: .22),
+                  width: 14,
+                ),
+              ),
+              child: Center(
+                child: Container(
+                  width: 65,
+                  height: 65,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: _purple.withValues(alpha: .55),
+                      width: 9,
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.radar_rounded,
+                    color: _purple2,
+                    size: 42,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Yakındaki çekiciler aranıyor',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 5),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 28),
+              child: Text(
+                'Uygun bir çekici bulunduğunda burada göreceksiniz.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Color(0xFF9CA3AF),
+                  fontSize: 11.5,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
-  Widget trackingMap(){
-    final dl=n(d?['driver_lat']),dn=n(d?['driver_lng']),pl=n(d?['pickup_lat']),pn=n(d?['pickup_lng']),xl=n(d?['destination_lat']),xn=n(d?['destination_lng']);
-    final driver=dl==null||dn==null?null:LatLng(dl,dn),pickup=pl==null||pn==null?null:LatLng(pl,pn),dest=xl==null||xn==null?null:LatLng(xl,xn);
-    final center=driver??pickup??dest??const LatLng(41.0,28.9);
-    return SizedBox(height:360,child:FlutterMap(options:MapOptions(initialCenter:center,initialZoom:14,minZoom:11,maxZoom:18,interactionOptions:const InteractionOptions(flags:InteractiveFlag.all & ~InteractiveFlag.rotate)),children:[
-      ColorFiltered(colorFilter:const ColorFilter.matrix([-.12,-.24,-.04,0,115,-.15,-.30,-.05,0,140,-.18,-.36,-.06,0,173,0,0,0,1,0]),child:TileLayer(urlTemplate:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',userAgentPackageName:'com.cepqar.app',maxNativeZoom:19,panBuffer:0)),
-      PolylineLayer(polylines:[if(driver!=null&&pickup!=null)Polyline(points:[driver,pickup],strokeWidth:4,color:const Color(0xFFB6FF2A)),if(pickup!=null&&dest!=null)Polyline(points:[pickup,dest],strokeWidth:5,color:CepqarTheme.purple)]),
-      MarkerLayer(markers:[
-        if(driver!=null)Marker(point:driver,width:48,height:58,alignment:Alignment.topCenter,child:Icon(Icons.fire_truck_rounded,color:CepqarTheme.purple,size:42)),
-        if(pickup!=null)Marker(point:pickup,width:36,height:36,child:Container(decoration:BoxDecoration(color:Colors.blueAccent.withValues(alpha:.22),shape:BoxShape.circle),padding:const EdgeInsets.all(7),child:Container(decoration:BoxDecoration(color:Colors.blueAccent,shape:BoxShape.circle,border:Border.all(color:Colors.white,width:3))))),
-        if(dest!=null)Marker(point:dest,width:48,height:58,alignment:Alignment.topCenter,child:Icon(Icons.location_on_rounded,color:CepqarTheme.purple,size:48)),
-      ]),
-    ]));
-  }
-  @override Widget build(BuildContext c){
-    if(d==null)return Scaffold(backgroundColor:CepqarTheme.bg,body:const Center(child:CircularProgressIndicator()));
-    final status='${d!['status']}'; final searchingNow=status=='searching';
-    return Scaffold(backgroundColor:CepqarTheme.bg,appBar:AppBar(backgroundColor:CepqarTheme.bg,foregroundColor:CepqarTheme.text,title:Text(searchingNow?'Çekici aranıyor':'Çekici Takibi')),body:ListView(children:[
-      searchingNow?searching():trackingMap(),
-      Padding(padding:const EdgeInsets.all(16),child:Container(padding:const EdgeInsets.all(18),decoration:BoxDecoration(color:CepqarTheme.panel,borderRadius:BorderRadius.circular(22),border:Border.all(color:CepqarTheme.line)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-        Text(label(status),style:TextStyle(color:CepqarTheme.text,fontSize:21,fontWeight:FontWeight.w900)),
-        if((status=='accepted'||status=='arriving'||status=='arrived')&&d!['pickup_eta_minutes']!=null&&num.tryParse('${d!['pickup_eta_minutes']}')!=null&&num.parse('${d!['pickup_eta_minutes']}')>0)...[const SizedBox(height:5),Text('${d!['pickup_eta_minutes']} dk • ${d!['pickup_distance_km']??'-'} km',style:TextStyle(color:CepqarTheme.purple,fontSize:17,fontWeight:FontWeight.w900))],
-        if((status=='vehicle_loaded'||status=='in_transit')&&d!['destination_eta_minutes']!=null&&num.tryParse('${d!['destination_eta_minutes']}')!=null&&num.parse('${d!['destination_eta_minutes']}')>0)...[const SizedBox(height:5),Text('Bırakma noktasına ${d!['destination_eta_minutes']} dk • ${d!['destination_distance_km']??'-'} km',style:TextStyle(color:CepqarTheme.purple,fontSize:17,fontWeight:FontWeight.w900))],
-        if(d!['provider_name']!=null)...[const SizedBox(height:16),const Divider(),const SizedBox(height:8),Text('${d!['provider_name']}',style:TextStyle(color:CepqarTheme.text,fontSize:17,fontWeight:FontWeight.w900))],
-        if(d!['driver_name']!=null)Text('Sürücü: ${d!['driver_name']}',style:TextStyle(color:CepqarTheme.muted)),
-        if(d!['towing_plate']!=null)Text('Çekici: ${d!['towing_plate']} ${d!['towing_brand']??''} ${d!['towing_model']??''}',style:TextStyle(color:CepqarTheme.muted)),
-        if(d!['pickup_address']!=null)...[const SizedBox(height:14),Text('Alım: ${d!['pickup_address']}',style:TextStyle(color:CepqarTheme.muted))],
-        if(d!['destination_address']!=null)Text('Bırakma: ${d!['destination_address']}',style:TextStyle(color:CepqarTheme.muted)),
-        if(['searching','accepted','arriving','arrived'].contains(status))...[
-          const SizedBox(height:20),
-          SizedBox(width:double.infinity,height:52,child:OutlinedButton.icon(
-            onPressed:cancelling?null:cancelRequest,
-            icon:cancelling?const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2)):const Icon(Icons.close_rounded),
-            label:Text(cancelling?'İptal ediliyor...':'Çağrıyı İptal Et',style:const TextStyle(fontWeight:FontWeight.w900)),
-            style:OutlinedButton.styleFrom(foregroundColor:Colors.red,side:const BorderSide(color:Colors.red),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(14))),
-          )),
+
+  Widget _trackingMap() {
+    final driverLat = _number(data?['driver_lat']);
+    final driverLng = _number(data?['driver_lng']);
+    final pickupLat = _number(data?['pickup_lat']);
+    final pickupLng = _number(data?['pickup_lng']);
+
+    final driver = driverLat == null || driverLng == null
+        ? null
+        : LatLng(driverLat, driverLng);
+    final pickup = pickupLat == null || pickupLng == null
+        ? null
+        : LatLng(pickupLat, pickupLng);
+    final center = driver ?? pickup ?? const LatLng(41.0, 28.9);
+
+    return Container(
+      height: 255,
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0C000000),
+            blurRadius: 12,
+            offset: Offset(0, 5),
+          ),
         ],
-      ]))),
-    ]));
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: FlutterMap(
+          options: MapOptions(
+            initialCenter: center,
+            initialZoom: 13.5,
+            minZoom: 10,
+            maxZoom: 18,
+            interactionOptions: const InteractionOptions(
+              flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+            ),
+          ),
+          children: [
+            ColorFiltered(
+              colorFilter: const ColorFilter.matrix([
+                .72, .12, .12, 0, 40,
+                .12, .72, .12, 0, 40,
+                .12, .12, .72, 0, 40,
+                0, 0, 0, 1, 0,
+              ]),
+              child: TileLayer(
+                urlTemplate:
+                    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.cepqar.app',
+                maxNativeZoom: 19,
+                panBuffer: 0,
+              ),
+            ),
+            if (driver != null && pickup != null)
+              PolylineLayer(
+                polylines: [
+                  Polyline(
+                    points: [driver, pickup],
+                    strokeWidth: 5,
+                    color: _purple,
+                  ),
+                ],
+              ),
+            MarkerLayer(
+              markers: [
+                if (driver != null)
+                  Marker(
+                    point: driver,
+                    width: 88,
+                    height: 88,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: _purple.withValues(alpha: .13),
+                        shape: BoxShape.circle,
+                      ),
+                      padding: const EdgeInsets.all(13),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: _purple.withValues(alpha: .18),
+                              blurRadius: 12,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.fire_truck_rounded,
+                          color: _purple,
+                          size: 34,
+                        ),
+                      ),
+                    ),
+                  ),
+                if (pickup != null)
+                  Marker(
+                    point: pickup,
+                    width: 72,
+                    height: 72,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: _purple.withValues(alpha: .10),
+                        shape: BoxShape.circle,
+                      ),
+                      padding: const EdgeInsets.all(11),
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.location_on_rounded,
+                          color: _purple,
+                          size: 31,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _etaCard(String eta) {
+    return Container(
+      width: 122,
+      height: 72,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3EDFF),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.schedule_rounded,
+            color: _purple,
+            size: 28,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Tahmini varış',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: _muted,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  eta,
+                  style: const TextStyle(
+                    color: _purple,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _driverInfo() {
+    final provider = '${data?['provider_name'] ?? ''}'.trim();
+    final driver = '${data?['driver_name'] ?? ''}'.trim();
+    final plate = '${data?['towing_plate'] ?? ''}'.trim();
+    final brand = '${data?['towing_brand'] ?? ''}'.trim();
+    final model = '${data?['towing_model'] ?? ''}'.trim();
+    final title = provider.isNotEmpty
+        ? provider
+        : (driver.isNotEmpty ? driver : 'Çekici sürücüsü');
+    final towLine = [
+      if (plate.isNotEmpty) plate,
+      if (brand.isNotEmpty) brand,
+      if (model.isNotEmpty) model,
+    ].join(' ');
+
+    return Row(
+      children: [
+        Container(
+          width: 56,
+          height: 56,
+          decoration: const BoxDecoration(
+            color: Color(0xFFF1E9FF),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.person_outline_rounded,
+            color: _purple,
+            size: 30,
+          ),
+        ),
+        const SizedBox(width: 13),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: _ink,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              if (driver.isNotEmpty) ...[
+                const SizedBox(height: 3),
+                Text(
+                  'Sürücü: $driver',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _muted,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+              if (towLine.isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Text(
+                  'Çekici: $towLine',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _muted,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _routeInfo() {
+    final pickup = _shortAddress(data?['pickup_address']);
+    final destination = _shortAddress(data?['destination_address']);
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 42,
+          child: Column(
+            children: [
+              const SizedBox(height: 4),
+              Container(
+                width: 15,
+                height: 15,
+                decoration: const BoxDecoration(
+                  color: _purple,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.circle,
+                  color: Colors.white,
+                  size: 5,
+                ),
+              ),
+              Container(
+                width: 2,
+                height: 36,
+                margin: const EdgeInsets.symmetric(vertical: 3),
+                decoration: BoxDecoration(
+                  color: _purple.withValues(alpha: .28),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const Icon(
+                Icons.location_on_rounded,
+                color: _purple,
+                size: 28,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 2),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Alım',
+                style: TextStyle(
+                  color: _muted,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                pickup,
+                style: const TextStyle(
+                  color: _ink,
+                  fontSize: 15.5,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 18),
+              const Text(
+                'Bırakma',
+                style: TextStyle(
+                  color: _muted,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                destination,
+                style: const TextStyle(
+                  color: _ink,
+                  fontSize: 15.5,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _foundCard(String status) {
+    final eta = _etaText(status);
+    final distance = _distanceText(status);
+    final canCancel =
+        ['searching', 'accepted', 'arriving', 'arrived'].contains(status);
+    final canCall =
+        '${data?['driver_phone'] ?? ''}'.trim().isNotEmpty &&
+        status != 'searching' &&
+        status != 'cancelled';
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 14, 16, 20),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(27),
+        border: Border.all(color: const Color(0xFFF0F1F5)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0D000000),
+            blurRadius: 18,
+            offset: Offset(0, 7),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _statusLabel(status),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: _ink,
+                        fontSize: 25,
+                        fontWeight: FontWeight.w900,
+                        height: 1.04,
+                      ),
+                    ),
+                    if (status != 'cancelled' && status != 'delivered') ...[
+                      const SizedBox(height: 5),
+                      Text(
+                        '$eta • $distance',
+                        style: const TextStyle(
+                          color: _purple,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (status != 'cancelled' && status != 'delivered') ...[
+                const SizedBox(width: 10),
+                _etaCard(eta),
+              ],
+            ],
+          ),
+          const SizedBox(height: 17),
+          const Divider(height: 1, color: _line),
+          const SizedBox(height: 15),
+          _driverInfo(),
+          const SizedBox(height: 16),
+          const Divider(height: 1, color: _line),
+          const SizedBox(height: 14),
+          _routeInfo(),
+          if (canCall) ...[
+            const SizedBox(height: 17),
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [_purple2, _purple],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
+                  borderRadius: BorderRadius.circular(17),
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(17),
+                    onTap: callDriver,
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.phone_rounded,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                        SizedBox(width: 11),
+                        Text(
+                          'Sürücüyü Ara',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+          if (canCancel) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: OutlinedButton.icon(
+                onPressed: cancelling ? null : cancelRequest,
+                icon: cancelling
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.close_rounded, size: 25),
+                label: Text(
+                  cancelling ? 'İptal ediliyor...' : 'Çağrıyı İptal Et',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFFFF2638),
+                  side: const BorderSide(
+                    color: Color(0xFFFF2638),
+                    width: 1.5,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(17),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (data == null) {
+      return const Scaffold(
+        backgroundColor: _bg,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final status = '${data!['status']}';
+    final searchingNow = status == 'searching';
+
+    return Scaffold(
+      backgroundColor: _bg,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        foregroundColor: _ink,
+        elevation: 0,
+        centerTitle: true,
+        title: Text(
+          searchingNow ? 'Çekici aranıyor' : 'Çekici Takibi',
+          style: const TextStyle(
+            color: _ink,
+            fontSize: 20,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        leading: IconButton(
+          onPressed: () => Navigator.maybePop(context),
+          icon: const Icon(Icons.arrow_back_rounded, size: 27),
+        ),
+      ),
+      body: SafeArea(
+        top: false,
+        child: ListView(
+          padding: const EdgeInsets.only(top: 8),
+          children: [
+            searchingNow ? _searching() : _trackingMap(),
+            if (searchingNow)
+              Container(
+                margin: const EdgeInsets.fromLTRB(16, 14, 16, 20),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: _line),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      'Talebin çevredeki uygun çekicilere gönderildi.',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: _ink,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 54,
+                      child: OutlinedButton.icon(
+                        onPressed: cancelling ? null : cancelRequest,
+                        icon: cancelling
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.close_rounded),
+                        label: Text(
+                          cancelling
+                              ? 'İptal ediliyor...'
+                              : 'Çağrıyı İptal Et',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFFFF2638),
+                          side: const BorderSide(
+                            color: Color(0xFFFF2638),
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(17),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              _foundCard(status),
+          ],
+        ),
+      ),
+    );
   }
 }
