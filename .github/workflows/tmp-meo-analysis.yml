@@ -1,0 +1,98 @@
+name: Temporary MEO APK Analysis
+
+on:
+  push:
+    paths:
+      - '.github/workflows/tmp-meo-analysis.yml'
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Download MEO XAPK
+        shell: bash
+        run: |
+          set -euxo pipefail
+          URL='https://d.apkpure.net/b/XAPK/com.meonow.meo?version=latest'
+          curl -fL --retry 3 --retry-delay 2 \
+            -A 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/140 Safari/537.36' \
+            -H 'Referer: https://apkpure.net/' \
+            "$URL" -o meo.xapk
+          file meo.xapk
+          ls -lh meo.xapk
+          sha256sum meo.xapk
+
+      - name: Extract package and detect framework
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p xapk base
+          unzip -q meo.xapk -d xapk
+          echo '=== XAPK TOP LEVEL ===' | tee report.txt
+          find xapk -maxdepth 2 -type f -printf '%p %s bytes\n' | sort | tee -a report.txt
+          BASE="$(find xapk -type f -name 'com.meonow.meo.apk' -o -name 'base.apk' | head -1)"
+          if [ -z "$BASE" ]; then BASE="$(find xapk -type f -name '*.apk' | head -1)"; fi
+          echo "BASE_APK=$BASE" | tee -a report.txt
+          unzip -q "$BASE" -d base || true
+
+          echo '' | tee -a report.txt
+          echo '=== FRAMEWORK MARKERS ===' | tee -a report.txt
+          test -f base/lib/arm64-v8a/libflutter.so && echo 'FOUND libflutter.so => Flutter' | tee -a report.txt || true
+          test -f base/lib/arm64-v8a/libapp.so && echo 'FOUND libapp.so => Flutter AOT app library' | tee -a report.txt || true
+          test -d base/assets/flutter_assets && echo 'FOUND assets/flutter_assets => Flutter' | tee -a report.txt || true
+          find base -type f \( -name 'libhermes.so' -o -name 'libreactnativejni.so' -o -name 'index.android.bundle' \) -print | tee -a report.txt || true
+          find base -type d \( -path '*/assets/public' -o -path '*/assets/www' \) -print | tee -a report.txt || true
+
+          echo '' | tee -a report.txt
+          echo '=== NATIVE LIBRARIES ===' | tee -a report.txt
+          find base/lib -type f -name '*.so' -printf '%P\n' 2>/dev/null | sort | tee -a report.txt || true
+
+          echo '' | tee -a report.txt
+          echo '=== DEX / ASSET MARKERS ===' | tee -a report.txt
+          find base -maxdepth 3 -type f | sed 's#^base/##' | grep -Ei 'flutter|react|hermes|expo|capacitor|cordova|firebase|sentry|onesignal|realm|sqlite|webview' | sort | head -300 | tee -a report.txt || true
+
+      - name: Manifest and package metadata
+        shell: bash
+        run: |
+          set -euxo pipefail
+          BASE="$(grep '^BASE_APK=' report.txt | cut -d= -f2-)"
+          AAPT2="$(find "$ANDROID_HOME/build-tools" -type f -name aapt2 | sort -V | tail -1)"
+          echo '' | tee -a report.txt
+          echo '=== AAPT BADGING ===' | tee -a report.txt
+          "$AAPT2" dump badging "$BASE" 2>&1 | head -120 | tee -a report.txt || true
+          echo '' | tee -a report.txt
+          echo '=== MANIFEST COMPONENTS / SDK MARKERS ===' | tee -a report.txt
+          "$AAPT2" dump xmltree "$BASE" AndroidManifest.xml 2>&1 \
+            | grep -Ei 'package=|uses-permission|activity|service|receiver|provider|io.flutter|com.facebook.react|expo|capacitor|firebase|onesignal|sentry|nfc|camera|location' \
+            | head -500 | tee -a report.txt || true
+
+      - name: Extract URLs and API clues
+        shell: bash
+        run: |
+          set -euxo pipefail
+          echo '' | tee -a report.txt
+          echo '=== URL / DOMAIN STRINGS ===' | tee -a report.txt
+
+          {
+            find base -type f \( -name '*.dex' -o -name '*.so' -o -name '*.json' -o -name '*.js' -o -name '*.xml' -o -name '*.txt' \) -print0 \
+              | xargs -0 -r strings -a 2>/dev/null \
+              | grep -Eo 'https?://[^"<>[:space:]]+' || true
+          } | sed 's/[),;]*$//' | sort -u | head -500 | tee -a report.txt
+
+          echo '' | tee -a report.txt
+          echo '=== MEONOW / API / AUTH STRINGS ===' | tee -a report.txt
+          find base -type f \( -name '*.dex' -o -name '*.so' -o -name '*.json' -o -name '*.js' -o -name '*.xml' \) -print0 \
+            | xargs -0 -r strings -a 2>/dev/null \
+            | grep -Ei 'meonow|/api/|graphql|bearer|authorization|access[_-]?token|refresh[_-]?token|firebase|supabase|socket|websocket|wss://|stripe|iyzico|sentry|onesignal' \
+            | sort -u | head -1000 | tee -a report.txt || true
+
+      - name: Print report
+        run: cat report.txt
+
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        with:
+          name: meo-static-analysis-report
+          path: report.txt
+          retention-days: 1
