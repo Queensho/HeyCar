@@ -27,7 +27,10 @@ BEGIN
         ('qr_proximity_proofs'),
         ('vehicle_pages'),
         ('vehicle_products'),
-        ('vehicle_touchpoint_events')
+        ('vehicle_touchpoint_events'),
+        ('store_products'),
+        ('store_orders'),
+        ('store_order_items')
       ) AS required(name)
       WHERE to_regclass('public.' || name) IS NULL
     ) q;
@@ -145,6 +148,21 @@ BEGIN
 
   IF to_regclass('public.vehicle_products_one_primary_tag') IS NULL THEN
     RAISE EXCEPTION 'MISSING_PRIMARY_VEHICLE_PRODUCT_INDEX';
+  END IF;
+
+  IF to_regclass('public.idx_store_products_active_sort') IS NULL THEN
+    RAISE EXCEPTION 'MISSING_STORE_PRODUCT_INDEX';
+  END IF;
+
+  IF to_regclass('public.idx_store_orders_status_created') IS NULL THEN
+    RAISE EXCEPTION 'MISSING_STORE_ORDER_STATUS_INDEX';
+  END IF;
+
+  SELECT COUNT(*) INTO bad_count
+    FROM public.store_products;
+
+  IF bad_count < 4 THEN
+    RAISE EXCEPTION 'STORE_PRODUCT_SEED_INCOMPLETE: %', bad_count;
   END IF;
 
   SELECT COUNT(*) INTO bad_count
