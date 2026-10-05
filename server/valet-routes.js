@@ -1,5 +1,7 @@
 const crypto=require('crypto');
 const {ownerId: authenticatedOwnerId}=require('./owner-auth-service');
+const {driverId: authenticatedDriverId}=require('./driver-auth-service');
+const {requireDriverVehicle}=require('./premium-entitlements');
 const rateLimit=require('express-rate-limit');
 
 module.exports=function registerValetRoutes(app,pool){
@@ -123,6 +125,105 @@ module.exports=function registerValetRoutes(app,pool){
  app.post('/api/owner/valet/:vehicleId/request',async(req,res)=>{const owner=authenticatedOwnerId(req);if(!owner)return res.status(401).json({error:'OWNER_REQUIRED'});const client=await pool.connect();let row,deliveryCode,fromStatus='parked';try{await client.query('BEGIN');const locked=await client.query("SELECT s.* FROM valet_sessions s JOIN vehicles v ON v.id=s.vehicle_id WHERE s.vehicle_id::text=$1 AND v.owner_id::text=$2 AND s.status NOT IN ('delivered','cancelled') ORDER BY s.created_at DESC LIMIT 1 FOR UPDATE OF s",[String(req.params.vehicleId),String(owner)]);if(!locked.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'ACTIVE_VALET_NOT_FOUND'});}row=locked.rows[0];fromStatus=String(row.status||'parked');if(!['parked','accepted'].includes(fromStatus)){await client.query('ROLLBACK');return res.status(409).json({error:'VALET_REQUEST_ALREADY_ACTIVE',session:{...row,delivery_code_hash:undefined}});}deliveryCode=String(crypto.randomInt(1000,10000));const updated=await client.query("UPDATE valet_sessions SET status='requested',requested_at=COALESCE(requested_at,now()),staff_id=NULL,updated_at=now() WHERE id=$1 AND status IN ('parked','accepted') RETURNING *",[row.id]);if(!updated.rowCount){await client.query('ROLLBACK');return res.status(409).json({error:'VALET_REQUEST_ALREADY_ACTIVE'});}row=updated.rows[0];await client.query("INSERT INTO valet_delivery_codes(session_id,code_hash,expires_at) VALUES($1,$2,now()+interval '12 hours') ON CONFLICT(session_id) DO UPDATE SET code_hash=EXCLUDED.code_hash,expires_at=EXCLUDED.expires_at,attempts=0",[row.id,hash(deliveryCode)]);await client.query('COMMIT');}catch(e){await client.query('ROLLBACK').catch(()=>{});console.error('owner valet request',e);return res.status(500).json({error:'SERVER_ERROR'});}finally{client.release();}await audit(row.business_id,row.id,null,'owner','vehicle_requested',fromStatus,'requested',{vehicleId:String(row.vehicle_id)});const assigned=await dispatchNext(row.business_id);return res.json({ok:true,session:assigned||{...row,staff_id:null},deliveryCode,queued:!assigned});});
 
  app.post('/api/owner/valet/:vehicleId/delivery-code',async(req,res)=>{const owner=authenticatedOwnerId(req);if(!owner)return res.status(401).json({error:'OWNER_REQUIRED'});const client=await pool.connect();let row,deliveryCode;try{await client.query('BEGIN');const q=await client.query("SELECT s.* FROM valet_sessions s JOIN vehicles v ON v.id=s.vehicle_id WHERE s.vehicle_id::text=$1 AND v.owner_id::text=$2 AND s.status IN ('requested','retrieving','ready') ORDER BY s.created_at DESC LIMIT 1 FOR UPDATE OF s",[String(req.params.vehicleId),String(owner)]);if(!q.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'ACTIVE_DELIVERY_CODE_NOT_FOUND'});}row=q.rows[0];deliveryCode=String(crypto.randomInt(1000,10000));await client.query("INSERT INTO valet_delivery_codes(session_id,code_hash,expires_at) VALUES($1,$2,now()+interval '12 hours') ON CONFLICT(session_id) DO UPDATE SET code_hash=EXCLUDED.code_hash,expires_at=EXCLUDED.expires_at,attempts=0",[row.id,hash(deliveryCode)]);await client.query('COMMIT');}catch(e){await client.query('ROLLBACK').catch(()=>{});console.error('owner valet delivery code',e);return res.status(500).json({error:'SERVER_ERROR'});}finally{client.release();}await audit(row.business_id,row.id,null,'owner','delivery_code_refreshed',row.status,row.status,{vehicleId:String(row.vehicle_id)});return res.json({ok:true,deliveryCode,sessionId:String(row.id),status:row.status});});
+
+ app.get('/api/driver/valet/:vehicleId',async(req,res)=>{
+  try{
+   const access=await requireDriverVehicle(req,res,pool);
+   if(!access)return;
+   const q=await pool.query(
+    "SELECT s.*,b.name AS business_name FROM valet_sessions s JOIN businesses b ON b.id=s.business_id WHERE s.vehicle_id::text=$1 AND s.status NOT IN ('delivered','cancelled') ORDER BY s.created_at DESC LIMIT 1",
+    [access.vehicleId]
+   );
+   const row=q.rows[0]||null;
+   if(row?.delivery_code_hash)delete row.delivery_code_hash;
+   return res.json({ok:true,session:row,deliveryCode:null,activeDriver:access.activeDriver});
+  }catch(e){
+   console.error('driver valet status',e);
+   return res.status(500).json({error:'SERVER_ERROR'});
+  }
+ });
+
+ app.post('/api/driver/valet/:vehicleId/request',async(req,res)=>{
+  const access=await requireDriverVehicle(req,res,pool,{active:true});
+  if(!access)return;
+  const client=await pool.connect();
+  let row,deliveryCode,fromStatus='parked';
+  try{
+   await client.query('BEGIN');
+   const locked=await client.query(
+    "SELECT s.* FROM valet_sessions s WHERE s.vehicle_id::text=$1 AND s.status NOT IN ('delivered','cancelled') ORDER BY s.created_at DESC LIMIT 1 FOR UPDATE OF s",
+    [access.vehicleId]
+   );
+   if(!locked.rowCount){
+    await client.query('ROLLBACK');
+    return res.status(404).json({error:'ACTIVE_VALET_NOT_FOUND'});
+   }
+   row=locked.rows[0];
+   fromStatus=String(row.status||'parked');
+   if(!['parked','accepted'].includes(fromStatus)){
+    await client.query('ROLLBACK');
+    return res.status(409).json({error:'VALET_REQUEST_ALREADY_ACTIVE',session:{...row,delivery_code_hash:undefined}});
+   }
+   deliveryCode=String(crypto.randomInt(1000,10000));
+   const updated=await client.query(
+    "UPDATE valet_sessions SET status='requested',requested_at=COALESCE(requested_at,now()),staff_id=NULL,updated_at=now() WHERE id=$1 AND status IN ('parked','accepted') RETURNING *",
+    [row.id]
+   );
+   if(!updated.rowCount){
+    await client.query('ROLLBACK');
+    return res.status(409).json({error:'VALET_REQUEST_ALREADY_ACTIVE'});
+   }
+   row=updated.rows[0];
+   await client.query(
+    "INSERT INTO valet_delivery_codes(session_id,code_hash,expires_at) VALUES($1,$2,now()+interval '12 hours') ON CONFLICT(session_id) DO UPDATE SET code_hash=EXCLUDED.code_hash,expires_at=EXCLUDED.expires_at,attempts=0",
+    [row.id,hash(deliveryCode)]
+   );
+   await client.query('COMMIT');
+  }catch(e){
+   await client.query('ROLLBACK').catch(()=>{});
+   console.error('driver valet request',e);
+   return res.status(500).json({error:'SERVER_ERROR'});
+  }finally{
+   client.release();
+  }
+  await audit(row.business_id,row.id,null,'driver','vehicle_requested',fromStatus,'requested',{vehicleId:String(row.vehicle_id),driverUserId:access.driverId});
+  const assigned=await dispatchNext(row.business_id);
+  return res.json({ok:true,session:assigned||{...row,staff_id:null},deliveryCode,queued:!assigned});
+ });
+
+ app.post('/api/driver/valet/:vehicleId/delivery-code',async(req,res)=>{
+  const access=await requireDriverVehicle(req,res,pool,{active:true});
+  if(!access)return;
+  const client=await pool.connect();
+  let row,deliveryCode;
+  try{
+   await client.query('BEGIN');
+   const q=await client.query(
+    "SELECT s.* FROM valet_sessions s WHERE s.vehicle_id::text=$1 AND s.status IN ('requested','retrieving','ready') ORDER BY s.created_at DESC LIMIT 1 FOR UPDATE OF s",
+    [access.vehicleId]
+   );
+   if(!q.rowCount){
+    await client.query('ROLLBACK');
+    return res.status(404).json({error:'ACTIVE_DELIVERY_CODE_NOT_FOUND'});
+   }
+   row=q.rows[0];
+   deliveryCode=String(crypto.randomInt(1000,10000));
+   await client.query(
+    "INSERT INTO valet_delivery_codes(session_id,code_hash,expires_at) VALUES($1,$2,now()+interval '12 hours') ON CONFLICT(session_id) DO UPDATE SET code_hash=EXCLUDED.code_hash,expires_at=EXCLUDED.expires_at,attempts=0",
+    [row.id,hash(deliveryCode)]
+   );
+   await client.query('COMMIT');
+  }catch(e){
+   await client.query('ROLLBACK').catch(()=>{});
+   console.error('driver valet delivery code',e);
+   return res.status(500).json({error:'SERVER_ERROR'});
+  }finally{
+   client.release();
+  }
+  await audit(row.business_id,row.id,null,'driver','delivery_code_refreshed',row.status,row.status,{vehicleId:String(row.vehicle_id),driverUserId:access.driverId});
+  return res.json({ok:true,deliveryCode,sessionId:String(row.id),status:row.status});
+ });
+
 
  app.patch('/api/business/valet/sessions/:id/status',async(req,res)=>{const a=await businessAuth(req,res);if(!a||!enabled(a,res))return;const status=String((req.body||{}).status||'');
   if(!['parked','requested','retrieving','ready','delivered','cancelled'].includes(status))return res.status(400).json({error:'INVALID_STATUS'});
