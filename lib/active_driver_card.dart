@@ -145,7 +145,7 @@ class _S extends State<ActiveDriverCard> {
 
       if (!mounted) return;
       setState(() {
-        premium = vehicleJson is Map && vehicleJson['premium'] == true;
+        premium = vehicleJson is Map && vehicleJson['familyPremium'] == true;
         ownerVehicles = vehicles;
         drivers = uniqueDrivers;
         active = nextActiveVehicleId != null;
@@ -174,13 +174,13 @@ class _S extends State<ActiveDriverCard> {
             Icon(Icons.lock_rounded, color: Color(0xFF8B5CFF)),
             SizedBox(width: 8),
             Text(
-              'Premium özellik',
+              'Aile Premium',
               style: TextStyle(color: Colors.white),
             ),
           ],
         ),
         content: const Text(
-          'Yetkili sürücü davet etme ve aktif sürücü seçme Premium üyeler için kullanılabilir.',
+          'Yetkili sürücü davet etme ve aktif sürücü seçme Aile Premium ile kullanılabilir. Paketi yalnızca araç sahibi hesabından yükseltebilirsin.',
           style: TextStyle(color: Color(0xFFA7B0C7)),
         ),
         actions: [
