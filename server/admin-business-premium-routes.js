@@ -286,7 +286,7 @@ module.exports=function registerAdminBusinessPremiumRoutes(app,pool,adminGuard){
     try{
       const r=await pool.query(
         `SELECT u.id,u.email,u.phone,u.display_name,u.status,u.created_at,
-                COALESCE(u.premium,false) AS premium_flag,u.premium_expires_at,
+                COALESCE(u.premium,false) AS premium_flag,COALESCE(NULLIF(u.premium_plan,''),'individual') AS premium_plan,u.premium_expires_at,
                 (COALESCE(u.premium,false)=TRUE AND (u.premium_expires_at IS NULL OR u.premium_expires_at>NOW())) AS premium,
                 (SELECT COUNT(*)::int FROM premium_history ph WHERE ph.user_id=u.id::text) AS history_count
            FROM users u
@@ -325,10 +325,12 @@ module.exports=function registerAdminBusinessPremiumRoutes(app,pool,adminGuard){
     const client=await pool.connect();
     try{
       await client.query('BEGIN');
-      const before=await client.query('SELECT id,display_name,email,phone,COALESCE(premium,false) AS premium,premium_expires_at FROM users WHERE id::text=$1 FOR UPDATE',[userId]);
+      const before=await client.query("SELECT id,display_name,email,phone,COALESCE(premium,false) AS premium,COALESCE(NULLIF(premium_plan,''),'individual') AS premium_plan,premium_expires_at FROM users WHERE id::text=$1 FOR UPDATE",[userId]);
       if(!before.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'USER_NOT_FOUND'});}
       const prev=before.rows[0];
       let nextPremium=prev.premium===true,nextExpiry=prev.premium_expires_at;
+      let nextPlan=String(req.body?.plan||prev.premium_plan||'individual').trim().toLowerCase();
+      if(!['individual','family'].includes(nextPlan))nextPlan='individual';
       const days=Number(req.body?.days||0);
       const explicitExpiry=Object.prototype.hasOwnProperty.call(req.body||{},'expiresAt')?isoOrNull(req.body.expiresAt):undefined;
       if(action==='activate'){
@@ -339,13 +341,14 @@ module.exports=function registerAdminBusinessPremiumRoutes(app,pool,adminGuard){
         const base=prev.premium_expires_at&&new Date(prev.premium_expires_at)>new Date()?new Date(prev.premium_expires_at):new Date();
         nextPremium=true;nextExpiry=new Date(base.getTime()+days*86400000).toISOString();
       }else if(action==='cancel'){
-        nextPremium=false;nextExpiry=new Date().toISOString();
+        nextPremium=false;nextExpiry=new Date().toISOString();nextPlan='free';
       }else{
         nextPremium=req.body?.premium===true;
         nextExpiry=explicitExpiry===undefined?prev.premium_expires_at:explicitExpiry;
         if(!nextPremium&&nextExpiry===null)nextExpiry=new Date().toISOString();
       }
-      const updated=await client.query('UPDATE users SET premium=$2,premium_expires_at=$3 WHERE id::text=$1 RETURNING id,display_name,email,phone,premium,premium_expires_at',[userId,nextPremium,nextExpiry]);
+      if(!nextPremium)nextPlan='free';
+      const updated=await client.query('UPDATE users SET premium=$2,premium_expires_at=$3,premium_plan=$4 WHERE id::text=$1 RETURNING id,display_name,email,phone,premium,premium_plan,premium_expires_at',[userId,nextPremium,nextExpiry,nextPlan]);
       const a=actor(req);
       const historyAction=action==='activate'?'activated':action==='extend'?'extended':action==='cancel'?'cancelled':'adjusted';
       await client.query(
@@ -355,7 +358,7 @@ module.exports=function registerAdminBusinessPremiumRoutes(app,pool,adminGuard){
       );
       await writeAdminAudit(client,req,{
         action:action==='activate'?'premium.activated':action==='extend'?'premium.extended':action==='cancel'?'premium.cancelled':'premium.adjusted',
-        targetType:'user',targetId:userId,targetLabel:prev.display_name||prev.email||prev.phone||userId,before:prev,after:updated.rows[0],metadata:{days:Number.isFinite(days)?days:null,note:req.body?.note||null}
+        targetType:'user',targetId:userId,targetLabel:prev.display_name||prev.email||prev.phone||userId,before:prev,after:updated.rows[0],metadata:{days:Number.isFinite(days)?days:null,plan:nextPlan,note:req.body?.note||null}
       });
       await client.query('COMMIT');
       res.json({ok:true,user:updated.rows[0]});
