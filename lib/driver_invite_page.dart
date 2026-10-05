@@ -711,7 +711,7 @@ class _DriverHomePageState extends State<DriverHomePage> {
       ),
     ];
 
-    const labels = ['Ana Sayfa', 'Bildirimler', 'Araçlarım', 'Ayarlar'];
+    const labels = ['Ana Sayfa', 'Bildirimler', 'Araçlarım', 'Profil'];
     const icons = [
       Icons.home_rounded,
       Icons.notifications_none_rounded,
@@ -1889,15 +1889,35 @@ class _DriverSettingsPage extends StatelessWidget {
   final VoidCallback onOpenNotifications;
   final Future<void> Function() onRefresh;
 
+  String get _name {
+    final value = driverName.trim();
+    return value.isEmpty ? 'Sürücü' : value;
+  }
+
+  String get _initials {
+    final parts = _name.split(RegExp(r'\\s+')).where((e) => e.isNotEmpty).take(2);
+    final value = parts.map((e) => e.characters.first.toUpperCase()).join();
+    return value.isEmpty ? 'S' : value;
+  }
+
   Future<void> _logout(BuildContext context) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: _panel,
-        title: const Text('Çıkış yapılsın mı?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900)),
-        content: const Text('CepQontag sürücü hesabından çıkış yapacaksın.', style: TextStyle(color: _muted)),
+        backgroundColor: CepqarTheme.panel,
+        title: Text(
+          'Çıkış yapılsın mı?',
+          style: TextStyle(color: CepqarTheme.text, fontWeight: FontWeight.w900),
+        ),
+        content: Text(
+          'CepQontag sürücü hesabından çıkış yapacaksın.',
+          style: TextStyle(color: CepqarTheme.muted),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Vazgeç')),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Vazgeç'),
+          ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: const Color(0xFFFF4D63)),
             onPressed: () => Navigator.pop(dialogContext, true),
@@ -1914,22 +1934,42 @@ class _DriverSettingsPage extends StatelessWidget {
     for (final key in ['driver_logged_in', 'driver_user_id', 'driver_name']) {
       await prefs.remove(key);
     }
-    if (context.mounted) Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+    if (context.mounted) {
+      Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+    }
   }
 
   void _showInfo(BuildContext context, String title, String message) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: _panel,
+      backgroundColor: CepqarTheme.panel,
       showDragHandle: true,
       builder: (_) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(22, 4, 22, 28),
-          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, style: const TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.w900)),
-            const SizedBox(height: 10),
-            Text(message, style: const TextStyle(color: _muted, fontSize: 14.5, height: 1.4)),
-          ]),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  color: CepqarTheme.text,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 9),
+              Text(
+                message,
+                style: TextStyle(
+                  color: CepqarTheme.muted,
+                  fontSize: 13,
+                  height: 1.4,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1937,94 +1977,565 @@ class _DriverSettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final compact = MediaQuery.sizeOf(context).height < 820;
-    final top = MediaQuery.paddingOf(context).top;
-    final heroHeight = compact ? 292.0 : 320.0;
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: CepqarTheme.mode,
+      builder: (context, _, __) {
+        final light = CepqarTheme.isLight;
+        final bg = CepqarTheme.bg;
+        final panel = CepqarTheme.panel;
+        final line = CepqarTheme.line;
+        final text = CepqarTheme.text;
 
-    return Scaffold(
-      backgroundColor: _bg,
-      body: SingleChildScrollView(
-        child: Column(children: [
-          SizedBox(
-            height: heroHeight,
-            child: Stack(fit: StackFit.expand, children: [
-              const DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF080F20), Color(0xFF121530)]),
+        return Scaffold(
+          backgroundColor: bg,
+          body: SafeArea(
+            bottom: false,
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 22),
+              children: [
+                _DriverProfileBrandHeader(
+                  initials: _initials,
+                  onNotifications: onOpenNotifications,
+                ),
+                const SizedBox(height: 10),
+                _DriverProfileIdentityCard(
+                  name: _name,
+                  initials: _initials,
+                  onTap: () => _showInfo(
+                    context,
+                    'Hesap bilgilerim',
+                    '$_name\\nYetkili sürücü hesabı',
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'Hızlı İşlemler',
+                  style: TextStyle(
+                    color: text,
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 7),
+                Row(
+                  children: [
+                    _DriverProfileQuickAction(
+                      icon: Icons.directions_car_filled_rounded,
+                      label: 'Araçlarım',
+                      onTap: onOpenVehicles,
+                    ),
+                    const SizedBox(width: 7),
+                    _DriverProfileQuickAction(
+                      icon: Icons.notifications_none_rounded,
+                      label: 'Bildirimler',
+                      onTap: onOpenNotifications,
+                    ),
+                    const SizedBox(width: 7),
+                    _DriverProfileQuickAction(
+                      icon: Icons.refresh_rounded,
+                      label: 'Yenile',
+                      onTap: () async => onRefresh(),
+                    ),
+                    const SizedBox(width: 7),
+                    _DriverProfileQuickAction(
+                      icon: Icons.shield_outlined,
+                      label: 'Yetkilerim',
+                      onTap: () => _showInfo(
+                        context,
+                        'Sürücü yetkileri',
+                        'Araç ekleme, düzenleme, silme, aktif sürücü seçme ve yeni sürücü davet etme işlemleri araç sahibi tarafından yönetilir.',
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  decoration: BoxDecoration(
+                    color: panel,
+                    borderRadius: BorderRadius.circular(17),
+                    border: Border.all(color: line),
+                    boxShadow: light
+                        ? [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: .035),
+                              blurRadius: 16,
+                              offset: const Offset(0, 5),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Column(
+                    children: [
+                      _DriverProfileMenuRow(
+                        icon: Icons.person_outline_rounded,
+                        title: 'Hesap Bilgileri',
+                        onTap: () => _showInfo(
+                          context,
+                          'Hesap bilgilerim',
+                          '$_name\\nYetkili sürücü hesabı',
+                        ),
+                      ),
+                      _DriverProfileMenuRow(
+                        icon: Icons.directions_car_outlined,
+                        title: 'Araçlarım',
+                        onTap: onOpenVehicles,
+                      ),
+                      _DriverProfileMenuRow(
+                        icon: Icons.notifications_none_rounded,
+                        title: 'Bildirimler',
+                        onTap: onOpenNotifications,
+                      ),
+                      const _DriverProfileThemeRow(),
+                      _DriverProfileMenuRow(
+                        icon: Icons.lock_outline_rounded,
+                        title: 'Gizlilik ve Güvenlik',
+                        onTap: () => _showInfo(
+                          context,
+                          'Gizlilik ve güvenlik',
+                          'Sürücü hesabındaki araç yetkileri araç sahibi tarafından yönetilir. Hesabına bağlı bildirim ve araç bilgileri yalnızca yetkili olduğun araçlar için gösterilir.',
+                        ),
+                      ),
+                      _DriverProfileMenuRow(
+                        icon: Icons.description_outlined,
+                        title: 'Yasal ve Gizlilik',
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const LegalCenterPage()),
+                        ),
+                      ),
+                      _DriverProfileMenuRow(
+                        icon: Icons.refresh_rounded,
+                        title: 'Verileri Yenile',
+                        onTap: () async => onRefresh(),
+                      ),
+                      _DriverProfileMenuRow(
+                        icon: Icons.logout_rounded,
+                        title: 'Çıkış Yap',
+                        danger: true,
+                        showDivider: false,
+                        onTap: () => _logout(context),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _DriverProfileBrandHeader extends StatelessWidget {
+  const _DriverProfileBrandHeader({
+    required this.initials,
+    required this.onNotifications,
+  });
+
+  final String initials;
+  final VoidCallback onNotifications;
+
+  @override
+  Widget build(BuildContext context) {
+    final light = CepqarTheme.isLight;
+    final text = CepqarTheme.text;
+    final line = CepqarTheme.line;
+
+    return Row(
+      children: [
+        Image.asset(
+          light
+              ? 'assets/file_00000000b130820abb8d411e67ab0d25.png'
+              : 'assets/Logoyeni.png',
+          key: ValueKey(light),
+          height: 31,
+          fit: BoxFit.contain,
+          alignment: Alignment.centerLeft,
+        ),
+        const Spacer(),
+        InkWell(
+          onTap: onNotifications,
+          customBorder: const CircleBorder(),
+          child: Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: light ? Colors.white : const Color(0xFF0B1220),
+              border: Border.all(color: line),
+            ),
+            child: Icon(
+              Icons.notifications_none_rounded,
+              color: text,
+              size: 21,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Container(
+          width: 38,
+          height: 38,
+          alignment: Alignment.center,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF4D17D3), Color(0xFF8A36FF)],
+            ),
+          ),
+          child: Text(
+            initials,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DriverProfileIdentityCard extends StatelessWidget {
+  const _DriverProfileIdentityCard({
+    required this.name,
+    required this.initials,
+    required this.onTap,
+  });
+
+  final String name;
+  final String initials;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final light = CepqarTheme.isLight;
+    final panel = CepqarTheme.panel;
+    final line = CepqarTheme.line;
+    final text = CepqarTheme.text;
+    final muted = CepqarTheme.muted;
+
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: panel,
+        borderRadius: BorderRadius.circular(17),
+        border: Border.all(color: line),
+        boxShadow: light
+            ? [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: .035),
+                  blurRadius: 16,
+                  offset: const Offset(0, 5),
+                ),
+              ]
+            : null,
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(13),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(7, 7, 6, 7),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                alignment: Alignment.center,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFF4F16D5), Color(0xFF8D39FF)],
+                  ),
+                ),
+                child: Text(
+                  initials,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
-              Positioned(
-                right: -36,
-                top: top + 24,
-                width: compact ? 270 : 298,
-                height: compact ? 270 : 298,
-                child: Image.asset('assets/Cepqar3d.png', fit: BoxFit.contain, alignment: Alignment.bottomRight, errorBuilder: (_, __, ___) => const SizedBox.shrink()),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: text,
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Container(
+                          width: 15,
+                          height: 15,
+                          decoration: const BoxDecoration(
+                            color: _purple,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.check_rounded,
+                            color: Colors.white,
+                            size: 10,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      'Yetkili sürücü hesabı',
+                      style: TextStyle(color: muted, fontSize: 11.2),
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      'CepQontag Sürücü',
+                      style: TextStyle(color: muted, fontSize: 11.2),
+                    ),
+                  ],
+                ),
               ),
-              Positioned(
-                left: 20,
-                right: 18,
-                top: top + 14,
-                child: Row(children: [
-                  const _DriverBrand(),
-                  const Spacer(),
-                  _RoundIcon(icon: Icons.notifications_none_rounded, onTap: onOpenNotifications),
-                  const SizedBox(width: 10),
-                  _RoundIcon(
-                    icon: Icons.person_rounded,
-                    onTap: () => _showInfo(context, 'Hesap bilgilerim', driverName.trim().isEmpty ? 'Sürücü hesabı' : driverName.trim()),
-                  ),
-                ]),
-              ),
-              const Positioned(
-                left: 20,
-                bottom: 22,
-                right: 165,
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('Ayarlar', style: TextStyle(color: Colors.white, fontSize: 34, height: 1, fontWeight: FontWeight.w900, letterSpacing: -1.1)),
-                  SizedBox(height: 8),
-                  Text('Hesabınızı ve CepQontag\ntercihlerinizi yönetin.', style: TextStyle(color: _muted, fontSize: 14.5, height: 1.32, fontWeight: FontWeight.w500)),
-                ]),
-              ),
-            ]),
+              Icon(Icons.chevron_right_rounded, color: muted, size: 20),
+            ],
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 0, 14, 22),
-            child: Column(children: [
-              _SettingsTile(
-                icon: Icons.person_outline_rounded,
-                iconColor: _purple,
-                title: 'Hesap bilgilerim',
-                subtitle: 'Profil ve sürücü hesabı bilgilerin',
-                onTap: () => _showInfo(context, 'Hesap bilgilerim', driverName.trim().isEmpty ? 'Sürücü hesabı' : driverName.trim()),
-              ),
-              const SizedBox(height: 8),
-              _SettingsTile(icon: Icons.directions_car_filled_rounded, iconColor: _orange, title: 'Araçlarım', subtitle: 'Yetkili olduğun araçları görüntüle', onTap: onOpenVehicles),
-              const SizedBox(height: 8),
-              _SettingsTile(icon: Icons.notifications_none_rounded, iconColor: _pink, title: 'Bildirimler', subtitle: 'Sana yönlenen araç bildirimlerini görüntüle', onTap: onOpenNotifications),
-              const SizedBox(height: 8),
-              _SettingsTile(
-                icon: Icons.shield_outlined,
-                iconColor: _blue,
-                title: 'Gizlilik ve güvenlik',
-                subtitle: 'Sürücü yetkilerin araç sahibi tarafından yönetilir',
-                onTap: () => _showInfo(context, 'Gizlilik ve güvenlik', 'Araç ekleme, düzenleme, silme, aktif sürücü seçme ve yeni sürücü davet etme yetkileri yalnızca araç sahibindedir.'),
-              ),
-              const SizedBox(height: 8),
-              _SettingsTile(
-                icon: Icons.gavel_rounded,
-                iconColor: const Color(0xFFB78CFF),
-                title: 'Yasal ve gizlilik',
-                subtitle: 'Kullanım Şartları ve KVKK aydınlatma metni',
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LegalCenterPage())),
-              ),
-              const SizedBox(height: 8),
-              _SettingsTile(icon: Icons.refresh_rounded, iconColor: const Color(0xFF55E6A5), title: 'Verileri yenile', subtitle: 'Araç ve bildirim bilgilerini güncelle', onTap: onRefresh),
-              const SizedBox(height: 14),
-              _SettingsTile(icon: Icons.logout_rounded, iconColor: const Color(0xFFFF4D63), title: 'Çıkış Yap', subtitle: 'CepQontag sürücü hesabından güvenli şekilde çıkış yap', onTap: () => _logout(context)),
-            ]),
-          ),
-        ]),
+        ),
       ),
+    );
+  }
+}
+
+class _DriverProfileQuickAction extends StatelessWidget {
+  const _DriverProfileQuickAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final light = CepqarTheme.isLight;
+    final panel = CepqarTheme.panel;
+    final line = CepqarTheme.line;
+    final text = CepqarTheme.text;
+
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          height: 74,
+          padding: const EdgeInsets.fromLTRB(3, 8, 3, 6),
+          decoration: BoxDecoration(
+            color: panel,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: line),
+            boxShadow: light
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: .025),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 31,
+                height: 31,
+                decoration: BoxDecoration(
+                  color: _purple.withValues(alpha: light ? .10 : .16),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Icon(icon, color: _purple, size: 19),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                label,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: text,
+                  fontSize: 9.4,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DriverProfileThemeRow extends StatelessWidget {
+  const _DriverProfileThemeRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: CepqarTheme.mode,
+      builder: (_, mode, __) {
+        final dark = mode == ThemeMode.dark;
+        final text = CepqarTheme.text;
+        final muted = CepqarTheme.muted;
+        final line = CepqarTheme.line;
+
+        return Column(
+          children: [
+            InkWell(
+              onTap: () => CepqarTheme.setDarkMode(!dark),
+              child: SizedBox(
+                height: 48,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 11),
+                  child: Row(
+                    children: [
+                      Icon(
+                        dark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                        color: text,
+                        size: 17,
+                      ),
+                      const SizedBox(width: 11),
+                      Expanded(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Karanlık Mod',
+                              style: TextStyle(
+                                color: text,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            Text(
+                              dark ? 'Açık' : 'Kapalı • Aydınlık tema',
+                              style: TextStyle(
+                                color: muted,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Switch(
+                        value: dark,
+                        onChanged: CepqarTheme.setDarkMode,
+                        activeThumbColor: _purple,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(left: 39, right: 10),
+              child: Container(
+                height: 1,
+                color: line.withValues(alpha: .72),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _DriverProfileMenuRow extends StatelessWidget {
+  const _DriverProfileMenuRow({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+    this.danger = false,
+    this.showDivider = true,
+  });
+
+  final IconData icon;
+  final String title;
+  final VoidCallback onTap;
+  final bool danger;
+  final bool showDivider;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = CepqarTheme.text;
+    final muted = CepqarTheme.muted;
+    final line = CepqarTheme.line;
+    const dangerColor = Color(0xFFFF405D);
+
+    return Column(
+      children: [
+        InkWell(
+          onTap: onTap,
+          child: SizedBox(
+            height: 45,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 11),
+              child: Row(
+                children: [
+                  Icon(
+                    icon,
+                    color: danger ? dangerColor : text,
+                    size: 17,
+                  ),
+                  const SizedBox(width: 11),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: TextStyle(
+                        color: danger ? dangerColor : text,
+                        fontSize: 12.1,
+                        fontWeight: danger ? FontWeight.w800 : FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: danger ? dangerColor.withValues(alpha: .8) : muted,
+                    size: 18,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (showDivider)
+          Padding(
+            padding: const EdgeInsets.only(left: 39, right: 10),
+            child: Container(
+              height: 1,
+              color: line.withValues(alpha: .72),
+            ),
+          ),
+      ],
     );
   }
 }
