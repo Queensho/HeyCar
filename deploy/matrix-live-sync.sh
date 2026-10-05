@@ -23,6 +23,7 @@ MIGRATION_057_APPLIED=0
 MIGRATION_058_APPLIED=0
 MIGRATION_082_APPLIED=0
 MIGRATION_083_APPLIED=0
+MIGRATION_084_APPLIED=0
 SUCCESS=0
 STAGE="init"
 LOG="/tmp/matrix-live-sync-$RUN_ID.log"
@@ -115,7 +116,7 @@ rollback_all() {
   echo "Reason: $reason"
   sudo systemctl stop heycar >/dev/null 2>&1 || true
 
-  if [ "$MIGRATION_053_APPLIED" -eq 1 ] || [ "$MIGRATION_054_APPLIED" -eq 1 ] || [ "$MIGRATION_057_APPLIED" -eq 1 ] || [ "$MIGRATION_058_APPLIED" -eq 1 ] || [ "$MIGRATION_082_APPLIED" -eq 1 ] || [ "$MIGRATION_083_APPLIED" -eq 1 ]; then
+  if [ "$MIGRATION_053_APPLIED" -eq 1 ] || [ "$MIGRATION_054_APPLIED" -eq 1 ] || [ "$MIGRATION_057_APPLIED" -eq 1 ] || [ "$MIGRATION_058_APPLIED" -eq 1 ] || [ "$MIGRATION_082_APPLIED" -eq 1 ] || [ "$MIGRATION_083_APPLIED" -eq 1 ] || [ "$MIGRATION_084_APPLIED" -eq 1 ]; then
     if [ -s "$ROLLBACK_SQL" ]; then
       sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$ROLLBACK_SQL"
       DB_ROLLBACK_RC=$?
@@ -217,7 +218,7 @@ for f in "${FILES[@]}"; do
   fi
 done
 
-for m in 053_admin_audit_canonical.sql 054_qr_opaque_tokens.sql 057_web_push_subscriptions.sql 058_qr_proximity_security.sql 082_family_premium.sql 083_towing_vehicle_pricing.sql; do
+for m in 053_admin_audit_canonical.sql 054_qr_opaque_tokens.sql 057_web_push_subscriptions.sql 058_qr_proximity_security.sql 082_family_premium.sql 083_towing_vehicle_pricing.sql 084_owner_login_dependencies.sql; do
   fetch_https "$BASE/migrations/$m" -o "$TMP/$m" || fail "migration indirilemedi: $m"
   chmod 644 "$TMP/$m"
 done
@@ -383,6 +384,8 @@ sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$TMP/082_family_premium.sq
 MIGRATION_082_APPLIED=1
 sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$TMP/083_towing_vehicle_pricing.sql"
 MIGRATION_083_APPLIED=1
+sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$TMP/084_owner_login_dependencies.sql"
+MIGRATION_084_APPLIED=1
 
 STAGE="schema_verify"
 echo "=== LIVE SCHEMA VERIFY ==="
