@@ -1548,6 +1548,19 @@ class _QrPageState extends State<QrPage>{
   String batchFilter='all';
   String printFilter='all';
   final Set<String> selectedTokens=<String>{};
+  int qrSection=0;
+  int tablePage=0;
+  bool centerLogo=true;
+  final plateController=TextEditingController();
+  final noteController=TextEditingController();
+
+  @override
+  void dispose(){
+    search.dispose();
+    plateController.dispose();
+    noteController.dispose();
+    super.dispose();
+  }
 
   String publicUrl(String token){
     final match=widget.rows.where((e)=>(e['token']??'').toString()==token).cast<Map<String,dynamic>>().toList();
@@ -1861,13 +1874,634 @@ class _QrPageState extends State<QrPage>{
     ));
   }
 
-  @override Widget build(BuildContext context){
-    final q=search.text.toLowerCase();
-    final batches=batchCodes;
+  
+  int get _printedCount=>widget.rows.where((e)=>_printStatus(e)=='printed').length;
+  int get _activeCount=>widget.rows.where((e)=>(e['status']??'').toString()=='active').length;
+  int get _waitingCount=>widget.rows.where((e){
+    final ps=_printStatus(e);
+    return ps!='printed'&&ps!='legacy';
+  }).length;
+  int get _monthCount{
+    final now=DateTime.now();
+    return widget.rows.where((e){
+      final d=DateTime.tryParse((e['created_at']??e['createdAt']??'').toString())?.toLocal();
+      return d!=null&&d.year==now.year&&d.month==now.month;
+    }).length;
+  }
+
+  String _rowDate(Map<String,dynamic> e){
+    final d=DateTime.tryParse((e['created_at']??e['createdAt']??'').toString())?.toLocal();
+    if(d==null)return '-';
+    return d.day.toString().padLeft(2,'0')+'.'+d.month.toString().padLeft(2,'0')+'.'+d.year.toString()+' '+d.hour.toString().padLeft(2,'0')+':'+d.minute.toString().padLeft(2,'0');
+  }
+
+  Widget _qrMetric({
+    required String label,
+    required String value,
+    required IconData icon,
+    required Color color,
+    String? delta,
+  })=>Container(
+    height:82,
+    padding:const EdgeInsets.symmetric(horizontal:13,vertical:11),
+    decoration:AdminUi.card(radius:15),
+    child:Row(children:[
+      Container(
+        width:43,height:43,
+        decoration:BoxDecoration(
+          gradient:LinearGradient(
+            begin:Alignment.topLeft,
+            end:Alignment.bottomRight,
+            colors:[color,color.withValues(alpha:.72)],
+          ),
+          borderRadius:BorderRadius.circular(11),
+        ),
+        child:Icon(icon,color:Colors.white,size:22),
+      ),
+      const SizedBox(width:10),
+      Expanded(child:Column(
+        mainAxisAlignment:MainAxisAlignment.center,
+        crossAxisAlignment:CrossAxisAlignment.start,
+        children:[
+          Text(label,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_muted,fontSize:10,fontWeight:FontWeight.w600)),
+          const SizedBox(height:1),
+          Text(value,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_ink,fontSize:20,fontWeight:FontWeight.w900)),
+        ],
+      )),
+      if(delta!=null)Text(
+        delta,
+        style:TextStyle(
+          color:delta.startsWith('↓')?Colors.redAccent:_green,
+          fontSize:9.5,
+          fontWeight:FontWeight.w900,
+        ),
+      ),
+    ]),
+  );
+
+  Widget _metricStrip(double width,bool compact){
+    final items=<Widget>[
+      _qrMetric(label:'Toplam QR',value:widget.rows.length.toString(),icon:Icons.qr_code_2_rounded,color:_purple),
+      _qrMetric(label:'Basıldı',value:_printedCount.toString(),icon:Icons.check_rounded,color:_green),
+      _qrMetric(label:'Bekleyen',value:_waitingCount.toString(),icon:Icons.schedule_rounded,color:const Color(0xFFFF8A00)),
+      _qrMetric(label:'Aktif Kullanım',value:_activeCount.toString(),icon:Icons.center_focus_strong_rounded,color:const Color(0xFF8090AF)),
+      _qrMetric(label:'Bu Ay Üretildi',value:_monthCount.toString(),icon:Icons.show_chart_rounded,color:_purple2,delta:'↑ %12'),
+    ];
+    final cols=compact?2:5;
+    const gap=10.0;
+    final w=(width-(cols-1)*gap)/cols;
+    return Wrap(
+      spacing:gap,runSpacing:gap,
+      children:[
+        for(var i=0;i<(compact?4:items.length);i++)SizedBox(width:w,child:items[i]),
+      ],
+    );
+  }
+
+  Widget _sectionTabs(){
+    const labels=['Tekli Üretim','Toplu Üretim','Tasarım Ayarları','Baskı Listesi','Geçmiş'];
+    return Container(
+      height:50,
+      decoration:BoxDecoration(
+        color:Colors.white,
+        borderRadius:const BorderRadius.vertical(top:Radius.circular(16)),
+        border:Border.all(color:_line),
+      ),
+      child:ListView.separated(
+        scrollDirection:Axis.horizontal,
+        padding:const EdgeInsets.symmetric(horizontal:8),
+        itemCount:labels.length,
+        separatorBuilder:(_,__)=>const SizedBox(width:6),
+        itemBuilder:(_,i){
+          final selected=qrSection==i;
+          return InkWell(
+            onTap:()=>setState((){qrSection=i;tablePage=0;}),
+            child:Container(
+              padding:const EdgeInsets.symmetric(horizontal:16),
+              alignment:Alignment.center,
+              decoration:BoxDecoration(
+                border:Border(bottom:BorderSide(color:selected?_purple:Colors.transparent,width:2)),
+              ),
+              child:Text(
+                labels[i],
+                style:TextStyle(
+                  color:selected?_purple:_ink,
+                  fontSize:10.5,
+                  fontWeight:selected?FontWeight.w900:FontWeight.w700,
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _frontPreview(Map<String,dynamic>? sample){
+    final token=(sample?['token']??'').toString();
+    return _previewCard(
+      title:'Ön Yüz (10 × 4 cm)',
+      child:AspectRatio(
+        aspectRatio:10/4.9,
+        child:ClipRRect(
+          borderRadius:BorderRadius.circular(15),
+          child:token.isEmpty
+            ? Image.asset('assets/Etiket4.png',fit:BoxFit.cover)
+            : Container(
+                color:Colors.white,
+                padding:const EdgeInsets.all(2),
+                child:_sticker(token,publicUrl(token)),
+              ),
+        ),
+      ),
+    );
+  }
+
+  Widget _backPreview()=>_previewCard(
+    title:'Arka Yüz (10 × 4 cm)',
+    child:AspectRatio(
+      aspectRatio:10/4.9,
+      child:ClipRRect(
+        borderRadius:BorderRadius.circular(15),
+        child:Image.asset(
+          'assets/Arka2.png',
+          fit:BoxFit.cover,
+          errorBuilder:(_,__,___)=>Image.asset('assets/Arka.png',fit:BoxFit.cover),
+        ),
+      ),
+    ),
+  );
+
+  Widget _previewCard({required String title,required Widget child})=>Column(
+    crossAxisAlignment:CrossAxisAlignment.start,
+    children:[
+      Padding(
+        padding:const EdgeInsets.fromLTRB(2,0,0,8),
+        child:Text(title,style:const TextStyle(color:_ink,fontSize:11.5,fontWeight:FontWeight.w900)),
+      ),
+      Container(
+        padding:const EdgeInsets.all(8),
+        decoration:AdminUi.card(radius:18),
+        child:child,
+      ),
+    ],
+  );
+
+  Widget _qrInfoCard(Map<String,dynamic>? sample){
+    final token=(sample?['token']??'').toString();
+    return Container(
+      padding:const EdgeInsets.all(13),
+      decoration:AdminUi.card(radius:15),
+      child:Column(
+        crossAxisAlignment:CrossAxisAlignment.start,
+        children:[
+          const Text('QR Bilgileri',style:TextStyle(color:_ink,fontSize:12,fontWeight:FontWeight.w900)),
+          const SizedBox(height:12),
+          _compactField(
+            label:'Etiket Kodu',
+            child:Row(children:[
+              Expanded(child:Text(token.isEmpty?'CP-QAR-000123':token,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_ink,fontSize:10,fontWeight:FontWeight.w700))),
+              IconButton(
+                visualDensity:VisualDensity.compact,
+                tooltip:'Yenile',
+                onPressed:()=>widget.create(1),
+                icon:const Icon(Icons.refresh_rounded,color:_muted,size:16),
+              ),
+            ]),
+          ),
+          const SizedBox(height:8),
+          _compactField(
+            label:'Araç Plakası (Opsiyonel)',
+            child:TextField(
+              controller:plateController,
+              style:const TextStyle(fontSize:10.5,color:_ink),
+              decoration:const InputDecoration(
+                isDense:true,
+                hintText:'34 ABC 123',
+                filled:false,
+                border:InputBorder.none,
+                enabledBorder:InputBorder.none,
+                focusedBorder:InputBorder.none,
+                contentPadding:EdgeInsets.zero,
+              ),
+            ),
+          ),
+          const SizedBox(height:8),
+          _compactField(
+            label:'Not (Opsiyonel)',
+            tall:true,
+            child:TextField(
+              controller:noteController,
+              maxLines:2,
+              style:const TextStyle(fontSize:10.5,color:_ink),
+              decoration:const InputDecoration(
+                isDense:true,
+                hintText:'Not ekleyin...',
+                filled:false,
+                border:InputBorder.none,
+                enabledBorder:InputBorder.none,
+                focusedBorder:InputBorder.none,
+                contentPadding:EdgeInsets.zero,
+              ),
+            ),
+          ),
+          const SizedBox(height:9),
+          SwitchListTile(
+            value:centerLogo,
+            dense:true,
+            contentPadding:EdgeInsets.zero,
+            onChanged:(v)=>setState(()=>centerLogo=v),
+            activeThumbColor:_purple,
+            title:const Text('Orta logo ekle (Q)',style:TextStyle(color:_ink,fontSize:10.5,fontWeight:FontWeight.w700)),
+          ),
+          const SizedBox(height:3),
+          _compactField(
+            label:'Çerçeve rengi',
+            child:Row(children:[
+              Container(width:22,height:22,decoration:BoxDecoration(color:const Color(0xFF6C5CE7),borderRadius:BorderRadius.circular(5))),
+              const SizedBox(width:7),
+              const Expanded(child:Text('#6C5CE7',style:TextStyle(color:_ink,fontSize:10.5,fontWeight:FontWeight.w700))),
+              const Icon(Icons.keyboard_arrow_down_rounded,color:_muted,size:17),
+            ]),
+          ),
+          const SizedBox(height:12),
+          Row(children:[
+            Expanded(child:OutlinedButton(
+              onPressed:sample==null?null:()=>showQr(sample),
+              child:const Text('Önizleme'),
+            )),
+            const SizedBox(width:8),
+            Expanded(child:FilledButton(
+              onPressed:()=>widget.create(1),
+              style:FilledButton.styleFrom(backgroundColor:_purple),
+              child:const Text('QR Oluştur'),
+            )),
+          ]),
+        ],
+      ),
+    );
+  }
+
+  Widget _compactField({required String label,required Widget child,bool tall=false})=>Column(
+    crossAxisAlignment:CrossAxisAlignment.start,
+    children:[
+      Text(label,style:const TextStyle(color:_muted,fontSize:9.5,fontWeight:FontWeight.w600)),
+      const SizedBox(height:4),
+      Container(
+        constraints:BoxConstraints(minHeight:tall?48:37),
+        padding:const EdgeInsets.symmetric(horizontal:9,vertical:6),
+        decoration:BoxDecoration(
+          color:AdminUi.surfaceSoft,
+          borderRadius:BorderRadius.circular(8),
+          border:Border.all(color:_line),
+        ),
+        child:child,
+      ),
+    ],
+  );
+
+  Widget _quickPanel(List<Map<String,dynamic>> rows){
+    final printable=rows.where((e)=>_printStatus(e)!='printed').toList();
+    return Column(children:[
+      Container(
+        padding:const EdgeInsets.all(13),
+        decoration:AdminUi.card(radius:15),
+        child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          const Text('Hızlı İşlemler',style:TextStyle(color:_ink,fontSize:12,fontWeight:FontWeight.w900)),
+          const SizedBox(height:10),
+          _quickButton(Icons.add_rounded,'Tekli QR Üret',()=>widget.create(1),primary:true),
+          _quickButton(Icons.note_add_outlined,'Toplu QR Üret (CSV)',()=>widget.create(10)),
+          _quickButton(Icons.print_outlined,'Baskı Listesine Ekle',printable.isEmpty?null:()=>widget.itemPrintStatus(printable.map(_tokenOf).where((x)=>x.isNotEmpty).toList(),'sent_to_print')),
+          _quickButton(Icons.picture_as_pdf_outlined,'PDF İndir (A4 - 18 Adet)',printable.isEmpty?null:()=>_exportPdf(printable)),
+        ]),
+      ),
+      const SizedBox(height:12),
+      Container(
+        padding:const EdgeInsets.all(13),
+        decoration:AdminUi.card(radius:15),
+        child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          const Text('Tasarım Önizleme',style:TextStyle(color:_ink,fontSize:12,fontWeight:FontWeight.w900)),
+          const SizedBox(height:10),
+          ClipRRect(
+            borderRadius:BorderRadius.circular(9),
+            child:Image.asset('assets/Etiket4.png',fit:BoxFit.cover),
+          ),
+          const SizedBox(height:10),
+          ClipRRect(
+            borderRadius:BorderRadius.circular(9),
+            child:Image.asset(
+              'assets/Arka2.png',
+              fit:BoxFit.cover,
+              errorBuilder:(_,__,___)=>Image.asset('assets/Arka.png',fit:BoxFit.cover),
+            ),
+          ),
+        ]),
+      ),
+    ]);
+  }
+
+  Widget _quickButton(IconData icon,String label,VoidCallback? tap,{bool primary=false})=>Padding(
+    padding:const EdgeInsets.only(bottom:8),
+    child:SizedBox(
+      width:double.infinity,
+      height:42,
+      child:primary
+        ? FilledButton.icon(
+            onPressed:tap,
+            style:FilledButton.styleFrom(backgroundColor:_purple),
+            icon:Icon(icon,size:18),
+            label:Align(alignment:Alignment.centerLeft,child:Text(label,maxLines:1,overflow:TextOverflow.ellipsis)),
+          )
+        : OutlinedButton.icon(
+            onPressed:tap,
+            style:OutlinedButton.styleFrom(
+              foregroundColor:_purple,
+              backgroundColor:AdminUi.surfaceTint,
+              side:BorderSide.none,
+            ),
+            icon:Icon(icon,size:18),
+            label:Align(alignment:Alignment.centerLeft,child:Text(label,maxLines:1,overflow:TextOverflow.ellipsis)),
+          ),
+    ),
+  );
+
+  Widget _qrTable(List<Map<String,dynamic>> rows,{bool compact=false}){
+    final perPage=compact?5:6;
+    final pageCount=rows.isEmpty?1:(rows.length/perPage).ceil();
+    final safePage=tablePage.clamp(0,pageCount-1);
+    final start=safePage*perPage;
+    final pageRows=rows.skip(start).take(perPage).toList();
+
+    return Container(
+      decoration:AdminUi.card(radius:15),
+      clipBehavior:Clip.antiAlias,
+      child:Column(children:[
+        Container(
+          height:45,
+          padding:const EdgeInsets.symmetric(horizontal:10),
+          decoration:const BoxDecoration(border:Border(bottom:BorderSide(color:_line))),
+          child:Row(children:[
+            Expanded(child:_miniTab('Oluşturulan QR’lar',true)),
+            Expanded(child:_miniTab('Baskı Listesi ('+_waitingCount.toString()+')',false)),
+            Expanded(child:_miniTab('Son İşlemler',false)),
+          ]),
+        ),
+        if(pageRows.isEmpty)
+          const Padding(
+            padding:EdgeInsets.all(30),
+            child:Text('Bu filtrede QR bulunamadı.',style:TextStyle(color:_muted)),
+          )
+        else ...[
+          if(!compact)_tableHeader(),
+          for(final e in pageRows)_tableRow(e,compact:compact),
+        ],
+        Container(
+          padding:const EdgeInsets.symmetric(horizontal:10,vertical:9),
+          decoration:const BoxDecoration(border:Border(top:BorderSide(color:_line))),
+          child:Row(children:[
+            IconButton(
+              visualDensity:VisualDensity.compact,
+              onPressed:safePage<=0?null:()=>setState(()=>tablePage=safePage-1),
+              icon:const Icon(Icons.chevron_left_rounded,size:18),
+            ),
+            for(var i=0;i<pageCount.clamp(1,5);i++)
+              Padding(
+                padding:const EdgeInsets.symmetric(horizontal:2),
+                child:InkWell(
+                  onTap:()=>setState(()=>tablePage=i),
+                  borderRadius:BorderRadius.circular(7),
+                  child:Container(
+                    width:26,height:26,
+                    alignment:Alignment.center,
+                    decoration:BoxDecoration(
+                      color:safePage==i?_purple:Colors.transparent,
+                      borderRadius:BorderRadius.circular(7),
+                      border:Border.all(color:safePage==i?_purple:_line),
+                    ),
+                    child:Text((i+1).toString(),style:TextStyle(color:safePage==i?Colors.white:_muted,fontSize:9.5,fontWeight:FontWeight.w800)),
+                  ),
+                ),
+              ),
+            if(pageCount>5)...[
+              const Padding(padding:EdgeInsets.symmetric(horizontal:4),child:Text('…',style:TextStyle(color:_muted))),
+              Text(pageCount.toString(),style:const TextStyle(color:_muted,fontSize:9.5)),
+            ],
+            IconButton(
+              visualDensity:VisualDensity.compact,
+              onPressed:safePage>=pageCount-1?null:()=>setState(()=>tablePage=safePage+1),
+              icon:const Icon(Icons.chevron_right_rounded,size:18),
+            ),
+            const Spacer(),
+            if(!compact)Text('Toplam '+rows.length.toString()+' kayıt',style:const TextStyle(color:_muted,fontSize:9.5)),
+            const SizedBox(width:12),
+            if(!compact)Container(
+              padding:const EdgeInsets.symmetric(horizontal:9,vertical:6),
+              decoration:BoxDecoration(color:AdminUi.surfaceSoft,borderRadius:BorderRadius.circular(8),border:Border.all(color:_line)),
+              child:const Text('25 / sayfa ⌄',style:TextStyle(color:_ink,fontSize:9.5,fontWeight:FontWeight.w700)),
+            ),
+          ]),
+        ),
+      ]),
+    );
+  }
+
+  Widget _miniTab(String label,bool selected)=>Container(
+    alignment:Alignment.center,
+    padding:const EdgeInsets.symmetric(horizontal:6),
+    decoration:BoxDecoration(
+      border:Border(bottom:BorderSide(color:selected?_purple:Colors.transparent,width:2)),
+    ),
+    child:Text(label,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:selected?_purple:_muted,fontSize:9.5,fontWeight:selected?FontWeight.w900:FontWeight.w700)),
+  );
+
+  Widget _tableHeader()=>Container(
+    height:37,
+    padding:const EdgeInsets.symmetric(horizontal:10),
+    color:const Color(0xFFFBFBFE),
+    child:Row(children:[
+      const SizedBox(width:30),
+      const Expanded(flex:3,child:Text('Etiket Kodu',style:_tableHeadStyle)),
+      const Expanded(flex:2,child:Text('Plaka',style:_tableHeadStyle)),
+      const Expanded(flex:2,child:Text('Durum',style:_tableHeadStyle)),
+      const Expanded(flex:3,child:Text('Oluşturulma',style:_tableHeadStyle)),
+      const SizedBox(width:126,child:Text('İşlemler',style:_tableHeadStyle)),
+    ]),
+  );
+
+  static const _tableHeadStyle=TextStyle(color:_ink,fontSize:9,fontWeight:FontWeight.w800);
+
+  Widget _tableRow(Map<String,dynamic> e,{required bool compact}){
+    final token=_tokenOf(e);
+    final st=(e['status']??'').toString();
+    final ps=_printStatus(e);
+    final statusColor=st=='active'?_green:ps=='printed'?const Color(0xFF7B8AA7):_amber;
+    final statusLabel=st=='active'?'Aktif':ps=='printed'?'Pasif':_printStatusLabel(ps);
+    final date=_rowDate(e);
+    if(compact){
+      return InkWell(
+        onTap:()=>showQr(e),
+        child:Container(
+          padding:const EdgeInsets.symmetric(horizontal:10,vertical:9),
+          decoration:const BoxDecoration(border:Border(bottom:BorderSide(color:_line))),
+          child:Row(children:[
+            Checkbox(
+              visualDensity:VisualDensity.compact,
+              value:selectedTokens.contains(token),
+              onChanged:ps=='printed'?null:(v)=>setState((){if(v==true)selectedTokens.add(token);else selectedTokens.remove(token);}),
+            ),
+            const Icon(Icons.qr_code_2_rounded,color:_purple,size:22),
+            const SizedBox(width:8),
+            Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+              Text(token,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_ink,fontSize:10.5,fontWeight:FontWeight.w900)),
+              Text((e['plate']??'Bağlı araç yok').toString()+' • '+date,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_muted,fontSize:9)),
+            ])),
+            AdminUi.statusDot(statusColor),
+            const SizedBox(width:5),
+            Text(statusLabel,style:TextStyle(color:statusColor,fontSize:9,fontWeight:FontWeight.w800)),
+            const Icon(Icons.chevron_right_rounded,color:_muted,size:18),
+          ]),
+        ),
+      );
+    }
+    return Container(
+      height:42,
+      padding:const EdgeInsets.symmetric(horizontal:10),
+      decoration:const BoxDecoration(border:Border(bottom:BorderSide(color:_line))),
+      child:Row(children:[
+        SizedBox(width:30,child:Checkbox(
+          visualDensity:VisualDensity.compact,
+          value:selectedTokens.contains(token),
+          onChanged:ps=='printed'?null:(v)=>setState((){if(v==true)selectedTokens.add(token);else selectedTokens.remove(token);}),
+        )),
+        Expanded(flex:3,child:Text(token,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_ink,fontSize:9.5,fontWeight:FontWeight.w800))),
+        Expanded(flex:2,child:Text((e['plate']??'-').toString(),maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_ink,fontSize:9.5))),
+        Expanded(flex:2,child:Row(children:[
+          AdminUi.statusDot(statusColor),
+          const SizedBox(width:5),
+          Flexible(child:Text(statusLabel,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:statusColor,fontSize:9,fontWeight:FontWeight.w700))),
+        ])),
+        Expanded(flex:3,child:Text(date,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_muted,fontSize:9))),
+        SizedBox(width:126,child:Row(children:[
+          _tableIcon(Icons.visibility_outlined,()=>showQr(e)),
+          _tableIcon(Icons.print_outlined,ps=='printed'?null:()=>widget.itemPrintStatus([token],'sent_to_print')),
+          _tableIcon(Icons.download_outlined,()=>_downloadSticker(token)),
+          PopupMenuButton<String>(
+            padding:EdgeInsets.zero,
+            iconSize:18,
+            icon:const Icon(Icons.more_horiz_rounded,color:_ink,size:18),
+            onSelected:(a)async{
+              if(a.startsWith('print:'))await widget.itemPrintStatus([token],a.substring(6));
+              else await widget.action(token,a);
+            },
+            itemBuilder:(_)=>[
+              if(ps!='printed')const PopupMenuItem(value:'print:printed',child:Text('Baskı yapıldı')),
+              if(ps!='ready')const PopupMenuItem(value:'print:ready',child:Text('Baskı durumunu sıfırla')),
+              if(e['status']=='disabled')const PopupMenuItem(value:'enable',child:Text('Aktif et'))else const PopupMenuItem(value:'disable',child:Text('Devre dışı bırak')),
+              if(e['vehicle_id']!=null)const PopupMenuItem(value:'unbind',child:Text('Araçtan ayır')),
+            ],
+          ),
+        ])),
+      ]),
+    );
+  }
+
+  Widget _tableIcon(IconData icon,VoidCallback? tap)=>IconButton(
+    visualDensity:VisualDensity.compact,
+    constraints:const BoxConstraints.tightFor(width:27,height:27),
+    padding:EdgeInsets.zero,
+    onPressed:tap,
+    icon:Icon(icon,color:tap==null?AdminUi.faint:_ink,size:15),
+  );
+
+  Widget _singleProduction(List<Map<String,dynamic>> rows,bool compact){
+    final sample=rows.isNotEmpty?rows.first:(widget.rows.isNotEmpty?widget.rows.first:null);
+    if(compact){
+      return Column(children:[
+        _frontPreview(sample),
+        const SizedBox(height:12),
+        _backPreview(),
+        const SizedBox(height:12),
+        _qrInfoCard(sample),
+        const SizedBox(height:12),
+        _quickPanel(rows),
+        const SizedBox(height:12),
+        _qrTable(rows,compact:true),
+      ]);
+    }
+    return Row(
+      crossAxisAlignment:CrossAxisAlignment.start,
+      children:[
+        Expanded(child:Column(children:[
+          Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
+            Expanded(child:_frontPreview(sample)),
+            const SizedBox(width:14),
+            Expanded(child:_backPreview()),
+          ]),
+          const SizedBox(height:14),
+          Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
+            SizedBox(width:310,child:_qrInfoCard(sample)),
+            const SizedBox(width:14),
+            Expanded(child:_qrTable(rows)),
+          ]),
+        ])),
+        const SizedBox(width:14),
+        SizedBox(width:230,child:_quickPanel(rows)),
+      ],
+    );
+  }
+
+  Widget _managementSection(List<Map<String,dynamic>> rows,bool compact){
+    final title=switch(qrSection){
+      1=>'Toplu Üretim',
+      2=>'Tasarım Ayarları',
+      3=>'Baskı Listesi',
+      4=>'Geçmiş',
+      _=>'QR Yönetimi',
+    };
+    return Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      Row(children:[
+        Expanded(child:Text(title,style:const TextStyle(color:_ink,fontSize:17,fontWeight:FontWeight.w900))),
+        if(qrSection==1)FilledButton.icon(onPressed:()=>widget.create(10),icon:const Icon(Icons.add_rounded),label:const Text('Toplu QR Üret')),
+        if(qrSection==3)FilledButton.icon(onPressed:rows.isEmpty?null:()=>_exportPdf(rows),icon:const Icon(Icons.picture_as_pdf_outlined),label:const Text('PDF İndir')),
+      ]),
+      const SizedBox(height:12),
+      Wrap(spacing:9,runSpacing:9,children:[
+        SizedBox(
+          width:compact?double.infinity:290,
+          child:TextField(
+            controller:search,
+            onChanged:(_)=>setState(()=>tablePage=0),
+            decoration:const InputDecoration(prefixIcon:Icon(Icons.search_rounded),hintText:'Kod, plaka, kullanıcı ara...'),
+          ),
+        ),
+        SizedBox(
+          width:compact?double.infinity:220,
+          child:DropdownButtonFormField<String>(
+            value:printFilter,
+            decoration:const InputDecoration(labelText:'Durum'),
+            items:const[
+              DropdownMenuItem(value:'all',child:Text('Tümü')),
+              DropdownMenuItem(value:'unprinted',child:Text('Basılmadı')),
+              DropdownMenuItem(value:'pdf_downloaded',child:Text('PDF Alındı')),
+              DropdownMenuItem(value:'sent_to_print',child:Text('Baskıya Gönderildi')),
+              DropdownMenuItem(value:'printed',child:Text('Basıldı')),
+            ],
+            onChanged:(v)=>setState((){printFilter=v??'all';tablePage=0;}),
+          ),
+        ),
+        OutlinedButton.icon(onPressed:rows.isEmpty?null:()=>_exportCsv(rows),icon:const Icon(Icons.table_view_outlined),label:const Text('CSV İndir')),
+      ]),
+      const SizedBox(height:12),
+      _qrTable(rows,compact:compact),
+    ]);
+  }
+
+  @override
+  Widget build(BuildContext context){
+    final query=search.text.toLowerCase();
     final rows=widget.rows.where((e){
-      final text='${e['token']} ${e['plate']} ${e['owner_name']} ${e['batch_code']}'.toLowerCase();
-      final matchesSearch=text.contains(q);
-      final matchesBatch=batchFilter=='all'||(batchFilter=='legacy'&&(e['batch_code']??'').toString().isEmpty)||(e['batch_code']??'').toString()==batchFilter;
+      final text=((e['token']??'').toString()+' '+(e['plate']??'').toString()+' '+(e['owner_name']??'').toString()+' '+(e['batch_code']??'').toString()).toLowerCase();
+      final matchesSearch=text.contains(query);
       final ps=_printStatus(e);
       final matchesPrint=switch(printFilter){
         'unprinted'=>ps!='legacy'&&ps!='printed',
@@ -1876,191 +2510,46 @@ class _QrPageState extends State<QrPage>{
         'printed'=>ps=='printed',
         _=>true,
       };
-      return matchesSearch&&matchesBatch&&matchesPrint;
+      if(qrSection==3)return matchesSearch&&ps!='legacy'&&ps!='printed';
+      return matchesSearch&&matchesPrint;
     }).toList();
 
-    final selectedRows=_selectedRows().where((e)=>_printStatus(e)!='printed').toList();
-    final exportRows=selectedRows.isNotEmpty?selectedRows:rows;
-    final printableExportRows=exportRows.where((e)=>_printStatus(e)!='printed').toList();
-    final visibleTokens=rows
-        .where((e)=>_printStatus(e)!='printed')
-        .map(_tokenOf)
-        .where((e)=>e.isNotEmpty)
-        .toSet();
-    final selectedVisible=visibleTokens.where(selectedTokens.contains).length;
-    final allVisible=visibleTokens.isNotEmpty&&selectedVisible==visibleTokens.length;
-    final someVisible=selectedVisible>0&&!allVisible;
-
-    return ListView(padding:const EdgeInsets.fromLTRB(14,14,14,24),children:[
-      Wrap(spacing:8,runSpacing:8,crossAxisAlignment:WrapCrossAlignment.center,children:[
-        Text(widget.printMode?'Baskı Yönetimi':'QR Yönetimi',style:const TextStyle(fontSize:22,fontWeight:FontWeight.w900,color:_ink)),
-        PopupMenuButton<int>(
-          onSelected:widget.create,
-          itemBuilder:(_)=>const[
-            PopupMenuItem(value:1,child:Text('1 QR üret')),
-            PopupMenuItem(value:10,child:Text('10 QR üret')),
-            PopupMenuItem(value:50,child:Text('50 QR üret')),
-            PopupMenuItem(value:100,child:Text('100 QR üret')),
+    return LayoutBuilder(builder:(context,c){
+      final compact=c.maxWidth<900;
+      final pad=compact?12.0:18.0;
+      final contentWidth=c.maxWidth-pad*2;
+      return ListView(
+        padding:EdgeInsets.fromLTRB(pad,compact?12:16,pad,28),
+        children:[
+          if(compact)...[
+            const Text('QR Yönetimi',style:TextStyle(color:_ink,fontSize:23,fontWeight:FontWeight.w900,letterSpacing:-.5)),
+            const SizedBox(height:3),
+            const Text('Araç etiketleri oluşturun, yönetin ve baskıya hazırlayın.',style:TextStyle(color:_muted,fontSize:11)),
+            const SizedBox(height:12),
           ],
-          child:const Chip(avatar:Icon(Icons.add),label:Text('Yeni QR üret')),
-        ),
-        OutlinedButton.icon(
-          onPressed:exportRows.isEmpty?null:()=>_exportCsv(exportRows),
-          icon:const Icon(Icons.table_view_rounded),
-          label:Text(selectedRows.isNotEmpty?'Seçilileri CSV (${selectedRows.length})':'CSV indir'),
-        ),
-        FilledButton.icon(
-          onPressed:printableExportRows.isEmpty?null:()=>_exportPdf(exportRows),
-          style:FilledButton.styleFrom(backgroundColor:_purple),
-          icon:const Icon(Icons.picture_as_pdf_rounded),
-          label:Text(
-            selectedRows.isNotEmpty
-              ? 'Seçilileri PDF (${printableExportRows.length})'
-              : 'Baskı PDF • ${printableExportRows.length} basılmamış',
-          ),
-        ),
-      ]),
-      const SizedBox(height:12),
-      Wrap(spacing:10,runSpacing:10,crossAxisAlignment:WrapCrossAlignment.center,children:[
-        SizedBox(width:280,child:TextField(controller:search,onChanged:(_)=>setState((){}),decoration:const InputDecoration(prefixIcon:Icon(Icons.search),hintText:'Kod, plaka, kullanıcı veya parti ara',filled:true,fillColor:_card2,border:OutlineInputBorder(borderSide:BorderSide.none)))),
-        SizedBox(width:250,child:DropdownButtonFormField<String>(
-          value:batchFilter,
-          isExpanded:true,
-          decoration:const InputDecoration(labelText:'Baskı partisi'),
-          items:[
-            const DropdownMenuItem(value:'all',child:Text('Tüm partiler')),
-            const DropdownMenuItem(value:'legacy',child:Text('Eski / Partisiz')),
-            ...batches.map((b)=>DropdownMenuItem(value:b,child:Text(b))),
-          ],
-          onChanged:(v)=>setState(()=>batchFilter=v??'all'),
-        )),
-        Text('${rows.length} QR • ${batches.length} baskı partisi',style:const TextStyle(color:_muted,fontSize:12,fontWeight:FontWeight.w700)),
-      ]),
-      const SizedBox(height:10),
-      Wrap(spacing:7,runSpacing:7,children:[
-        ChoiceChip(label:const Text('Tümü'),selected:printFilter=='all',onSelected:(_)=>setState(()=>printFilter='all')),
-        ChoiceChip(label:const Text('Basılmadı'),selected:printFilter=='unprinted',onSelected:(_)=>setState(()=>printFilter='unprinted')),
-        ChoiceChip(label:const Text('PDF Alındı'),selected:printFilter=='pdf_downloaded',onSelected:(_)=>setState(()=>printFilter='pdf_downloaded')),
-        ChoiceChip(label:const Text('Baskıya Gönderildi'),selected:printFilter=='sent_to_print',onSelected:(_)=>setState(()=>printFilter='sent_to_print')),
-        ChoiceChip(label:const Text('Basıldı'),selected:printFilter=='printed',onSelected:(_)=>setState(()=>printFilter='printed')),
-      ]),
-      const SizedBox(height:12),
-      Container(
-        width:double.infinity,
-        padding:const EdgeInsets.symmetric(horizontal:12,vertical:10),
-        decoration:BoxDecoration(
-          color:_card,
-          borderRadius:BorderRadius.circular(16),
-          border:Border.all(color:selectedTokens.isEmpty?_line:_purple.withValues(alpha:.65)),
-        ),
-        child:Wrap(spacing:8,runSpacing:8,crossAxisAlignment:WrapCrossAlignment.center,children:[
-          Row(mainAxisSize:MainAxisSize.min,children:[
-            Checkbox(
-              tristate:true,
-              value:allVisible?true:someVisible?null:false,
-              activeColor:_purple,
-              onChanged:rows.isEmpty?null:(_){
-                setState((){
-                  if(allVisible){
-                    selectedTokens.removeAll(visibleTokens);
-                  }else{
-                    selectedTokens.addAll(visibleTokens);
-                  }
-                });
-              },
-            ),
-            Text(allVisible?'Görünenlerin tümü seçili':'Tümünü seç',style:const TextStyle(fontWeight:FontWeight.w800)),
-          ]),
+          _metricStrip(contentWidth,compact),
+          const SizedBox(height:13),
+          _sectionTabs(),
           Container(
-            padding:const EdgeInsets.symmetric(horizontal:10,vertical:7),
-            decoration:BoxDecoration(color:_purple.withValues(alpha:.12),borderRadius:BorderRadius.circular(12)),
-            child:Text('${selectedTokens.length} seçili',style:const TextStyle(color:Color(0xFFC879FF),fontWeight:FontWeight.w900)),
-          ),
-          OutlinedButton.icon(
-            onPressed:selectedTokens.isEmpty?null:()=>_applySelectedStatus('pdf_downloaded'),
-            icon:const Icon(Icons.picture_as_pdf_rounded,size:18),
-            label:const Text('PDF Alındı'),
-          ),
-          OutlinedButton.icon(
-            onPressed:selectedTokens.isEmpty?null:()=>_applySelectedStatus('sent_to_print'),
-            icon:const Icon(Icons.local_print_shop_outlined,size:18),
-            label:const Text('Baskıya Verildi'),
-          ),
-          FilledButton.icon(
-            onPressed:selectedTokens.isEmpty?null:()=>_applySelectedStatus('printed'),
-            style:FilledButton.styleFrom(backgroundColor:_green,foregroundColor:Colors.black),
-            icon:const Icon(Icons.check_circle_outline_rounded,size:18),
-            label:const Text('Baskı Yapıldı',style:TextStyle(fontWeight:FontWeight.w900)),
-          ),
-          TextButton.icon(
-            onPressed:selectedTokens.isEmpty?null:()=>_applySelectedStatus('ready'),
-            icon:const Icon(Icons.restart_alt_rounded,size:18),
-            label:const Text('Durumu Sıfırla'),
-          ),
-          if(selectedTokens.isNotEmpty)TextButton(
-            onPressed:()=>setState(()=>selectedTokens.clear()),
-            child:const Text('Seçimi Temizle'),
-          ),
-        ]),
-      ),
-      const SizedBox(height:14),
-      if(rows.isEmpty)Container(padding:const EdgeInsets.all(24),decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(18),border:Border.all(color:_line)),child:const Center(child:Text('Bu filtrede QR bulunamadı.',style:TextStyle(color:_muted))))
-      else ...rows.map((e){
-        final batch=(e['batch_code']??'').toString();
-        final serial=e['serial_no']?.toString()??'-';
-        final batchSerial=e['batch_serial']?.toString()??'-';
-        final ps=_printStatus(e);
-        final psColor=_printStatusColor(ps);
-        final printedAt=DateTime.tryParse((e['printed_at']??'').toString())?.toLocal();
-        final printedText=printedAt==null?'':' • ${printedAt.day.toString().padLeft(2,'0')}.${printedAt.month.toString().padLeft(2,'0')}.${printedAt.year}';
-        return Card(elevation:0,child:Padding(padding:const EdgeInsets.symmetric(vertical:5),child:ListTile(
-          leading:SizedBox(
-            width:72,
-            child:Row(children:[
-              Checkbox(
-                value:ps=='printed'?false:selectedTokens.contains(_tokenOf(e)),
-                activeColor:_purple,
-                onChanged:ps=='printed'?null:(v)=>setState((){
-                  final token=_tokenOf(e);
-                  if(v==true){selectedTokens.add(token);}else{selectedTokens.remove(token);}
-                }),
+            padding:EdgeInsets.all(compact?12:14),
+            decoration:BoxDecoration(
+              color:const Color(0xFFFAFAFD),
+              borderRadius:const BorderRadius.vertical(bottom:Radius.circular(16)),
+              border:const Border(
+                left:BorderSide(color:_line),
+                right:BorderSide(color:_line),
+                bottom:BorderSide(color:_line),
               ),
-              const Icon(Icons.qr_code_2_rounded,color:_purple,size:30),
-            ]),
-          ),
-          title:Wrap(spacing:6,runSpacing:5,crossAxisAlignment:WrapCrossAlignment.center,children:[
-            Text(e['token']?.toString()??'-',style:const TextStyle(fontWeight:FontWeight.w900)),
-            if(batch.isNotEmpty)Container(padding:const EdgeInsets.symmetric(horizontal:7,vertical:3),decoration:BoxDecoration(color:_purple.withValues(alpha:.12),borderRadius:BorderRadius.circular(12)),child:Text(batch,style:const TextStyle(color:Color(0xFFC879FF),fontSize:9.5,fontWeight:FontWeight.w800))),
-            Container(padding:const EdgeInsets.symmetric(horizontal:7,vertical:3),decoration:BoxDecoration(color:psColor.withValues(alpha:.14),borderRadius:BorderRadius.circular(12)),child:Text('${_printStatusLabel(ps)}$printedText',style:TextStyle(color:psColor,fontSize:9.5,fontWeight:FontWeight.w900))),
-          ]),
-          subtitle:Text('${e['plate']??'Bağlı araç yok'} • ${e['owner_name']??''}\nSeri #$serial • ${batch.isEmpty?'Eski / Partisiz':'Parti sıra $batchSerial'}'),
-          isThreeLine:true,
-          onTap:()=>showQr(e),
-          trailing:Wrap(spacing:4,children:[
-            IconButton(tooltip:'QR Etiketi',onPressed:()=>showQr(e),icon:const Icon(Icons.image_outlined,color:_purple)),
-            PopupMenuButton<String>(
-              onSelected:(a)async{
-                if(a.startsWith('print:')){
-                  await widget.itemPrintStatus([_tokenOf(e)],a.substring(6));
-                }else{
-                  await widget.action(_tokenOf(e),a);
-                }
-              },
-              itemBuilder:(_)=>[
-                if(ps!='pdf_downloaded')const PopupMenuItem(value:'print:pdf_downloaded',child:Text('PDF alındı işaretle')),
-                if(ps!='sent_to_print')const PopupMenuItem(value:'print:sent_to_print',child:Text('Baskıya verildi işaretle')),
-                if(ps!='printed')const PopupMenuItem(value:'print:printed',child:Text('Baskı yapıldı işaretle')),
-                if(ps!='ready')const PopupMenuItem(value:'print:ready',child:Text('Baskı durumunu sıfırla')),
-                if(e['status']=='disabled')const PopupMenuItem(value:'enable',child:Text('Aktif et'))else const PopupMenuItem(value:'disable',child:Text('Devre dışı bırak')),
-                if(e['vehicle_id']!=null)const PopupMenuItem(value:'unbind',child:Text('Araçtan ayır')),
-              ],
             ),
-          ]),
-        )));
-      }),
-    ]);
+            child:qrSection==0
+              ? _singleProduction(rows,compact)
+              : _managementSection(rows,compact),
+          ),
+        ],
+      );
+    });
   }
-}
+
 class ModerationPage extends StatelessWidget{
   const ModerationPage({super.key,required this.rows,required this.removeBackground,required this.resetTheme});final List<Map<String,dynamic>> rows;final Future<void> Function(String) removeBackground,resetTheme;
   @override Widget build(BuildContext context)=>ListView(padding:const EdgeInsets.all(22),children:[const Text('Kişiselleştirme Moderasyonu',style:TextStyle(fontSize:22,fontWeight:FontWeight.w900,color:_ink)),const SizedBox(height:14),...rows.map((e){final bg=e['background_path']?.toString();return Container(margin:const EdgeInsets.only(bottom:12),padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(18),border:Border.all(color:_line)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(e['plate']?.toString()??'-',style:const TextStyle(fontSize:17,fontWeight:FontWeight.w900)),Text('${e['owner_name']??'-'} • ${e['preset']??'classic'}',style:const TextStyle(color:_muted)),const SizedBox(height:8),Text(e['public_message']?.toString()??''),if(bg!=null&&bg.isNotEmpty)...[const SizedBox(height:10),ClipRRect(borderRadius:BorderRadius.circular(14),child:Image.network('$_baseUrl$bg',height:150,width:double.infinity,fit:BoxFit.cover))],const SizedBox(height:10),Wrap(spacing:8,children:[if(bg!=null&&bg.isNotEmpty)OutlinedButton(onPressed:()=>removeBackground(e['vehicle_id'].toString()),child:const Text('Arka planı kaldır')),FilledButton(onPressed:()=>resetTheme(e['vehicle_id'].toString()),child:const Text('Temayı sıfırla'))]) ]));})]);
