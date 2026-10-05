@@ -366,6 +366,8 @@ class _DriverServicesPageState extends State<DriverServicesPage> {
                       : 'Görüntüle; çağrı başlatmak için aktif sürücü olmalısın.',
                   const Color(0xFFFF8A43),
                   openTowing,
+                  comingSoon: true,
+                  disabled: !testAccount,
                 ),
                 _serviceCard(
                   Icons.sos_rounded,
