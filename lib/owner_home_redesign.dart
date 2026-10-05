@@ -467,7 +467,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
               ),
             ),
           ]),
-          const SizedBox(height:18),
+          const SizedBox(height:30),
           Container(
             width:double.infinity,
             height:102,
