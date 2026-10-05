@@ -3,13 +3,14 @@ import 'cepqar_theme.dart';
 import 'towing_flow_page.dart';
 
 class RoadsideHelpPage extends StatefulWidget {
-  const RoadsideHelpPage({super.key,this.driverMode=false,this.vehicleId});
+  const RoadsideHelpPage({super.key,this.driverMode=false,this.vehicleId,this.initialTab=0});
   final bool driverMode;
   final String? vehicleId;
+  final int initialTab;
   @override State<RoadsideHelpPage> createState()=>_RoadsideHelpPageState();
 }
 class _RoadsideHelpPageState extends State<RoadsideHelpPage> with SingleTickerProviderStateMixin {
-  late final TabController _tabs=TabController(length:2,vsync:this);
+  late final TabController _tabs=TabController(length:2,initialIndex:widget.initialTab.clamp(0,1),vsync:this);
   @override void dispose(){_tabs.dispose();super.dispose();}
   @override Widget build(BuildContext context)=>Scaffold(
     backgroundColor:CepqarTheme.bg,
