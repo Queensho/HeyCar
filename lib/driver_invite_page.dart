@@ -806,6 +806,8 @@ class _DriverHomePageState extends State<DriverHomePage> {
         ),
       ),
     );
+  }
+}
 
 class _DriverHome extends StatelessWidget {
   const _DriverHome({
