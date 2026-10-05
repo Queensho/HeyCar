@@ -10,7 +10,7 @@ class RoadsideHelpPage extends StatefulWidget {
   @override State<RoadsideHelpPage> createState()=>_RoadsideHelpPageState();
 }
 class _RoadsideHelpPageState extends State<RoadsideHelpPage> with SingleTickerProviderStateMixin {
-  late final TabController _tabs=TabController(length:2,initialIndex:widget.initialTab.clamp(0,1),vsync:this);
+  late final TabController _tabs=TabController(length:2,initialIndex:widget.initialTab<0?0:(widget.initialTab>1?1:widget.initialTab),vsync:this);
   @override void dispose(){_tabs.dispose();super.dispose();}
   @override Widget build(BuildContext context)=>Scaffold(
     backgroundColor:CepqarTheme.bg,
