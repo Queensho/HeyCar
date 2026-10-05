@@ -1829,7 +1829,7 @@ class _QrPageState extends State<QrPage>{
     final url=publicUrl(token);
     if(!mounted)return;
     await showDialog(context:context,builder:(ctx)=>Dialog(
-      backgroundColor:const Color(0xFF080D22),
+      backgroundColor:Colors.white,
       shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(24),side:BorderSide(color:_purple.withValues(alpha:.42))),
       child:ConstrainedBox(
         constraints:const BoxConstraints(maxWidth:460),
@@ -2315,7 +2315,7 @@ class ComplaintModerationPage extends StatelessWidget{
             Container(
               padding:const EdgeInsets.all(16),
               decoration:BoxDecoration(
-                gradient:const LinearGradient(colors:[Color(0xFF160C24),Color(0xFF0A1227)]),
+                gradient:const LinearGradient(colors:[Color(0xFFFFFFFF),Color(0xFFF4EEFF)]),
                 borderRadius:BorderRadius.circular(22),
                 border:Border.all(color:Colors.redAccent.withValues(alpha:.28)),
               ),
@@ -2645,7 +2645,7 @@ class _CommunicationOpsPageState extends State<CommunicationOpsPage>{
           children:[
             Container(
               padding:const EdgeInsets.all(16),
-              decoration:BoxDecoration(gradient:const LinearGradient(colors:[Color(0xFF0A152C),Color(0xFF120A26)]),borderRadius:BorderRadius.circular(22),border:Border.all(color:_blue.withValues(alpha:.28))),
+              decoration:BoxDecoration(gradient:const LinearGradient(colors:[Color(0xFFFFFFFF),Color(0xFFF2F6FF)]),borderRadius:BorderRadius.circular(22),border:Border.all(color:_blue.withValues(alpha:.28))),
               child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
                 Row(children:[
                   Container(width:46,height:46,decoration:BoxDecoration(color:_blue.withValues(alpha:.12),shape:BoxShape.circle),child:const Icon(Icons.forum_rounded,color:_blue,size:25)),
@@ -3003,7 +3003,7 @@ class SecurityCenterPage extends StatelessWidget{
           children:[
             Container(
               padding:const EdgeInsets.all(16),
-              decoration:BoxDecoration(gradient:const LinearGradient(colors:[Color(0xFF0D1530),Color(0xFF1B081D)]),borderRadius:BorderRadius.circular(22),border:Border.all(color:Colors.redAccent.withValues(alpha:.28))),
+              decoration:BoxDecoration(gradient:const LinearGradient(colors:[Color(0xFFFFFFFF),Color(0xFFFFF2F4)]),borderRadius:BorderRadius.circular(22),border:Border.all(color:Colors.redAccent.withValues(alpha:.28))),
               child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
                 Row(children:[
                   Container(width:46,height:46,decoration:BoxDecoration(color:Colors.redAccent.withValues(alpha:.11),shape:BoxShape.circle),child:const Icon(Icons.security_rounded,color:Colors.redAccent,size:25)),
@@ -3138,7 +3138,7 @@ class SystemHealthPage extends StatelessWidget{
             Container(
               padding:const EdgeInsets.all(16),
               decoration:BoxDecoration(
-                gradient:const LinearGradient(colors:[Color(0xFF0B1230),Color(0xFF160925)]),
+                gradient:const LinearGradient(colors:[Color(0xFFFFFFFF),Color(0xFFF4EEFF)]),
                 borderRadius:BorderRadius.circular(22),
                 border:Border.all(color:overallColor.withValues(alpha:.42)),
                 boxShadow:[BoxShadow(color:overallColor.withValues(alpha:.08),blurRadius:22)],
@@ -3534,7 +3534,7 @@ class _AuditLogPageState extends State<AuditLogPage>{
             Container(
               padding:const EdgeInsets.all(16),
               decoration:BoxDecoration(
-                gradient:const LinearGradient(colors:[Color(0xFF0B1230),Color(0xFF180A2A)]),
+                gradient:const LinearGradient(colors:[Color(0xFFFFFFFF),Color(0xFFF4EEFF)]),
                 borderRadius:BorderRadius.circular(22),
                 border:Border.all(color:_purple.withValues(alpha:.42)),
               ),
@@ -3781,7 +3781,7 @@ class ReportsPage extends StatelessWidget{
             Container(
               padding:const EdgeInsets.all(16),
               decoration:BoxDecoration(
-                gradient:const LinearGradient(colors:[Color(0xFF0B1230),Color(0xFF170A2B)]),
+                gradient:const LinearGradient(colors:[Color(0xFFFFFFFF),Color(0xFFF4EEFF)]),
                 borderRadius:BorderRadius.circular(22),
                 border:Border.all(color:_purple.withValues(alpha:.40)),
                 boxShadow:[BoxShadow(color:_purple.withValues(alpha:.10),blurRadius:24)],
