@@ -110,21 +110,51 @@ module.exports=function registerQrSecurityRoutes(app,pool,pushService){
     }catch(_){return true;}
   }
 
-  async function recordScan({qr,req,scanSessionHash,visitorKey=null}){
+  async function recordScan({qr,req,scanSessionHash,visitorKey=null,source='qr'}){
     await ensureSchema();
     const ip=normalizeIp(requestIp(req));
     const hash=visitorKey||publicVisitorKey(req);
     const loc=headerLocation(req);
+    const cleanSource=['qr','nfc','direct','app'].includes(String(source))?String(source):'qr';
+
+    let pageId=null,productId=null;
+    try{
+      const touch=await pool.query(
+        `SELECT p.id AS product_id,p.page_id
+           FROM vehicle_products p
+           JOIN qr_tags q ON q.id=p.qr_tag_id
+          WHERE q.token=$1 AND p.status='active'
+          LIMIT 1`,
+        [qr.token]
+      );
+      pageId=touch.rows[0]?.page_id||null;
+      productId=touch.rows[0]?.product_id||null;
+    }catch(_){}
+
     const ins=await pool.query(
       `INSERT INTO qr_scan_history(
-        qr_token,vehicle_id,owner_id,visitor_hash,scan_session_hash,city,region,country,location_source
-      ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)
+        qr_token,vehicle_id,owner_id,visitor_hash,scan_session_hash,city,region,country,location_source,
+        source,page_id,product_id
+      ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
       RETURNING id,created_at`,
-      [qr.token,qr.vehicle_id,String(qr.owner_id),hash,scanSessionHash||null,loc.city||null,loc.region||null,loc.country||null,loc.source||null]
+      [
+        qr.token,qr.vehicle_id,String(qr.owner_id),hash,scanSessionHash||null,
+        loc.city||null,loc.region||null,loc.country||null,loc.source||null,
+        cleanSource,pageId,productId
+      ]
     );
     const row=ins.rows[0];
-    // Do not persist IP-derived city/region. Mobile carrier, VPN and proxy exits can map to the wrong country.
 
+    if(pageId||productId){
+      await pool.query(
+        `INSERT INTO vehicle_touchpoint_events(
+          vehicle_id,page_id,product_id,source,event_type,visitor_hash,metadata
+        ) VALUES($1,$2,$3,$4,'scan',$5,$6::jsonb)`,
+        [qr.vehicle_id,pageId,productId,cleanSource,hash,JSON.stringify({scanHistoryId:row.id})]
+      ).catch(()=>{});
+    }
+
+    // Do not persist IP-derived city/region. Mobile carrier, VPN and proxy exits can map to the wrong country.
     const counts=await pool.query(
       `SELECT
          COUNT(*) FILTER (WHERE created_at>=NOW()-INTERVAL '10 minutes')::int AS vehicle_10m,
@@ -157,18 +187,19 @@ module.exports=function registerQrSecurityRoutes(app,pool,pushService){
       );
       if(!recentAlert.rows.length&&await abuseAlertsEnabled(qr.owner_id)){
         await pool.query('UPDATE qr_scan_history SET alerted_at=NOW() WHERE id=$1',[row.id]);
+        const label=cleanSource==='nfc'?'NFC etiketi':'QR kodu';
         const body=reason==='same_visitor_burst'
-          ? `${qr.plate||'Aracınız'} QR kodu aynı ağdan kısa sürede ${visitor10} kez okutuldu.`
-          : `${qr.plate||'Aracınız'} QR kodu son 10 dakikada ${vehicle10} kez okutuldu.`;
+          ? `${qr.plate||'Aracınız'} ${label} aynı ağdan kısa sürede ${visitor10} kez okutuldu.`
+          : `${qr.plate||'Aracınız'} ${label} son 10 dakikada ${vehicle10} kez okutuldu.`;
         pushService?.sendOwner?.(
           String(qr.owner_id),
           {type:'qr_security_alert',sourceType:'qr_security',vehicleId:String(qr.vehicle_id),plate:String(qr.plate||''),eventId:`qr-security-${row.id}`},
-          'Şüpheli QR hareketi',
+          'Şüpheli etiket hareketi',
           body
         ).catch(e=>console.error('qr security push',e));
       }
     }
-    return {id:row.id,suspicious:Boolean(reason),reason};
+    return {id:row.id,suspicious:Boolean(reason),reason,source:cleanSource,pageId,productId};
   }
 
   app.get('/api/owner/vehicles/:vehicleId/qr-security',async(req,res)=>{
