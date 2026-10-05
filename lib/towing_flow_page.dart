@@ -7,9 +7,10 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'cepqar_theme.dart';
 import 'owner_auth.dart';
+import 'driver_auth.dart';
 import 'onboarding_backend.dart';
 import 'qr_backend.dart';
-class TowingFlowPage extends StatefulWidget{const TowingFlowPage({super.key});@override State<TowingFlowPage> createState()=>_S();}
+class TowingFlowPage extends StatefulWidget{const TowingFlowPage({super.key,this.driverMode=false,this.vehicleId});final bool driverMode;final String? vehicleId;@override State<TowingFlowPage> createState()=>_S();}
 class _S extends State<TowingFlowPage>{
   int step=0;bool busy=false,notRunning=true;String vehicleType='car',truck='platform';double? a,b,x,y;String pickup='Konumum',dropoff='Haritada bırakma noktasını seç';Map<String,dynamic>? quote;final dest=TextEditingController();List<Map<String,dynamic>> destResults=[];bool destSearching=false;Timer? destDebounce;String get api=>OnboardingBackend.baseUrl;
   @override void initState(){super.initState();locate();}
@@ -65,8 +66,8 @@ class _S extends State<TowingFlowPage>{
     });
   }
 
-  Future<void> price()async{if(a==null||x==null){msg('Alım ve bırakma konumunu seç.');return;}setState(()=>busy=true);try{final r=await OwnerHttp.post(Uri.parse('$api/api/owner/towing/quote'),body:jsonEncode({'distanceKm':km,'vehicleType':vehicleType,'truckType':truck}));final d=jsonDecode(r.body);if(r.statusCode==200&&d['quote'] is Map&&mounted){setState(()=>quote=Map<String,dynamic>.from(d['quote']));step=2;}else{final e='${d['error']??''}';msg(e=='TOWING_OPTION_NOT_AVAILABLE'?'Bu araç/çekici tipi için fiyatlandırma henüz aktif değil.':e=='OWNER_REQUIRED'?'Oturum süren dolmuş. Tekrar giriş yap.':'Fiyat hesaplanamadı.');}}catch(_){msg('Fiyat hesaplanamadı. Bağlantını kontrol et.');}finally{if(mounted)setState(()=>busy=false);}}
-  Future<void> call()async{if(quote==null)return;setState(()=>busy=true);try{final r=await OwnerHttp.post(Uri.parse('$api/api/owner/towing/requests'),body:jsonEncode({'vehicleId':QrDraft.vehicleId,'vehicleType':vehicleType,'truckType':truck,'issueType':notRunning?'Araç çalışmıyor':'Çekici','pickupLat':a,'pickupLng':b,'pickupAddress':pickup,'destinationLat':x,'destinationLng':y,'destinationAddress':dropoff,'distanceKm':km}));final d=jsonDecode(r.body);if(r.statusCode>=200&&r.statusCode<300){final id='${d['request']['id']}';if(mounted)Navigator.pushReplacement(context,MaterialPageRoute(builder:(_)=>TowingTrackingPage(id:id)));}else msg(d['error']=='ACTIVE_TOWING_REQUEST_EXISTS'?'Aktif çekici çağrın zaten var.':'Çağrı oluşturulamadı.');}catch(_){msg('Çağrı oluşturulamadı.');}finally{if(mounted)setState(()=>busy=false);}}
+  Future<void> price()async{if(a==null||x==null){msg('Alım ve bırakma konumunu seç.');return;}setState(()=>busy=true);try{final uri=Uri.parse('$api${widget.driverMode?'/api/driver/towing/quote':'/api/owner/towing/quote'}');final r=widget.driverMode?await DriverHttp.post(uri,body:jsonEncode({'distanceKm':km,'vehicleType':vehicleType,'truckType':truck})):await OwnerHttp.post(uri,body:jsonEncode({'distanceKm':km,'vehicleType':vehicleType,'truckType':truck}));final d=jsonDecode(r.body);if(r.statusCode==200&&d['quote'] is Map&&mounted){setState(()=>quote=Map<String,dynamic>.from(d['quote']));step=2;}else{final e='${d['error']??''}';msg(e=='TOWING_OPTION_NOT_AVAILABLE'?'Bu araç/çekici tipi için fiyatlandırma henüz aktif değil.':e=='OWNER_REQUIRED'?'Oturum süren dolmuş. Tekrar giriş yap.':'Fiyat hesaplanamadı.');}}catch(_){msg('Fiyat hesaplanamadı. Bağlantını kontrol et.');}finally{if(mounted)setState(()=>busy=false);}}
+  Future<void> call()async{if(quote==null)return;setState(()=>busy=true);try{final selectedVehicle=widget.driverMode?(widget.vehicleId??''):QrDraft.vehicleId;final uri=Uri.parse('$api${widget.driverMode?'/api/driver/towing/requests':'/api/owner/towing/requests'}');final body=jsonEncode({'vehicleId':selectedVehicle,'vehicleType':vehicleType,'truckType':truck,'issueType':notRunning?'Araç çalışmıyor':'Çekici','pickupLat':a,'pickupLng':b,'pickupAddress':pickup,'destinationLat':x,'destinationLng':y,'destinationAddress':dropoff,'distanceKm':km});final r=widget.driverMode?await DriverHttp.post(uri,body:body):await OwnerHttp.post(uri,body:body);final d=jsonDecode(r.body);if(r.statusCode>=200&&r.statusCode<300){final id='${d['request']['id']}';if(mounted)Navigator.pushReplacement(context,MaterialPageRoute(builder:(_)=>TowingTrackingPage(id:id,driverMode:widget.driverMode)));}else{final e='${d['error']??''}';msg(e=='ACTIVE_TOWING_REQUEST_EXISTS'?'Aktif çekici çağrın zaten var.':e=='DRIVER_NOT_ACTIVE'?'Çekiciyi yalnızca aktif sürücü çağırabilir.':'Çağrı oluşturulamadı.');}}catch(_){msg('Çağrı oluşturulamadı.');}finally{if(mounted)setState(()=>busy=false);}}
   Widget pinLine(IconData i,String t)=>Container(height:58,padding:const EdgeInsets.symmetric(horizontal:14),decoration:BoxDecoration(border:Border.all(color:const Color(0xFFE5E7EB)),borderRadius:BorderRadius.circular(14)),child:Row(children:[Icon(i,color:CepqarTheme.purple),const SizedBox(width:12),Expanded(child:Text(t,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Color(0xFF25252B),fontSize:16,fontWeight:FontWeight.w700)))]));
   Widget map() {
     return ClipRRect(
@@ -353,15 +354,16 @@ class _S extends State<TowingFlowPage>{
   @override Widget build(BuildContext c)=>Scaffold(backgroundColor:Colors.white,appBar:AppBar(backgroundColor:Colors.white,foregroundColor:Colors.black,elevation:0,title:step==0?null:Text(step==1?'Araç bilgisi':'Tahmini Ücret',style:const TextStyle(fontWeight:FontWeight.w900))),body:busy?const Center(child:CircularProgressIndicator()):SafeArea(child:SingleChildScrollView(child:step==0?locationStep():step==1?vehicleStep():quoteStep())));
 }
 class TowingTrackingPage extends StatefulWidget {
-  const TowingTrackingPage({super.key, required this.id});
+  const TowingTrackingPage({super.key, required this.id, this.driverMode=false});
   final String id;
+  final bool driverMode;
   @override State<TowingTrackingPage> createState() => _T();
 }
 class _T extends State<TowingTrackingPage> {
   Map<String,dynamic>? d; Timer? t;
   @override void initState(){super.initState();load();t=Timer.periodic(const Duration(seconds:5),(_)=>load());}
   @override void dispose(){t?.cancel();super.dispose();}
-  Future<void> load()async{try{final r=await OwnerHttp.get(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/towing/requests/${widget.id}/tracking'));if(r.statusCode==200&&mounted)setState(()=>d=Map<String,dynamic>.from(jsonDecode(r.body)['tracking']));}catch(_){}}
+  Future<void> load()async{try{final uri=Uri.parse('${OnboardingBackend.baseUrl}${widget.driverMode?'/api/driver/towing/requests/':'/api/owner/towing/requests/'}${widget.id}/tracking');final r=widget.driverMode?await DriverHttp.get(uri):await OwnerHttp.get(uri);if(r.statusCode==200&&mounted)setState(()=>d=Map<String,dynamic>.from(jsonDecode(r.body)['tracking']));}catch(_){}}
   double? n(dynamic v)=>double.tryParse('${v??''}');
   bool cancelling=false;
   Future<void> cancelRequest() async {
@@ -376,10 +378,10 @@ class _T extends State<TowingTrackingPage> {
     if(!ok||!mounted)return;
     setState(()=>cancelling=true);
     try{
-      final r=await OwnerHttp.post(
-        Uri.parse('${OnboardingBackend.baseUrl}/api/owner/towing/requests/${widget.id}/cancel'),
-        body:jsonEncode({'reason':'Kullanıcı tarafından iptal edildi'}),
-      );
+      final uri=Uri.parse('${OnboardingBackend.baseUrl}${widget.driverMode?'/api/driver/towing/requests/':'/api/owner/towing/requests/'}${widget.id}/cancel');
+      final r=widget.driverMode
+        ?await DriverHttp.post(uri,body:jsonEncode({'reason':'Kullanıcı tarafından iptal edildi'}))
+        :await OwnerHttp.post(uri,body:jsonEncode({'reason':'Kullanıcı tarafından iptal edildi'}));
       final body=r.body.isEmpty?<String,dynamic>{}:Map<String,dynamic>.from(jsonDecode(r.body));
       if(r.statusCode>=200&&r.statusCode<300){
         t?.cancel();
