@@ -52,11 +52,15 @@ module.exports=function registerAppSettingsRoutes(app,pool,adminGuard){
     const fee=b.defaultPlatformFee===undefined?null:Number(b.defaultPlatformFee);
     const premiumMonthly=b.premiumMonthlyPrice===undefined?null:Number(b.premiumMonthlyPrice);
     const premiumYearly=b.premiumYearlyPrice===undefined?null:Number(b.premiumYearlyPrice);
+    const familyPremiumMonthly=b.familyPremiumMonthlyPrice===undefined?null:Number(b.familyPremiumMonthlyPrice);
+    const familyPremiumYearly=b.familyPremiumYearlyPrice===undefined?null:Number(b.familyPremiumYearlyPrice);
     const qrMax=b.qrRateLimitMax===undefined?null:Number(b.qrRateLimitMax);
     const qrWindow=b.qrRateLimitWindowSeconds===undefined?null:Number(b.qrRateLimitWindowSeconds);
     if(fee!==null&&(!Number.isFinite(fee)||fee<0||fee>100000))return res.status(400).json({error:'INVALID_PLATFORM_FEE'});
     if(premiumMonthly!==null&&(!Number.isFinite(premiumMonthly)||premiumMonthly<0||premiumMonthly>100000))return res.status(400).json({error:'INVALID_PREMIUM_MONTHLY_PRICE'});
     if(premiumYearly!==null&&(!Number.isFinite(premiumYearly)||premiumYearly<0||premiumYearly>1000000))return res.status(400).json({error:'INVALID_PREMIUM_YEARLY_PRICE'});
+    if(familyPremiumMonthly!==null&&(!Number.isFinite(familyPremiumMonthly)||familyPremiumMonthly<0||familyPremiumMonthly>100000))return res.status(400).json({error:'INVALID_FAMILY_PREMIUM_MONTHLY_PRICE'});
+    if(familyPremiumYearly!==null&&(!Number.isFinite(familyPremiumYearly)||familyPremiumYearly<0||familyPremiumYearly>1000000))return res.status(400).json({error:'INVALID_FAMILY_PREMIUM_YEARLY_PRICE'});
     if(qrMax!==null&&(!Number.isInteger(qrMax)||qrMax<1||qrMax>10000))return res.status(400).json({error:'INVALID_QR_RATE_MAX'});
     if(qrWindow!==null&&(!Number.isInteger(qrWindow)||qrWindow<1||qrWindow>86400))return res.status(400).json({error:'INVALID_QR_RATE_WINDOW'});
 
@@ -114,8 +118,29 @@ module.exports=function registerAppSettingsRoutes(app,pool,adminGuard){
           actor(req),
         ]
       );
+      let after=q.rows[0];
+      if(familyPremiumMonthly!==null||familyPremiumYearly!==null){
+        const fq=await pool.query(
+          `UPDATE app_settings SET
+             family_premium_monthly_price=COALESCE($1,family_premium_monthly_price),
+             family_premium_yearly_price=COALESCE($2,family_premium_yearly_price),
+             family_premium_monthly_price_text=COALESCE($3,family_premium_monthly_price_text),
+             family_premium_yearly_price_text=COALESCE($4,family_premium_yearly_price_text),
+             updated_at=NOW(),
+             updated_by=$5
+           WHERE id=1
+           RETURNING *`,
+          [
+            familyPremiumMonthly,
+            familyPremiumYearly,
+            familyPremiumMonthly!==null?formatTry(familyPremiumMonthly):null,
+            familyPremiumYearly!==null?formatTry(familyPremiumYearly):null,
+            actor(req),
+          ]
+        );
+        after=fq.rows[0]||after;
+      }
       clearAppSettingsCache();
-      const after=q.rows[0];
       await writeAdminAudit(pool,req,{
         action:'settings.updated',
         targetType:'app_settings',
@@ -130,6 +155,8 @@ module.exports=function registerAppSettingsRoutes(app,pool,adminGuard){
           default_platform_fee:before.default_platform_fee,
           premium_monthly_price:before.premium_monthly_price,
           premium_yearly_price:before.premium_yearly_price,
+          family_premium_monthly_price:before.family_premium_monthly_price,
+          family_premium_yearly_price:before.family_premium_yearly_price,
           premium_currency:before.premium_currency,
           qr_rate_limit_max:before.qr_rate_limit_max,
           qr_rate_limit_window_seconds:before.qr_rate_limit_window_seconds,
@@ -144,6 +171,8 @@ module.exports=function registerAppSettingsRoutes(app,pool,adminGuard){
           default_platform_fee:after.default_platform_fee,
           premium_monthly_price:after.premium_monthly_price,
           premium_yearly_price:after.premium_yearly_price,
+          family_premium_monthly_price:after.family_premium_monthly_price,
+          family_premium_yearly_price:after.family_premium_yearly_price,
           premium_currency:after.premium_currency,
           qr_rate_limit_max:after.qr_rate_limit_max,
           qr_rate_limit_window_seconds:after.qr_rate_limit_window_seconds,
