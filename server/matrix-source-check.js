@@ -216,6 +216,17 @@ rejectText(
 );
 
 requireText(
+  'push-routes.js',
+  'async function retireFcmToken(token)',
+  'FCM_STALE_TOKEN_RETIREMENT_MISSING'
+);
+requireText(
+  'push-routes.js',
+  "['owner_push_tokens','driver_push_tokens','valet_push_tokens']",
+  'FCM_STALE_TOKEN_GLOBAL_CLEANUP_MISSING'
+);
+
+requireText(
   'vehicle-reminder-routes.js',
   'crypto.timingSafeEqual(supplied,target)',
   'REMINDER_JOB_SECRET_NOT_TIMING_SAFE'

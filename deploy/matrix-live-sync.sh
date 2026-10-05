@@ -222,7 +222,7 @@ for f in "${FILES[@]}"; do
   fi
 done
 
-for m in 053_admin_audit_canonical.sql 054_qr_opaque_tokens.sql 057_web_push_subscriptions.sql 058_qr_proximity_security.sql 082_family_premium.sql 083_towing_vehicle_pricing.sql 084_owner_login_dependencies.sql 085_vehicle_product_page_nfc_analytics.sql 086_store_management.sql; do
+for m in 053_admin_audit_canonical.sql 054_qr_opaque_tokens.sql 057_web_push_subscriptions.sql 058_qr_proximity_security.sql 082_family_premium.sql 083_towing_vehicle_pricing.sql 084_owner_login_dependencies.sql 085_vehicle_product_page_nfc_analytics.sql 086_store_management.sql 087_valet_audit_runtime_acl_repair.sql; do
   fetch_https "$BASE/migrations/$m" -o "$TMP/$m" || fail "migration indirilemedi: $m"
   chmod 644 "$TMP/$m"
 done
@@ -432,6 +432,7 @@ sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$TMP/085_vehicle_product_p
 MIGRATION_085_APPLIED=1
 sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$TMP/086_store_management.sql"
 MIGRATION_086_APPLIED=1
+sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$TMP/087_valet_audit_runtime_acl_repair.sql"
 
 STAGE="schema_verify"
 echo "=== LIVE SCHEMA VERIFY ==="

@@ -80,6 +80,7 @@ jobs:
           bash -n deploy/matrix-live-sync.sh
           grep -q 'DB ROLLBACK' deploy/matrix-live-sync.sh
           grep -q 'matrix-schema-check.sql' deploy/matrix-live-sync.sh
+          grep -q '087_valet_audit_runtime_acl_repair.sql' deploy/matrix-live-sync.sh
 
       - name: Verify token role isolation
         working-directory: server

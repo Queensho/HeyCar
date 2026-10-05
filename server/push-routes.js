@@ -54,6 +54,37 @@ module.exports=function registerPushRoutes(app,pool){
     ready=true;
   }
 
+  const isUnregisteredFcm=(status,errorCode,detail)=>{
+    const code=String(errorCode||'').trim().toUpperCase();
+    const body=String(detail||'');
+    return code==='UNREGISTERED'
+      || code==='NOTREGISTERED'
+      || body.includes('UNREGISTERED')
+      || body.includes('NotRegistered')
+      || body.includes('registration-token-not-registered');
+  };
+
+  async function retireFcmToken(token){
+    const value=String(token||'').trim();
+    if(!value)return 0;
+    let retired=0;
+    for(const table of ['owner_push_tokens','driver_push_tokens','valet_push_tokens']){
+      try{
+        const r=await pool.query(
+          `UPDATE ${table} SET active=FALSE,updated_at=NOW() WHERE fcm_token=$1 AND active=TRUE`,
+          [value]
+        );
+        retired+=Number(r.rowCount||0);
+      }catch(e){
+        // Older installations may not have every token table yet.
+        if(String(e?.code||'')!=='42P01'){
+          console.warn('FCM token retire failed',{table,code:String(e?.code||'DB_ERROR')});
+        }
+      }
+    }
+    return retired;
+  }
+
   const webReceiptSecret=String(process.env.JWT_SECRET||process.env.OWNER_AUTH_SECRET||'');
   const webReceiptSig=(id)=>crypto.createHmac('sha256',webReceiptSecret).update(String(id)).digest('base64url');
 
@@ -170,10 +201,18 @@ module.exports=function registerPushRoutes(app,pool){
             ''
           );
         }catch(_){}
-        console.error('FCM send',{status:r.status,code:errorCode||'FCM_ERROR'});
-        if(r.status===404||errorCode==='UNREGISTERED'||errorCode==='NotRegistered'||detail.includes('UNREGISTERED')||detail.includes('NotRegistered')){
-          await pool.query(`UPDATE ${table} SET active=FALSE,updated_at=NOW() WHERE id=$1`,[row.id]).catch(()=>{});
+        if(isUnregisteredFcm(r.status,errorCode,detail)){
+          const retired=await retireFcmToken(row.fcm_token);
+          console.warn('FCM token retired',{
+            status:r.status,
+            code:errorCode||'UNREGISTERED',
+            retired,
+            platform,
+            userId:String(userId)
+          });
+          return false;
         }
+        console.error('FCM send',{status:r.status,code:errorCode||'FCM_ERROR'});
         return false;
       }catch(e){
         console.error('FCM transport',e);
@@ -218,7 +257,24 @@ module.exports=function registerPushRoutes(app,pool){
       const fcmData=Object.fromEntries(Object.entries({...data,title,body}).map(([k,v])=>[k,String(v??'')]));
       const message={token,data:fcmData,notification:{title,body},android:{priority:'HIGH',ttl:'120s',notification:{channel_id:'cepqar_notifications_v10',sound:'bildirim',notification_priority:'PRIORITY_MAX',default_vibrate_timings:true,visibility:'PUBLIC'}}};
       const r=await fetch(`https://fcm.googleapis.com/v1/projects/${sa.project_id}/messages:send`,{method:'POST',headers:{authorization:`Bearer ${key}`,'content-type':'application/json'},body:JSON.stringify({message})});
-      return r.ok;
+      if(r.ok)return true;
+      const detail=await r.text();
+      let errorCode='';
+      try{
+        const parsed=JSON.parse(detail);
+        errorCode=String(
+          parsed?.error?.details?.find?.(x=>x&&typeof x==='object'&&x.errorCode)?.errorCode||
+          parsed?.error?.status||
+          ''
+        );
+      }catch(_){}
+      if(isUnregisteredFcm(r.status,errorCode,detail)){
+        const retired=await retireFcmToken(token);
+        console.warn('FCM direct token retired',{status:r.status,code:errorCode||'UNREGISTERED',retired});
+        return false;
+      }
+      console.error('FCM direct token',{status:r.status,code:errorCode||'FCM_ERROR'});
+      return false;
     }catch(e){console.error('FCM direct token',e);return false;}
   };
   const send=sendOwner;

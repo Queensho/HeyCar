@@ -30,7 +30,8 @@ BEGIN
         ('vehicle_touchpoint_events'),
         ('store_products'),
         ('store_orders'),
-        ('store_order_items')
+        ('store_order_items'),
+        ('valet_audit_log')
       ) AS required(name)
       WHERE to_regclass('public.' || name) IS NULL
     ) q;
@@ -184,6 +185,17 @@ BEGIN
 
   IF bad_count <> 12 THEN
     RAISE EXCEPTION 'MISSING_MATRIX_FOREIGN_KEYS: expected 12, found %', bad_count;
+  END IF;
+
+  IF to_regclass('public.valet_audit_log_id_seq') IS NULL THEN
+    RAISE EXCEPTION 'VALET_AUDIT_SEQUENCE_MISSING';
+  END IF;
+
+  IF NOT has_table_privilege('heycar_user','public.valet_audit_log','SELECT')
+     OR NOT has_table_privilege('heycar_user','public.valet_audit_log','INSERT')
+     OR NOT has_sequence_privilege('heycar_user','public.valet_audit_log_id_seq','USAGE')
+     OR NOT has_sequence_privilege('heycar_user','public.valet_audit_log_id_seq','SELECT') THEN
+    RAISE EXCEPTION 'VALET_AUDIT_RUNTIME_PRIVILEGES_MISSING';
   END IF;
 
   IF NOT has_table_privilege('heycar_user','public.owner_web_push_subscriptions','SELECT')
