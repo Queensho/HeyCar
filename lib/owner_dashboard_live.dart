@@ -11,7 +11,17 @@ import 'roadside_help_page.dart';
 import 'owner_home_redesign.dart';
 import 'valet_info_page.dart';
 class OwnerDashboardLive extends StatefulWidget{const OwnerDashboardLive({super.key});@override State<OwnerDashboardLive> createState()=>_S();}
-class _S extends State<OwnerDashboardLive>{int tab=0;bool parked=false,vehicleLoading=true;String get vid=>QrDraft.vehicleId.trim().isNotEmpty?QrDraft.vehicleId.trim():OnboardingDraft.vehicleId.trim();String get oid=>OnboardingDraft.userId.trim();@override void initState(){super.initState();_loadVehicle();}
+class _S extends State<OwnerDashboardLive>{
+int tab=0;bool parked=false,vehicleLoading=true;
+String get vid=>QrDraft.vehicleId.trim().isNotEmpty?QrDraft.vehicleId.trim():OnboardingDraft.vehicleId.trim();
+String get oid=>OnboardingDraft.userId.trim();
+bool get testAccount{
+  var digits=OnboardingDraft.phone.replaceAll(RegExp(r'\\D'),'');
+  if(digits.startsWith('90')&&digits.length==12)digits=digits.substring(2);
+  if(digits.startsWith('0')&&digits.length==11)digits=digits.substring(1);
+  return digits=='5074035857';
+}
+@override void initState(){super.initState();_loadVehicle();}
 Future<void> _loadVehicle()async{if(oid.isEmpty){if(mounted)setState(()=>vehicleLoading=false);return;}try{final r=await OwnerHttp.get(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/vehicles'),json:false);final d=jsonDecode(r.body);if(d is Map&&d['vehicles'] is List){final vs=(d['vehicles'] as List).whereType<Map>().toList();if(vs.isNotEmpty){var v=vs.first;for(final x in vs){if('${x['id']}'==vid){v=x;break;}}_apply(v,notify:false);}}}catch(_){}if(mounted)setState(()=>vehicleLoading=false);await _parking();}
 void _apply(Map v,{bool notify=true}){QrDraft.vehicleId='${v['id']??''}';OnboardingDraft.vehicleId=QrDraft.vehicleId;QrDraft.plate='${v['plate']??''}';QrDraft.make='${v['make']??''}';QrDraft.model='${v['model']??''}';QrDraft.token='${v['qr_token']??''}'.trim();QrDraft.scanSecret='${v['qr_scan_secret']??''}'.trim();_persistVehicle();if(notify&&mounted)setState((){});}
 Future<void> _persistVehicle()async{final p=await SharedPreferences.getInstance();await p.setString('owner_vehicle_id',QrDraft.vehicleId);await p.setString('owner_plate',QrDraft.plate);await p.setString('owner_make',QrDraft.make);await p.setString('owner_model',QrDraft.model);await p.setString('owner_qr_token',QrDraft.token);await p.setString('owner_qr_scan_secret',QrDraft.scanSecret);}
@@ -19,7 +29,20 @@ Future<void> _vehicleChanged()async{setState(()=>parked=false);await _loadVehicl
 Future<void> _parking()async{if(vid.isEmpty)return;bool garage=false,street=false;try{final p=await SharedPreferences.getInstance(),prefix='street_park_${vid}_';street=p.getDouble('${prefix}lat')!=null&&p.getDouble('${prefix}lng')!=null&&p.getString('${prefix}time')!=null;}catch(_){}try{final r=await OwnerHttp.get(Uri.parse('${QrBackend.baseUrl}/api/vehicles/$vid/parking'),json:false);if(r.statusCode>=200&&r.statusCode<300){final d=jsonDecode(r.body);garage=d is Map&&d['parking'] is Map;}}catch(_){}if(mounted)setState(()=>parked=garage||street);}
 void _qr(){final t=QrDraft.token.trim();if(t.isEmpty){ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('${QrDraft.plate.trim().isEmpty?'Seçili araç':QrDraft.plate} için QR aktif değil. Araçlarım bölümünden QR Aktif Et’e bas.')));return;}final secret=QrDraft.scanSecret.trim();final u='https://queensho.github.io/HeyCar/?tag=${Uri.encodeComponent(t)}${secret.isEmpty?'':'&s=${Uri.encodeComponent(secret)}'}';showModalBottomSheet(context:context,backgroundColor:CepqarTheme.panel,builder:(c)=>Padding(padding:const EdgeInsets.all(22),child:Column(mainAxisSize:MainAxisSize.min,children:[Text('${QrDraft.plate} QR',style:TextStyle(color:CepqarTheme.text,fontSize:23,fontWeight:FontWeight.w900)),const SizedBox(height:14),Container(width:225,height:225,padding:const EdgeInsets.all(12),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(22)),child:Image.network('https://quickchart.io/qr?text=${Uri.encodeComponent(u)}&size=420',errorBuilder:(_,__,___)=>const Icon(Icons.qr_code_2,size:160,color:Colors.black))),const SizedBox(height:10),Text(t,style:TextStyle(color:CepqarTheme.muted,fontWeight:FontWeight.w700))])));}
 Future<void> _park()async{if(vid.isEmpty)return;await showModalBottomSheet(context:context,isScrollControlled:true,backgroundColor:CepqarTheme.bg,builder:(c)=>Padding(padding:const EdgeInsets.all(18),child:ParkingLocationCard(vehicleId:vid)));await _parking();}
-void action(String a){if(a=='qr')_qr();else if(a=='qr_security'&&vid.isNotEmpty)Navigator.push(context,MaterialPageRoute(builder:(_)=>QrSecurityPage(vehicleId:vid,plate:QrDraft.plate)));else if(a=='parking')_park();else if(a=='notifications')setState(()=>tab=3);else if(a=='vehicles'||a=='drivers')setState(()=>tab=1);else if(a=='services')setState(()=>tab=2);else if(a=='settings')setState(()=>tab=4);else if(a=='offers')Navigator.push(context,MaterialPageRoute(builder:(_)=>const CepqarOffersPage()));else if(a=='roadside_help')Navigator.push(context,MaterialPageRoute(builder:(_)=>const RoadsideHelpPage()));else if(a=='maintenance')Navigator.push(context,MaterialPageRoute(builder:(_)=>MaintenancePage(plate:QrDraft.plate,title:'${QrDraft.make} ${QrDraft.model}'.trim())));else if(a=='reminders'&&vid.isNotEmpty)Navigator.push(context,MaterialPageRoute(builder:(_)=>VehicleRemindersPage(vehicleId:vid)));}
+void action(String a){
+  if(a=='qr')_qr();
+  else if(a=='qr_security'&&vid.isNotEmpty)Navigator.push(context,MaterialPageRoute(builder:(_)=>QrSecurityPage(vehicleId:vid,plate:QrDraft.plate)));
+  else if(a=='parking')_park();
+  else if(a=='notifications')setState(()=>tab=3);
+  else if(a=='vehicles'||a=='drivers')setState(()=>tab=1);
+  else if(a=='services')setState(()=>tab=2);
+  else if(a=='settings')setState(()=>tab=4);
+  else if(a=='towing')Navigator.push(context,MaterialPageRoute(builder:(_)=>const RoadsideHelpPage(initialTab:1)));
+  else if(a=='offers'&&testAccount)Navigator.push(context,MaterialPageRoute(builder:(_)=>const CepqarOffersPage()));
+  else if(a=='roadside_help'&&testAccount)Navigator.push(context,MaterialPageRoute(builder:(_)=>const RoadsideHelpPage(initialTab:0)));
+  else if(a=='maintenance')Navigator.push(context,MaterialPageRoute(builder:(_)=>MaintenancePage(plate:QrDraft.plate,title:'\${QrDraft.make} \${QrDraft.model}'.trim())));
+  else if(a=='reminders'&&vid.isNotEmpty)Navigator.push(context,MaterialPageRoute(builder:(_)=>VehicleRemindersPage(vehicleId:vid)));
+}
 @override Widget build(BuildContext context)=>ValueListenableBuilder<ThemeMode>(
   valueListenable:CepqarTheme.mode,
   builder:(_,__,___)=>ValueListenableBuilder<int>(
@@ -37,8 +60,8 @@ void action(String a){if(a=='qr')_qr();else if(a=='qr_security'&&vid.isNotEmpty)
         ),
         OwnerVehiclesPage(onVehicleChanged:_vehicleChanged),
         OwnerServicesRedesign(
-          onVale:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>ValetInfoPage(vehicleId:vid))),
-          onTowing:()=>action('roadside_help'),
+          onVale:()=>testAccount?Navigator.push(context,MaterialPageRoute(builder:(_)=>ValetInfoPage(vehicleId:vid))):null,
+          onTowing:()=>action('towing'),
           onPark:_park,
           onOffers:()=>action('offers'),
           onMaintenance:()=>action('maintenance'),
