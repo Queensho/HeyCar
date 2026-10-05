@@ -2234,7 +2234,7 @@ class _QrPageState extends State<QrPage>{
   Widget _qrTable(List<Map<String,dynamic>> rows,{bool compact=false}){
     final perPage=compact?5:6;
     final pageCount=rows.isEmpty?1:(rows.length/perPage).ceil();
-    final safePage=tablePage.clamp(0,pageCount-1);
+    final safePage=tablePage.clamp(0,pageCount-1).toInt();
     final start=safePage*perPage;
     final pageRows=rows.skip(start).take(perPage).toList();
 
