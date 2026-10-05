@@ -1091,7 +1091,7 @@ class _DriverHome extends StatelessWidget {
               Container(
                 width:39,height:39,
                 decoration:BoxDecoration(
-                  color:color.withValues(alpha:light?.11:.17),
+                  color:color.withValues(alpha:light ? .11 : .17),
                   shape:BoxShape.circle,
                 ),
                 child:Icon(icon,color:color,size:20),
@@ -1118,7 +1118,7 @@ class _DriverHome extends StatelessWidget {
               Container(
                 width:28,height:28,
                 decoration:BoxDecoration(
-                  color:color.withValues(alpha:light?.11:.16),
+                  color:color.withValues(alpha:light ? .11 : .16),
                   shape:BoxShape.circle,
                 ),
                 child:Icon(icon,color:color,size:15),
@@ -1293,7 +1293,7 @@ class _DriverHome extends StatelessWidget {
                         Container(
                           width:62,height:62,
                           decoration:BoxDecoration(
-                            color:const Color(0xFF713BFF).withValues(alpha:light?.09:.16),
+                            color:const Color(0xFF713BFF).withValues(alpha:light ? .09 : .16),
                             borderRadius:BorderRadius.circular(16),
                           ),
                           child:_brandLogo(),
@@ -1410,7 +1410,7 @@ class _DriverHome extends StatelessWidget {
                         Container(
                           width:40,height:40,
                           decoration:BoxDecoration(
-                            color:const Color(0xFF713BFF).withValues(alpha:light?.10:.17),
+                            color:const Color(0xFF713BFF).withValues(alpha:light ? .10 : .17),
                             borderRadius:BorderRadius.circular(12),
                           ),
                           child:const Icon(Icons.notifications_rounded,color:_purple,size:21),
