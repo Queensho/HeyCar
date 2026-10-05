@@ -17,20 +17,22 @@ import 'admin_support_page.dart';
 import 'admin_settings_page.dart';
 import 'admin_towing_page.dart';
 import 'admin_store_page.dart';
+import 'admin_ui.dart';
 
-const _navy = Color(0xFF060A18);
-const _purple = Color(0xFFB100FF);
-const _purple2 = Color(0xFF7B2CFF);
-const _pink = Color(0xFFFF4FD8);
-const _blue = Color(0xFF499DFF);
-const _green = Color(0xFF28F39A);
-const _amber = Color(0xFFFFB62E);
-const _orange = _purple;
-const _bg = Color(0xFF040714);
-const _card = Color(0xFF090E22);
-const _card2 = Color(0xFF0C1230);
-const _muted = Color(0xFFA9AFC4);
-const _line = Color(0xFF4A236C);
+const _navy = Color(0xFF111827);
+const _purple = AdminUi.purple;
+const _purple2 = AdminUi.purple2;
+const _pink = Color(0xFFEC4899);
+const _blue = AdminUi.blue;
+const _green = AdminUi.green;
+const _amber = AdminUi.amber;
+const _orange = AdminUi.amber;
+const _bg = AdminUi.bg;
+const _card = AdminUi.surface;
+const _card2 = AdminUi.surfaceSoft;
+const _muted = AdminUi.muted;
+const _line = AdminUi.line;
+const _ink = AdminUi.ink;
 const _baseUrl = 'https://heycar-api-185-165-46-213.nip.io';
 const _publicBase = 'https://queensho.github.io/HeyCar/';
 
@@ -41,45 +43,7 @@ class AdminV3App extends StatelessWidget {
   @override
   Widget build(BuildContext context) => MaterialApp(
         debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          useMaterial3: true,
-          brightness: Brightness.dark,
-          scaffoldBackgroundColor: _bg,
-          colorScheme: const ColorScheme.dark(
-            primary: _purple,
-            secondary: _purple2,
-            surface: _card,
-          ),
-          textTheme: const TextTheme(
-            bodyMedium: TextStyle(color: Colors.white),
-            bodyLarge: TextStyle(color: Colors.white),
-          ),
-          inputDecorationTheme: InputDecorationTheme(
-            filled: true,
-            fillColor: _card2,
-            labelStyle: const TextStyle(color: _muted),
-            hintStyle: const TextStyle(color: _muted),
-            prefixIconColor: _purple,
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: _line),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: _purple,width:1.3),
-            ),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-          ),
-          dialogTheme: DialogThemeData(
-            backgroundColor: _card,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22),side:const BorderSide(color:_line)),
-          ),
-          cardTheme: CardThemeData(
-            color: _card,
-            elevation: 0,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18),side:const BorderSide(color:_line)),
-          ),
-        ),
+        theme: AdminUi.theme(),
         home: const AdminGate(),
       );
 }
