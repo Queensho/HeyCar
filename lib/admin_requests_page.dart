@@ -1,14 +1,16 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'admin_ui.dart';
 import 'package:http/http.dart' as http;
 
 const _baseUrl = 'https://heycar-api-185-165-46-213.nip.io';
-const _navy = Color(0xFF060A18);
-const _orange = Color(0xFFB100FF);
-const _card = Color(0xFF090E22);
-const _card2 = Color(0xFF0C1230);
-const _muted = Color(0xFFA9AFC4);
-const _line = Color(0xFF4A236C);
+const _navy = AdminUi.bg;
+const _orange = AdminUi.purple;
+const _card = AdminUi.surface;
+const _card2 = AdminUi.surfaceSoft;
+const _muted = AdminUi.muted;
+const _line = AdminUi.line;
+const _ink = AdminUi.ink;
 
 class AdminCorrectionRequestsPage extends StatefulWidget {
   const AdminCorrectionRequestsPage({super.key, required this.token, this.admin});
