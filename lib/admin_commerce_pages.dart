@@ -94,14 +94,25 @@ class AdminPremiumPage extends StatelessWidget{
     Wrap(spacing:7,runSpacing:7,children:[for(final x in const [('all','Tümü'),('premium','Premium'),('expired','Süresi Dolmuş'),('standard','Standart')])ChoiceChip(label:Text(x.$2),selected:filter==x.$1,onSelected:(_)=>onFilter(x.$1))]),const SizedBox(height:9),
     if(items.isEmpty)_empty('Bu filtrede kullanıcı yok.')else ...items.map((u)=>_user(context,u)),if(error!=null)Text(error!,style:const TextStyle(color:Colors.redAccent)),
   ]);}));}
-  Widget _user(BuildContext context,Map<String,dynamic> u){final premium=u['premium']==true,expired=u['premium_flag']==true&&!premium,color=premium?_amber:expired?Colors.redAccent:_muted;return Container(margin:const EdgeInsets.only(bottom:8),padding:const EdgeInsets.all(11),decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(16),border:Border.all(color:color.withValues(alpha:.27))),child:Column(children:[Row(children:[CircleAvatar(backgroundColor:color.withValues(alpha:.12),child:Icon(premium?Icons.workspace_premium_rounded:Icons.person_rounded,color:color)),const SizedBox(width:9),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text((u['display_name']??'İsimsiz').toString(),style:const TextStyle(color:Colors.white,fontWeight:FontWeight.w900)),Text((u['phone']??u['email']??'-').toString(),style:const TextStyle(color:_muted,fontSize:10.5))])),_pill(premium?'Premium':expired?'Süresi Dolmuş':'Standart',color)]),const SizedBox(height:7),Row(children:[Expanded(child:Text(premium?(u['premium_expires_at']==null?'Bitiş: Süresiz':'Bitiş: '+_date(u['premium_expires_at'])):'Premium aktif değil',style:const TextStyle(color:_muted,fontSize:10.5))),Text((u['history_count']??0).toString()+' işlem',style:const TextStyle(color:_muted,fontSize:10.5))]),const SizedBox(height:8),Wrap(spacing:7,runSpacing:7,children:[if(!premium)FilledButton.icon(onPressed:()=>_activate(context,u),icon:const Icon(Icons.workspace_premium_rounded),label:const Text('Premium Yap'),style:FilledButton.styleFrom(backgroundColor:_amber,foregroundColor:Colors.black)),if(premium)OutlinedButton.icon(onPressed:()=>_extend(context,u),icon:const Icon(Icons.add_alarm_rounded),label:const Text('Uzat')),if(premium)OutlinedButton.icon(onPressed:()=>onAction(u['id'].toString(),{'action':'cancel','note':'Admin tarafından iptal edildi'}),icon:const Icon(Icons.cancel_outlined),label:const Text('İptal'),style:OutlinedButton.styleFrom(foregroundColor:Colors.redAccent)),OutlinedButton.icon(onPressed:()=>_history(context,u),icon:const Icon(Icons.history_rounded),label:const Text('Geçmiş'))]) ]));}
+  Widget _user(BuildContext context,Map<String,dynamic> u){final premium=u['premium']==true,expired=u['premium_flag']==true&&!premium,color=premium?_amber:expired?Colors.redAccent:_muted,plan=(u['premium_plan']??'individual').toString();return Container(margin:const EdgeInsets.only(bottom:8),padding:const EdgeInsets.all(11),decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(16),border:Border.all(color:color.withValues(alpha:.27))),child:Column(children:[Row(children:[CircleAvatar(backgroundColor:color.withValues(alpha:.12),child:Icon(premium?Icons.workspace_premium_rounded:Icons.person_rounded,color:color)),const SizedBox(width:9),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text((u['display_name']??'İsimsiz').toString(),style:const TextStyle(color:Colors.white,fontWeight:FontWeight.w900)),Text((u['phone']??u['email']??'-').toString(),style:const TextStyle(color:_muted,fontSize:10.5))])),_pill(premium?(plan=='family'?'Aile Premium':'Bireysel Premium'):expired?'Süresi Dolmuş':'Standart',color)]),const SizedBox(height:7),Row(children:[Expanded(child:Text(premium?(u['premium_expires_at']==null?'Bitiş: Süresiz':'Bitiş: '+_date(u['premium_expires_at'])):'Premium aktif değil',style:const TextStyle(color:_muted,fontSize:10.5))),Text((u['history_count']??0).toString()+' işlem',style:const TextStyle(color:_muted,fontSize:10.5))]),const SizedBox(height:8),Wrap(spacing:7,runSpacing:7,children:[if(!premium)FilledButton.icon(onPressed:()=>_activate(context,u),icon:const Icon(Icons.workspace_premium_rounded),label:const Text('Premium Yap'),style:FilledButton.styleFrom(backgroundColor:_amber,foregroundColor:Colors.black)),if(premium)OutlinedButton.icon(onPressed:()=>_extend(context,u),icon:const Icon(Icons.add_alarm_rounded),label:const Text('Uzat')),if(premium)OutlinedButton.icon(onPressed:()=>onAction(u['id'].toString(),{'action':'cancel','note':'Admin tarafından iptal edildi'}),icon:const Icon(Icons.cancel_outlined),label:const Text('İptal'),style:OutlinedButton.styleFrom(foregroundColor:Colors.redAccent)),OutlinedButton.icon(onPressed:()=>_history(context,u),icon:const Icon(Icons.history_rounded),label:const Text('Geçmiş'))]) ]));}
   Future<void> _activate(BuildContext context,Map<String,dynamic> u)async{
     int days=30;
+    String plan='individual';
     bool unlimited=false,custom=false;
     DateTime? customDate;
     final ok=await showDialog<bool>(context:context,builder:(d)=>StatefulBuilder(builder:(d,setD)=>AlertDialog(
       title:Text((u['display_name']??'Kullanıcı').toString()+' • Premium'),
       content:Column(mainAxisSize:MainAxisSize.min,children:[
+        DropdownButtonFormField<String>(
+          value:plan,
+          decoration:const InputDecoration(labelText:'Paket'),
+          items:const[
+            DropdownMenuItem(value:'individual',child:Text('Bireysel Premium')),
+            DropdownMenuItem(value:'family',child:Text('Aile Premium')),
+          ],
+          onChanged:(v)=>setD(()=>plan=v??'individual'),
+        ),
+        const SizedBox(height:8),
         SwitchListTile(
           contentPadding:EdgeInsets.zero,
           value:unlimited,
@@ -149,7 +160,7 @@ class AdminPremiumPage extends StatelessWidget{
       ],
     )));
     if(ok==true){
-      final payload=<String,dynamic>{'action':'activate','note':'Admin manuel Premium'};
+      final payload=<String,dynamic>{'action':'activate','plan':plan,'note':'Admin manuel ${plan=='family'?'Aile':'Bireysel'} Premium'};
       if(unlimited){
         payload['expiresAt']=null;
       }else if(custom&&customDate!=null){
