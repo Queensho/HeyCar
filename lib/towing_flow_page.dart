@@ -1,25 +1,253 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+
 import 'cepqar_theme.dart';
 import 'owner_auth.dart';
 import 'driver_auth.dart';
 import 'onboarding_backend.dart';
 import 'qr_backend.dart';
-class TowingFlowPage extends StatefulWidget{const TowingFlowPage({super.key,this.driverMode=false,this.vehicleId});final bool driverMode;final String? vehicleId;@override State<TowingFlowPage> createState()=>_S();}
-class _S extends State<TowingFlowPage>{
-  int step=0;bool busy=false,notRunning=true;String vehicleType='car',truck='platform';double? a,b,x,y;String pickup='Konumum',dropoff='Haritada bırakma noktasını seç';Map<String,dynamic>? quote;final dest=TextEditingController();List<Map<String,dynamic>> destResults=[];bool destSearching=false;Timer? destDebounce;String get api=>OnboardingBackend.baseUrl;
-  @override void initState(){super.initState();locate();}
-  @override void dispose(){destDebounce?.cancel();dest.dispose();super.dispose();}
-  void msg(String s){ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(s)));}
-  Future<String> address(double lat,double lng)async{try{final r=await http.get(Uri.parse('https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=$lat&lon=$lng&accept-language=tr'),headers:{'User-Agent':'CepQontag/1.0'});if(r.statusCode==200){final d=jsonDecode(r.body),m=d['address']??{};final district=m['town']??m['city_district']??m['suburb']??m['city'];final city=m['province']??m['city'];if(district!=null&&city!=null)return '$district, $city';}}catch(_){}return 'Seçilen konum';}
-  Future<void> locate()async{setState(()=>busy=true);try{var p=await Geolocator.checkPermission();if(p==LocationPermission.denied)p=await Geolocator.requestPermission();if(p==LocationPermission.denied||p==LocationPermission.deniedForever)throw Exception();final z=await Geolocator.getCurrentPosition();final ad=await address(z.latitude,z.longitude);if(mounted)setState((){a=z.latitude;b=z.longitude;pickup=ad;});}catch(_){msg('Konum alınamadı.');}finally{if(mounted)setState(()=>busy=false);}}
-  double get km=>(a==null||x==null)?0:Geolocator.distanceBetween(a!,b!,x!,y!)/1000;
-  Future<void> chooseDrop(LatLng p)async{final ad=await address(p.latitude,p.longitude);if(mounted)setState((){x=p.latitude;y=p.longitude;dropoff=ad;dest.text=ad;});}
+import 'vehicle_photo.dart';
+
+class TowingFlowPage extends StatefulWidget {
+  const TowingFlowPage({
+    super.key,
+    this.driverMode = false,
+    this.vehicleId,
+  });
+
+  final bool driverMode;
+  final String? vehicleId;
+
+  @override
+  State<TowingFlowPage> createState() => _TowingFlowPageState();
+}
+
+class _TowingFlowPageState extends State<TowingFlowPage> {
+  static const _purple = Color(0xFF6F35F4);
+  static const _purple2 = Color(0xFF8D4DFF);
+  static const _ink = Color(0xFF101828);
+  static const _muted = Color(0xFF7D8494);
+  static const _line = Color(0xFFE6E8EF);
+  static const _soft = Color(0xFFF7F7FB);
+
+  final MapController _mapController = MapController();
+  final TextEditingController dest = TextEditingController();
+
+  int step = 0;
+  bool busy = false;
+  bool locating = false;
+  bool notRunning = true;
+  bool destSearching = false;
+
+  String vehicleType = 'car';
+  String truck = 'platform';
+  String truckName = 'Standart çekici';
+  String vehicleIdResolved = '';
+  String vehiclePlate = '';
+  String vehicleMake = '';
+  String vehicleModel = '';
+
+  double? a, b, x, y;
+  double startingFee = 750;
+  String pickup = 'Konumum';
+  String dropoff = 'Adres veya yer adı yaz';
+
+  Map<String, dynamic>? quote;
+  List<Map<String, dynamic>> destResults = [];
+  Timer? destDebounce;
+
+  String get api => OnboardingBackend.baseUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _bootstrap();
+  }
+
+  @override
+  void dispose() {
+    destDebounce?.cancel();
+    dest.dispose();
+    super.dispose();
+  }
+
+  Future<void> _bootstrap() async {
+    await Future.wait([
+      locate(silent: true),
+      _loadVehicle(),
+      _loadOptions(),
+    ]);
+  }
+
+  void msg(String value) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(value)),
+    );
+  }
+
+  Future<void> _loadVehicle() async {
+    try {
+      final uri = Uri.parse(
+        '$api${widget.driverMode ? '/api/driver/vehicles' : '/api/owner/vehicles'}',
+      );
+      final response = widget.driverMode
+          ? await DriverHttp.get(uri, json: false)
+          : await OwnerHttp.get(uri, json: false);
+      if (response.statusCode != 200) return;
+
+      final decoded = jsonDecode(response.body);
+      final rows = decoded is Map && decoded['vehicles'] is List
+          ? (decoded['vehicles'] as List)
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList()
+          : <Map<String, dynamic>>[];
+      if (rows.isEmpty) return;
+
+      final wanted = (widget.driverMode
+              ? (widget.vehicleId ?? '')
+              : QrDraft.vehicleId)
+          .trim();
+
+      Map<String, dynamic> selected = rows.first;
+      for (final row in rows) {
+        final id = '${row[widget.driverMode ? 'vehicle_id' : 'id'] ?? ''}';
+        if (wanted.isNotEmpty && id == wanted) {
+          selected = row;
+          break;
+        }
+      }
+
+      if (!mounted) return;
+      setState(() {
+        vehicleIdResolved =
+            '${selected[widget.driverMode ? 'vehicle_id' : 'id'] ?? wanted}';
+        vehiclePlate = '${selected['plate'] ?? ''}'.trim();
+        vehicleMake = '${selected['make'] ?? ''}'.trim();
+        vehicleModel = '${selected['model'] ?? ''}'.trim();
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _loadOptions() async {
+    try {
+      final r = await http
+          .get(Uri.parse('$api/api/towing/options'))
+          .timeout(const Duration(seconds: 10));
+      if (r.statusCode != 200) return;
+      final d = jsonDecode(r.body);
+      if (d is! Map || d['truckTypes'] is! List) return;
+      final trucks = (d['truckTypes'] as List)
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+      if (trucks.isEmpty) return;
+
+      Map<String, dynamic> selected = trucks.first;
+      for (final item in trucks) {
+        if ('${item['code']}' == truck) {
+          selected = item;
+          break;
+        }
+      }
+      if (!mounted) return;
+      setState(() {
+        truck = '${selected['code'] ?? truck}';
+        truckName = '${selected['name'] ?? 'Standart çekici'}';
+        startingFee =
+            double.tryParse('${selected['base_fee'] ?? selected['minimum_fee'] ?? 750}') ??
+                750;
+      });
+    } catch (_) {}
+  }
+
+  Future<String> address(double lat, double lng) async {
+    try {
+      final r = await http.get(
+        Uri.parse(
+          'https://nominatim.openstreetmap.org/reverse'
+          '?format=jsonv2&lat=$lat&lon=$lng&accept-language=tr',
+        ),
+        headers: {'User-Agent': 'CepQontag/1.0'},
+      );
+      if (r.statusCode == 200) {
+        final d = jsonDecode(r.body);
+        final m = d['address'] ?? {};
+        final district =
+            m['town'] ?? m['city_district'] ?? m['suburb'] ?? m['city'];
+        final city = m['province'] ?? m['city'];
+        if (district != null && city != null) return '$district, $city';
+      }
+    } catch (_) {}
+    return 'Seçilen konum';
+  }
+
+  Future<void> locate({bool silent = false}) async {
+    if (mounted) setState(() => locating = true);
+    try {
+      var p = await Geolocator.checkPermission();
+      if (p == LocationPermission.denied) {
+        p = await Geolocator.requestPermission();
+      }
+      if (p == LocationPermission.denied ||
+          p == LocationPermission.deniedForever) {
+        throw Exception();
+      }
+      final z = await Geolocator.getCurrentPosition();
+      final ad = await address(z.latitude, z.longitude);
+      if (!mounted) return;
+      setState(() {
+        a = z.latitude;
+        b = z.longitude;
+        pickup = ad;
+      });
+      try {
+        _mapController.move(LatLng(z.latitude, z.longitude), 14);
+      } catch (_) {}
+    } catch (_) {
+      if (!silent) msg('Konum alınamadı.');
+    } finally {
+      if (mounted) setState(() => locating = false);
+    }
+  }
+
+  double get km => (a == null || x == null)
+      ? 0
+      : Geolocator.distanceBetween(a!, b!, x!, y!) / 1000;
+
+  String get pickupTitle {
+    final parts = pickup.split(',');
+    return parts.first.trim().isEmpty ? 'Konumum' : parts.first.trim();
+  }
+
+  String get pickupSubtitle {
+    final parts = pickup.split(',');
+    if (parts.length > 1) {
+      return '${parts.skip(1).join(',').trim()}, Türkiye';
+    }
+    return 'İstanbul, Türkiye';
+  }
+
+  Future<void> chooseDrop(LatLng p) async {
+    final ad = await address(p.latitude, p.longitude);
+    if (!mounted) return;
+    setState(() {
+      x = p.latitude;
+      y = p.longitude;
+      dropoff = ad;
+      dest.text = ad;
+      destResults = [];
+      quote = null;
+    });
+  }
+
   Future<void> searchDestination(String value) async {
     destDebounce?.cancel();
     final q = value.trim();
@@ -27,6 +255,7 @@ class _S extends State<TowingFlowPage>{
       if (mounted) setState(() => destResults = []);
       return;
     }
+
     destDebounce = Timer(const Duration(milliseconds: 450), () async {
       if (mounted) setState(() => destSearching = true);
       try {
@@ -38,9 +267,11 @@ class _S extends State<TowingFlowPage>{
           'addressdetails': '1',
           'accept-language': 'tr',
         });
-        final r = await http.get(uri, headers: {'User-Agent': 'CepQontag/1.0'});
+        final r =
+            await http.get(uri, headers: {'User-Agent': 'CepQontag/1.0'});
         if (r.statusCode == 200 && mounted) {
-          final list = (jsonDecode(r.body) as List).cast<Map<String, dynamic>>();
+          final list =
+              (jsonDecode(r.body) as List).cast<Map<String, dynamic>>();
           setState(() => destResults = list);
         }
       } catch (_) {
@@ -63,248 +294,53 @@ class _S extends State<TowingFlowPage>{
       dropoff = label;
       dest.text = label;
       destResults = [];
+      quote = null;
     });
   }
 
-  Future<void> price()async{if(a==null||x==null){msg('Alım ve bırakma konumunu seç.');return;}setState(()=>busy=true);try{final uri=Uri.parse('$api${widget.driverMode?'/api/driver/towing/quote':'/api/owner/towing/quote'}');final r=widget.driverMode?await DriverHttp.post(uri,body:jsonEncode({'distanceKm':km,'vehicleType':vehicleType,'truckType':truck})):await OwnerHttp.post(uri,body:jsonEncode({'distanceKm':km,'vehicleType':vehicleType,'truckType':truck}));final d=jsonDecode(r.body);if(r.statusCode==200&&d['quote'] is Map&&mounted){setState(()=>quote=Map<String,dynamic>.from(d['quote']));step=2;}else{final e='${d['error']??''}';msg(e=='TOWING_OPTION_NOT_AVAILABLE'?'Bu araç/çekici tipi için fiyatlandırma henüz aktif değil.':e=='OWNER_REQUIRED'?'Oturum süren dolmuş. Tekrar giriş yap.':'Fiyat hesaplanamadı.');}}catch(_){msg('Fiyat hesaplanamadı. Bağlantını kontrol et.');}finally{if(mounted)setState(()=>busy=false);}}
-  Future<void> call()async{if(quote==null)return;setState(()=>busy=true);try{final selectedVehicle=widget.driverMode?(widget.vehicleId??''):QrDraft.vehicleId;final uri=Uri.parse('$api${widget.driverMode?'/api/driver/towing/requests':'/api/owner/towing/requests'}');final body=jsonEncode({'vehicleId':selectedVehicle,'vehicleType':vehicleType,'truckType':truck,'issueType':notRunning?'Araç çalışmıyor':'Çekici','pickupLat':a,'pickupLng':b,'pickupAddress':pickup,'destinationLat':x,'destinationLng':y,'destinationAddress':dropoff,'distanceKm':km});final r=widget.driverMode?await DriverHttp.post(uri,body:body):await OwnerHttp.post(uri,body:body);final d=jsonDecode(r.body);if(r.statusCode>=200&&r.statusCode<300){final id='${d['request']['id']}';if(mounted)Navigator.pushReplacement(context,MaterialPageRoute(builder:(_)=>TowingTrackingPage(id:id,driverMode:widget.driverMode)));}else{final e='${d['error']??''}';msg(e=='ACTIVE_TOWING_REQUEST_EXISTS'?'Aktif çekici çağrın zaten var.':e=='DRIVER_NOT_ACTIVE'?'Çekiciyi yalnızca aktif sürücü çağırabilir.':'Çağrı oluşturulamadı.');}}catch(_){msg('Çağrı oluşturulamadı.');}finally{if(mounted)setState(()=>busy=false);}}
-  Widget pinLine(IconData i,String t)=>Container(height:58,padding:const EdgeInsets.symmetric(horizontal:14),decoration:BoxDecoration(border:Border.all(color:const Color(0xFFE5E7EB)),borderRadius:BorderRadius.circular(14)),child:Row(children:[Icon(i,color:CepqarTheme.purple),const SizedBox(width:12),Expanded(child:Text(t,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Color(0xFF25252B),fontSize:16,fontWeight:FontWeight.w700)))]));
-  Widget map() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(18),
-      child: SizedBox(
-        height: MediaQuery.sizeOf(context).height * .38,
-        child: FlutterMap(
-          options: MapOptions(
-            initialCenter: LatLng(a ?? 41.0, b ?? 28.9),
-            initialZoom: 14,
-            minZoom: 11,
-            maxZoom: 18,
-            onTap: (_, p) => chooseDrop(p),
-            interactionOptions: const InteractionOptions(
-              flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
-            ),
-          ),
-          children: [
-            ColorFiltered(
-              colorFilter: const ColorFilter.matrix([
-                -.12, -.24, -.04, 0, 115,
-                -.15, -.30, -.05, 0, 140,
-                -.18, -.36, -.06, 0, 173,
-                0, 0, 0, 1, 0,
-              ]),
-              child: TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.cepqar.app',
-                maxNativeZoom: 19,
-                panBuffer: 0,
-              ),
-            ),
-            PolylineLayer(
-              polylines: [
-                if (a != null && x != null)
-                  Polyline(
-                    points: [LatLng(a!, b!), LatLng(x!, y!)],
-                    strokeWidth: 5,
-                    color: CepqarTheme.purple,
-                  ),
-              ],
-            ),
-            MarkerLayer(
-              markers: [
-                if (a != null)
-                  Marker(
-                    point: LatLng(a!, b!),
-                    width: 36,
-                    height: 36,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.blueAccent.withValues(alpha: .22),
-                        shape: BoxShape.circle,
-                      ),
-                      padding: const EdgeInsets.all(7),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.blueAccent,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 3),
-                        ),
-                      ),
-                    ),
-                  ),
-                if (x != null)
-                  Marker(
-                    point: LatLng(x!, y!),
-                    width: 48,
-                    height: 58,
-                    alignment: Alignment.topCenter,
-                    child: Stack(
-                      alignment: Alignment.topCenter,
-                      children: [
-                        const Positioned(
-                          bottom: 6,
-                          child: Icon(Icons.arrow_drop_down_rounded, color: Color(0xFF813CFF), size: 42),
-                        ),
-                        Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(colors: [Color(0xFFAE70FF), Color(0xFF813CFF)]),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: const Color(0xFFE1CCFF), width: 2),
-                            boxShadow: const [BoxShadow(color: Color(0x55813CFF), blurRadius: 10)],
-                          ),
-                          child: const Icon(Icons.flag_rounded, color: Colors.white, size: 21),
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
+  void _swapLocations() {
+    if (a == null || b == null || x == null || y == null) {
+      msg('Önce bırakma noktasını seç.');
+      return;
+    }
+    setState(() {
+      final oldA = a;
+      final oldB = b;
+      final oldPickup = pickup;
+      a = x;
+      b = y;
+      pickup = dropoff;
+      x = oldA;
+      y = oldB;
+      dropoff = oldPickup;
+      dest.text = oldPickup;
+      quote = null;
+    });
   }
 
-  Widget locationStep() {
-    return Column(
-      children: [
-        map(),
-        Transform.translate(
-          offset: const Offset(0, -18),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(20, 22, 20, 18),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Nereden alınacak?', style: TextStyle(color: Colors.black, fontSize: 22, fontWeight: FontWeight.w900)),
-                const SizedBox(height: 12),
-                pinLine(Icons.location_on_rounded, pickup),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(child: InkWell(onTap: locate, child: pinLine(Icons.my_location_rounded, 'Konumum'))),
-                    const SizedBox(width: 8),
-                    Container(
-                      width: 58,
-                      height: 58,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: CepqarTheme.purple, width: 2),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Icon(Icons.swap_vert_rounded, color: CepqarTheme.purple),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                const Text('Nereye bırakılacak?', style: TextStyle(color: Colors.black, fontSize: 22, fontWeight: FontWeight.w900)),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: dest,
-                  onChanged: searchDestination,
-                  style: const TextStyle(color: Color(0xFF25252B), fontSize: 16, fontWeight: FontWeight.w700),
-                  decoration: InputDecoration(
-                    hintText: 'Adres veya yer adı yaz',
-                    hintStyle: const TextStyle(color: Color(0xFF8A8A94), fontWeight: FontWeight.w600),
-                    prefixIcon: Icon(Icons.location_on_rounded, color: CepqarTheme.purple),
-                    suffixIcon: destSearching
-                        ? const Padding(
-                            padding: EdgeInsets.all(15),
-                            child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
-                          )
-                        : dest.text.isEmpty
-                            ? null
-                            : IconButton(
-                                onPressed: () => setState(() {
-                                  dest.clear();
-                                  dropoff = 'Adres veya yer adı yaz';
-                                  x = null;
-                                  y = null;
-                                  destResults = [];
-                                }),
-                                icon: const Icon(Icons.close_rounded),
-                              ),
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: CepqarTheme.purple, width: 2)),
-                  ),
-                ),
-                if (destResults.isNotEmpty)
-                  Container(
-                    margin: const EdgeInsets.only(top: 6),
-                    constraints: const BoxConstraints(maxHeight: 230),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: const Color(0xFFE5E7EB)),
-                      borderRadius: BorderRadius.circular(14),
-                      boxShadow: const [BoxShadow(color: Color(0x18000000), blurRadius: 12, offset: Offset(0, 4))],
-                    ),
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      padding: EdgeInsets.zero,
-                      itemCount: destResults.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
-                      itemBuilder: (_, i) {
-                        final item = destResults[i];
-                        return ListTile(
-                          leading: Icon(Icons.place_outlined, color: CepqarTheme.purple),
-                          title: Text('${item['display_name'] ?? ''}', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w700)),
-                          onTap: () => selectDestination(item),
-                        );
-                      },
-                    ),
-                  ),
-                const SizedBox(height: 8),
-                Text('İstersen bırakma noktasını haritaya dokunarak da seçebilirsin.', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
-                const SizedBox(height: 18),
-                SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: FilledButton(
-                    onPressed: a != null && x != null ? () => setState(() => step = 1) : null,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: CepqarTheme.purple,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                    ),
-                    child: const Text('Devam Et', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget typeBox(String id, IconData icon, String title) {
-    return Expanded(
-      child: InkWell(
-        onTap: () => setState(() => vehicleType = id),
-        child: Container(
-          height: 105,
-          decoration: BoxDecoration(
-            color: vehicleType == id ? CepqarTheme.purple.withValues(alpha: .08) : const Color(0xFFF5F5F7),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: vehicleType == id ? CepqarTheme.purple : const Color(0xFFE5E7EB),
-              width: vehicleType == id ? 2 : 1,
-            ),
-          ),
+  void _vehicleHelp() {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 2, 20, 24),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 38, color: vehicleType == id ? CepqarTheme.purple : Colors.black87),
-              const SizedBox(height: 8),
-              Text(title, style: TextStyle(color: vehicleType == id ? CepqarTheme.purple : Colors.black87, fontWeight: FontWeight.w800)),
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              Text(
+                'Hangi aracı seçmeliyim?',
+                style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900),
+              ),
+              SizedBox(height: 12),
+              Text('Binek: Sedan, hatchback ve standart otomobiller.'),
+              SizedBox(height: 7),
+              Text('SUV / 4x4: Yüksek ve ağır arazi tipi araçlar.'),
+              SizedBox(height: 7),
+              Text('Hafif Ticari: Panelvan, minivan ve hafif ticari araçlar.'),
+              SizedBox(height: 7),
+              Text('Motosiklet: Scooter ve motosikletler.'),
             ],
           ),
         ),
@@ -312,37 +348,1050 @@ class _S extends State<TowingFlowPage>{
     );
   }
 
-  Widget vehicleStep() {
-    return Padding(
-      padding: const EdgeInsets.all(20),
+  Future<void> price() async {
+    if (a == null || x == null) {
+      msg('Alım ve bırakma konumunu seç.');
+      return;
+    }
+    setState(() => busy = true);
+    try {
+      final uri = Uri.parse(
+        '$api${widget.driverMode ? '/api/driver/towing/quote' : '/api/owner/towing/quote'}',
+      );
+      final body = jsonEncode({
+        'distanceKm': km,
+        'vehicleType': vehicleType,
+        'truckType': truck,
+      });
+      final r = widget.driverMode
+          ? await DriverHttp.post(uri, body: body)
+          : await OwnerHttp.post(uri, body: body);
+      final d = jsonDecode(r.body);
+      if (r.statusCode == 200 && d['quote'] is Map && mounted) {
+        setState(() {
+          quote = Map<String, dynamic>.from(d['quote']);
+          step = 1;
+        });
+      } else {
+        final e = '${d['error'] ?? ''}';
+        msg(
+          e == 'TOWING_OPTION_NOT_AVAILABLE'
+              ? 'Bu araç/çekici tipi için fiyatlandırma henüz aktif değil.'
+              : e == 'OWNER_REQUIRED'
+                  ? 'Oturum süren dolmuş. Tekrar giriş yap.'
+                  : 'Fiyat hesaplanamadı.',
+        );
+      }
+    } catch (_) {
+      msg('Fiyat hesaplanamadı. Bağlantını kontrol et.');
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> call() async {
+    if (quote == null) return;
+    setState(() => busy = true);
+    try {
+      final selectedVehicle = vehicleIdResolved.isNotEmpty
+          ? vehicleIdResolved
+          : (widget.driverMode ? (widget.vehicleId ?? '') : QrDraft.vehicleId);
+      final uri = Uri.parse(
+        '$api${widget.driverMode ? '/api/driver/towing/requests' : '/api/owner/towing/requests'}',
+      );
+      final body = jsonEncode({
+        'vehicleId': selectedVehicle,
+        'vehicleType': vehicleType,
+        'truckType': truck,
+        'issueType': notRunning ? 'Araç çalışmıyor' : 'Çekici',
+        'pickupLat': a,
+        'pickupLng': b,
+        'pickupAddress': pickup,
+        'destinationLat': x,
+        'destinationLng': y,
+        'destinationAddress': dropoff,
+        'distanceKm': km,
+      });
+      final r = widget.driverMode
+          ? await DriverHttp.post(uri, body: body)
+          : await OwnerHttp.post(uri, body: body);
+      final d = jsonDecode(r.body);
+      if (r.statusCode >= 200 && r.statusCode < 300) {
+        final id = '${d['request']['id']}';
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) =>
+                  TowingTrackingPage(id: id, driverMode: widget.driverMode),
+            ),
+          );
+        }
+      } else {
+        final e = '${d['error'] ?? ''}';
+        msg(
+          e == 'ACTIVE_TOWING_REQUEST_EXISTS'
+              ? 'Aktif çekici çağrın zaten var.'
+              : e == 'DRIVER_NOT_ACTIVE'
+                  ? 'Çekiciyi yalnızca aktif sürücü çağırabilir.'
+                  : 'Çağrı oluşturulamadı.',
+        );
+      }
+    } catch (_) {
+      msg('Çağrı oluşturulamadı.');
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Widget _map() {
+    final center = LatLng(a ?? 41.0, b ?? 28.9);
+    return SizedBox(
+      height: 246,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(25),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: FlutterMap(
+                mapController: _mapController,
+                options: MapOptions(
+                  initialCenter: center,
+                  initialZoom: 14,
+                  minZoom: 11,
+                  maxZoom: 18,
+                  onTap: (_, p) => chooseDrop(p),
+                  interactionOptions: const InteractionOptions(
+                    flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+                  ),
+                ),
+                children: [
+                  ColorFiltered(
+                    colorFilter: const ColorFilter.matrix([
+                      -.12, -.24, -.04, 0, 105,
+                      -.15, -.30, -.05, 0, 123,
+                      -.18, -.36, -.06, 0, 156,
+                      0, 0, 0, 1, 0,
+                    ]),
+                    child: TileLayer(
+                      urlTemplate:
+                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      userAgentPackageName: 'com.cepqar.app',
+                      maxNativeZoom: 19,
+                      panBuffer: 0,
+                    ),
+                  ),
+                  if (a != null && x != null)
+                    PolylineLayer(
+                      polylines: [
+                        Polyline(
+                          points: [LatLng(a!, b!), LatLng(x!, y!)],
+                          strokeWidth: 4,
+                          color: _purple.withValues(alpha: .75),
+                        ),
+                      ],
+                    ),
+                  MarkerLayer(
+                    markers: [
+                      if (a != null)
+                        Marker(
+                          point: LatLng(a!, b!),
+                          width: 62,
+                          height: 62,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: _purple.withValues(alpha: .24),
+                              shape: BoxShape.circle,
+                            ),
+                            padding: const EdgeInsets.all(11),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: _purple,
+                                shape: BoxShape.circle,
+                                border:
+                                    Border.all(color: Colors.white, width: 5),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: _purple.withValues(alpha: .45),
+                                    blurRadius: 14,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      if (x != null)
+                        Marker(
+                          point: LatLng(x!, y!),
+                          width: 46,
+                          height: 54,
+                          alignment: Alignment.topCenter,
+                          child: const Icon(
+                            Icons.location_on_rounded,
+                            color: _purple2,
+                            size: 46,
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Positioned(
+              right: 14,
+              bottom: 14,
+              child: Material(
+                color: Colors.white,
+                shape: const CircleBorder(),
+                elevation: 2,
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: locating ? null : () => locate(),
+                  child: SizedBox(
+                    width: 54,
+                    height: 54,
+                    child: locating
+                        ? const Padding(
+                            padding: EdgeInsets.all(17),
+                            child:
+                                CircularProgressIndicator(strokeWidth: 2.2),
+                          )
+                        : const Icon(
+                            Icons.my_location_rounded,
+                            color: _purple,
+                            size: 27,
+                          ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _pickupCard() {
+    return Container(
+      height: 80,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _line),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.location_on_rounded, color: _purple, size: 30),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  pickupTitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _ink,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  pickupSubtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _muted,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(width: 1, height: 46, color: _line),
+          const SizedBox(width: 12),
+          const Text(
+            'Konumu\nharitada gör',
+            textAlign: TextAlign.left,
+            style: TextStyle(
+              color: _purple,
+              fontSize: 12.5,
+              height: 1.15,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(width: 4),
+          const Icon(Icons.chevron_right_rounded, color: _purple, size: 23),
+        ],
+      ),
+    );
+  }
+
+  Widget _currentLocationRow() {
+    return Row(
+      children: [
+        Expanded(
+          child: InkWell(
+            borderRadius: BorderRadius.circular(18),
+            onTap: locating ? null : () => locate(),
+            child: Container(
+              height: 70,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: _line),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.gps_fixed_rounded,
+                      color: _purple, size: 29),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        Text(
+                          'Konumum',
+                          style: TextStyle(
+                            color: _ink,
+                            fontSize: 15.5,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        SizedBox(height: 3),
+                        Text(
+                          'Mevcut konumumu kullan',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: _muted,
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 9),
+        InkWell(
+          borderRadius: BorderRadius.circular(17),
+          onTap: _swapLocations,
+          child: Container(
+            width: 68,
+            height: 70,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(17),
+              border: Border.all(color: _purple, width: 1.7),
+            ),
+            child:
+                const Icon(Icons.swap_vert_rounded, color: _purple, size: 30),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _destinationField() {
+    return Column(
+      children: [
+        TextField(
+          controller: dest,
+          onChanged: searchDestination,
+          style: const TextStyle(
+            color: _ink,
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+          ),
+          decoration: InputDecoration(
+            hintText: 'Adres veya yer adı yaz',
+            hintStyle: const TextStyle(
+              color: Color(0xFF9298A8),
+              fontWeight: FontWeight.w600,
+            ),
+            prefixIcon:
+                const Icon(Icons.location_on_rounded, color: _purple, size: 29),
+            suffixIcon: destSearching
+                ? const Padding(
+                    padding: EdgeInsets.all(15),
+                    child: SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                : dest.text.isEmpty
+                    ? null
+                    : IconButton(
+                        onPressed: () {
+                          setState(() {
+                            dest.clear();
+                            dropoff = 'Adres veya yer adı yaz';
+                            x = null;
+                            y = null;
+                            destResults = [];
+                            quote = null;
+                          });
+                        },
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 20),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(18),
+              borderSide: const BorderSide(color: _line),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(18),
+              borderSide: const BorderSide(color: _line),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(18),
+              borderSide: const BorderSide(color: _purple, width: 1.8),
+            ),
+          ),
+        ),
+        if (destResults.isNotEmpty)
+          Container(
+            margin: const EdgeInsets.only(top: 6),
+            constraints: const BoxConstraints(maxHeight: 220),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: _line),
+              borderRadius: BorderRadius.circular(15),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x16000000),
+                  blurRadius: 12,
+                  offset: Offset(0, 5),
+                ),
+              ],
+            ),
+            child: ListView.separated(
+              shrinkWrap: true,
+              padding: EdgeInsets.zero,
+              itemCount: destResults.length,
+              separatorBuilder: (_, __) => const Divider(height: 1),
+              itemBuilder: (_, i) {
+                final item = destResults[i];
+                return ListTile(
+                  dense: true,
+                  leading:
+                      const Icon(Icons.place_outlined, color: _purple),
+                  title: Text(
+                    '${item['display_name'] ?? ''}',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: _ink,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  onTap: () => selectDestination(item),
+                );
+              },
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _vehicleSummaryCard() {
+    final makeModel = [vehicleMake, vehicleModel]
+        .where((e) => e.trim().isNotEmpty)
+        .join(' ');
+    return Container(
+      height: 78,
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _line),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 105,
+            height: 60,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF2EEFF),
+              borderRadius: BorderRadius.circular(13),
+            ),
+            alignment: Alignment.center,
+            child: VehiclePhoto(
+              make: vehicleMake,
+              model: vehicleModel,
+              width: 102,
+              height: 58,
+              borderRadius: 13,
+            ),
+          ),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Binek Otomobil',
+                  style: TextStyle(
+                    color: _ink,
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  [
+                    if (makeModel.isNotEmpty) makeModel,
+                    if (vehiclePlate.isNotEmpty) vehiclePlate,
+                  ].join(' • ').isEmpty
+                      ? 'Araç bilgisi'
+                      : [
+                          if (makeModel.isNotEmpty) makeModel,
+                          if (vehiclePlate.isNotEmpty) vehiclePlate,
+                        ].join(' • '),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _muted,
+                    fontSize: 12.8,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right_rounded,
+              color: Color(0xFF747B8C), size: 25),
+        ],
+      ),
+    );
+  }
+
+  Widget _vehicleChip(String id, IconData icon, String label) {
+    final selected = vehicleType == id;
+    return Expanded(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(15),
+        onTap: () => setState(() {
+          vehicleType = id;
+          quote = null;
+        }),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          height: 72,
+          decoration: BoxDecoration(
+            gradient: selected
+                ? const LinearGradient(
+                    colors: [_purple2, _purple],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                : null,
+            color: selected ? null : Colors.white,
+            borderRadius: BorderRadius.circular(15),
+            border: Border.all(
+              color: selected ? Colors.transparent : _line,
+            ),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: _purple.withValues(alpha: .18),
+                      blurRadius: 12,
+                      offset: const Offset(0, 5),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                color: selected ? Colors.white : const Color(0xFF3E4658),
+                size: 25,
+              ),
+              const SizedBox(height: 5),
+              Text(
+                label,
+                maxLines: 1,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: selected ? Colors.white : _ink,
+                  fontSize: 10.8,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _towOptionCard() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(11, 11, 12, 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(19),
+        border: Border.all(color: _line),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 112,
+                height: 78,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0F2FA),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.fire_truck_rounded,
+                  size: 62,
+                  color: Color(0xFF556071),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      truckName.isEmpty ? 'Standart çekici' : truckName,
+                      style: const TextStyle(
+                        color: _ink,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Binek araçlar için uygundur',
+                      style: TextStyle(
+                        color: _muted,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Container(height: 1, color: _line),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      width: 37,
+                      height: 37,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFEAF9EF),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.schedule_rounded,
+                        color: Color(0xFF12A84D),
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Tahmini varış',
+                          style: TextStyle(
+                            color: _muted,
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          '12 dk',
+                          style: TextStyle(
+                            color: _ink,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Container(width: 1, height: 43, color: _line),
+              const SizedBox(width: 13),
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      width: 37,
+                      height: 37,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF3EDFF),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.stacked_bar_chart_rounded,
+                        color: _purple,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Başlangıç ücreti',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: _muted,
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '₺${startingFee.toStringAsFixed(startingFee % 1 == 0 ? 0 : 2)}',
+                            style: const TextStyle(
+                              color: _ink,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _mainForm() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final side = constraints.maxWidth > 600 ? 24.0 : 14.0;
+        return SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(side, 0, side, 18),
+          child: Column(
+            children: [
+              _map(),
+              Transform.translate(
+                offset: const Offset(0, -16),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(25),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x10000000),
+                        blurRadius: 18,
+                        offset: Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Nereden alınacak?',
+                        style: TextStyle(
+                          color: _ink,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      _pickupCard(),
+                      const SizedBox(height: 9),
+                      _currentLocationRow(),
+                      const SizedBox(height: 18),
+                      const Text(
+                        'Nereye bırakılacak?',
+                        style: TextStyle(
+                          color: _ink,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      _destinationField(),
+                      const SizedBox(height: 7),
+                      const Text(
+                        'İstersen bırakma noktasını haritada seçebilirsin.',
+                        style: TextStyle(
+                          color: _muted,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      Row(
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              'Araç tipi',
+                              style: TextStyle(
+                                color: _ink,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                          InkWell(
+                            borderRadius: BorderRadius.circular(20),
+                            onTap: _vehicleHelp,
+                            child: const Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 2,
+                                vertical: 4,
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.info_outline_rounded,
+                                    color: _purple,
+                                    size: 19,
+                                  ),
+                                  SizedBox(width: 5),
+                                  Text(
+                                    'Hangi aracı seçmeliyim?',
+                                    style: TextStyle(
+                                      color: _purple,
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      _vehicleSummaryCard(),
+                      const SizedBox(height: 9),
+                      Row(
+                        children: [
+                          _vehicleChip(
+                            'car',
+                            Icons.directions_car_filled_rounded,
+                            'Binek',
+                          ),
+                          const SizedBox(width: 7),
+                          _vehicleChip(
+                            'suv_pickup',
+                            Icons.directions_car_rounded,
+                            'SUV / 4x4',
+                          ),
+                          const SizedBox(width: 7),
+                          _vehicleChip(
+                            'light_commercial',
+                            Icons.local_shipping_outlined,
+                            'Hafif Ticari',
+                          ),
+                          const SizedBox(width: 7),
+                          _vehicleChip(
+                            'motorcycle',
+                            Icons.two_wheeler_rounded,
+                            'Motosiklet',
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+                      const Text(
+                        'Çekici seçeneği',
+                        style: TextStyle(
+                          color: _ink,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      _towOptionCard(),
+                      const SizedBox(height: 14),
+                      Container(
+                        width: double.infinity,
+                        height: 58,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [_purple2, _purple],
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                          ),
+                          borderRadius: BorderRadius.circular(18),
+                          boxShadow: [
+                            BoxShadow(
+                              color: _purple.withValues(alpha: .24),
+                              blurRadius: 14,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(18),
+                            onTap: busy ? null : price,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                if (busy)
+                                  const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                else ...[
+                                  const Text(
+                                    'Devam Et',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 7),
+                                  const Icon(
+                                    Icons.chevron_right_rounded,
+                                    color: Colors.white,
+                                    size: 27,
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _quoteStep() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Araç bilgisi', style: TextStyle(color: Colors.black, fontSize: 23, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 16),
-          Row(children: [typeBox('car', Icons.directions_car_filled_rounded, 'Otomobil'), const SizedBox(width: 10), typeBox('suv_pickup', Icons.directions_car_rounded, 'SUV / 4x4')]),
-          const SizedBox(height: 10),
-          Row(children: [typeBox('light_commercial', Icons.local_shipping_rounded, 'Hafif Ticari'), const SizedBox(width: 10), typeBox('motorcycle', Icons.two_wheeler_rounded, 'Motosiklet')]),
-          const SizedBox(height: 16),
+          _map(),
+          const SizedBox(height: 14),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            decoration: BoxDecoration(color: const Color(0xFFF5F5F7), borderRadius: BorderRadius.circular(14)),
-            child: SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Araç çalışmıyor', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w800)),
-              value: notRunning,
-              activeThumbColor: CepqarTheme.purple,
-              onChanged: (v) => setState(() => notRunning = v),
+            padding: const EdgeInsets.all(17),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: _line),
             ),
-          ),
-          const SizedBox(height: 18),
-          SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: FilledButton(
-              onPressed: price,
-              style: FilledButton.styleFrom(backgroundColor: CepqarTheme.purple, foregroundColor: Colors.white),
-              child: const Text('Fiyat Hesapla', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Tahmini Ücret',
+                  style: TextStyle(
+                    color: _ink,
+                    fontSize: 21,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _routeRow(Icons.my_location_rounded, pickup),
+                const SizedBox(height: 9),
+                _routeRow(Icons.location_on_rounded, dropoff),
+                const SizedBox(height: 14),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '${km.toStringAsFixed(1)} km',
+                      style: const TextStyle(
+                        color: _muted,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      '${quote?['total'] ?? '-'} ${quote?['currency'] ?? 'TL'}',
+                      style: const TextStyle(
+                        color: _ink,
+                        fontSize: 23,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 17),
+                SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: FilledButton.icon(
+                    onPressed: busy ? null : call,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _purple,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(17),
+                      ),
+                    ),
+                    icon: busy
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child:
+                                CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.fire_truck_rounded),
+                    label: Text(
+                      busy ? 'Gönderiliyor...' : 'Çekici Çağır',
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -350,9 +1399,63 @@ class _S extends State<TowingFlowPage>{
     );
   }
 
-  Widget quoteStep()=>Padding(padding:const EdgeInsets.all(20),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('Tahmini Ücret',style:TextStyle(color:Colors.black,fontSize:23,fontWeight:FontWeight.w900)),const SizedBox(height:12),Text('● $pickup\n● $dropoff',style:TextStyle(color:CepqarTheme.purple,fontWeight:FontWeight.w700,height:1.7)),const SizedBox(height:12),map(),const SizedBox(height:12),Row(mainAxisAlignment:MainAxisAlignment.spaceBetween,children:[Text('${km.toStringAsFixed(1)} km',style:const TextStyle(color:Colors.black,fontWeight:FontWeight.w800)),Text('Rota detayı',style:TextStyle(color:CepqarTheme.purple,fontWeight:FontWeight.w800))]),const Divider(height:28),Row(mainAxisAlignment:MainAxisAlignment.spaceBetween,children:[const Text('Toplam (KDV dahil)',style:TextStyle(color:Colors.black,fontWeight:FontWeight.w900)),Text('${quote?['total']??'-'} ${quote?['currency']??'TL'}',style:const TextStyle(color:Colors.black,fontSize:22,fontWeight:FontWeight.w900))]),const SizedBox(height:20),SizedBox(width:double.infinity,height:56,child:FilledButton(onPressed:call,style:FilledButton.styleFrom(backgroundColor:CepqarTheme.purple,foregroundColor:Colors.white),child:const Text('Çekici Çağır',style:TextStyle(fontSize:18,fontWeight:FontWeight.w900))))]));
-  @override Widget build(BuildContext c)=>Scaffold(backgroundColor:Colors.white,appBar:AppBar(backgroundColor:Colors.white,foregroundColor:Colors.black,elevation:0,title:step==0?null:Text(step==1?'Araç bilgisi':'Tahmini Ücret',style:const TextStyle(fontWeight:FontWeight.w900))),body:busy?const Center(child:CircularProgressIndicator()):SafeArea(child:SingleChildScrollView(child:step==0?locationStep():step==1?vehicleStep():quoteStep())));
+  Widget _routeRow(IconData icon, String text) {
+    return Row(
+      children: [
+        Icon(icon, color: _purple, size: 21),
+        const SizedBox(width: 9),
+        Expanded(
+          child: Text(
+            text,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: _ink,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: _soft,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        foregroundColor: _ink,
+        centerTitle: true,
+        elevation: 0,
+        title: Text(
+          step == 0 ? 'Çekici Çağır' : 'Tahmini Ücret',
+          style: const TextStyle(
+            fontSize: 21,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        leading: IconButton(
+          onPressed: () {
+            if (step == 1) {
+              setState(() => step = 0);
+            } else {
+              Navigator.maybePop(context);
+            }
+          },
+          icon: const Icon(Icons.arrow_back_rounded, size: 29),
+        ),
+      ),
+      body: SafeArea(
+        top: false,
+        child: step == 0 ? _mainForm() : _quoteStep(),
+      ),
+    );
+  }
 }
+
 class TowingTrackingPage extends StatefulWidget {
   const TowingTrackingPage({super.key, required this.id, this.driverMode=false});
   final String id;
