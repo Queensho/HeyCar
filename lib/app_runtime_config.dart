@@ -15,9 +15,13 @@ class RuntimeAppConfig {
     required this.storeUrl,
     required this.monthlyPrice,
     required this.yearlyPrice,
+    required this.familyMonthlyPrice,
+    required this.familyYearlyPrice,
     required this.currency,
     required this.monthlyPriceText,
     required this.yearlyPriceText,
+    required this.familyMonthlyPriceText,
+    required this.familyYearlyPriceText,
     required this.features,
     required this.currentVersion,
   });
@@ -30,9 +34,13 @@ class RuntimeAppConfig {
   final String storeUrl;
   final double monthlyPrice;
   final double yearlyPrice;
+  final double familyMonthlyPrice;
+  final double familyYearlyPrice;
   final String currency;
   final String monthlyPriceText;
   final String yearlyPriceText;
+  final String familyMonthlyPriceText;
+  final String familyYearlyPriceText;
   final Map<String,bool> features;
   final String currentVersion;
 
@@ -104,9 +112,13 @@ class RuntimeConfigService {
       storeUrl:(pconf['storeUrl']??'').toString(),
       monthlyPrice:premium['monthlyPrice'] is num?(premium['monthlyPrice'] as num).toDouble():double.tryParse((premium['monthlyPrice']??'49.99').toString())??49.99,
       yearlyPrice:premium['yearlyPrice'] is num?(premium['yearlyPrice'] as num).toDouble():double.tryParse((premium['yearlyPrice']??'499.99').toString())??499.99,
+      familyMonthlyPrice:premium['familyMonthlyPrice'] is num?(premium['familyMonthlyPrice'] as num).toDouble():double.tryParse((premium['familyMonthlyPrice']??'79.99').toString())??79.99,
+      familyYearlyPrice:premium['familyYearlyPrice'] is num?(premium['familyYearlyPrice'] as num).toDouble():double.tryParse((premium['familyYearlyPrice']??'799.99').toString())??799.99,
       currency:(premium['currency']??'TRY').toString(),
       monthlyPriceText:(premium['monthlyPriceText']??'₺49,99').toString(),
       yearlyPriceText:(premium['yearlyPriceText']??'₺499,99').toString(),
+      familyMonthlyPriceText:(premium['familyMonthlyPriceText']??'₺79,99').toString(),
+      familyYearlyPriceText:(premium['familyYearlyPriceText']??'₺799,99').toString(),
       features:features,
       currentVersion:current,
     );
