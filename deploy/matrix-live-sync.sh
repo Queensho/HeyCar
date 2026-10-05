@@ -22,6 +22,7 @@ MIGRATION_054_APPLIED=0
 MIGRATION_057_APPLIED=0
 MIGRATION_058_APPLIED=0
 MIGRATION_082_APPLIED=0
+MIGRATION_083_APPLIED=0
 SUCCESS=0
 STAGE="init"
 LOG="/tmp/matrix-live-sync-$RUN_ID.log"
@@ -114,7 +115,7 @@ rollback_all() {
   echo "Reason: $reason"
   sudo systemctl stop heycar >/dev/null 2>&1 || true
 
-  if [ "$MIGRATION_053_APPLIED" -eq 1 ] || [ "$MIGRATION_054_APPLIED" -eq 1 ] || [ "$MIGRATION_057_APPLIED" -eq 1 ] || [ "$MIGRATION_058_APPLIED" -eq 1 ] || [ "$MIGRATION_082_APPLIED" -eq 1 ]; then
+  if [ "$MIGRATION_053_APPLIED" -eq 1 ] || [ "$MIGRATION_054_APPLIED" -eq 1 ] || [ "$MIGRATION_057_APPLIED" -eq 1 ] || [ "$MIGRATION_058_APPLIED" -eq 1 ] || [ "$MIGRATION_082_APPLIED" -eq 1 ] || [ "$MIGRATION_083_APPLIED" -eq 1 ]; then
     if [ -s "$ROLLBACK_SQL" ]; then
       sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$ROLLBACK_SQL"
       DB_ROLLBACK_RC=$?
@@ -216,7 +217,7 @@ for f in "${FILES[@]}"; do
   fi
 done
 
-for m in 053_admin_audit_canonical.sql 054_qr_opaque_tokens.sql 057_web_push_subscriptions.sql 058_qr_proximity_security.sql 082_family_premium.sql; do
+for m in 053_admin_audit_canonical.sql 054_qr_opaque_tokens.sql 057_web_push_subscriptions.sql 058_qr_proximity_security.sql 082_family_premium.sql 083_towing_vehicle_pricing.sql; do
   fetch_https "$BASE/migrations/$m" -o "$TMP/$m" || fail "migration indirilemedi: $m"
   chmod 644 "$TMP/$m"
 done
@@ -257,6 +258,9 @@ FAMILY_PREMIUM_MONTHLY_EXISTS="$(db_scalar "SELECT CASE WHEN EXISTS (SELECT 1 FR
 FAMILY_PREMIUM_YEARLY_EXISTS="$(db_scalar "SELECT CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='app_settings' AND column_name='family_premium_yearly_price') THEN 1 ELSE 0 END")"
 FAMILY_PREMIUM_MONTHLY_TEXT_EXISTS="$(db_scalar "SELECT CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='app_settings' AND column_name='family_premium_monthly_price_text') THEN 1 ELSE 0 END")"
 FAMILY_PREMIUM_YEARLY_TEXT_EXISTS="$(db_scalar "SELECT CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='app_settings' AND column_name='family_premium_yearly_price_text') THEN 1 ELSE 0 END")"
+TOWING_VEHICLE_BASE_FEE_EXISTS="$(db_scalar "SELECT CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='towing_vehicle_types' AND column_name='base_fee') THEN 1 ELSE 0 END")"
+TOWING_VEHICLE_PER_KM_EXISTS="$(db_scalar "SELECT CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='towing_vehicle_types' AND column_name='per_km_fee') THEN 1 ELSE 0 END")"
+TOWING_VEHICLE_MINIMUM_EXISTS="$(db_scalar "SELECT CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='towing_vehicle_types' AND column_name='minimum_fee') THEN 1 ELSE 0 END")"
 
 if [ "$QR_SERIAL_EXISTS" -eq 1 ]; then
   sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -c     "CREATE UNLOGGED TABLE public.$QR_ROLLBACK_TABLE AS SELECT id FROM public.qr_tags WHERE serial_no IS NULL AND token ~ '^CP-QAR-[0-9]+$';"
@@ -350,6 +354,15 @@ fi
   if [ "$FAMILY_PREMIUM_YEARLY_TEXT_EXISTS" -eq 0 ]; then
     echo "ALTER TABLE public.app_settings DROP COLUMN IF EXISTS family_premium_yearly_price_text CASCADE;"
   fi
+  if [ "$TOWING_VEHICLE_BASE_FEE_EXISTS" -eq 0 ]; then
+    echo "ALTER TABLE public.towing_vehicle_types DROP COLUMN IF EXISTS base_fee CASCADE;"
+  fi
+  if [ "$TOWING_VEHICLE_PER_KM_EXISTS" -eq 0 ]; then
+    echo "ALTER TABLE public.towing_vehicle_types DROP COLUMN IF EXISTS per_km_fee CASCADE;"
+  fi
+  if [ "$TOWING_VEHICLE_MINIMUM_EXISTS" -eq 0 ]; then
+    echo "ALTER TABLE public.towing_vehicle_types DROP COLUMN IF EXISTS minimum_fee CASCADE;"
+  fi
 
   echo "COMMIT;"
 } > "$ROLLBACK_SQL"
@@ -368,6 +381,8 @@ sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$TMP/058_qr_proximity_secu
 MIGRATION_058_APPLIED=1
 sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$TMP/082_family_premium.sql"
 MIGRATION_082_APPLIED=1
+sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$TMP/083_towing_vehicle_pricing.sql"
+MIGRATION_083_APPLIED=1
 
 STAGE="schema_verify"
 echo "=== LIVE SCHEMA VERIFY ==="
