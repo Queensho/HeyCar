@@ -112,6 +112,7 @@ module.exports = function registerParkingRoutes(app, pool) {
     try {
       if(!await parkingEnabled(res))return;
       const a=await access(req,res);if(!a)return;
+      if(a.role==='driver'&&!a.activeDriver)return res.status(403).json({error:'DRIVER_NOT_ACTIVE'});
       await client.query('BEGIN');
       const owned=await client.query('SELECT id,owner_id FROM vehicles WHERE id::text=$1 AND owner_id::text=$2 FOR UPDATE',[a.vehicleId,a.ownerId]);
       if(!owned.rowCount){await client.query('ROLLBACK');return res.status(403).json({error:'FORBIDDEN'});}
@@ -153,6 +154,7 @@ module.exports = function registerParkingRoutes(app, pool) {
     try {
       if(!await parkingEnabled(res))return;
       const a = await access(req, res); if (!a) return;
+      if(a.role==='driver'&&!a.activeDriver)return res.status(403).json({error:'DRIVER_NOT_ACTIVE'});
       await pool.query('DELETE FROM vehicle_parking_locations WHERE vehicle_id=$1 AND owner_id=$2', [a.vehicleId, a.ownerId]);
       res.json({ ok: true });
     } catch (e) { console.error(e); res.status(500).json({ error: 'SERVER_ERROR' }); }
