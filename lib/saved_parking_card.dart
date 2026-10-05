@@ -8,10 +8,12 @@ import 'qr_backend.dart';
 import 'parking_record_editor.dart';
 import 'parking_navigation.dart';
 import 'owner_auth.dart';
+import 'driver_auth.dart';
 
 class SavedParkingCard extends StatefulWidget {
-  const SavedParkingCard({super.key, required this.vehicleId});
+  const SavedParkingCard({super.key, required this.vehicleId, this.driverMode = false});
   final String vehicleId;
+  final bool driverMode;
   @override
   State<SavedParkingCard> createState() => _SavedParkingCardState();
 }
@@ -21,7 +23,7 @@ class _SavedParkingCardState extends State<SavedParkingCard> {
   bool _loading = true, _busy = false;
   String? _error;
   Timer? _timer;
-  Future<Map<String,String>> get _headers async => OwnerAuth.headers(json:false);
+  Future<Map<String,String>> get _headers async => widget.driverMode ? DriverAuth.headers(json:false) : OwnerAuth.headers(json:false);
   Uri get _url => Uri.parse(
     '${QrBackend.baseUrl}/api/vehicles/${Uri.encodeComponent(widget.vehicleId)}/parking',
   );
@@ -63,7 +65,7 @@ class _SavedParkingCardState extends State<SavedParkingCard> {
   }
 
   Future<void> _edit() async {
-    await showParkingRecordEditor(context, widget.vehicleId, initial: _parking);
+    await showParkingRecordEditor(context, widget.vehicleId, initial: _parking, driverMode: widget.driverMode);
     if (mounted) await _load();
   }
 
