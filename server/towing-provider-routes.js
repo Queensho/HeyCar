@@ -180,7 +180,7 @@ module.exports=function registerTowingProviderRoutes(app,pool){
         (6371*acos(LEAST(1,GREATEST(-1,cos(radians($1))*cos(radians(r.pickup_lat::float8))*cos(radians(r.pickup_lng::float8)-radians($2))+sin(radians($1))*sin(radians(r.pickup_lat::float8)))))) AS pickup_distance_km
         FROM towing_requests r
         LEFT JOIN vehicles ov ON ov.id=r.vehicle_id
-        WHERE r.status='searching' AND EXISTS(SELECT 1 FROM towing_provider_vehicles v WHERE v.provider_id=$3 AND v.truck_type=r.truck_type AND v.status='active')
+        WHERE r.status='searching' AND EXISTS(SELECT 1 FROM towing_provider_vehicles v WHERE v.provider_id=$3 AND v.status='active')
         AND NOT EXISTS(SELECT 1 FROM towing_offer_rejections x WHERE x.request_id=r.id AND x.driver_id=$5 AND x.rejected_at > NOW()-INTERVAL '10 minutes')
         AND (6371*acos(LEAST(1,GREATEST(-1,cos(radians($1))*cos(radians(r.pickup_lat::float8))*cos(radians(r.pickup_lng::float8)-radians($2))+sin(radians($1))*sin(radians(r.pickup_lat::float8)))))) <= $4
         ORDER BY pickup_distance_km,r.created_at LIMIT 1`,[lat,lng,d.rows[0].provider_id,radius,d.rows[0].id]);
@@ -224,7 +224,7 @@ module.exports=function registerTowingProviderRoutes(app,pool){
       const job=await db.query("SELECT * FROM towing_requests WHERE id=$1 FOR UPDATE",[req.params.id]);
       if(!job.rowCount){await db.query('ROLLBACK');return res.status(404).json({error:'TOWING_REQUEST_NOT_FOUND'});}
       if(job.rows[0].status!=='searching'){await db.query('ROLLBACK');return res.status(409).json({error:'TOWING_REQUEST_ALREADY_TAKEN'});}
-      const v=await db.query("SELECT id FROM towing_provider_vehicles WHERE id=$1 AND provider_id=$2 AND truck_type=$3 AND status='active' FOR UPDATE",[vehicleId,d.rows[0].provider_id,job.rows[0].truck_type]);
+      const v=await db.query("SELECT id FROM towing_provider_vehicles WHERE id=$1 AND provider_id=$2 AND status='active' FOR UPDATE",[vehicleId,d.rows[0].provider_id]);
       if(!v.rowCount){await db.query('ROLLBACK');return res.status(409).json({error:'COMPATIBLE_TOWING_VEHICLE_REQUIRED'});}
       const r=await db.query(`UPDATE towing_requests SET status='accepted',accepted_provider_id=$2,accepted_driver_id=$3,accepted_towing_vehicle_id=$4,accepted_at=NOW(),updated_at=NOW() WHERE id=$1 AND status='searching' RETURNING *`,[req.params.id,d.rows[0].provider_id,d.rows[0].id,vehicleId]);
       await db.query('COMMIT');return res.json({ok:true,request:r.rows[0]});
