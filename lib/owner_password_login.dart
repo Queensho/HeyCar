@@ -28,6 +28,7 @@ class _PasswordOwnerLoginScreenState extends State<PasswordOwnerLoginScreen> {
   final password = TextEditingController();
   bool obscure = true;
   bool busy = false;
+  String loginError = '';
 
   @override
   void dispose() {
@@ -46,13 +47,14 @@ class _PasswordOwnerLoginScreenState extends State<PasswordOwnerLoginScreen> {
 
   Future<void> _login() async {
     if (busy) return;
+    if (mounted) setState(() => loginError = '');
     final normalized = _normalize(phone.text);
     if (normalized == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Geçerli bir Türkiye cep telefonu numarası gir.')));
+      if (mounted) setState(() => loginError = 'Geçerli bir Türkiye cep telefonu numarası gir.');
       return;
     }
     if (password.text.length < 6) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Şifreni gir.')));
+      if (mounted) setState(() => loginError = 'Şifreni gir.');
       return;
     }
 
@@ -127,7 +129,7 @@ class _PasswordOwnerLoginScreenState extends State<PasswordOwnerLoginScreen> {
       throw Exception(message);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))));
+        setState(() => loginError = e.toString().replaceFirst('Exception: ', ''));
       }
     } finally {
       if (mounted) setState(() => busy = false);
@@ -294,6 +296,36 @@ class _PasswordOwnerLoginScreenState extends State<PasswordOwnerLoginScreen> {
                     ),
                   ),
                   const SizedBox(height:5),
+                  if(loginError.isNotEmpty)...[
+                    Container(
+                      width:double.infinity,
+                      margin:const EdgeInsets.only(bottom:10),
+                      padding:const EdgeInsets.symmetric(horizontal:12,vertical:10),
+                      decoration:BoxDecoration(
+                        color:const Color(0xFFFFF0F1),
+                        borderRadius:BorderRadius.circular(12),
+                        border:Border.all(color:const Color(0xFFFFC7CD)),
+                      ),
+                      child:Row(
+                        crossAxisAlignment:CrossAxisAlignment.start,
+                        children:[
+                          const Icon(Icons.error_outline_rounded,color:Color(0xFFD92D3E),size:18),
+                          const SizedBox(width:8),
+                          Expanded(
+                            child:Text(
+                              loginError,
+                              style:const TextStyle(
+                                color:Color(0xFFB42335),
+                                fontSize:11.5,
+                                height:1.35,
+                                fontWeight:FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   SizedBox(
                     width:double.infinity,
                     height:52,
