@@ -551,7 +551,7 @@ class _AdminHomeState extends State<AdminHome> {
 
   String get adminInitial {
     final v=adminName.trim();
-    return v.isEmpty ? 'A' : v.characters.first.toUpperCase();
+    return v.isEmpty ? 'A' : v.substring(0,1).toUpperCase();
   }
 
   VoidCallback? _refreshAction(){
