@@ -386,7 +386,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   );
 
   Widget header()=>SizedBox(
-    height:218,
+    height:190,
     child:Stack(children:[
       Positioned.fill(
         child:Container(
@@ -482,14 +482,14 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
               ),
             ),
           ]),
-          const SizedBox(height:30),
+          const SizedBox(height:18),
           Container(
             width:double.infinity,
-            height:102,
-            padding:const EdgeInsets.fromLTRB(18,16,15,14),
+            height:84,
+            padding:const EdgeInsets.fromLTRB(16,12,13,11),
             decoration:BoxDecoration(
               color:light?Colors.white.withValues(alpha:.88):const Color(0xFF0D1425).withValues(alpha:.94),
-              borderRadius:BorderRadius.circular(21),
+              borderRadius:BorderRadius.circular(18),
               border:Border.all(
                 color:light?const Color(0xFFE7E3F0):const Color(0xFF2B3550),
               ),
@@ -536,7 +536,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                           text:TextSpan(
                             style:TextStyle(
                               color:text,
-                              fontSize:24,
+                              fontSize:21.5,
                               height:1.05,
                               letterSpacing:-.7,
                             ),
@@ -553,14 +553,14 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                             ],
                           ),
                         ),
-                        const SizedBox(height:8),
+                        const SizedBox(height:5),
                         Text(
                           'Aracınızla dünya sizinle iletişimde.',
                           maxLines:1,
                           overflow:TextOverflow.ellipsis,
                           style:TextStyle(
                             color:muted,
-                            fontSize:12.5,
+                            fontSize:11.5,
                             fontWeight:FontWeight.w600,
                           ),
                         ),
@@ -570,12 +570,12 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                   const SizedBox(width:10),
                   Container(
                     margin:const EdgeInsets.only(top:1),
-                    padding:const EdgeInsets.symmetric(horizontal:12,vertical:6),
+                    padding:const EdgeInsets.symmetric(horizontal:10,vertical:5),
                     decoration:BoxDecoration(
                       gradient:const LinearGradient(
                         colors:[Color(0xFF5A1FE8),Color(0xFF8A3EFF)],
                       ),
-                      borderRadius:BorderRadius.circular(11),
+                      borderRadius:BorderRadius.circular(10),
                       boxShadow:kIsWeb
                         ?null
                         :[
@@ -590,7 +590,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                       'PRO',
                       style:TextStyle(
                         color:Colors.white,
-                        fontSize:10.5,
+                        fontSize:9.5,
                         fontWeight:FontWeight.w900,
                         letterSpacing:.2,
                       ),
