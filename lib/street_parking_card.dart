@@ -38,7 +38,7 @@ class _StreetParkingCardState extends State<StreetParkingCard>{
   Future<void> _loadParkNote()async{
     final owner=OnboardingDraft.userId.trim();if((!widget.driverMode&&owner.isEmpty)||widget.vehicleId.isEmpty)return;
     try{
-      final r=(widget.driverMode?await DriverHttp.get(_parkNoteUri,json:false):await OwnerHttp.get(_parkNoteUri,json:false)).timeout(const Duration(seconds:12));
+      final r=await (widget.driverMode?DriverHttp.get(_parkNoteUri,json:false):OwnerHttp.get(_parkNoteUri,json:false)).timeout(const Duration(seconds:12));
       if(r.statusCode<200||r.statusCode>=300)return;
       final d=jsonDecode(r.body);if(d is Map&&mounted)setState(()=>parkNote=d['parkNote'] is Map?Map<String,dynamic>.from(d['parkNote']):null);
     }catch(_){}
@@ -72,7 +72,7 @@ class _StreetParkingCardState extends State<StreetParkingCard>{
     try{
       final expires=minutes==null?null:DateTime.now().toUtc().add(Duration(minutes:minutes)).toIso8601String();
       final body=jsonEncode({'message':message.trim(),'expiresAt':expires,'isActive':true});
-      final r=(widget.driverMode?await DriverHttp.post(_parkNoteUri,body:body):await OwnerHttp.post(_parkNoteUri,body:body)).timeout(const Duration(seconds:12));
+      final r=await (widget.driverMode?DriverHttp.post(_parkNoteUri,body:body):OwnerHttp.post(_parkNoteUri,body:body)).timeout(const Duration(seconds:12));
       if(r.statusCode<200||r.statusCode>=300)throw Exception();
       final d=jsonDecode(r.body);if(d is Map&&d['parkNote'] is Map&&mounted)setState(()=>parkNote=Map<String,dynamic>.from(d['parkNote']));
       return true;
@@ -138,17 +138,17 @@ class _StreetParkingCardState extends State<StreetParkingCard>{
                   try{
                     late http.Response r;
                     if(!showOnQr){
-                      r=(widget.driverMode
-                        ?await DriverHttp.delete(_parkNoteUri,json:false)
-                        :await OwnerHttp.delete(_parkNoteUri,json:false)
+                      r=await (widget.driverMode
+                        ?DriverHttp.delete(_parkNoteUri,json:false)
+                        :OwnerHttp.delete(_parkNoteUri,json:false)
                       ).timeout(const Duration(seconds:12));
                     }else{
                       final minutes=presets[selected];
                       final expires=minutes==null?null:DateTime.now().toUtc().add(Duration(minutes:minutes)).toIso8601String();
                       final body=jsonEncode({'message':msg,'expiresAt':expires,'isActive':true});
-                      r=(widget.driverMode
-                        ?await DriverHttp.post(_parkNoteUri,body:body)
-                        :await OwnerHttp.post(_parkNoteUri,body:body)
+                      r=await (widget.driverMode
+                        ?DriverHttp.post(_parkNoteUri,body:body)
+                        :OwnerHttp.post(_parkNoteUri,body:body)
                       ).timeout(const Duration(seconds:12));
                     }
                     if(r.statusCode<200||r.statusCode>=300)throw Exception();
