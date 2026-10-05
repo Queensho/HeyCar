@@ -447,11 +447,22 @@ class _DriverInvitePageState extends State<DriverInvitePage> {
         }
       } else if (mounted) {
         setState(() {
-          error = data['error'] == 'PASSWORD_INVALID'
+          final code = data['error']?.toString() ?? '';
+          error = code == 'PASSWORD_INVALID'
               ? 'Bu telefon kayıtlı. Şifreni kontrol et.'
-              : data['error'] == 'LEGAL_CONSENT_REQUIRED'
+              : code == 'LEGAL_CONSENT_REQUIRED'
                   ? 'Güncel Kullanım Şartları ve Gizlilik/KVKK metnini kabul etmelisin.'
-                  : 'Davet kabul edilemedi.';
+                  : code == 'INVALID_INPUT'
+                      ? 'Ad soyad, telefon ve şifre bilgilerini kontrol et.'
+                      : code == 'INVITE_INVALID'
+                          ? 'Bu davet artık geçerli değil. Araç sahibinden yeni davet iste.'
+                          : code == 'USER_SUSPENDED'
+                              ? 'Bu hesap şu anda kullanıma kapalı.'
+                              : code == 'DRIVER_AUTH_CONFIG'
+                                  ? 'Sürücü oturumu sunucuda hazır değil. Sistem ayarı kontrol edilmeli.'
+                                  : code == 'DRIVER_SCHEMA_NOT_READY'
+                                      ? 'Sürücü sistemi veritabanı güncellemesi gerekiyor.'
+                                      : 'Davet kabul edilemedi. (' + r.statusCode.toString() + (code.isEmpty ? '' : ' • ' + code) + ')';
         });
       }
     } catch (_) {
