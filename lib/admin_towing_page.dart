@@ -123,7 +123,7 @@ class _TowingPricingDialogState extends State<TowingPricingDialog>{
    labelText:label,
    prefixText:'₺ ',
    filled:true,
-   fillColor:Colors.white.withValues(alpha:.04),
+   fillColor:AdminUi.surfaceSoft,
    border:OutlineInputBorder(borderRadius:BorderRadius.circular(12)),
   ),
  );
@@ -156,7 +156,7 @@ class _TowingPricingDialogState extends State<TowingPricingDialog>{
         decoration:BoxDecoration(
          color:_bg,
          borderRadius:BorderRadius.circular(16),
-         border:Border.all(color:Colors.white.withValues(alpha:.08)),
+         border:Border.all(color:_line),
         ),
         child:Row(
          children:[
