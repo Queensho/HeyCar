@@ -33,6 +33,7 @@ void action(String a){if(a=='qr')_qr();else if(a=='qr_security'&&vid.isNotEmpty)
           services:()=>setState(()=>tab=2),
           park:_park,
           shortcut:action,
+          active:tab==0,
         ),
         OwnerVehiclesPage(onVehicleChanged:_vehicleChanged),
         OwnerServicesRedesign(
@@ -42,8 +43,9 @@ void action(String a){if(a=='qr')_qr();else if(a=='qr_security'&&vid.isNotEmpty)
           onOffers:()=>action('offers'),
           onMaintenance:()=>action('maintenance'),
           onReminders:()=>action('reminders'),
+          active:tab==2,
         ),
-        OwnerNotificationsPage(key:ValueKey('notifications-$vid'),vehicleId:vid,plate:QrDraft.plate),
+        OwnerNotificationsPage(key:ValueKey('notifications-$vid'),vehicleId:vid,plate:QrDraft.plate,active:tab==3),
         OwnerSettingsPage(onOpenVehicles:()=>setState(()=>tab=1),onOpenQr:_qr),
       ];
       const labels=['Anasayfa','Araçlarım','Hizmetler','Bildirimler','Profil'];
