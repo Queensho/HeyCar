@@ -51,6 +51,23 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     final x=full.split(RegExp(r'\s+')).first;
     return x.isEmpty?'Araç Sahibi':x[0].toUpperCase()+x.substring(1).toLowerCase();
   }
+  List<String> get _displayNameParts{
+    final raw=OnboardingDraft.displayName.trim();
+    if(raw.isEmpty)return const ['Araç','Sahibi'];
+    return raw
+      .split(RegExp(r'\s+'))
+      .where((e)=>e.isNotEmpty)
+      .map((e)=>e.length==1?e.toUpperCase():e[0].toUpperCase()+e.substring(1).toLowerCase())
+      .toList();
+  }
+  String get _givenName{
+    final p=_displayNameParts;
+    return p.length<=1?p.first:p.sublist(0,p.length-1).join(' ');
+  }
+  String get _surname{
+    final p=_displayNameParts;
+    return p.length<=1?'':p.last;
+  }
   String get initials{
     final p=OnboardingDraft.displayName.trim().split(RegExp(r'\s+')).where((e)=>e.isNotEmpty).toList();
     if(p.isEmpty)return'CQ';
@@ -325,7 +342,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   );
 
   Widget header()=>SizedBox(
-    height:194,
+    height:205,
     child:Stack(children:[
       Positioned.fill(
         child:Container(
@@ -336,11 +353,11 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                   end:Alignment.bottomRight,
                   colors:[
                     Color(0xFFFBFAFF),
-                    Color(0xFFF2EDFF),
-                    Color(0xFFE9E0FF),
-                    Color(0xFFF8F6FF),
+                    Color(0xFFF6F2FF),
+                    Color(0xFFEDE6FF),
+                    Color(0xFFF9F8FF),
                   ],
-                  stops:[0,.38,.72,1],
+                  stops:[0,.38,.76,1],
                 )
               :const LinearGradient(
                   begin:Alignment.topLeft,
@@ -357,58 +374,20 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         ),
       ),
       Positioned(
-        right:-72,
-        top:-66,
+        right:-58,
+        top:-72,
         child:Container(
-          width:290,
-          height:250,
+          width:250,
+          height:230,
           decoration:BoxDecoration(
             shape:BoxShape.circle,
             gradient:RadialGradient(
               colors:[
-                const Color(0xFF8D63FF).withValues(alpha:light ? .24 : .28),
-                const Color(0xFF8D63FF).withValues(alpha:light ? .10 : .12),
+                const Color(0xFF8D63FF).withValues(alpha:light ? .20 : .28),
+                const Color(0xFF8D63FF).withValues(alpha:light ? .08 : .12),
                 Colors.transparent,
               ],
               stops:const [0,.48,1],
-            ),
-          ),
-        ),
-      ),
-      Positioned(
-        left:-92,
-        bottom:-92,
-        child:Container(
-          width:250,
-          height:210,
-          decoration:BoxDecoration(
-            shape:BoxShape.circle,
-            gradient:RadialGradient(
-              colors:[
-                const Color(0xFFB89CFF).withValues(alpha:light ? .16 : .10),
-                const Color(0xFF713BFF).withValues(alpha:light ? .05 : .06),
-                Colors.transparent,
-              ],
-              stops:const [0,.52,1],
-            ),
-          ),
-        ),
-      ),
-      Positioned(
-        left:0,right:0,bottom:0,height:42,
-        child:IgnorePointer(
-          child:Container(
-            decoration:BoxDecoration(
-              gradient:LinearGradient(
-                begin:Alignment.topCenter,
-                end:Alignment.bottomCenter,
-                colors:[
-                  (light?const Color(0xFFF8F6FF):const Color(0xFF080B15)).withValues(alpha:0),
-                  bg.withValues(alpha:.72),
-                  bg,
-                ],
-                stops:const [0,.62,1],
-              ),
             ),
           ),
         ),
@@ -419,18 +398,162 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
           Row(children:[
             brand(),
             const Spacer(),
-            InkWell(onTap:widget.notifications,borderRadius:BorderRadius.circular(22),child:Stack(clipBehavior:Clip.none,children:[
-              Padding(padding:const EdgeInsets.all(8),child:Icon(Icons.notifications_none_rounded,color:text,size:25)),
-              if(unread>0)const Positioned(right:5,top:5,child:CircleAvatar(radius:4.5,backgroundColor:Color(0xFFFF425D))),
-            ])),
+            InkWell(
+              onTap:widget.notifications,
+              borderRadius:BorderRadius.circular(22),
+              child:Stack(
+                clipBehavior:Clip.none,
+                children:[
+                  Padding(
+                    padding:const EdgeInsets.all(8),
+                    child:Icon(Icons.notifications_none_rounded,color:text,size:25),
+                  ),
+                  if(unread>0)
+                    const Positioned(
+                      right:5,
+                      top:5,
+                      child:CircleAvatar(radius:4.5,backgroundColor:Color(0xFFFF425D)),
+                    ),
+                ],
+              ),
+            ),
             const SizedBox(width:7),
-            Container(width:42,height:42,alignment:Alignment.center,decoration:BoxDecoration(shape:BoxShape.circle,gradient:const LinearGradient(colors:[Color(0xFF5820C8),Color(0xFF8C4DFF)])),child:Text(initials,style:const TextStyle(color:Colors.white,fontSize:14,fontWeight:FontWeight.w900))),
+            Container(
+              width:42,
+              height:42,
+              alignment:Alignment.center,
+              decoration:BoxDecoration(
+                shape:BoxShape.circle,
+                gradient:const LinearGradient(
+                  colors:[Color(0xFF5820C8),Color(0xFF8C4DFF)],
+                ),
+              ),
+              child:Text(
+                initials,
+                style:const TextStyle(
+                  color:Colors.white,
+                  fontSize:14,
+                  fontWeight:FontWeight.w900,
+                ),
+              ),
+            ),
           ]),
           const SizedBox(height:13),
-          Text('Merhaba',style:TextStyle(color:light?muted:const Color(0xFFC8D0E2),fontSize:17,fontWeight:FontWeight.w600)),
-          Text(firstName,style:TextStyle(color:light?text:Colors.white,fontSize:26,fontWeight:FontWeight.w900,height:1.02)),
-          const SizedBox(height:7),
-          SizedBox(width:190,child:Text('Aracınızla dünya\nsizinle iletişimde.',style:TextStyle(color:light?muted:const Color(0xFFB8C1D4),fontSize:16,fontWeight:FontWeight.w700,height:1.2))),
+          Container(
+            width:double.infinity,
+            height:98,
+            padding:const EdgeInsets.fromLTRB(18,14,15,13),
+            decoration:BoxDecoration(
+              color:light?Colors.white.withValues(alpha:.88):const Color(0xFF0D1425).withValues(alpha:.94),
+              borderRadius:BorderRadius.circular(21),
+              border:Border.all(
+                color:light?const Color(0xFFE7E3F0):const Color(0xFF2B3550),
+              ),
+              boxShadow:light
+                ?[
+                    BoxShadow(
+                      color:const Color(0xFF5F38C9).withValues(alpha:.07),
+                      blurRadius:20,
+                      offset:const Offset(0,7),
+                    ),
+                  ]
+                :null,
+            ),
+            child:Stack(children:[
+              Positioned(
+                right:-35,
+                bottom:-55,
+                child:Container(
+                  width:145,
+                  height:145,
+                  decoration:BoxDecoration(
+                    shape:BoxShape.circle,
+                    gradient:RadialGradient(
+                      colors:[
+                        const Color(0xFF9A6CFF).withValues(alpha:light?.14:.17),
+                        const Color(0xFF9A6CFF).withValues(alpha:light?.04:.06),
+                        Colors.transparent,
+                      ],
+                      stops:const [0,.56,1],
+                    ),
+                  ),
+                ),
+              ),
+              Row(
+                crossAxisAlignment:CrossAxisAlignment.start,
+                children:[
+                  Expanded(
+                    child:Column(
+                      crossAxisAlignment:CrossAxisAlignment.start,
+                      children:[
+                        RichText(
+                          maxLines:1,
+                          overflow:TextOverflow.ellipsis,
+                          text:TextSpan(
+                            style:TextStyle(
+                              color:text,
+                              fontSize:24,
+                              height:1.05,
+                              letterSpacing:-.7,
+                            ),
+                            children:[
+                              TextSpan(
+                                text:_givenName,
+                                style:const TextStyle(fontWeight:FontWeight.w500),
+                              ),
+                              if(_surname.isNotEmpty)
+                                TextSpan(
+                                  text:' $_surname',
+                                  style:const TextStyle(fontWeight:FontWeight.w900),
+                                ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height:8),
+                        Text(
+                          'Aracınızla dünya sizinle iletişimde.',
+                          maxLines:1,
+                          overflow:TextOverflow.ellipsis,
+                          style:TextStyle(
+                            color:muted,
+                            fontSize:12.5,
+                            fontWeight:FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width:10),
+                  Container(
+                    margin:const EdgeInsets.only(top:1),
+                    padding:const EdgeInsets.symmetric(horizontal:12,vertical:6),
+                    decoration:BoxDecoration(
+                      gradient:const LinearGradient(
+                        colors:[Color(0xFF5A1FE8),Color(0xFF8A3EFF)],
+                      ),
+                      borderRadius:BorderRadius.circular(11),
+                      boxShadow:[
+                        BoxShadow(
+                          color:const Color(0xFF6B2CF4).withValues(alpha:.22),
+                          blurRadius:10,
+                          offset:const Offset(0,4),
+                        ),
+                      ],
+                    ),
+                    child:const Text(
+                      'PRO',
+                      style:TextStyle(
+                        color:Colors.white,
+                        fontSize:10.5,
+                        fontWeight:FontWeight.w900,
+                        letterSpacing:.2,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ]),
+          ),
         ]),
       ),
     ]),
