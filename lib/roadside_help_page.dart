@@ -3,7 +3,9 @@ import 'cepqar_theme.dart';
 import 'towing_flow_page.dart';
 
 class RoadsideHelpPage extends StatefulWidget {
-  const RoadsideHelpPage({super.key});
+  const RoadsideHelpPage({super.key,this.driverMode=false,this.vehicleId});
+  final bool driverMode;
+  final String? vehicleId;
   @override State<RoadsideHelpPage> createState()=>_RoadsideHelpPageState();
 }
 class _RoadsideHelpPageState extends State<RoadsideHelpPage> with SingleTickerProviderStateMixin {
@@ -26,7 +28,7 @@ class _RoadsideHelpPageState extends State<RoadsideHelpPage> with SingleTickerPr
     ),
     body:TabBarView(controller:_tabs,children:[
       _RoadHelpTab(),
-      _TowTab(),
+      _TowTab(driverMode:widget.driverMode,vehicleId:widget.vehicleId),
     ]),
   );
 }
@@ -43,6 +45,9 @@ class _RoadHelpTab extends StatelessWidget {
   ]);
 }
 class _TowTab extends StatelessWidget {
+  const _TowTab({required this.driverMode,this.vehicleId});
+  final bool driverMode;
+  final String? vehicleId;
   @override Widget build(BuildContext context)=>ListView(padding:const EdgeInsets.all(16),children:[
     Text('Çekici',style:TextStyle(color:CepqarTheme.text,fontSize:20,fontWeight:FontWeight.w900)),
     const SizedBox(height:6),
@@ -51,7 +56,7 @@ class _TowTab extends StatelessWidget {
     _Service(icon:Icons.fire_truck_rounded,title:'Platform / Kayar Kasa',subtitle:'Aracın platform üzerinde taşınır'),
     _Service(icon:Icons.car_repair_rounded,title:'Akrep',subtitle:'Uygun araçlar için çekici hizmeti'),
     const SizedBox(height:18),
-    SizedBox(width:double.infinity,height:52,child:FilledButton.icon(onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const TowingFlowPage())),style:FilledButton.styleFrom(backgroundColor:CepqarTheme.purple),icon:const Icon(Icons.sos_rounded),label:const Text('Çekici Çağır',style:TextStyle(fontWeight:FontWeight.w900)))),
+    SizedBox(width:double.infinity,height:52,child:FilledButton.icon(onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>TowingFlowPage(driverMode:driverMode,vehicleId:vehicleId))),style:FilledButton.styleFrom(backgroundColor:CepqarTheme.purple),icon:const Icon(Icons.sos_rounded),label:const Text('Çekici Çağır',style:TextStyle(fontWeight:FontWeight.w900)))),
     const SizedBox(height:12),
     Container(padding:const EdgeInsets.all(14),decoration:BoxDecoration(color:CepqarTheme.panel,borderRadius:BorderRadius.circular(18),border:Border.all(color:CepqarTheme.line)),child:Row(children:[Icon(Icons.location_on_rounded,color:CepqarTheme.purple),const SizedBox(width:10),Expanded(child:Text('Yakındaki uygun çekiciler ve canlı takip bu akışta kullanılacak.',style:TextStyle(color:CepqarTheme.text,fontWeight:FontWeight.w700)))])),
   ]);
