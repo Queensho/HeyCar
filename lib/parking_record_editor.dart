@@ -7,12 +7,13 @@ Future<bool?> showParkingRecordEditor(
   String vehicleId, {
   Map<String, dynamic>? initial,
   bool dark = false,
+  bool driverMode = false,
 }) => showModalBottomSheet<bool>(
   context: context,
   isScrollControlled: true,
   backgroundColor: Colors.transparent,
   builder: (_) =>
-      _ParkingRecordEditor(vehicleId: vehicleId, initial: initial, dark: dark),
+      _ParkingRecordEditor(vehicleId: vehicleId, initial: initial, dark: dark, driverMode: driverMode),
 );
 
 class _ParkingRecordEditor extends StatefulWidget {
@@ -20,10 +21,12 @@ class _ParkingRecordEditor extends StatefulWidget {
     required this.vehicleId,
     this.initial,
     required this.dark,
+    required this.driverMode,
   });
   final String vehicleId;
   final Map<String, dynamic>? initial;
   final bool dark;
+  final bool driverMode;
   @override
   State<_ParkingRecordEditor> createState() => _ParkingRecordEditorState();
 }
@@ -63,6 +66,7 @@ class _ParkingRecordEditorState extends State<_ParkingRecordEditor> {
         floor: _floor.text,
         spot: _spot.text,
         note: _note.text,
+        driverMode: widget.driverMode,
       );
       if (mounted) Navigator.pop(context, true);
     } catch (_) {
