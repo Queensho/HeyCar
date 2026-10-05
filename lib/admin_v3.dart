@@ -1647,10 +1647,8 @@ class _QrPageState extends State<QrPage>{
     }
     final doc=pw.Document();
     const perPage=18;
-    final purple=PdfColor.fromHex('#6E22D9');
-    final lilac=PdfColor.fromHex('#F0E4FC');
-    final muted=PdfColor.fromHex('#665D77');
-    final templateData=await rootBundle.load('assets/Etiket4.png');
+    final purple=PdfColor.fromHex('#4B10F6');
+    final templateData=await rootBundle.load('assets/Etiketbeyaz.png');
     final template=pw.MemoryImage(templateData.buffer.asUint8List());
 
     // REAL PRINT SIZE — do not derive this from source image pixels.
@@ -1661,29 +1659,36 @@ class _QrPageState extends State<QrPage>{
     final pageHorizontalMargin=(PdfPageFormat.a4.width-(labelWidth*3))/2;
     final pageVerticalMargin=(PdfPageFormat.a4.height-(labelHeight*6))/2;
 
-    // Shared Etiket3 overlay geometry. Values are proportions of the final
-    // 55 x 46 mm label so preview/PNG/PDF stay aligned.
-    const qrLeftRatio=.562;
-    const qrTopRatio=.335;
-    const qrSizeWidthRatio=.245;
-    const codeLeftRatio=.502;
-    const codeTopRatio=.642;
-    const codeWidthRatio=.365;
-    const codeHeightRatio=.065;
+    // Etiketbeyaz.png has two intentionally empty white areas on the right:
+    // the large upper area is for the QR and the lower area is for the label code.
+    // Ratios come from the actual template geometry and are shared with the
+    // Flutter preview so preview / PNG / PDF stay aligned at 55 x 46 mm.
+    const qrAreaLeftRatio=.5221;
+    const qrAreaTopRatio=.0991;
+    const qrAreaWidthRatio=.4303;
+    const qrAreaHeightRatio=.6234;
+    const codeLeftRatio=.5221;
+    const codeTopRatio=.7592;
+    const codeWidthRatio=.4303;
+    const codeHeightRatio=.1546;
 
     pw.Widget labelCard(Map<String,dynamic> e){
       final token=_tokenOf(e);
-      final qrSize=55*qrSizeWidthRatio*PdfPageFormat.mm;
+      final qrAreaWidth=55*qrAreaWidthRatio*PdfPageFormat.mm;
+      final qrAreaHeight=46*qrAreaHeightRatio*PdfPageFormat.mm;
+      final qrSize=(qrAreaWidth<qrAreaHeight?qrAreaWidth:qrAreaHeight)*.86;
+      final qrLeft=(55*qrAreaLeftRatio*PdfPageFormat.mm)+((qrAreaWidth-qrSize)/2);
+      final qrTop=(46*qrAreaTopRatio*PdfPageFormat.mm)+((qrAreaHeight-qrSize)/2);
       return pw.SizedBox(
         width:labelWidth,
         height:labelHeight,
         child:pw.Stack(children:[
           pw.Positioned.fill(
-            child:pw.Image(template,fit:pw.BoxFit.contain),
+            child:pw.Image(template,fit:pw.BoxFit.fill),
           ),
           pw.Positioned(
-            left:55*qrLeftRatio*PdfPageFormat.mm,
-            top:46*qrTopRatio*PdfPageFormat.mm,
+            left:qrLeft,
+            top:qrTop,
             child:pw.SizedBox(
               width:qrSize,
               height:qrSize,
@@ -1701,21 +1706,17 @@ class _QrPageState extends State<QrPage>{
               width:55*codeWidthRatio*PdfPageFormat.mm,
               height:46*codeHeightRatio*PdfPageFormat.mm,
               alignment:pw.Alignment.center,
-              padding:pw.EdgeInsets.symmetric(horizontal:.45*PdfPageFormat.mm),
-              decoration:pw.BoxDecoration(
-                color:purple,
-                borderRadius:pw.BorderRadius.circular(1.5*PdfPageFormat.mm),
-              ),
+              padding:pw.EdgeInsets.symmetric(horizontal:.9*PdfPageFormat.mm),
               child:pw.FittedBox(
                 fit:pw.BoxFit.scaleDown,
                 child:pw.RichText(text:pw.TextSpan(children:[
                   pw.TextSpan(
                     text:'Etiket Kodu: ',
-                    style:pw.TextStyle(color:PdfColors.white,fontSize:3.6),
+                    style:pw.TextStyle(color:PdfColors.black,fontSize:5.0),
                   ),
                   pw.TextSpan(
                     text:token,
-                    style:pw.TextStyle(color:PdfColors.white,fontSize:4.92,fontWeight:pw.FontWeight.bold),
+                    style:pw.TextStyle(color:purple,fontSize:6.2,fontWeight:pw.FontWeight.bold),
                   ),
                 ])),
               ),
@@ -1785,18 +1786,30 @@ class _QrPageState extends State<QrPage>{
   Widget _sticker(String token,String url)=>LayoutBuilder(builder:(context,c){
     final w=c.maxWidth;
     final h=c.maxHeight;
-    final qrSize=w*.245;
+    const qrAreaLeftRatio=.5221;
+    const qrAreaTopRatio=.0991;
+    const qrAreaWidthRatio=.4303;
+    const qrAreaHeightRatio=.6234;
+    const codeLeftRatio=.5221;
+    const codeTopRatio=.7592;
+    const codeWidthRatio=.4303;
+    const codeHeightRatio=.1546;
+    final qrAreaWidth=w*qrAreaWidthRatio;
+    final qrAreaHeight=h*qrAreaHeightRatio;
+    final qrSize=(qrAreaWidth<qrAreaHeight?qrAreaWidth:qrAreaHeight)*.86;
+    final qrLeft=(w*qrAreaLeftRatio)+((qrAreaWidth-qrSize)/2);
+    final qrTop=(h*qrAreaTopRatio)+((qrAreaHeight-qrSize)/2);
     return Stack(children:[
       Positioned.fill(
         child:Image.asset(
-          'assets/Etiket4.png',
-          fit:BoxFit.contain,
+          'assets/Etiketbeyaz.png',
+          fit:BoxFit.fill,
           alignment:Alignment.center,
         ),
       ),
       Positioned(
-        left:w*.562,
-        top:h*.335,
+        left:qrLeft,
+        top:qrTop,
         width:qrSize,
         height:qrSize,
         child:LayoutBuilder(builder:(context,q){
@@ -1819,21 +1832,17 @@ class _QrPageState extends State<QrPage>{
         }),
       ),
       Positioned(
-        left:w*.502,
-        top:h*.642,
-        width:w*.365,
-        height:h*.065,
-        child:Container(
-          padding:EdgeInsets.symmetric(horizontal:w*.008),
-          decoration:BoxDecoration(
-            color:const Color(0xFF6E22D9),
-            borderRadius:BorderRadius.circular(h*.035),
-          ),
+        left:w*codeLeftRatio,
+        top:h*codeTopRatio,
+        width:w*codeWidthRatio,
+        height:h*codeHeightRatio,
+        child:Padding(
+          padding:EdgeInsets.symmetric(horizontal:w*.012,vertical:h*.010),
           child:Center(child:FittedBox(
             fit:BoxFit.scaleDown,
             child:RichText(textAlign:TextAlign.center,text:TextSpan(children:[
-              const TextSpan(text:'Etiket Kodu: ',style:TextStyle(color:Colors.white,fontSize:7.4,fontWeight:FontWeight.w600)),
-              TextSpan(text:token,style:const TextStyle(color:Colors.white,fontSize:9.8,fontWeight:FontWeight.w900)),
+              const TextSpan(text:'Etiket Kodu: ',style:TextStyle(color:Colors.black87,fontSize:8.2,fontWeight:FontWeight.w600)),
+              TextSpan(text:token,style:const TextStyle(color:Color(0xFF4B10F6),fontSize:10.8,fontWeight:FontWeight.w900)),
             ])),
           )),
         ),
@@ -2006,13 +2015,13 @@ class _QrPageState extends State<QrPage>{
   Widget _frontPreview(Map<String,dynamic>? sample){
     final token=(sample?['token']??'').toString();
     return _previewCard(
-      title:'Ön Yüz (10 × 4 cm)',
+      title:'Ön Yüz (5,5 × 4,6 cm)',
       child:AspectRatio(
-        aspectRatio:10/4.9,
+        aspectRatio:55/46,
         child:ClipRRect(
           borderRadius:BorderRadius.circular(15),
           child:token.isEmpty
-            ? Image.asset('assets/Etiket4.png',fit:BoxFit.cover)
+            ? Image.asset('assets/Etiketbeyaz.png',fit:BoxFit.fill)
             : Container(
                 color:Colors.white,
                 padding:const EdgeInsets.all(2),
@@ -2024,9 +2033,9 @@ class _QrPageState extends State<QrPage>{
   }
 
   Widget _backPreview()=>_previewCard(
-    title:'Arka Yüz (10 × 4 cm)',
+    title:'Arka Yüz (5,5 × 4,6 cm)',
     child:AspectRatio(
-      aspectRatio:10/4.9,
+      aspectRatio:55/46,
       child:ClipRRect(
         borderRadius:BorderRadius.circular(15),
         child:Image.asset(
