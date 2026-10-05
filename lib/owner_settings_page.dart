@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'cepqar_theme.dart';
+import 'cepqontag_store_page.dart';
 import 'legal_pages.dart';
 import 'onboarding_backend.dart';
 import 'owner_auth.dart';
@@ -230,9 +231,9 @@ class OwnerSettingsPage extends StatelessWidget {
                 ),
                 const SizedBox(width: 7),
                 _QuickProfileAction(
-                  icon: Icons.star_rounded,
-                  label: 'Favorilerim',
-                  onTap: () => _soon(context, 'Favoriler'),
+                  icon: Icons.storefront_rounded,
+                  label: 'Mağaza',
+                  onTap: () => _push(context, const CepqontagStorePage()),
                 ),
                 const SizedBox(width: 7),
                 _QuickProfileAction(
