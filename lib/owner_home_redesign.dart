@@ -1140,7 +1140,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       crossAxisCount:2,shrinkWrap:true,physics:const NeverScrollableScrollPhysics(),
       crossAxisSpacing:9,mainAxisSpacing:9,childAspectRatio:1.78,
       children:[
-        service(Icons.fire_truck_rounded,'Çekici','Çekici çağır ve canlı takip et.',const Color(0xFFFF8A43),()=>widget.shortcut('towing'),car:true),
+        service(Icons.fire_truck_rounded,'Çekici','Çekici çağır ve canlı takip et.',const Color(0xFFFF8A43),()=>widget.shortcut('towing'),car:true,comingSoon:true,enabled:testAccount),
         service(Icons.sos_rounded,'Yol Yardım','Akü, lastik, yakıt ve yerinde destek.',const Color(0xFFFF775F),()=>widget.shortcut('roadside_help'),comingSoon:true,enabled:testAccount),
         service(Icons.support_agent_rounded,'Vale','Aracınızı güvenle teslim edin.',const Color(0xFF8B36FF),widget.services,comingSoon:true,enabled:testAccount),
         service(Icons.local_offer_rounded,'Fırsatlar','Size özel kampanya ve ayrıcalıklar.',const Color(0xFF23C976),()=>widget.shortcut('offers'),comingSoon:true,enabled:testAccount),
@@ -1407,7 +1407,7 @@ class OwnerServicesRedesign extends StatelessWidget{
   @override Widget build(BuildContext context){
     final light=CepqarTheme.isLight,text=CepqarTheme.text,muted=CepqarTheme.muted,panel=CepqarTheme.panel,line=CepqarTheme.line;
     final items=<({IconData icon,String title,String subtitle,Color color,VoidCallback tap,bool comingSoon,bool enabled})>[
-      (icon:Icons.fire_truck_rounded,title:'Çekici',subtitle:'Yolda kaldığınızda çekici çağırın ve canlı takip edin.',color:const Color(0xFFFF8A43),tap:onTowing,comingSoon:false,enabled:true),
+      (icon:Icons.fire_truck_rounded,title:'Çekici',subtitle:'Yolda kaldığınızda çekici çağırın ve canlı takip edin.',color:const Color(0xFFFF8A43),tap:onTowing,comingSoon:true,enabled:_ownerServicesTestAccount),
       (icon:Icons.sos_rounded,title:'Yol Yardım',subtitle:'Akü, lastik, yakıt ve yerinde müdahale desteği.',color:const Color(0xFFFF775F),tap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const RoadsideHelpPage(initialTab:0))),comingSoon:true,enabled:_ownerServicesTestAccount),
       (icon:Icons.support_agent_rounded,title:'Vale',subtitle:'Aracınızı güvenle teslim edin, zaman kazanın.',color:const Color(0xFF8B36FF),tap:onVale,comingSoon:true,enabled:_ownerServicesTestAccount),
       (icon:Icons.local_offer_rounded,title:'Fırsatlar',subtitle:'Size özel kampanya ve ayrıcalıkları keşfedin.',color:const Color(0xFF23C976),tap:onOffers,comingSoon:true,enabled:_ownerServicesTestAccount),
