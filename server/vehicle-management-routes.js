@@ -58,7 +58,14 @@ module.exports = function registerVehicleManagementRoutes(app, pool) {
       const familyPremium = premiumPlan==='family';
       const vehicles = await pool.query(`
         SELECT v.id,v.plate,v.make,v.model,v.color,v.created_at,
-               q.token AS qr_token,q.status AS qr_status,q.scan_secret AS qr_scan_secret
+               q.token AS qr_token,q.status AS qr_status,q.scan_secret AS qr_scan_secret,
+               (SELECT COUNT(*)::int FROM vehicle_drivers vd WHERE vd.vehicle_id=v.id) AS driver_count,
+               EXISTS(
+                 SELECT 1 FROM vehicle_active_drivers vad
+                  WHERE vad.vehicle_id=v.id
+                    AND (vad.active_until IS NULL OR vad.active_until>NOW())
+               ) AS has_active_driver,
+               (SELECT MAX(qsh.created_at) FROM qr_scan_history qsh WHERE qsh.vehicle_id=v.id) AS last_scan_at
           FROM vehicles v
           LEFT JOIN LATERAL (
             SELECT token,status,scan_secret FROM qr_tags

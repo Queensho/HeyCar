@@ -17,6 +17,7 @@ import 'cepqar_theme.dart';
 import 'owner_auth.dart';
 import 'owner_settings_detail.dart';
 import 'owner_notifications_page.dart';
+import 'vehicle_identity_card.dart';
 
 Color get _bg => CepqarTheme.bg;
 Color get _panel => CepqarTheme.panel;
@@ -31,8 +32,12 @@ class VehicleCenterPage extends StatefulWidget {
     super.key,
     required this.plate,
     required this.title,
+    this.initialVehicle=const <String,dynamic>{},
+    this.isPrimary=true,
   });
   final String plate, title;
+  final Map<String,dynamic> initialVehicle;
+  final bool isPrimary;
   @override
   State<VehicleCenterPage> createState() => _VehicleCenterPageState();
 }
@@ -60,6 +65,7 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
         : OnboardingDraft.vehicleId.trim();
     _plate = widget.plate;
     _title = widget.title;
+    _vehicle=Map<String,dynamic>.from(widget.initialVehicle);
     CepqarTheme.mode.addListener(_themeChanged);
     load();
   }
@@ -912,75 +918,15 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
     ])),
   ]);
 
-  Widget _heroCard() {
-    final secondary=[_model,_colorName].where((x)=>x.trim().isNotEmpty).join(' • ');
-    return Container(
-      height:150,
-      clipBehavior:Clip.antiAlias,
-      decoration:BoxDecoration(
-        borderRadius:BorderRadius.circular(16),
-        border:Border.all(color:const Color(0xFF7E49FF).withValues(alpha:.48)),
-        gradient:const LinearGradient(
-          begin:Alignment.topLeft,end:Alignment.bottomRight,
-          colors:[Color(0xFF0D1120),Color(0xFF15102B),Color(0xFF0A1020)],
-        ),
-      ),
-      child:Stack(children:[
-        Positioned(
-          right:-12,bottom:-13,
-          child:Image.asset(
-            'assets/Arac.png',
-            width:238,height:132,fit:BoxFit.contain,
-            alignment:Alignment.bottomRight,
-            errorBuilder:(_,__,___)=>Icon(Icons.directions_car_filled_rounded,color:Colors.white.withValues(alpha:.25),size:108),
-          ),
-        ),
-        Positioned(
-          right:10,top:10,
-          child:Container(
-            padding:const EdgeInsets.symmetric(horizontal:10,vertical:6),
-            decoration:BoxDecoration(
-              color:(_qrActive?const Color(0xFF38D178):const Color(0xFFFFB84D)).withValues(alpha:.12),
-              borderRadius:BorderRadius.circular(18),
-              border:Border.all(color:_qrActive?const Color(0xFF38D178):const Color(0xFFFFB84D)),
-            ),
-            child:Row(mainAxisSize:MainAxisSize.min,children:[
-              CircleAvatar(radius:3.5,backgroundColor:_qrActive?const Color(0xFF65F47A):const Color(0xFFFFB84D)),
-              const SizedBox(width:6),
-              Text(_qrActive?'Aktif':'QR Pasif',style:TextStyle(color:_qrActive?const Color(0xFF65F47A):const Color(0xFFFFC66D),fontSize:CepqarTheme.caption,fontWeight:FontWeight.w900)),
-            ]),
-          ),
-        ),
-        Positioned(
-          left:13,bottom:13,
-          child:SizedBox(
-            width:172,
-            child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisSize:MainAxisSize.min,children:[
-              Text(_plate,style:const TextStyle(color:Colors.white,fontSize:20,fontWeight:FontWeight.w900,letterSpacing:.2)),
-              const SizedBox(height:2),
-              Text(_make.isEmpty?_title:_make,style:const TextStyle(color:Colors.white,fontSize:CepqarTheme.cardTitle,fontWeight:FontWeight.w700)),
-              if(secondary.isNotEmpty)...[
-                const SizedBox(height:2),
-                Text(secondary,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Color(0xFFAEB8D4),fontSize:CepqarTheme.bodySmall,fontWeight:FontWeight.w500)),
-              ],
-              if(km>0)...[
-                const SizedBox(height:2),
-                Text('${_number(km)} km',style:const TextStyle(color:Color(0xFF8794B7),fontSize:CepqarTheme.caption,fontWeight:FontWeight.w600)),
-              ],
-            ]),
-          ),
-        ),
-        Positioned(
-          right:10,bottom:10,
-          child:Container(
-            width:30,height:30,
-            decoration:BoxDecoration(shape:BoxShape.circle,color:const Color(0xFF11182B).withValues(alpha:.9),border:Border.all(color:const Color(0xFF34415E))),
-            child:const Icon(Icons.more_horiz_rounded,color:Color(0xFFB5C0DE),size:18),
-          ),
-        ),
-      ]),
-    );
-  }
+  Widget _heroCard()=>VehicleIdentityCard(
+    vehicle:_vehicle.isEmpty?<String,dynamic>{
+      'plate':_plate,'make':_make,'model':_model,
+      'qr_status':QrDraft.token.trim().isNotEmpty?'active':'inactive',
+      'qr_token':QrDraft.token,
+    }:_vehicle,
+    currentKm:km,
+    isPrimary:widget.isPrimary,
+  );
 
   Widget _miniAction(IconData icon,String title,String subtitle,VoidCallback tap){
     return Expanded(
