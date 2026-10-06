@@ -649,7 +649,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
       );
     }
     return SizedBox(
-      height: 102,
+      height: 94,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: items.length,
@@ -661,7 +661,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
               '${item.time.hour.toString().padLeft(2, '0')}:00';
           return Container(
             width: 58,
-            padding: const EdgeInsets.symmetric(vertical: 8),
+            padding: const EdgeInsets.symmetric(vertical: 7),
             decoration: BoxDecoration(
               color: now
                   ? purple.withValues(alpha: .09)
@@ -674,6 +674,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
                   : null,
             ),
             child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   now ? 'Şu an' : time,
@@ -683,12 +684,10 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
                     fontWeight: now ? FontWeight.w900 : FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 7),
                 _WeatherGlyph(
                   condition: item.condition,
-                  size: 29,
+                  size: 28,
                 ),
-                const Spacer(),
                 Text(
                   _degree(item.temperature),
                   style: TextStyle(
@@ -719,7 +718,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
       );
     }
     return SizedBox(
-      height: 116,
+      height: 108,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: items.length,
@@ -728,7 +727,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
           final item = items[index];
           return Container(
             width: 69,
-            padding: const EdgeInsets.fromLTRB(5, 8, 5, 7),
+            padding: const EdgeInsets.fromLTRB(5, 7, 5, 6),
             decoration: BoxDecoration(
               color: index == 0
                   ? purple.withValues(alpha: .06)
@@ -738,6 +737,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
               borderRadius: BorderRadius.circular(14),
             ),
             child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   _weekday(item.date, today: index == 0),
@@ -748,25 +748,26 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
                         index == 0 ? FontWeight.w900 : FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 7),
-                _WeatherGlyph(condition: item.condition, size: 29),
-                const Spacer(),
-                Text(
-                  _degree(item.maxTemperature),
-                  style: const TextStyle(
-                    color: Color(0xFFFF4E5B),
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 1),
-                Text(
-                  _degree(item.minTemperature),
-                  style: const TextStyle(
-                    color: Color(0xFF1976FF),
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w900,
-                  ),
+                _WeatherGlyph(condition: item.condition, size: 27),
+                Column(
+                  children: [
+                    Text(
+                      _degree(item.maxTemperature),
+                      style: const TextStyle(
+                        color: Color(0xFFFF4E5B),
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    Text(
+                      _degree(item.minTemperature),
+                      style: const TextStyle(
+                        color: Color(0xFF1976FF),
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -1093,73 +1094,151 @@ class _WeatherGlyph extends StatelessWidget {
   final double size;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => SizedBox(
+        width: size * 1.28,
+        height: size,
+        child: CustomPaint(
+          painter: _WeatherGlyphPainter(condition: condition),
+        ),
+      );
+}
+
+class _WeatherGlyphPainter extends CustomPainter {
+  const _WeatherGlyphPainter({required this.condition});
+
+  final WeatherCondition condition;
+
+  @override
+  void paint(Canvas canvas, Size size) {
     switch (condition) {
       case WeatherCondition.clear:
-        return Icon(
-          Icons.wb_sunny_rounded,
-          color: const Color(0xFFFFC928),
-          size: size,
-        );
+        _sun(canvas, size, center: Offset(size.width * .5, size.height * .5));
       case WeatherCondition.partlyCloudy:
-        return SizedBox(
-          width: size * 1.2,
-          height: size,
-          child: Stack(
-            children: [
-              Positioned(
-                left: 1,
-                top: 0,
-                child: Icon(
-                  Icons.wb_sunny_rounded,
-                  color: const Color(0xFFFFC928),
-                  size: size * .72,
-                ),
-              ),
-              Positioned(
-                right: 0,
-                bottom: 0,
-                child: Icon(
-                  Icons.cloud_rounded,
-                  color: const Color(0xFFA9C9E9),
-                  size: size * .86,
-                ),
-              ),
-            ],
-          ),
+        _sun(
+          canvas,
+          size,
+          center: Offset(size.width * .38, size.height * .38),
+          radiusScale: .72,
         );
+        _cloud(canvas, size, center: Offset(size.width * .60, size.height * .63));
       case WeatherCondition.cloudy:
-        return Icon(
-          Icons.cloud_rounded,
-          color: const Color(0xFFA8BED2),
-          size: size,
-        );
+        _cloud(canvas, size, center: Offset(size.width * .50, size.height * .55), scale:1.12);
       case WeatherCondition.rain:
-        return Icon(
-          Icons.grain_rounded,
-          color: const Color(0xFF3C84E8),
-          size: size,
-        );
+        _cloud(canvas, size, center: Offset(size.width * .50, size.height * .40));
+        _rain(canvas, size);
       case WeatherCondition.snow:
-        return Icon(
-          Icons.ac_unit_rounded,
-          color: const Color(0xFF79B7F0),
-          size: size,
-        );
+        _cloud(canvas, size, center: Offset(size.width * .50, size.height * .37));
+        _snow(canvas, size);
       case WeatherCondition.thunderstorm:
-        return Icon(
-          Icons.thunderstorm_rounded,
-          color: CepqarTheme.purple,
-          size: size,
-        );
+        _cloud(canvas, size, center: Offset(size.width * .48, size.height * .36), dark:true);
+        _bolt(canvas, size);
       case WeatherCondition.night:
-        return Icon(
-          Icons.nightlight_round,
-          color: const Color(0xFF7767CE),
-          size: size,
-        );
+        _moon(canvas, size);
     }
   }
+
+  void _sun(
+    Canvas canvas,
+    Size size, {
+    required Offset center,
+    double radiusScale = 1,
+  }) {
+    final r = size.height * .24 * radiusScale;
+    final ray = Paint()
+      ..color = const Color(0xFFFFC928)
+      ..strokeWidth = math.max(1.2, size.height * .055)
+      ..strokeCap = StrokeCap.round;
+    for (var i = 0; i < 8; i++) {
+      final angle = math.pi * 2 * i / 8;
+      final a = center + Offset(math.cos(angle), math.sin(angle)) * (r * 1.45);
+      final b = center + Offset(math.cos(angle), math.sin(angle)) * (r * 1.85);
+      canvas.drawLine(a, b, ray);
+    }
+    canvas.drawCircle(
+      center,
+      r,
+      Paint()
+        ..shader = const RadialGradient(
+          colors: [Color(0xFFFFF285), Color(0xFFFFC928)],
+        ).createShader(Rect.fromCircle(center:center,radius:r)),
+    );
+  }
+
+  void _cloud(
+    Canvas canvas,
+    Size size, {
+    required Offset center,
+    double scale = 1,
+    bool dark = false,
+  }) {
+    final paint = Paint()
+      ..color = dark ? const Color(0xFF7482A6) : const Color(0xFFB7D2E9);
+    final h = size.height * .20 * scale;
+    final w = size.width * .52 * scale;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(center:center.translate(0,h*.30),width:w,height:h*1.12),
+        Radius.circular(h),
+      ),
+      paint,
+    );
+    canvas.drawCircle(center.translate(-w*.20,0),h*.66,paint);
+    canvas.drawCircle(center.translate(0,-h*.24),h*.84,paint);
+    canvas.drawCircle(center.translate(w*.22,h*.03),h*.60,paint);
+  }
+
+  void _rain(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFF3987E8)
+      ..strokeWidth = math.max(1.3,size.height*.055)
+      ..strokeCap = StrokeCap.round;
+    for(var i=0;i<3;i++){
+      final x=size.width*(.34+i*.16);
+      final y=size.height*.68;
+      canvas.drawLine(Offset(x,y),Offset(x-2,y+size.height*.18),paint);
+    }
+  }
+
+  void _snow(Canvas canvas, Size size) {
+    final paint=Paint()
+      ..color=const Color(0xFF6BAEE8)
+      ..strokeWidth=1.2;
+    for(var i=0;i<3;i++){
+      final center=Offset(size.width*(.34+i*.16),size.height*.78);
+      canvas.drawCircle(center,size.height*.055,paint);
+    }
+  }
+
+  void _bolt(Canvas canvas, Size size) {
+    final path=Path()
+      ..moveTo(size.width*.54,size.height*.56)
+      ..lineTo(size.width*.43,size.height*.77)
+      ..lineTo(size.width*.53,size.height*.74)
+      ..lineTo(size.width*.45,size.height*.94);
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color=const Color(0xFFFFD84C)
+        ..style=PaintingStyle.stroke
+        ..strokeWidth=math.max(1.8,size.height*.075)
+        ..strokeJoin=StrokeJoin.round,
+    );
+  }
+
+  void _moon(Canvas canvas, Size size) {
+    final center=Offset(size.width*.50,size.height*.50);
+    final r=size.height*.31;
+    final outer=Path()..addOval(Rect.fromCircle(center:center,radius:r));
+    final cut=Path()..addOval(Rect.fromCircle(center:center.translate(r*.42,-r*.18),radius:r*.92));
+    canvas.drawPath(
+      Path.combine(PathOperation.difference,outer,cut),
+      Paint()..color=const Color(0xFF7468C9),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _WeatherGlyphPainter oldDelegate) =>
+      oldDelegate.condition != condition;
 }
 
 class _WeatherHeroPainter extends CustomPainter {
