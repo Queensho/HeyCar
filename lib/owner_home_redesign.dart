@@ -1252,7 +1252,8 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         physics:const ClampingScrollPhysics(parent:AlwaysScrollableScrollPhysics()),
         children:[
           RepaintBoundary(child:header()),
-          RepaintBoundary(child:Transform.translate(offset:const Offset(0,-3),child:vehicleQr())),
+          const SizedBox(height:14),
+          RepaintBoundary(child:vehicleQr()),
           RepaintBoundary(child:quickRow()),
           RepaintBoundary(child:monthly()),
           section('Hizmetler',widget.services),
