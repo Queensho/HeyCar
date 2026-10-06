@@ -34,7 +34,9 @@ BEGIN
         ('valet_audit_log'),
         ('story_categories'),
         ('stories'),
-        ('story_user_state')
+        ('story_user_state'),
+        ('app_layout_versions'),
+        ('app_assets')
       ) AS required(name)
       WHERE to_regclass('public.' || name) IS NULL
     ) q;
@@ -212,6 +214,26 @@ BEGIN
   IF to_regclass('public.idx_stories_delivery') IS NULL
      OR to_regclass('public.idx_story_user_state_owner') IS NULL THEN
     RAISE EXCEPTION 'STORY_INDEXES_MISSING';
+  END IF;
+
+  IF NOT has_table_privilege('heycar_user','public.app_layout_versions','SELECT')
+     OR NOT has_table_privilege('heycar_user','public.app_layout_versions','INSERT')
+     OR NOT has_table_privilege('heycar_user','public.app_layout_versions','UPDATE')
+     OR NOT has_table_privilege('heycar_user','public.app_assets','SELECT')
+     OR NOT has_table_privilege('heycar_user','public.app_assets','INSERT')
+     OR NOT has_table_privilege('heycar_user','public.app_assets','DELETE') THEN
+    RAISE EXCEPTION 'APP_BUILDER_RUNTIME_PRIVILEGES_MISSING';
+  END IF;
+
+  IF to_regclass('public.app_layout_one_published') IS NULL
+     OR to_regclass('public.idx_app_layout_versions_status_version') IS NULL
+     OR to_regclass('public.idx_app_assets_category_created') IS NULL THEN
+    RAISE EXCEPTION 'APP_BUILDER_INDEXES_MISSING';
+  END IF;
+
+  SELECT COUNT(*) INTO bad_count FROM public.app_layout_versions WHERE status='published';
+  IF bad_count <> 1 THEN
+    RAISE EXCEPTION 'APP_BUILDER_PUBLISHED_COUNT_INVALID: %', bad_count;
   END IF;
 
   IF NOT has_table_privilege('heycar_user','public.owner_web_push_subscriptions','SELECT')

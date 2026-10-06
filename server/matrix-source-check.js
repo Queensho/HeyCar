@@ -282,3 +282,34 @@ requireText(
   "story-(?:thumbnail|content)-[a-f0-9-]+",
   'STORY_MEDIA_PUBLIC_ROUTE_MISSING'
 );
+
+requireText(
+  'app-builder-routes.js',
+  "COMPONENT_TYPES=new Set([",
+  'APP_BUILDER_COMPONENT_ALLOWLIST_MISSING'
+);
+requireText(
+  'app-builder-routes.js',
+  "ACTIONS=new Set([",
+  'APP_BUILDER_ACTION_ALLOWLIST_MISSING'
+);
+requireText(
+  'app-builder-routes.js',
+  "UNSUPPORTED_SCHEMA_VERSION",
+  'APP_BUILDER_SCHEMA_VALIDATION_MISSING'
+);
+requireText(
+  'app-builder-routes.js',
+  "app_config.published",
+  'APP_BUILDER_PUBLISH_AUDIT_MISSING'
+);
+requireText(
+  'app-builder-routes.js',
+  "app_config.rolled_back",
+  'APP_BUILDER_ROLLBACK_AUDIT_MISSING'
+);
+requireText(
+  'app-builder-routes.js',
+  "If-None-Match",
+  'APP_BUILDER_ETAG_HINT_MISSING'
+);
