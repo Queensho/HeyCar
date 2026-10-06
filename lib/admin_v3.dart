@@ -18,6 +18,7 @@ import 'admin_support_page.dart';
 import 'admin_settings_page.dart';
 import 'admin_towing_page.dart';
 import 'admin_store_page.dart';
+import 'admin_story_management_page.dart';
 import 'admin_ui.dart';
 
 const _navy = Color(0xFF111827);
@@ -252,6 +253,7 @@ class _AdminHomeState extends State<AdminHome> {
     ('Çekici',Icons.fire_truck_rounded),
     ('Mağaza Yönetimi',Icons.shopping_bag_rounded),
     ('Baskı Yönetimi',Icons.print_outlined),
+    ('Promosyon & Duyurular',Icons.auto_stories_rounded),
   ];
   final navItems=const <(String,IconData,int)>[
     ('Ana Sayfa',Icons.home_rounded,0),
@@ -262,6 +264,7 @@ class _AdminHomeState extends State<AdminHome> {
     ('Vale İşletmeleri',Icons.local_parking_rounded,14),
     ('Çekici Yönetimi',Icons.fire_truck_outlined,20),
     ('Fırsat Yönetimi',Icons.local_offer_outlined,15),
+    ('Promosyon & Duyurular',Icons.auto_stories_outlined,23),
     ('Bildirim Yönetimi',Icons.notifications_none_rounded,10),
     ('Raporlar',Icons.analytics_outlined,7),
     ('Moderasyon',Icons.shield_outlined,12),
@@ -969,7 +972,7 @@ class _AdminHomeState extends State<AdminHome> {
     ),
   );
 
-  Widget page(){switch(tab){case 1:return UsersPage(rows:users,open:openUser);case 2:return VehiclesPage(rows:vehicles,open:openVehicle);case 3:return QrPage(rows:qr,create:createQr,action:qrAction,itemPrintStatus:qrItemPrintStatus);case 4:return ModerationPage(rows:themes,removeBackground:removeBg,resetTheme:resetTheme);case 5:return AdminCorrectionRequestsPage(token:widget.token,admin:widget.admin);case 6:return AdminPromoPage(rows:promos,onCreate:createPromo,onSetActive:setPromoActive,onPush:pushPromo,onUploadImage:uploadPromoImage);case 7:return ReportsPage(data:reports,loading:reportLoading,error:reportError,days:reportDays,onDaysChanged:loadReports,onRefresh:()=>loadReports());case 8:return AuditLogPage(data:auditData,loading:auditLoading,error:auditError,onRefresh:loadAudit);case 9:return SystemHealthPage(data:systemHealth,loading:systemHealthLoading,error:systemHealthError,onRefresh:loadSystemHealth);case 10:return AdminPushPage(users:users,data:pushHistory,loading:pushHistoryLoading,error:pushHistoryError,onSend:sendAdminPush,onRefresh:loadPushHistory);case 11:return SecurityCenterPage(data:securityCenter,loading:securityCenterLoading,error:securityCenterError,hours:securityHours,onHoursChanged:loadSecurityCenter,onRefresh:()=>loadSecurityCenter());case 12:return ComplaintModerationPage(data:complaintData,loading:complaintLoading,error:complaintError,status:complaintStatus,onStatusChanged:loadComplaints,onOpen:openComplaint,onRefresh:()=>loadComplaints());case 13:return CommunicationOpsPage(data:communicationsData,loading:communicationsLoading,error:communicationsError,hours:communicationsHours,onHoursChanged:loadCommunications,onRefresh:()=>loadCommunications());case 14:return AdminBusinessesPage(data:businessesAdminData,loading:businessesAdminLoading,error:businessesAdminError,status:businessesAdminStatus,onStatus:loadBusinessesAdmin,onUpdate:updateBusinessAdmin,onCreate:createBusinessAdmin,onRefresh:()=>loadBusinessesAdmin());case 15:return AdminCampaignsPage(data:campaignsAdminData,loading:campaignsAdminLoading,error:campaignsAdminError,status:campaignsAdminStatus,onStatus:loadCampaignsAdmin,onUpdate:updateCampaignAdmin,onRefresh:()=>loadCampaignsAdmin());case 16:return AdminOfferRevenuePage(data:offerRevenueData,loading:offerRevenueLoading,error:offerRevenueError,days:offerRevenueDays,onDays:loadOfferRevenue,onRefresh:()=>loadOfferRevenue());case 17:return AdminPremiumPage(data:premiumAdminData,loading:premiumAdminLoading,error:premiumAdminError,filter:premiumAdminFilter,onFilter:loadPremiumAdmin,onAction:updatePremiumAdmin,onHistory:loadPremiumHistory,onRefresh:()=>loadPremiumAdmin(),token:widget.token,admin:widget.admin);case 18:return AdminSupportPage(token:widget.token,admin:widget.admin);case 19:return AdminSettingsPage(token:widget.token,admin:widget.admin);case 20:return AdminTowingPage(token:widget.token,admin:widget.admin);case 21:return AdminStorePage(token:widget.token,admin:widget.admin);case 22:return QrPage(rows:qr,create:createQr,action:qrAction,itemPrintStatus:qrItemPrintStatus,printMode:true);default:return const SizedBox.shrink();}}
+  Widget page(){switch(tab){case 1:return UsersPage(rows:users,open:openUser);case 2:return VehiclesPage(rows:vehicles,open:openVehicle);case 3:return QrPage(rows:qr,create:createQr,action:qrAction,itemPrintStatus:qrItemPrintStatus);case 4:return ModerationPage(rows:themes,removeBackground:removeBg,resetTheme:resetTheme);case 5:return AdminCorrectionRequestsPage(token:widget.token,admin:widget.admin);case 6:return AdminPromoPage(rows:promos,onCreate:createPromo,onSetActive:setPromoActive,onPush:pushPromo,onUploadImage:uploadPromoImage);case 7:return ReportsPage(data:reports,loading:reportLoading,error:reportError,days:reportDays,onDaysChanged:loadReports,onRefresh:()=>loadReports());case 8:return AuditLogPage(data:auditData,loading:auditLoading,error:auditError,onRefresh:loadAudit);case 9:return SystemHealthPage(data:systemHealth,loading:systemHealthLoading,error:systemHealthError,onRefresh:loadSystemHealth);case 10:return AdminPushPage(users:users,data:pushHistory,loading:pushHistoryLoading,error:pushHistoryError,onSend:sendAdminPush,onRefresh:loadPushHistory);case 11:return SecurityCenterPage(data:securityCenter,loading:securityCenterLoading,error:securityCenterError,hours:securityHours,onHoursChanged:loadSecurityCenter,onRefresh:()=>loadSecurityCenter());case 12:return ComplaintModerationPage(data:complaintData,loading:complaintLoading,error:complaintError,status:complaintStatus,onStatusChanged:loadComplaints,onOpen:openComplaint,onRefresh:()=>loadComplaints());case 13:return CommunicationOpsPage(data:communicationsData,loading:communicationsLoading,error:communicationsError,hours:communicationsHours,onHoursChanged:loadCommunications,onRefresh:()=>loadCommunications());case 14:return AdminBusinessesPage(data:businessesAdminData,loading:businessesAdminLoading,error:businessesAdminError,status:businessesAdminStatus,onStatus:loadBusinessesAdmin,onUpdate:updateBusinessAdmin,onCreate:createBusinessAdmin,onRefresh:()=>loadBusinessesAdmin());case 15:return AdminCampaignsPage(data:campaignsAdminData,loading:campaignsAdminLoading,error:campaignsAdminError,status:campaignsAdminStatus,onStatus:loadCampaignsAdmin,onUpdate:updateCampaignAdmin,onRefresh:()=>loadCampaignsAdmin());case 16:return AdminOfferRevenuePage(data:offerRevenueData,loading:offerRevenueLoading,error:offerRevenueError,days:offerRevenueDays,onDays:loadOfferRevenue,onRefresh:()=>loadOfferRevenue());case 17:return AdminPremiumPage(data:premiumAdminData,loading:premiumAdminLoading,error:premiumAdminError,filter:premiumAdminFilter,onFilter:loadPremiumAdmin,onAction:updatePremiumAdmin,onHistory:loadPremiumHistory,onRefresh:()=>loadPremiumAdmin(),token:widget.token,admin:widget.admin);case 18:return AdminSupportPage(token:widget.token,admin:widget.admin);case 19:return AdminSettingsPage(token:widget.token,admin:widget.admin);case 20:return AdminTowingPage(token:widget.token,admin:widget.admin);case 21:return AdminStorePage(token:widget.token,admin:widget.admin);case 22:return QrPage(rows:qr,create:createQr,action:qrAction,itemPrintStatus:qrItemPrintStatus,printMode:true);case 23:return AdminPromotionHubPage(token:widget.token,admin:widget.admin,promos:promos,onCreate:createPromo,onSetActive:setPromoActive,onPush:pushPromo,onUploadImage:uploadPromoImage);default:return const SizedBox.shrink();}}
 }
 
 Widget _brand({double fontSize=34,bool dark=false})=>ShaderMask(
@@ -2894,8 +2897,9 @@ class ModerationPage extends StatelessWidget{
 
 
 class AdminPromoPage extends StatefulWidget{
-  const AdminPromoPage({super.key,required this.rows,required this.onCreate,required this.onSetActive,required this.onPush,required this.onUploadImage});
+  const AdminPromoPage({super.key,required this.rows,required this.onCreate,required this.onSetActive,required this.onPush,required this.onUploadImage,this.kindOnly});
   final List<Map<String,dynamic>> rows;
+  final String? kindOnly;
   final Future<void> Function(Map<String,dynamic>) onCreate;
   final Future<void> Function(String,bool) onSetActive;
   final Future<void> Function(String) onPush;
@@ -2915,13 +2919,15 @@ class _AdminPromoPageState extends State<AdminPromoPage>{
     final picker=ImagePicker();
     XFile? image;
     Uint8List? imageBytes;
-    String audience='owner',kind='promo';bool active=true,sendPush=true,busy=false;String? error;
+    String audience='owner',kind=widget.kindOnly??'promo';bool active=true,sendPush=true,busy=false;String? error;
     await showDialog(context:context,builder:(dialog)=>StatefulBuilder(builder:(dialog,setD)=>AlertDialog(
       title:const Text('Yeni Promo / Duyuru',style:TextStyle(fontWeight:FontWeight.w900)),
       content:SizedBox(width:520,child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
         Row(children:[
-          Expanded(child:DropdownButtonFormField<String>(initialValue:kind,decoration:const InputDecoration(labelText:'Tür',border:OutlineInputBorder()),items:const[DropdownMenuItem(value:'promo',child:Text('Promo')),DropdownMenuItem(value:'announcement',child:Text('Duyuru'))],onChanged:(v)=>setD(()=>kind=v??'promo'))),
-          const SizedBox(width:10),
+          if(widget.kindOnly==null)...[
+            Expanded(child:DropdownButtonFormField<String>(initialValue:kind,decoration:const InputDecoration(labelText:'Tür',border:OutlineInputBorder()),items:const[DropdownMenuItem(value:'promo',child:Text('Promo')),DropdownMenuItem(value:'announcement',child:Text('Duyuru'))],onChanged:(v)=>setD(()=>kind=v??'promo'))),
+            const SizedBox(width:10),
+          ],
           Expanded(child:DropdownButtonFormField<String>(initialValue:audience,decoration:const InputDecoration(labelText:'Hedef kitle',border:OutlineInputBorder()),items:const[DropdownMenuItem(value:'owner',child:Text('Araç sahipleri')),DropdownMenuItem(value:'business',child:Text('İşletmeler')),DropdownMenuItem(value:'both',child:Text('Her ikisi'))],onChanged:(v)=>setD((){audience=v??'owner';if(audience=='business')sendPush=false;}))),
         ]),
         const SizedBox(height:10),_adminField(title,'Başlık'),const SizedBox(height:10),_adminField(body,'Açıklama',lines:4),
@@ -2983,7 +2989,8 @@ class _AdminPromoPageState extends State<AdminPromoPage>{
   }
 
   @override Widget build(BuildContext context){
-    final rows=filter=='all'?widget.rows:widget.rows.where((x)=>x['audience']==filter||x['audience']=='both').toList();
+    final byKind=widget.kindOnly==null?widget.rows:widget.rows.where((x)=>(x['kind']??'').toString()==widget.kindOnly).toList();
+    final rows=filter=='all'?byKind:byKind.where((x)=>x['audience']==filter||x['audience']=='both').toList();
     return ListView(padding:const EdgeInsets.fromLTRB(14,14,14,24),children:[
       Row(children:[const Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('Promo & Duyurular',style:TextStyle(fontSize:22,fontWeight:FontWeight.w900,color:_ink)),SizedBox(height:4),Text('Araç sahipleri ve işletmelere tek panelden içerik yayınla.',style:TextStyle(color:_muted))])),FilledButton.icon(onPressed:createDialog,style:FilledButton.styleFrom(backgroundColor:_orange,foregroundColor:Colors.black),icon:const Icon(Icons.add_rounded),label:const Text('Yeni Ekle',style:TextStyle(fontWeight:FontWeight.w900)))]),
       const SizedBox(height:16),
@@ -3004,6 +3011,52 @@ class _AdminPromoPageState extends State<AdminPromoPage>{
     ]);
   }
 }
+
+class AdminPromotionHubPage extends StatefulWidget{
+  const AdminPromotionHubPage({super.key,required this.token,required this.admin,required this.promos,required this.onCreate,required this.onSetActive,required this.onPush,required this.onUploadImage});
+  final String token;
+  final Map<String,dynamic>? admin;
+  final List<Map<String,dynamic>> promos;
+  final Future<void> Function(Map<String,dynamic>) onCreate;
+  final Future<void> Function(String,bool) onSetActive;
+  final Future<void> Function(String) onPush;
+  final Future<String> Function(XFile) onUploadImage;
+  @override State<AdminPromotionHubPage> createState()=>_AdminPromotionHubPageState();
+}
+class _AdminPromotionHubPageState extends State<AdminPromotionHubPage>{
+  int section=0;
+  @override Widget build(BuildContext context)=>Column(children:[
+    Container(
+      margin:const EdgeInsets.fromLTRB(14,12,14,0),
+      padding:const EdgeInsets.all(4),
+      decoration:BoxDecoration(color:AdminUi.surfaceSoft,borderRadius:BorderRadius.circular(13)),
+      child:Row(children:[
+        for(final x in const [(0,'Story Yönetimi',Icons.auto_stories_outlined),(1,'Promosyonlar',Icons.local_offer_outlined),(2,'Duyurular',Icons.campaign_outlined)])
+          Expanded(child:InkWell(
+            onTap:()=>setState(()=>section=x.$1),
+            borderRadius:BorderRadius.circular(10),
+            child:AnimatedContainer(
+              duration:const Duration(milliseconds:160),
+              padding:const EdgeInsets.symmetric(vertical:10),
+              decoration:BoxDecoration(color:section==x.$1?Colors.white:Colors.transparent,borderRadius:BorderRadius.circular(10),boxShadow:section==x.$1?[BoxShadow(color:Colors.black.withValues(alpha:.05),blurRadius:8)]:null),
+              child:Row(mainAxisAlignment:MainAxisAlignment.center,children:[Icon(x.$3,size:17,color:section==x.$1?_purple:_muted),const SizedBox(width:5),Flexible(child:Text(x.$2,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:section==x.$1?_ink:_muted,fontSize:10.5,fontWeight:FontWeight.w900)))]),
+            ),
+          )),
+      ]),
+    ),
+    Expanded(child:section==0
+      ?AdminStoryManagementPage(token:widget.token,admin:widget.admin)
+      :AdminPromoPage(
+          rows:widget.promos,
+          onCreate:widget.onCreate,
+          onSetActive:widget.onSetActive,
+          onPush:widget.onPush,
+          onUploadImage:widget.onUploadImage,
+          kindOnly:section==1?'promo':'announcement',
+        )),
+  ]);
+}
+
 Widget _adminField(TextEditingController c,String label,{int lines=1})=>TextField(controller:c,maxLines:lines,decoration:InputDecoration(labelText:label,border:const OutlineInputBorder()));
 
 
