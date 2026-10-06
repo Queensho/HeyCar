@@ -16,6 +16,8 @@ import 'cepqontag_store_page.dart';
 import 'weather_card.dart';
 import 'weather_service.dart';
 import 'weather_details_page.dart';
+import 'story_service.dart';
+import 'owner_story_highlights.dart';
 
 class OwnerHomeRedesign extends StatefulWidget{
   const OwnerHomeRedesign({
@@ -37,6 +39,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   static const purple=Color(0xFF713BFF);
   Timer? timer;
   Timer? valetTimer;
+  Timer? storyTimer;
   bool _valetRefreshing=false;
   List<Map<String,dynamic>> notices=[];
   Map<String,dynamic>? valetSession;
@@ -54,6 +57,9 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   WeatherSnapshot? weather;
   bool weatherLoading=true;
   final WeatherService _weatherService=WeatherService();
+  final StoryService _storyService=StoryService();
+  List<StoryItem> stories=const <StoryItem>[];
+  bool _storiesLoading=false;
 
   bool get light=>CepqarTheme.isLight;
   Color get bg=>light?const Color(0xFFF7F7FC):const Color(0xFF050913);
@@ -103,6 +109,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     if(widget.active){
       load();
       _loadWeather();
+      _loadStories();
       _startPolling();
     }else{
       loading=false;
@@ -111,9 +118,11 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   void _startPolling(){
     timer?.cancel();
     valetTimer?.cancel();
+    storyTimer?.cancel();
     if(!widget.active)return;
     timer=Timer.periodic(const Duration(seconds:20),(_)=>load(silent:true));
     valetTimer=Timer.periodic(const Duration(seconds:3),(_)=>_loadValetStatus());
+    storyTimer=Timer.periodic(const Duration(seconds:60),(_)=>_loadStories());
   }
 
   Future<void> _loadValetStatus()async{
@@ -155,14 +164,30 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       if(widget.active){
         load(silent:true);
         _loadWeather();
+        _loadStories();
         _startPolling();
       }else{
         timer?.cancel();
         valetTimer?.cancel();
+        storyTimer?.cancel();
       }
     }
   }
-  @override void dispose(){timer?.cancel();valetTimer?.cancel();_weatherService.dispose();super.dispose();}
+  @override void dispose(){timer?.cancel();valetTimer?.cancel();storyTimer?.cancel();_weatherService.dispose();super.dispose();}
+
+  Future<void> _loadStories({bool force=false})async{
+    if(_storiesLoading||!widget.active)return;
+    _storiesLoading=true;
+    try{
+      final next=await _storyService.load();
+      if(mounted&&jsonEncode(next.map((e)=>[e.id,e.viewed,e.opened,e.clicked,e.sortOrder]).toList())!=jsonEncode(stories.map((e)=>[e.id,e.viewed,e.opened,e.clicked,e.sortOrder]).toList())){
+        setState(()=>stories=next);
+      }
+    }catch(_){
+    }finally{
+      _storiesLoading=false;
+    }
+  }
 
   Future<void> _loadWeather({bool force=false})async{
     if(!mounted)return;
@@ -179,6 +204,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     await Future.wait([
       load(),
       _loadWeather(force:true),
+      _loadStories(force:true),
     ]);
   }
 
@@ -1251,6 +1277,13 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
           RepaintBoundary(child:header()),
           const SizedBox(height:14),
           RepaintBoundary(child:vehicleQr()),
+          if(stories.isNotEmpty)
+            RepaintBoundary(child:OwnerStoryHighlights(
+              items:stories,
+              service:_storyService,
+              shortcut:widget.shortcut,
+              onChanged:()=>_loadStories(force:true),
+            )),
           RepaintBoundary(child:quickRow()),
           RepaintBoundary(child:monthly()),
           section('Hizmetler',widget.services),

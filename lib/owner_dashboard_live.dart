@@ -1,3 +1,4 @@
+import 'premium_page.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -37,6 +38,8 @@ void action(String a){
   else if(a=='vehicles'||a=='drivers')setState(()=>tab=1);
   else if(a=='services')setState(()=>tab=2);
   else if(a=='settings')setState(()=>tab=4);
+  else if(a=='premium')Navigator.push(context,MaterialPageRoute(builder:(_)=>const PremiumPage()));
+  else if(a=='valet'&&testAccount&&vid.isNotEmpty)Navigator.push(context,MaterialPageRoute(builder:(_)=>ValetInfoPage(vehicleId:vid)));
   else if(a=='towing'&&testAccount)Navigator.push(context,MaterialPageRoute(builder:(_)=>const RoadsideHelpPage(initialTab:1)));
   else if(a=='offers'&&testAccount)Navigator.push(context,MaterialPageRoute(builder:(_)=>const CepqarOffersPage()));
   else if(a=='roadside_help'&&testAccount)Navigator.push(context,MaterialPageRoute(builder:(_)=>const RoadsideHelpPage(initialTab:0)));
