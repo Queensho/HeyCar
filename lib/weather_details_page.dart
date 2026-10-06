@@ -63,11 +63,6 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
   String _degree(double? value) =>
       value == null ? '--°' : '${value.round()}°';
 
-  String _number(double? value, {int decimals = 0}) {
-    if (value == null) return '--';
-    return value.toStringAsFixed(decimals);
-  }
-
   String _visibility(double? meters) {
     if (meters == null) return '--';
     final km = meters / 1000;
@@ -503,7 +498,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
   Widget _drivingCard(_DrivingGuidance guidance) => Padding(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
         child: Container(
-          minHeight: 76,
+          constraints: const BoxConstraints(minHeight: 76),
           padding: const EdgeInsets.fromLTRB(16, 12, 14, 12),
           decoration: BoxDecoration(
             gradient: LinearGradient(
