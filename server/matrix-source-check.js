@@ -276,3 +276,9 @@ requireText(
   "s.target_district IS NULL",
   'STORY_LOCATION_TARGET_FILTER_MISSING'
 );
+
+requireText(
+  'admin-management-routes.js',
+  "story-(?:thumbnail|content)-[a-f0-9-]+",
+  'STORY_MEDIA_PUBLIC_ROUTE_MISSING'
+);

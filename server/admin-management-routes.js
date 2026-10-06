@@ -78,7 +78,7 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
 
   app.get('/uploads/promos/:name', (req, res) => {
     const name = path.basename(String(req.params.name || ''));
-    if (!/^[a-f0-9-]+\.(jpg|jpeg|png|webp)$/i.test(name)) return res.status(404).end();
+    if (!/^(?:[a-f0-9-]+|story-(?:thumbnail|content)-[a-f0-9-]+)\.(jpg|jpeg|png|webp)$/i.test(name)) return res.status(404).end();
     return res.sendFile(path.join(promoUploadDir, name));
   });
   registerAdminCorrectionRoutes(app, pool, guard);
