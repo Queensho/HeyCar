@@ -1347,7 +1347,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                   Container(
                     width:36,height:36,
                     decoration:BoxDecoration(color:_ui.token(items[i].iconToken).withValues(alpha:.12),shape:BoxShape.circle),
-                    child:Icon(_managedIcon(items[i].icon),color:_ui.token(items[i].iconToken),size:20),
+                    child:items[i].iconUrl.isNotEmpty?Padding(padding:const EdgeInsets.all(7),child:Image.network(items[i].iconUrl,fit:BoxFit.contain,errorBuilder:(_,__,___)=>Icon(_managedIcon(items[i].icon),color:_ui.token(items[i].iconToken),size:20))):Icon(_managedIcon(items[i].icon),color:_ui.token(items[i].iconToken),size:20),
                   ),
                   const SizedBox(height:6),
                   Padding(
@@ -1405,7 +1405,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
               child:Container(
                 width:36,height:36,
                 decoration:BoxDecoration(color:iconColor.withValues(alpha:.12),borderRadius:BorderRadius.circular(11)),
-                child:Icon(_managedIcon(item.icon),color:iconColor,size:21),
+                child:item.iconUrl.isNotEmpty?Padding(padding:const EdgeInsets.all(7),child:Image.network(item.iconUrl,fit:BoxFit.contain,errorBuilder:(_,__,___)=>Icon(_managedIcon(item.icon),color:iconColor,size:21))):Icon(_managedIcon(item.icon),color:iconColor,size:21),
               ),
             ),
             if(item.badgeText.isNotEmpty)Positioned(
