@@ -479,7 +479,7 @@ class _VehicleBrandLogo extends StatelessWidget{
     final letter=make.trim().isEmpty?'?':make.trim().characters.first.toUpperCase();
     Widget fallback()=>Container(
       width:72,height:72,alignment:Alignment.center,
-      decoration:BoxDecoration(color:_purple.withValues(alpha:CepqarTheme.isLight?.08:.16),shape:BoxShape.circle,border:Border.all(color:_purple.withValues(alpha:.16))),
+      decoration:BoxDecoration(color:_purple.withValues(alpha:CepqarTheme.isLight ? .08 : .16),shape:BoxShape.circle,border:Border.all(color:_purple.withValues(alpha:.16))),
       child:Text(letter,style:const TextStyle(color:_purple,fontSize:28,fontWeight:FontWeight.w900)),
     );
     if(!url.toLowerCase().startsWith('https://'))return fallback();
