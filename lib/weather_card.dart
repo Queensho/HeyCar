@@ -47,22 +47,9 @@ class WeatherCard extends StatelessWidget {
   String _degree(double? value) =>
       value == null ? '--°' : '${value.round()}°';
 
-  List<String> get _nameParts => displayName
-      .trim()
-      .split(RegExp(r'\s+'))
-      .where((part) => part.isNotEmpty)
-      .toList();
-
-  String get _givenName {
-    final parts = _nameParts;
-    if (parts.isEmpty) return 'Araç Sahibi';
-    if (parts.length == 1) return parts.first;
-    return parts.sublist(0, parts.length - 1).join(' ');
-  }
-
-  String get _surname {
-    final parts = _nameParts;
-    return parts.length > 1 ? parts.last : '';
+  String get _displayName {
+    final value = displayName.trim();
+    return (value.isEmpty ? 'Araç Sahibi' : value).toUpperCase();
   }
 
   @override
@@ -71,7 +58,6 @@ class WeatherCard extends StatelessWidget {
     final secondary = _dark
         ? Colors.white.withValues(alpha: .78)
         : const Color(0xFF5D6272);
-    final surnameColor = _dark ? lime : purple;
     final location = (weather?.location ?? '').trim();
     final condition = loading && weather == null
         ? 'Hava yükleniyor'
@@ -107,34 +93,25 @@ class WeatherCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 1),
-                  RichText(
+                  Text(
+                    _displayName,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    text: TextSpan(
-                      style: TextStyle(
-                        color: foreground,
-                        fontSize: 20.5,
-                        height: 1.03,
-                        letterSpacing: -.55,
-                        fontWeight: FontWeight.w900,
-                        shadows: _dark
-                            ? const [
-                                Shadow(
-                                  color: Color(0x33000000),
-                                  blurRadius: 4,
-                                  offset: Offset(0, 1),
-                                ),
-                              ]
-                            : null,
-                      ),
-                      children: [
-                        TextSpan(text: _givenName),
-                        if (_surname.isNotEmpty)
-                          TextSpan(
-                            text: ' $_surname',
-                            style: TextStyle(color: surnameColor),
-                          ),
-                      ],
+                    style: TextStyle(
+                      color: foreground,
+                      fontSize: 20.5,
+                      height: 1.03,
+                      letterSpacing: -.45,
+                      fontWeight: FontWeight.w900,
+                      shadows: _dark
+                          ? const [
+                              Shadow(
+                                color: Color(0x33000000),
+                                blurRadius: 4,
+                                offset: Offset(0, 1),
+                              ),
+                            ]
+                          : null,
                     ),
                   ),
                   const SizedBox(height: 3),
@@ -448,8 +425,6 @@ class WeatherCardPainter extends CustomPainter {
         ).createShader(rect),
     );
 
-    _drawWatermark(canvas, size);
-
     if (condition == WeatherCondition.night) {
       _drawMoon(canvas, size);
       _drawStars(canvas, size);
@@ -665,26 +640,6 @@ class WeatherCardPainter extends CustomPainter {
         paint,
       );
     }
-  }
-
-  void _drawWatermark(Canvas canvas, Size size) {
-    final painter = TextPainter(
-      text: TextSpan(
-        text: 'Q',
-        style: TextStyle(
-          color: (_dark ? WeatherCard.lime : Colors.white)
-              .withValues(alpha: _dark ? .08 : .23),
-          fontSize: 116,
-          fontWeight: FontWeight.w900,
-          height: .86,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    painter.paint(
-      canvas,
-      Offset(size.width - painter.width - 4, 16),
-    );
   }
 
   @override
