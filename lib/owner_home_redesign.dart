@@ -18,6 +18,8 @@ import 'weather_service.dart';
 import 'weather_details_page.dart';
 import 'story_service.dart';
 import 'owner_story_highlights.dart';
+import 'app_ui_config.dart';
+import 'owner_home_component_registry.dart';
 
 class OwnerHomeRedesign extends StatefulWidget{
   const OwnerHomeRedesign({
@@ -40,7 +42,11 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   Timer? timer;
   Timer? valetTimer;
   Timer? storyTimer;
+  Timer? appConfigTimer;
   bool _valetRefreshing=false;
+  bool _appConfigRefreshing=false;
+  final AppUiConfigService _appUiConfigService=AppUiConfigService();
+  AppUiConfig _appUiConfig=AppUiConfig.defaults();
   List<Map<String,dynamic>> notices=[];
   Map<String,dynamic>? valetSession;
   String valetDeliveryCode='';
@@ -62,11 +68,13 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   bool _storiesLoading=false;
 
   bool get light=>CepqarTheme.isLight;
-  Color get bg=>light?const Color(0xFFF7F7FC):const Color(0xFF050913);
-  Color get panel=>light?Colors.white:const Color(0xFF0B1220);
-  Color get text=>light?const Color(0xFF111628):Colors.white;
-  Color get muted=>light?const Color(0xFF71798E):const Color(0xFFA0A9BD);
-  Color get line=>light?const Color(0xFFE8E9F1):const Color(0xFF25304A);
+  AppUiTokens get _ui=>Theme.of(context).extension<AppUiTokens>()??AppUiTokens.defaults;
+  Color get bg=>light?_ui.background:const Color(0xFF050913);
+  Color get panel=>light?_ui.surface:const Color(0xFF0B1220);
+  Color get text=>light?_ui.textPrimary:Colors.white;
+  Color get muted=>light?_ui.textSecondary:const Color(0xFFA0A9BD);
+  Color get line=>light?_ui.textSecondary.withValues(alpha:.17):const Color(0xFF25304A);
+  Color get uiPrimary=>light?_ui.primary:CepqarTheme.purple;
   bool get testAccount{
     var digits=OnboardingDraft.phone.replaceAll(RegExp(r'\D'),'');
     if(digits.startsWith('90')&&digits.length==12)digits=digits.substring(2);
@@ -106,6 +114,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   @override void initState(){
     super.initState();
     _loadQuickAccess();
+    _loadAppUiConfig();
     if(widget.active){
       load();
       _loadWeather();
@@ -119,10 +128,12 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     timer?.cancel();
     valetTimer?.cancel();
     storyTimer?.cancel();
+    appConfigTimer?.cancel();
     if(!widget.active)return;
     timer=Timer.periodic(const Duration(seconds:20),(_)=>load(silent:true));
     valetTimer=Timer.periodic(const Duration(seconds:3),(_)=>_loadValetStatus());
     storyTimer=Timer.periodic(const Duration(seconds:60),(_)=>_loadStories());
+    appConfigTimer=Timer.periodic(const Duration(seconds:60),(_)=>_refreshAppUiConfig());
   }
 
   Future<void> _loadValetStatus()async{
@@ -165,15 +176,40 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         load(silent:true);
         _loadWeather();
         _loadStories();
+        _refreshAppUiConfig();
         _startPolling();
       }else{
         timer?.cancel();
         valetTimer?.cancel();
         storyTimer?.cancel();
+        appConfigTimer?.cancel();
       }
     }
   }
-  @override void dispose(){timer?.cancel();valetTimer?.cancel();storyTimer?.cancel();_weatherService.dispose();super.dispose();}
+  @override void dispose(){timer?.cancel();valetTimer?.cancel();storyTimer?.cancel();appConfigTimer?.cancel();_weatherService.dispose();super.dispose();}
+
+  Future<void> _loadAppUiConfig()async{
+    final cached=await _appUiConfigService.cachedOrDefault();
+    if(mounted){
+      AppUiThemeController.apply(cached);
+      setState(()=>_appUiConfig=cached);
+    }
+    await _refreshAppUiConfig();
+  }
+
+  Future<void> _refreshAppUiConfig()async{
+    if(_appConfigRefreshing||!widget.active)return;
+    _appConfigRefreshing=true;
+    try{
+      final fresh=await _appUiConfigService.refresh();
+      if(fresh!=null&&mounted){
+        AppUiThemeController.apply(fresh);
+        setState(()=>_appUiConfig=fresh);
+      }
+    }finally{
+      _appConfigRefreshing=false;
+    }
+  }
 
   Future<void> _loadStories({bool force=false})async{
     if(_storiesLoading||!widget.active)return;
@@ -213,6 +249,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       load(),
       _loadWeather(force:true),
       _loadStories(force:true),
+      _refreshAppUiConfig(),
     ]);
   }
 
@@ -515,13 +552,27 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     boxShadow:light&&!kIsWeb?[BoxShadow(color:Colors.black.withValues(alpha:.045),blurRadius:12,offset:const Offset(0,4))]:null,
   );
 
-  Widget brand()=>Image.asset(
-    CepqarTheme.isLight ? 'assets/file_00000000b130820abb8d411e67ab0d25.png' : 'assets/Logoyeni.png',
-    key:ValueKey(CepqarTheme.isLight),
-    height:32,
-    fit:BoxFit.contain,
-    alignment:Alignment.centerLeft,
-  );
+  Widget brand(){
+    final remote=(_appUiConfig.brand[light?'lightLogo':'darkLogo']??_appUiConfig.brand['headerLogo']??'').toString().trim();
+    if(remote.isNotEmpty){
+      return Image.network(
+        remote,
+        key:ValueKey('remote-logo-$remote'),
+        height:32,
+        fit:BoxFit.contain,
+        alignment:Alignment.centerLeft,
+        errorBuilder:(_,__,___)=>Image.asset(
+          CepqarTheme.isLight?'assets/file_00000000b130820abb8d411e67ab0d25.png':'assets/Logoyeni.png',
+          height:32,fit:BoxFit.contain,alignment:Alignment.centerLeft,
+        ),
+      );
+    }
+    return Image.asset(
+      CepqarTheme.isLight ? 'assets/file_00000000b130820abb8d411e67ab0d25.png' : 'assets/Logoyeni.png',
+      key:ValueKey(CepqarTheme.isLight),
+      height:32,fit:BoxFit.contain,alignment:Alignment.centerLeft,
+    );
+  }
 
   Widget header()=>SizedBox(
     height:240,
@@ -1236,6 +1287,263 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     ),
   );
 
+  IconData _managedIcon(String key)=>switch(key){
+    'tow_truck'=>Icons.fire_truck_rounded,
+    'sos'=>Icons.sos_rounded,
+    'valet'=>Icons.support_agent_rounded,
+    'offer'=>Icons.local_offer_rounded,
+    'parking'=>Icons.local_parking_rounded,
+    'maintenance'=>Icons.build_rounded,
+    'drivers'=>Icons.group_rounded,
+    'inspection'=>Icons.fact_check_rounded,
+    'weather'=>Icons.wb_sunny_rounded,
+    'premium'=>Icons.workspace_premium_rounded,
+    'notifications'=>Icons.notifications_rounded,
+    'vehicle'=>Icons.directions_car_filled_rounded,
+    'fuel'=>Icons.local_gas_station_rounded,
+    'car_wash'=>Icons.local_car_wash_rounded,
+    'service'=>Icons.home_repair_service_rounded,
+    'gift'=>Icons.card_giftcard_rounded,
+    _=>Icons.apps_rounded,
+  };
+
+  Alignment _managedAlignment(String value)=>switch(value){
+    'topLeft'=>Alignment.topLeft,'topRight'=>Alignment.topRight,'center'=>Alignment.center,
+    'bottomLeft'=>Alignment.bottomLeft,_=>Alignment.bottomRight,
+  };
+
+  BoxFit _managedFit(String value)=>value=='cover'?BoxFit.cover:BoxFit.contain;
+
+  Future<void> _runManagedAction(AppUiEntry item)=>AppActionHandler.handle(
+    context,action:item.action,target:item.actionTarget,shortcut:widget.shortcut,
+  );
+
+  Widget _managedQuickActions(){
+    final items=_appUiConfig.quickActions.take(4).toList();
+    if(items.isEmpty)return const SizedBox.shrink();
+    return Padding(
+      padding:const EdgeInsets.fromLTRB(16,10,16,0),
+      child:Column(children:[
+        Row(children:[
+          Expanded(child:Text('Hızlı Erişim',style:TextStyle(color:text,fontSize:CepqarTheme.cardTitle,fontWeight:FontWeight.w900))),
+          Text('Admin',style:TextStyle(color:muted,fontSize:9,fontWeight:FontWeight.w700)),
+        ]),
+        const SizedBox(height:6),
+        Row(children:[
+          for(var i=0;i<items.length;i++)...[
+            if(i>0)const SizedBox(width:7),
+            Expanded(child:InkWell(
+              onTap:()=>_runManagedAction(items[i]),
+              borderRadius:BorderRadius.circular(_ui.cardRadius),
+              child:Container(
+                height:78,
+                decoration:BoxDecoration(
+                  color:_ui.token(items[i].backgroundToken),
+                  borderRadius:BorderRadius.circular(_ui.cardRadius),
+                  border:Border.all(color:line),
+                  boxShadow:light&&_ui.shadowLevel>0&&!kIsWeb?[BoxShadow(color:Colors.black.withValues(alpha:.035*_ui.shadowLevel),blurRadius:8.0*_ui.shadowLevel,offset:Offset(0,2.0*_ui.shadowLevel))]:null,
+                ),
+                child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[
+                  Container(
+                    width:36,height:36,
+                    decoration:BoxDecoration(color:_ui.token(items[i].iconToken).withValues(alpha:.12),shape:BoxShape.circle),
+                    child:Icon(_managedIcon(items[i].icon),color:_ui.token(items[i].iconToken),size:20),
+                  ),
+                  const SizedBox(height:6),
+                  Padding(
+                    padding:const EdgeInsets.symmetric(horizontal:3),
+                    child:Text(items[i].title,maxLines:1,overflow:TextOverflow.ellipsis,textAlign:TextAlign.center,style:TextStyle(color:text,fontSize:CepqarTheme.caption,fontWeight:FontWeight.w800)),
+                  ),
+                ]),
+              ),
+            )),
+          ],
+        ]),
+      ]),
+    );
+  }
+
+  Widget _managedServiceCard(AppUiServiceItem item){
+    final available=!item.testOnly||testAccount;
+    final background=_ui.token(item.backgroundToken);
+    final iconColor=_ui.token(item.iconToken);
+    final badgeColor=_ui.token(item.badgeToken);
+    return InkWell(
+      onTap:available?()=>_runManagedAction(item):null,
+      borderRadius:BorderRadius.circular(_ui.cardRadius),
+      child:Opacity(
+        opacity:available?1:.78,
+        child:Container(
+          height:86,
+          clipBehavior:Clip.hardEdge,
+          decoration:BoxDecoration(
+            color:background,
+            borderRadius:BorderRadius.circular(_ui.cardRadius),
+            border:Border.all(color:line),
+            boxShadow:light&&_ui.shadowLevel>0&&!kIsWeb?[BoxShadow(color:Colors.black.withValues(alpha:.035*_ui.shadowLevel),blurRadius:8.0*_ui.shadowLevel,offset:Offset(0,2.0*_ui.shadowLevel))]:null,
+          ),
+          child:Stack(children:[
+            if(item.imageUrl.isNotEmpty)Positioned.fill(child:IgnorePointer(child:Align(
+              alignment:_managedAlignment(item.alignment),
+              child:Transform.translate(
+                offset:Offset(item.imageX,item.imageY),
+                child:Opacity(
+                  opacity:item.imageOpacity,
+                  child:Image.network(
+                    item.imageUrl,
+                    width:108*item.imageScale,
+                    height:70*item.imageScale,
+                    fit:_managedFit(item.fit),
+                    gaplessPlayback:true,
+                    errorBuilder:(_,__,___)=>const SizedBox.shrink(),
+                  ),
+                ),
+              ),
+            ))),
+            Positioned(
+              left:11,top:11,
+              child:Container(
+                width:36,height:36,
+                decoration:BoxDecoration(color:iconColor.withValues(alpha:.12),borderRadius:BorderRadius.circular(11)),
+                child:Icon(_managedIcon(item.icon),color:iconColor,size:21),
+              ),
+            ),
+            if(item.badgeText.isNotEmpty)Positioned(
+              right:10,top:10,
+              child:Container(
+                padding:const EdgeInsets.symmetric(horizontal:7,vertical:3),
+                decoration:BoxDecoration(color:badgeColor.withValues(alpha:.12),borderRadius:BorderRadius.circular(8)),
+                child:Text(item.badgeText,style:TextStyle(color:badgeColor,fontSize:8,fontWeight:FontWeight.w900)),
+              ),
+            ),
+            Positioned(
+              left:11,right:available?40:11,bottom:9,
+              child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisSize:MainAxisSize.min,children:[
+                Text(item.title,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:text,fontSize:12.5,fontWeight:FontWeight.w900,height:1.05)),
+                const SizedBox(height:3),
+                Text(item.subtitle,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:muted,fontSize:CepqarTheme.caption,height:1.08)),
+              ]),
+            ),
+            if(available)Positioned(
+              right:9,bottom:9,
+              child:Container(
+                width:24,height:24,
+                decoration:BoxDecoration(color:(light?Colors.white:Colors.black).withValues(alpha:light?.86:.28),shape:BoxShape.circle),
+                child:Icon(Icons.chevron_right_rounded,color:text,size:16),
+              ),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  Widget _managedServices(){
+    final items=_appUiConfig.services;
+    if(items.isEmpty)return const SizedBox.shrink();
+    return Column(children:[
+      section('Hizmetler',widget.services),
+      Padding(
+        padding:const EdgeInsets.symmetric(horizontal:16),
+        child:GridView.count(
+          crossAxisCount:2,shrinkWrap:true,physics:const NeverScrollableScrollPhysics(),
+          crossAxisSpacing:9,mainAxisSpacing:9,childAspectRatio:1.78,
+          children:items.map(_managedServiceCard).toList(),
+        ),
+      ),
+    ]);
+  }
+
+  Widget _managedBanner(AppUiBanner banner){
+    final base=_ui.token(banner.backgroundToken);
+    final badge=_ui.token(banner.badgeToken);
+    return Padding(
+      padding:const EdgeInsets.fromLTRB(16,13,16,0),
+      child:InkWell(
+        onTap:banner.action=='NONE'?null:()=>_runManagedAction(banner),
+        borderRadius:BorderRadius.circular(_ui.cardRadius),
+        child:Container(
+          height:112,
+          clipBehavior:Clip.hardEdge,
+          decoration:BoxDecoration(
+            gradient:LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:[base,base.withValues(alpha:.72)]),
+            borderRadius:BorderRadius.circular(_ui.cardRadius),
+          ),
+          child:Stack(children:[
+            if(banner.imageUrl.isNotEmpty)Positioned(
+              right:-8,bottom:-8,
+              child:Opacity(opacity:.92,child:Image.network(banner.imageUrl,width:135,height:110,fit:BoxFit.contain,errorBuilder:(_,__,___)=>const SizedBox.shrink())),
+            ),
+            Positioned.fill(child:Padding(
+              padding:const EdgeInsets.fromLTRB(15,13,120,13),
+              child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                if(banner.badgeText.isNotEmpty)Container(
+                  padding:const EdgeInsets.symmetric(horizontal:7,vertical:3),
+                  decoration:BoxDecoration(color:badge,borderRadius:BorderRadius.circular(9)),
+                  child:Text(banner.badgeText,style:TextStyle(color:badge.computeLuminance()>.55?Colors.black:Colors.white,fontSize:8.5,fontWeight:FontWeight.w900)),
+                ),
+                const Spacer(),
+                Text(banner.title,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Colors.white,fontSize:15,fontWeight:FontWeight.w900)),
+                if(banner.subtitle.isNotEmpty)Text(banner.subtitle,maxLines:2,overflow:TextOverflow.ellipsis,style:TextStyle(color:Colors.white.withValues(alpha:.84),fontSize:10.5,height:1.15)),
+                if(banner.ctaText.isNotEmpty)Padding(
+                  padding:const EdgeInsets.only(top:4),
+                  child:Text(banner.ctaText,style:TextStyle(color:_ui.accent,fontSize:9.5,fontWeight:FontWeight.w900)),
+                ),
+              ]),
+            )),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  Widget _directBanner(AppUiComponent component){
+    final cfg=component.config;
+    final action=AppUiEntry(<String,dynamic>{'id':component.id,'enabled':true,'sortOrder':component.sortOrder,'action':cfg['action']??'NONE','actionTarget':cfg['actionTarget']??''});
+    final base=_ui.token('${cfg['backgroundToken']??'primary'}');
+    final image='${cfg['imageUrl']??''}';
+    final title='${cfg['title']??''}',subtitle='${cfg['subtitle']??''}',cta='${cfg['ctaText']??''}';
+    return Padding(
+      padding:const EdgeInsets.fromLTRB(16,13,16,0),
+      child:InkWell(
+        onTap:action.action=='NONE'?null:()=>_runManagedAction(action),
+        borderRadius:BorderRadius.circular(_ui.cardRadius),
+        child:Container(
+          constraints:const BoxConstraints(minHeight:86),
+          padding:const EdgeInsets.all(14),
+          decoration:BoxDecoration(color:base,borderRadius:BorderRadius.circular(_ui.cardRadius)),
+          child:Row(children:[
+            Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisSize:MainAxisSize.min,children:[
+              Text(title,style:const TextStyle(color:Colors.white,fontSize:14,fontWeight:FontWeight.w900)),
+              if(subtitle.isNotEmpty)...[const SizedBox(height:3),Text(subtitle,style:TextStyle(color:Colors.white.withValues(alpha:.82),fontSize:10.5))],
+              if(cta.isNotEmpty)...[const SizedBox(height:6),Text(cta,style:TextStyle(color:_ui.accent,fontSize:9.5,fontWeight:FontWeight.w900))],
+            ])),
+            if(component.type=='image_banner'&&image.isNotEmpty)Image.network(image,width:92,height:70,fit:BoxFit.contain,errorBuilder:(_,__,___)=>const SizedBox.shrink()),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  Widget _managedComponent(AppUiComponent component){
+    final registry=OwnerHomeComponentRegistry({
+      'weather_card':(_)=>header(),
+      'vehicle_security':(_)=>Column(children:[const SizedBox(height:14),vehicleQr()]),
+      'story_carousel':(_)=>stories.isEmpty?const SizedBox.shrink():OwnerStoryHighlights(
+        items:stories,service:_storyService,shortcut:widget.shortcut,onChanged:()=>_loadStories(force:true),
+      ),
+      'quick_actions':(_)=>_managedQuickActions(),
+      'monthly_summary':(_)=>monthly(),
+      'services_grid':(_)=>_managedServices(),
+      'promo_banner':(_)=>_appUiConfig.banners.isEmpty?const SizedBox.shrink():_managedBanner(_appUiConfig.banners.first),
+      'recent_notifications':(_)=>Column(children:[section('Son Bildirimler',widget.notifications),latestCard()]),
+      'image_banner':(x)=>_directBanner(x),
+      'text_banner':(x)=>_directBanner(x),
+      'spacer':(x)=>SizedBox(height:((x.config['height'] is num?(x.config['height'] as num).toDouble():0).clamp(0,64))),
+    });
+    return registry.build(component)??const SizedBox.shrink();
+  }
+
   String nt(Map<String,dynamic> n)=>{'move_vehicle':'Park Uyarısı','lights_on':'Far Uyarısı','damage':'Hasar Bildirimi','call_request':'İletişim Talebi'}['${n['type']??''}']??'Yeni Bildirim';
   IconData ni(Map<String,dynamic> n)=>{'move_vehicle':Icons.local_parking_rounded,'lights_on':Icons.lightbulb_rounded,'damage':Icons.warning_rounded,'call_request':Icons.phone_in_talk_rounded}['${n['type']??''}']??Icons.notifications_rounded;
   String time(dynamic x){
@@ -1277,27 +1585,13 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   @override Widget build(BuildContext context)=>ColoredBox(
     color:bg,
     child:RefreshIndicator(
-      onRefresh:_refreshAll,color:purple,
+      onRefresh:_refreshAll,color:uiPrimary,
       child:ListView(
         padding:EdgeInsets.zero,
         physics:const ClampingScrollPhysics(parent:AlwaysScrollableScrollPhysics()),
         children:[
-          RepaintBoundary(child:header()),
-          const SizedBox(height:14),
-          RepaintBoundary(child:vehicleQr()),
-          if(stories.isNotEmpty)
-            RepaintBoundary(child:OwnerStoryHighlights(
-              items:stories,
-              service:_storyService,
-              shortcut:widget.shortcut,
-              onChanged:()=>_loadStories(force:true),
-            )),
-          RepaintBoundary(child:quickRow()),
-          RepaintBoundary(child:monthly()),
-          section('Hizmetler',widget.services),
-          RepaintBoundary(child:servicesGrid()),
-          section('Son Bildirimler',widget.notifications),
-          RepaintBoundary(child:latestCard()),
+          for(final component in _appUiConfig.components)
+            RepaintBoundary(key:ValueKey('sd-ui-${component.id}-${_appUiConfig.version}'),child:_managedComponent(component)),
           const SizedBox(height:20),
         ],
       ),
