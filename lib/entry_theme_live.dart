@@ -28,6 +28,7 @@ import 'driver_auth.dart';
 import 'crash_reporting.dart';
 import 'app_runtime_config.dart';
 import 'app_access_gate.dart';
+import 'app_ui_config.dart';
 import 'web_push_bridge.dart';
 
 final GlobalKey<NavigatorState> cepqarNavigatorKey=GlobalKey<NavigatorState>();
@@ -49,13 +50,57 @@ Future<void> main()async{
       }else{
         await Future.wait([CepqarTheme.load(),PushNotifications.init()]);
       }
+      final cachedUi=await AppUiConfigService().cachedOrDefault();
+      AppUiThemeController.apply(cachedUi);
     }catch(e,st){
       debugPrint('Startup init failed: $e');
       await CrashReporting.record(e,st,reason:'startup_init');
     }
   });
 }
-class ThemeOwnerApp extends StatelessWidget{const ThemeOwnerApp({super.key});@override Widget build(BuildContext context)=>ValueListenableBuilder<ThemeMode>(valueListenable:CepqarTheme.mode,builder:(_,mode,__)=>(MaterialApp(navigatorKey:cepqarNavigatorKey,debugShowCheckedModeBanner:false,locale:const Locale('tr','TR'),supportedLocales:const [Locale('tr','TR')],localizationsDelegates:const [GlobalMaterialLocalizations.delegate,GlobalWidgetsLocalizations.delegate,GlobalCupertinoLocalizations.delegate],themeMode:mode,theme:ThemeData(useMaterial3:true,brightness:Brightness.light,scaffoldBackgroundColor:CepqarTheme.lightBg,colorScheme:ColorScheme.fromSeed(seedColor:CepqarTheme.purple,brightness:Brightness.light,surface:CepqarTheme.lightPanel),cardColor:CepqarTheme.lightPanel,dividerColor:CepqarTheme.lightLine,fontFamily:'sans'),darkTheme:ThemeData(useMaterial3:true,brightness:Brightness.dark,scaffoldBackgroundColor:CepqarTheme.darkBg,colorScheme:ColorScheme.fromSeed(seedColor:CepqarTheme.purple,brightness:Brightness.dark,surface:CepqarTheme.darkPanel),cardColor:CepqarTheme.darkPanel,dividerColor:CepqarTheme.darkLine,fontFamily:'sans'),home:const ThemeOwnerEntry())));}
+class ThemeOwnerApp extends StatelessWidget{
+  const ThemeOwnerApp({super.key});
+  @override
+  Widget build(BuildContext context)=>ValueListenableBuilder<ThemeMode>(
+    valueListenable:CepqarTheme.mode,
+    builder:(_,mode,__)=>(ValueListenableBuilder<AppUiTokens>(
+      valueListenable:AppUiThemeController.tokens,
+      builder:(_,tokens,__)=>MaterialApp(
+        navigatorKey:cepqarNavigatorKey,
+        debugShowCheckedModeBanner:false,
+        locale:const Locale('tr','TR'),
+        supportedLocales:const [Locale('tr','TR')],
+        localizationsDelegates:const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        themeMode:mode,
+        theme:ThemeData(
+          useMaterial3:true,
+          brightness:Brightness.light,
+          scaffoldBackgroundColor:tokens.background,
+          colorScheme:ColorScheme.fromSeed(seedColor:tokens.primary,brightness:Brightness.light,surface:tokens.surface),
+          cardColor:tokens.surface,
+          dividerColor:CepqarTheme.lightLine,
+          fontFamily:'sans',
+          extensions:<ThemeExtension<dynamic>>[tokens],
+        ),
+        darkTheme:ThemeData(
+          useMaterial3:true,
+          brightness:Brightness.dark,
+          scaffoldBackgroundColor:CepqarTheme.darkBg,
+          colorScheme:ColorScheme.fromSeed(seedColor:tokens.primary,brightness:Brightness.dark,surface:CepqarTheme.darkPanel),
+          cardColor:CepqarTheme.darkPanel,
+          dividerColor:CepqarTheme.darkLine,
+          fontFamily:'sans',
+          extensions:<ThemeExtension<dynamic>>[tokens],
+        ),
+        home:const ThemeOwnerEntry(),
+      ),
+    )),
+  );
+}
 class ThemeOwnerEntry extends StatefulWidget{const ThemeOwnerEntry({super.key});@override State<ThemeOwnerEntry> createState()=>_ThemeOwnerEntryState();}
 class _ThemeOwnerEntryState extends State<ThemeOwnerEntry> with WidgetsBindingObserver{int index=0;bool loginMode=false,registerMode=false,restoring=true,hasSession=false,callPermissionSetupDone=false,runtimeLoading=true;String driverId='';RuntimeAppConfig? runtimeConfig;Widget ownerHome()=>const OwnerCallWatcher(child:OwnerDashboardLive());@override void initState(){super.initState();WidgetsBinding.instance.addObserver(this);PushNotifications.onNavigationRequested=_routePush;_loadRuntimeConfig();_restoreSession();}@override void didChangeAppLifecycleState(AppLifecycleState state){if(state==AppLifecycleState.resumed){_loadRuntimeConfig(silent:true);if(!kIsWeb)PushNotifications.refreshTokenRegistration();Future.delayed(const Duration(milliseconds:250),_openPendingPush);}}
 Future<void> _loadRuntimeConfig({bool silent=false})async{
