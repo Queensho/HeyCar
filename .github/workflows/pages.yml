@@ -253,8 +253,8 @@ jobs:
         run: flutter analyze lib --no-fatal-infos --no-fatal-warnings || true
       - name: Verify owner weather card analyze
         run: flutter analyze lib --no-fatal-infos --no-fatal-warnings
-      - name: Test owner weather card
-        run: flutter test test/weather_service_test.dart
+      - name: Test owner weather and story models
+        run: flutter test test/weather_service_test.dart test/story_service_test.dart
       - name: Enable Flutter web platform
         run: flutter create . --platforms=web --project-name heycar_app --no-pub
       - name: Build business web panel
