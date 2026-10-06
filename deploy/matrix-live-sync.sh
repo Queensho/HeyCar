@@ -50,6 +50,7 @@ FILES=(
   admin-auth-routes.js
   admin-audit.js
   admin-management-routes.js
+  story-routes.js
   app-settings-routes.js
   admin-business-premium-routes.js
   admin-communication-security-routes.js
@@ -223,7 +224,7 @@ for f in "${FILES[@]}"; do
   fi
 done
 
-for m in 053_admin_audit_canonical.sql 054_qr_opaque_tokens.sql 057_web_push_subscriptions.sql 058_qr_proximity_security.sql 082_family_premium.sql 083_towing_vehicle_pricing.sql 084_owner_login_dependencies.sql 085_vehicle_product_page_nfc_analytics.sql 086_store_management.sql 087_valet_audit_runtime_acl_repair.sql; do
+for m in 053_admin_audit_canonical.sql 054_qr_opaque_tokens.sql 057_web_push_subscriptions.sql 058_qr_proximity_security.sql 082_family_premium.sql 083_towing_vehicle_pricing.sql 084_owner_login_dependencies.sql 085_vehicle_product_page_nfc_analytics.sql 086_store_management.sql 087_valet_audit_runtime_acl_repair.sql 088_story_highlights.sql; do
   fetch_https "$BASE/migrations/$m" -o "$TMP/$m" || fail "migration indirilemedi: $m"
   chmod 644 "$TMP/$m"
 done
@@ -282,6 +283,9 @@ QR_SCAN_PRODUCT_ID_EXISTS="$(db_scalar "SELECT CASE WHEN EXISTS (SELECT 1 FROM i
 STORE_PRODUCTS_EXISTS="$(db_scalar "SELECT CASE WHEN to_regclass('public.store_products') IS NULL THEN 0 ELSE 1 END")"
 STORE_ORDERS_EXISTS="$(db_scalar "SELECT CASE WHEN to_regclass('public.store_orders') IS NULL THEN 0 ELSE 1 END")"
 STORE_ORDER_ITEMS_EXISTS="$(db_scalar "SELECT CASE WHEN to_regclass('public.store_order_items') IS NULL THEN 0 ELSE 1 END")"
+STORY_CATEGORIES_EXISTS="$(db_scalar "SELECT CASE WHEN to_regclass('public.story_categories') IS NULL THEN 0 ELSE 1 END")"
+STORIES_EXISTS="$(db_scalar "SELECT CASE WHEN to_regclass('public.stories') IS NULL THEN 0 ELSE 1 END")"
+STORY_USER_STATE_EXISTS="$(db_scalar "SELECT CASE WHEN to_regclass('public.story_user_state') IS NULL THEN 0 ELSE 1 END")"
 
 if [ "$QR_SERIAL_EXISTS" -eq 1 ]; then
   sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -c     "CREATE UNLOGGED TABLE public.$QR_ROLLBACK_TABLE AS SELECT id FROM public.qr_tags WHERE serial_no IS NULL AND token ~ '^CP-QAR-[0-9]+$';"
@@ -413,6 +417,15 @@ fi
   if [ "$STORE_PRODUCTS_EXISTS" -eq 0 ]; then
     echo "DROP TABLE IF EXISTS public.store_products CASCADE;"
   fi
+  if [ "$STORY_USER_STATE_EXISTS" -eq 0 ]; then
+    echo "DROP TABLE IF EXISTS public.story_user_state CASCADE;"
+  fi
+  if [ "$STORIES_EXISTS" -eq 0 ]; then
+    echo "DROP TABLE IF EXISTS public.stories CASCADE;"
+  fi
+  if [ "$STORY_CATEGORIES_EXISTS" -eq 0 ]; then
+    echo "DROP TABLE IF EXISTS public.story_categories CASCADE;"
+  fi
 
   echo "COMMIT;"
 } > "$ROLLBACK_SQL"
@@ -440,6 +453,7 @@ MIGRATION_085_APPLIED=1
 sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$TMP/086_store_management.sql"
 MIGRATION_086_APPLIED=1
 sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$TMP/087_valet_audit_runtime_acl_repair.sql"
+sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$TMP/088_story_highlights.sql"
 
 STAGE="schema_verify"
 echo "=== LIVE SCHEMA VERIFY ==="

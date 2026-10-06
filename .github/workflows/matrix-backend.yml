@@ -82,6 +82,8 @@ jobs:
           grep -q 'DB ROLLBACK' deploy/matrix-live-sync.sh
           grep -q 'matrix-schema-check.sql' deploy/matrix-live-sync.sh
           grep -q '087_valet_audit_runtime_acl_repair.sql' deploy/matrix-live-sync.sh
+          grep -q '088_story_highlights.sql' deploy/matrix-live-sync.sh
+          grep -q 'story-routes.js' deploy/matrix-live-sync.sh
           grep -q 'heycar-backup.service' deploy/matrix-live-sync.sh
           grep -q 'OnCalendar=.*Europe/Istanbul' deploy/heycar-backup.timer
           grep -q 'HEYCAR_BACKUP_RETENTION_DAYS=14' deploy/heycar-backup.service

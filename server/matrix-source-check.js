@@ -255,3 +255,24 @@ requireText(
 );
 
 console.log('MATRIX_SOURCE_INVARIANTS_OK');
+
+requireText(
+  'story-routes.js',
+  "ACTION_TYPES=new Set(['NONE','IN_APP_PAGE','SERVICE','OPPORTUNITY','EXTERNAL_URL'])",
+  'STORY_ACTION_ALLOWLIST_MISSING'
+);
+requireText(
+  'story-routes.js',
+  "INTERVAL '30 minutes'",
+  'STORY_IMPRESSION_DEDUPE_MISSING'
+);
+requireText(
+  'story-routes.js',
+  "s.starts_at<=NOW()",
+  'STORY_SCHEDULE_FILTER_MISSING'
+);
+requireText(
+  'story-routes.js',
+  "s.target_district IS NULL",
+  'STORY_LOCATION_TARGET_FILTER_MISSING'
+);

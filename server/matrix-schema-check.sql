@@ -31,7 +31,10 @@ BEGIN
         ('store_products'),
         ('store_orders'),
         ('store_order_items'),
-        ('valet_audit_log')
+        ('valet_audit_log'),
+        ('story_categories'),
+        ('stories'),
+        ('story_user_state')
       ) AS required(name)
       WHERE to_regclass('public.' || name) IS NULL
     ) q;
@@ -196,6 +199,19 @@ BEGIN
      OR NOT has_sequence_privilege('heycar_user','public.valet_audit_log_id_seq','USAGE')
      OR NOT has_sequence_privilege('heycar_user','public.valet_audit_log_id_seq','SELECT') THEN
     RAISE EXCEPTION 'VALET_AUDIT_RUNTIME_PRIVILEGES_MISSING';
+  END IF;
+
+  IF NOT has_table_privilege('heycar_user','public.story_categories','SELECT')
+     OR NOT has_table_privilege('heycar_user','public.stories','SELECT')
+     OR NOT has_table_privilege('heycar_user','public.story_user_state','SELECT')
+     OR NOT has_table_privilege('heycar_user','public.story_user_state','INSERT')
+     OR NOT has_table_privilege('heycar_user','public.story_user_state','UPDATE') THEN
+    RAISE EXCEPTION 'STORY_RUNTIME_PRIVILEGES_MISSING';
+  END IF;
+
+  IF to_regclass('public.idx_stories_delivery') IS NULL
+     OR to_regclass('public.idx_story_user_state_owner') IS NULL THEN
+    RAISE EXCEPTION 'STORY_INDEXES_MISSING';
   END IF;
 
   IF NOT has_table_privilege('heycar_user','public.owner_web_push_subscriptions','SELECT')
