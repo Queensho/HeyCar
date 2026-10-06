@@ -550,7 +550,7 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
     final title=TextEditingController(text:'${row['title']??''}'),subtitle=TextEditingController(text:'${row['subtitle']??''}');
     final badge=TextEditingController(text:'${row['badgeText']??''}'),target=TextEditingController(text:'${row['actionTarget']??''}');
     String icon='${row['icon']??'campaign'}',iconUrl='${row['iconUrl']??''}',iconToken='${row['iconToken']??'primary'}',background='${row['backgroundToken']??'surface'}',badgeToken='${row['badgeToken']??'primary'}';
-    String action='${row['action']??'NONE'}',imageUrl='${row['imageUrl']??''}',iconUrl='${row['iconUrl']??''}',fit='${row['fit']??'contain'}',alignment='${row['alignment']??'bottomRight'}';
+    String action='${row['action']??'NONE'}',imageUrl='${row['imageUrl']??''}',fit='${row['fit']??'contain'}',alignment='${row['alignment']??'bottomRight'}';
     bool enabled=row['enabled']!=false,testOnly=row['testOnly']==true;
     double scale=(row['imageScale'] is num?(row['imageScale'] as num).toDouble():1).clamp(0,1.5).toDouble();
     double x=(row['imageX'] is num?(row['imageX'] as num).toDouble():0).clamp(-100,100).toDouble();
