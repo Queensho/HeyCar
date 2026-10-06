@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -1557,15 +1558,103 @@ class _QrPageState extends State<QrPage>{
   int qrSection=0;
   int tablePage=0;
   bool centerLogo=true;
+  double designQrScale=.86;
+  double designQrOffsetX=0;
+  double designQrOffsetY=0;
+  double designCodeOffsetX=0;
+  double designCodeOffsetY=0;
+  double designCodeScale=1;
+  bool designShowPrefix=true;
+  String designAccent='purple';
+  final designPrefixController=TextEditingController(text:'Etiket Kodu:');
   final plateController=TextEditingController();
   final noteController=TextEditingController();
 
   @override
+  void initState(){
+    super.initState();
+    _loadDesignSettings();
+  }
+
+  @override
   void dispose(){
     search.dispose();
+    designPrefixController.dispose();
     plateController.dispose();
     noteController.dispose();
     super.dispose();
+  }
+
+  double _designClamp(double value,double min,double max)=>value<min?min:value>max?max:value;
+
+  Color get _designAccentColor=>switch(designAccent){
+    'lime'=>const Color(0xFFC8FC06),
+    'black'=>Colors.black,
+    _=>const Color(0xFF4B10F6),
+  };
+
+  String get _designAccentHex=>switch(designAccent){
+    'lime'=>'#C8FC06',
+    'black'=>'#000000',
+    _=>'#4B10F6',
+  };
+
+  Future<void> _loadDesignSettings()async{
+    try{
+      final p=await SharedPreferences.getInstance();
+      if(!mounted)return;
+      setState((){
+        designQrScale=_designClamp(p.getDouble('admin_label_qr_scale')??.86,.60,1.0);
+        designQrOffsetX=_designClamp(p.getDouble('admin_label_qr_x')??0,-.16,.16);
+        designQrOffsetY=_designClamp(p.getDouble('admin_label_qr_y')??0,-.16,.16);
+        designCodeOffsetX=_designClamp(p.getDouble('admin_label_code_x')??0,-.16,.16);
+        designCodeOffsetY=_designClamp(p.getDouble('admin_label_code_y')??0,-.16,.16);
+        designCodeScale=_designClamp(p.getDouble('admin_label_code_scale')??1,.70,1.60);
+        designShowPrefix=p.getBool('admin_label_show_prefix')??true;
+        designAccent=p.getString('admin_label_accent')??'purple';
+        designPrefixController.text=p.getString('admin_label_prefix')??'Etiket Kodu:';
+      });
+    }catch(_){}
+  }
+
+  Future<void> _saveDesignSettings({bool notify=true})async{
+    final p=await SharedPreferences.getInstance();
+    await Future.wait([
+      p.setDouble('admin_label_qr_scale',designQrScale),
+      p.setDouble('admin_label_qr_x',designQrOffsetX),
+      p.setDouble('admin_label_qr_y',designQrOffsetY),
+      p.setDouble('admin_label_code_x',designCodeOffsetX),
+      p.setDouble('admin_label_code_y',designCodeOffsetY),
+      p.setDouble('admin_label_code_scale',designCodeScale),
+      p.setBool('admin_label_show_prefix',designShowPrefix),
+      p.setString('admin_label_accent',designAccent),
+      p.setString('admin_label_prefix',designPrefixController.text.trim()),
+    ]);
+    if(notify&&mounted){
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content:Text('Etiket tasarımı kaydedildi. PDF ve PNG çıktılarında kullanılacak.')),
+      );
+    }
+  }
+
+  Future<void> _resetDesignSettings()async{
+    setState((){
+      designQrScale=.86;
+      designQrOffsetX=0;
+      designQrOffsetY=0;
+      designCodeOffsetX=0;
+      designCodeOffsetY=0;
+      designCodeScale=1;
+      designShowPrefix=true;
+      designAccent='purple';
+      designPrefixController.text='Etiket Kodu:';
+    });
+    await _saveDesignSettings(notify:false);
+    if(mounted){
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content:Text('Etiket tasarımı varsayılan ayarlara döndürüldü.')),
+      );
+    }
   }
 
   String publicUrl(String token){
@@ -1655,7 +1744,7 @@ class _QrPageState extends State<QrPage>{
     }
     final doc=pw.Document();
     const perPage=18;
-    final purple=PdfColor.fromHex('#4B10F6');
+    final accent=PdfColor.fromHex(_designAccentHex);
     final templateData=await rootBundle.load('assets/Etiketbeyaz.png');
     final template=pw.MemoryImage(templateData.buffer.asUint8List());
 
@@ -1688,9 +1777,15 @@ class _QrPageState extends State<QrPage>{
       final artworkTop=(labelHeight-artworkHeight)/2;
       final qrAreaWidth=artworkWidth*qrAreaWidthRatio;
       final qrAreaHeight=artworkHeight*qrAreaHeightRatio;
-      final qrSize=(qrAreaWidth<qrAreaHeight?qrAreaWidth:qrAreaHeight)*.86;
-      final qrLeft=(artworkWidth*qrAreaLeftRatio)+((qrAreaWidth-qrSize)/2);
-      final qrTop=artworkTop+(artworkHeight*qrAreaTopRatio)+((qrAreaHeight-qrSize)/2);
+      final qrSize=(qrAreaWidth<qrAreaHeight?qrAreaWidth:qrAreaHeight)*designQrScale;
+      final qrLeftRaw=(artworkWidth*qrAreaLeftRatio)+((qrAreaWidth-qrSize)/2)+(artworkWidth*designQrOffsetX);
+      final qrTopRaw=artworkTop+(artworkHeight*qrAreaTopRatio)+((qrAreaHeight-qrSize)/2)+(artworkHeight*designQrOffsetY);
+      final qrLeft=qrLeftRaw.clamp(0.0,artworkWidth-qrSize).toDouble();
+      final qrTop=qrTopRaw.clamp(artworkTop,artworkTop+artworkHeight-qrSize).toDouble();
+      final codeLeftRaw=(artworkWidth*codeLeftRatio)+(artworkWidth*designCodeOffsetX);
+      final codeTopRaw=artworkTop+(artworkHeight*codeTopRatio)+(artworkHeight*designCodeOffsetY);
+      final codeLeft=codeLeftRaw.clamp(0.0,artworkWidth-(artworkWidth*codeWidthRatio)).toDouble();
+      final codeTop=codeTopRaw.clamp(artworkTop,artworkTop+artworkHeight-(artworkHeight*codeHeightRatio)).toDouble();
       return pw.SizedBox(
         width:labelWidth,
         height:labelHeight,
@@ -1718,8 +1813,8 @@ class _QrPageState extends State<QrPage>{
             ),
           ),
           pw.Positioned(
-            left:artworkWidth*codeLeftRatio,
-            top:artworkTop+(artworkHeight*codeTopRatio),
+            left:codeLeft,
+            top:codeTop,
             child:pw.Container(
               width:artworkWidth*codeWidthRatio,
               height:artworkHeight*codeHeightRatio,
@@ -1728,13 +1823,14 @@ class _QrPageState extends State<QrPage>{
               child:pw.FittedBox(
                 fit:pw.BoxFit.scaleDown,
                 child:pw.RichText(text:pw.TextSpan(children:[
-                  pw.TextSpan(
-                    text:'Etiket Kodu: ',
-                    style:pw.TextStyle(color:PdfColors.black,fontSize:5.0),
-                  ),
+                  if(designShowPrefix&&designPrefixController.text.trim().isNotEmpty)
+                    pw.TextSpan(
+                      text:'${designPrefixController.text.trim()} ',
+                      style:pw.TextStyle(color:PdfColors.black,fontSize:5.0*designCodeScale),
+                    ),
                   pw.TextSpan(
                     text:labelCode,
-                    style:pw.TextStyle(color:purple,fontSize:6.2,fontWeight:pw.FontWeight.bold),
+                    style:pw.TextStyle(color:accent,fontSize:6.2*designCodeScale,fontWeight:pw.FontWeight.bold),
                   ),
                 ])),
               ),
@@ -1818,9 +1914,15 @@ class _QrPageState extends State<QrPage>{
     final artworkTop=(h-artworkHeight)/2;
     final qrAreaWidth=artworkWidth*qrAreaWidthRatio;
     final qrAreaHeight=artworkHeight*qrAreaHeightRatio;
-    final qrSize=(qrAreaWidth<qrAreaHeight?qrAreaWidth:qrAreaHeight)*.86;
-    final qrLeft=(artworkWidth*qrAreaLeftRatio)+((qrAreaWidth-qrSize)/2);
-    final qrTop=artworkTop+(artworkHeight*qrAreaTopRatio)+((qrAreaHeight-qrSize)/2);
+    final qrSize=(qrAreaWidth<qrAreaHeight?qrAreaWidth:qrAreaHeight)*designQrScale;
+    final qrLeftRaw=(artworkWidth*qrAreaLeftRatio)+((qrAreaWidth-qrSize)/2)+(artworkWidth*designQrOffsetX);
+    final qrTopRaw=artworkTop+(artworkHeight*qrAreaTopRatio)+((qrAreaHeight-qrSize)/2)+(artworkHeight*designQrOffsetY);
+    final qrLeft=qrLeftRaw.clamp(0.0,artworkWidth-qrSize).toDouble();
+    final qrTop=qrTopRaw.clamp(artworkTop,artworkTop+artworkHeight-qrSize).toDouble();
+    final codeLeftRaw=(artworkWidth*codeLeftRatio)+(artworkWidth*designCodeOffsetX);
+    final codeTopRaw=artworkTop+(artworkHeight*codeTopRatio)+(artworkHeight*designCodeOffsetY);
+    final codeLeft=codeLeftRaw.clamp(0.0,artworkWidth-(artworkWidth*codeWidthRatio)).toDouble();
+    final codeTop=codeTopRaw.clamp(artworkTop,artworkTop+artworkHeight-(artworkHeight*codeHeightRatio)).toDouble();
     return Stack(children:[
       Positioned.fill(child:ColoredBox(color:Colors.white)),
       Positioned(
@@ -1859,8 +1961,8 @@ class _QrPageState extends State<QrPage>{
         }),
       ),
       Positioned(
-        left:artworkWidth*codeLeftRatio,
-        top:artworkTop+(artworkHeight*codeTopRatio),
+        left:codeLeft,
+        top:codeTop,
         width:artworkWidth*codeWidthRatio,
         height:artworkHeight*codeHeightRatio,
         child:Padding(
@@ -1868,8 +1970,9 @@ class _QrPageState extends State<QrPage>{
           child:Center(child:FittedBox(
             fit:BoxFit.scaleDown,
             child:RichText(textAlign:TextAlign.center,text:TextSpan(children:[
-              const TextSpan(text:'Etiket Kodu: ',style:TextStyle(color:Colors.black87,fontSize:8.2,fontWeight:FontWeight.w600)),
-              TextSpan(text:labelCode,style:const TextStyle(color:Color(0xFF4B10F6),fontSize:10.8,fontWeight:FontWeight.w900)),
+              if(designShowPrefix&&designPrefixController.text.trim().isNotEmpty)
+                TextSpan(text:'${designPrefixController.text.trim()} ',style:TextStyle(color:Colors.black87,fontSize:8.2*designCodeScale,fontWeight:FontWeight.w600)),
+              TextSpan(text:labelCode,style:TextStyle(color:_designAccentColor,fontSize:10.8*designCodeScale,fontWeight:FontWeight.w900)),
             ])),
           )),
         ),
@@ -1878,7 +1981,7 @@ class _QrPageState extends State<QrPage>{
   });
 
   Widget _finderDot()=>Container(
-    decoration:BoxDecoration(color:const Color(0xFF8428FF),borderRadius:BorderRadius.circular(2.5),boxShadow:[BoxShadow(color:const Color(0xFF8428FF).withValues(alpha:.16),blurRadius:3)]),
+    decoration:BoxDecoration(color:_designAccentColor,borderRadius:BorderRadius.circular(2.5),boxShadow:[BoxShadow(color:_designAccentColor.withValues(alpha:.16),blurRadius:3)]),
   );
 
   Future<void> showQr(Map<String,dynamic> e) async{
@@ -2208,6 +2311,187 @@ class _QrPageState extends State<QrPage>{
       ),
     ],
   );
+
+  Widget _designSlider({
+    required String label,
+    required double value,
+    required double min,
+    required double max,
+    required ValueChanged<double> onChanged,
+    String Function(double)? valueLabel,
+  })=>Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+    Row(children:[
+      Expanded(child:Text(label,style:const TextStyle(color:_ink,fontSize:10.5,fontWeight:FontWeight.w800))),
+      Text(valueLabel?.call(value)??value.toStringAsFixed(2),style:const TextStyle(color:_purple,fontSize:10,fontWeight:FontWeight.w900)),
+    ]),
+    Slider(
+      value:value.clamp(min,max).toDouble(),
+      min:min,
+      max:max,
+      activeColor:_purple,
+      onChanged:(v)=>setState(()=>onChanged(v)),
+    ),
+  ]);
+
+  Widget _designEditor(Map<String,dynamic>? sample,bool compact){
+    final token=(sample?['token']??'').toString();
+    final labelCode=sample==null?'CP-QAR-54':_labelCodeOf(sample);
+    final preview=AspectRatio(
+      aspectRatio:55/46,
+      child:Container(
+        color:Colors.white,
+        padding:const EdgeInsets.all(2),
+        child:token.isEmpty
+          ?Image.asset('assets/Etiketbeyaz.png',fit:BoxFit.contain)
+          :_sticker(token,labelCode,publicUrl(token)),
+      ),
+    );
+    final controls=Container(
+      padding:const EdgeInsets.all(14),
+      decoration:AdminUi.card(radius:16),
+      child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        const Row(children:[
+          Icon(Icons.tune_rounded,color:_purple,size:19),
+          SizedBox(width:7),
+          Text('Yerleşim Ayarları',style:TextStyle(color:_ink,fontSize:13,fontWeight:FontWeight.w900)),
+        ]),
+        const SizedBox(height:12),
+        _designSlider(label:'QR boyutu',value:designQrScale,min:.60,max:1.0,onChanged:(v)=>designQrScale=v,valueLabel:(v)=>'${(v*100).round()}%'),
+        _designSlider(label:'QR yatay konum',value:designQrOffsetX,min:-.16,max:.16,onChanged:(v)=>designQrOffsetX=v,valueLabel:(v)=>'${(v*100).round()}%'),
+        _designSlider(label:'QR dikey konum',value:designQrOffsetY,min:-.16,max:.16,onChanged:(v)=>designQrOffsetY=v,valueLabel:(v)=>'${(v*100).round()}%'),
+        const Divider(color:_line,height:20),
+        _designSlider(label:'Etiket kodu yatay konum',value:designCodeOffsetX,min:-.16,max:.16,onChanged:(v)=>designCodeOffsetX=v,valueLabel:(v)=>'${(v*100).round()}%'),
+        _designSlider(label:'Etiket kodu dikey konum',value:designCodeOffsetY,min:-.16,max:.16,onChanged:(v)=>designCodeOffsetY=v,valueLabel:(v)=>'${(v*100).round()}%'),
+        _designSlider(label:'Etiket kodu yazı boyutu',value:designCodeScale,min:.70,max:1.60,onChanged:(v)=>designCodeScale=v,valueLabel:(v)=>'${(v*100).round()}%'),
+      ]),
+    );
+    final style=Container(
+      padding:const EdgeInsets.all(14),
+      decoration:AdminUi.card(radius:16),
+      child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        const Row(children:[
+          Icon(Icons.palette_outlined,color:_purple,size:19),
+          SizedBox(width:7),
+          Text('Metin & Vurgu',style:TextStyle(color:_ink,fontSize:13,fontWeight:FontWeight.w900)),
+        ]),
+        const SizedBox(height:12),
+        SwitchListTile.adaptive(
+          value:designShowPrefix,
+          contentPadding:EdgeInsets.zero,
+          onChanged:(v)=>setState(()=>designShowPrefix=v),
+          title:const Text('Etiket kodu başlığını göster',style:TextStyle(color:_ink,fontSize:10.5,fontWeight:FontWeight.w800)),
+        ),
+        if(designShowPrefix)...[
+          const SizedBox(height:4),
+          TextField(
+            controller:designPrefixController,
+            onChanged:(_)=>setState((){}),
+            decoration:const InputDecoration(labelText:'Başlık metni',hintText:'Etiket Kodu:'),
+          ),
+        ],
+        const SizedBox(height:12),
+        const Text('Vurgu rengi',style:TextStyle(color:_muted,fontSize:9.5,fontWeight:FontWeight.w700)),
+        const SizedBox(height:7),
+        Wrap(spacing:8,runSpacing:8,children:[
+          ChoiceChip(
+            label:const Text('Mor'),
+            avatar:const CircleAvatar(backgroundColor:Color(0xFF4B10F6),radius:7),
+            selected:designAccent=='purple',
+            onSelected:(_)=>setState(()=>designAccent='purple'),
+          ),
+          ChoiceChip(
+            label:const Text('Neon Lime'),
+            avatar:const CircleAvatar(backgroundColor:Color(0xFFC8FC06),radius:7),
+            selected:designAccent=='lime',
+            onSelected:(_)=>setState(()=>designAccent='lime'),
+          ),
+          ChoiceChip(
+            label:const Text('Siyah'),
+            avatar:const CircleAvatar(backgroundColor:Colors.black,radius:7),
+            selected:designAccent=='black',
+            onSelected:(_)=>setState(()=>designAccent='black'),
+          ),
+        ]),
+        const SizedBox(height:14),
+        Container(
+          padding:const EdgeInsets.all(10),
+          decoration:BoxDecoration(color:AdminUi.surfaceTint,borderRadius:BorderRadius.circular(11)),
+          child:const Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
+            Icon(Icons.straighten_rounded,color:_purple,size:18),
+            SizedBox(width:8),
+            Expanded(child:Text('Baskı ölçüsü sabit: 55 × 46 mm. Tasarım değişse bile fiziksel etiket ölçüsü ve A4 dizilimi korunur.',style:TextStyle(color:_muted,fontSize:9.5,height:1.35,fontWeight:FontWeight.w600))),
+          ]),
+        ),
+      ]),
+    );
+    final previewCard=Container(
+      padding:const EdgeInsets.all(14),
+      decoration:AdminUi.card(radius:16),
+      child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        Row(children:[
+          const Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+            Text('Canlı Etiket Önizleme',style:TextStyle(color:_ink,fontSize:14,fontWeight:FontWeight.w900)),
+            SizedBox(height:2),
+            Text('Değişiklikler anında burada görünür.',style:TextStyle(color:_muted,fontSize:9.5)),
+          ])),
+          Container(
+            padding:const EdgeInsets.symmetric(horizontal:8,vertical:4),
+            decoration:BoxDecoration(color:_green.withValues(alpha:.10),borderRadius:BorderRadius.circular(20)),
+            child:const Text('55 × 46 mm',style:TextStyle(color:_green,fontSize:9,fontWeight:FontWeight.w900)),
+          ),
+        ]),
+        const SizedBox(height:12),
+        ClipRRect(borderRadius:BorderRadius.circular(14),child:preview),
+        const SizedBox(height:12),
+        Row(children:[
+          Expanded(child:OutlinedButton.icon(
+            onPressed:_resetDesignSettings,
+            icon:const Icon(Icons.restart_alt_rounded),
+            label:const Text('Varsayılana Dön'),
+          )),
+          const SizedBox(width:8),
+          Expanded(child:FilledButton.icon(
+            onPressed:_saveDesignSettings,
+            style:FilledButton.styleFrom(backgroundColor:_purple,foregroundColor:Colors.white),
+            icon:const Icon(Icons.save_rounded),
+            label:const Text('Tasarımı Kaydet'),
+          )),
+        ]),
+      ]),
+    );
+
+    return Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      Row(children:[
+        const Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          Text('Etiket Tasarım Editörü',style:TextStyle(color:_ink,fontSize:17,fontWeight:FontWeight.w900)),
+          SizedBox(height:3),
+          Text('QR ve etiket kodunun baskı yerleşimini canlı olarak düzenleyin.',style:TextStyle(color:_muted,fontSize:10.5)),
+        ])),
+        if(!compact)OutlinedButton.icon(
+          onPressed:sample==null?null:()=>showQr(sample),
+          icon:const Icon(Icons.open_in_full_rounded),
+          label:const Text('Büyük Önizleme'),
+        ),
+      ]),
+      const SizedBox(height:13),
+      if(compact)...[
+        previewCard,
+        const SizedBox(height:12),
+        controls,
+        const SizedBox(height:12),
+        style,
+      ]else
+        Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          Expanded(flex:5,child:previewCard),
+          const SizedBox(width:14),
+          Expanded(flex:4,child:Column(children:[
+            controls,
+            const SizedBox(height:12),
+            style,
+          ])),
+        ]),
+    ]);
+  }
 
   Widget _quickPanel(List<Map<String,dynamic>> rows){
     final printable=rows.where((e)=>_printStatus(e)!='printed').toList();
@@ -2593,7 +2877,9 @@ class _QrPageState extends State<QrPage>{
             ),
             child:qrSection==0
               ? _singleProduction(rows,compact)
-              : _managementSection(rows,compact),
+              : qrSection==2
+                ? _designEditor(rows.isNotEmpty?rows.first:(widget.rows.isNotEmpty?widget.rows.first:null),compact)
+                : _managementSection(rows,compact),
           ),
         ],
       );
