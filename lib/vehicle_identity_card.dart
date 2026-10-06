@@ -80,14 +80,14 @@ class VehicleIdentityCard extends StatelessWidget {
 
   Widget _metric(IconData icon,String title,String subtitle)=>Expanded(
     child:Padding(
-      padding:const EdgeInsets.symmetric(horizontal:6,vertical:9),
+      padding:const EdgeInsets.symmetric(horizontal:5,vertical:7),
       child:Row(mainAxisAlignment:MainAxisAlignment.center,children:[
-        Icon(icon,color:Colors.white,size:22),
-        const SizedBox(width:7),
+        Icon(icon,color:Colors.white,size:19),
+        const SizedBox(width:5),
         Flexible(child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
-          Text(title,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Colors.white,fontSize:11.5,fontWeight:FontWeight.w900)),
+          Text(title,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Colors.white,fontSize:10.5,fontWeight:FontWeight.w900)),
           const SizedBox(height:1),
-          Text(subtitle,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Color(0xFFAEB8D4),fontSize:9.5,fontWeight:FontWeight.w600)),
+          Text(subtitle,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Color(0xFFAEB8D4),fontSize:8.8,fontWeight:FontWeight.w600)),
         ])),
       ]),
     ),
@@ -104,46 +104,46 @@ class VehicleIdentityCard extends StatelessWidget {
 
     return LayoutBuilder(builder:(context,c){
       final compact=c.maxWidth<355;
-      final logoSize=compact?58.0:68.0;
+      final logoSize=compact?50.0:58.0;
       return Container(
         clipBehavior:Clip.antiAlias,
         decoration:BoxDecoration(
-          borderRadius:BorderRadius.circular(22),
+          borderRadius:BorderRadius.circular(20),
           border:Border.all(color:const Color(0xFF7E49FF).withValues(alpha:.65)),
           gradient:const LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:[Color(0xFF091226),Color(0xFF14113B),Color(0xFF28106A)]),
           boxShadow:[BoxShadow(color:const Color(0xFF6E32FF).withValues(alpha:.18),blurRadius:20,offset:const Offset(0,8))],
         ),
         child:Column(children:[
           SizedBox(
-            height:compact?174:184,
+            height:compact?132:140,
             child:Stack(children:[
-              Positioned(right:-18,bottom:-18,child:_logo(size:150,opacity:.075)),
+              Positioned(right:-10,bottom:-22,child:_logo(size:118,opacity:.065)),
               Positioned(right:12,top:12,child:Container(
-                padding:const EdgeInsets.symmetric(horizontal:10,vertical:5),
+                padding:const EdgeInsets.symmetric(horizontal:9,vertical:4),
                 decoration:BoxDecoration(color:statusColor.withValues(alpha:.07),borderRadius:BorderRadius.circular(18),border:Border.all(color:statusColor)),
                 child:Row(mainAxisSize:MainAxisSize.min,children:[CircleAvatar(radius:3.5,backgroundColor:statusColor),const SizedBox(width:6),Text(_active?'Aktif':'Pasif',style:TextStyle(color:statusColor,fontSize:11.5,fontWeight:FontWeight.w900))]),
               )),
-              Positioned(left:12,top:14,bottom:12,width:compact?82:96,child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[
+              Positioned(left:10,top:10,bottom:8,width:compact?76:88,child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[
                 _logo(size:logoSize),
                 if(isPrimary)...[
-                  const SizedBox(height:9),
+                  const SizedBox(height:5),
                   Container(
-                    padding:EdgeInsets.symmetric(horizontal:compact?7:9,vertical:5),
+                    padding:EdgeInsets.symmetric(horizontal:compact?6:8,vertical:4),
                     decoration:BoxDecoration(gradient:const LinearGradient(colors:[Color(0xFF5D22E8),Color(0xFF8B43FF)]),borderRadius:BorderRadius.circular(18)),
                     child:const Row(mainAxisSize:MainAxisSize.min,children:[Icon(Icons.workspace_premium_rounded,color:Colors.white,size:13),SizedBox(width:4),Text('Ana Araç',style:TextStyle(color:Colors.white,fontSize:10.5,fontWeight:FontWeight.w900))]),
                   ),
                 ],
               ])),
-              Positioned(left:compact?105:122,top:45,right:12,bottom:12,child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-                Padding(padding:const EdgeInsets.only(right:72),child:Text(plate,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:Colors.white,fontSize:compact?20:23,fontWeight:FontWeight.w900,letterSpacing:.4))),
+              Positioned(left:compact?96:108,top:34,right:10,bottom:7,child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                Padding(padding:const EdgeInsets.only(right:72),child:Text(plate,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:Colors.white,fontSize:compact?18:20,fontWeight:FontWeight.w900,letterSpacing:.4))),
                 const SizedBox(height:3),
                 Text(title,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:Colors.white,fontSize:compact?14:16,fontWeight:FontWeight.w800)),
-                const SizedBox(height:10),
+                const SizedBox(height:6),
                 if(type.isNotEmpty||fuel.isNotEmpty)Wrap(spacing:6,runSpacing:5,children:[
                   if(type.isNotEmpty)_chip(type.toLowerCase().contains('moto')?Icons.two_wheeler_rounded:Icons.directions_car_rounded,type),
                   if(fuel.isNotEmpty)_chip(Icons.local_gas_station_rounded,fuel),
                 ]),
-                if(currentKm>0)...[const SizedBox(height:8),Text('${_number(currentKm)} km',style:const TextStyle(color:Color(0xFFD0D5E5),fontSize:13,fontWeight:FontWeight.w700))],
+                if(currentKm>0)...[const SizedBox(height:5),Text('${_number(currentKm)} km',style:const TextStyle(color:Color(0xFFD0D5E5),fontSize:13,fontWeight:FontWeight.w700))],
               ])),
             ]),
           ),
@@ -151,9 +151,9 @@ class VehicleIdentityCard extends StatelessWidget {
             decoration:BoxDecoration(color:const Color(0xFF070D20).withValues(alpha:.48),border:Border(top:BorderSide(color:Colors.white.withValues(alpha:.09)))),
             child:Row(children:[
               _metric(Icons.qr_code_2_rounded,_qrActive?'QR Aktif':'QR Pasif',_qrActive?'Etiket bağlı':'Etiket bağlı değil'),
-              Container(width:1,height:38,color:const Color(0xFF8A64FF).withValues(alpha:.38)),
+              Container(width:1,height:32,color:const Color(0xFF8A64FF).withValues(alpha:.38)),
               _metric(Icons.group_rounded,driverTitle,driverSubtitle),
-              Container(width:1,height:38,color:const Color(0xFF8A64FF).withValues(alpha:.38)),
+              Container(width:1,height:32,color:const Color(0xFF8A64FF).withValues(alpha:.38)),
               _metric(Icons.schedule_rounded,'Son Tarama',_scanLabel()),
             ]),
           ),
