@@ -52,6 +52,13 @@ app.use(cors({
     }
     return callback(new Error('CORS_ORIGIN_DENIED'));
   },
+  methods:['GET','HEAD','POST','PUT','PATCH','DELETE','OPTIONS'],
+  allowedHeaders:[
+    'Authorization','Content-Type','Accept','Origin','X-Requested-With',
+    'X-Scan-Token','X-Proximity-Device','X-Visitor-Token',
+    'X-File-Type','X-Asset-Name','X-Asset-Category','X-Image-Width','X-Image-Height',
+    'X-Admin-Id','X-Admin-Email','X-Admin-Name',
+  ],
 }));
 
 app.use(express.json({limit:'1mb'}));
