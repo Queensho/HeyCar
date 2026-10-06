@@ -65,7 +65,7 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
   bool loading=true,saving=false,publishing=false,dirty=false;
   String? error;
   Map<String,dynamic>? live,draft;
-  List<Map<String,dynamic>> versions=[],assets=[];
+  List<Map<String,dynamic>> versions=[],assets=[],brands=[];
 
   Map<String,String> get headers=>{
     'Authorization':'Bearer ${widget.token}',
@@ -119,6 +119,25 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
       });
     }catch(e){if(mounted)setState(()=>error=e.toString().replaceFirst('Exception: ',''));}
     finally{if(mounted)setState(()=>loading=false);}
+    if(mounted)await loadBrands();
+  }
+
+  Future<void> loadBrands()async{
+    try{final d=await request('GET','/api/admin/vehicle-brands');if(!mounted)return;setState(()=>brands=d['brands'] is List?(d['brands'] as List).whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).toList():[]);}catch(_){}
+  }
+  Future<void> _uploadBrandLogo(Map<String,dynamic> brand)async{
+    final picked=await ImagePicker().pickImage(source:ImageSource.gallery,maxWidth:1200,maxHeight:1200,imageQuality:92);if(picked==null)return;
+    final bytes=await picked.readAsBytes(),ext=picked.name.toLowerCase();final mime=ext.endsWith('.png')?'image/png':ext.endsWith('.webp')?'image/webp':'image/jpeg';
+    final h=Map<String,String>.from(headers)..remove('Content-Type')..['Content-Type']='application/octet-stream'..['X-File-Type']=mime;
+    final resp=await http.put(Uri.parse('$api/api/admin/vehicle-brands/${brand['id']}/logo'),headers:h,body:bytes);final d=_decode(resp);
+    if(resp.statusCode<200||resp.statusCode>=300){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(_message(d))));return;}await loadBrands();
+  }
+  Future<void> _resolveBrand(Map<String,dynamic> brand)async{
+    try{await request('POST','/api/admin/vehicle-brands/${brand['id']}/resolve',{});await loadBrands();}catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString().replaceFirst('Exception: ',''))));}
+  }
+  Future<void> _addBrandAlias(Map<String,dynamic> brand)async{
+    final ctrl=TextEditingController();final alias=await showDialog<String>(context:context,builder:(d)=>AlertDialog(title:Text('${brand['name']} alias ekle'),content:TextField(controller:ctrl,decoration:const InputDecoration(labelText:'Alias')),actions:[TextButton(onPressed:()=>Navigator.pop(d),child:const Text('Vazgeç')),FilledButton(onPressed:()=>Navigator.pop(d,ctrl.text.trim()),child:const Text('Kaydet'))]));
+    if(alias==null||alias.isEmpty)return;try{await request('POST','/api/admin/vehicle-brands/${brand['id']}/aliases',{'alias':alias});await loadBrands();}catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString().replaceFirst('Exception: ',''))));}
   }
 
   Map<String,dynamic> get config{
@@ -368,6 +387,7 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
       ('Hızlı Erişim',Icons.bolt_outlined),('Promosyon & Duyurular',Icons.campaign_outlined),
       ('Öne Çıkanlar / Story',Icons.auto_stories_outlined),('Görsel Kütüphanesi',Icons.photo_library_outlined),
       ('Tema & Görünüm',Icons.palette_outlined),('Uygulama Sürümleri',Icons.history_rounded),
+      ('Araç Markaları',Icons.badge_outlined),
     ];
     return Container(
       margin:const EdgeInsets.fromLTRB(14,12,14,0),padding:const EdgeInsets.all(4),
@@ -751,6 +771,23 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
     })),
   ]));
 
+  Widget _brandsPage()=>Padding(
+    padding:const EdgeInsets.all(14),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      const Text('Araç Markaları',style:TextStyle(fontSize:18,fontWeight:FontWeight.w900)),
+      const SizedBox(height:3),const Text('Manuel logo otomatik çözümlemeden önceliklidir. Logolar CepQontag backend üzerinden servis edilir.',style:TextStyle(color:AdminUi.muted,fontSize:10)),
+      const SizedBox(height:12),Expanded(child:ListView.separated(itemCount:brands.length,separatorBuilder:(_,__)=>const SizedBox(height:7),itemBuilder:(_,i){
+        final b=brands[i],logo=b['brandLogo'] is Map?Map<String,dynamic>.from(b['brandLogo'] as Map):<String,dynamic>{};final url='${logo['url']??''}',ready=logo['available']==true,aliases=b['aliases'] is List?(b['aliases'] as List).join(', '):'';
+        final name='${b['name']??''}';final letter=name.isEmpty?'?':name[0].toUpperCase();
+        return Container(padding:const EdgeInsets.all(10),decoration:AdminUi.card(radius:14),child:Row(children:[
+          Container(width:48,height:48,padding:const EdgeInsets.all(6),decoration:BoxDecoration(color:AdminUi.surfaceSoft,borderRadius:BorderRadius.circular(12)),child:ready?Image.network(url,fit:BoxFit.contain,errorBuilder:(_,__,___)=>Center(child:Text(letter,style:const TextStyle(fontWeight:FontWeight.w900)))):Center(child:Text(letter,style:const TextStyle(color:AdminUi.purple,fontSize:20,fontWeight:FontWeight.w900)))),
+          const SizedBox(width:10),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(name,style:const TextStyle(fontWeight:FontWeight.w900)),Text('${b['normalized_name']} • ${b['logo_status']} • ${b['logo_source']}',style:const TextStyle(color:AdminUi.muted,fontSize:9)),if(aliases.isNotEmpty)Text('Alias: $aliases',maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:AdminUi.muted,fontSize:9))])),
+          OutlinedButton.icon(onPressed:()=>_addBrandAlias(b),icon:const Icon(Icons.add_link,size:16),label:const Text('Alias')),const SizedBox(width:6),
+          OutlinedButton.icon(onPressed:b['logo_source']=='manual'?null:()=>_resolveBrand(b),icon:const Icon(Icons.refresh,size:16),label:const Text('Tekrar Ara')),const SizedBox(width:6),
+          FilledButton.icon(onPressed:()=>_uploadBrandLogo(b),style:FilledButton.styleFrom(backgroundColor:AdminUi.purple),icon:const Icon(Icons.upload,size:16),label:Text(ready?'Logo Değiştir':'Logo Yükle')),
+        ]));
+      })),
+    ]),
+  );
   Widget _slider(String label,double value,double min,double max,ValueChanged<double> onChanged,String display)=>Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
     Row(children:[Expanded(child:Text(label,style:const TextStyle(fontWeight:FontWeight.w800,fontSize:10.5))),Text(display,style:const TextStyle(color:AdminUi.purple,fontWeight:FontWeight.w900,fontSize:10))]),
     Slider(value:value.clamp(min,max).toDouble(),min:min,max:max,onChanged:onChanged),
@@ -765,7 +802,7 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
       Expanded(child:switch(section){
         0=>_layoutPage(),1=>_servicesPage(),2=>_quickPage(),3=>_bannerPage(),
         4=>AdminStoryManagementPage(token:widget.token,admin:widget.admin),
-        5=>_assetPage(),6=>_themePage(),_=>_versionsPage(),
+        5=>_assetPage(),6=>_themePage(),7=>_versionsPage(),_=>_brandsPage(),
       }),
     ]);
   }
