@@ -417,6 +417,17 @@ class PushNotifications{
       ),
     );
     await FlutterCallkitIncoming.showCallkitIncoming(params);
+
+    // When Flutter is already alive (foreground/background isolate with an
+    // attached navigator), immediately route to the branded CepQontag call
+    // screen. CallKit remains active underneath so ringtone, lock-screen and
+    // accept/decline behavior keep working when the app is suspended/killed.
+    final callback=onNavigationRequested;
+    if(callback!=null){
+      Future<void>.delayed(const Duration(milliseconds:180),() async {
+        try{await callback({...data,'callId':callId,'type':'incoming_call'});}catch(_){}
+      });
+    }
   }
 
   static Future<void> show(RemoteMessage m)async{
