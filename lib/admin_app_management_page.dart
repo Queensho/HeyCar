@@ -635,7 +635,7 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
   Future<void> _editQuick([Map<String,dynamic>? source])async{
     final editing=source!=null,row=Map<String,dynamic>.from(source??{});
     final title=TextEditingController(text:'${row['title']??''}'),target=TextEditingController(text:'${row['actionTarget']??''}');
-    String icon='${row['icon']??'campaign'}',iconToken='${row['iconToken']??'primary'}',background='${row['backgroundToken']??'surface'}',action='${row['action']??'NONE'}';
+    String icon='${row['icon']??'campaign'}',iconUrl='${row['iconUrl']??''}',iconToken='${row['iconToken']??'primary'}',background='${row['backgroundToken']??'surface'}',action='${row['action']??'NONE'}';
     bool enabled=row['enabled']!=false;
     final result=await showDialog<Map<String,dynamic>>(context:context,builder:(d)=>StatefulBuilder(builder:(d,setD)=>AlertDialog(
       title:Text(editing?'Hızlı Erişim Düzenle':'Yeni Hızlı Erişim'),
