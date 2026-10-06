@@ -11,6 +11,8 @@ import 'owner_valet_card.dart';
 import 'roadside_help_page.dart';
 import 'owner_home_redesign.dart';
 import 'valet_info_page.dart';
+import 'weather_service.dart';
+import 'weather_details_page.dart';
 class OwnerDashboardLive extends StatefulWidget{const OwnerDashboardLive({super.key});@override State<OwnerDashboardLive> createState()=>_S();}
 class _S extends State<OwnerDashboardLive>{
 int tab=0;bool parked=false,vehicleLoading=true;
@@ -43,8 +45,16 @@ void action(String a){
   else if(a=='towing'&&testAccount)Navigator.push(context,MaterialPageRoute(builder:(_)=>const RoadsideHelpPage(initialTab:1)));
   else if(a=='offers'&&testAccount)Navigator.push(context,MaterialPageRoute(builder:(_)=>const CepqarOffersPage()));
   else if(a=='roadside_help'&&testAccount)Navigator.push(context,MaterialPageRoute(builder:(_)=>const RoadsideHelpPage(initialTab:0)));
+  else if(a=='app_valet'&&vid.isNotEmpty)Navigator.push(context,MaterialPageRoute(builder:(_)=>ValetInfoPage(vehicleId:vid)));
+  else if(a=='app_towing')Navigator.push(context,MaterialPageRoute(builder:(_)=>const RoadsideHelpPage(initialTab:1)));
+  else if(a=='app_offers')Navigator.push(context,MaterialPageRoute(builder:(_)=>const CepqarOffersPage()));
+  else if(a=='app_roadside_help')Navigator.push(context,MaterialPageRoute(builder:(_)=>const RoadsideHelpPage(initialTab:0)));
   else if(a=='maintenance')Navigator.push(context,MaterialPageRoute(builder:(_)=>MaintenancePage(plate:QrDraft.plate,title:'${QrDraft.make} ${QrDraft.model}'.trim())));
   else if(a=='reminders'&&vid.isNotEmpty)Navigator.push(context,MaterialPageRoute(builder:(_)=>VehicleRemindersPage(vehicleId:vid)));
+  else if(a=='weather'){
+    final weatherService=WeatherService();
+    Navigator.push(context,MaterialPageRoute(builder:(_)=>WeatherDetailsPage(service:weatherService))).whenComplete(weatherService.dispose);
+  }
 }
 @override Widget build(BuildContext context)=>ValueListenableBuilder<ThemeMode>(
   valueListenable:CepqarTheme.mode,

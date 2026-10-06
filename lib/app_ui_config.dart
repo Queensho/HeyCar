@@ -280,8 +280,8 @@ class AppActionHandler{
     final a=action.toUpperCase();
     if(!appUiActions.contains(a))return;
     final local=switch(a){
-      'OPEN_TOWING'=>'towing','OPEN_ROADSIDE'=>'roadside_help','OPEN_VALE'=>'valet',
-      'OPEN_OPPORTUNITIES'=>'offers','OPEN_PARKING'=>'parking','OPEN_MAINTENANCE'=>'maintenance',
+      'OPEN_TOWING'=>'app_towing','OPEN_ROADSIDE'=>'app_roadside_help','OPEN_VALE'=>'app_valet',
+      'OPEN_OPPORTUNITIES'=>'app_offers','OPEN_PARKING'=>'parking','OPEN_MAINTENANCE'=>'maintenance',
       'OPEN_DRIVERS'=>'drivers','OPEN_INSPECTION'=>'reminders','OPEN_WEATHER'=>'weather',
       'OPEN_PREMIUM'=>'premium','OPEN_NOTIFICATIONS'=>'notifications','OPEN_VEHICLES'=>'vehicles',
       _=>'',
