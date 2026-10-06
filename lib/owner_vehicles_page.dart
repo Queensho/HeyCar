@@ -483,7 +483,22 @@ class _VehicleBrandLogo extends StatelessWidget{
       child:Text(letter,style:const TextStyle(color:_purple,fontSize:28,fontWeight:FontWeight.w900)),
     );
     if(!url.toLowerCase().startsWith('https://'))return fallback();
-    return SizedBox(width:72,height:72,child:CachedNetworkImage(imageUrl:url,cacheKey:url,fit:BoxFit.contain,fadeInDuration:const Duration(milliseconds:120),placeholder:(_,__)=>fallback(),errorWidget:(_,__,___)=>fallback()));
+    return SizedBox(
+      width:72,
+      height:72,
+      child:Image.network(
+        url,
+        key:ValueKey<String>(url),
+        fit:BoxFit.contain,
+        gaplessPlayback:true,
+        filterQuality:FilterQuality.high,
+        frameBuilder:(context,child,frame,wasSynchronouslyLoaded){
+          if(wasSynchronouslyLoaded||frame!=null)return child;
+          return fallback();
+        },
+        errorBuilder:(_,__,___)=>fallback(),
+      ),
+    );
   }
 }
 class _VehicleAction extends StatelessWidget{
