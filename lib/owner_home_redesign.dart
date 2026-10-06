@@ -489,48 +489,21 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             height:84,
             padding:const EdgeInsets.fromLTRB(16,12,13,11),
             decoration:BoxDecoration(
-              gradient:const LinearGradient(
-                begin:Alignment.topLeft,
-                end:Alignment.bottomRight,
-                colors:[
-                  Color(0xFF39C900),
-                  Color(0xFF73F000),
-                  Color(0xFFB6FF2A),
-                ],
-                stops:[0,.50,1],
-              ),
+              color:const Color(0xFFC8FC06),
               borderRadius:BorderRadius.circular(18),
-              border:Border.all(color:const Color(0xFF8EF61B)),
+              border:Border.all(color:const Color(0xFFB4E700)),
               boxShadow:!kIsWeb
                 ?[
                     BoxShadow(
-                      color:const Color(0xFF7CFF00).withValues(alpha:.22),
-                      blurRadius:16,
+                      color:const Color(0xFFC8FC06).withValues(alpha:.22),
+                      blurRadius:14,
                       offset:const Offset(0,5),
                     ),
                   ]
                 :null,
             ),
             child:Stack(children:[
-              Positioned(
-                right:-35,
-                bottom:-55,
-                child:Container(
-                  width:145,
-                  height:145,
-                  decoration:BoxDecoration(
-                    shape:BoxShape.circle,
-                    gradient:RadialGradient(
-                      colors:[
-                        Colors.white.withValues(alpha:.22),
-                        Colors.white.withValues(alpha:.06),
-                        Colors.transparent,
-                      ],
-                      stops:const [0,.56,1],
-                    ),
-                  ),
-                ),
-              ),
+              const SizedBox.shrink(),
               Row(
                 crossAxisAlignment:CrossAxisAlignment.start,
                 children:[
