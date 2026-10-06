@@ -151,10 +151,10 @@ class AppUiServiceItem extends AppUiEntry{
   String get iconToken=>'${raw['iconToken']??'primary'}';
   String get backgroundToken=>'${raw['backgroundToken']??'surface'}';
   String get imageUrl=>'${raw['imageUrl']??''}';
-  double get imageScale=>(raw['imageScale'] is num?(raw['imageScale'] as num).toDouble():1).clamp(0,1.5);
-  double get imageX=>(raw['imageX'] is num?(raw['imageX'] as num).toDouble():0).clamp(-100,100);
-  double get imageY=>(raw['imageY'] is num?(raw['imageY'] as num).toDouble():0).clamp(-100,100);
-  double get imageOpacity=>(raw['imageOpacity'] is num?(raw['imageOpacity'] as num).toDouble():1).clamp(0,1);
+  double get imageScale=>(raw['imageScale'] is num?(raw['imageScale'] as num).toDouble():1).clamp(0,1.5).toDouble();
+  double get imageX=>(raw['imageX'] is num?(raw['imageX'] as num).toDouble():0).clamp(-100,100).toDouble();
+  double get imageY=>(raw['imageY'] is num?(raw['imageY'] as num).toDouble():0).clamp(-100,100).toDouble();
+  double get imageOpacity=>(raw['imageOpacity'] is num?(raw['imageOpacity'] as num).toDouble():1).clamp(0,1).toDouble();
   String get fit=>'${raw['fit']??'contain'}';
   String get alignment=>'${raw['alignment']??'bottomRight'}';
   String get badgeText=>'${raw['badgeText']??''}';

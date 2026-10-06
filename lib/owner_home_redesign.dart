@@ -1428,7 +1428,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
               right:9,bottom:9,
               child:Container(
                 width:24,height:24,
-                decoration:BoxDecoration(color:(light?Colors.white:Colors.black).withValues(alpha:light?.86:.28),shape:BoxShape.circle),
+                decoration:BoxDecoration(color:(light?Colors.white:Colors.black).withValues(alpha:light ? .86 : .28),shape:BoxShape.circle),
                 child:Icon(Icons.chevron_right_rounded,color:text,size:16),
               ),
             ),

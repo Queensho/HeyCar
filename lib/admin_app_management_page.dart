@@ -292,7 +292,8 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
       'warning':'${tokens['warning']??'#FF9D47'}','danger':'${tokens['danger']??'#FF5E76'}','info':'#397DFF',
     };
     final s=(map[token]??map['primary']!).replaceFirst('#','');
-    return Color(0xFF000000|int.tryParse(s,radix:16)!.toInt());
+    final parsed=int.tryParse(s,radix:16);
+    return parsed==null?AdminUi.purple:Color(0xFF000000|parsed);
   }
 
   Future<DateTime?> pickDateTime(DateTime initial)async{
@@ -474,7 +475,7 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
     final type='${row['type']}';
     if(type=='spacer'){
       final cfg=row['config'] is Map?Map<String,dynamic>.from(row['config'] as Map):<String,dynamic>{};
-      double height=(cfg['height'] is num?(cfg['height'] as num).toDouble():16).clamp(0,64);
+      double height=(cfg['height'] is num?(cfg['height'] as num).toDouble():16).clamp(0,64).toDouble();
       final value=await showDialog<double>(context:context,builder:(d)=>StatefulBuilder(builder:(d,setD)=>AlertDialog(title:const Text('Boşluk Yüksekliği'),content:Column(mainAxisSize:MainAxisSize.min,children:[Slider(value:height,min:0,max:64,divisions:64,label:'${height.round()} px',onChanged:(v)=>setD(()=>height=v)),Text('${height.round()} px')]),actions:[TextButton(onPressed:()=>Navigator.pop(d),child:const Text('Vazgeç')),FilledButton(onPressed:()=>Navigator.pop(d,height),child:const Text('Uygula'))])));
       if(value==null)return;row['config']={'height':value};
     }else if(type=='image_banner'||type=='text_banner'){
@@ -516,10 +517,10 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
     String icon='${row['icon']??'campaign'}',iconToken='${row['iconToken']??'primary'}',background='${row['backgroundToken']??'surface'}',badgeToken='${row['badgeToken']??'primary'}';
     String action='${row['action']??'NONE'}',imageUrl='${row['imageUrl']??''}',fit='${row['fit']??'contain'}',alignment='${row['alignment']??'bottomRight'}';
     bool enabled=row['enabled']!=false,testOnly=row['testOnly']==true;
-    double scale=(row['imageScale'] is num?(row['imageScale'] as num).toDouble():1).clamp(0,1.5);
-    double x=(row['imageX'] is num?(row['imageX'] as num).toDouble():0).clamp(-100,100);
-    double y=(row['imageY'] is num?(row['imageY'] as num).toDouble():0).clamp(-100,100);
-    double opacity=(row['imageOpacity'] is num?(row['imageOpacity'] as num).toDouble():.18).clamp(0,1);
+    double scale=(row['imageScale'] is num?(row['imageScale'] as num).toDouble():1).clamp(0,1.5).toDouble();
+    double x=(row['imageX'] is num?(row['imageX'] as num).toDouble():0).clamp(-100,100).toDouble();
+    double y=(row['imageY'] is num?(row['imageY'] as num).toDouble():0).clamp(-100,100).toDouble();
+    double opacity=(row['imageOpacity'] is num?(row['imageOpacity'] as num).toDouble():.18).clamp(0,1).toDouble();
     final result=await showDialog<Map<String,dynamic>>(context:context,builder:(d)=>StatefulBuilder(builder:(d,setD){
       final preview={...row,'title':title.text,'subtitle':subtitle.text,'icon':icon,'iconToken':iconToken,'backgroundToken':background,'badgeText':badge.text,'badgeToken':badgeToken,'imageUrl':imageUrl,'imageScale':scale,'imageX':x,'imageY':y,'imageOpacity':opacity,'fit':fit,'alignment':alignment};
       return AlertDialog(
@@ -689,10 +690,10 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
     final tokens=theme['tokens'] is Map?Map<String,dynamic>.from(theme['tokens'] as Map):<String,dynamic>{};
     final controllers=<String,TextEditingController>{for(final k in ['primary','accent','background','surface','textPrimary','textSecondary','success','warning','danger'])k:TextEditingController(text:'${tokens[k]??''}')};
     final brand=next['brand'] is Map?Map<String,dynamic>.from(next['brand'] as Map):<String,dynamic>{};
+    double cardRadius=(theme['cardRadius'] is num?(theme['cardRadius'] as num).toDouble():18).clamp(10,28).toDouble();
+    double buttonRadius=(theme['buttonRadius'] is num?(theme['buttonRadius'] as num).toDouble():15).clamp(8,26).toDouble();
+    int shadow=(theme['shadowLevel'] is num?(theme['shadowLevel'] as num).round():1).clamp(0,3).toInt();
     return StatefulBuilder(builder:(context,setLocal){
-      double cardRadius=(theme['cardRadius'] is num?(theme['cardRadius'] as num).toDouble():18).clamp(10,28);
-      double buttonRadius=(theme['buttonRadius'] is num?(theme['buttonRadius'] as num).toDouble():15).clamp(8,26);
-      int shadow=(theme['shadowLevel'] is num?(theme['shadowLevel'] as num).round():1).clamp(0,3);
       Future<void> apply()async{
         final cfg=_cloneConfig(),t=cfg['theme'] is Map?Map<String,dynamic>.from(cfg['theme'] as Map):<String,dynamic>{};
         final tk=<String,dynamic>{for(final e in controllers.entries)e.key:e.value.text.trim()};
@@ -775,10 +776,14 @@ class _ServicePreview extends StatelessWidget{
   final Map<String,dynamic> row;final Color Function(String) colorOfToken;final IconData Function(String) iconFor;
   @override Widget build(BuildContext context){
     final bg=colorOfToken('${row['backgroundToken']??'surface'}'),icon=colorOfToken('${row['iconToken']??'primary'}'),badge=colorOfToken('${row['badgeToken']??'primary'}');
-    final image='${row['imageUrl']??''}',scale=(row['imageScale'] is num?(row['imageScale'] as num).toDouble():1),x=(row['imageX'] is num?(row['imageX'] as num).toDouble():0),y=(row['imageY'] is num?(row['imageY'] as num).toDouble():0),opacity=(row['imageOpacity'] is num?(row['imageOpacity'] as num).toDouble():.18);
+    final image='${row['imageUrl']??''}';
+    final double scale=row['imageScale'] is num?(row['imageScale'] as num).toDouble():1.0;
+    final double x=row['imageX'] is num?(row['imageX'] as num).toDouble():0.0;
+    final double y=row['imageY'] is num?(row['imageY'] as num).toDouble():0.0;
+    final double opacity=row['imageOpacity'] is num?(row['imageOpacity'] as num).toDouble():.18;
     final alignment=switch('${row['alignment']??'bottomRight'}'){'topLeft'=>Alignment.topLeft,'topRight'=>Alignment.topRight,'center'=>Alignment.center,'bottomLeft'=>Alignment.bottomLeft,_=>Alignment.bottomRight};
     return Container(height:86,clipBehavior:Clip.hardEdge,decoration:BoxDecoration(color:bg,borderRadius:BorderRadius.circular(17),border:Border.all(color:AdminUi.line)),child:Stack(children:[
-      if(image.isNotEmpty)Positioned.fill(child:Align(alignment:alignment,child:Transform.translate(offset:Offset(x,y),child:Opacity(opacity:opacity.clamp(0,1),child:Image.network(image,width:108*scale,height:70*scale,fit:'${row['fit']}'=='cover'?BoxFit.cover:BoxFit.contain,errorBuilder:(_,__,___)=>const SizedBox.shrink()))))),
+      if(image.isNotEmpty)Positioned.fill(child:Align(alignment:alignment,child:Transform.translate(offset:Offset(x,y),child:Opacity(opacity:opacity.clamp(0,1).toDouble(),child:Image.network(image,width:108*scale,height:70*scale,fit:'${row['fit']}'=='cover'?BoxFit.cover:BoxFit.contain,errorBuilder:(_,__,___)=>const SizedBox.shrink()))))),
       Positioned(left:10,top:10,child:Container(width:34,height:34,decoration:BoxDecoration(color:icon.withValues(alpha:.12),borderRadius:BorderRadius.circular(10)),child:Icon(iconFor('${row['icon']}'),color:icon,size:20))),
       if('${row['badgeText']??''}'.isNotEmpty)Positioned(right:8,top:8,child:Container(padding:const EdgeInsets.symmetric(horizontal:6,vertical:3),decoration:BoxDecoration(color:badge.withValues(alpha:.12),borderRadius:BorderRadius.circular(8)),child:Text('${row['badgeText']}',style:TextStyle(color:badge,fontSize:7.5,fontWeight:FontWeight.w900)))),
       Positioned(left:10,right:8,bottom:8,child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('${row['title']??'Hizmet'}',maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:11,fontWeight:FontWeight.w900)),Text('${row['subtitle']??''}',maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:AdminUi.muted,fontSize:8))])),
@@ -813,7 +818,8 @@ class _PhonePreview extends StatelessWidget{
   @override Widget build(BuildContext context){
     final home=config['home'] is Map?Map<String,dynamic>.from(config['home'] as Map):<String,dynamic>{};
     final cs=home['components'] is List?(home['components'] as List).whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).where((e)=>e['enabled']!=false).toList():<Map<String,dynamic>>[];
-    cs.sort((a,b)=>(a['sortOrder'] as num? ??0).toInt().compareTo((b['sortOrder'] as num? ??0).toInt()));
+    int orderOf(Map<String,dynamic> row)=>row['sortOrder'] is num?(row['sortOrder'] as num).toInt():0;
+    cs.sort((a,b)=>orderOf(a).compareTo(orderOf(b)));
     final services=config['services'] is List?(config['services'] as List).whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).where((e)=>e['enabled']!=false).toList():<Map<String,dynamic>>[];
     final quick=config['quickActions'] is List?(config['quickActions'] as List).whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).where((e)=>e['enabled']!=false).toList():<Map<String,dynamic>>[];
     final banners=config['banners'] is List?(config['banners'] as List).whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).where((e)=>e['enabled']!=false).toList():<Map<String,dynamic>>[];
@@ -831,7 +837,22 @@ class _PhonePreview extends StatelessWidget{
   List<Widget> _previewComponent(String type,List<Map<String,dynamic>> services,List<Map<String,dynamic>> quick,List<Map<String,dynamic>> banners,Color Function(String) token,IconData Function(String) icon){
     if(type=='weather_card')return const [];
     if(type=='vehicle_security')return [const SizedBox(height:8),Row(children:[Expanded(child:_MiniBox(label:'34 ABC 123',icon:Icons.directions_car)),const SizedBox(width:6),Expanded(child:_MiniBox(label:'QR Güvenliği',icon:Icons.shield))])];
-    if(type=='story_carousel')return [const SizedBox(height:8),const Text('Öne Çıkanlar',style:TextStyle(fontSize:9,fontWeight:FontWeight.w900)),const SizedBox(height:4),Row(children:List.generate(4,(i)=>Padding(padding:const EdgeInsets.only(right:5),child:CircleAvatar(radius:15,backgroundColor:Color(0xFFE9DFFF),child:Icon(Icons.local_offer,size:12,color:AdminUi.purple))))];
+    if(type=='story_carousel')return [
+      const SizedBox(height:8),
+      const Text('Öne Çıkanlar',style:TextStyle(fontSize:9,fontWeight:FontWeight.w900)),
+      const SizedBox(height:4),
+      Row(children:List.generate(
+        4,
+        (i)=>const Padding(
+          padding:EdgeInsets.only(right:5),
+          child:CircleAvatar(
+            radius:15,
+            backgroundColor:Color(0xFFE9DFFF),
+            child:Icon(Icons.local_offer,size:12,color:AdminUi.purple),
+          ),
+        ),
+      )),
+    ];
     if(type=='quick_actions')return [const SizedBox(height:8),const Text('Hızlı Erişim',style:TextStyle(fontSize:9,fontWeight:FontWeight.w900)),const SizedBox(height:4),Row(children:quick.take(4).map((x)=>Expanded(child:Padding(padding:const EdgeInsets.only(right:3),child:Container(height:44,decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(9)),child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[Icon(icon('${x['icon']}'),size:13,color:token('${x['iconToken']}')),Text('${x['title']}',maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:5.5,fontWeight:FontWeight.w800))]))))).toList())];
     if(type=='monthly_summary')return [const SizedBox(height:8),const _MiniBox(label:'Bu Ayki Özetim',icon:Icons.bar_chart)];
     if(type=='services_grid')return [const SizedBox(height:8),const Text('Hizmetler',style:TextStyle(fontSize:9,fontWeight:FontWeight.w900)),const SizedBox(height:4),GridView.count(crossAxisCount:2,shrinkWrap:true,physics:const NeverScrollableScrollPhysics(),mainAxisSpacing:4,crossAxisSpacing:4,childAspectRatio:1.9,children:services.take(4).map((x)=>_ServicePreview(row:x,colorOfToken:token,iconFor:icon)).toList())];
