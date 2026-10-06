@@ -493,19 +493,19 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                 begin:Alignment.topLeft,
                 end:Alignment.bottomRight,
                 colors:[
-                  Color(0xFFD8FF62),
-                  Color(0xFFC8FF45),
-                  Color(0xFFB9FF2E),
+                  Color(0xFF39C900),
+                  Color(0xFF73F000),
+                  Color(0xFFB6FF2A),
                 ],
-                stops:[0,.52,1],
+                stops:[0,.50,1],
               ),
               borderRadius:BorderRadius.circular(18),
-              border:Border.all(color:const Color(0xFFA9E822)),
+              border:Border.all(color:const Color(0xFF8EF61B)),
               boxShadow:!kIsWeb
                 ?[
                     BoxShadow(
-                      color:const Color(0xFF7A35F4).withValues(alpha:.10),
-                      blurRadius:14,
+                      color:const Color(0xFF7CFF00).withValues(alpha:.22),
+                      blurRadius:16,
                       offset:const Offset(0,5),
                     ),
                   ]
@@ -522,8 +522,8 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                     shape:BoxShape.circle,
                     gradient:RadialGradient(
                       colors:[
-                        const Color(0xFF7A35F4).withValues(alpha:.14),
-                        const Color(0xFF7A35F4).withValues(alpha:.04),
+                        Colors.white.withValues(alpha:.22),
+                        Colors.white.withValues(alpha:.06),
                         Colors.transparent,
                       ],
                       stops:const [0,.56,1],
@@ -543,10 +543,13 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                           overflow:TextOverflow.ellipsis,
                           text:TextSpan(
                             style:const TextStyle(
-                              color:Color(0xFF10131B),
+                              color:Colors.white,
                               fontSize:21.5,
                               height:1.05,
                               letterSpacing:-.7,
+                              shadows:[
+                                Shadow(color:Color(0x33000000),blurRadius:4,offset:Offset(0,1)),
+                              ],
                             ),
                             children:[
                               TextSpan(
@@ -567,9 +570,12 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                           maxLines:1,
                           overflow:TextOverflow.ellipsis,
                           style:const TextStyle(
-                            color:Color(0xFF4B5235),
+                            color:Colors.white,
                             fontSize:11.5,
-                            fontWeight:FontWeight.w600,
+                            fontWeight:FontWeight.w700,
+                            shadows:[
+                              Shadow(color:Color(0x26000000),blurRadius:3,offset:Offset(0,1)),
+                            ],
                           ),
                         ),
                       ],
