@@ -371,6 +371,7 @@ class _AdminStoryManagementPageState extends State<AdminStoryManagementPage>{
         Expanded(flex:3,child:Wrap(spacing:6,runSpacing:6,children:[
           metric('${a['impressions']??0}','Gösterim',Icons.visibility_outlined,AdminUi.blue),
           metric('${a['uniqueViews']??0}','Görüntüleme',Icons.person_outline_rounded,AdminUi.purple),
+          metric('${a['opens']??0}','Açılma',Icons.auto_stories_outlined,const Color(0xFF8A59FF)),
           metric('${a['clicks']??0}','CTA',Icons.touch_app_outlined,AdminUi.green),
           metric('%${a['ctr']??0}','CTR',Icons.insights_rounded,AdminUi.amber),
         ])),

@@ -213,6 +213,7 @@ class _StoryViewerPageState extends State<StoryViewerPage> with SingleTickerProv
   @override void dispose(){progress.dispose();super.dispose();}
 
   void _showCurrent(){
+    widget.service.mark(item.id,'open');
     widget.service.mark(item.id,'view');
     progress.forward(from:0);
   }
