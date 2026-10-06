@@ -18,6 +18,7 @@ import 'owner_auth.dart';
 import 'owner_settings_detail.dart';
 import 'owner_notifications_page.dart';
 import 'vehicle_identity_card.dart';
+import 'vehicle_edit_sheet.dart';
 
 Color get _bg => CepqarTheme.bg;
 Color get _panel => CepqarTheme.panel;
@@ -44,6 +45,7 @@ class VehicleCenterPage extends StatefulWidget {
 
 class _VehicleCenterPageState extends State<VehicleCenterPage> {
   bool loading = true, qrBusy = false, editing = false;
+  late bool _isPrimary;
   late String _vehicleId;
   late String _plate;
   late String _title;
@@ -66,6 +68,7 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
     _plate = widget.plate;
     _title = widget.title;
     _vehicle=Map<String,dynamic>.from(widget.initialVehicle);
+    _isPrimary=widget.isPrimary;
     CepqarTheme.mode.addListener(_themeChanged);
     load();
   }
@@ -278,66 +281,39 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
     if (editing || qrBusy) return;
     setState(() => editing = true);
     try {
-      final response = await OwnerHttp
-          .get(
-            Uri.parse('${QrBackend.baseUrl}/api/owner/vehicles'),
-            json:false,
-            headers: headers,
-          )
-          .timeout(const Duration(seconds: 15));
-      if (response.statusCode != 200)
-        throw Exception('Araç bilgileri yüklenemedi.');
-      final decoded = jsonDecode(response.body);
-      if (decoded is! Map || decoded['vehicles'] is! List)
-        throw Exception('Araç bilgileri yüklenemedi.');
-      Map<String, dynamic>? vehicle;
-      for (final item in decoded['vehicles'] as List) {
-        if (item is Map && '${item['id']}' == vid)
-          vehicle = Map<String, dynamic>.from(item);
-      }
-      if (vehicle == null) throw Exception('Kayıtlı araç bulunamadı.');
-      if (!mounted) return;
-      final updated = await showDialog<Map<String, dynamic>>(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => _EditVehicleDialog(vehicle: vehicle!, ownerId: owner),
+      final response = await OwnerHttp.get(Uri.parse('${QrBackend.baseUrl}/api/owner/vehicles'),json:false,headers:headers).timeout(const Duration(seconds:15));
+      if(response.statusCode!=200)throw Exception('Araç bilgileri yüklenemedi.');
+      final decoded=jsonDecode(response.body);
+      if(decoded is! Map||decoded['vehicles'] is! List)throw Exception('Araç bilgileri yüklenemedi.');
+      Map<String,dynamic>? vehicle;
+      for(final item in decoded['vehicles'] as List){if(item is Map&&'${item['id']}'==vid){vehicle=Map<String,dynamic>.from(item);break;}}
+      if(vehicle==null)throw Exception('Kayıtlı araç bulunamadı.');
+      if(!mounted)return;
+      final result=await showModalBottomSheet<Map<String,dynamic>>(
+        context:context,isScrollControlled:true,useSafeArea:true,backgroundColor:Colors.transparent,
+        barrierColor:Colors.black.withValues(alpha:.48),
+        constraints:BoxConstraints(maxHeight:MediaQuery.sizeOf(context).height*.94),
+        builder:(_)=>VehicleEditSheet(vehicle:vehicle!,currentKm:km,isPrimary:_isPrimary),
       );
-      if (updated == null || !mounted) return;
-      final plate = '${updated['plate'] ?? ''}';
-      final make = '${updated['make'] ?? ''}';
-      final model = '${updated['model'] ?? ''}';
-      setState(() {
-        _plate = plate;
-        _title = '$make $model'.trim();
-      });
-      final selected = QrDraft.vehicleId.trim().isNotEmpty
-          ? QrDraft.vehicleId.trim()
-          : OnboardingDraft.vehicleId.trim();
-      if (selected == vid) {
-        QrDraft.plate = plate;
-        QrDraft.make = make;
-        QrDraft.model = model;
-        try {
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('owner_plate', plate);
-          await prefs.setString('owner_make', make);
-          await prefs.setString('owner_model', model);
-        } catch (_) {
-          // Server remains authoritative if the local cache is unavailable.
-        }
+      if(result==null||!mounted)return;
+      final updated=result['vehicle'];
+      if(updated is! Map)return;
+      final next=Map<String,dynamic>.from(updated);
+      final plate='${next['plate']??''}',make='${next['make']??''}',model='${next['model']??''}';
+      final makePrimary=result['makePrimary']==true;
+      setState((){_vehicle={..._vehicle,...next};_plate=plate;_title='$make $model'.trim();if(makePrimary)_isPrimary=true;});
+      if(makePrimary){
+        QrDraft.vehicleId=vid;QrDraft.plate=plate;QrDraft.make=make;QrDraft.model=model;
+        OnboardingDraft.vehicleId=vid;
+        try{final prefs=await SharedPreferences.getInstance();await prefs.setString('owner_vehicle_id',vid);await prefs.setString('owner_plate',plate);await prefs.setString('owner_make',make);await prefs.setString('owner_model',model);}catch(_){}
+      }else{
+        final selected=QrDraft.vehicleId.trim().isNotEmpty?QrDraft.vehicleId.trim():OnboardingDraft.vehicleId.trim();
+        if(selected==vid){QrDraft.plate=plate;QrDraft.make=make;QrDraft.model=model;try{final prefs=await SharedPreferences.getInstance();await prefs.setString('owner_plate',plate);await prefs.setString('owner_make',make);await prefs.setString('owner_model',model);}catch(_){}}
       }
-      if (mounted)
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Araç bilgileri güncellendi.')),
-        );
-    } catch (e) {
-      if (mounted)
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-        );
-    } finally {
-      if (mounted) setState(() => editing = false);
-    }
+      await load();
+      if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Araç bilgileri güncellendi.')));
+    }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString().replaceFirst('Exception: ',''))));}
+    finally{if(mounted)setState(()=>editing=false);}
   }
 
   Color get _accent =>
@@ -925,7 +901,7 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
       'qr_token':QrDraft.token,
     }:_vehicle,
     currentKm:km,
-    isPrimary:widget.isPrimary,
+    isPrimary:_isPrimary,
   );
 
   Widget _miniAction(IconData icon,String title,String subtitle,VoidCallback tap){
@@ -1303,139 +1279,3 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
 
 }
 
-class _EditVehicleDialog extends StatefulWidget {
-  const _EditVehicleDialog({required this.vehicle, required this.ownerId});
-  final Map<String, dynamic> vehicle;
-  final String ownerId;
-  @override
-  State<_EditVehicleDialog> createState() => _EditVehicleDialogState();
-}
-
-class _EditVehicleDialogState extends State<_EditVehicleDialog> {
-  final _form = GlobalKey<FormState>();
-  late final TextEditingController _plate;
-  late final TextEditingController _make;
-  late final TextEditingController _model;
-  bool _saving = false;
-  String? _error;
-  @override
-  void initState() {
-    super.initState();
-    _plate = TextEditingController(text: '${widget.vehicle['plate'] ?? ''}');
-    _make = TextEditingController(text: '${widget.vehicle['make'] ?? ''}');
-    _model = TextEditingController(text: '${widget.vehicle['model'] ?? ''}');
-  }
-
-  @override
-  void dispose() {
-    _plate.dispose();
-    _make.dispose();
-    _model.dispose();
-    super.dispose();
-  }
-
-  Future<void> _save() async {
-    if (_saving || !_form.currentState!.validate()) return;
-    setState(() {
-      _saving = true;
-      _error = null;
-    });
-    try {
-      final response = await OwnerHttp
-          .put(
-            Uri.parse(
-              '${QrBackend.baseUrl}/api/owner/vehicles/${Uri.encodeComponent('${widget.vehicle['id']}')}',
-            ),
-            body: jsonEncode({
-              'plate': _plate.text.trim().toUpperCase(),
-              'make': _make.text.trim(),
-              'model': _model.text.trim(),
-            }),
-          )
-          .timeout(const Duration(seconds: 15));
-      if (response.statusCode == 409)
-        throw Exception('Bu plaka başka bir araca kayıtlı.');
-      if (response.statusCode == 401)
-        throw Exception('Oturum bulunamadı. Tekrar giriş yap.');
-      if (response.statusCode == 403)
-        throw Exception('Bu aracı düzenleme yetkin yok.');
-      if (response.statusCode == 404)
-        throw Exception('Araç veya güncelleme servisi bulunamadı.');
-      if (response.statusCode < 200 || response.statusCode >= 300)
-        throw Exception('Araç güncellenemedi. Tekrar dene.');
-      final decoded = jsonDecode(response.body);
-      if (decoded is! Map || decoded['vehicle'] is! Map)
-        throw Exception('Sunucu yanıtı doğrulanamadı. Tekrar dene.');
-      if (!mounted) return;
-      Navigator.pop(
-        context,
-        Map<String, dynamic>.from(decoded['vehicle'] as Map),
-      );
-    } catch (e) {
-      if (mounted)
-        setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
-    } finally {
-      if (mounted) setState(() => _saving = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) => PopScope(
-    canPop: !_saving,
-    child: AlertDialog(
-      backgroundColor: CepqarTheme.panel,
-      title: Text('Aracı Düzenle', style: TextStyle(color: CepqarTheme.text)),
-      content: SingleChildScrollView(
-        child: Form(
-          key: _form,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: _plate,
-                enabled: !_saving,
-                maxLength: 20,
-                textCapitalization: TextCapitalization.characters,
-                style: TextStyle(color: CepqarTheme.text),
-                decoration: const InputDecoration(labelText: 'Plaka'),
-                validator: (v) =>
-                    (v ?? '').trim().isEmpty ? 'Plaka gir.' : null,
-              ),
-              TextFormField(
-                controller: _make,
-                enabled: !_saving,
-                maxLength: 80,
-                style: TextStyle(color: CepqarTheme.text),
-                decoration: const InputDecoration(labelText: 'Marka'),
-                validator: (v) =>
-                    (v ?? '').trim().isEmpty ? 'Marka gir.' : null,
-              ),
-              TextFormField(
-                controller: _model,
-                enabled: !_saving,
-                maxLength: 80,
-                style: TextStyle(color: CepqarTheme.text),
-                decoration: const InputDecoration(labelText: 'Model'),
-              ),
-              if (_error != null)
-                Text(
-                  _error!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-            ],
-          ),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: _saving ? null : () => Navigator.pop(context),
-          child: const Text('Vazgeç'),
-        ),
-        FilledButton(
-          onPressed: _saving ? null : _save,
-          child: Text(_saving ? 'Kaydediliyor…' : 'Kaydet'),
-        ),
-      ],
-    ),
-  );
-}
