@@ -16,6 +16,7 @@ class WeatherCard extends StatelessWidget {
     required this.loading,
     this.onVehicles,
     this.onQrSecurity,
+    this.onTap,
   });
 
   final String displayName;
@@ -26,9 +27,10 @@ class WeatherCard extends StatelessWidget {
   final bool loading;
   final VoidCallback? onVehicles;
   final VoidCallback? onQrSecurity;
+  final VoidCallback? onTap;
 
   static const purple = CepqarTheme.purple;
-  static const lime = Color(0xFFC8FC06);
+  static const lime = CepqarTheme.lime;
 
   WeatherCondition get _condition =>
       weather?.condition ?? WeatherCondition.partlyCloudy;
@@ -63,7 +65,10 @@ class WeatherCard extends StatelessWidget {
         ? 'Hava yükleniyor'
         : (weather?.description ?? 'Hava durumu kullanılamıyor');
 
-    return SizedBox(
+    return GestureDetector(
+      behavior:HitTestBehavior.opaque,
+      onTap:onTap,
+      child:SizedBox(
       height: 138,
       width: double.infinity,
       child: ClipRRect(
@@ -293,6 +298,7 @@ class WeatherCard extends StatelessWidget {
           ],
         ),
       ),
+    ),
     );
   }
 

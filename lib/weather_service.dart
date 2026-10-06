@@ -14,61 +14,220 @@ enum WeatherCondition {
   night,
 }
 
+class WeatherHourlyForecast {
+  const WeatherHourlyForecast({
+    required this.time,
+    required this.condition,
+    required this.conditionCode,
+    required this.isDay,
+    this.temperature,
+    this.feelsLike,
+    this.humidity,
+    this.windSpeed,
+    this.visibility,
+    this.precipitationProbability,
+  });
+
+  final DateTime time;
+  final WeatherCondition condition;
+  final int conditionCode;
+  final bool isDay;
+  final double? temperature;
+  final double? feelsLike;
+  final double? humidity;
+  final double? windSpeed;
+  final double? visibility;
+  final double? precipitationProbability;
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+        'time': time.toIso8601String(),
+        'condition': condition.name,
+        'conditionCode': conditionCode,
+        'isDay': isDay,
+        'temperature': temperature,
+        'feelsLike': feelsLike,
+        'humidity': humidity,
+        'windSpeed': windSpeed,
+        'visibility': visibility,
+        'precipitationProbability': precipitationProbability,
+      };
+
+  static WeatherHourlyForecast? fromJson(Map<String, dynamic> json) {
+    final time = DateTime.tryParse('${json['time'] ?? ''}');
+    if (time == null) return null;
+    final code = WeatherService.integer(json['conditionCode']) ?? 2;
+    final isDay = json['isDay'] != false;
+    return WeatherHourlyForecast(
+      time: time,
+      condition: WeatherService.conditionFromWmo(code, isDay: isDay),
+      conditionCode: code,
+      isDay: isDay,
+      temperature: WeatherService.number(json['temperature']),
+      feelsLike: WeatherService.number(json['feelsLike']),
+      humidity: WeatherService.number(json['humidity']),
+      windSpeed: WeatherService.number(json['windSpeed']),
+      visibility: WeatherService.number(json['visibility']),
+      precipitationProbability:
+          WeatherService.number(json['precipitationProbability']),
+    );
+  }
+}
+
+class WeatherDailyForecast {
+  const WeatherDailyForecast({
+    required this.date,
+    required this.condition,
+    required this.conditionCode,
+    this.maxTemperature,
+    this.minTemperature,
+    this.precipitationProbability,
+    this.sunrise,
+    this.sunset,
+  });
+
+  final DateTime date;
+  final WeatherCondition condition;
+  final int conditionCode;
+  final double? maxTemperature;
+  final double? minTemperature;
+  final double? precipitationProbability;
+  final DateTime? sunrise;
+  final DateTime? sunset;
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+        'date': date.toIso8601String(),
+        'condition': condition.name,
+        'conditionCode': conditionCode,
+        'maxTemperature': maxTemperature,
+        'minTemperature': minTemperature,
+        'precipitationProbability': precipitationProbability,
+        'sunrise': sunrise?.toIso8601String(),
+        'sunset': sunset?.toIso8601String(),
+      };
+
+  static WeatherDailyForecast? fromJson(Map<String, dynamic> json) {
+    final date = DateTime.tryParse('${json['date'] ?? ''}');
+    if (date == null) return null;
+    final code = WeatherService.integer(json['conditionCode']) ?? 2;
+    return WeatherDailyForecast(
+      date: date,
+      condition: WeatherService.conditionFromWmo(code, isDay: true),
+      conditionCode: code,
+      maxTemperature: WeatherService.number(json['maxTemperature']),
+      minTemperature: WeatherService.number(json['minTemperature']),
+      precipitationProbability:
+          WeatherService.number(json['precipitationProbability']),
+      sunrise: DateTime.tryParse('${json['sunrise'] ?? ''}'),
+      sunset: DateTime.tryParse('${json['sunset'] ?? ''}'),
+    );
+  }
+}
+
 class WeatherSnapshot {
   const WeatherSnapshot({
     required this.condition,
+    required this.conditionCode,
     required this.location,
     required this.description,
     required this.fetchedAt,
     required this.isDay,
     this.temperature,
-    this.maxTemperature,
+    this.feelsLike,
     this.minTemperature,
+    this.maxTemperature,
+    this.humidity,
+    this.windSpeed,
+    this.visibility,
+    this.precipitationProbability,
+    this.hourlyForecast = const [],
+    this.dailyForecast = const [],
+    this.sunrise,
+    this.sunset,
     this.isFallback = false,
   });
 
   final WeatherCondition condition;
+  final int conditionCode;
   final String location;
   final String description;
   final DateTime fetchedAt;
   final bool isDay;
   final double? temperature;
-  final double? maxTemperature;
+  final double? feelsLike;
   final double? minTemperature;
+  final double? maxTemperature;
+  final double? humidity;
+  final double? windSpeed;
+  final double? visibility;
+  final double? precipitationProbability;
+  final List<WeatherHourlyForecast> hourlyForecast;
+  final List<WeatherDailyForecast> dailyForecast;
+  final DateTime? sunrise;
+  final DateTime? sunset;
   final bool isFallback;
 
   Map<String, dynamic> toJson() => <String, dynamic>{
         'condition': condition.name,
+        'conditionCode': conditionCode,
         'location': location,
         'description': description,
         'fetchedAt': fetchedAt.toUtc().toIso8601String(),
         'isDay': isDay,
         'temperature': temperature,
-        'maxTemperature': maxTemperature,
+        'feelsLike': feelsLike,
         'minTemperature': minTemperature,
+        'maxTemperature': maxTemperature,
+        'humidity': humidity,
+        'windSpeed': windSpeed,
+        'visibility': visibility,
+        'precipitationProbability': precipitationProbability,
+        'hourlyForecast': hourlyForecast.map((item) => item.toJson()).toList(),
+        'dailyForecast': dailyForecast.map((item) => item.toJson()).toList(),
+        'sunrise': sunrise?.toIso8601String(),
+        'sunset': sunset?.toIso8601String(),
         'isFallback': isFallback,
       };
 
   static WeatherSnapshot? fromJson(Map<String, dynamic> json) {
     try {
-      final conditionName = '${json['condition'] ?? ''}';
-      final condition = WeatherCondition.values.firstWhere(
-        (value) => value.name == conditionName,
-        orElse: () => WeatherCondition.partlyCloudy,
-      );
       final fetchedAt = DateTime.tryParse('${json['fetchedAt'] ?? ''}');
       if (fetchedAt == null) return null;
-      double? number(dynamic value) =>
-          value is num ? value.toDouble() : double.tryParse('$value');
+      final code = WeatherService.integer(json['conditionCode']) ?? 2;
+      final isDay = json['isDay'] != false;
+      final hourly = (json['hourlyForecast'] as List? ?? const [])
+          .whereType<Map>()
+          .map((item) => WeatherHourlyForecast.fromJson(
+                Map<String, dynamic>.from(item),
+              ))
+          .whereType<WeatherHourlyForecast>()
+          .toList();
+      final daily = (json['dailyForecast'] as List? ?? const [])
+          .whereType<Map>()
+          .map((item) => WeatherDailyForecast.fromJson(
+                Map<String, dynamic>.from(item),
+              ))
+          .whereType<WeatherDailyForecast>()
+          .toList();
       return WeatherSnapshot(
-        condition: condition,
+        condition: WeatherService.conditionFromWmo(code, isDay: isDay),
+        conditionCode: code,
         location: '${json['location'] ?? ''}'.trim(),
         description: '${json['description'] ?? ''}'.trim(),
         fetchedAt: fetchedAt,
-        isDay: json['isDay'] != false,
-        temperature: number(json['temperature']),
-        maxTemperature: number(json['maxTemperature']),
-        minTemperature: number(json['minTemperature']),
+        isDay: isDay,
+        temperature: WeatherService.number(json['temperature']),
+        feelsLike: WeatherService.number(json['feelsLike']),
+        minTemperature: WeatherService.number(json['minTemperature']),
+        maxTemperature: WeatherService.number(json['maxTemperature']),
+        humidity: WeatherService.number(json['humidity']),
+        windSpeed: WeatherService.number(json['windSpeed']),
+        visibility: WeatherService.number(json['visibility']),
+        precipitationProbability:
+            WeatherService.number(json['precipitationProbability']),
+        hourlyForecast: hourly,
+        dailyForecast: daily,
+        sunrise: DateTime.tryParse('${json['sunrise'] ?? ''}'),
+        sunset: DateTime.tryParse('${json['sunset'] ?? ''}'),
         isFallback: json['isFallback'] == true,
       );
     } catch (_) {
@@ -81,7 +240,7 @@ class WeatherService {
   WeatherService({http.Client? client}) : _client = client ?? http.Client();
 
   static const cacheDuration = Duration(minutes: 30);
-  static const _cacheKey = 'owner_weather_snapshot_v1';
+  static const _cacheKey = 'owner_weather_snapshot_v2';
   static const _lastLatKey = 'owner_weather_last_lat';
   static const _lastLonKey = 'owner_weather_last_lon';
   static const _lastPlaceKey = 'owner_weather_last_place';
@@ -113,8 +272,9 @@ class WeatherService {
               .trim();
       return WeatherSnapshot(
         condition: WeatherCondition.partlyCloudy,
+        conditionCode: 2,
         location: fallbackPlace.isEmpty ? 'İstanbul' : fallbackPlace,
-        description: 'Hava durumu kullanılamıyor',
+        description: 'Hava durumu şu anda alınamıyor.',
         fetchedAt: DateTime.now().toUtc(),
         isDay: true,
         isFallback: true,
@@ -128,9 +288,7 @@ class WeatherService {
     try {
       final decoded = jsonDecode(raw);
       if (decoded is! Map) return null;
-      return WeatherSnapshot.fromJson(
-        Map<String, dynamic>.from(decoded),
-      );
+      return WeatherSnapshot.fromJson(Map<String, dynamic>.from(decoded));
     } catch (_) {
       return null;
     }
@@ -213,8 +371,8 @@ class WeatherService {
       throw Exception('WEATHER_CITY_NOT_FOUND');
     }
     final item = Map<String, dynamic>.from(results.first as Map);
-    final lat = _number(item['latitude']);
-    final lon = _number(item['longitude']);
+    final lat = number(item['latitude']);
+    final lon = number(item['longitude']);
     if (lat == null || lon == null) throw Exception('WEATHER_CITY_INVALID');
     final label = '${item['name'] ?? city}'.trim();
     return _WeatherLocation(
@@ -266,37 +424,148 @@ class WeatherService {
       <String, String>{
         'latitude': location.latitude.toStringAsFixed(5),
         'longitude': location.longitude.toStringAsFixed(5),
-        'current': 'temperature_2m,weather_code,is_day',
-        'daily': 'temperature_2m_max,temperature_2m_min',
+        'current':
+            'temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,is_day,wind_speed_10m',
+        'hourly':
+            'temperature_2m,apparent_temperature,relative_humidity_2m,precipitation_probability,weather_code,wind_speed_10m,visibility,is_day',
+        'daily':
+            'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset',
         'timezone': 'auto',
-        'forecast_days': '1',
+        'forecast_days': '7',
       },
     );
-    final response = await _client.get(uri).timeout(const Duration(seconds: 10));
+    final response = await _client.get(uri).timeout(const Duration(seconds: 12));
     if (response.statusCode != 200) throw Exception('WEATHER_API_FAILED');
     final body = jsonDecode(response.body);
-    if (body is! Map || body['current'] is! Map || body['daily'] is! Map) {
+    if (body is! Map ||
+        body['current'] is! Map ||
+        body['hourly'] is! Map ||
+        body['daily'] is! Map) {
       throw Exception('WEATHER_API_INVALID');
     }
+
     final current = Map<String, dynamic>.from(body['current'] as Map);
+    final hourly = Map<String, dynamic>.from(body['hourly'] as Map);
     final daily = Map<String, dynamic>.from(body['daily'] as Map);
-    final code = _integer(current['weather_code']) ?? 2;
-    final isDay = (_integer(current['is_day']) ?? 1) == 1;
-    final maxValues = daily['temperature_2m_max'];
-    final minValues = daily['temperature_2m_min'];
+    final code = integer(current['weather_code']) ?? 2;
+    final isDay = (integer(current['is_day']) ?? 1) == 1;
+
+    final hourlyItems = _parseHourly(hourly);
+    final dailyItems = _parseDaily(daily);
+    final now = DateTime.now();
+    WeatherHourlyForecast? nearest;
+    if (hourlyItems.isNotEmpty) {
+      nearest = hourlyItems.reduce((a, b) =>
+          a.time.difference(now).abs() <= b.time.difference(now).abs() ? a : b);
+    }
+    final today = dailyItems.isEmpty ? null : dailyItems.first;
 
     return WeatherSnapshot(
       condition: conditionFromWmo(code, isDay: isDay),
+      conditionCode: code,
       location: location.label,
       description: descriptionFromWmo(code, isDay: isDay),
       fetchedAt: DateTime.now().toUtc(),
       isDay: isDay,
-      temperature: _number(current['temperature_2m']),
-      maxTemperature:
-          maxValues is List && maxValues.isNotEmpty ? _number(maxValues.first) : null,
-      minTemperature:
-          minValues is List && minValues.isNotEmpty ? _number(minValues.first) : null,
+      temperature: number(current['temperature_2m']),
+      feelsLike: number(current['apparent_temperature']) ?? nearest?.feelsLike,
+      minTemperature: today?.minTemperature,
+      maxTemperature: today?.maxTemperature,
+      humidity: number(current['relative_humidity_2m']) ?? nearest?.humidity,
+      windSpeed: number(current['wind_speed_10m']) ?? nearest?.windSpeed,
+      visibility: nearest?.visibility,
+      precipitationProbability: nearest?.precipitationProbability,
+      hourlyForecast: _upcomingHourly(hourlyItems, now),
+      dailyForecast: dailyItems.take(7).toList(),
+      sunrise: today?.sunrise,
+      sunset: today?.sunset,
     );
+  }
+
+  List<WeatherHourlyForecast> _parseHourly(Map<String, dynamic> data) {
+    final times = data['time'] as List? ?? const [];
+    final temperatures = data['temperature_2m'] as List? ?? const [];
+    final feels = data['apparent_temperature'] as List? ?? const [];
+    final humidity = data['relative_humidity_2m'] as List? ?? const [];
+    final precipitation =
+        data['precipitation_probability'] as List? ?? const [];
+    final codes = data['weather_code'] as List? ?? const [];
+    final winds = data['wind_speed_10m'] as List? ?? const [];
+    final visibility = data['visibility'] as List? ?? const [];
+    final dayFlags = data['is_day'] as List? ?? const [];
+    final length = [
+      times.length,
+      temperatures.length,
+      codes.length,
+    ].reduce((a, b) => a < b ? a : b);
+    final result = <WeatherHourlyForecast>[];
+    for (var i = 0; i < length; i++) {
+      final time = DateTime.tryParse('${times[i]}');
+      if (time == null) continue;
+      final code = integer(codes[i]) ?? 2;
+      final isDay = i < dayFlags.length ? (integer(dayFlags[i]) ?? 1) == 1 : true;
+      result.add(WeatherHourlyForecast(
+        time: time,
+        condition: conditionFromWmo(code, isDay: isDay),
+        conditionCode: code,
+        isDay: isDay,
+        temperature: number(temperatures[i]),
+        feelsLike: i < feels.length ? number(feels[i]) : null,
+        humidity: i < humidity.length ? number(humidity[i]) : null,
+        windSpeed: i < winds.length ? number(winds[i]) : null,
+        visibility: i < visibility.length ? number(visibility[i]) : null,
+        precipitationProbability:
+            i < precipitation.length ? number(precipitation[i]) : null,
+      ));
+    }
+    return result;
+  }
+
+  List<WeatherHourlyForecast> _upcomingHourly(
+    List<WeatherHourlyForecast> items,
+    DateTime now,
+  ) {
+    final threshold = now.subtract(const Duration(minutes: 45));
+    final upcoming = items.where((item) => item.time.isAfter(threshold)).toList();
+    return upcoming.take(36).toList();
+  }
+
+  List<WeatherDailyForecast> _parseDaily(Map<String, dynamic> data) {
+    final dates = data['time'] as List? ?? const [];
+    final codes = data['weather_code'] as List? ?? const [];
+    final maxValues = data['temperature_2m_max'] as List? ?? const [];
+    final minValues = data['temperature_2m_min'] as List? ?? const [];
+    final precip = data['precipitation_probability_max'] as List? ?? const [];
+    final sunriseValues = data['sunrise'] as List? ?? const [];
+    final sunsetValues = data['sunset'] as List? ?? const [];
+    final length = [
+      dates.length,
+      codes.length,
+      maxValues.length,
+      minValues.length,
+    ].reduce((a, b) => a < b ? a : b);
+    final result = <WeatherDailyForecast>[];
+    for (var i = 0; i < length; i++) {
+      final date = DateTime.tryParse('${dates[i]}');
+      if (date == null) continue;
+      final code = integer(codes[i]) ?? 2;
+      result.add(WeatherDailyForecast(
+        date: date,
+        condition: conditionFromWmo(code, isDay: true),
+        conditionCode: code,
+        maxTemperature: number(maxValues[i]),
+        minTemperature: number(minValues[i]),
+        precipitationProbability:
+            i < precip.length ? number(precip[i]) : null,
+        sunrise: i < sunriseValues.length
+            ? DateTime.tryParse('${sunriseValues[i]}')
+            : null,
+        sunset: i < sunsetValues.length
+            ? DateTime.tryParse('${sunsetValues[i]}')
+            : null,
+      ));
+    }
+    return result;
   }
 
   static WeatherCondition conditionFromWmo(
@@ -321,6 +590,7 @@ class WeatherService {
 
   static String descriptionFromWmo(int code, {required bool isDay}) {
     if (!isDay && code == 0) return 'Açık gece';
+    if (!isDay && (code == 1 || code == 2)) return 'Parçalı bulutlu gece';
     if (code == 0) return 'Açık';
     if (code == 1) return 'Az bulutlu';
     if (code == 2) return 'Parçalı bulutlu';
@@ -335,10 +605,10 @@ class WeatherService {
     return 'Parçalı bulutlu';
   }
 
-  static double? _number(dynamic value) =>
+  static double? number(dynamic value) =>
       value is num ? value.toDouble() : double.tryParse('$value');
 
-  static int? _integer(dynamic value) =>
+  static int? integer(dynamic value) =>
       value is num ? value.toInt() : int.tryParse('$value');
 
   void dispose() => _client.close();

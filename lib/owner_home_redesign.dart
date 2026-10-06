@@ -15,6 +15,7 @@ import 'roadside_help_page.dart';
 import 'cepqontag_store_page.dart';
 import 'weather_card.dart';
 import 'weather_service.dart';
+import 'weather_details_page.dart';
 
 class OwnerHomeRedesign extends StatefulWidget{
   const OwnerHomeRedesign({
@@ -140,6 +141,19 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       load(),
       _loadWeather(force:true),
     ]);
+  }
+
+  void _openWeatherDetails(){
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder:(_)=>WeatherDetailsPage(
+          service:_weatherService,
+          initialWeather:weather,
+          onUpdated:(next){if(mounted)setState(()=>weather=next);},
+        ),
+      ),
+    );
   }
 
   String get _quickAccessKey{
@@ -543,6 +557,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             loading:weatherLoading,
             onVehicles:widget.vehicles,
             onQrSecurity:()=>widget.shortcut('qr_security'),
+            onTap:_openWeatherDetails,
           ),
         ]),
       ),

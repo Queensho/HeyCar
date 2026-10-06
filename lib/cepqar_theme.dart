@@ -24,6 +24,7 @@ class CepqarTheme {
   }
 
   static const purple = Color(0xFF713BFF);
+  static const lime = Color(0xFFC8FC06);
   static const darkBg = Color(0xFF07111F);
   static const darkPanel = Color(0xFF101A30);
   static const darkLine = Color(0xFF27355D);
