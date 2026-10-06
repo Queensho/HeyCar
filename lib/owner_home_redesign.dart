@@ -489,17 +489,24 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             height:84,
             padding:const EdgeInsets.fromLTRB(16,12,13,11),
             decoration:BoxDecoration(
-              color:light?Colors.white.withValues(alpha:.88):const Color(0xFF0D1425).withValues(alpha:.94),
-              borderRadius:BorderRadius.circular(18),
-              border:Border.all(
-                color:light?const Color(0xFFE7E3F0):const Color(0xFF2B3550),
+              gradient:const LinearGradient(
+                begin:Alignment.topLeft,
+                end:Alignment.bottomRight,
+                colors:[
+                  Color(0xFFD8FF62),
+                  Color(0xFFC8FF45),
+                  Color(0xFFB9FF2E),
+                ],
+                stops:[0,.52,1],
               ),
-              boxShadow:light&&!kIsWeb
+              borderRadius:BorderRadius.circular(18),
+              border:Border.all(color:const Color(0xFFA9E822)),
+              boxShadow:!kIsWeb
                 ?[
                     BoxShadow(
-                      color:const Color(0xFF5F38C9).withValues(alpha:.06),
-                      blurRadius:12,
-                      offset:const Offset(0,4),
+                      color:const Color(0xFF7A35F4).withValues(alpha:.10),
+                      blurRadius:14,
+                      offset:const Offset(0,5),
                     ),
                   ]
                 :null,
@@ -515,8 +522,8 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                     shape:BoxShape.circle,
                     gradient:RadialGradient(
                       colors:[
-                        const Color(0xFF9A6CFF).withValues(alpha:light ? .14 : .17),
-                        const Color(0xFF9A6CFF).withValues(alpha:light ? .04 : .06),
+                        const Color(0xFF7A35F4).withValues(alpha:.14),
+                        const Color(0xFF7A35F4).withValues(alpha:.04),
                         Colors.transparent,
                       ],
                       stops:const [0,.56,1],
@@ -535,8 +542,8 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                           maxLines:1,
                           overflow:TextOverflow.ellipsis,
                           text:TextSpan(
-                            style:TextStyle(
-                              color:text,
+                            style:const TextStyle(
+                              color:Color(0xFF10131B),
                               fontSize:21.5,
                               height:1.05,
                               letterSpacing:-.7,
@@ -559,8 +566,8 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                           'Aracınızla dünya sizinle iletişimde.',
                           maxLines:1,
                           overflow:TextOverflow.ellipsis,
-                          style:TextStyle(
-                            color:muted,
+                          style:const TextStyle(
+                            color:Color(0xFF4B5235),
                             fontSize:11.5,
                             fontWeight:FontWeight.w600,
                           ),
