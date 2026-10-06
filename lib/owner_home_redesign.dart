@@ -1532,14 +1532,14 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       'story_carousel':(_)=>stories.isEmpty?const SizedBox.shrink():OwnerStoryHighlights(
         items:stories,service:_storyService,shortcut:widget.shortcut,onChanged:()=>_loadStories(force:true),
       ),
-      'quick_actions':(_)=>_managedQuickActions(),
+      'quick_actions':(_)=>_appUiConfig.version<=1?quickRow():_managedQuickActions(),
       'monthly_summary':(_)=>monthly(),
-      'services_grid':(_)=>_managedServices(),
+      'services_grid':(_)=>_appUiConfig.version<=1?Column(children:[section('Hizmetler',widget.services),servicesGrid()]):_managedServices(),
       'promo_banner':(_)=>_appUiConfig.banners.isEmpty?const SizedBox.shrink():_managedBanner(_appUiConfig.banners.first),
       'recent_notifications':(_)=>Column(children:[section('Son Bildirimler',widget.notifications),latestCard()]),
       'image_banner':(x)=>_directBanner(x),
       'text_banner':(x)=>_directBanner(x),
-      'spacer':(x)=>SizedBox(height:((x.config['height'] is num?(x.config['height'] as num).toDouble():0).clamp(0,64))),
+      'spacer':(x)=>SizedBox(height:((x.config['height'] is num?(x.config['height'] as num).toDouble():0).clamp(0,64)).toDouble()),
     });
     return registry.build(component)??const SizedBox.shrink();
   }
