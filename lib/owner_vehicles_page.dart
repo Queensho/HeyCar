@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'onboarding_backend.dart';
 import 'qr_backend.dart';
@@ -362,16 +363,7 @@ class _VehicleReferenceCard extends StatelessWidget{
               Expanded(
                 flex:38,
                 child:Stack(children:[
-                  Positioned.fill(
-                    child:Padding(
-                      padding:const EdgeInsets.fromLTRB(2,5,4,1),
-                      child:Image.asset(
-                        'assets/Arac.png',
-                        fit:BoxFit.contain,
-                        errorBuilder:(_,__,___)=>const Icon(Icons.directions_car_filled_rounded,color:_purple,size:50),
-                      ),
-                    ),
-                  ),
+                  Positioned.fill(child:Center(child:_VehicleBrandLogo(vehicle:v,make:make))),
                   if(selected)Positioned(
                     left:0,top:0,
                     child:Container(
@@ -476,6 +468,24 @@ class _VehicleReferenceCard extends StatelessWidget{
   }
 }
 
+class _VehicleBrandLogo extends StatelessWidget{
+  const _VehicleBrandLogo({required this.vehicle,required this.make});
+  final Map<String,dynamic> vehicle;
+  final String make;
+  @override Widget build(BuildContext context){
+    final raw=vehicle['brandLogo'];
+    final logo=raw is Map?Map<String,dynamic>.from(raw):const <String,dynamic>{};
+    final url='${logo['url']??''}'.trim();
+    final letter=make.trim().isEmpty?'?':make.trim().characters.first.toUpperCase();
+    Widget fallback()=>Container(
+      width:72,height:72,alignment:Alignment.center,
+      decoration:BoxDecoration(color:_purple.withValues(alpha:CepqarTheme.isLight?.08:.16),shape:BoxShape.circle,border:Border.all(color:_purple.withValues(alpha:.16))),
+      child:Text(letter,style:const TextStyle(color:_purple,fontSize:28,fontWeight:FontWeight.w900)),
+    );
+    if(!url.toLowerCase().startsWith('https://'))return fallback();
+    return SizedBox(width:72,height:72,child:CachedNetworkImage(imageUrl:url,cacheKey:url,fit:BoxFit.contain,fadeInDuration:const Duration(milliseconds:120),placeholder:(_,__)=>fallback(),errorWidget:(_,__,___)=>fallback()));
+  }
+}
 class _VehicleAction extends StatelessWidget{
   const _VehicleAction({required this.icon,required this.label,required this.onTap});
   final IconData icon;
