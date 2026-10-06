@@ -57,7 +57,8 @@ module.exports = function registerVehicleManagementRoutes(app, pool) {
         : 'free';
       const familyPremium = premiumPlan==='family';
       const vehicles = await pool.query(`
-        SELECT v.id,v.plate,v.make,v.model,v.color,v.created_at,
+        SELECT v.id,v.plate,v.make,v.model,v.color,v.model_year,v.vehicle_type,v.fuel_type,v.created_at,
+               COALESCE(ms.current_km,0)::int AS mileage,
                q.token AS qr_token,q.status AS qr_status,q.scan_secret AS qr_scan_secret,
                (SELECT COUNT(*)::int FROM vehicle_drivers vd WHERE vd.vehicle_id=v.id) AS driver_count,
                EXISTS(
@@ -67,6 +68,7 @@ module.exports = function registerVehicleManagementRoutes(app, pool) {
                ) AS has_active_driver,
                (SELECT MAX(qsh.created_at) FROM qr_scan_history qsh WHERE qsh.vehicle_id=v.id) AS last_scan_at
           FROM vehicles v
+          LEFT JOIN vehicle_maintenance_state ms ON ms.vehicle_id::text=v.id::text
           LEFT JOIN LATERAL (
             SELECT token,status,scan_secret FROM qr_tags
              WHERE vehicle_id=v.id AND status='active'
@@ -93,8 +95,12 @@ module.exports = function registerVehicleManagementRoutes(app, pool) {
     const make = String(req.body?.make || '').trim().slice(0,80);
     const model = String(req.body?.model || '').trim().slice(0,80);
     const color = String(req.body?.color || '').trim().slice(0,40);
+    const modelYearRaw=req.body?.modelYear??req.body?.model_year??req.body?.year;
+    const modelYear=modelYearRaw==null||modelYearRaw===''?null:Number(modelYearRaw);
+    const vehicleType=String(req.body?.vehicleType??req.body?.vehicle_type??'').trim().slice(0,40)||null;
+    const fuelType=String(req.body?.fuelType??req.body?.fuel_type??'').trim().slice(0,40)||null;
     if (!owner) return res.status(401).json({ error: 'OWNER_REQUIRED' });
-    if (!plate || !make) return res.status(400).json({ error: 'INVALID_INPUT' });
+    if (!plate || !make || (modelYear!==null&&(!Number.isInteger(modelYear)||modelYear<1900||modelYear>new Date().getFullYear()+1))) return res.status(400).json({ error: 'INVALID_INPUT' });
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -120,7 +126,7 @@ module.exports = function registerVehicleManagementRoutes(app, pool) {
         [normalizedPlate]
       );
       if (duplicate.rows.length) { await client.query('ROLLBACK'); return res.status(409).json({ error:'PLATE_EXISTS' }); }
-      const created = await client.query(`INSERT INTO vehicles(owner_id,plate,make,model,color) VALUES($1,$2,$3,$4,$5) RETURNING id,plate,make,model,color,created_at`, [owner,plate,make,model || null,color || null]);
+      const created = await client.query(`INSERT INTO vehicles(owner_id,plate,make,model,color,model_year,vehicle_type,fuel_type) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id,plate,make,model,color,model_year,vehicle_type,fuel_type,created_at`, [owner,plate,make,model || null,color || null,modelYear,vehicleType,fuelType]);
       await client.query('COMMIT');
       const brandLogo=await cachedLogo(pool,created.rows[0].make);
       if(!brandLogo.available)queueResolve(pool,created.rows[0].make,publicBase(req));
@@ -146,7 +152,16 @@ module.exports = function registerVehicleManagementRoutes(app, pool) {
     const plate = body.plate.trim().toUpperCase();
     const make = body.make.trim();
     const model = (body.model || '').trim();
-    if (!plate || !make || plate.length > 20 || make.length > 80 || model.length > 80) {
+    const color = body.color==null?null:String(body.color).trim().slice(0,40);
+    const modelYearRaw=body.modelYear??body.model_year??body.year;
+    const modelYear=modelYearRaw==null||modelYearRaw===''?null:Number(modelYearRaw);
+    const vehicleType=body.vehicleType==null&&body.vehicle_type==null?null:String(body.vehicleType??body.vehicle_type).trim().slice(0,40)||null;
+    const fuelType=body.fuelType==null&&body.fuel_type==null?null:String(body.fuelType??body.fuel_type).trim().slice(0,40)||null;
+    const mileageRaw=body.mileage??body.currentKm??body.current_km;
+    const mileage=mileageRaw==null||mileageRaw===''?null:Number(mileageRaw);
+    if (!plate || !make || plate.length > 20 || make.length > 80 || model.length > 80 ||
+        (modelYear!==null&&(!Number.isInteger(modelYear)||modelYear<1900||modelYear>new Date().getFullYear()+1)) ||
+        (mileage!==null&&(!Number.isInteger(mileage)||mileage<0||mileage>9999999))) {
       return res.status(400).json({ error: 'INVALID_INPUT' });
     }
     let client;
@@ -171,9 +186,14 @@ module.exports = function registerVehicleManagementRoutes(app, pool) {
         return res.status(409).json({ error: 'PLATE_EXISTS' });
       }
       const updated = await client.query(
-        'UPDATE vehicles SET plate=$1,make=$2,model=$3 WHERE id::text=$4 AND owner_id::text=$5 RETURNING id,plate,make,model,color,created_at',
-        [plate, make, model || null, vehicleId, owner]);
+        'UPDATE vehicles SET plate=$1,make=$2,model=$3,color=COALESCE($4,color),model_year=$5,vehicle_type=$6,fuel_type=$7 WHERE id::text=$8 AND owner_id::text=$9 RETURNING id,plate,make,model,color,model_year,vehicle_type,fuel_type,created_at',
+        [plate, make, model || null, color, modelYear, vehicleType, fuelType, vehicleId, owner]);
+      if(mileage!==null){
+        await client.query(`INSERT INTO vehicle_maintenance_state(vehicle_id,current_km,updated_at) VALUES($1,$2,NOW())
+          ON CONFLICT(vehicle_id) DO UPDATE SET current_km=EXCLUDED.current_km,updated_at=NOW()`,[vehicleId,mileage]);
+      }
       await client.query('COMMIT');
+      if(mileage!==null)updated.rows[0].mileage=mileage;
       const brandLogo=await cachedLogo(pool,updated.rows[0].make);
       if(!brandLogo.available)queueResolve(pool,updated.rows[0].make,publicBase(req));
       return res.json({ ok: true, vehicle:{...updated.rows[0],brandLogo} });

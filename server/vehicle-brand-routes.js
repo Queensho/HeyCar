@@ -17,6 +17,13 @@ module.exports=function registerVehicleBrandRoutes(app,pool,adminGuard){
     return res.sendFile(path.join(dir,name));
   });
 
+  app.get('/api/vehicle-brands',async(_req,res)=>{
+    try{
+      const q=await pool.query(`SELECT id,name,normalized_name,logo_url,logo_status,logo_source FROM vehicle_brands ORDER BY name`);
+      return res.json({ok:true,brands:q.rows.map(x=>({id:x.id,name:x.name,normalizedName:x.normalized_name,brandLogo:logoPayload(x)}))});
+    }catch(e){console.error('vehicle brands',e);return res.status(500).json({error:'SERVER_ERROR'});}
+  });
+
   app.get('/api/admin/vehicle-brands',guard,async(_req,res)=>{
     try{
       const q=await pool.query(`SELECT b.*,COALESCE(json_agg(a.alias ORDER BY a.alias) FILTER(WHERE a.id IS NOT NULL),'[]') aliases FROM vehicle_brands b LEFT JOIN vehicle_brand_aliases a ON a.brand_id=b.id GROUP BY b.id ORDER BY b.name`);
