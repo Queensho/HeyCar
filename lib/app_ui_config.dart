@@ -148,6 +148,7 @@ class AppUiServiceItem extends AppUiEntry{
   String get title=>'${raw['title']??''}';
   String get subtitle=>'${raw['subtitle']??''}';
   String get icon=>'${raw['icon']??'campaign'}';
+  String get iconUrl=>'${raw['iconUrl']??''}';
   String get iconToken=>'${raw['iconToken']??'primary'}';
   String get backgroundToken=>'${raw['backgroundToken']??'surface'}';
   String get imageUrl=>'${raw['imageUrl']??''}';
