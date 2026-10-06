@@ -354,7 +354,7 @@ module.exports=function registerAppBuilderRoutes(app,pool,adminGuard){
       const source=await db.query('SELECT * FROM app_layout_versions WHERE id::text=$1 LIMIT 1',[req.params.id]);
       if(!source.rowCount){await db.query('ROLLBACK');return res.status(404).json({error:'VERSION_NOT_FOUND'});}
       const config=validateConfig(source.rows[0].config_json);
-      const n=await db.query('SELECT COALESCE(MAX(version),0)+1 AS n FROM app_layout_versions FOR SHARE');
+      const n=await db.query('SELECT COALESCE(MAX(version),0)+1 AS n FROM app_layout_versions');
       const version=Number(n.rows[0].n);
       await db.query("UPDATE app_layout_versions SET status='archived',updated_at=NOW() WHERE status IN ('published','draft')");
       const q=await db.query(

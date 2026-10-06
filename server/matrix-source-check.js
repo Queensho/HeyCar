@@ -310,6 +310,6 @@ requireText(
 );
 requireText(
   'app-builder-routes.js',
-  "If-None-Match",
+  "if-none-match",
   'APP_BUILDER_ETAG_HINT_MISSING'
 );
