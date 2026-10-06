@@ -80,12 +80,11 @@ async function resolveExternal(pool,brand,base){
   if(!brand||brand.logo_source==='manual')return brand;
   if(brand.logo_status==='ready'&&brand.logo_url)return brand;
   if(brand.last_checked_at&&Date.now()-new Date(brand.last_checked_at).getTime()<NEGATIVE_TTL_MS&&['not_found','error'].includes(brand.logo_status))return brand;
-  const template=String(process.env.VEHICLE_LOGO_PROVIDER_URL||'').trim();
-  if(!template){return brand;}
+  const template=String(process.env.VEHICLE_LOGO_PROVIDER_URL||'https://raw.githubusercontent.com/filippofilip95/car-logos-dataset/master/logos/optimized/{slug}.png').trim();
   const providerKey=String(process.env.VEHICLE_LOGO_API_KEY||'').trim();
   const source=template.replace('{brand}',encodeURIComponent(brand.name)).replace('{slug}',encodeURIComponent(brand.slug)).replace('{key}',encodeURIComponent(providerKey));
-  const allowed=String(process.env.VEHICLE_LOGO_ALLOWED_HOSTS||'').split(',').map(x=>x.trim().toLowerCase()).filter(Boolean);
-  if(!allowed.length)throw new Error('VEHICLE_LOGO_ALLOWED_HOSTS_REQUIRED');
+  const configuredHosts=String(process.env.VEHICLE_LOGO_ALLOWED_HOSTS||'').split(',').map(x=>x.trim().toLowerCase()).filter(Boolean);
+  const allowed=configuredHosts.length?configuredHosts:['raw.githubusercontent.com'];
   try{
     const img=await fetchImage(source,allowed);
     const dir=process.env.VEHICLE_BRAND_LOGO_DIR||'/opt/heycar/uploads/vehicle-brands';fs.mkdirSync(dir,{recursive:true});
