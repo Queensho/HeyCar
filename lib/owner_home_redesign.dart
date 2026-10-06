@@ -36,6 +36,8 @@ class OwnerHomeRedesign extends StatefulWidget{
 class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   static const purple=Color(0xFF713BFF);
   Timer? timer;
+  Timer? valetTimer;
+  bool _valetRefreshing=false;
   List<Map<String,dynamic>> notices=[];
   Map<String,dynamic>? valetSession;
   String valetDeliveryCode='';
@@ -108,8 +110,44 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   }
   void _startPolling(){
     timer?.cancel();
+    valetTimer?.cancel();
     if(!widget.active)return;
     timer=Timer.periodic(const Duration(seconds:20),(_)=>load(silent:true));
+    valetTimer=Timer.periodic(const Duration(seconds:3),(_)=>_loadValetStatus());
+  }
+
+  Future<void> _loadValetStatus()async{
+    if(_valetRefreshing||!widget.active)return;
+    final vehicleId=QrDraft.vehicleId.trim();
+    if(vehicleId.isEmpty)return;
+    _valetRefreshing=true;
+    try{
+      final r=await OwnerHttp.get(
+        Uri.parse('${OnboardingBackend.baseUrl}/api/owner/valet/$vehicleId'),
+        json:false,
+      );
+      if(r.statusCode!=200)return;
+      final d=r.body.isEmpty?null:jsonDecode(r.body);
+      final next=d is Map&&d['session'] is Map
+        ?Map<String,dynamic>.from(d['session'])
+        :null;
+      if(!mounted)return;
+      final changed=jsonEncode(next)!=jsonEncode(valetSession);
+      if(changed){
+        setState(()=>valetSession=next);
+        if(next==null){
+          final prefs=await SharedPreferences.getInstance();
+          await prefs.remove('owner_valet_delivery_code_$vehicleId');
+          await prefs.remove('owner_valet_delivery_session_$vehicleId');
+          if(mounted&&valetDeliveryCode.isNotEmpty){
+            setState(()=>valetDeliveryCode='');
+          }
+        }
+      }
+    }catch(_){
+    }finally{
+      _valetRefreshing=false;
+    }
   }
   @override void didUpdateWidget(covariant OwnerHomeRedesign oldWidget){
     super.didUpdateWidget(oldWidget);
@@ -120,10 +158,11 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         _startPolling();
       }else{
         timer?.cancel();
+        valetTimer?.cancel();
       }
     }
   }
-  @override void dispose(){timer?.cancel();_weatherService.dispose();super.dispose();}
+  @override void dispose(){timer?.cancel();valetTimer?.cancel();_weatherService.dispose();super.dispose();}
 
   Future<void> _loadWeather({bool force=false})async{
     if(!mounted)return;
@@ -568,8 +607,8 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     'accepted'=>0,
     'parked'=>1,
     'requested'=>2,
-    'retrieving'=>2,
-    'ready'=>3,
+    'retrieving'=>3,
+    'ready'=>4,
     _=>0,
   };
 
@@ -612,7 +651,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   }
 
   Widget _valetTimeline(String status,Color accent){
-    const labels=['Alındı','Park','Getiriliyor','Hazır'];
+    const labels=['Alındı','Park','Talep','Geliyor','Hazır'];
     final current=_valetStep(status);
     return Row(children:List.generate(labels.length,(i){
       final done=i<=current;
@@ -620,18 +659,18 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         child:Row(children:[
           Expanded(child:Column(children:[
             Container(
-              width:18,height:18,
+              width:16,height:16,
               decoration:BoxDecoration(
                 shape:BoxShape.circle,
                 color:done?accent:accent.withValues(alpha:light ? .08 : .12),
                 border:Border.all(color:accent.withValues(alpha:done?1:.35),width:1),
               ),
-              child:Icon(done?Icons.check_rounded:Icons.circle_outlined,color:done?Colors.white:accent,size:11),
+              child:Icon(done?Icons.check_rounded:Icons.circle_outlined,color:done?Colors.white:accent,size:10),
             ),
-            const SizedBox(height:2),
-            Text(labels[i],maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:done?text:muted,fontSize:CepqarTheme.caption,fontWeight:done?FontWeight.w800:FontWeight.w600)),
+            const SizedBox(height:1),
+            Text(labels[i],maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:done?text:muted,fontSize:8.2,fontWeight:done?FontWeight.w800:FontWeight.w600)),
           ])),
-          if(i<labels.length-1)Container(width:8,height:1,color:accent.withValues(alpha:i<current ? .75 : .24)),
+          if(i<labels.length-1)Container(width:4,height:1,color:accent.withValues(alpha:i<current ? .75 : .24)),
         ]),
       );
     }));
@@ -679,8 +718,8 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             :'Araç Çağır';
 
     return Container(
-      height:132,
-      padding:const EdgeInsets.fromLTRB(11,9,10,8),
+      height:140,
+      padding:const EdgeInsets.fromLTRB(11,8,10,7),
       decoration:BoxDecoration(
         color:panel,
         borderRadius:BorderRadius.circular(18),
@@ -705,14 +744,14 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             child:Text(_valetBadge(status),style:TextStyle(color:accent,fontSize:CepqarTheme.caption,fontWeight:FontWeight.w900)),
           ),
         ]),
-        const SizedBox(height:5),
+        const SizedBox(height:4),
         Text(_valetStatusTitle(status),maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:text,fontSize:CepqarTheme.body,fontWeight:FontWeight.w900)),
-        const SizedBox(height:5),
+        const SizedBox(height:4),
         _valetTimeline(status,accent),
-        const Spacer(),
+        const SizedBox(height:4),
         SizedBox(
           width:double.infinity,
-          height:27,
+          height:26,
           child:FilledButton.icon(
             onPressed:canRequest&&!valetRequesting?_requestValetVehicle:null,
             style:FilledButton.styleFrom(
@@ -745,7 +784,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     return Padding(
       padding:const EdgeInsets.symmetric(horizontal:16),
       child:SizedBox(
-        height:132,
+        height:140,
         child:Row(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
         Expanded(
           flex:62,
