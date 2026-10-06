@@ -28,6 +28,7 @@ class _VehicleEditSheetState extends State<VehicleEditSheet>{
   static const types={'car':'Otomobil','motorcycle':'Motosiklet','suv':'SUV','light_commercial':'Hafif Ticari','commercial':'Ticari','minivan':'Minivan','pickup':'Pickup'};
   static const fuels={'gasoline':'Benzin','diesel':'Dizel','lpg':'LPG','hybrid':'Hibrit','electric':'Elektrik'};
   static const colors=['Beyaz','Siyah','Gri','Gümüş','Mavi','Kırmızı','Yeşil','Sarı','Turuncu','Kahverengi','Bej','Mor','Diğer'];
+  static const fallbackBrandNames=['Alfa Romeo','Aprilia','Audi','Benelli','BMW','BMW Motorrad','CFMOTO','Citroën','Cupra','Dacia','Ducati','Fiat','Ford','Harley-Davidson','Honda','Hyundai','Kawasaki','Keeway','Kia','Kymco','KTM','Land Rover','Mercedes-Benz','Nissan','Opel','Peugeot','Piaggio','Porsche','QJMotor','Renault','RKS','SEAT','Skoda','Suzuki','SYM','Tesla','TOGG','Toyota','Triumph','Vespa','Voge','Volkswagen','Volvo','Yamaha'];
 
   String s(String k)=>'${widget.vehicle[k]??''}'.trim();
   @override void initState(){
@@ -59,6 +60,13 @@ class _VehicleEditSheetState extends State<VehicleEditSheet>{
         brands=(d['brands'] as List).whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).toList();
       }
     }catch(_){}
+    if(brands.isEmpty){
+      brands=fallbackBrandNames.map((name)=><String,dynamic>{'name':name}).toList();
+    }
+    if(make.isNotEmpty&&!brands.any((b)=>'${b['name']??''}'.toLowerCase()==make.toLowerCase())){
+      brands.add(<String,dynamic>{'name':make});
+      brands.sort((a,b)=>'${a['name']}'.compareTo('${b['name']}'));
+    }
     if(mounted)setState(()=>loadingBrands=false);
   }
   Future<void> _loadModels(String brand)async{
