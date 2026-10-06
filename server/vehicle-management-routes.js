@@ -1,5 +1,6 @@
 const {ownerId: authenticatedOwnerId}=require('./owner-auth-service');
 const {finalizeVehicleTransfer}=require('./vehicle-transfer-service');
+const {cachedLogo,queueResolve,publicBase}=require('./vehicle-brand-logo-service');
 module.exports = function registerVehicleManagementRoutes(app, pool) {
   const ownerId = (req) => authenticatedOwnerId(req);
 
@@ -66,7 +67,13 @@ module.exports = function registerVehicleManagementRoutes(app, pool) {
           ) q ON TRUE
          WHERE v.owner_id::text=$1
          ORDER BY v.created_at ASC`, [owner]);
-      return res.json({ ok:true, premium, premiumPlan, familyPremium, limit: premium ? 3 : 1, vehicles: vehicles.rows });
+      const base=publicBase(req);
+      const enriched=await Promise.all(vehicles.rows.map(async v=>{
+        const brandLogo=await cachedLogo(pool,v.make);
+        if(!brandLogo.available)queueResolve(pool,v.make,base);
+        return {...v,brandLogo};
+      }));
+      return res.json({ ok:true, premium, premiumPlan, familyPremium, limit: premium ? 3 : 1, vehicles: enriched });
     } catch (e) {
       console.error('owner vehicles list error', e);
       return res.status(500).json({ error: 'SERVER_ERROR' });
@@ -108,7 +115,9 @@ module.exports = function registerVehicleManagementRoutes(app, pool) {
       if (duplicate.rows.length) { await client.query('ROLLBACK'); return res.status(409).json({ error:'PLATE_EXISTS' }); }
       const created = await client.query(`INSERT INTO vehicles(owner_id,plate,make,model,color) VALUES($1,$2,$3,$4,$5) RETURNING id,plate,make,model,color,created_at`, [owner,plate,make,model || null,color || null]);
       await client.query('COMMIT');
-      return res.status(201).json({ ok:true, vehicle:created.rows[0], limit, premium, premiumPlan, familyPremium });
+      const brandLogo=await cachedLogo(pool,created.rows[0].make);
+      if(!brandLogo.available)queueResolve(pool,created.rows[0].make,publicBase(req));
+      return res.status(201).json({ ok:true, vehicle:{...created.rows[0],brandLogo}, limit, premium, premiumPlan, familyPremium });
     } catch (e) {
       await client.query('ROLLBACK').catch(()=>{});
       if(e?.code==='23505'&&String(e?.constraint||'').includes('vehicles_plate_normalized')){
@@ -158,7 +167,9 @@ module.exports = function registerVehicleManagementRoutes(app, pool) {
         'UPDATE vehicles SET plate=$1,make=$2,model=$3 WHERE id::text=$4 AND owner_id::text=$5 RETURNING id,plate,make,model,color,created_at',
         [plate, make, model || null, vehicleId, owner]);
       await client.query('COMMIT');
-      return res.json({ ok: true, vehicle: updated.rows[0] });
+      const brandLogo=await cachedLogo(pool,updated.rows[0].make);
+      if(!brandLogo.available)queueResolve(pool,updated.rows[0].make,publicBase(req));
+      return res.json({ ok: true, vehicle:{...updated.rows[0],brandLogo} });
     } catch (e) {
       if (client) await client.query('ROLLBACK').catch(() => {});
       if (e.code === '23505') return res.status(409).json({ error: 'PLATE_EXISTS' });

@@ -17,6 +17,7 @@ const registerTowingProviderRoutes=require('./towing-provider-routes');
 const registerAdminManagementRoutes=require('./admin-management-routes');
 const registerStoryRoutes=require('./story-routes');
 const registerAppBuilderRoutes=require('./app-builder-routes');
+const registerVehicleBrandRoutes=require('./vehicle-brand-routes');
 const {registerAdminAuthRoutes}=require('./admin-auth-routes');
 const {configureTrustedProxy}=require('./proxy-security');
 const {verify:verifyOwnerToken}=require('./owner-auth-service');
@@ -134,6 +135,7 @@ registerTowingProviderRoutes(app,pool);
 registerAdminManagementRoutes(app,pool,adminAuth);
 registerStoryRoutes(app,pool,adminAuth);
 registerAppBuilderRoutes(app,pool,adminAuth);
+registerVehicleBrandRoutes(app,pool,adminAuth);
 
 app.use((err,_req,res,next)=>{
   if(err?.message==='CORS_ORIGIN_DENIED'){
