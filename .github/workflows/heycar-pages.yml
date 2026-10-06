@@ -126,7 +126,7 @@ jobs:
 
       - name: Build vehicle owner web preview
         run: |
-          flutter build web --release --target lib/entry_theme_live.dart --base-href "/HeyCar/owner/" --pwa-strategy=none --web-renderer html
+          flutter build web --release --target lib/entry_theme_live.dart --base-href "/HeyCar/owner/" --pwa-strategy=none
           rm -f build/web/flutter_service_worker.js build/web/version.json
           python3 - <<'PY'
           import os
