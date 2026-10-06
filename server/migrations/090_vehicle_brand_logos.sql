@@ -66,4 +66,7 @@ FROM (VALUES
 JOIN vehicle_brands b ON b.normalized_name=x.brand_norm
 ON CONFLICT (normalized_alias) DO NOTHING;
 
+GRANT SELECT, INSERT, UPDATE, DELETE ON vehicle_brands TO heycar_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON vehicle_brand_aliases TO heycar_user;
+
 COMMIT;
