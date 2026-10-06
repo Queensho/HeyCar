@@ -367,6 +367,13 @@ module.exports=function registerAppBuilderRoutes(app,pool,adminGuard){
     }catch(e){await db.query('ROLLBACK').catch(()=>{});console.error('app config rollback',e);return res.status(400).json({error:e.message||'ROLLBACK_FAILED'});}finally{db.release();}
   });
 
+  app.get('/api/admin/app-management/assets',guard,async(req,res)=>{
+    try{
+      const q=await pool.query("SELECT a.*, (SELECT COUNT(*) FROM app_layout_versions v WHERE v.config_json::text LIKE '%'||a.url||'%')::int usage_count FROM app_assets a ORDER BY a.created_at DESC, a.id DESC");
+      return res.json({ok:true,assets:q.rows.map(assetPayload)});
+    }catch(e){console.error('app asset list',e);return res.status(500).json({error:'SERVER_ERROR'});}
+  });
+
   app.put('/api/admin/app-management/assets',guard,express.raw({type:'application/octet-stream',limit:'5mb'}),async(req,res)=>{
     try{
       const mime=clean(req.headers['x-file-type'],60).toLowerCase();
