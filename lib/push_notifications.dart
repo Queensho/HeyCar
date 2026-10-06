@@ -107,6 +107,10 @@ class PushNotifications{
     final launch=await _local.getNotificationAppLaunchDetails();
     if(launch?.didNotificationLaunchApp==true&&launch?.notificationResponse!=null)await handleResponse(launch!.notificationResponse!);
     FirebaseMessaging.instance.onTokenRefresh.listen((_)=>registerToken());
+    Future<void>(()async{
+      try{await registerToken();}
+      catch(e){debugPrint('Initial push token registration failed: $e');}
+    });
   }
 
   static void _listenCallEvents(){
@@ -295,7 +299,7 @@ class PushNotifications{
         }
       }
 
-      const nativeTokenBindingVersion='native_push_binding_v10';
+      const nativeTokenBindingVersion='native_push_binding_v11';
       final boundVersion=prefs.getString('native_push_binding_version')??'';
       if(boundVersion!=nativeTokenBindingVersion){
         try{
@@ -333,7 +337,7 @@ class PushNotifications{
       }
 
       await prefs.setBool('push_token_registered',true);
-      await prefs.setString('native_push_binding_version','native_push_binding_v10');
+      await prefs.setString('native_push_binding_version','native_push_binding_v11');
       await prefs.setString('push_token_last_registered_at',DateTime.now().toUtc().toIso8601String());
       await prefs.setString('push_token_last_error','');
       _tokenRetryAttempt=0;

@@ -32,6 +32,24 @@ module.exports = function registerCallRoutes(app, pool) {
         return {owner:null,driver:null};
       }
       driverResult=await push.sendDriver(target,{...data,recipientType:'driver'},title,body);
+      if(Number(driverResult?.delivered||0)===0&&ownerId&&String(ownerId)!==target){
+        const ownerSender=push.sendOwner||push.send;
+        if(typeof ownerSender==='function'){
+          ownerResult=await ownerSender(
+            String(ownerId),
+            {...data,recipientType:'owner',routedFrom:'driver_fallback'},
+            title,
+            body
+          );
+          console.warn('Call push fallback to owner',{
+            callId:String(data.callId||''),
+            ownerId:String(ownerId),
+            recipientId:target,
+            driver:driverResult,
+            owner:ownerResult,
+          });
+        }
+      }
     }else{
       const ownerTarget=target||String(ownerId||'');
       const ownerSender=push.sendOwner||push.send;

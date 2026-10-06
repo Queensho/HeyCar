@@ -231,6 +231,21 @@ requireText(
   "['owner_push_tokens','driver_push_tokens','valet_push_tokens']",
   'FCM_STALE_TOKEN_GLOBAL_CLEANUP_MISSING'
 );
+requireText(
+  'push-routes.js',
+  "channel_id:'cepqontag_notifications_v11'",
+  'ANDROID_PUSH_CHANNEL_VERSION_MISMATCH'
+);
+requireText(
+  'notification-push-hook.js',
+  "routedFrom:'driver_fallback'",
+  'QR_PUSH_OWNER_FALLBACK_MISSING'
+);
+requireText(
+  'call-routes.js',
+  "routedFrom:'driver_fallback'",
+  'CALL_PUSH_OWNER_FALLBACK_MISSING'
+);
 
 requireText(
   'vehicle-reminder-routes.js',

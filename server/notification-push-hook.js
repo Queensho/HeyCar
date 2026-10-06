@@ -62,6 +62,25 @@ async function sendQrNotificationPush({ app, push: providedPush, qr, type, messa
         return {attempted:0,delivered:0,skipped:'DRIVER_SENDER_MISSING'};
       }
       driverResult=await push.sendDriver(routedRecipient,payload,notificationTitle,body);
+      if(Number(driverResult?.delivered||0)===0&&ownerId&&ownerId!==routedRecipient){
+        const ownerSender=push.sendOwner||push.send;
+        if(typeof ownerSender==='function'){
+          ownerResult=await ownerSender(
+            ownerId,
+            {...payload,recipientType:'owner',routedFrom:'driver_fallback'},
+            notificationTitle,
+            body
+          );
+          console.warn('QR push fallback to owner',{
+            type,
+            ownerId,
+            routedRecipient,
+            notificationId:String(notificationId),
+            driver:driverResult,
+            owner:ownerResult,
+          });
+        }
+      }
     }else{
       const ownerSender=push.sendOwner||push.send;
       if(typeof ownerSender!=='function'){

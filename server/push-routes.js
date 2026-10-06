@@ -176,7 +176,7 @@ module.exports=function registerPushRoutes(app,pool){
           const tag=String(data.notificationId||data.messageId||data.eventId||Date.now());
           message.notification={title,body};
           message.android.notification={
-            channel_id:'cepqar_notifications_v10',
+            channel_id:'cepqontag_notifications_v11',
             sound:'bildirim',
             tag:'cepqar_'+tag,
             notification_priority:'PRIORITY_MAX',
@@ -255,7 +255,7 @@ module.exports=function registerPushRoutes(app,pool){
     try{
       const sa=serviceAccount(),key=await accessToken();if(!sa||!key)return false;
       const fcmData=Object.fromEntries(Object.entries({...data,title,body}).map(([k,v])=>[k,String(v??'')]));
-      const message={token,data:fcmData,notification:{title,body},android:{priority:'HIGH',ttl:'120s',notification:{channel_id:'cepqar_notifications_v10',sound:'bildirim',notification_priority:'PRIORITY_MAX',default_vibrate_timings:true,visibility:'PUBLIC'}}};
+      const message={token,data:fcmData,notification:{title,body},android:{priority:'HIGH',ttl:'120s',notification:{channel_id:'cepqontag_notifications_v11',sound:'bildirim',notification_priority:'PRIORITY_MAX',default_vibrate_timings:true,visibility:'PUBLIC'}}};
       const r=await fetch(`https://fcm.googleapis.com/v1/projects/${sa.project_id}/messages:send`,{method:'POST',headers:{authorization:`Bearer ${key}`,'content-type':'application/json'},body:JSON.stringify({message})});
       if(r.ok)return true;
       const detail=await r.text();
