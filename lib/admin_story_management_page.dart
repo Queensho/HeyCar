@@ -125,7 +125,7 @@ class _AdminStoryManagementPageState extends State<AdminStoryManagementPage>{
     var thumb=(existing?['thumbnailUrl']??'').toString(),content=(existing?['contentImageUrl']??'').toString();
     var categoryId=(existing?['categoryId']??(categories.isEmpty?'':categories.first['id']??'')).toString();
     var badgeType=(existing?['badgeType']??'none').toString();
-    var ctaEnabled=existing?['ctaEnabled']==true:false;
+    var ctaEnabled=existing!=null&&existing['ctaEnabled']==true;
     var actionType=(existing?['actionType']??'NONE').toString();
     var audience=(existing?['audienceType']??'all').toString();
     var status=(existing?['status']??'draft').toString();
@@ -253,7 +253,7 @@ class _AdminStoryManagementPageState extends State<AdminStoryManagementPage>{
                   'categoryId':categoryId.isEmpty?null:categoryId,'audienceType':audience,'targetCountry':'TR',
                   'targetCity':city.text.trim(),'targetDistrict':district.text.trim(),'startsAt':starts.toUtc().toIso8601String(),
                   'endsAt':ends?.toUtc().toIso8601String(),'status':status,
-                  'sortOrder':existing?['sortOrder']??((stories.length+1)*10):(stories.length+1)*10,
+                  'sortOrder':existing!=null?(existing['sortOrder']??((stories.length+1)*10)):((stories.length+1)*10),
                 };
                 if(editing)await request('PATCH','/api/admin/manage/stories/${existing['id']}',payload);
                 else await request('POST','/api/admin/manage/stories',payload);

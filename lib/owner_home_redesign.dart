@@ -180,7 +180,15 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     _storiesLoading=true;
     try{
       final next=await _storyService.load();
-      if(mounted&&jsonEncode(next.map((e)=>[e.id,e.viewed,e.opened,e.clicked,e.sortOrder]).toList())!=jsonEncode(stories.map((e)=>[e.id,e.viewed,e.opened,e.clicked,e.sortOrder]).toList())){
+      if(mounted&&jsonEncode(next.map((e)=>[
+        e.id,e.title,e.subtitle,e.thumbnailUrl,e.contentImageUrl,e.badgeType,e.badgeText,
+        e.ctaEnabled,e.ctaText,e.actionType,e.actionTarget,e.categoryId,e.categoryName,e.categoryIcon,
+        e.sortOrder,e.viewed,e.opened,e.clicked
+      ]).toList())!=jsonEncode(stories.map((e)=>[
+        e.id,e.title,e.subtitle,e.thumbnailUrl,e.contentImageUrl,e.badgeType,e.badgeText,
+        e.ctaEnabled,e.ctaText,e.actionType,e.actionTarget,e.categoryId,e.categoryName,e.categoryIcon,
+        e.sortOrder,e.viewed,e.opened,e.clicked
+      ]).toList())){
         setState(()=>stories=next);
       }
     }catch(_){
