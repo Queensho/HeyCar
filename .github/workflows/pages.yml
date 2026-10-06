@@ -251,6 +251,10 @@ jobs:
         run: python3 tool/callkit_locked_ringtone_patch.py
       - name: Analyze app
         run: flutter analyze lib --no-fatal-infos --no-fatal-warnings || true
+      - name: Verify owner weather card analyze
+        run: flutter analyze lib --no-fatal-infos --no-fatal-warnings
+      - name: Test owner weather card
+        run: flutter test test/weather_service_test.dart
       - name: Enable Flutter web platform
         run: flutter create . --platforms=web --project-name heycar_app --no-pub
       - name: Build business web panel

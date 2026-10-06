@@ -13,6 +13,8 @@ import 'owner_valet_card.dart';
 import 'owner_shortcuts.dart';
 import 'roadside_help_page.dart';
 import 'cepqontag_store_page.dart';
+import 'weather_card.dart';
+import 'weather_service.dart';
 
 class OwnerHomeRedesign extends StatefulWidget{
   const OwnerHomeRedesign({
@@ -43,6 +45,12 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   bool valetRequesting=false;
   bool loading=true;
   bool _refreshing=false;
+  bool premium=false;
+  int activeVehicleCount=0;
+  bool qrProtection=false;
+  WeatherSnapshot? weather;
+  bool weatherLoading=true;
+  final WeatherService _weatherService=WeatherService();
 
   bool get light=>CepqarTheme.isLight;
   Color get bg=>light?const Color(0xFFF7F7FC):const Color(0xFF050913);
@@ -91,6 +99,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     _loadQuickAccess();
     if(widget.active){
       load();
+      _loadWeather();
       _startPolling();
     }else{
       loading=false;
@@ -106,13 +115,32 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     if(oldWidget.active!=widget.active){
       if(widget.active){
         load(silent:true);
+        _loadWeather();
         _startPolling();
       }else{
         timer?.cancel();
       }
     }
   }
-  @override void dispose(){timer?.cancel();super.dispose();}
+  @override void dispose(){timer?.cancel();_weatherService.dispose();super.dispose();}
+
+  Future<void> _loadWeather({bool force=false})async{
+    if(!mounted)return;
+    if(weather==null)setState(()=>weatherLoading=true);
+    try{
+      final next=await _weatherService.load(forceRefresh:force);
+      if(mounted)setState((){weather=next;weatherLoading=false;});
+    }catch(_){
+      if(mounted)setState(()=>weatherLoading=false);
+    }
+  }
+
+  Future<void> _refreshAll()async{
+    await Future.wait([
+      load(),
+      _loadWeather(force:true),
+    ]);
+  }
 
   String get _quickAccessKey{
     final owner=OnboardingDraft.userId.trim();
@@ -257,6 +285,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       final vehicleId=QrDraft.vehicleId.trim();
       final futures=<Future>[
         OwnerHttp.get(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/notifications'),json:false),
+        OwnerHttp.get(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/vehicles'),json:false),
         if(vehicleId.isNotEmpty)OwnerHttp.get(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/valet/$vehicleId'),json:false),
       ];
       final rs=await Future.wait(futures);
@@ -271,9 +300,26 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         }
       }
 
+      var nextPremium=premium;
+      var nextActiveVehicleCount=activeVehicleCount;
+      var nextQrProtection=qrProtection;
+      final vehiclesResponse=rs[1];
+      final vehiclesData=vehiclesResponse.body.isEmpty?null:jsonDecode(vehiclesResponse.body);
+      if(vehiclesResponse.statusCode>=200&&vehiclesResponse.statusCode<300&&vehiclesData is Map){
+        nextPremium=vehiclesData['premium']==true;
+        final rawVehicles=vehiclesData['vehicles'];
+        final vehicles=rawVehicles is List?rawVehicles.whereType<Map>().toList():<Map>[];
+        nextActiveVehicleCount=vehicles.where((v)=>'${v['qr_status']??''}'=='active').length;
+        Map? selected;
+        for(final v in vehicles){
+          if('${v['id']??''}'==vehicleId){selected=v;break;}
+        }
+        nextQrProtection=selected!=null&&'${selected['qr_status']??''}'=='active'&&'${selected['qr_token']??''}'.trim().isNotEmpty;
+      }
+
       Map<String,dynamic>? nextValet;
-      if(vehicleId.isNotEmpty&&rs.length>1){
-        final vr=rs[1];
+      if(vehicleId.isNotEmpty&&rs.length>2){
+        final vr=rs[2];
         final vd=vr.body.isEmpty?null:jsonDecode(vr.body);
         if(vr.statusCode==200&&vd is Map&&vd['session'] is Map){
           nextValet=Map<String,dynamic>.from(vd['session']);
@@ -324,11 +370,15 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         final noticesChanged=jsonEncode(nextNotices)!=jsonEncode(notices);
         final valetChanged=jsonEncode(nextValet)!=jsonEncode(valetSession);
         final codeChanged=nextDeliveryCode!=valetDeliveryCode;
-        if(noticesChanged||valetChanged||codeChanged){
+        final ownerStateChanged=nextPremium!=premium||nextActiveVehicleCount!=activeVehicleCount||nextQrProtection!=qrProtection;
+        if(noticesChanged||valetChanged||codeChanged||ownerStateChanged){
           setState((){
             notices=nextNotices;
             valetSession=nextValet;
             valetDeliveryCode=nextDeliveryCode;
+            premium=nextPremium;
+            activeVehicleCount=nextActiveVehicleCount;
+            qrProtection=nextQrProtection;
           });
         }
       }
@@ -387,7 +437,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   );
 
   Widget header()=>SizedBox(
-    height:190,
+    height:240,
     child:Stack(children:[
       Positioned.fill(
         child:Container(
@@ -483,109 +533,16 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
               ),
             ),
           ]),
-          const SizedBox(height:18),
-          Container(
-            width:double.infinity,
-            height:84,
-            padding:const EdgeInsets.fromLTRB(16,12,13,11),
-            decoration:BoxDecoration(
-              color:const Color(0xFFC8FC06),
-              borderRadius:BorderRadius.circular(18),
-              border:Border.all(color:const Color(0xFFB4E700)),
-              boxShadow:!kIsWeb
-                ?[
-                    BoxShadow(
-                      color:const Color(0xFFC8FC06).withValues(alpha:.22),
-                      blurRadius:14,
-                      offset:const Offset(0,5),
-                    ),
-                  ]
-                :null,
-            ),
-            child:Stack(children:[
-              const SizedBox.shrink(),
-              Row(
-                crossAxisAlignment:CrossAxisAlignment.start,
-                children:[
-                  Expanded(
-                    child:Column(
-                      crossAxisAlignment:CrossAxisAlignment.start,
-                      children:[
-                        RichText(
-                          maxLines:1,
-                          overflow:TextOverflow.ellipsis,
-                          text:TextSpan(
-                            style:const TextStyle(
-                              color:Colors.white,
-                              fontSize:21.5,
-                              height:1.05,
-                              letterSpacing:-.7,
-                              shadows:[
-                                Shadow(color:Color(0x33000000),blurRadius:4,offset:Offset(0,1)),
-                              ],
-                            ),
-                            children:[
-                              TextSpan(
-                                text:_givenName,
-                                style:const TextStyle(fontWeight:FontWeight.w500),
-                              ),
-                              if(_surname.isNotEmpty)
-                                TextSpan(
-                                  text:' $_surname',
-                                  style:const TextStyle(fontWeight:FontWeight.w900),
-                                ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height:5),
-                        Text(
-                          'Aracınızla dünya sizinle iletişimde.',
-                          maxLines:1,
-                          overflow:TextOverflow.ellipsis,
-                          style:const TextStyle(
-                            color:Colors.white,
-                            fontSize:11.5,
-                            fontWeight:FontWeight.w700,
-                            shadows:[
-                              Shadow(color:Color(0x26000000),blurRadius:3,offset:Offset(0,1)),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width:10),
-                  Container(
-                    margin:const EdgeInsets.only(top:1),
-                    padding:const EdgeInsets.symmetric(horizontal:10,vertical:5),
-                    decoration:BoxDecoration(
-                      gradient:const LinearGradient(
-                        colors:[Color(0xFF5A1FE8),Color(0xFF8A3EFF)],
-                      ),
-                      borderRadius:BorderRadius.circular(10),
-                      boxShadow:kIsWeb
-                        ?null
-                        :[
-                            BoxShadow(
-                              color:const Color(0xFF6B2CF4).withValues(alpha:.18),
-                              blurRadius:8,
-                              offset:const Offset(0,3),
-                            ),
-                          ],
-                    ),
-                    child:const Text(
-                      'PRO',
-                      style:TextStyle(
-                        color:Colors.white,
-                        fontSize:9.5,
-                        fontWeight:FontWeight.w900,
-                        letterSpacing:.2,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ]),
+          const SizedBox(height:13),
+          WeatherCard(
+            displayName:OnboardingDraft.displayName.trim().isEmpty?'Araç Sahibi':OnboardingDraft.displayName.trim(),
+            premium:premium,
+            activeVehicleCount:activeVehicleCount,
+            qrProtection:qrProtection,
+            weather:weather,
+            loading:weatherLoading,
+            onVehicles:widget.vehicles,
+            onQrSecurity:()=>widget.shortcut('qr_security'),
           ),
         ]),
       ),
@@ -1232,7 +1189,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   @override Widget build(BuildContext context)=>ColoredBox(
     color:bg,
     child:RefreshIndicator(
-      onRefresh:load,color:purple,
+      onRefresh:_refreshAll,color:purple,
       child:ListView(
         padding:EdgeInsets.zero,
         physics:const ClampingScrollPhysics(parent:AlwaysScrollableScrollPhysics()),
