@@ -120,7 +120,7 @@ function sanitizeItem(raw,kind){
   if(kind==='service'){
     out.title=clean(raw.title,80);out.subtitle=clean(raw.subtitle,180);
     if(!out.title)throw new Error('TITLE_REQUIRED');
-    out.icon=iconKey(raw.icon);out.iconToken=token(raw.iconToken,'primary');out.backgroundToken=token(raw.backgroundToken,'surface');
+    out.icon=iconKey(raw.icon);out.iconUrl=safeHttpUrl(raw.iconUrl,{assetOnly:true})||'';out.iconToken=token(raw.iconToken,'primary');out.backgroundToken=token(raw.backgroundToken,'surface');
     out.imageUrl=safeHttpUrl(raw.imageUrl)||'';
     out.imageScale=clamp(raw.imageScale,0,1.5);out.imageX=clamp(raw.imageX,-100,100);out.imageY=clamp(raw.imageY,-100,100);out.imageOpacity=clamp(raw.imageOpacity,0,1);
     out.fit=FITS.has(raw.fit)?raw.fit:'contain';out.alignment=ALIGNS.has(raw.alignment)?raw.alignment:'bottomRight';
