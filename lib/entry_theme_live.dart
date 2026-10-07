@@ -127,9 +127,14 @@ Future<void> _restoreSession()async{
     var ownerNeedsRelogin=false;
 
     if(ownerFlag){
-      loggedIn=await OwnerAuth.ensureValidSession();
-      if(!loggedIn){
-        ownerNeedsRelogin=true;
+      if(OwnerAuth.accessTokenUsable()){
+        loggedIn=true;
+      }else{
+        final refreshResult=await OwnerAuth.refreshResult();
+        loggedIn=refreshResult!=OwnerRefreshResult.invalid;
+        ownerNeedsRelogin=refreshResult==OwnerRefreshResult.invalid;
+      }
+      if(ownerNeedsRelogin){
         await OwnerAuth.clear();
         await prefs.setBool('owner_logged_in',false);
         await prefs.setBool('push_token_registered',false);
