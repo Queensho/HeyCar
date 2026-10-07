@@ -12,7 +12,7 @@ function normalizeToken(raw) {
 module.exports = function registerCallRoutes(app, pool) {
   const pushService=registerPushRoutes(app, pool);
   async function expireCalls() {
-    await pool.query(`UPDATE anonymous_calls SET status='missed', ended_at=NOW() WHERE status='ringing' AND expires_at<=NOW()`);
+    await pool.query(`UPDATE anonymous_calls SET status=CASE WHEN status='ringing' THEN 'missed' ELSE 'ended' END, ended_at=COALESCE(ended_at,NOW()) WHERE status IN ('ringing','accepted') AND expires_at<=NOW()`);
   }
 
   async function sendRecipientPush(recipientId, recipientType, data, title, body, ownerId=null) {
@@ -88,6 +88,7 @@ module.exports = function registerCallRoutes(app, pool) {
   }
 
   async function statusFor(callId, recipientId, recipientType) {
+    await expireCalls();
     const result=await pool.query(
       `SELECT id,status,offer,caller_candidates,created_at,expires_at,answered_at,ended_at,recipient_type
        FROM anonymous_calls
@@ -143,6 +144,8 @@ module.exports = function registerCallRoutes(app, pool) {
       if(!security.ok)return res.status(security.status).json({error:security.error});
       const scan=await validateScanSession(pool,String(req.headers['x-scan-token']||''),token);
       if(!scan||String(scan.vehicle_id)!==String(vehicle.vehicle_id))return res.status(401).json({error:'SCAN_SESSION_REQUIRED'});
+      const recent=await pool.query(`SELECT COUNT(*)::int AS n FROM anonymous_calls WHERE scan_session_hash=$1 AND created_at>NOW()-INTERVAL '10 minutes'`,[scan.token_hash||'']);
+      if(Number(recent.rows[0]?.n||0)>=5)return res.status(429).json({error:'CALL_RATE_LIMITED'});
 
       const activeDriver=await pool.query(
         `SELECT driver_user_id::text AS driver_user_id
@@ -195,6 +198,7 @@ module.exports = function registerCallRoutes(app, pool) {
 
   app.get('/api/public/calls/:callId', async (req,res) => {
     try {
+      await expireCalls();
       const visitorToken=String(req.headers['x-visitor-token']||'').trim();
       if(!visitorToken)return res.status(401).json({error:'VISITOR_TOKEN_REQUIRED'});
       const result=await pool.query(
