@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'onboarding_backend.dart';
 import 'qr_backend.dart';
+import 'cepqar_theme.dart';
 
 class CorrectionRequestPage extends StatefulWidget {
   const CorrectionRequestPage({
@@ -63,17 +64,18 @@ class _CorrectionRequestPageState extends State<CorrectionRequestPage> {
 
   @override
   Widget build(BuildContext context) {
-    const bg = Color(0xFF07111F);
-    const panel = Color(0xFF101A2F);
-    const line = Color(0xFF33436A);
+    final bg = CepqarTheme.bg;
+    final panel = CepqarTheme.panel;
+    final line = CepqarTheme.line;
     const purple = Color(0xFF8B5CFF);
-    const muted = Color(0xFFAAB4CF);
+    final muted = CepqarTheme.muted;
+    final text = CepqarTheme.text;
 
     return Scaffold(
       backgroundColor: bg,
       appBar: AppBar(
         backgroundColor: bg,
-        foregroundColor: Colors.white,
+        foregroundColor: text,
         title: const Text('Düzeltme talebi', style: TextStyle(fontWeight: FontWeight.w900)),
       ),
       body: SafeArea(
@@ -88,7 +90,7 @@ class _CorrectionRequestPageState extends State<CorrectionRequestPage> {
                   borderRadius: BorderRadius.circular(22),
                   border: Border.all(color: line),
                 ),
-                child: const Column(
+                child: Column(
                   children: [
                     CircleAvatar(
                       radius: 28,
@@ -96,14 +98,14 @@ class _CorrectionRequestPageState extends State<CorrectionRequestPage> {
                       child: Icon(Icons.check_rounded, color: Color(0xFF6EE7B7), size: 34),
                     ),
                     SizedBox(height: 14),
-                    Text('Talebin alındı', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900)),
+                    Text('Talebin alındı', style: TextStyle(color: text, fontSize: 22, fontWeight: FontWeight.w900)),
                     SizedBox(height: 8),
                     Text('HeyCar yönetimi talebini admin panelinden inceleyecek. Sonuçlandığında hesabındaki talep durumu güncellenecek.', textAlign: TextAlign.center, style: TextStyle(color: muted, height: 1.45)),
                   ],
                 ),
               )
             else ...[
-              const Text('Ne düzeltilsin?', style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w900)),
+              Text('Ne düzeltilsin?', style: TextStyle(color: text, fontSize: 26, fontWeight: FontWeight.w900)),
               const SizedBox(height: 8),
               const Text('QR değişikliği veya araç bilgisi düzeltmesi için talep oluştur.', style: TextStyle(color: muted, height: 1.4)),
               const SizedBox(height: 20),
@@ -117,7 +119,7 @@ class _CorrectionRequestPageState extends State<CorrectionRequestPage> {
                       groupValue: type,
                       onChanged: (v) => setState(() => type = v!),
                       activeColor: purple,
-                      title: const Text('QR değişikliği', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                      title: Text('QR değişikliği', style: TextStyle(color: text, fontWeight: FontWeight.w800)),
                       subtitle: const Text('Yeni QR bağlama / eski QR değiştirme', style: TextStyle(color: muted)),
                     ),
                     RadioListTile<String>(
@@ -125,7 +127,7 @@ class _CorrectionRequestPageState extends State<CorrectionRequestPage> {
                       groupValue: type,
                       onChanged: (v) => setState(() => type = v!),
                       activeColor: purple,
-                      title: const Text('Araç bilgisi düzeltme', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                      title: Text('Araç bilgisi düzeltme', style: TextStyle(color: text, fontWeight: FontWeight.w800)),
                       subtitle: const Text('Plaka, marka, model gibi bilgiler', style: TextStyle(color: muted)),
                     ),
                     RadioListTile<String>(
@@ -133,7 +135,7 @@ class _CorrectionRequestPageState extends State<CorrectionRequestPage> {
                       groupValue: type,
                       onChanged: (v) => setState(() => type = v!),
                       activeColor: purple,
-                      title: const Text('Diğer', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                      title: Text('Diğer', style: TextStyle(color: text, fontWeight: FontWeight.w800)),
                     ),
                   ],
                 ),
@@ -142,7 +144,7 @@ class _CorrectionRequestPageState extends State<CorrectionRequestPage> {
               TextField(
                 controller: email,
                 keyboardType: TextInputType.emailAddress,
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: text),
                 decoration: _decoration('İletişim e-postası', panel, line, muted),
               ),
               const SizedBox(height: 12),
@@ -160,10 +162,10 @@ class _CorrectionRequestPageState extends State<CorrectionRequestPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Talep bilgisi', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900)),
+                    Text('Talep bilgisi', style: TextStyle(color: text, fontWeight: FontWeight.w900)),
                     const SizedBox(height: 8),
-                    Text('QR: ${QrDraft.token.isEmpty ? '-' : QrDraft.token}', style: const TextStyle(color: muted)),
-                    Text('Araç: ${QrDraft.plate.isEmpty ? '-' : QrDraft.plate}', style: const TextStyle(color: muted)),
+                    Text('QR: ${QrDraft.token.isEmpty ? '-' : QrDraft.token}', style: TextStyle(color: muted)),
+                    Text('Araç: ${QrDraft.plate.isEmpty ? '-' : QrDraft.plate}', style: TextStyle(color: muted)),
                   ],
                 ),
               ),
