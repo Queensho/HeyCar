@@ -4,11 +4,12 @@ import 'package:http/http.dart' as http;
 import 'package:qr_flutter/qr_flutter.dart';
 import 'onboarding_backend.dart';
 import 'qr_backend.dart';
+import 'cepqar_theme.dart';
 
-const _bg = Color(0xFF101A30);
-const _line = Color(0xFF27355D);
+const _bg = CepqarTheme.darkPanel;
+const _line = CepqarTheme.darkLine;
 const _purple = Color(0xFF8B5CFF);
-const _muted = Color(0xFFA7B0C7);
+const _muted = CepqarTheme.darkMuted;
 
 Future<String> _resolveOwnerQrToken() async {
   var token = QrDraft.token.trim().toUpperCase();
@@ -71,9 +72,9 @@ Future<void> showOwnerQrDialog(BuildContext context) async {
         child: Container(
           padding: const EdgeInsets.fromLTRB(22, 18, 22, 22),
           decoration: BoxDecoration(
-            color: _bg,
+            color: CepqarTheme.panel,
             borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: _line),
+            border: Border.all(color: CepqarTheme.line),
             boxShadow: const [
               BoxShadow(color: Color(0x66000000), blurRadius: 28, offset: Offset(0, 12)),
             ],
