@@ -107,7 +107,7 @@ class _CorrectionRequestPageState extends State<CorrectionRequestPage> {
             else ...[
               Text('Ne düzeltilsin?', style: TextStyle(color: text, fontSize: 26, fontWeight: FontWeight.w900)),
               const SizedBox(height: 8),
-              const Text('QR değişikliği veya araç bilgisi düzeltmesi için talep oluştur.', style: TextStyle(color: muted, height: 1.4)),
+              Text('QR değişikliği veya araç bilgisi düzeltmesi için talep oluştur.', style: TextStyle(color: muted, height: 1.4)),
               const SizedBox(height: 20),
               Container(
                 padding: const EdgeInsets.all(16),
@@ -120,7 +120,7 @@ class _CorrectionRequestPageState extends State<CorrectionRequestPage> {
                       onChanged: (v) => setState(() => type = v!),
                       activeColor: purple,
                       title: Text('QR değişikliği', style: TextStyle(color: text, fontWeight: FontWeight.w800)),
-                      subtitle: const Text('Yeni QR bağlama / eski QR değiştirme', style: TextStyle(color: muted)),
+                      subtitle: Text('Yeni QR bağlama / eski QR değiştirme', style: TextStyle(color: muted)),
                     ),
                     RadioListTile<String>(
                       value: 'vehicle_info',
@@ -128,7 +128,7 @@ class _CorrectionRequestPageState extends State<CorrectionRequestPage> {
                       onChanged: (v) => setState(() => type = v!),
                       activeColor: purple,
                       title: Text('Araç bilgisi düzeltme', style: TextStyle(color: text, fontWeight: FontWeight.w800)),
-                      subtitle: const Text('Plaka, marka, model gibi bilgiler', style: TextStyle(color: muted)),
+                      subtitle: Text('Plaka, marka, model gibi bilgiler', style: TextStyle(color: muted)),
                     ),
                     RadioListTile<String>(
                       value: 'other',
