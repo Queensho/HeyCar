@@ -116,12 +116,19 @@ async function run(){
       }
 
       console.log(`APPLY ${file.name}`);
-      await client.query(sql);
-      await client.query(
-        `INSERT INTO public.schema_migrations(filename,checksum_sha256)
-         VALUES($1,$2)`,
-        [file.name,sha]
-      );
+      await client.query('BEGIN');
+      try{
+        await client.query(sql);
+        await client.query(
+          `INSERT INTO public.schema_migrations(filename,checksum_sha256)
+           VALUES($1,$2)`,
+          [file.name,sha]
+        );
+        await client.query('COMMIT');
+      }catch(err){
+        await client.query('ROLLBACK').catch(()=>{});
+        throw err;
+      }
       console.log(`APPLIED ${file.name}`);
     }
 
