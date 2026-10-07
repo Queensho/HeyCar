@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:qr_flutter/qr_flutter.dart';
 import 'onboarding_backend.dart';
 import 'qr_backend.dart';
 
@@ -104,11 +105,7 @@ Future<void> showOwnerQrDialog(BuildContext context) async {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(22),
                   ),
-                  child: Image.network(
-                    'https://quickchart.io/qr?text=${Uri.encodeComponent(publicUrl)}&size=420',
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => const Icon(Icons.qr_code_2_rounded, size: 150, color: Colors.black),
-                  ),
+                  child: QrImageView(data:publicUrl,version:QrVersions.auto,backgroundColor:Colors.white),
                 ),
                 const SizedBox(height: 14),
                 Text(

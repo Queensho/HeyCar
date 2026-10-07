@@ -9,7 +9,7 @@ async function ensureSchema(pool) {
   if (schemaReady) return;
   const r=await pool.query(`
     SELECT
-      to_regclass('public.owner_security_settings') AS settings,
+      to_regclass('public.owner_privacy_settings') AS settings,
       to_regclass('public.owner_security_sessions') AS sessions,
       to_regclass('public.owner_blocked_visitors') AS blocked,
       to_regclass('public.qr_security_request_log') AS request_log,
@@ -24,8 +24,8 @@ async function ensureSchema(pool) {
 
 async function getSettings(pool, ownerId) {
   await ensureSchema(pool);
-  await pool.query(`INSERT INTO owner_security_settings(owner_id) VALUES($1) ON CONFLICT(owner_id) DO NOTHING`, [ownerId]);
-  const r = await pool.query(`SELECT suspicious_login_alerts, qr_abuse_protection, auto_close_old_chats, security_code_version FROM owner_security_settings WHERE owner_id=$1`, [ownerId]);
+  await pool.query(`INSERT INTO owner_privacy_settings(owner_id) VALUES($1) ON CONFLICT(owner_id) DO NOTHING`, [ownerId]);
+  const r = await pool.query(`SELECT suspicious_login_alerts, qr_abuse_protection, auto_close_old_chats, security_version FROM owner_privacy_settings WHERE owner_id=$1`, [ownerId]);
   return r.rows[0];
 }
 
