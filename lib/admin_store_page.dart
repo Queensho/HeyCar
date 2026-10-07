@@ -32,6 +32,7 @@ class _AdminStorePageState extends State<AdminStorePage>{
   List<Map<String,dynamic>> products=[];
   List<Map<String,dynamic>> orders=[];
   Map<String,dynamic> stats={};
+  Map<String,dynamic> storeConfig={};
 
   Map<String,String> get headers=>{
     'Authorization':'Bearer '+widget.token,
@@ -75,12 +76,14 @@ class _AdminStorePageState extends State<AdminStorePage>{
         getJson('/api/admin/manage/store/products'),
         getJson('/api/admin/manage/store/orders?status='+orderStatus),
         getJson('/api/admin/manage/store/stats'),
+        getJson('/api/admin/manage/store/config'),
       ]);
       if(!mounted)return;
       setState((){
         products=(r[0]['items'] as List? ?? const []).whereType<Map>().map((x)=>Map<String,dynamic>.from(x)).toList();
         orders=(r[1]['items'] as List? ?? const []).whereType<Map>().map((x)=>Map<String,dynamic>.from(x)).toList();
         stats=r[2];
+        storeConfig=Map<String,dynamic>.from(r[3]['config'] as Map? ?? const {});
       });
     }catch(e){if(mounted)setState(()=>error=e.toString().replaceFirst('Exception: ',''));}
     finally{if(mounted)setState(()=>loading=false);}
