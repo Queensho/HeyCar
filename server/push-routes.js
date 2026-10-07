@@ -243,14 +243,21 @@ module.exports=function registerPushRoutes(app,pool){
       web:webResult,
     };
   }
-  const sendOwner=(owner,data,title,body)=>combine(
-    sendFrom('owner_push_tokens','owner_id',owner,data,title,body),
-    webPush.sendOwner(owner,data,title,body)
-  );
-  const sendDriver=(driver,data,title,body)=>combine(
-    sendFrom('driver_push_tokens','driver_id',driver,data,title,body),
-    webPush.sendDriver(driver,data,title,body)
-  );
+  async function sendRole(userId,{tokenTable,idColumn,webSend},data,title,body){
+    const webFcm=await pool.query(
+      `SELECT 1 FROM ${tokenTable} WHERE ${idColumn}=$1 AND active=TRUE AND LOWER(COALESCE(platform,''))='web' LIMIT 1`,
+      [String(userId)]
+    );
+    // A browser must use one push transport. Prefer Firebase when a live web
+    // FCM registration exists; direct WebPush remains the fallback for Safari/
+    // installations that do not have an FCM token.
+    return combine(
+      sendFrom(tokenTable,idColumn,userId,data,title,body),
+      webFcm.rowCount?Promise.resolve({attempted:0,delivered:0,skipped:'WEB_FCM_ACTIVE'}):webSend(userId,data,title,body)
+    );
+  }
+  const sendOwner=(owner,data,title,body)=>sendRole(owner,{tokenTable:'owner_push_tokens',idColumn:'owner_id',webSend:webPush.sendOwner},data,title,body);
+  const sendDriver=(driver,data,title,body)=>sendRole(driver,{tokenTable:'driver_push_tokens',idColumn:'driver_id',webSend:webPush.sendDriver},data,title,body);
   const sendToken=async(token,data,title,body)=>{
     try{
       const sa=serviceAccount(),key=await accessToken();if(!sa||!key)return false;
