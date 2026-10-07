@@ -105,7 +105,7 @@ jobs:
           DO $$
           BEGIN
             IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='heycar_user') THEN
-              CREATE ROLE heycar_user LOGIN;
+              CREATE ROLE heycar_user LOGIN PASSWORD 'matrix-runtime-password';
             END IF;
           END
           $$;
@@ -136,7 +136,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node server.js > /tmp/cepqar-matrix-api.log 2>&1 &
+          DB_USER=heycar_user DB_PASSWORD=matrix-runtime-password node server.js > /tmp/cepqar-matrix-api.log 2>&1 &
           api_pid=$!
           trap 'kill "$api_pid" 2>/dev/null || true; cat /tmp/cepqar-matrix-api.log' EXIT
 

@@ -15,7 +15,7 @@ module.exports=function registerTouchpointRoutes(app,pool){
     message:{error:'TOO_MANY_REQUESTS'},
   });
 
-  async function ensureTouchpoint(vehicleId,ownerId){
+  async function ensureTouchpoint(vehicleId,ownerId,mutate){
     const client=await pool.connect();
     try{
       await client.query('BEGIN');
@@ -82,8 +82,9 @@ module.exports=function registerTouchpointRoutes(app,pool){
         product=productR.rows[0];
       }
 
+      const mutation=typeof mutate==='function'?await mutate(client,{vehicle,page,product,qr}):null;
       await client.query('COMMIT');
-      return {vehicle,page,product,qr};
+      return {vehicle,page,product,qr,mutation};
     }catch(e){
       await client.query('ROLLBACK').catch(()=>{});
       throw e;
@@ -148,19 +149,21 @@ module.exports=function registerTouchpointRoutes(app,pool){
     const vehicleId=String(req.params.vehicleId||'').trim();
     if(!owner)return res.status(401).json({error:'OWNER_REQUIRED'});
     try{
-      const x=await ensureTouchpoint(vehicleId,owner);
+      const x=await ensureTouchpoint(vehicleId,owner,async(client,current)=>{
+        const r=await client.query(
+          `UPDATE vehicle_products
+              SET nfc_enabled=TRUE,nfc_written_at=NOW(),updated_at=NOW()
+            WHERE id=$1
+            RETURNING nfc_enabled,nfc_written_at`,
+          [current.product.id]
+        );
+        return r.rows[0]||null;
+      });
       if(!x)return res.status(404).json({error:'VEHICLE_NOT_FOUND'});
-      const r=await pool.query(
-        `UPDATE vehicle_products
-            SET nfc_enabled=TRUE,nfc_written_at=NOW(),updated_at=NOW()
-          WHERE id=$1
-          RETURNING nfc_enabled,nfc_written_at`,
-        [x.product.id]
-      );
       return res.json({
         ok:true,
         nfcEnabled:true,
-        nfcWrittenAt:r.rows[0]?.nfc_written_at||null,
+        nfcWrittenAt:x.mutation?.nfc_written_at||null,
         nfcUrl:publicNfcUrl(x.product.nfc_token),
       });
     }catch(e){
@@ -174,24 +177,26 @@ module.exports=function registerTouchpointRoutes(app,pool){
     const vehicleId=String(req.params.vehicleId||'').trim();
     if(!owner)return res.status(401).json({error:'OWNER_REQUIRED'});
     try{
-      const x=await ensureTouchpoint(vehicleId,owner);
+      const x=await ensureTouchpoint(vehicleId,owner,async(client,current)=>{
+        const r=await client.query(
+          `UPDATE vehicle_products
+              SET nfc_token=encode(gen_random_bytes(18),'hex'),
+                  nfc_enabled=FALSE,
+                  nfc_written_at=NULL,
+                  nfc_rotated_at=NOW(),
+                  updated_at=NOW()
+            WHERE id=$1
+            RETURNING nfc_token,nfc_rotated_at`,
+          [current.product.id]
+        );
+        return r.rows[0]||null;
+      });
       if(!x)return res.status(404).json({error:'VEHICLE_NOT_FOUND'});
-      const r=await pool.query(
-        `UPDATE vehicle_products
-            SET nfc_token=encode(gen_random_bytes(18),'hex'),
-                nfc_enabled=FALSE,
-                nfc_written_at=NULL,
-                nfc_rotated_at=NOW(),
-                updated_at=NOW()
-          WHERE id=$1
-          RETURNING nfc_token,nfc_rotated_at`,
-        [x.product.id]
-      );
       return res.json({
         ok:true,
         nfcEnabled:false,
-        nfcUrl:publicNfcUrl(r.rows[0].nfc_token),
-        nfcRotatedAt:r.rows[0].nfc_rotated_at,
+        nfcUrl:publicNfcUrl(x.mutation.nfc_token),
+        nfcRotatedAt:x.mutation.nfc_rotated_at,
       });
     }catch(e){
       console.error('nfc rotate',e);

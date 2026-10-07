@@ -40,72 +40,18 @@ module.exports = function registerNotificationRoutes(app, pool) {
 
   async function ensurePrivacySchema() {
     if (schemaReady) return;
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS owner_privacy_settings (
-        owner_id TEXT PRIMARY KEY,
-        suspicious_login_alerts BOOLEAN NOT NULL DEFAULT TRUE,
-        qr_abuse_protection BOOLEAN NOT NULL DEFAULT TRUE,
-        auto_close_old_chats BOOLEAN NOT NULL DEFAULT TRUE,
-        security_version INTEGER NOT NULL DEFAULT 1,
-        message_notifications BOOLEAN NOT NULL DEFAULT TRUE,
-        call_notifications BOOLEAN NOT NULL DEFAULT TRUE,
-        damage_notifications BOOLEAN NOT NULL DEFAULT TRUE,
-        system_notifications BOOLEAN NOT NULL DEFAULT TRUE,
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-      ALTER TABLE owner_privacy_settings ADD COLUMN IF NOT EXISTS message_notifications BOOLEAN NOT NULL DEFAULT TRUE;
-      ALTER TABLE owner_privacy_settings ADD COLUMN IF NOT EXISTS call_notifications BOOLEAN NOT NULL DEFAULT TRUE;
-      ALTER TABLE owner_privacy_settings ADD COLUMN IF NOT EXISTS damage_notifications BOOLEAN NOT NULL DEFAULT TRUE;
-      ALTER TABLE owner_privacy_settings ADD COLUMN IF NOT EXISTS system_notifications BOOLEAN NOT NULL DEFAULT TRUE;
-      CREATE TABLE IF NOT EXISTS owner_devices (
-        id TEXT PRIMARY KEY,
-        owner_id TEXT NOT NULL,
-        device_id TEXT NOT NULL,
-        device_name TEXT NOT NULL DEFAULT 'Bu cihaz',
-        last_ip TEXT,
-        first_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        active BOOLEAN NOT NULL DEFAULT TRUE,
-        UNIQUE(owner_id, device_id)
-      );
-      CREATE TABLE IF NOT EXISTS owner_blocked_visitors (
-        owner_id TEXT NOT NULL,
-        visitor_key TEXT NOT NULL,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        PRIMARY KEY(owner_id, visitor_key)
-      );
-      CREATE TABLE IF NOT EXISTS qr_request_log (
-        id BIGSERIAL PRIMARY KEY,
-        owner_id TEXT NOT NULL,
-        qr_token TEXT NOT NULL,
-        visitor_key TEXT NOT NULL,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-      CREATE INDEX IF NOT EXISTS idx_qr_request_log_recent ON qr_request_log(owner_id, visitor_key, created_at DESC);
-      CREATE TABLE IF NOT EXISTS vehicle_park_notes (
-        id UUID PRIMARY KEY,
-        vehicle_id UUID NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
-        message TEXT NOT NULL,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        expires_at TIMESTAMPTZ,
-        is_active BOOLEAN NOT NULL DEFAULT TRUE
-      );
-      CREATE INDEX IF NOT EXISTS idx_vehicle_park_notes_active ON vehicle_park_notes(vehicle_id, is_active, created_at DESC);
-      CREATE TABLE IF NOT EXISTS owner_login_events (
-        id TEXT PRIMARY KEY,
-        owner_id TEXT NOT NULL,
-        device_name TEXT NOT NULL,
-        ip_address TEXT,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        read_at TIMESTAMPTZ
-      );
-      ALTER TABLE vehicle_notifications ADD COLUMN IF NOT EXISTS public_status_token TEXT;
-      ALTER TABLE vehicle_notifications ADD COLUMN IF NOT EXISTS arriving_at TIMESTAMPTZ;
-      ALTER TABLE vehicle_notifications DROP CONSTRAINT IF EXISTS vehicle_notifications_status_check;
-      ALTER TABLE vehicle_notifications ADD CONSTRAINT vehicle_notifications_status_check CHECK (status IN ('new','read','arriving','resolved'));
-      ALTER TABLE qr_conversations ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active';
-      ALTER TABLE qr_conversations ADD COLUMN IF NOT EXISTS closed_at TIMESTAMPTZ;
-    `);
+    const r=await pool.query(`
+      SELECT
+        to_regclass('public.owner_privacy_settings') IS NOT NULL AS privacy,
+        to_regclass('public.owner_devices') IS NOT NULL AS devices,
+        to_regclass('public.owner_blocked_visitors') IS NOT NULL AS blocked,
+        to_regclass('public.qr_request_log') IS NOT NULL AS requests,
+        to_regclass('public.vehicle_park_notes') IS NOT NULL AS park_notes,
+        to_regclass('public.owner_login_events') IS NOT NULL AS login_events`);
+    const x=r.rows[0]||{};
+    if(!x.privacy||!x.devices||!x.blocked||!x.requests||!x.park_notes||!x.login_events){
+      throw new Error('PRIVACY_SCHEMA_MISSING');
+    }
     schemaReady = true;
   }
 
@@ -496,32 +442,40 @@ module.exports = function registerNotificationRoutes(app, pool) {
       expiresAt = new Date(expiresAtRaw);
       if (Number.isNaN(expiresAt.getTime()) || expiresAt <= new Date()) return res.status(400).json({ error: 'INVALID_EXPIRES_AT' });
     }
+    const client=await pool.connect();
     try {
       await ensurePrivacySchema();
-      const own = await pool.query(`SELECT 1 FROM vehicles WHERE id=$1 AND owner_id=$2 LIMIT 1`, [vehicleId, ownerId]);
-      if (!own.rows.length) return res.status(404).json({ error: 'VEHICLE_NOT_FOUND' });
+      await client.query('BEGIN');
+      const own = await client.query(`SELECT 1 FROM vehicles WHERE id=$1 AND owner_id=$2 FOR UPDATE`, [vehicleId, ownerId]);
+      if (!own.rows.length) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'VEHICLE_NOT_FOUND' }); }
       const id = crypto.randomUUID();
-      const r = await pool.query(`WITH deactivated AS (
+      const r = await client.query(`WITH deactivated AS (
         UPDATE vehicle_park_notes SET is_active=FALSE WHERE vehicle_id=$1 AND is_active=TRUE
       )
       INSERT INTO vehicle_park_notes(id,vehicle_id,message,expires_at,is_active)
       VALUES($2,$1,$3,$4,$5)
       RETURNING id,message,created_at AS "createdAt",expires_at AS "expiresAt",is_active AS "isActive"`, [vehicleId, id, message, expiresAt, isActive]);
+      await client.query('COMMIT');
       return res.status(201).json({ ok: true, parkNote: r.rows[0] });
-    } catch (e) { console.error(e); return res.status(500).json({ error: 'SERVER_ERROR' }); }
+    } catch (e) { await client.query('ROLLBACK').catch(()=>{}); console.error(e); return res.status(500).json({ error: 'SERVER_ERROR' }); }
+    finally { client.release(); }
   });
 
   app.delete('/api/owner/vehicles/:vehicleId/park-note', async (req, res) => {
     const ownerId = authenticatedOwnerId(req);
     const vehicleId = String(req.params.vehicleId || '').trim();
     if (!ownerId) return res.status(401).json({ error: 'OWNER_REQUIRED' });
+    const client=await pool.connect();
     try {
       await ensurePrivacySchema();
-      const own = await pool.query(`SELECT 1 FROM vehicles WHERE id=$1 AND owner_id=$2 LIMIT 1`, [vehicleId, ownerId]);
-      if (!own.rows.length) return res.status(404).json({ error: 'VEHICLE_NOT_FOUND' });
-      await pool.query(`UPDATE vehicle_park_notes SET is_active=FALSE WHERE vehicle_id=$1 AND is_active=TRUE`, [vehicleId]);
+      await client.query('BEGIN');
+      const own = await client.query(`SELECT 1 FROM vehicles WHERE id=$1 AND owner_id=$2 FOR UPDATE`, [vehicleId, ownerId]);
+      if (!own.rows.length) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'VEHICLE_NOT_FOUND' }); }
+      await client.query(`UPDATE vehicle_park_notes SET is_active=FALSE WHERE vehicle_id=$1 AND is_active=TRUE`, [vehicleId]);
+      await client.query('COMMIT');
       return res.json({ ok: true });
-    } catch (e) { console.error(e); return res.status(500).json({ error: 'SERVER_ERROR' }); }
+    } catch (e) { await client.query('ROLLBACK').catch(()=>{}); console.error(e); return res.status(500).json({ error: 'SERVER_ERROR' }); }
+    finally { client.release(); }
   });
 
   app.get('/api/qr/:token/park-note', async (req, res) => {

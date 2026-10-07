@@ -25,6 +25,10 @@ async function finalizeVehicleTransfer(db,{vehicleId,transferId,newOwnerId}){
   );
   if(!changed.rows.length)throw new Error('TRANSFER_VEHICLE_NOT_FOUND');
 
+  // Keep ownership projections in the same transfer transaction. This prevents
+  // stale page ownership from surviving after the vehicle row changes owner.
+  await db.query('UPDATE vehicle_pages SET owner_id=$1,updated_at=NOW() WHERE vehicle_id::text=$2',[owner,vehicle]);
+
   const accepted=await db.query(
     "UPDATE vehicle_transfers SET status='accepted',accepted_by=$1,accepted_at=NOW() WHERE id::text=$2 AND status='pending' RETURNING id",
     [owner,transfer]
