@@ -151,10 +151,10 @@ class _OwnerChatPageState extends State<OwnerChatPage> {
       context: context,
       builder: (c) => AlertDialog(
         backgroundColor: CepqarTheme.panel,
-        title: const Text('Oturumu engelle?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900)),
+        title: Text('Oturumu engelle?', style: TextStyle(color: CepqarTheme.text, fontWeight: FontWeight.w900)),
         content: const Text(
           'Bu tarama oturumu anında kapanır. QR etiketiniz değişmez ve diğer kişiler QR’ı kullanmaya devam edebilir.',
-          style: TextStyle(color: _muted, height: 1.35),
+          style: TextStyle(color: CepqarTheme.muted, height: 1.35),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Vazgeç')),
@@ -194,7 +194,7 @@ class _OwnerChatPageState extends State<OwnerChatPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(widget.plate.isEmpty ? 'Anonim Sohbet' : widget.plate, style: const TextStyle(fontWeight: FontWeight.w900)),
-            Text(blocked ? 'Oturum engellendi' : 'Kimlik bilgileri karşılıklı gizlidir', style: TextStyle(color: blocked ? _danger : _muted, fontSize: 11)),
+            Text(blocked ? 'Oturum engellendi' : 'Kimlik bilgileri karşılıklı gizlidir', style: TextStyle(color: blocked ? _danger : CepqarTheme.muted, fontSize: 11)),
           ],
         ),
         actions: [
@@ -213,9 +213,9 @@ class _OwnerChatPageState extends State<OwnerChatPage> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.chat_bubble_outline_rounded, color: _muted, size: 42),
+                        Icon(Icons.chat_bubble_outline_rounded, color: CepqarTheme.muted, size: 42),
                         const SizedBox(height: 10),
-                        Text(error!, textAlign: TextAlign.center, style: const TextStyle(color: _muted)),
+                        Text(error!, textAlign: TextAlign.center, style: TextStyle(color: CepqarTheme.muted)),
                         const SizedBox(height: 12),
                         FilledButton(onPressed: _resolve, style: FilledButton.styleFrom(backgroundColor: _purple), child: const Text('Tekrar dene')),
                       ],
@@ -260,7 +260,7 @@ class _OwnerChatPageState extends State<OwnerChatPage> {
                                   bottomRight: Radius.circular(mine ? 4 : 18),
                                 ),
                               ),
-                              child: Text(m['message']?.toString() ?? '', style: const TextStyle(color: Colors.white, height: 1.3)),
+                              child: Text(m['message']?.toString() ?? '', style: TextStyle(color: mine ? Colors.white : CepqarTheme.text, height: 1.3)),
                             ),
                           );
                         },
@@ -277,10 +277,10 @@ class _OwnerChatPageState extends State<OwnerChatPage> {
                               Expanded(
                                 child: TextField(
                                   controller: input,
-                                  style: const TextStyle(color: Colors.white),
+                                  style: TextStyle(color: CepqarTheme.text),
                                   decoration: InputDecoration(
                                     hintText: 'Mesaj yaz...',
-                                    hintStyle: const TextStyle(color: _muted),
+                                    hintStyle: TextStyle(color: CepqarTheme.muted),
                                     filled: true,
                                     fillColor: CepqarTheme.panel,
                                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(22), borderSide: BorderSide.none),
