@@ -219,7 +219,8 @@ module.exports = function registerCallRoutes(app, pool) {
     }
   });
 
-  app.patch('/api/public/calls/:callId', async (req,res) => {\n    await expireCalls();
+  app.patch('/api/public/calls/:callId', async (req,res) => {
+    await expireCalls();
     try {
       const visitorToken=String(req.headers['x-visitor-token']||'').trim();
       if(!visitorToken)return res.status(401).json({error:'VISITOR_TOKEN_REQUIRED'});
