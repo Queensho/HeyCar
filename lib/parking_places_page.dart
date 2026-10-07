@@ -327,7 +327,7 @@ class _ParkingPlacesPageState extends State<ParkingPlacesPage>
                               SizedBox(height: 18),
                               Text(
                                 'Konumun alınıyor…',
-                                style: TextStyle(color: Colors.white),
+                                style: TextStyle(color: CepqarTheme.text),
                               ),
                             ],
                           ),
