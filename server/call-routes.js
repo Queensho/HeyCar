@@ -156,22 +156,21 @@ module.exports = function registerCallRoutes(app, pool) {
       const recipientType=activeDriver.rows.length?'driver':'owner';
       const recipientId=activeDriver.rows.length?String(activeDriver.rows[0].driver_user_id):String(vehicle.owner_id);
 
-      const busy=await pool.query(
-        `SELECT 1 FROM anonymous_calls
-         WHERE recipient_user_id=$1
-           AND status IN ('ringing','accepted')
-           AND expires_at>NOW()
-         LIMIT 1`,
-        [recipientId]
-      );
-      if(busy.rows.length)return res.status(409).json({error:'OWNER_BUSY'});
-
-      const created=await pool.query(
-        `INSERT INTO anonymous_calls(qr_token,vehicle_id,owner_id,recipient_user_id,recipient_type,scan_session_hash)
-         VALUES($1,$2,$3,$4,$5,$6)
-         RETURNING id,visitor_token,status,expires_at,recipient_type`,
-        [token,vehicle.vehicle_id,vehicle.owner_id,recipientId,recipientType,scan.token_hash||null]
-      );
+      await expireCalls();
+      let created;
+      try{
+        created=await pool.query(
+          `INSERT INTO anonymous_calls(qr_token,vehicle_id,owner_id,recipient_user_id,recipient_type,scan_session_hash)
+           VALUES($1,$2,$3,$4,$5,$6)
+           RETURNING id,visitor_token,status,expires_at,recipient_type`,
+          [token,vehicle.vehicle_id,vehicle.owner_id,recipientId,recipientType,scan.token_hash||null]
+        );
+      }catch(e){
+        if(e&&e.code==='23505'&&String(e.constraint||'')==='uq_anonymous_calls_active_recipient'){
+          return res.status(409).json({error:'OWNER_BUSY'});
+        }
+        throw e;
+      }
       const call=created.rows[0];
 
       try{
