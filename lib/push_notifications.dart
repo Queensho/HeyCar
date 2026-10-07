@@ -15,8 +15,8 @@ import 'owner_auth.dart';
 import 'driver_auth.dart';
 
 const _apiBase='https://heycar-api-185-165-46-213.nip.io';
-const _generalChannel='cepqontag_notifications_v11';
-const _callChannel='cepqontag_calls_v8';
+const _generalChannel='cepqontag_notifications_v12';
+const _callChannel='cepqontag_calls_v9';
 const _callAcceptAction='cepqar_accept_call';
 const _callDeclineAction='cepqar_decline_call';
 final FlutterLocalNotificationsPlugin _local=FlutterLocalNotificationsPlugin();
@@ -412,8 +412,8 @@ class PushNotifications{
         textColor:'#FFFFFF',
         textAccept:'Kabul Et',
         textDecline:'Reddet',
-        incomingCallNotificationChannelName:'CepQontag Gelen Aramalar v8',
-        missedCallNotificationChannelName:'CepQontag Cevapsız Aramalar v8',
+        incomingCallNotificationChannelName:'CepQontag Gelen Aramalar v9',
+        missedCallNotificationChannelName:'CepQontag Cevapsız Aramalar v9',
         isShowCallID:false,
         isShowFullLockedScreen:false,
         isImportant:true,
