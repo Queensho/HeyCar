@@ -318,8 +318,8 @@ class _ParkingPlacesPageState extends State<ParkingPlacesPage>
             ? Center(
                 child: SingleChildScrollView(
                   child: _locating
-                      ? const Padding(
-                          padding: EdgeInsets.all(32),
+                      ? Padding(
+                          padding: const EdgeInsets.all(32),
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
