@@ -99,7 +99,8 @@ module.exports = function registerCallRoutes(app, pool) {
     return result.rows[0]||null;
   }
 
-  async function updateFor(callId, recipientId, recipientType, body) {\n    await expireCalls();
+  async function updateFor(callId, recipientId, recipientType, body) {
+    await expireCalls();
     const action=String((body&&body.action)||'').trim();
     const nextStatus=action==='accept'?'accepted':action==='reject'?'rejected':action==='end'?'ended':null;
     const answer=body&&body.answer?JSON.stringify(body.answer):null;
