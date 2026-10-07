@@ -400,6 +400,18 @@ class _AdminStorePageState extends State<AdminStorePage>{
     );
   }
 
+  Future<void> editStoreDesign()async{
+    final title=TextEditingController(text:(storeConfig['storeTitle']??'Mağaza').toString());
+    final hero=TextEditingController(text:(storeConfig['heroTitle']??'Aracın için hazır.').toString());
+    final body=TextEditingController(text:(storeConfig['heroBody']??'Yeni araç, yedek etiket ve gelecek akıllı ürünler tek yerde.').toString());
+    final image=TextEditingController(text:(storeConfig['heroImageUrl']??'').toString());
+    var showHero=storeConfig['showHero']!=false,showSearch=storeConfig['showSearch']==true,showCategories=storeConfig['showCategories']!=false;
+    final ok=await showDialog<bool>(context:context,builder:(c)=>StatefulBuilder(builder:(c,setD)=>AlertDialog(title:const Text('Mağaza Tasarımı'),content:SizedBox(width:680,child:SingleChildScrollView(child:Column(children:[field(title,'Header başlığı'),const SizedBox(height:10),field(hero,'Hero başlığı'),const SizedBox(height:10),field(body,'Hero açıklaması',maxLines:3),const SizedBox(height:10),field(image,'Hero görsel URL'),SwitchListTile(value:showHero,onChanged:(v)=>setD(()=>showHero=v),title:const Text('Hero göster')),SwitchListTile(value:showSearch,onChanged:(v)=>setD(()=>showSearch=v),title:const Text('Arama göster')),SwitchListTile(value:showCategories,onChanged:(v)=>setD(()=>showCategories=v),title:const Text('Kategorileri göster'))]))),actions:[TextButton(onPressed:()=>Navigator.pop(c,false),child:const Text('Vazgeç')),FilledButton(onPressed:()async{try{await send('PATCH','/api/admin/manage/store/config',{'storeTitle':title.text.trim(),'heroTitle':hero.text.trim(),'heroBody':body.text.trim(),'heroImageUrl':image.text.trim(),'showHero':showHero,'showSearch':showSearch,'showCategories':showCategories});if(c.mounted)Navigator.pop(c,true);}catch(e){snack(e);}},child:const Text('Yayınla'))])));
+    for(final x in [title,hero,body,image]){x.dispose();}if(ok==true)await load();
+  }
+
+  Widget designView()=>Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Row(children:[const Expanded(child:Text('Mağaza Vitrini',style:TextStyle(color:_ink,fontSize:17,fontWeight:FontWeight.w900))),FilledButton.icon(onPressed:editStoreDesign,icon:const Icon(Icons.palette_outlined),label:const Text('Tasarımı Düzenle'))]),const SizedBox(height:10),Container(width:double.infinity,padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:_card,borderRadius:BorderRadius.circular(18),border:Border.all(color:_line)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text((storeConfig['storeTitle']??'Mağaza').toString(),style:const TextStyle(fontSize:20,fontWeight:FontWeight.w900)),const SizedBox(height:12),Text((storeConfig['heroTitle']??'Aracın için hazır.').toString(),style:const TextStyle(fontSize:24,fontWeight:FontWeight.w900)),const SizedBox(height:5),Text((storeConfig['heroBody']??'').toString(),style:const TextStyle(color:_muted))]))]);
+
   @override Widget build(BuildContext context)=>ColoredBox(
     color:_bg,
     child:RefreshIndicator(
@@ -411,7 +423,7 @@ class _AdminStorePageState extends State<AdminStorePage>{
           statsView(),const SizedBox(height:16),
           Row(children:[
             sectionButton(0,'Ürün Yönetimi',Icons.inventory_2_outlined),const SizedBox(width:8),
-            sectionButton(1,'Siparişler',Icons.receipt_long_outlined),const Spacer(),
+            sectionButton(1,'Siparişler',Icons.receipt_long_outlined),const SizedBox(width:8),sectionButton(2,'Tasarım & Header',Icons.palette_outlined),const Spacer(),
             IconButton(tooltip:'Yenile',onPressed:loading?null:load,icon:const Icon(Icons.refresh_rounded)),
           ]),
           if(error!=null)...[
@@ -426,7 +438,8 @@ class _AdminStorePageState extends State<AdminStorePage>{
           if(loading&&products.isEmpty&&orders.isEmpty)
             const Center(child:Padding(padding:EdgeInsets.all(40),child:CircularProgressIndicator(color:_purple)))
           else if(section==0)productsView()
-          else ordersView(),
+          else if(section==1)ordersView()
+          else designView(),
         ],
       ),
     ),
