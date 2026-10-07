@@ -4,11 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'onboarding_backend.dart';
 import 'owner_auth.dart';
+import 'cepqar_theme.dart';
 
-const _bg = Color(0xFF07111F);
-const _panel = Color(0xFF101A30);
+const _bg = CepqarTheme.darkBg;
+const _panel = CepqarTheme.darkPanel;
 const _purple = Color(0xFF8B5CFF);
-const _muted = Color(0xFFA7B0C7);
+const _muted = CepqarTheme.darkMuted;
 const _danger = Color(0xFFFF4D63);
 
 class OwnerChatPage extends StatefulWidget {
@@ -149,7 +150,7 @@ class _OwnerChatPageState extends State<OwnerChatPage> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
-        backgroundColor: _panel,
+        backgroundColor: CepqarTheme.panel,
         title: const Text('Oturumu engelle?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900)),
         content: const Text(
           'Bu tarama oturumu anında kapanır. QR etiketiniz değişmez ve diğer kişiler QR’ı kullanmaya devam edebilir.',
@@ -185,10 +186,10 @@ class _OwnerChatPageState extends State<OwnerChatPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _bg,
+      backgroundColor: CepqarTheme.bg,
       appBar: AppBar(
-        backgroundColor: _bg,
-        foregroundColor: Colors.white,
+        backgroundColor: CepqarTheme.bg,
+        foregroundColor: CepqarTheme.text,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -251,7 +252,7 @@ class _OwnerChatPageState extends State<OwnerChatPage> {
                               margin: const EdgeInsets.only(bottom: 9),
                               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
                               decoration: BoxDecoration(
-                                color: mine ? _purple : _panel,
+                                color: mine ? _purple : CepqarTheme.panel,
                                 borderRadius: BorderRadius.only(
                                   topLeft: const Radius.circular(18),
                                   topRight: const Radius.circular(18),
@@ -270,7 +271,7 @@ class _OwnerChatPageState extends State<OwnerChatPage> {
                         top: false,
                         child: Container(
                           padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-                          color: const Color(0xFF0B1426),
+                          color: CepqarTheme.bg,
                           child: Row(
                             children: [
                               Expanded(
@@ -281,7 +282,7 @@ class _OwnerChatPageState extends State<OwnerChatPage> {
                                     hintText: 'Mesaj yaz...',
                                     hintStyle: const TextStyle(color: _muted),
                                     filled: true,
-                                    fillColor: _panel,
+                                    fillColor: CepqarTheme.panel,
                                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(22), borderSide: BorderSide.none),
                                   ),
                                   onSubmitted: (_) => _send(),
