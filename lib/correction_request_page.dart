@@ -152,7 +152,7 @@ class _CorrectionRequestPageState extends State<CorrectionRequestPage> {
                 controller: message,
                 maxLines: 5,
                 maxLength: 1000,
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: text),
                 decoration: _decoration('Açıklama', panel, line, muted),
               ),
               const SizedBox(height: 6),
