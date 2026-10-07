@@ -186,9 +186,34 @@ jobs:
           mkdir -p deploy/cekici
           cp -R build/web/. deploy/cekici/
 
-      - name: Verify Vale app compiles
-        run: flutter build web --release --target lib/valet_main.dart --base-href "/HeyCar/vale/" --pwa-strategy=none
-        continue-on-error: true
+      - name: Build Vale web
+        run: |
+          flutter build web --release --target lib/valet_main.dart --base-href "/HeyCar/vale/" --pwa-strategy=none
+          rm -f build/web/flutter_service_worker.js build/web/version.json
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          version=os.environ.get('GITHUB_SHA','dev')[:12]
+          index=Path('build/web/index.html')
+          html=index.read_text()
+          html=html.replace('src="flutter_bootstrap.js"', f'src="flutter_bootstrap.js?v={version}"')
+          html=html.replace(
+              '<meta charset="UTF-8">',
+              '<meta charset="UTF-8">\n'
+              '  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">\n'
+              '  <meta http-equiv="Pragma" content="no-cache">\n'
+              '  <meta http-equiv="Expires" content="0">',
+              1,
+          )
+          index.write_text(html)
+          bootstrap=Path('build/web/flutter_bootstrap.js')
+          bootstrap.write_text(bootstrap.read_text().replace('"main.dart.js"', f'"main.dart.js?v={version}"'))
+          print(f'Vale web cache bust version: {version}')
+          PY
+          mkdir -p deploy/vale
+          cp -R build/web/. deploy/vale/
+          test -f deploy/vale/index.html
+          test -f deploy/vale/main.dart.js
 
       - name: Build admin panel
         run: |
@@ -223,6 +248,14 @@ jobs:
           PY
           mkdir -p deploy/admin
           cp -R build/web/. deploy/admin/
+
+      - name: Verify Pages payload
+        run: |
+          set -euo pipefail
+          for path in index.html owner/index.html cekici/index.html vale/index.html admin/index.html isletme/index.html; do
+            test -f "deploy/$path" || { echo "Missing Pages artifact: $path"; exit 1; }
+          done
+          echo "PAGES_PAYLOAD_COMPLETE"
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
