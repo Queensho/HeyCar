@@ -50,7 +50,7 @@ class OwnerAuth{
 
   static Future<bool> ensureValidSession()async{
     await restore();
-    if(refreshToken.isEmpty)return OwnerRefreshResult.invalid;
+    if(refreshToken.isEmpty)return false;
     if(accessTokenUsable())return true;
     return (await refreshResult())!=OwnerRefreshResult.invalid;
   }
@@ -71,7 +71,7 @@ class OwnerAuth{
 
   static Future<OwnerRefreshResult> _refreshOnce()async{
     if(refreshToken.isEmpty)await restore();
-    if(refreshToken.isEmpty)return false;
+    if(refreshToken.isEmpty)return OwnerRefreshResult.invalid;
     final tokenToRotate=refreshToken;
     try{
       final r=await http.post(
