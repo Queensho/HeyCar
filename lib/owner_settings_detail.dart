@@ -7,12 +7,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'onboarding_backend.dart';
 import 'qr_backend.dart';
 import 'owner_auth.dart';
+import 'cepqar_theme.dart';
 
-const _bg = Color(0xFF07111F);
-const _panel = Color(0xFF111A31);
-const _line = Color(0xFF29345A);
+const _bg = CepqarTheme.darkBg;
+const _panel = CepqarTheme.darkPanel;
+const _line = CepqarTheme.darkLine;
 const _purple = Color(0xFF8B5CFF);
-const _muted = Color(0xFFA7B0C7);
+const _muted = CepqarTheme.darkMuted;
 const _baseUrl = 'https://heycar-api-185-165-46-213.nip.io';
 
 Map<String, String> get _ownerHeaders => const {};
@@ -26,7 +27,7 @@ Future<void> _showOwnerRecoveryCode(BuildContext context) async {
     if(code.isEmpty)throw Exception();
     if(!context.mounted)return;
     await showDialog<void>(context:context,builder:(c)=>AlertDialog(
-      backgroundColor:_panel,
+      backgroundColor:CepqarTheme.panel,
       title:const Text('Kurtarma kodun',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w900)),
       content:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.stretch,children:[
         const Text('Bu kod şifreni unutursan hesabını kurtarmak için kullanılır. Güvenli bir yerde sakla. Yeni kod oluşturursan eskisi geçersiz olur.',style:TextStyle(color:_muted,height:1.35)),
@@ -47,7 +48,7 @@ Future<void> _deleteOwnerAccount(BuildContext context) async {
   final pass=TextEditingController();
   String? error;bool busy=false;
   final confirmed=await showDialog<bool>(context:context,builder:(dialogContext)=>StatefulBuilder(builder:(c,setLocal)=>AlertDialog(
-    backgroundColor:_panel,
+    backgroundColor:CepqarTheme.panel,
     title:const Text('Hesabı kalıcı olarak sil',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w900)),
     content:Column(mainAxisSize:MainAxisSize.min,children:[
       const Text('Araçların, QR bağlantıların, mesajların, bildirimlerin ve hesap oturumların silinecek. Bu işlem geri alınamaz.',style:TextStyle(color:_muted,height:1.35)),
@@ -85,7 +86,7 @@ Future<void> _deleteOwnerAccount(BuildContext context) async {
 class _AccountDeletedPage extends StatelessWidget{
   const _AccountDeletedPage();
   @override Widget build(BuildContext context)=>Scaffold(
-    backgroundColor:_bg,
+    backgroundColor:CepqarTheme.bg,
     body:SafeArea(child:Center(child:Padding(padding:const EdgeInsets.all(28),child:Column(mainAxisSize:MainAxisSize.min,children:[
       const Icon(Icons.check_circle_outline_rounded,color:_purple,size:78),
       const SizedBox(height:18),
@@ -247,7 +248,7 @@ class _OwnerAccountSettingsPageState extends State<OwnerAccountSettingsPage> {
         children: [
           CircleAvatar(
             radius: 38,
-            backgroundColor: _panel,
+            backgroundColor: CepqarTheme.panel,
             child: Icon(
               editing ? Icons.edit_rounded : Icons.person_rounded,
               color: _purple,
@@ -677,7 +678,7 @@ class _OwnerPrivacySettingsPageState extends State<OwnerPrivacySettingsPage> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: _panel,
+        backgroundColor: CepqarTheme.panel,
         title: const Text(
           'Güvenlik kodunu yenile',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900),
@@ -1019,9 +1020,9 @@ class _SettingsScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        backgroundColor: _bg,
+        backgroundColor: CepqarTheme.bg,
         appBar: AppBar(
-          backgroundColor: _bg,
+          backgroundColor: CepqarTheme.bg,
           foregroundColor: Colors.white,
           elevation: 0,
           title: Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
