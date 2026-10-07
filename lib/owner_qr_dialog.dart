@@ -87,12 +87,12 @@ Future<void> showOwnerQrDialog(BuildContext context) async {
                   const Expanded(
                     child: Text(
                       'QR Kodum',
-                      style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900),
+                      style: TextStyle(color: CepqarTheme.text, fontSize: 24, fontWeight: FontWeight.w900),
                     ),
                   ),
                   IconButton(
                     onPressed: () => Navigator.pop(dialogContext),
-                    icon: const Icon(Icons.close_rounded, color: Colors.white70),
+                    icon: const Icon(Icons.close_rounded, color: CepqarTheme.muted),
                   ),
                 ],
               ),
@@ -111,13 +111,13 @@ Future<void> showOwnerQrDialog(BuildContext context) async {
                 const SizedBox(height: 14),
                 Text(
                   token,
-                  style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900),
+                  style: const TextStyle(color: CepqarTheme.text, fontSize: 16, fontWeight: FontWeight.w900),
                 ),
                 const SizedBox(height: 6),
                 SelectableText(
                   publicUrl,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: _muted, fontSize: 11.5),
+                  style: const TextStyle(color: CepqarTheme.muted, fontSize: 11.5),
                 ),
               ] else ...[
                 const SizedBox(height: 10),
@@ -126,7 +126,7 @@ Future<void> showOwnerQrDialog(BuildContext context) async {
                 const Text(
                   'Aktif QR kodu bulunamadı.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: _muted, fontSize: 14),
+                  style: TextStyle(color: CepqarTheme.muted, fontSize: 14),
                 ),
               ],
             ],
