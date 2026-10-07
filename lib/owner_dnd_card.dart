@@ -63,8 +63,8 @@ class _OwnerDndCardState extends State<OwnerDndCard> {
   void _locked() {
     showDialog(context: context, builder: (_) => AlertDialog(
       backgroundColor: CepqarTheme.panel,
-      title: const Row(children: [Icon(Icons.lock_rounded, color: _dndPurple), SizedBox(width: 8), Text('Premium özellik', style: TextStyle(color: Colors.white))]),
-      content: const Text('Rahatsız Etmeyin özelliği Premium üyeler için kullanılabilir.', style: TextStyle(color: _dndMuted)),
+      title: const Row(children: [Icon(Icons.lock_rounded, color: _dndPurple), SizedBox(width: 8), Text('Premium özellik', style: TextStyle(color: CepqarTheme.text))]),
+      content: const Text('Rahatsız Etmeyin özelliği Premium üyeler için kullanılabilir.', style: TextStyle(color: CepqarTheme.muted)),
       actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Tamam'))],
     ));
   }
@@ -86,8 +86,8 @@ class _OwnerDndCardState extends State<OwnerDndCard> {
   Future<void> _chooseDuration() async {
     if (!premium) { _locked(); return; }
     final hours = await showModalBottomSheet<int>(context: context, backgroundColor: CepqarTheme.panel, builder: (c) => SafeArea(child: Wrap(children: [
-      const ListTile(title: Text('Ne kadar sessiz kalalım?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900))),
-      for (final h in [1,3,5,8,12]) ListTile(title: Text('$h saat', style: const TextStyle(color: Colors.white)), onTap: () => Navigator.pop(c,h)),
+      const ListTile(title: Text('Ne kadar sessiz kalalım?', style: TextStyle(color: CepqarTheme.text, fontWeight: FontWeight.w900))),
+      for (final h in [1,3,5,8,12]) ListTile(title: Text('$h saat', style: TextStyle(color: CepqarTheme.text)), onTap: () => Navigator.pop(c,h)),
     ])));
     if (hours != null) await _setHours(hours);
   }
@@ -111,11 +111,11 @@ class _OwnerDndCardState extends State<OwnerDndCard> {
           const SizedBox(width:12),
           Expanded(child: Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
             Row(children:[
-              const Flexible(child:Text('Rahatsız Etmeyin',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w900,fontSize:15))),
+              Flexible(child:Text('Rahatsız Etmeyin',style:TextStyle(color:CepqarTheme.text,fontWeight:FontWeight.w900,fontSize:15))),
               if (!loading && !premium) ...[const SizedBox(width:7),const Icon(Icons.lock_rounded,color:_dndPurple,size:14),const SizedBox(width:3),const Text('Premium',style:TextStyle(color:_dndPurple,fontSize:10,fontWeight:FontWeight.w900))],
             ]),
             const SizedBox(height:4),
-            Text(subtitle,style:const TextStyle(color:_dndMuted,fontSize:11.5)),
+            Text(subtitle,style:TextStyle(color:CepqarTheme.muted,fontSize:11.5)),
           ])),
           if (loading)
             const Padding(padding:EdgeInsets.all(12),child:SizedBox(width:20,height:20,child:CircularProgressIndicator(strokeWidth:2,color:_dndPurple)))
