@@ -178,6 +178,40 @@ jobs:
 
           echo "MATRIX_AUTH_BOUNDARIES_OK"
 
+          # Cross-principal regression: a valid Owner session must never authorize
+          # another Owner's vehicle resource.
+          OWNER2_ID="00000000-0000-4000-8000-000000000112"
+          VEHICLE2_ID="00000000-0000-4000-8000-000000000223"
+          psql -h 127.0.0.1 -U postgres -d heycar_matrix -v ON_ERROR_STOP=1 <<SQL
+          INSERT INTO users(id,email,phone,display_name,password_hash,role,status,premium)
+          VALUES('$OWNER2_ID','matrix-owner2@test.local','+905551234568','Matrix Owner 2',crypt('MatrixPass123!',gen_salt('bf',12)),'user','active',false);
+          INSERT INTO vehicles(id,owner_id,plate,make,model,color)
+          VALUES('$VEHICLE2_ID','$OWNER2_ID','34MTR998','Matrix','Isolation','Test');
+          SQL
+          owner1_login=$(curl -sS -o /tmp/owner1-login.json -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{"phone":"+905551234567","password":"MatrixPass123!"}' http://127.0.0.1:8090/api/owner/login-phone)
+          test "$owner1_login" = "200"
+          owner1_token=$(node -e "const x=require('/tmp/owner1-login.json');process.stdout.write(x.accessToken||'')")
+          test -n "$owner1_token"
+          cross_vehicle=$(curl -sS -o /tmp/cross-vehicle.json -w '%{http_code}' -H "Authorization: Bearer $owner1_token" http://127.0.0.1:8090/api/owner/vehicles/$VEHICLE2_ID)
+          test "$cross_vehicle" = "404"
+          echo "MATRIX_CROSS_PRINCIPAL_OWNER_ISOLATION_OK"
+
+          # Concurrency regression: DB invariants must reject simultaneous duplicate
+          # active assignments even if two application requests race.
+          psql -h 127.0.0.1 -U postgres -d heycar_matrix -v ON_ERROR_STOP=1 <<'SQL'
+          DO $
+          DECLARE idx_count int;
+          BEGIN
+            SELECT count(*) INTO idx_count FROM pg_indexes
+             WHERE schemaname='public'
+               AND indexname IN ('uq_offer_pending_owner_campaign','uq_towing_active_vehicle');
+            IF idx_count <> 2 THEN
+              RAISE EXCEPTION 'Concurrency protection indexes missing: %',idx_count;
+            END IF;
+          END $;
+          SQL
+          echo "MATRIX_CONCURRENCY_INVARIANTS_OK"
+
           # Real public QR notification round-trip. This catches schema drift
           # where application code returns/routes recipient_user_id but a fresh
           # migration chain forgot to create the column.
