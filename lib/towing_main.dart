@@ -14,6 +14,22 @@ import 'towing_driver_pages.dart';
 const api='https://heycar-api-185-165-46-213.nip.io',purple=Color(0xFF713BFF),lime=Color(0xFFB6FF2A),bg=Color(0xFF07111F),panel=Color(0xFF101A30),muted=Color(0xFFA7B0C7);
 Future<void> main()async{WidgetsFlutterBinding.ensureInitialized();try{await Firebase.initializeApp();}catch(e){debugPrint('Firebase init unavailable: $e');}runApp(const TowingApp());}
 bool get firebaseReady=>Firebase.apps.isNotEmpty;
+Future<String?> refreshTowingAccessToken() async {
+  final prefs=await SharedPreferences.getInstance();
+  final refresh=prefs.getString('towing_refresh_token');
+  if(refresh==null||refresh.isEmpty)return null;
+  try{
+    final response=await http.post(Uri.parse(api+'/api/owner/auth/refresh'),headers:{'content-type':'application/json'},body:jsonEncode({'refreshToken':refresh}));
+    if(response.statusCode!=200)return null;
+    final data=jsonDecode(response.body);
+    final access='${data['accessToken']??''}',nextRefresh='${data['refreshToken']??''}';
+    if(access.isEmpty)return null;
+    await prefs.setString('towing_owner_token',access);
+    if(nextRefresh.isNotEmpty)await prefs.setString('towing_refresh_token',nextRefresh);
+    return access;
+  }catch(_){return null;}
+}
+
 class TowingApp extends StatelessWidget{const TowingApp({super.key});@override Widget build(BuildContext c)=>MaterialApp(debugShowCheckedModeBanner:false,theme:ThemeData.dark(useMaterial3:true).copyWith(scaffoldBackgroundColor:bg,colorScheme:ColorScheme.fromSeed(seedColor:purple,brightness:Brightness.dark)),home:const Gate());}
 class Gate extends StatefulWidget{const Gate({super.key});@override State<Gate> createState()=>_Gate();}class _Gate extends State<Gate>{String? token;@override void initState(){super.initState();SharedPreferences.getInstance().then((p){if(mounted)setState(()=>token=p.getString('towing_owner_token'));});}@override Widget build(BuildContext c)=>token==null?const Login():Home(token:token!,logout:()async{final p=await SharedPreferences.getInstance();await p.remove('towing_owner_token');await p.remove('towing_refresh_token');setState(()=>token=null);});}
 class Login extends StatefulWidget{const Login({super.key});@override State<Login> createState()=>_Login();}

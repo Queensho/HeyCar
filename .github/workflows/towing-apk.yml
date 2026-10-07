@@ -47,30 +47,6 @@ jobs:
           s=s.replace('<application', '    <uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n    <application', 1)
           m.write_text(s)
           PY
-      - name: Restore Firebase Android config
-        env:
-          GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
-        run: |
-          set -e
-          test -n "$GOOGLE_SERVICES_JSON_B64"
-          printf '%s' "$GOOGLE_SERVICES_JSON_B64" | base64 --decode > android/app/google-services.json
-          python3 - <<'PY'
-          import json
-          from pathlib import Path
-          p=Path('android/app/google-services.json'); data=json.loads(p.read_text())
-          packages=[c.get('client_info',{}).get('android_client_info',{}).get('package_name') for c in data.get('client',[])]
-          if 'com.cepqontag.cekici' not in packages:
-              raise SystemExit('Firebase config package mismatch: com.cepqontag.cekici not found')
-          PY
-      - name: Enable Google services
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path('android/app/build.gradle.kts'); s=p.read_text()
-          if 'com.google.gms.google-services' not in s:
-              s=s.replace('plugins {','plugins {\n    id("com.google.gms.google-services") version "4.4.4"',1)
-          p.write_text(s)
-          PY
       - run: flutter pub get
       - name: Analyze towing entrypoint
         run: flutter analyze lib/towing_main.dart --no-fatal-infos --no-fatal-warnings
