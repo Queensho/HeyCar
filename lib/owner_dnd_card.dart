@@ -63,8 +63,8 @@ class _OwnerDndCardState extends State<OwnerDndCard> {
   void _locked() {
     showDialog(context: context, builder: (_) => AlertDialog(
       backgroundColor: CepqarTheme.panel,
-      title: const Row(children: [Icon(Icons.lock_rounded, color: _dndPurple), SizedBox(width: 8), Text('Premium özellik', style: TextStyle(color: CepqarTheme.text))]),
-      content: const Text('Rahatsız Etmeyin özelliği Premium üyeler için kullanılabilir.', style: TextStyle(color: CepqarTheme.muted)),
+      title: Row(children: [const Icon(Icons.lock_rounded, color: _dndPurple), const SizedBox(width: 8), Text('Premium özellik', style: TextStyle(color: CepqarTheme.text))]),
+      content: Text('Rahatsız Etmeyin özelliği Premium üyeler için kullanılabilir.', style: TextStyle(color: CepqarTheme.muted)),
       actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Tamam'))],
     ));
   }
@@ -86,7 +86,7 @@ class _OwnerDndCardState extends State<OwnerDndCard> {
   Future<void> _chooseDuration() async {
     if (!premium) { _locked(); return; }
     final hours = await showModalBottomSheet<int>(context: context, backgroundColor: CepqarTheme.panel, builder: (c) => SafeArea(child: Wrap(children: [
-      const ListTile(title: Text('Ne kadar sessiz kalalım?', style: TextStyle(color: CepqarTheme.text, fontWeight: FontWeight.w900))),
+      ListTile(title: Text('Ne kadar sessiz kalalım?', style: TextStyle(color: CepqarTheme.text, fontWeight: FontWeight.w900))),
       for (final h in [1,3,5,8,12]) ListTile(title: Text('$h saat', style: TextStyle(color: CepqarTheme.text)), onTap: () => Navigator.pop(c,h)),
     ])));
     if (hours != null) await _setHours(hours);
