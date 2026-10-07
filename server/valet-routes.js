@@ -132,8 +132,8 @@ module.exports=function registerValetRoutes(app,pool){
  app.post('/api/business/valet/accept',async(req,res)=>{const a=await businessAuth(req,res);if(!a||!enabled(a,res))return;const b=req.body||{},plate=String(b.plate||'').trim().toUpperCase();
   if(!plate)return res.status(400).json({error:'PLATE_REQUIRED'});
   const v=await pool.query("SELECT id FROM vehicles WHERE regexp_replace(UPPER(plate),'[[:space:]]+','','g')=regexp_replace($1,'[[:space:]]+','','g') LIMIT 1",[plate]);
-  const q=await pool.query("INSERT INTO valet_sessions(business_id,vehicle_id,plate,qr_code,parking_area,parking_slot,key_location,note,status) VALUES($1,$2,$3,$4,$5,$6,$7,$8,'parked') RETURNING *",[a.business_id,v.rows[0]?.id||null,plate,b.qrCode||null,b.parkingArea||null,b.parkingSlot||null,b.keyLocation||null,b.note||null]);
-  res.status(201).json({ok:true,session:q.rows[0]});
+  let q;try{q=await pool.query("INSERT INTO valet_sessions(business_id,vehicle_id,plate,qr_code,parking_area,parking_slot,key_location,note,status) VALUES($1,$2,$3,$4,$5,$6,$7,$8,'parked') RETURNING *",[a.business_id,v.rows[0]?.id||null,plate,b.qrCode||null,b.parkingArea||null,b.parkingSlot||null,b.keyLocation||null,b.note||null]);}catch(e){if(e?.code==='23505')return res.status(409).json({error:'VEHICLE_ALREADY_IN_VALET'});throw e;}
+  return res.status(201).json({ok:true,session:q.rows[0]});
  });
 
  app.get('/api/owner/valet/:vehicleId',async(req,res)=>{try{const owner=authenticatedOwnerId(req);if(!owner)return res.status(401).json({error:'OWNER_REQUIRED'});const q=await pool.query("SELECT s.*,b.name AS business_name FROM valet_sessions s JOIN vehicles v ON v.id=s.vehicle_id JOIN businesses b ON b.id=s.business_id WHERE s.vehicle_id::text=$1 AND v.owner_id::text=$2 AND s.status NOT IN ('delivered','cancelled') ORDER BY s.created_at DESC LIMIT 1",[String(req.params.vehicleId),String(owner)]);const row=q.rows[0]||null;if(row?.delivery_code_hash)delete row.delivery_code_hash;res.json({ok:true,session:row,deliveryCode:null});}catch(e){console.error('owner valet status',e);res.status(500).json({error:'SERVER_ERROR'});}});
