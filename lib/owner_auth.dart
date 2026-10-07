@@ -30,7 +30,7 @@ class OwnerAuth{
     await p.remove('owner_refresh_token');
   }
 
-  static bool _accessTokenUsable(){
+  static bool accessTokenUsable(){
     if(accessToken.isEmpty)return false;
     try{
       final parts=accessToken.split('.');
@@ -49,7 +49,7 @@ class OwnerAuth{
   static Future<bool> ensureValidSession()async{
     await restore();
     if(refreshToken.isEmpty)return false;
-    if(_accessTokenUsable())return true;
+    if(accessTokenUsable())return true;
     return refresh();
   }
 
@@ -78,7 +78,7 @@ class OwnerAuth{
       if(r.statusCode<200||r.statusCode>=300){
         // Another completed refresh may already have replaced this token.
         await restore();
-        return refreshToken.isNotEmpty&&refreshToken!=tokenToRotate&&_accessTokenUsable();
+        return refreshToken.isNotEmpty&&refreshToken!=tokenToRotate&&accessTokenUsable();
       }
       final d=jsonDecode(r.body);
       if(d is! Map)return false;
@@ -86,7 +86,7 @@ class OwnerAuth{
       return accessToken.isNotEmpty&&refreshToken.isNotEmpty;
     }catch(_){
       await restore();
-      return refreshToken.isNotEmpty&&refreshToken!=tokenToRotate&&_accessTokenUsable();
+      return refreshToken.isNotEmpty&&refreshToken!=tokenToRotate&&accessTokenUsable();
     }
   }
 
