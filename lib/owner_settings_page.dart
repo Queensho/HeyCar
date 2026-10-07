@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -106,6 +107,12 @@ class OwnerSettingsPage extends StatelessWidget {
     }
 
     await OwnerAuth.clear();
+    try {
+      await FirebaseMessaging.instance.deleteToken().timeout(const Duration(seconds: 8));
+    } catch (_) {}
+    await prefs.setBool('push_token_registered', false);
+    await prefs.remove('push_token_last_registered_at');
+    await prefs.remove('push_token_last_error');
 
     for (final key in [
       'owner_logged_in',
