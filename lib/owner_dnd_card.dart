@@ -4,11 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'onboarding_backend.dart';
 import 'owner_auth.dart';
+import 'cepqar_theme.dart';
 
-const _dndPanel = Color(0xFF101A30);
-const _dndLine = Color(0xFF27355D);
+const _dndPanel = CepqarTheme.darkPanel;
+const _dndLine = CepqarTheme.darkLine;
 const _dndPurple = Color(0xFF8B5CFF);
-const _dndMuted = Color(0xFFA7B0C7);
+const _dndMuted = CepqarTheme.darkMuted;
 
 class OwnerDndCard extends StatefulWidget {
   const OwnerDndCard({super.key});
@@ -61,7 +62,7 @@ class _OwnerDndCardState extends State<OwnerDndCard> {
 
   void _locked() {
     showDialog(context: context, builder: (_) => AlertDialog(
-      backgroundColor: _dndPanel,
+      backgroundColor: CepqarTheme.panel,
       title: const Row(children: [Icon(Icons.lock_rounded, color: _dndPurple), SizedBox(width: 8), Text('Premium özellik', style: TextStyle(color: Colors.white))]),
       content: const Text('Rahatsız Etmeyin özelliği Premium üyeler için kullanılabilir.', style: TextStyle(color: _dndMuted)),
       actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Tamam'))],
@@ -84,7 +85,7 @@ class _OwnerDndCardState extends State<OwnerDndCard> {
 
   Future<void> _chooseDuration() async {
     if (!premium) { _locked(); return; }
-    final hours = await showModalBottomSheet<int>(context: context, backgroundColor: _dndPanel, builder: (c) => SafeArea(child: Wrap(children: [
+    final hours = await showModalBottomSheet<int>(context: context, backgroundColor: CepqarTheme.panel, builder: (c) => SafeArea(child: Wrap(children: [
       const ListTile(title: Text('Ne kadar sessiz kalalım?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900))),
       for (final h in [1,3,5,8,12]) ListTile(title: Text('$h saat', style: const TextStyle(color: Colors.white)), onTap: () => Navigator.pop(c,h)),
     ])));
@@ -104,7 +105,7 @@ class _OwnerDndCardState extends State<OwnerDndCard> {
       borderRadius: BorderRadius.circular(20),
       child: Container(
         padding: const EdgeInsets.fromLTRB(15,13,10,13),
-        decoration: BoxDecoration(color: _dndPanel, borderRadius: BorderRadius.circular(20), border: Border.all(color: active ? _dndPurple : _dndLine)),
+        decoration: BoxDecoration(color: CepqarTheme.panel, borderRadius: BorderRadius.circular(20), border: Border.all(color: active ? _dndPurple : CepqarTheme.line)),
         child: Row(children: [
           Container(width:44,height:44,decoration:BoxDecoration(color:_dndPurple.withValues(alpha:.13),borderRadius:BorderRadius.circular(14)),child:Icon(active?Icons.nightlight_round:Icons.do_not_disturb_on_outlined,color:_dndPurple)),
           const SizedBox(width:12),
