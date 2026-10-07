@@ -771,7 +771,15 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
       } else if (action === 'enable') {
         r = await pool.query("UPDATE qr_tags SET status=CASE WHEN vehicle_id IS NULL THEN 'unassigned' ELSE 'active' END WHERE token=$1 RETURNING *", [token]);
       } else if (action === 'unbind') {
-        r = await pool.query("UPDATE qr_tags SET vehicle_id=NULL,status='unassigned',activated_at=NULL WHERE token=$1 RETURNING *", [token]);
+        const client=await pool.connect();
+        try{
+          await client.query('BEGIN');
+          const locked=await client.query('SELECT id FROM qr_tags WHERE token=$1 FOR UPDATE',[token]);
+          if(!locked.rows.length){await client.query('ROLLBACK');return res.status(404).json({error:'QR_NOT_FOUND'});}
+          await client.query('UPDATE vehicle_products SET qr_tag_id=NULL,updated_at=NOW() WHERE qr_tag_id=$1',[locked.rows[0].id]);
+          r=await client.query("UPDATE qr_tags SET vehicle_id=NULL,status='unassigned',activated_at=NULL WHERE id=$1 RETURNING *",[locked.rows[0].id]);
+          await client.query('COMMIT');
+        }catch(e){await client.query('ROLLBACK').catch(()=>{});throw e;}finally{client.release();}
       } else {
         return res.status(400).json({ error: 'INVALID_ACTION' });
       }

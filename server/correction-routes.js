@@ -208,12 +208,19 @@ function registerAdminCorrectionRoutes(app, pool, guard) {
         return res.status(409).json({ error: 'QR_ALREADY_BOUND' });
       }
 
-      await client.query(
+      const detached=await client.query(
         `UPDATE qr_tags
          SET vehicle_id=NULL,status='unassigned',activated_at=NULL
-         WHERE vehicle_id=$1 AND token<>$2`,
+         WHERE vehicle_id=$1 AND token<>$2
+         RETURNING id`,
         [row.vehicle_id, row.qr_token]
       );
+      if(detached.rows.length){
+        await client.query(
+          'UPDATE vehicle_products SET qr_tag_id=NULL,updated_at=NOW() WHERE qr_tag_id=ANY($1::uuid[])',
+          [detached.rows.map(x=>x.id)]
+        );
+      }
       await client.query(
         `UPDATE qr_tags
          SET vehicle_id=$1,status='active',activated_at=NOW()

@@ -136,7 +136,8 @@ async function deleteAccount(pool,userId,{mode}){
     if(vehicleIds.length){
       const arr=vehicleIds;
       if(await tableExists(c,'qr_tags')){
-        await c.query("UPDATE qr_tags SET vehicle_id=NULL,status='revoked',activated_at=NULL WHERE vehicle_id::text=ANY($1::text[])",[arr]);
+        const detachedQr=await c.query("UPDATE qr_tags SET vehicle_id=NULL,status='revoked',activated_at=NULL WHERE vehicle_id::text=ANY($1::text[]) RETURNING id",[arr]);
+        if(detachedQr.rows.length&&await tableExists(c,'vehicle_products'))await c.query('UPDATE vehicle_products SET qr_tag_id=NULL,updated_at=NOW() WHERE qr_tag_id=ANY($1::uuid[])',[detachedQr.rows.map(x=>x.id)]);
       }
       await deleteWhere(c,'vehicle_maintenance_state','vehicle_id::text=ANY($1::text[])',[arr]);
       await deleteWhere(c,'vehicle_maintenance_records','vehicle_id::text=ANY($1::text[])',[arr]);

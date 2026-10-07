@@ -225,10 +225,13 @@ module.exports = function registerVehicleManagementRoutes(app, pool) {
 
       // Keep the physical QR token for audit/print history, but detach it from the
       // deleted vehicle and make it unusable until an admin explicitly resets it.
-      await client.query(
-        "UPDATE qr_tags SET vehicle_id=NULL,status='revoked',activated_at=NULL WHERE vehicle_id::text=$1",
+      const detachedQr=await client.query(
+        "UPDATE qr_tags SET vehicle_id=NULL,status='revoked',activated_at=NULL WHERE vehicle_id::text=$1 RETURNING id",
         [vehicleId]
       );
+      if(detachedQr.rows.length&&await tableExists(client,'vehicle_products')){
+        await client.query('UPDATE vehicle_products SET qr_tag_id=NULL,updated_at=NOW() WHERE qr_tag_id=ANY($1::uuid[])',[detachedQr.rows.map(x=>x.id)]);
+      }
 
       if(await tableExists(client,'vehicle_transfers')){
         await client.query(
