@@ -400,6 +400,10 @@ class PushNotifications{
       duration:45000,
       extra:{...data,'callId':callId,'type':'incoming_call'},
       android:const AndroidParams(
+        // Do not let the plugin replace our branded Flutter incoming-call UI
+        // with its generic full-screen activity while the app is active.
+        // The high-priority CallKit notification/ringtone is still retained
+        // for background/locked/killed delivery.
         isCustomNotification:true,
         isShowLogo:false,
         ringtonePath:'cepqar_call',
@@ -411,9 +415,9 @@ class PushNotifications{
         incomingCallNotificationChannelName:'CepQontag Gelen Aramalar v8',
         missedCallNotificationChannelName:'CepQontag Cevapsız Aramalar v8',
         isShowCallID:false,
-        isShowFullLockedScreen:true,
+        isShowFullLockedScreen:false,
         isImportant:true,
-        isFullScreen:true,
+        isFullScreen:false,
       ),
     );
     await FlutterCallkitIncoming.showCallkitIncoming(params);
