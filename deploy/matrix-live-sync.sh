@@ -230,7 +230,7 @@ for f in "${FILES[@]}"; do
   fi
 done
 
-for m in 053_admin_audit_canonical.sql 054_qr_opaque_tokens.sql 057_web_push_subscriptions.sql 058_qr_proximity_security.sql 082_family_premium.sql 083_towing_vehicle_pricing.sql 084_owner_login_dependencies.sql 085_vehicle_product_page_nfc_analytics.sql 086_store_management.sql 087_valet_audit_runtime_acl_repair.sql 088_story_highlights.sql 089_server_driven_ui.sql 090_vehicle_brand_logos.sql 091_vehicle_profile_fields.sql 092_towing_driver_invite_attempts.sql 093_runtime_schema_acl_hardening.sql 094_anonymous_call_active_recipient.sql 095_valet_active_vehicle_global.sql; do
+for m in 053_admin_audit_canonical.sql 054_qr_opaque_tokens.sql 057_web_push_subscriptions.sql 058_qr_proximity_security.sql 082_family_premium.sql 083_towing_vehicle_pricing.sql 084_owner_login_dependencies.sql 085_vehicle_product_page_nfc_analytics.sql 086_store_management.sql 087_valet_audit_runtime_acl_repair.sql 088_story_highlights.sql 089_server_driven_ui.sql 090_vehicle_brand_logos.sql 091_vehicle_profile_fields.sql 092_towing_driver_invite_attempts.sql 093_runtime_schema_acl_hardening.sql 094_anonymous_call_active_recipient.sql 095_valet_active_vehicle_global.sql 096_towing_active_vehicle.sql; do
   fetch_https "$BASE/migrations/$m" -o "$TMP/$m" || fail "migration indirilemedi: $m"
   chmod 644 "$TMP/$m"
 done
@@ -474,6 +474,7 @@ sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$TMP/091_vehicle_profile_f
 sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$TMP/092_towing_driver_invite_attempts.sql"
 sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$TMP/094_anonymous_call_active_recipient.sql"
 sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$TMP/095_valet_active_vehicle_global.sql"
+sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$TMP/096_towing_active_vehicle.sql"
 sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$TMP/093_runtime_schema_acl_hardening.sql"
 
 STAGE="schema_verify"
