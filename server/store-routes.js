@@ -81,6 +81,39 @@ module.exports=function registerStoreRoutes(app,pool,adminGuard){
     ? adminGuard
     : (_req,res)=>res.status(500).json({error:'ADMIN_GUARD_NOT_CONFIGURED'});
 
+  app.get('/api/store/config',async(_req,res)=>{
+    try{
+      const r=await pool.query("SELECT config_json FROM app_settings WHERE key='storefront_config' LIMIT 1");
+      const config=r.rows[0]?.config_json||{};
+      return res.json({ok:true,config});
+    }catch(e){
+      if(e.code==='42P01')return res.json({ok:true,config:{}});
+      console.error('store config',e);return res.status(500).json({error:'SERVER_ERROR'});
+    }
+  });
+
+  app.get('/api/admin/manage/store/config',guard,async(_req,res)=>{
+    try{
+      await pool.query("CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, config_json JSONB NOT NULL DEFAULT '{}'::jsonb, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
+      const r=await pool.query("SELECT config_json,updated_at FROM app_settings WHERE key='storefront_config' LIMIT 1");
+      return res.json({ok:true,config:r.rows[0]?.config_json||{},updatedAt:r.rows[0]?.updated_at||null});
+    }catch(e){console.error('admin store config',e);return res.status(500).json({error:'SERVER_ERROR'});}
+  });
+
+  app.patch('/api/admin/manage/store/config',guard,async(req,res)=>{
+    const b=req.body&&typeof req.body==='object'?req.body:{};
+    const allowed=['storeTitle','headerSubtitle','heroEyebrow','heroTitle','heroBody','heroImageUrl','primaryColor','accentColor','backgroundMode','cardStyle','showSearch','showCategories','showHero','showSaleCount','productColumns','sectionOrder'];
+    const clean={};for(const k of allowed){if(Object.prototype.hasOwnProperty.call(b,k))clean[k]=b[k];}
+    try{
+      await pool.query("CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, config_json JSONB NOT NULL DEFAULT '{}'::jsonb, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
+      const prev=await pool.query("SELECT config_json FROM app_settings WHERE key='storefront_config' LIMIT 1");
+      const merged={...(prev.rows[0]?.config_json||{}),...clean};
+      const r=await pool.query("INSERT INTO app_settings(key,config_json,updated_at) VALUES('storefront_config',$1::jsonb,NOW()) ON CONFLICT(key) DO UPDATE SET config_json=EXCLUDED.config_json,updated_at=NOW() RETURNING config_json,updated_at",[JSON.stringify(merged)]);
+      await writeAdminAudit(pool,req,{action:'storefront_config_updated',targetType:'storefront',targetId:'main',targetLabel:'CepQontag Mağaza',before:prev.rows[0]?.config_json||{},after:r.rows[0].config_json});
+      return res.json({ok:true,config:r.rows[0].config_json,updatedAt:r.rows[0].updated_at});
+    }catch(e){console.error('admin store config update',e);return res.status(500).json({error:'SERVER_ERROR'});}
+  });
+
   app.get('/api/store/products',async(_req,res)=>{
     try{
       const r=await pool.query(
