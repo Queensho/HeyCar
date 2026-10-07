@@ -269,7 +269,7 @@ module.exports=function registerTowingProviderRoutes(app,pool){
       if(!job.rowCount){await db.query('ROLLBACK');return res.status(404).json({error:'TOWING_REQUEST_NOT_FOUND'});}
       if(job.rows[0].status!=='searching'){await db.query('ROLLBACK');return res.status(409).json({error:'TOWING_REQUEST_ALREADY_TAKEN'});}
       const v=await db.query("SELECT id FROM towing_provider_vehicles WHERE id=$1 AND provider_id=$2 AND status='active' FOR UPDATE",[vehicleId,d.rows[0].provider_id]);
-      if(!v.rowCount){await db.query('ROLLBACK');return res.status(409).json({error:'COMPATIBLE_TOWING_VEHICLE_REQUIRED'});}const occupied=await db.query("SELECT 1 FROM towing_requests WHERE accepted_towing_vehicle_id=$1 AND status IN ('accepted','arriving','arrived','vehicle_loaded','in_transit') LIMIT 1 FOR UPDATE",[vehicleId]);if(occupied.rowCount){await db.query('ROLLBACK');return res.status(409).json({error:'TOWING_VEHICLE_BUSY'});}
+      if(!v.rowCount){await db.query('ROLLBACK');return res.status(409).json({error:'COMPATIBLE_TOWING_VEHICLE_REQUIRED'});}
       const r=await db.query(`UPDATE towing_requests SET status='accepted',accepted_provider_id=$2,accepted_driver_id=$3,accepted_towing_vehicle_id=$4,accepted_at=NOW(),updated_at=NOW() WHERE id=$1 AND status='searching' RETURNING *`,[req.params.id,d.rows[0].provider_id,d.rows[0].id,vehicleId]);
       await db.query('COMMIT');return res.json({ok:true,request:r.rows[0]});
     }catch(e){await db.query('ROLLBACK').catch(()=>{});if(e?.code==='23505')return res.status(409).json({error:'DRIVER_ALREADY_HAS_ACTIVE_JOB'});console.error('towing accept',e);return res.status(500).json({error:'SERVER_ERROR'});}finally{db.release();}

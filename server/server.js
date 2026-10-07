@@ -56,7 +56,7 @@ app.use(cors({
   allowedHeaders:[
     'Authorization','Content-Type','Accept','Origin','X-Requested-With',
     'X-Scan-Token','X-Proximity-Device','X-Visitor-Token',
-    'X-File-Type','X-File-Name','X-Asset-Name','X-Asset-Category','X-Image-Width','X-Image-Height',
+    'X-File-Type','X-Asset-Name','X-Asset-Category','X-Image-Width','X-Image-Height',
     'X-Admin-Id','X-Admin-Email','X-Admin-Name',
   ],
 }));

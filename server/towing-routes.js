@@ -6,7 +6,6 @@ const path=require('path');
 
 function n(v){const x=Number(v);return Number.isFinite(x)?x:null;}
 function money(v){return Math.round((Number(v)+Number.EPSILON)*100)/100;}
-function routeKm(a,b,c,d){const R=6371,rad=x=>x*Math.PI/180,dl=rad(c-a),dn=rad(d-b);const q=Math.sin(dl/2)**2+Math.cos(rad(a))*Math.cos(rad(c))*Math.sin(dn/2)**2;return money(2*R*Math.asin(Math.min(1,Math.sqrt(q))));}
 
 module.exports=function registerTowingRoutes(app,pool,adminGuard){
   const documentDir=process.env.TOWING_DOCUMENT_DIR||'/opt/heycar/uploads/towing-docs';
@@ -24,7 +23,7 @@ module.exports=function registerTowingRoutes(app,pool,adminGuard){
   app.post('/api/owner/towing/quote',async(req,res)=>{
     const ownerId=authenticatedOwnerId(req);
     if(!ownerId)return res.status(401).json({error:'OWNER_REQUIRED'});
-    const pickupLat=n(req.body?.pickupLat),pickupLng=n(req.body?.pickupLng),destinationLat=n(req.body?.destinationLat),destinationLng=n(req.body?.destinationLng);const distanceKm=[pickupLat,pickupLng,destinationLat,destinationLng].every(Number.isFinite)?routeKm(pickupLat,pickupLng,destinationLat,destinationLng):null;
+    const distanceKm=n(req.body?.distanceKm);
     const vehicleType=String(req.body?.vehicleType||'').trim();
     const truckType=String(req.body?.truckType||'').trim();
     const isNight=req.body?.isNight===true;
@@ -49,7 +48,7 @@ module.exports=function registerTowingRoutes(app,pool,adminGuard){
     const ownerId=authenticatedOwnerId(req);if(!ownerId)return res.status(401).json({error:'OWNER_REQUIRED'});
     const vehicleId=String(req.body?.vehicleId||'').trim()||null,vehicleType=String(req.body?.vehicleType||'').trim(),truckType=String(req.body?.truckType||'').trim();
     const issueType=String(req.body?.issueType||'other').trim().slice(0,40),issueNote=String(req.body?.issueNote||'').trim().slice(0,500);
-    const pickupLat=n(req.body?.pickupLat),pickupLng=n(req.body?.pickupLng),destinationLat=n(req.body?.destinationLat),destinationLng=n(req.body?.destinationLng),distanceKm=routeKm(n(req.body?.pickupLat),n(req.body?.pickupLng),n(req.body?.destinationLat),n(req.body?.destinationLng));
+    const pickupLat=n(req.body?.pickupLat),pickupLng=n(req.body?.pickupLng),destinationLat=n(req.body?.destinationLat),destinationLng=n(req.body?.destinationLng),distanceKm=n(req.body?.distanceKm);
     const pickupAddress=String(req.body?.pickupAddress||'').trim().slice(0,300),destinationAddress=String(req.body?.destinationAddress||'').trim().slice(0,300);
     if([pickupLat,pickupLng,destinationLat,destinationLng,distanceKm].some(x=>x===null)||distanceKm<0||distanceKm>2000)return res.status(400).json({error:'INVALID_ROUTE'});
     if(pickupLat<-90||pickupLat>90||destinationLat<-90||destinationLat>90||pickupLng<-180||pickupLng>180||destinationLng<-180||destinationLng>180)return res.status(400).json({error:'INVALID_COORDINATES'});
@@ -81,7 +80,7 @@ module.exports=function registerTowingRoutes(app,pool,adminGuard){
               AND d.last_lat IS NOT NULL AND d.last_lng IS NOT NULL
               AND EXISTS(SELECT 1 FROM towing_provider_vehicles tv WHERE tv.provider_id=d.provider_id AND tv.status='active')
               AND (6371*acos(LEAST(1,GREATEST(-1,cos(radians($1))*cos(radians(d.last_lat::float8))*cos(radians(d.last_lng::float8)-radians($2))+sin(radians($1))*sin(radians(d.last_lat::float8))))))<=30
-            LIMIT 100`,[pickupLat,pickupLng]);
+            LIMIT 100`,[pickupLat,pickupLng,truckType]);
           const body=pickupAddress?'Yeni çekici talebi • '+pickupAddress:'Yakınında yeni bir çekici talebi var';
           await Promise.allSettled(nearby.rows.map(row=>push.sendOwner(String(row.user_id),{type:'towing_request',requestId:String(r.rows[0].id),pickupAddress:pickupAddress||'',destinationAddress:destinationAddress||'',truckType:String(truckType)},'Yeni Çekici Talebi',body)));
         }
