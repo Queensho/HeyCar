@@ -82,7 +82,7 @@ class _VehicleEditSheetState extends State<VehicleEditSheet>{
   }
   Widget logo(String brand,{double size=64}){
     final u=logoFor(brand),letter=brand.isEmpty?'?':brand.characters.first.toUpperCase();
-    final fallback=Container(width:size,height:size,alignment:Alignment.center,decoration:BoxDecoration(shape:BoxShape.circle,color:Colors.white.withValues(alpha:.1)),child:Text(letter,style:TextStyle(color:Colors.white,fontSize:size*.4,fontWeight:FontWeight.w900)));
+    final fallback=Container(width:size,height:size,alignment:Alignment.center,decoration:BoxDecoration(shape:BoxShape.circle,color:CepqarTheme.text.withValues(alpha:.08)),child:Text(letter,style:TextStyle(color:CepqarTheme.text,fontSize:size*.4,fontWeight:FontWeight.w900)));
     if(!u.startsWith('https://'))return fallback;
     return SizedBox(width:size,height:size,child:Image.network(u,fit:BoxFit.contain,errorBuilder:(_,__,___)=>fallback));
   }
