@@ -162,7 +162,7 @@ class _PremiumPageState extends State<PremiumPage>{
               child:Column(children:[
                 for(int i=0;i<features.length;i++)...[
                   _Feature(data:features[i]),
-                  if(i<features.length-1)const Divider(height:1,color:CepqarTheme.line,indent:58,endIndent:14),
+                  if(i<features.length-1)Divider(height:1,color:CepqarTheme.line,indent:58,endIndent:14),
                 ],
               ]),
             ),
