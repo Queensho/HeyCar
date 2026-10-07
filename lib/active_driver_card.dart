@@ -170,17 +170,17 @@ class _S extends State<ActiveDriverCard> {
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: CepqarTheme.panel,
-        title: const Row(
+        title: Row(
           children: [
             Icon(Icons.lock_rounded, color: Color(0xFF8B5CFF)),
             SizedBox(width: 8),
             Text(
               'Aile Premium',
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(color: CepqarTheme.text),
             ),
           ],
         ),
-        content: const Text(
+        content: Text(
           'Yetkili sürücü davet etme ve aktif sürücü seçme Aile Premium ile kullanılabilir. Paketi yalnızca araç sahibi hesabından yükseltebilirsin.',
           style: TextStyle(color: CepqarTheme.muted),
         ),
@@ -291,10 +291,10 @@ class _S extends State<ActiveDriverCard> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Center(
+                Center(
                   child: Text(
                     'Kod 7 gün geçerlidir.',
-                    style: TextStyle(color: Color(0xFFA7B0C7)),
+                    style: TextStyle(color: CepqarTheme.muted),
                   ),
                 ),
                 const SizedBox(height: 18),
