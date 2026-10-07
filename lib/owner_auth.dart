@@ -2,9 +2,11 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'onboarding_backend.dart';
+enum OwnerRefreshResult{success,invalid,transientFailure}
+
 class OwnerAuth{
   static String accessToken='',refreshToken='';
-  static Future<bool>? _refreshInFlight;
+  static Future<OwnerRefreshResult>? _refreshInFlight;
 
   static Future<void> restore()async{
     final p=await SharedPreferences.getInstance();
@@ -48,12 +50,14 @@ class OwnerAuth{
 
   static Future<bool> ensureValidSession()async{
     await restore();
-    if(refreshToken.isEmpty)return false;
+    if(refreshToken.isEmpty)return OwnerRefreshResult.invalid;
     if(accessTokenUsable())return true;
-    return refresh();
+    return (await refreshResult())!=OwnerRefreshResult.invalid;
   }
 
-  static Future<bool> refresh()async{
+  static Future<bool> refresh()async=>(await refreshResult())==OwnerRefreshResult.success;
+
+  static Future<OwnerRefreshResult> refreshResult()async{
     final active=_refreshInFlight;
     if(active!=null)return active;
     final future=_refreshOnce();
@@ -65,7 +69,7 @@ class OwnerAuth{
     }
   }
 
-  static Future<bool> _refreshOnce()async{
+  static Future<OwnerRefreshResult> _refreshOnce()async{
     if(refreshToken.isEmpty)await restore();
     if(refreshToken.isEmpty)return false;
     final tokenToRotate=refreshToken;
@@ -78,15 +82,17 @@ class OwnerAuth{
       if(r.statusCode<200||r.statusCode>=300){
         // Another completed refresh may already have replaced this token.
         await restore();
-        return refreshToken.isNotEmpty&&refreshToken!=tokenToRotate&&accessTokenUsable();
+        if(refreshToken.isNotEmpty&&refreshToken!=tokenToRotate&&accessTokenUsable())return OwnerRefreshResult.success;
+        return (r.statusCode==400||r.statusCode==401)?OwnerRefreshResult.invalid:OwnerRefreshResult.transientFailure;
       }
       final d=jsonDecode(r.body);
-      if(d is! Map)return false;
+      if(d is! Map)return OwnerRefreshResult.transientFailure;
       await saveFrom(d);
-      return accessToken.isNotEmpty&&refreshToken.isNotEmpty;
+      return accessToken.isNotEmpty&&refreshToken.isNotEmpty?OwnerRefreshResult.success:OwnerRefreshResult.transientFailure;
     }catch(_){
       await restore();
-      return refreshToken.isNotEmpty&&refreshToken!=tokenToRotate&&accessTokenUsable();
+      if(refreshToken.isNotEmpty&&refreshToken!=tokenToRotate&&accessTokenUsable())return OwnerRefreshResult.success;
+      return OwnerRefreshResult.transientFailure;
     }
   }
 
