@@ -145,7 +145,7 @@ module.exports = function registerCallRoutes(app, pool) {
       if(!security.ok)return res.status(security.status).json({error:security.error});
       const scan=await validateScanSession(pool,String(req.headers['x-scan-token']||''),token);
       if(!scan||String(scan.vehicle_id)!==String(vehicle.vehicle_id))return res.status(401).json({error:'SCAN_SESSION_REQUIRED'});
-      const rate=await pool.query(`INSERT INTO anonymous_call_rate_windows(scan_session_hash,window_started_at,attempts) VALUES($1,to_timestamp(floor(extract(epoch from now())/600)*600),1) ON CONFLICT(scan_session_hash,window_started_at) DO UPDATE SET attempts=anonymous_call_rate_windows.attempts+1 RETURNING attempts`,[scan.token_hash||'']);
+      const rate=await pool.query(`WITH lock_key AS (SELECT pg_advisory_xact_lock(hashtextextended($1,0))), recent AS (SELECT COUNT(*)::int AS n FROM anonymous_call_attempts,lock_key WHERE scan_session_hash=$1 AND attempted_at>NOW()-INTERVAL '10 minutes'), inserted AS (INSERT INTO anonymous_call_attempts(scan_session_hash) SELECT $1 FROM lock_key,recent WHERE recent.n<5 RETURNING 1) SELECT n,(SELECT COUNT(*) FROM inserted)::int AS accepted FROM recent`,[scan.token_hash||'']);\n      if(Number(rate.rows[0]?.accepted||0)!==1)return res.status(429).json({error:'CALL_RATE_LIMITED'});
       if(Number(rate.rows[0]?.attempts||0)>5)return res.status(429).json({error:'CALL_RATE_LIMITED'});
 
       const activeDriver=await pool.query(
