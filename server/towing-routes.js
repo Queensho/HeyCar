@@ -200,15 +200,16 @@ module.exports=function registerTowingRoutes(app,pool,adminGuard){
     const driverId=authenticatedDriverId(req);
     if(!driverId)return res.status(401).json({error:'DRIVER_REQUIRED'});
     try{
-      const job=await pool.query('SELECT vehicle_id FROM towing_requests WHERE id=$1 LIMIT 1',[req.params.id]);
+      const job=await pool.query('SELECT vehicle_id,owner_id FROM towing_requests WHERE id=$1 LIMIT 1',[req.params.id]);
       if(!job.rowCount)return res.status(404).json({error:'TOWING_REQUEST_NOT_FOUND'});
       const access=await driverVehicleEntitlement(pool,driverId,String(job.rows[0].vehicle_id||''));
       if(!access)return res.status(403).json({error:'DRIVER_NOT_AUTHORIZED'});
+      if(String(job.rows[0].owner_id)!==String(access.ownerId||''))return res.status(403).json({error:'TOWING_REQUEST_OWNER_MISMATCH'});
       const r=await pool.query(`SELECT r.id,r.status,r.driver_lat,r.driver_lng,r.driver_location_at,r.pickup_eta_minutes,r.pickup_distance_km,r.destination_eta_minutes,r.destination_distance_km,
         r.pickup_lat,r.pickup_lng,r.pickup_address,r.destination_lat,r.destination_lng,r.destination_address,r.distance_km,
         p.display_name AS provider_name,p.provider_type,d.full_name AS driver_name,d.phone AS driver_phone,v.plate AS towing_plate,v.brand AS towing_brand,v.model AS towing_model,v.truck_type
         FROM towing_requests r LEFT JOIN towing_providers p ON p.id=r.accepted_provider_id LEFT JOIN towing_provider_drivers d ON d.id=r.accepted_driver_id LEFT JOIN towing_provider_vehicles v ON v.id=r.accepted_towing_vehicle_id
-        WHERE r.id=$1 AND r.vehicle_id::text=$2 LIMIT 1`,[req.params.id,access.vehicleId]);
+        WHERE r.id=$1 AND r.vehicle_id::text=$2 AND r.owner_id::text=$3 LIMIT 1`,[req.params.id,access.vehicleId,access.ownerId]);
       if(!r.rowCount)return res.status(404).json({error:'TOWING_REQUEST_NOT_FOUND'});
       return res.json({ok:true,tracking:r.rows[0]});
     }catch(e){console.error('driver towing tracking',e);return res.status(500).json({error:'SERVER_ERROR'});}
@@ -219,14 +220,15 @@ module.exports=function registerTowingRoutes(app,pool,adminGuard){
     if(!driverId)return res.status(401).json({error:'DRIVER_REQUIRED'});
     const reason=String(req.body?.reason||'').trim().slice(0,300);
     try{
-      const job=await pool.query('SELECT vehicle_id FROM towing_requests WHERE id=$1 LIMIT 1',[req.params.id]);
+      const job=await pool.query('SELECT vehicle_id,owner_id FROM towing_requests WHERE id=$1 LIMIT 1',[req.params.id]);
       if(!job.rowCount)return res.status(404).json({error:'TOWING_REQUEST_NOT_FOUND'});
       const access=await driverVehicleEntitlement(pool,driverId,String(job.rows[0].vehicle_id||''));
       if(!access)return res.status(403).json({error:'DRIVER_NOT_AUTHORIZED'});
       if(!access.activeDriver)return res.status(403).json({error:'DRIVER_NOT_ACTIVE'});
-      const r=await pool.query(`UPDATE towing_requests SET status='cancelled',cancelled_at=NOW(),cancel_reason=$3,updated_at=NOW()
-        WHERE id=$1 AND vehicle_id::text=$2 AND status IN ('searching','accepted','arriving','arrived') RETURNING *`,
-        [req.params.id,access.vehicleId,reason||null]);
+      if(String(job.rows[0].owner_id)!==String(access.ownerId||''))return res.status(403).json({error:'TOWING_REQUEST_OWNER_MISMATCH'});
+      const r=await pool.query(`UPDATE towing_requests SET status='cancelled',cancelled_at=NOW(),cancel_reason=$4,updated_at=NOW()
+        WHERE id=$1 AND vehicle_id::text=$2 AND owner_id::text=$3 AND status IN ('searching','accepted','arriving','arrived') RETURNING *`,
+        [req.params.id,access.vehicleId,access.ownerId,reason||null]);
       if(!r.rowCount)return res.status(409).json({error:'TOWING_REQUEST_NOT_CANCELLABLE'});
       return res.json({ok:true,request:r.rows[0]});
     }catch(e){console.error('driver towing cancel',e);return res.status(500).json({error:'SERVER_ERROR'});}

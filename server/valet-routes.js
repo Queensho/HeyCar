@@ -239,12 +239,31 @@ module.exports=function registerValetRoutes(app,pool){
  });
 
 
- app.patch('/api/business/valet/sessions/:id/status',async(req,res)=>{const a=await businessAuth(req,res);if(!a||!enabled(a,res))return;const status=String((req.body||{}).status||'');
+ app.patch('/api/business/valet/sessions/:id/status',async(req,res)=>{
+  const a=await businessAuth(req,res);if(!a||!enabled(a,res))return;
+  const status=String((req.body||{}).status||'');
   if(!['parked','requested','retrieving','ready','delivered','cancelled'].includes(status))return res.status(400).json({error:'INVALID_STATUS'});
-  const q=await pool.query("UPDATE valet_sessions SET status=$3,requested_at=CASE WHEN $3='requested' THEN COALESCE(requested_at,now()) ELSE requested_at END,ready_at=CASE WHEN $3='ready' THEN now() ELSE ready_at END,delivered_at=CASE WHEN $3='delivered' THEN now() ELSE delivered_at END,updated_at=now() WHERE id=$1 AND business_id=$2 RETURNING *",[req.params.id,a.business_id,status]);
-  if(!q.rowCount)return res.status(404).json({error:'NOT_FOUND'});
-  const row=q.rows[0];
+  // Business accounts may manage queue/parking state, but delivery is a staff
+  // action protected by assignment and the delivery code. Do not provide an
+  // alternate route around the staff state machine.
+  if(status==='delivered')return res.status(403).json({error:'VALET_STAFF_DELIVERY_REQUIRED'});
+  const client=await pool.connect();
+  let row,from;
+  try{
+   await client.query('BEGIN');
+   const current=await client.query('SELECT id,status,staff_id,vehicle_id,plate FROM valet_sessions WHERE id=$1 AND business_id=$2 FOR UPDATE',[req.params.id,a.business_id]);
+   if(!current.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'NOT_FOUND'});}
+   from=String(current.rows[0].status||'');
+   const allowed={accepted:['parked','cancelled'],parked:['requested','cancelled'],requested:['retrieving','cancelled'],retrieving:['ready','cancelled']};
+   if(!(allowed[from]||[]).includes(status)){await client.query('ROLLBACK');return res.status(409).json({error:'INVALID_STATUS_TRANSITION',from,status});}
+   if(['retrieving','ready'].includes(status)&&!current.rows[0].staff_id){await client.query('ROLLBACK');return res.status(409).json({error:'VALET_STAFF_ASSIGNMENT_REQUIRED'});}
+   const q=await client.query("UPDATE valet_sessions SET status=$3,requested_at=CASE WHEN $3='requested' THEN COALESCE(requested_at,now()) ELSE requested_at END,retrieving_at=CASE WHEN $3='retrieving' THEN now() ELSE retrieving_at END,ready_at=CASE WHEN $3='ready' THEN now() ELSE ready_at END,updated_at=now() WHERE id=$1 AND business_id=$2 AND status=$4 RETURNING *",[req.params.id,a.business_id,status,from]);
+   if(!q.rowCount){await client.query('ROLLBACK');return res.status(409).json({error:'VALET_SESSION_CHANGED'});}
+   row=q.rows[0];
+   await client.query('COMMIT');
+  }catch(e){await client.query('ROLLBACK').catch(()=>{});console.error('business valet status',e);return res.status(500).json({error:'SERVER_ERROR'});}finally{client.release();}
+  await audit(a.business_id,row.id,row.staff_id||null,'business','status_changed',from,status,{plate:row.plate});
   if(row.vehicle_id&&['retrieving','ready'].includes(status)){try{const o=await pool.query('SELECT owner_id FROM vehicles WHERE id=$1',[row.vehicle_id]);const owner=o.rows[0]?.owner_id,push=app.locals.heycarPush;if(owner&&push?.sendOwner){const title=status==='ready'?'Aracınız hazır':'Valeniz aracınızı getiriyor';const body=status==='ready'?row.plate+' teslim için hazır.':row.plate+' için vale yola çıktı.';await push.sendOwner(owner,{type:'valet_status',sourceType:'valet',vehicleId:String(row.vehicle_id),valetSessionId:String(row.id),status},title,body);}}catch(e){console.error('valet owner push',e);}}
-  res.json({ok:true,session:row});
+  return res.json({ok:true,session:row});
  });
 };
