@@ -82,6 +82,7 @@ class _CepqontagStorePageState extends State<CepqontagStorePage> {
 
   List<_StoreProduct> products = List<_StoreProduct>.from(_fallbackProducts);
   bool loadingProducts = true;
+  Map<String,dynamic> storeConfig={};
 
   final List<_CartLine> cart = [];
   List<_StoreVehicle> vehicles = [];
@@ -97,8 +98,18 @@ class _CepqontagStorePageState extends State<CepqontagStorePage> {
   @override
   void initState() {
     super.initState();
+    _loadStoreConfig();
     _loadProducts();
     _loadVehicles();
+  }
+
+  Future<void> _loadStoreConfig() async {
+    try {
+      final r=await OwnerHttp.get(Uri.parse('${OnboardingBackend.baseUrl}/api/store/config'),json:false).timeout(const Duration(seconds:12));
+      final d=r.body.isEmpty?<String,dynamic>{}:jsonDecode(r.body);
+      if(r.statusCode==200&&d is Map&&d['config'] is Map){storeConfig=Map<String,dynamic>.from(d['config'] as Map);}
+    } catch (_) {}
+    if(mounted)setState((){});
   }
 
   Future<void> _loadProducts() async {
@@ -296,8 +307,8 @@ class _CepqontagStorePageState extends State<CepqontagStorePage> {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  const Text(
-                    'Aracın için\nhazır.',
+                  Text(
+                    (storeConfig['heroTitle']??'Aracın için hazır.').toString(),
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 27,
@@ -306,8 +317,8 @@ class _CepqontagStorePageState extends State<CepqontagStorePage> {
                     ),
                   ),
                   const Spacer(),
-                  const Text(
-                    'Yeni araç, yedek etiket ve gelecek akıllı ürünler tek yerde.',
+                  Text(
+                    (storeConfig['heroBody']??'Yeni araç, yedek etiket ve gelecek akıllı ürünler tek yerde.').toString(),
                     maxLines: 2,
                     style: TextStyle(
                       color: Color(0xFFD7D0EA),
@@ -491,8 +502,8 @@ class _CepqontagStorePageState extends State<CepqontagStorePage> {
         backgroundColor: bg,
         foregroundColor: text,
         elevation: 0,
-        title: const Text(
-          'Mağaza',
+        title: Text(
+          (storeConfig['storeTitle']??'Mağaza').toString(),
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
         ),
         actions: [
@@ -534,7 +545,7 @@ class _CepqontagStorePageState extends State<CepqontagStorePage> {
       body: ListView(
         padding: const EdgeInsets.only(bottom: 28),
         children: [
-          _hero(),
+          if(storeConfig['showHero']!=false) _hero(),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
