@@ -167,6 +167,9 @@ async function deleteAccount(pool,userId,{mode}){
     await deleteWhere(c,'driver_auth_sessions','driver_id::text=$1',[uid]);
     await deleteWhere(c,'correction_requests','owner_id::text=$1',[uid]);
     await deleteWhere(c,'vehicle_transfers','from_owner_id::text=$1 OR accepted_by::text=$1',[uid]);
+    if(await tableExists(c,'store_orders')){
+      await c.query(`UPDATE store_orders SET owner_id=NULL WHERE owner_id::text=$1`,[uid]);
+    }
     const del=await c.query('DELETE FROM users WHERE id::text=$1 RETURNING id',[uid]);
     if(!del.rows.length){await c.query('ROLLBACK');return {ok:false,error:'USER_NOT_FOUND'};}
     await c.query('COMMIT');
