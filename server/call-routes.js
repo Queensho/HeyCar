@@ -12,7 +12,7 @@ function normalizeToken(raw) {
 module.exports = function registerCallRoutes(app, pool) {
   const pushService=registerPushRoutes(app, pool);
   async function expireCalls() {
-    await pool.query(`UPDATE anonymous_calls SET status=CASE WHEN status='ringing' THEN 'missed' ELSE 'ended' END, ended_at=COALESCE(ended_at,NOW()) WHERE status IN ('ringing','accepted') AND expires_at<=NOW()`);
+    await pool.query(`UPDATE anonymous_calls SET status='missed', ended_at=COALESCE(ended_at,NOW()) WHERE status='ringing' AND expires_at<=NOW()`);
   }
 
   async function sendRecipientPush(recipientId, recipientType, data, title, body, ownerId=null) {
@@ -230,7 +230,7 @@ module.exports = function registerCallRoutes(app, pool) {
              status=CASE WHEN $5 THEN 'cancelled' ELSE status END,
              ended_at=CASE WHEN $5 THEN NOW() ELSE ended_at END
          WHERE id=$1 AND visitor_token::text=$2
-         AND expires_at>NOW()
+         AND (status='accepted' OR expires_at>NOW())
          AND status IN ('ringing','accepted')
        RETURNING id,status,recipient_user_id,recipient_type,owner_id`,
         [req.params.callId,visitorToken,offer,candidate,cancel]
