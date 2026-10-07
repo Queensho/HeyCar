@@ -5,11 +5,26 @@ const crypto=require('crypto');
 const fs=require('fs');
 const path=require('path');
 const express=require('express');
+const rateLimit=require('express-rate-limit');
+const {ipKeyGenerator}=require('express-rate-limit');
 const normPhone=v=>clean(v,40).replace(/[^0-9+]/g,'');
 const inviteHash=v=>crypto.createHash('sha256').update(String(v)).digest('hex');
 const normalizeTrMobile=raw=>{let d=String(raw||'').replace(/\D/g,'');if(d.startsWith('90')&&d.length===12)d=d.slice(2);else if(d.startsWith('0')&&d.length===11)d=d.slice(1);return /^5\d{9}$/.test(d)?`+90${d}`:null;};
 
 module.exports=function registerTowingProviderRoutes(app,pool){
+  const driverLinkIpLimiter=rateLimit({
+    windowMs:15*60*1000,limit:30,standardHeaders:'draft-7',legacyHeaders:false,skipSuccessfulRequests:true,
+    keyGenerator:req=>ipKeyGenerator(req.ip),message:{error:'TOO_MANY_DRIVER_INVITE_ATTEMPTS'},
+  });
+  const driverLinkAccountLimiter=rateLimit({
+    windowMs:15*60*1000,limit:12,standardHeaders:'draft-7',legacyHeaders:false,skipSuccessfulRequests:true,
+    keyGenerator:req=>authenticatedOwnerId(req)||'anonymous',message:{error:'TOO_MANY_DRIVER_INVITE_ATTEMPTS'},
+  });
+  const driverLinkPhoneLimiter=rateLimit({
+    windowMs:15*60*1000,limit:8,standardHeaders:'draft-7',legacyHeaders:false,skipSuccessfulRequests:true,
+    keyGenerator:req=>normalizeTrMobile(req.body?.phone)||'invalid',message:{error:'TOO_MANY_DRIVER_INVITE_ATTEMPTS'},
+  });
+
   const documentDir=process.env.TOWING_DOCUMENT_DIR||'/opt/heycar/uploads/towing-docs';
   try{fs.mkdirSync(documentDir,{recursive:true});}catch(e){console.error('towing document dir',e);}
   const rejectionWindowDays=Math.max(1,Math.min(30,Number(process.env.TOWING_REJECTION_WINDOW_DAYS||7)));
@@ -102,33 +117,57 @@ module.exports=function registerTowingProviderRoutes(app,pool){
   app.post('/api/towing/provider/drivers',async(req,res)=>{
     const userId=authenticatedOwnerId(req);if(!userId)return res.status(401).json({error:'OWNER_REQUIRED'});
     try{const p=await pool.query("SELECT id,provider_type FROM towing_providers WHERE owner_user_id=$1 AND status='active'",[userId]);if(!p.rowCount)return res.status(403).json({error:'ACTIVE_PROVIDER_REQUIRED'});if(p.rows[0].provider_type!=='company')return res.status(403).json({error:'COMPANY_PROVIDER_REQUIRED'});
-      const name=clean(req.body?.fullName,120),phone=clean(req.body?.phone,40);if(!name||!phone)return res.status(400).json({error:'INVALID_DRIVER'});
+      const name=clean(req.body?.fullName,120),phone=normalizeTrMobile(req.body?.phone);if(!name||!phone)return res.status(400).json({error:'INVALID_DRIVER'});
       const code=String(crypto.randomInt(100000,1000000));
       const r=await pool.query(`INSERT INTO towing_provider_drivers(provider_id,full_name,phone,invite_code_hash,invite_code_expires_at)
-        VALUES($1,$2,$3,$4,NOW()+INTERVAL '48 hours') RETURNING id,provider_id,full_name,phone,status,user_id,invite_code_expires_at,created_at`,[p.rows[0].id,name,normPhone(phone),inviteHash(code)]);
+        VALUES($1,$2,$3,$4,NOW()+INTERVAL '48 hours') RETURNING id,provider_id,full_name,phone,status,user_id,invite_code_expires_at,created_at`,[p.rows[0].id,name,phone,inviteHash(code)]);
       return res.status(201).json({ok:true,driver:r.rows[0],inviteCode:code});}
     catch(e){console.error('towing driver create',e);return res.status(500).json({error:'SERVER_ERROR'});}
   });
 
 
-  app.post('/api/towing/provider/drivers/link',async(req,res)=>{
+  app.post('/api/towing/provider/drivers/link',driverLinkIpLimiter,driverLinkAccountLimiter,driverLinkPhoneLimiter,async(req,res)=>{
     const userId=authenticatedOwnerId(req);if(!userId)return res.status(401).json({error:'OWNER_REQUIRED'});
-    const phone=normPhone(req.body?.phone),code=clean(req.body?.inviteCode,12);
+    const phone=normalizeTrMobile(req.body?.phone),code=clean(req.body?.inviteCode,12);
     if(!phone||!/^[0-9]{6}$/.test(code))return res.status(400).json({error:'INVALID_DRIVER_INVITE'});
     const db=await pool.connect();
-    try{await db.query('BEGIN');
-      const d=await db.query(`SELECT d.id,d.user_id,d.full_name,d.phone,d.provider_id,p.display_name provider_name,p.status provider_status
+    try{
+      await db.query('BEGIN');
+      const account=await db.query("SELECT phone,status FROM users WHERE id::text=$1 FOR UPDATE",[userId]);
+      const accountPhone=normalizeTrMobile(account.rows[0]?.phone);
+      if(!account.rowCount||account.rows[0].status!=='active'||!accountPhone||accountPhone!==phone){
+        await db.query('ROLLBACK');return res.status(403).json({error:'DRIVER_INVITE_IDENTITY_MISMATCH'});
+      }
+      const d=await db.query(`SELECT d.id,d.user_id,d.full_name,d.phone,d.provider_id,d.invite_code_hash,d.invite_code_expires_at,
+          COALESCE(d.invite_failed_attempts,0)::int AS invite_failed_attempts,d.invite_locked_at,
+          p.display_name provider_name,p.status provider_status
         FROM towing_provider_drivers d JOIN towing_providers p ON p.id=d.provider_id
-        WHERE regexp_replace(d.phone,'[^0-9+]','','g')=$1 AND d.invite_code_hash=$2 AND d.invite_code_expires_at>NOW() AND d.status='active'
-        FOR UPDATE OF d`,[phone,inviteHash(code)]);
+        WHERE regexp_replace(d.phone,'[^0-9+]','','g')=$1 AND d.status='active' AND d.invite_code_hash IS NOT NULL
+        ORDER BY d.created_at DESC LIMIT 1 FOR UPDATE OF d`,[phone]);
       if(!d.rowCount){await db.query('ROLLBACK');return res.status(404).json({error:'DRIVER_INVITE_NOT_FOUND'});}
-      if(d.rows[0].provider_status!=='active'){await db.query('ROLLBACK');return res.status(403).json({error:'ACTIVE_PROVIDER_REQUIRED'});}
-      if(d.rows[0].user_id&&d.rows[0].user_id!==userId){await db.query('ROLLBACK');return res.status(409).json({error:'DRIVER_ALREADY_LINKED'});}
-      const used=await db.query('SELECT id FROM towing_provider_drivers WHERE user_id=$1 AND id<>$2 LIMIT 1',[userId,d.rows[0].id]);
+      const invite=d.rows[0];
+      if(invite.provider_status!=='active'){await db.query('ROLLBACK');return res.status(403).json({error:'ACTIVE_PROVIDER_REQUIRED'});}
+      if(invite.invite_locked_at||invite.invite_failed_attempts>=5){await db.query('ROLLBACK');return res.status(423).json({error:'DRIVER_INVITE_LOCKED'});}
+      if(!invite.invite_code_expires_at||new Date(invite.invite_code_expires_at)<=new Date()){
+        await db.query('ROLLBACK');return res.status(410).json({error:'DRIVER_INVITE_EXPIRED'});
+      }
+      if(invite.invite_code_hash!==inviteHash(code)){
+        const failed=invite.invite_failed_attempts+1;
+        await db.query(`UPDATE towing_provider_drivers
+          SET invite_failed_attempts=$2,invite_locked_at=CASE WHEN $2>=5 THEN NOW() ELSE NULL END,updated_at=NOW()
+          WHERE id=$1`,[invite.id,failed]);
+        await db.query('COMMIT');
+        return res.status(failed>=5?423:404).json({error:failed>=5?'DRIVER_INVITE_LOCKED':'DRIVER_INVITE_NOT_FOUND'});
+      }
+      if(invite.user_id&&invite.user_id!==userId){await db.query('ROLLBACK');return res.status(409).json({error:'DRIVER_ALREADY_LINKED'});}
+      const used=await db.query('SELECT id FROM towing_provider_drivers WHERE user_id=$1 AND id<>$2 LIMIT 1',[userId,invite.id]);
       if(used.rowCount){await db.query('ROLLBACK');return res.status(409).json({error:'USER_ALREADY_DRIVER'});}
-      const r=await db.query(`UPDATE towing_provider_drivers SET user_id=$2,linked_at=NOW(),invite_code_hash=NULL,invite_code_expires_at=NULL,updated_at=NOW()
-        WHERE id=$1 RETURNING id,provider_id,user_id,full_name,phone,status,linked_at`,[d.rows[0].id,userId]);
-      await db.query('COMMIT');return res.json({ok:true,driver:r.rows[0],providerName:d.rows[0].provider_name});
+      const r=await db.query(`UPDATE towing_provider_drivers
+        SET user_id=$2,linked_at=NOW(),invite_code_hash=NULL,invite_code_expires_at=NULL,invite_failed_attempts=0,invite_locked_at=NULL,updated_at=NOW()
+        WHERE id=$1 AND invite_code_hash=$3
+        RETURNING id,provider_id,user_id,full_name,phone,status,linked_at`,[invite.id,userId,invite.invite_code_hash]);
+      if(!r.rowCount){await db.query('ROLLBACK');return res.status(409).json({error:'DRIVER_INVITE_ALREADY_USED'});}
+      await db.query('COMMIT');return res.json({ok:true,driver:r.rows[0],providerName:invite.provider_name});
     }catch(e){await db.query('ROLLBACK').catch(()=>{});if(e?.code==='23505')return res.status(409).json({error:'USER_ALREADY_DRIVER'});console.error('towing driver link',e);return res.status(500).json({error:'SERVER_ERROR'});}finally{db.release();}
   });
 
@@ -207,8 +246,13 @@ module.exports=function registerTowingProviderRoutes(app,pool){
     const lat=num(req.query?.lat),lng=num(req.query?.lng),radius=Math.min(Math.max(num(req.query?.radiusKm)||30,1),100);
     if(lat===null||lng===null||lat<-90||lat>90||lng<-180||lng>180)return res.status(400).json({error:'LOCATION_REQUIRED'});
     try{
-      const sql="SELECT d.id,d.last_lat,d.last_lng,d.last_location_at,p.display_name,(SELECT v.plate FROM towing_provider_vehicles v WHERE v.provider_id=d.provider_id AND v.status='active' ORDER BY v.created_at LIMIT 1) AS towing_plate,(6371*acos(LEAST(1,GREATEST(-1,cos(radians($1))*cos(radians(d.last_lat::float8))*cos(radians(d.last_lng::float8)-radians($2))+sin(radians($1))*sin(radians(d.last_lat::float8)))))) AS distance_km FROM towing_provider_drivers d JOIN towing_providers p ON p.id=d.provider_id WHERE d.online=TRUE AND d.status='active' AND p.status='active' AND d.user_id<>$3 AND d.last_lat IS NOT NULL AND d.last_lng IS NOT NULL AND d.last_location_at > NOW()-INTERVAL '15 minutes' AND (6371*acos(LEAST(1,GREATEST(-1,cos(radians($1))*cos(radians(d.last_lat::float8))*cos(radians(d.last_lng::float8)-radians($2))+sin(radians($1))*sin(radians(d.last_lat::float8)))))) <= $4 ORDER BY distance_km LIMIT 20";
-      const r=await pool.query(sql,[lat,lng,userId,radius]);return res.json({ok:true,items:r.rows});
+      const caller=await pool.query(`SELECT d.id,d.provider_id FROM towing_provider_drivers d
+        JOIN towing_providers p ON p.id=d.provider_id
+        WHERE d.user_id=$1 AND d.status='active' AND p.status='active' LIMIT 1`,[userId]);
+      if(!caller.rowCount)return res.status(403).json({error:'PROVIDER_DRIVER_REQUIRED'});
+      const providerId=caller.rows[0].provider_id;
+      const sql="SELECT d.id,d.last_lat,d.last_lng,d.last_location_at,p.display_name,(SELECT v.plate FROM towing_provider_vehicles v WHERE v.provider_id=d.provider_id AND v.status='active' ORDER BY v.created_at LIMIT 1) AS towing_plate,(6371*acos(LEAST(1,GREATEST(-1,cos(radians($1))*cos(radians(d.last_lat::float8))*cos(radians(d.last_lng::float8)-radians($2))+sin(radians($1))*sin(radians(d.last_lat::float8)))))) AS distance_km FROM towing_provider_drivers d JOIN towing_providers p ON p.id=d.provider_id WHERE d.provider_id=$3 AND d.online=TRUE AND d.status='active' AND p.status='active' AND d.user_id<>$4 AND d.last_lat IS NOT NULL AND d.last_lng IS NOT NULL AND d.last_location_at > NOW()-INTERVAL '15 minutes' AND (6371*acos(LEAST(1,GREATEST(-1,cos(radians($1))*cos(radians(d.last_lat::float8))*cos(radians(d.last_lng::float8)-radians($2))+sin(radians($1))*sin(radians(d.last_lat::float8)))))) <= $5 ORDER BY distance_km LIMIT 20";
+      const r=await pool.query(sql,[lat,lng,providerId,userId,radius]);return res.json({ok:true,items:r.rows});
     }catch(e){console.error('towing nearby drivers',e);return res.status(500).json({error:'SERVER_ERROR'});}
   });
 

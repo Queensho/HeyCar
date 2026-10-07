@@ -82,17 +82,17 @@ module.exports = function registerParkingRoutes(app, pool) {
   const owner = req => authenticatedOwnerId(req);
   const driver = req => authenticatedDriverId(req);
   const fields = 'area,floor,spot,note,parking_name,latitude,longitude,osm_id,started_at,updated_at';
-  async function access(req,res) {
+  async function access(req,res,db=pool) {
     const v=String(req.params.vehicleId||'');
     const o=owner(req);
     if(o){
-      const r=await pool.query('SELECT id,owner_id FROM vehicles WHERE id::text=$1 AND owner_id::text=$2 LIMIT 1',[v,o]);
+      const r=await db.query('SELECT id,owner_id FROM vehicles WHERE id::text=$1 AND owner_id::text=$2 LIMIT 1',[v,o]);
       if(!r.rows.length){res.status(403).json({error:'FORBIDDEN'});return null;}
       return {vehicleId:String(r.rows[0].id),ownerId:String(r.rows[0].owner_id),role:'owner'};
     }
     const d=driver(req);
     if(d){
-      const e=await driverVehicleEntitlement(pool,d,v);
+      const e=await driverVehicleEntitlement(db,d,v);
       if(!e){res.status(403).json({error:'DRIVER_NOT_AUTHORIZED'});return null;}
       return {vehicleId:e.vehicleId,ownerId:e.ownerId,role:'driver',familyPremium:e.familyPremium,activeDriver:e.activeDriver};
     }
@@ -108,29 +108,32 @@ module.exports = function registerParkingRoutes(app, pool) {
     } catch (e) { console.error(e); res.status(500).json({ error: 'SERVER_ERROR' }); }
   });
   app.put('/api/vehicles/:vehicleId/parking', express.json(), async (req, res) => {
+    const body = req.body || {};
+    const area = String(body.area || '').trim().slice(0, 40), floor = String(body.floor || '').trim().slice(0, 20);
+    const spot = String(body.spot || '').trim().slice(0, 30), note = String(body.note || '').trim().slice(0, 180);
+    const hasLocation = ['parking_name', 'latitude', 'longitude', 'osm_id'].some(k => Object.hasOwn(body, k));
+    const name = String(body.parking_name || '').trim().slice(0, 200), osmId = String(body.osm_id || '').trim();
+    const lat = body.latitude, lon = body.longitude;
+    if (hasLocation && (!name || typeof lat !== 'number' || typeof lon !== 'number' ||
+        !Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180 ||
+        !/^(?:(?:node|way|relation)\/\d+|geoapify\/[A-Za-z0-9_-]+)$/.test(osmId) || osmId.length > 80)) {
+      return res.status(400).json({ error: 'INVALID_PARKING_LOCATION' });
+    }
+    if(!await parkingEnabled(res))return;
     const client=await pool.connect();
+    let inTransaction=false;
+    const rollback=async()=>{if(inTransaction){await client.query('ROLLBACK').catch(()=>{});inTransaction=false;}};
     try {
-      if(!await parkingEnabled(res))return;
-      const a=await access(req,res);if(!a)return;
-      if(a.role==='driver'&&!a.activeDriver)return res.status(403).json({error:'DRIVER_NOT_ACTIVE'});
-      await client.query('BEGIN');
+      await client.query('BEGIN');inTransaction=true;
+      const a=await access(req,res,client);
+      if(!a){await rollback();return;}
+      if(a.role==='driver'&&!a.activeDriver){await rollback();return res.status(403).json({error:'DRIVER_NOT_ACTIVE'});}
       const owned=await client.query('SELECT id,owner_id FROM vehicles WHERE id::text=$1 AND owner_id::text=$2 FOR UPDATE',[a.vehicleId,a.ownerId]);
-      if(!owned.rowCount){await client.query('ROLLBACK');return res.status(403).json({error:'FORBIDDEN'});}
+      if(!owned.rowCount){await rollback();return res.status(403).json({error:'FORBIDDEN'});}
       const v=String(owned.rows[0].id),o=String(owned.rows[0].owner_id);
-      const body = req.body || {};
-      const area = String(body.area || '').trim().slice(0, 40), floor = String(body.floor || '').trim().slice(0, 20);
-      const spot = String(body.spot || '').trim().slice(0, 30), note = String(body.note || '').trim().slice(0, 180);
-      const hasLocation = ['parking_name', 'latitude', 'longitude', 'osm_id'].some(k => Object.hasOwn(body, k));
-      const name = String(body.parking_name || '').trim().slice(0, 200), osmId = String(body.osm_id || '').trim();
-      const lat = body.latitude, lon = body.longitude;
-      if (hasLocation && (!name || typeof lat !== 'number' || typeof lon !== 'number' ||
-          !Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180 ||
-          !/^(?:(?:node|way|relation)\/\d+|geoapify\/[A-Za-z0-9_-]+)$/.test(osmId) || osmId.length > 80)) {
-        return res.status(400).json({ error: 'INVALID_PARKING_LOCATION' });
-      }
       if (!hasLocation && !area && !floor && !spot) {
         const existing = await client.query('SELECT 1 FROM vehicle_parking_locations WHERE vehicle_id=$1 AND owner_id=$2 AND latitude IS NOT NULL', [v, o]);
-        if (!existing.rows.length) return res.status(400).json({ error: 'PARKING_FIELDS_REQUIRED' });
+        if (!existing.rows.length){await rollback();return res.status(400).json({ error: 'PARKING_FIELDS_REQUIRED' });}
       }
       const r = await client.query(`INSERT INTO vehicle_parking_locations
         (vehicle_id,owner_id,area,floor,spot,note,parking_name,latitude,longitude,osm_id,started_at,updated_at)
@@ -145,10 +148,13 @@ module.exports = function registerParkingRoutes(app, pool) {
           updated_at=NOW() RETURNING ${fields}`,
         [v, o, area, floor, spot, note, hasLocation, hasLocation ? name : null,
           hasLocation ? lat : null, hasLocation ? lon : null, hasLocation ? osmId : null]);
-      await client.query('COMMIT');
-      res.json({ ok: true, parking: r.rows[0] });
-    } catch (e) { await client.query('ROLLBACK').catch(()=>{}); console.error(e); res.status(500).json({ error: 'SERVER_ERROR' }); }
-    finally { client.release(); }
+      await client.query('COMMIT');inTransaction=false;
+      return res.json({ ok: true, parking: r.rows[0] });
+    } catch (e) {
+      await rollback();
+      console.error(e);
+      return res.status(500).json({ error: 'SERVER_ERROR' });
+    } finally { client.release(); }
   });
   app.delete('/api/vehicles/:vehicleId/parking', async (req, res) => {
     try {
