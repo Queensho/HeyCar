@@ -61,7 +61,7 @@ module.exports=function registerTowingProviderRoutes(app,pool){
       if(exists.rowCount){await db.query('ROLLBACK');return res.status(409).json({error:'ACCOUNT_EXISTS'});}
       const u=await db.query(`INSERT INTO users(email,phone,display_name,password_hash,role,status) VALUES($1,$2,$3,crypt($4,gen_salt('bf',12)),'user','active') RETURNING id,email,phone,display_name,role,status,created_at`,[email,phone,displayName,password]);
       const tokens=await issueTokens(db,u.rows[0].id);await db.query('COMMIT');return res.status(201).json({ok:true,user:u.rows[0],...tokens});
-    }catch(e){await db.query('ROLLBACK').catch(()=>{});console.error('towing register',e);return res.status(500).json({error:'SERVER_ERROR'});}finally{db.release();}
+    }catch(e){await db.query('ROLLBACK').catch(()=>{});if(e?.code==='23505'){const x=String(e.constraint||'').toLowerCase()+String(e.detail||'').toLowerCase();return res.status(409).json({error:x.includes('phone')?'PHONE_EXISTS':x.includes('email')?'EMAIL_EXISTS':'ACCOUNT_EXISTS'});}console.error('towing register',e);return res.status(500).json({error:'SERVER_ERROR'});}finally{db.release();}
   });
 
   app.post('/api/towing/provider/apply',async(req,res)=>{
