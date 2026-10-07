@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'onboarding_backend.dart';
 import 'qr_backend.dart';
 import 'owner_auth.dart';
+import 'cepqar_theme.dart';
 
 class ActiveDriverCard extends StatefulWidget {
   const ActiveDriverCard({super.key});
@@ -168,7 +169,7 @@ class _S extends State<ActiveDriverCard> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF101A30),
+        backgroundColor: CepqarTheme.panel,
         title: const Row(
           children: [
             Icon(Icons.lock_rounded, color: Color(0xFF8B5CFF)),
@@ -181,7 +182,7 @@ class _S extends State<ActiveDriverCard> {
         ),
         content: const Text(
           'Yetkili sürücü davet etme ve aktif sürücü seçme Aile Premium ile kullanılabilir. Paketi yalnızca araç sahibi hesabından yükseltebilirsin.',
-          style: TextStyle(color: Color(0xFFA7B0C7)),
+          style: TextStyle(color: CepqarTheme.muted),
         ),
         actions: [
           TextButton(
