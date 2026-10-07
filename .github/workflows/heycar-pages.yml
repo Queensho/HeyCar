@@ -1,5 +1,5 @@
 name: Deploy HeyCar Web
-# deploy-refresh: admin-business-create
+# deploy-refresh: notification-status-cors
 
 on:
   push:
