@@ -73,6 +73,10 @@ jobs:
             node --check "$file"
           done < <(find server -maxdepth 1 -type f -name '*.js' -print0 | sort -z)
 
+      - name: Run valet security regression tests
+        working-directory: server
+        run: node --test tests/security-valet-remediation.test.js
+
       - name: Syntax-check guarded live sync
         shell: bash
         run: |
