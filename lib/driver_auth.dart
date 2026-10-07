@@ -67,7 +67,7 @@ class DriverAuth {
         await http
             .post(
               Uri.parse('$_driverApiBase/api/driver/auth/logout'),
-              headers: {'Content-Type': 'application/json'},
+              headers: {'Content-Type': 'application/json', if(accessToken.isNotEmpty) 'Authorization': 'Bearer $accessToken'},
               body: jsonEncode({'refreshToken': token}),
             )
             .timeout(const Duration(seconds: 10));

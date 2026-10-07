@@ -55,6 +55,9 @@ module.exports=function registerWebPush(app,pool){
     }
   });
 
+  app.delete('/api/owner/web-push-subscription',async(req,res)=>{try{const owner=authenticatedOwnerId(req);if(!owner)return res.status(401).json({error:'OWNER_REQUIRED'});await pool.query('UPDATE owner_web_push_subscriptions SET active=FALSE,updated_at=NOW() WHERE owner_id=$1',[owner]);return res.json({ok:true});}catch(e){console.error('owner web push unsubscribe',e);return res.status(500).json({error:'SERVER_ERROR'});}});
+  app.delete('/api/driver/web-push-subscription',async(req,res)=>{try{const driver=authenticatedDriverId(req);if(!driver)return res.status(401).json({error:'DRIVER_REQUIRED'});await pool.query('UPDATE driver_web_push_subscriptions SET active=FALSE,updated_at=NOW() WHERE driver_id=$1',[driver]);return res.json({ok:true});}catch(e){console.error('driver web push unsubscribe',e);return res.status(500).json({error:'SERVER_ERROR'});}});
+
   async function sendFrom(table,idColumn,userId,data,title,body){
     if(!enabled)return {attempted:0,delivered:0,skipped:'WEB_PUSH_NOT_CONFIGURED'};
     const rows=(await pool.query(

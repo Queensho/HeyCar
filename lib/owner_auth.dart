@@ -20,6 +20,8 @@ class OwnerAuth{
     if(refreshToken.isNotEmpty)await p.setString('owner_refresh_token',refreshToken);
   }
 
+  static Future<void> logout()async{await restore();final rt=refreshToken,at=accessToken;try{if(rt.isNotEmpty)await http.post(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/auth/logout'),headers:{'Content-Type':'application/json',if(at.isNotEmpty)'Authorization':'Bearer $at'},body:jsonEncode({'refreshToken':rt})).timeout(const Duration(seconds:10));}catch(_){}await clear();}
+
   static Future<void> clear()async{
     accessToken='';
     refreshToken='';
