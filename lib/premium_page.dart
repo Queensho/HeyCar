@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'app_runtime_config.dart';
+import 'cepqar_theme.dart';
 
-const _bg=Color(0xFF07111F);
-const _panel=Color(0xFF101A30);
-const _line=Color(0xFF27355D);
+const _bg=CepqarTheme.darkBg;
+const _panel=CepqarTheme.darkPanel;
+const _line=CepqarTheme.darkLine;
 const _purple=Color(0xFF8B5CFF);
-const _muted=Color(0xFFA7B0C7);
+const _muted=CepqarTheme.darkMuted;
 const _lime=Color(0xFF79FF45);
 const _gold=Color(0xFFFFC857);
 
@@ -83,11 +84,11 @@ class _PremiumPageState extends State<PremiumPage>{
   Widget build(BuildContext context){
     final features=kind==_PremiumKind.family?familyFeatures:individualFeatures;
     return Scaffold(
-      backgroundColor:_bg,
+      backgroundColor:CepqarTheme.bg,
       appBar:AppBar(
-        backgroundColor:_bg,
-        surfaceTintColor:_bg,
-        foregroundColor:Colors.white,
+        backgroundColor:CepqarTheme.bg,
+        surfaceTintColor:CepqarTheme.bg,
+        foregroundColor:CepqarTheme.text,
         elevation:0,
         title:const Text('CepQontag Premium',style:TextStyle(fontSize:19,fontWeight:FontWeight.w900)),
       ),
@@ -136,9 +137,9 @@ class _PremiumPageState extends State<PremiumPage>{
             Container(
               padding:const EdgeInsets.all(12),
               decoration:BoxDecoration(
-                color:kind==_PremiumKind.family?const Color(0xFF181531):_panel,
+                color:kind==_PremiumKind.family?const Color(0xFF181531):CepqarTheme.panel,
                 borderRadius:BorderRadius.circular(16),
-                border:Border.all(color:kind==_PremiumKind.family?_gold.withValues(alpha:.45):_line),
+                border:Border.all(color:kind==_PremiumKind.family?_gold.withValues(alpha:.45):CepqarTheme.line),
               ),
               child:Row(children:[
                 Icon(
@@ -157,11 +158,11 @@ class _PremiumPageState extends State<PremiumPage>{
             ),
             const SizedBox(height:12),
             Container(
-              decoration:BoxDecoration(color:_panel,borderRadius:BorderRadius.circular(20),border:Border.all(color:_line)),
+              decoration:BoxDecoration(color:CepqarTheme.panel,borderRadius:BorderRadius.circular(20),border:Border.all(color:CepqarTheme.line)),
               child:Column(children:[
                 for(int i=0;i<features.length;i++)...[
                   _Feature(data:features[i]),
-                  if(i<features.length-1)const Divider(height:1,color:_line,indent:58,endIndent:14),
+                  if(i<features.length-1)const Divider(height:1,color:CepqarTheme.line,indent:58,endIndent:14),
                 ],
               ]),
             ),
@@ -238,9 +239,9 @@ class _KindCard extends StatelessWidget{
       height:102,
       padding:const EdgeInsets.all(12),
       decoration:BoxDecoration(
-        color:selected?const Color(0xFF1A1534):_panel,
+        color:selected?const Color(0xFF1A1534):CepqarTheme.panel,
         borderRadius:BorderRadius.circular(18),
-        border:Border.all(color:selected?_purple:_line,width:selected?2:1),
+        border:Border.all(color:selected?_purple:CepqarTheme.line,width:selected?2:1),
       ),
       child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
         Row(children:[
@@ -304,9 +305,9 @@ class _Plan extends StatelessWidget{
       height:118,
       padding:const EdgeInsets.all(13),
       decoration:BoxDecoration(
-        color:_panel,
+        color:CepqarTheme.panel,
         borderRadius:BorderRadius.circular(18),
-        border:Border.all(color:selected?_purple:_line,width:selected?2:1),
+        border:Border.all(color:selected?_purple:CepqarTheme.line,width:selected?2:1),
       ),
       child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
         Row(children:[
