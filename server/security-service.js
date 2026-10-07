@@ -114,18 +114,25 @@ async function enforcePublicRequest(pool, token, req, _explicitVisitor) {
   const runtime=await getAppSettings(pool);
   const maxRequests=Math.max(1,Number(runtime.qr_rate_limit_max||10));
   const windowSeconds=Math.max(1,Number(runtime.qr_rate_limit_window_seconds||60));
-  const c = await pool.query(
-    `SELECT COUNT(*)::int AS n
-       FROM qr_security_request_log
-      WHERE owner_id=$1 AND visitor_key=$2
-        AND created_at > NOW() - ($3::int * INTERVAL '1 second')`,
-    [ownerId,key,windowSeconds]
-  );
-  if ((c.rows[0]?.n || 0) >= maxRequests) {
-    await logSecurityEvent(pool,req,{eventType:'qr_rate_limited',ownerId,subject:key,detail:{qrToken:String(token||'').trim().toUpperCase(),requestCount:Number(c.rows[0]?.n||0),limit:maxRequests,windowSeconds}});
-    return { ok: false, status: 429, error: 'TOO_MANY_REQUESTS', ownerId, visitorKey: key };
+  const client=await pool.connect();
+  let count=0;
+  try{
+    await client.query('BEGIN');
+    await client.query('SELECT pg_advisory_xact_lock(hashtext($1))',[ownerId+'|'+key]);
+    const c=await client.query(
+      `SELECT COUNT(*)::int AS n FROM qr_security_request_log
+        WHERE owner_id=$1 AND visitor_key=$2
+          AND created_at > NOW() - ($3::int * INTERVAL '1 second')`,
+      [ownerId,key,windowSeconds]
+    );
+    count=Number(c.rows[0]?.n||0);
+    if(count>=maxRequests){await client.query('ROLLBACK');}
+    else{await client.query(`INSERT INTO qr_security_request_log(owner_id,qr_token,visitor_key) VALUES($1,$2,$3)`,[ownerId,String(token||'').trim().toUpperCase(),key]);await client.query('COMMIT');}
+  }catch(e){await client.query('ROLLBACK').catch(()=>{});throw e;}finally{client.release();}
+  if(count>=maxRequests){
+    await logSecurityEvent(pool,req,{eventType:'qr_rate_limited',ownerId,subject:key,detail:{qrToken:String(token||'').trim().toUpperCase(),requestCount:count,limit:maxRequests,windowSeconds}});
+    return { ok:false,status:429,error:'TOO_MANY_REQUESTS',ownerId,visitorKey:key };
   }
-  await pool.query(`INSERT INTO qr_security_request_log(owner_id, qr_token, visitor_key) VALUES($1,$2,$3)`, [ownerId, String(token || '').trim().toUpperCase(), key]);
   return { ok: true, ownerId, visitorKey: key };
 }
 

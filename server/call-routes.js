@@ -113,6 +113,8 @@ module.exports = function registerCallRoutes(app, pool) {
            answered_at=CASE WHEN $4='accepted' THEN COALESCE(answered_at,NOW()) ELSE answered_at END,
            ended_at=CASE WHEN $4 IN ('rejected','ended') THEN NOW() ELSE ended_at END
        WHERE id=$1 AND recipient_user_id=$2 AND recipient_type=$3
+         AND expires_at>NOW()
+         AND (($4='accepted' AND status='ringing') OR ($4='rejected' AND status='ringing') OR ($4='ended' AND status='accepted') OR ($4 IS NULL AND status IN ('ringing','accepted')))
        RETURNING id,status,answer,owner_candidates`,
       [callId,String(recipientId),recipientType,nextStatus,answer,candidate]
     );
@@ -225,10 +227,12 @@ module.exports = function registerCallRoutes(app, pool) {
              status=CASE WHEN $5 THEN 'cancelled' ELSE status END,
              ended_at=CASE WHEN $5 THEN NOW() ELSE ended_at END
          WHERE id=$1 AND visitor_token::text=$2
-         RETURNING id,status,recipient_user_id,recipient_type,owner_id`,
+         AND expires_at>NOW()
+         AND status IN ('ringing','accepted')
+       RETURNING id,status,recipient_user_id,recipient_type,owner_id`,
         [req.params.callId,visitorToken,offer,candidate,cancel]
       );
-      if(!result.rows.length)return res.status(404).json({error:'CALL_NOT_FOUND'});
+      if(!result.rows.length)return res.status(409).json({error:'CALL_NOT_ACTIVE'});
       const call=result.rows[0];
       if(cancel){
         sendRecipientPush(

@@ -188,6 +188,12 @@ module.exports = function registerNotificationRoutes(app, pool) {
         }
       }
 
+      let proximityOk=validQrProof;
+      if(!proximityOk&&deviceKey){
+        const existing=await pool.query('SELECT 1 FROM qr_proximity_proofs WHERE qr_token=$1 AND visitor_key=$2 AND expires_at>NOW() LIMIT 1',[token,deviceKey]);
+        proximityOk=existing.rows.length>0;
+      }
+      if(!proximityOk)return res.status(428).json({error:'PROXIMITY_PROOF_REQUIRED'});
       const session = await createScanSession(pool, qr, security.visitorKey);
       const sourceValue=String(req.body?.source||'').toLowerCase();
       const scanSource=['nfc','qr','direct','app'].includes(sourceValue)?sourceValue:'qr';
