@@ -6,6 +6,8 @@ const path=require('path');
 
 function n(v){const x=Number(v);return Number.isFinite(x)?x:null;}
 function money(v){return Math.round((Number(v)+Number.EPSILON)*100)/100;}
+function geoKm(aLat,aLng,bLat,bLng){const r=6371,toRad=x=>x*Math.PI/180;const dLat=toRad(bLat-aLat),dLng=toRad(bLng-aLng);const h=Math.sin(dLat/2)**2+Math.cos(toRad(aLat))*Math.cos(toRad(bLat))*Math.sin(dLng/2)**2;return 2*r*Math.asin(Math.min(1,Math.sqrt(h)));}
+function trustedRouteKm(a,b,c,d,claimed){const straight=geoKm(a,b,c,d),x=Number(claimed);if(!Number.isFinite(straight)||straight>2000||!Number.isFinite(x)||x<straight*0.98||x>Math.max(straight*4,straight+100))return null;return money(x);}
 
 module.exports=function registerTowingRoutes(app,pool,adminGuard){
   const documentDir=process.env.TOWING_DOCUMENT_DIR||'/opt/heycar/uploads/towing-docs';
@@ -52,6 +54,7 @@ module.exports=function registerTowingRoutes(app,pool,adminGuard){
     const pickupAddress=String(req.body?.pickupAddress||'').trim().slice(0,300),destinationAddress=String(req.body?.destinationAddress||'').trim().slice(0,300);
     if([pickupLat,pickupLng,destinationLat,destinationLng,distanceKm].some(x=>x===null)||distanceKm<0||distanceKm>2000)return res.status(400).json({error:'INVALID_ROUTE'});
     if(pickupLat<-90||pickupLat>90||destinationLat<-90||destinationLat>90||pickupLng<-180||pickupLng>180||destinationLng<-180||destinationLng>180)return res.status(400).json({error:'INVALID_COORDINATES'});
+    const validatedDistanceKm=trustedRouteKm(pickupLat,pickupLng,destinationLat,destinationLng,distanceKm);if(validatedDistanceKm===null)return res.status(400).json({error:'UNTRUSTED_ROUTE_DISTANCE'});
     const client=await pool.connect();
     try{
       await client.query('BEGIN');
@@ -63,12 +66,12 @@ module.exports=function registerTowingRoutes(app,pool,adminGuard){
       ]);
       if(!v.rowCount||!t.rowCount||!s.rowCount){await client.query('ROLLBACK');return res.status(400).json({error:'TOWING_OPTION_NOT_AVAILABLE'});}
       const vehicle=v.rows[0],truck=t.rows[0],settings=s.rows[0];
-      const raw=Number(vehicle.base_fee)+distanceKm*Number(vehicle.per_km_fee);
+      const raw=Number(vehicle.base_fee)+validatedDistanceKm*Number(vehicle.per_km_fee);
       const subtotal=Math.max(raw,Number(vehicle.minimum_fee));
       const total=money(subtotal);
-      const snapshot={baseFee:Number(vehicle.base_fee),perKmFee:Number(vehicle.per_km_fee),minimumFee:Number(vehicle.minimum_fee),vehicleMultiplier:Number(vehicle.price_multiplier),distanceKm:money(distanceKm),pricingSource:'vehicle_type'};
+      const snapshot={baseFee:Number(vehicle.base_fee),perKmFee:Number(vehicle.per_km_fee),minimumFee:Number(vehicle.minimum_fee),vehicleMultiplier:Number(vehicle.price_multiplier),distanceKm:validatedDistanceKm,pricingSource:'vehicle_type'};
       const r=await client.query(`INSERT INTO towing_requests(owner_id,vehicle_id,vehicle_type,truck_type,issue_type,issue_note,pickup_lat,pickup_lng,pickup_address,destination_lat,destination_lng,destination_address,distance_km,quoted_total,currency,pricing_snapshot)
-        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb) RETURNING *`,[ownerId,vehicleId,vehicleType,truckType,issueType,issueNote||null,pickupLat,pickupLng,pickupAddress||null,destinationLat,destinationLng,destinationAddress||null,distanceKm,total,settings.currency,JSON.stringify(snapshot)]);
+        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb) RETURNING *`,[ownerId,vehicleId,vehicleType,truckType,issueType,issueNote||null,pickupLat,pickupLng,pickupAddress||null,destinationLat,destinationLng,destinationAddress||null,validatedDistanceKm,total,settings.currency,JSON.stringify(snapshot)]);
       await client.query('COMMIT');
       try{
         const push=app.locals.heycarPush;
@@ -80,7 +83,7 @@ module.exports=function registerTowingRoutes(app,pool,adminGuard){
               AND d.last_lat IS NOT NULL AND d.last_lng IS NOT NULL
               AND EXISTS(SELECT 1 FROM towing_provider_vehicles tv WHERE tv.provider_id=d.provider_id AND tv.status='active')
               AND (6371*acos(LEAST(1,GREATEST(-1,cos(radians($1))*cos(radians(d.last_lat::float8))*cos(radians(d.last_lng::float8)-radians($2))+sin(radians($1))*sin(radians(d.last_lat::float8))))))<=30
-            LIMIT 100`,[pickupLat,pickupLng,truckType]);
+            LIMIT 100`,[pickupLat,pickupLng]);
           const body=pickupAddress?'Yeni çekici talebi • '+pickupAddress:'Yakınında yeni bir çekici talebi var';
           await Promise.allSettled(nearby.rows.map(row=>push.sendOwner(String(row.user_id),{type:'towing_request',requestId:String(r.rows[0].id),pickupAddress:pickupAddress||'',destinationAddress:destinationAddress||'',truckType:String(truckType)},'Yeni Çekici Talebi',body)));
         }
@@ -153,6 +156,7 @@ module.exports=function registerTowingRoutes(app,pool,adminGuard){
     const pickupAddress=String(req.body?.pickupAddress||'').trim().slice(0,300),destinationAddress=String(req.body?.destinationAddress||'').trim().slice(0,300);
     if([pickupLat,pickupLng,destinationLat,destinationLng,distanceKm].some(x=>x===null)||distanceKm<0||distanceKm>2000)return res.status(400).json({error:'INVALID_ROUTE'});
     if(pickupLat<-90||pickupLat>90||destinationLat<-90||destinationLat>90||pickupLng<-180||pickupLng>180||destinationLng<-180||destinationLng>180)return res.status(400).json({error:'INVALID_COORDINATES'});
+    const validatedDistanceKm=trustedRouteKm(pickupLat,pickupLng,destinationLat,destinationLng,distanceKm);if(validatedDistanceKm===null)return res.status(400).json({error:'UNTRUSTED_ROUTE_DISTANCE'});
     const client=await pool.connect();
     try{
       await client.query('BEGIN');
@@ -165,12 +169,12 @@ module.exports=function registerTowingRoutes(app,pool,adminGuard){
       ]);
       if(!v.rowCount||!t.rowCount||!sq.rowCount){await client.query('ROLLBACK');return res.status(400).json({error:'TOWING_OPTION_NOT_AVAILABLE'});}
       const vehicle=v.rows[0],truck=t.rows[0],settings=sq.rows[0];
-      const raw=Number(vehicle.base_fee)+distanceKm*Number(vehicle.per_km_fee);
+      const raw=Number(vehicle.base_fee)+validatedDistanceKm*Number(vehicle.per_km_fee);
       const subtotal=Math.max(raw,Number(vehicle.minimum_fee));
       const total=money(subtotal);
-      const snapshot={baseFee:Number(vehicle.base_fee),perKmFee:Number(vehicle.per_km_fee),minimumFee:Number(vehicle.minimum_fee),vehicleMultiplier:Number(vehicle.price_multiplier),distanceKm:money(distanceKm),pricingSource:'vehicle_type',requestedBy:'driver',driverUserId:a.driverId};
+      const snapshot={baseFee:Number(vehicle.base_fee),perKmFee:Number(vehicle.per_km_fee),minimumFee:Number(vehicle.minimum_fee),vehicleMultiplier:Number(vehicle.price_multiplier),distanceKm:validatedDistanceKm,pricingSource:'vehicle_type',requestedBy:'driver',driverUserId:a.driverId};
       const r=await client.query(`INSERT INTO towing_requests(owner_id,vehicle_id,vehicle_type,truck_type,issue_type,issue_note,pickup_lat,pickup_lng,pickup_address,destination_lat,destination_lng,destination_address,distance_km,quoted_total,currency,pricing_snapshot)
-        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb) RETURNING *`,[ownerId,vehicleId,vehicleType,truckType,issueType,issueNote||null,pickupLat,pickupLng,pickupAddress||null,destinationLat,destinationLng,destinationAddress||null,distanceKm,total,settings.currency,JSON.stringify(snapshot)]);
+        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb) RETURNING *`,[ownerId,vehicleId,vehicleType,truckType,issueType,issueNote||null,pickupLat,pickupLng,pickupAddress||null,destinationLat,destinationLng,destinationAddress||null,validatedDistanceKm,total,settings.currency,JSON.stringify(snapshot)]);
       await client.query('COMMIT');
       try{
         const push=app.locals.heycarPush;
@@ -182,7 +186,7 @@ module.exports=function registerTowingRoutes(app,pool,adminGuard){
               AND d.last_lat IS NOT NULL AND d.last_lng IS NOT NULL
               AND EXISTS(SELECT 1 FROM towing_provider_vehicles tv WHERE tv.provider_id=d.provider_id AND tv.status='active')
               AND (6371*acos(LEAST(1,GREATEST(-1,cos(radians($1))*cos(radians(d.last_lat::float8))*cos(radians(d.last_lng::float8)-radians($2))+sin(radians($1))*sin(radians(d.last_lat::float8))))))<=30
-            LIMIT 100`,[pickupLat,pickupLng,truckType]);
+            LIMIT 100`,[pickupLat,pickupLng]);
           const body=pickupAddress?'Yeni çekici talebi • '+pickupAddress:'Yakınında yeni bir çekici talebi var';
           await Promise.allSettled(nearby.rows.map(row=>push.sendOwner(String(row.user_id),{type:'towing_request',requestId:String(r.rows[0].id),pickupAddress:pickupAddress||'',destinationAddress:destinationAddress||'',truckType:String(truckType)},'Yeni Çekici Talebi',body)));
         }
