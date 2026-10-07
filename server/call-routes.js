@@ -12,7 +12,7 @@ function normalizeToken(raw) {
 module.exports = function registerCallRoutes(app, pool) {
   const pushService=registerPushRoutes(app, pool);
   async function expireCalls() {
-    await pool.query(`UPDATE anonymous_calls SET status='missed', ended_at=COALESCE(ended_at,NOW()) WHERE status='ringing' AND expires_at<=NOW()`);
+    await pool.query(`UPDATE anonymous_calls SET status=CASE WHEN status='ringing' THEN 'missed' ELSE 'ended' END, ended_at=COALESCE(ended_at,NOW()) WHERE status IN ('ringing','accepted') AND expires_at<=NOW()`);
   }
 
   async function sendRecipientPush(recipientId, recipientType, data, title, body, ownerId=null) {
@@ -99,7 +99,7 @@ module.exports = function registerCallRoutes(app, pool) {
     return result.rows[0]||null;
   }
 
-  async function updateFor(callId, recipientId, recipientType, body) {
+  async function updateFor(callId, recipientId, recipientType, body) {\n    await expireCalls();
     const action=String((body&&body.action)||'').trim();
     const nextStatus=action==='accept'?'accepted':action==='reject'?'rejected':action==='end'?'ended':null;
     const answer=body&&body.answer?JSON.stringify(body.answer):null;
@@ -115,7 +115,7 @@ module.exports = function registerCallRoutes(app, pool) {
            expires_at=CASE WHEN $4='accepted' THEN GREATEST(expires_at,NOW()+INTERVAL '2 hours') ELSE expires_at END,
            ended_at=CASE WHEN $4 IN ('rejected','ended') THEN NOW() ELSE ended_at END
        WHERE id=$1 AND recipient_user_id=$2 AND recipient_type=$3
-         AND (status='accepted' OR expires_at>NOW())
+         AND expires_at>NOW()
          AND (($4='accepted' AND status='ringing') OR ($4='rejected' AND status='ringing') OR ($4='ended' AND status='accepted') OR ($4 IS NULL AND status IN ('ringing','accepted')))
        RETURNING id,status,answer,owner_candidates`,
       [callId,String(recipientId),recipientType,nextStatus,answer,candidate]
@@ -217,7 +217,7 @@ module.exports = function registerCallRoutes(app, pool) {
     }
   });
 
-  app.patch('/api/public/calls/:callId', async (req,res) => {
+  app.patch('/api/public/calls/:callId', async (req,res) => {\n    await expireCalls();
     try {
       const visitorToken=String(req.headers['x-visitor-token']||'').trim();
       if(!visitorToken)return res.status(401).json({error:'VISITOR_TOKEN_REQUIRED'});
@@ -231,7 +231,7 @@ module.exports = function registerCallRoutes(app, pool) {
              status=CASE WHEN $5 THEN 'cancelled' ELSE status END,
              ended_at=CASE WHEN $5 THEN NOW() ELSE ended_at END
          WHERE id=$1 AND visitor_token::text=$2
-         AND (status='accepted' OR expires_at>NOW())
+         AND expires_at>NOW()
          AND status IN ('ringing','accepted')
        RETURNING id,status,recipient_user_id,recipient_type,owner_id`,
         [req.params.callId,visitorToken,offer,candidate,cancel]
