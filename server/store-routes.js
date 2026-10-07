@@ -1,6 +1,7 @@
 const crypto=require('crypto');
 const {ownerId}=require('./owner-auth-service');
 const {writeAdminAudit}=require('./admin-audit');
+const {getAppSettings}=require('./app-settings-service');
 
 function text(v,max=500){return String(v??'').trim().slice(0,max);}
 function number(v){const n=Number(v);return Number.isFinite(n)?n:null;}
@@ -83,9 +84,10 @@ module.exports=function registerStoreRoutes(app,pool,adminGuard){
 
   app.get('/api/store/config',async(_req,res)=>{
     try{
-      const r=await pool.query("SELECT config_json FROM app_settings WHERE id=1");
-      const config=r.rows[0]?.config_json||{};
-      return res.json({ok:true,config});
+      const settings=await getAppSettings(pool,{fresh:true});
+      const config=settings.config_json&&typeof settings.config_json==='object'?settings.config_json:{};
+      res.set('Cache-Control','no-store');
+      return res.json({ok:true,config,updatedAt:settings.updated_at||null});
     }catch(e){
       if(e.code==='42P01')return res.json({ok:true,config:{}});
       console.error('store config',e);return res.status(500).json({error:'SERVER_ERROR'});
@@ -94,9 +96,8 @@ module.exports=function registerStoreRoutes(app,pool,adminGuard){
 
   app.get('/api/admin/manage/store/config',guard,async(_req,res)=>{
     try{
-      await pool.query("CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, config_json JSONB NOT NULL DEFAULT '{}'::jsonb, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
-      const r=await pool.query("SELECT config_json FROM app_settings WHERE id=1");
-      return res.json({ok:true,config:r.rows[0]?.config_json||{},updatedAt:r.rows[0]?.updated_at||null});
+      const settings=await getAppSettings(pool,{fresh:true});
+      return res.json({ok:true,config:settings.config_json&&typeof settings.config_json==='object'?settings.config_json:{},updatedAt:settings.updated_at||null});
     }catch(e){console.error('admin store config',e);return res.status(500).json({error:'SERVER_ERROR'});}
   });
 
@@ -105,10 +106,10 @@ module.exports=function registerStoreRoutes(app,pool,adminGuard){
     const allowed=['storeTitle','headerSubtitle','heroEyebrow','heroTitle','heroBody','heroImageUrl','primaryColor','accentColor','backgroundMode','cardStyle','showSearch','showCategories','showHero','showSaleCount','productColumns','sectionOrder'];
     const clean={};for(const k of allowed){if(Object.prototype.hasOwnProperty.call(b,k))clean[k]=b[k];}
     try{
-      await pool.query("CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, config_json JSONB NOT NULL DEFAULT '{}'::jsonb, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
-      const prev=await pool.query("SELECT config_json FROM app_settings WHERE id=1");
+      const prev=await pool.query("SELECT config_json,updated_at FROM app_settings WHERE id=1");
+      if(!prev.rowCount)return res.status(503).json({error:'APP_SETTINGS_NOT_INITIALIZED'});
       const merged={...(prev.rows[0]?.config_json||{}),...clean};
-      const r=await pool.query("UPDATE app_settings SET config_json=$1::jsonb WHERE id=1 RETURNING config_json",[JSON.stringify(merged)]);
+      const r=await pool.query("UPDATE app_settings SET config_json=$1::jsonb,updated_at=NOW() WHERE id=1 RETURNING config_json,updated_at",[JSON.stringify(merged)]);
       await writeAdminAudit(pool,req,{action:'storefront_config_updated',targetType:'storefront',targetId:'main',targetLabel:'CepQontag Mağaza',before:prev.rows[0]?.config_json||{},after:r.rows[0].config_json});
       return res.json({ok:true,config:r.rows[0].config_json,updatedAt:r.rows[0].updated_at});
     }catch(e){console.error('admin store config update',e);return res.status(500).json({error:'SERVER_ERROR'});}
