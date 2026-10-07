@@ -144,8 +144,8 @@ module.exports = function registerCallRoutes(app, pool) {
       if(!security.ok)return res.status(security.status).json({error:security.error});
       const scan=await validateScanSession(pool,String(req.headers['x-scan-token']||''),token);
       if(!scan||String(scan.vehicle_id)!==String(vehicle.vehicle_id))return res.status(401).json({error:'SCAN_SESSION_REQUIRED'});
-      const recent=await pool.query(`SELECT COUNT(*)::int AS n FROM anonymous_calls WHERE scan_session_hash=$1 AND created_at>NOW()-INTERVAL '10 minutes'`,[scan.token_hash||'']);
-      if(Number(recent.rows[0]?.n||0)>=5)return res.status(429).json({error:'CALL_RATE_LIMITED'});
+      const rate=await pool.query(`INSERT INTO anonymous_call_rate_windows(scan_session_hash,window_started_at,attempts) VALUES($1,to_timestamp(floor(extract(epoch from now())/600)*600),1) ON CONFLICT(scan_session_hash,window_started_at) DO UPDATE SET attempts=anonymous_call_rate_windows.attempts+1 RETURNING attempts`,[scan.token_hash||'']);
+      if(Number(rate.rows[0]?.attempts||0)>5)return res.status(429).json({error:'CALL_RATE_LIMITED'});
 
       const activeDriver=await pool.query(
         `SELECT driver_user_id::text AS driver_user_id
