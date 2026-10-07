@@ -28,15 +28,15 @@ function verify(token){
     return p;
   }catch(_){return null;}
 }
-function accessToken(driverId){
+function accessToken(driverId,sessionId=''){
   const now=Math.floor(Date.now()/1000);
-  return sign({sub:String(driverId),typ:'driver',iat:now,exp:now+ACCESS_TTL_SECONDS});
+  return sign({sub:String(driverId),typ:'driver',sid:String(sessionId),iat:now,exp:now+ACCESS_TTL_SECONDS});
 }
 function hash(v){return crypto.createHash('sha256').update(String(v||'')).digest('hex');}
 async function issueTokens(db,driverId){
   const refresh=crypto.randomBytes(48).toString('base64url');
-  await db.query("INSERT INTO driver_auth_sessions(driver_id,refresh_token_hash,expires_at) VALUES($1,$2,now()+interval '30 days')",[driverId,hash(refresh)]);
-  return{accessToken:accessToken(driverId),refreshToken:refresh,expiresIn:ACCESS_TTL_SECONDS};
+  const created=await db.query("INSERT INTO driver_auth_sessions(driver_id,refresh_token_hash,expires_at) VALUES($1,$2,now()+interval '30 days') RETURNING id",[driverId,hash(refresh)]);
+  return{accessToken:accessToken(driverId,created.rows[0].id),refreshToken:refresh,expiresIn:ACCESS_TTL_SECONDS};
 }
 function bearer(req){
   const h=String(req.headers.authorization||'');

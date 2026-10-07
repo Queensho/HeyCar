@@ -104,9 +104,15 @@ app.use('/api',async(req,res,next)=>{
       );
       if(!r.rows.length||r.rows[0].status!=='active')return res.status(401).json({error:'AUTH_SESSION_REVOKED'});
       if(Number(owner.sv||1)!==Number(r.rows[0].security_version||1))return res.status(401).json({error:'AUTH_SESSION_REVOKED'});
+      if(!owner.sid)return res.status(401).json({error:'AUTH_SESSION_REVOKED'});
+      const os=await pool.query("SELECT 1 FROM owner_auth_sessions WHERE id::text=$1 AND owner_id::text=$2 AND revoked_at IS NULL AND expires_at>now() LIMIT 1",[String(owner.sid),String(owner.sub)]);
+      if(!os.rowCount)return res.status(401).json({error:'AUTH_SESSION_REVOKED'});
     }else{
       const r=await pool.query("SELECT status FROM users WHERE id=$1 LIMIT 1",[String(driver.sub)]);
       if(!r.rows.length||r.rows[0].status!=='active')return res.status(401).json({error:'AUTH_SESSION_REVOKED'});
+      if(!driver.sid)return res.status(401).json({error:'AUTH_SESSION_REVOKED'});
+      const ds=await pool.query("SELECT 1 FROM driver_auth_sessions WHERE id::text=$1 AND driver_id::text=$2 AND revoked_at IS NULL AND expires_at>now() LIMIT 1",[String(driver.sid),String(driver.sub)]);
+      if(!ds.rowCount)return res.status(401).json({error:'AUTH_SESSION_REVOKED'});
     }
     return next();
   }catch(e){
