@@ -8,6 +8,17 @@ function n(v){const x=Number(v);return Number.isFinite(x)?x:null;}
 function money(v){return Math.round((Number(v)+Number.EPSILON)*100)/100;}
 function geoKm(aLat,aLng,bLat,bLng){const r=6371,toRad=x=>x*Math.PI/180;const dLat=toRad(bLat-aLat),dLng=toRad(bLng-aLng);const h=Math.sin(dLat/2)**2+Math.cos(toRad(aLat))*Math.cos(toRad(bLat))*Math.sin(dLng/2)**2;return 2*r*Math.asin(Math.min(1,Math.sqrt(h)));}
 function trustedRouteKm(a,b,c,d,claimed){const straight=geoKm(a,b,c,d),x=Number(claimed);if(!Number.isFinite(straight)||straight>2000||!Number.isFinite(x)||x<straight*0.98||x>Math.max(straight*4,straight+100))return null;return money(x);}
+async function serverRouteKm(aLat,aLng,bLat,bLng){
+ const base=String(process.env.ROUTING_BASE_URL||'https://router.project-osrm.org').replace(/\/$/,'');
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),5000);
+ try{
+  const r=await fetch(`${base}/route/v1/driving/${aLng},${aLat};${bLng},${bLat}?overview=false&alternatives=false&steps=false`,{signal:controller.signal,headers:{'User-Agent':'CepQontag/1.0'}});
+  if(!r.ok)return null;
+  const d=await r.json(),meters=Number(d?.routes?.[0]?.distance);
+  return Number.isFinite(meters)&&meters>=0?money(meters/1000):null;
+ }catch(_){return null;}finally{clearTimeout(timer);}
+}
+
 
 module.exports=function registerTowingRoutes(app,pool,adminGuard){
   const documentDir=process.env.TOWING_DOCUMENT_DIR||'/opt/heycar/uploads/towing-docs';
@@ -54,7 +65,7 @@ module.exports=function registerTowingRoutes(app,pool,adminGuard){
     const pickupAddress=String(req.body?.pickupAddress||'').trim().slice(0,300),destinationAddress=String(req.body?.destinationAddress||'').trim().slice(0,300);
     if([pickupLat,pickupLng,destinationLat,destinationLng,distanceKm].some(x=>x===null)||distanceKm<0||distanceKm>2000)return res.status(400).json({error:'INVALID_ROUTE'});
     if(pickupLat<-90||pickupLat>90||destinationLat<-90||destinationLat>90||pickupLng<-180||pickupLng>180||destinationLng<-180||destinationLng>180)return res.status(400).json({error:'INVALID_COORDINATES'});
-    const validatedDistanceKm=trustedRouteKm(pickupLat,pickupLng,destinationLat,destinationLng,distanceKm);if(validatedDistanceKm===null)return res.status(400).json({error:'UNTRUSTED_ROUTE_DISTANCE'});
+    const validatedDistanceKm=await serverRouteKm(pickupLat,pickupLng,destinationLat,destinationLng);if(validatedDistanceKm===null)return res.status(503).json({error:'ROUTING_UNAVAILABLE'});
     const client=await pool.connect();
     try{
       await client.query('BEGIN');
@@ -156,7 +167,7 @@ module.exports=function registerTowingRoutes(app,pool,adminGuard){
     const pickupAddress=String(req.body?.pickupAddress||'').trim().slice(0,300),destinationAddress=String(req.body?.destinationAddress||'').trim().slice(0,300);
     if([pickupLat,pickupLng,destinationLat,destinationLng,distanceKm].some(x=>x===null)||distanceKm<0||distanceKm>2000)return res.status(400).json({error:'INVALID_ROUTE'});
     if(pickupLat<-90||pickupLat>90||destinationLat<-90||destinationLat>90||pickupLng<-180||pickupLng>180||destinationLng<-180||destinationLng>180)return res.status(400).json({error:'INVALID_COORDINATES'});
-    const validatedDistanceKm=trustedRouteKm(pickupLat,pickupLng,destinationLat,destinationLng,distanceKm);if(validatedDistanceKm===null)return res.status(400).json({error:'UNTRUSTED_ROUTE_DISTANCE'});
+    const validatedDistanceKm=await serverRouteKm(pickupLat,pickupLng,destinationLat,destinationLng);if(validatedDistanceKm===null)return res.status(503).json({error:'ROUTING_UNAVAILABLE'});
     const client=await pool.connect();
     try{
       await client.query('BEGIN');
