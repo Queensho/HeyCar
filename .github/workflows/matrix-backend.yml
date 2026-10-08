@@ -242,13 +242,14 @@ jobs:
             'Test'
           );
 
-          INSERT INTO qr_tags(id,token,vehicle_id,status,activated_at)
+          INSERT INTO qr_tags(id,token,vehicle_id,status,activated_at,scan_secret)
           VALUES(
             '$QR_ID',
             '$QR_TOKEN',
             '$VEHICLE_ID',
             'active',
-            now()
+            now(),
+            'matrix-test-scan-proof'
           );
           SQL
 
@@ -263,7 +264,9 @@ jobs:
           echo "MATRIX_QR_PROXIMITY_NEGATIVE_CASES_OK"
 
           session_code=$(curl -sS -o /tmp/matrix-session.json -w '%{http_code}' \
-            -X POST -H 'Content-Type: application/json' -d '{}' \
+            -X POST -H 'Content-Type: application/json' \
+            -H 'X-Proximity-Device: matrix-qr-device' \
+            -d '{"scanSecret":"matrix-test-scan-proof","latitude":41.0,"longitude":29.0,"accuracy":15}' \
             "http://127.0.0.1:8090/api/qr/$QR_TOKEN/session")
           if [ "$session_code" != "201" ]; then
             echo "Expected scan session HTTP 201, got $session_code"
@@ -341,8 +344,9 @@ jobs:
           echo "MATRIX_PUBLIC_QR_RESOLVE_RATE_LIMIT_OK"
 
           # Invalid tokens previously bypassed owner-scoped QR abuse controls.
-          # One successful scan-session request was already made above, so
-          # 19 more requests fill this route's 20-request limiter window.
+          # Four scan-session requests were already made above (two rejected
+          # proximity probes, one successful request and one more test request).
+          # Keep the rate-limit expectation aligned with the request count.
           for i in $(seq 1 19); do
             code=$(curl -sS -o /tmp/qr-session-probe.json -w '%{http_code}'               -X POST -H 'Content-Type: application/json' -d '{}'               "http://127.0.0.1:8090/api/qr/MISSING$i/session")
             test "$code" = "404"
