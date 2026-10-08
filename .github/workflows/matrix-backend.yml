@@ -224,6 +224,26 @@ jobs:
           assert_status 200 -H "Authorization: Bearer $valet_token" http://127.0.0.1:8090/api/valet/sessions
           echo "MATRIX_VALET_ACTIVE_JOB_LOGOUT_GUARD_OK"
 
+          # Race regression: simultaneous logout requests must not restore a
+          # revoked session or leave a push token active.
+          psql -h 127.0.0.1 -U postgres -d heycar_matrix -v ON_ERROR_STOP=1 <<'SQL'
+          UPDATE valet_sessions SET status='delivered'
+          WHERE staff_id='00000000-0000-4000-8000-000000000553' AND status='accepted';
+          SQL
+          curl -sS -o /tmp/valet-logout-race-1.json -w '%{http_code}' -X POST -H "Authorization: Bearer $valet_token" http://127.0.0.1:8090/api/valet/logout > /tmp/valet-logout-race-1.code &
+          race_pid_1=$!
+          curl -sS -o /tmp/valet-logout-race-2.json -w '%{http_code}' -X POST -H "Authorization: Bearer $valet_token" http://127.0.0.1:8090/api/valet/logout > /tmp/valet-logout-race-2.code &
+          race_pid_2=$!
+          wait "$race_pid_1"
+          wait "$race_pid_2"
+          test "$(cat /tmp/valet-logout-race-1.code)" = "200"
+          test "$(cat /tmp/valet-logout-race-2.code)" = "200"
+          assert_status 401 -H "Authorization: Bearer $valet_token" http://127.0.0.1:8090/api/valet/sessions
+          remaining_valet_sessions=$(psql -h 127.0.0.1 -U postgres -d heycar_matrix -Atqc "SELECT COUNT(*) FROM valet_staff_sessions WHERE staff_id='00000000-0000-4000-8000-000000000553'")
+          test "$remaining_valet_sessions" = "0"
+          echo "MATRIX_VALET_CONCURRENT_LOGOUT_OK"
+
+
 
 
 
