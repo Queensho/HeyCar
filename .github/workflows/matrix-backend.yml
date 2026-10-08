@@ -9,10 +9,6 @@ on:
       - '.github/workflows/matrix-backend.yml'
   pull_request:
     branches: [main]
-    paths:
-      - 'server/**'
-      - 'deploy/**'
-      - '.github/workflows/matrix-backend.yml'
   workflow_dispatch:
 
 permissions:
