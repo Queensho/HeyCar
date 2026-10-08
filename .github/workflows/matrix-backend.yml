@@ -513,6 +513,17 @@ jobs:
 
 
 
+          # Expired and blocked scan sessions must reject both messages and calls.
+          scan_hash=$(node -e "const c=require('crypto');process.stdout.write(c.createHash('sha256').update(process.argv[1]).digest('hex'))" "$scan_token")
+          psql -h 127.0.0.1 -U postgres -d heycar_matrix -v ON_ERROR_STOP=1 -c "UPDATE qr_scan_sessions SET expires_at=NOW()-INTERVAL '1 minute' WHERE token_hash='$scan_hash'"
+          assert_status 401 -X POST -H "Content-Type: application/json" -H "X-Scan-Token: $scan_token" -d '{"type":"message","message":"expired scan probe"}' "http://127.0.0.1:8090/api/qr/$QR_TOKEN/notifications"
+          assert_status 401 -X POST -H "Content-Type: application/json" -H "X-Scan-Token: $scan_token" -d "{\"qrToken\":\"$QR_TOKEN\"}" "http://127.0.0.1:8090/api/public/calls"
+          psql -h 127.0.0.1 -U postgres -d heycar_matrix -v ON_ERROR_STOP=1 -c "UPDATE qr_scan_sessions SET expires_at=NOW()+INTERVAL '30 minutes',blocked=TRUE WHERE token_hash='$scan_hash'"
+          assert_status 401 -X POST -H "Content-Type: application/json" -H "X-Scan-Token: $scan_token" -d '{"type":"message","message":"blocked scan probe"}' "http://127.0.0.1:8090/api/qr/$QR_TOKEN/notifications"
+          assert_status 401 -X POST -H "Content-Type: application/json" -H "X-Scan-Token: $scan_token" -d "{\"qrToken\":\"$QR_TOKEN\"}" "http://127.0.0.1:8090/api/public/calls"
+          psql -h 127.0.0.1 -U postgres -d heycar_matrix -v ON_ERROR_STOP=1 -c "UPDATE qr_scan_sessions SET blocked=FALSE WHERE token_hash='$scan_hash'"
+          echo "MATRIX_QR_SCAN_EXPIRY_BLOCK_HTTP_OK"
+
           # Owner credentials cannot be used to access driver conversation endpoints.
           assert_status 401 -H "Authorization: Bearer $owner1_token" "http://127.0.0.1:8090/api/driver/conversations/$conversation_id"
           assert_status 401 -X POST -H 'Content-Type: application/json' \
