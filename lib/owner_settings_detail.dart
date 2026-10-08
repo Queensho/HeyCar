@@ -10,10 +10,10 @@ import 'owner_auth.dart';
 import 'cepqar_theme.dart';
 
 const _bg = CepqarTheme.darkBg;
-const _panel = CepqarTheme.darkPanel;
-const _line = CepqarTheme.darkLine;
+Color get _panel = CepqarTheme.panel;
+Color get _line = CepqarTheme.line;
 const _purple = Color(0xFF8B5CFF);
-const _muted = CepqarTheme.darkMuted;
+Color get _muted = CepqarTheme.muted;
 const _baseUrl = 'https://heycar-api-185-165-46-213.nip.io';
 
 Map<String, String> get _ownerHeaders => const {};
@@ -1023,7 +1023,7 @@ class _SettingsScaffold extends StatelessWidget {
         backgroundColor: CepqarTheme.bg,
         appBar: AppBar(
           backgroundColor: CepqarTheme.bg,
-          foregroundColor: Colors.white,
+          foregroundColor: CepqarTheme.text,
           elevation: 0,
           title: Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
         ),
@@ -1104,8 +1104,8 @@ class _SwitchTile extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: CepqarTheme.text,
                       fontSize: 15.5,
                       fontWeight: FontWeight.w800,
                     ),
@@ -1113,7 +1113,7 @@ class _SwitchTile extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    style: const TextStyle(color: _muted, fontSize: 12.5, height: 1.25),
+                    style: TextStyle(color: _muted, fontSize: 12.5, height: 1.25),
                   ),
                 ],
               ),
