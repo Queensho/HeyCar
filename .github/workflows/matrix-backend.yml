@@ -197,6 +197,13 @@ jobs:
           INSERT INTO valet_staff(id,business_id,name,phone,pin_hash) VALUES('00000000-0000-4000-8000-000000000553','00000000-0000-4000-8000-000000000552','Matrix Valet Staff','+905551112233',encode(digest('246810','sha256'),'hex'));
           SQL
 
+          valet_login_code=$(curl -sS -o /tmp/matrix-valet-login.json -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{"phone":"+905551112233","pin":"246810"}' http://127.0.0.1:8090/api/valet/login)
+          test "$valet_login_code" = "200"
+          valet_token=$(node -e "const x=require('/tmp/matrix-valet-login.json');process.stdout.write(x.token||'')")
+          test -n "$valet_token"
+          assert_status 200 -H "Authorization: Bearer $valet_token" http://127.0.0.1:8090/api/valet/sessions
+
+
 
 
           # Cross-principal regression: a valid Owner session must never authorize
