@@ -200,6 +200,10 @@ module.exports = function registerCallRoutes(app, pool) {
   });
 
   app.get('/api/public/calls/:callId', async (req,res) => {
+    const callId=String(req.params.callId||'');
+    if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(callId)) {
+      return res.status(400).json({error:'INVALID_CALL_ID'});
+    }
     try {
       await expireCalls();
       const visitorToken=String(req.headers['x-visitor-token']||'').trim();
