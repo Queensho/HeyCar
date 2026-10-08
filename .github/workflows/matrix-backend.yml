@@ -401,6 +401,16 @@ jobs:
           test "$routed_recipient" = "$OWNER_ID"
           grep -q '"recipient_user_id"' /tmp/matrix-notification.json
 
+          # A QR code alone must not authorize anonymous message creation.
+          assert_status 401 -X POST -H 'Content-Type: application/json' \
+            -d '{"type":"message","message":"unauthorized QR message"}' \
+            "http://127.0.0.1:8090/api/qr/$QR_TOKEN/notifications"
+          assert_status 401 -X POST -H 'Content-Type: application/json' \
+            -H 'X-Scan-Token: invalid-matrix-session' \
+            -d '{"type":"message","message":"invalid scan session"}' \
+            "http://127.0.0.1:8090/api/qr/$QR_TOKEN/notifications"
+          echo "MATRIX_QR_MESSAGE_SCAN_SESSION_HTTP_GUARD_OK"
+
           echo "MATRIX_NOTIFICATION_RECIPIENT_ROUTING_OK"
 
           # F-04 HTTP isolation: create a real conversation, then try another owner.
