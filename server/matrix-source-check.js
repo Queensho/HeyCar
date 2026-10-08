@@ -332,3 +332,41 @@ for(const [route,requiredSql] of [
   }
 }
 console.log('MATRIX_TOWING_OWNER_SQL_ISOLATION_OK');
+
+
+// Public QR communication routes must keep scan-session and visitor-token
+// authorization checks. These source invariants complement Matrix HTTP tests.
+const notificationSource=read('notification-routes.js');
+const callSource=read('call-routes.js');
+function routeSection(source,signature){
+  const start=source.indexOf(signature);
+  if(start<0)throw new Error('PUBLIC_COMMUNICATION_ROUTE_MISSING: '+signature);
+  const end=source.indexOf("\n  app.",start+signature.length);
+  return source.slice(start,end<0?undefined:end);
+}
+for(const signature of [
+  "app.post('/api/qr/:token/notifications',",
+  "app.get('/api/qr/:token/park-note',",
+]){
+  const section=routeSection(notificationSource,signature);
+  if(!section.includes('guardPublicRequest(req, token, qr)')){
+    throw new Error('QR_SCAN_SESSION_GUARD_MISSING: '+signature);
+  }
+}
+const publicCallCreate=routeSection(callSource,"app.post('/api/public/calls',");
+if(!publicCallCreate.includes('validateScanSession(pool,')||
+   !publicCallCreate.includes('enforcePublicRequest(pool,token,req)')||
+   !publicCallCreate.includes('CALL_RATE_LIMITED')){
+  throw new Error('PUBLIC_CALL_ABUSE_GUARDS_MISSING');
+}
+for(const signature of [
+  "app.get('/api/public/calls/:callId',",
+  "app.patch('/api/public/calls/:callId',",
+]){
+  const section=routeSection(callSource,signature);
+  if(!section.includes("req.headers['x-visitor-token']")||
+     !section.includes('visitor_token::text=$2')){
+    throw new Error('PUBLIC_CALL_VISITOR_ISOLATION_MISSING: '+signature);
+  }
+}
+console.log('MATRIX_QR_COMMUNICATION_SOURCE_GUARDS_OK');
