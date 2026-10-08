@@ -86,3 +86,5 @@ test('business valet accept maps active vehicle unique violation to 409 conflict
  const end=src.indexOf("app.get('/api/owner/valet/:vehicleId'",start);
  assert.match(src.slice(start,end),/e\?\.code==='23505'.*status\(409\).*VEHICLE_ALREADY_IN_VALET/s);
 });
+
+test('valet logout route is present', () => { assert.ok(fs.readFileSync(path.join(__dirname,'../valet-routes.js'),'utf8').includes("app.post('/api/valet/logout'")); });
