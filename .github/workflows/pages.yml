@@ -15,6 +15,20 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  validate_owner_light_theme:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Resolve Flutter dependencies
+        run: flutter pub get
+      - name: Analyze maintenance sharing screen
+        run: flutter analyze lib/maintenance_share_page.dart --no-fatal-infos --no-fatal-warnings
+
   build:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest

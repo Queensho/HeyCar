@@ -11,9 +11,6 @@ FILES = {
     'lib/upcoming_maintenance_page.dart': [
         ("const _bg=Color(0xFF07111F),_panel=Color(0xFF101A30),_line=Color(0xFF27355D),_purple=Color(0xFF9B5CFF),_muted=Color(0xFFA7B0C7),_lime=Color(0xFF79F56B),_amber=Color(0xFFFFB63E),_pink=Color(0xFFFF4F9A);", "Color get _bg=>CepqarTheme.bg; Color get _panel=>CepqarTheme.panel; Color get _line=>CepqarTheme.line; const _purple=Color(0xFF9B5CFF); Color get _muted=>CepqarTheme.muted; const _lime=Color(0xFF79F56B),_amber=Color(0xFFFFB63E),_pink=Color(0xFFFF4F9A);")
     ],
-    'lib/maintenance_share_page.dart': [
-        ("const _bg=Color(0xFF07111F),_panel=Color(0xFF101A30),_line=Color(0xFF27355D),_purple=Color(0xFF8B46FF),_muted=Color(0xFFA7B0C7),_gold=Color(0xFFFFC64D);", "Color get _bg=>CepqarTheme.bg; Color get _panel=>CepqarTheme.panel; Color get _line=>CepqarTheme.line; const _purple=Color(0xFF8B46FF); Color get _muted=>CepqarTheme.muted; const _gold=Color(0xFFFFC64D);")
-    ],
 }
 
 for filename, replacements in FILES.items():
@@ -27,6 +24,7 @@ for filename, replacements in FILES.items():
     for old, new in replacements:
         text = text.replace(old, new)
 
+    # MaintenanceSharePage is now natively theme-aware and must not be rewritten.
     # All normal copy/icons follow the current theme. The redesigned vehicle center
     # intentionally contains dark hero/QR surfaces even in light mode, so keep its
     # explicit white foregrounds untouched.
