@@ -245,6 +245,8 @@ jobs:
           concurrent_push_active=$(psql -h 127.0.0.1 -U postgres -d heycar_matrix -Atqc "SELECT COUNT(*) FROM valet_push_tokens WHERE staff_id='00000000-0000-4000-8000-000000000553' AND active=TRUE")
           test "$concurrent_push_active" = "0"
           echo "MATRIX_VALET_CONCURRENT_PUSH_REVOCATION_OK"
+          assert_status 401 -X POST -H "Authorization: Bearer $valet_token" -H 'Content-Type: application/json' -d '{"token":"matrix-stale-device","deviceId":"matrix-device-2"}' http://127.0.0.1:8090/api/valet/push-token
+          echo "MATRIX_VALET_STALE_DEVICE_REJECTED_OK"
 
 
 
