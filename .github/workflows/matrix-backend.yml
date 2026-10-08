@@ -252,6 +252,16 @@ jobs:
           );
           SQL
 
+          # Missing proximity proof must not mint a scan session.
+          missing_proof_code=$(curl -sS -o /tmp/matrix-no-proof.json -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{}' "http://127.0.0.1:8090/api/qr/$QR_TOKEN/session")
+          test "$missing_proof_code" = "428"
+          grep -q '"PROXIMITY_PROOF_REQUIRED"' /tmp/matrix-no-proof.json
+          # An invalid QR proof must also fail closed.
+          invalid_proof_code=$(curl -sS -o /tmp/matrix-invalid-proof.json -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{"scanSecret":"invalid-matrix-proof"}' "http://127.0.0.1:8090/api/qr/$QR_TOKEN/session")
+          test "$invalid_proof_code" = "403"
+          grep -q '"QR_SCAN_PROOF_INVALID"' /tmp/matrix-invalid-proof.json
+          echo "MATRIX_QR_PROXIMITY_NEGATIVE_CASES_OK"
+
           session_code=$(curl -sS -o /tmp/matrix-session.json -w '%{http_code}' \
             -X POST -H 'Content-Type: application/json' -d '{}' \
             "http://127.0.0.1:8090/api/qr/$QR_TOKEN/session")
