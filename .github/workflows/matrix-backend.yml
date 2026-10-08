@@ -300,6 +300,32 @@ jobs:
 
           echo "MATRIX_NOTIFICATION_RECIPIENT_ROUTING_OK"
 
+          # F-04 HTTP isolation: create a real conversation, then try another owner.
+          notification_id=$(psql -h 127.0.0.1 -U postgres -d heycar_matrix -Atqc "SELECT id FROM vehicle_notifications WHERE qr_token='$QR_TOKEN' ORDER BY created_at DESC LIMIT 1")
+          test -n "$notification_id"
+          conversation_code=$(curl -sS -o /tmp/matrix-conversation.json -w '%{http_code}' \
+            -X POST -H 'Content-Type: application/json' -H "X-Scan-Token: $scan_token" \
+            -d "{\\"notificationId\\":\\"$notification_id\\"}" \
+            "http://127.0.0.1:8090/api/qr/$QR_TOKEN/conversations")
+          test "$conversation_code" = "201"
+          conversation_id=$(node -e "const x=require('/tmp/matrix-conversation.json');process.stdout.write(String(x.conversation?.id||''))")
+          test -n "$conversation_id"
+
+          owner2_login=$(curl -sS -o /tmp/owner2-login.json -w '%{http_code}' -X POST -H 'Content-Type: application/json' \
+            -d '{"phone":"+905551234568","password":"MatrixPass123!"}' http://127.0.0.1:8090/api/owner/login-phone)
+          test "$owner2_login" = "200"
+          owner2_token=$(node -e "const x=require('/tmp/owner2-login.json');process.stdout.write(x.accessToken||'')")
+          test -n "$owner2_token"
+
+          assert_status 200 -H "Authorization: Bearer $owner1_token" "http://127.0.0.1:8090/api/owner/conversations/$conversation_id"
+          assert_status 404 -H "Authorization: Bearer $owner2_token" "http://127.0.0.1:8090/api/owner/conversations/$conversation_id"
+          assert_status 404 -X POST -H 'Content-Type: application/json' -H "Authorization: Bearer $owner2_token" \
+            -d '{"message":"cross-owner isolation probe"}' "http://127.0.0.1:8090/api/owner/conversations/$conversation_id/messages"
+          assert_status 401 "http://127.0.0.1:8090/api/qr/$QR_TOKEN/conversations/$conversation_id"
+          echo "MATRIX_CONVERSATION_HTTP_OWNER_ISOLATION_OK"
+
+
+
           # CORS must fail closed for unknown browser origins while preserving
           # the canonical GitHub Pages origin used by the public/admin web apps.
           cors_allowed=$(curl -sS -o /tmp/cors-allowed.json -w '%{http_code}'             -H 'Origin: https://queensho.github.io'             http://127.0.0.1:8090/health)
