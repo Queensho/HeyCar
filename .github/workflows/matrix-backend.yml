@@ -344,13 +344,13 @@ jobs:
           echo "MATRIX_PUBLIC_QR_RESOLVE_RATE_LIMIT_OK"
 
           # Invalid tokens previously bypassed owner-scoped QR abuse controls.
-          # Four scan-session requests were already made above (two rejected
-          # proximity probes, one successful request and one more test request).
-          # Keep the rate-limit expectation aligned with the request count.
-          for i in $(seq 1 19); do
+          # Three scan-session requests were already made above (two rejected
+          # proximity probes and one successful request). Seventeen more
+          # requests fill the 20-request limiter window.
+          for i in $(seq 1 17); do
             code=$(curl -sS -o /tmp/qr-session-probe.json -w '%{http_code}'               -X POST -H 'Content-Type: application/json' -d '{}'               "http://127.0.0.1:8090/api/qr/MISSING$i/session")
             test "$code" = "404"
           done
-          qr_session_limited=$(curl -sS -o /tmp/qr-session-limited.json -w '%{http_code}'             -X POST -H 'Content-Type: application/json' -d '{}'             "http://127.0.0.1:8090/api/qr/MISSING20/session")
+          qr_session_limited=$(curl -sS -o /tmp/qr-session-limited.json -w '%{http_code}'             -X POST -H 'Content-Type: application/json' -d '{}'             "http://127.0.0.1:8090/api/qr/MISSING18/session")
           test "$qr_session_limited" = "429"
           echo "MATRIX_QR_SESSION_PROBE_RATE_LIMIT_OK"
