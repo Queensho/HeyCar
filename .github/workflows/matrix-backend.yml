@@ -242,6 +242,9 @@ jobs:
           remaining_valet_sessions=$(psql -h 127.0.0.1 -U postgres -d heycar_matrix -Atqc "SELECT COUNT(*) FROM valet_staff_sessions WHERE staff_id='00000000-0000-4000-8000-000000000553'")
           test "$remaining_valet_sessions" = "0"
           echo "MATRIX_VALET_CONCURRENT_LOGOUT_OK"
+          concurrent_push_active=$(psql -h 127.0.0.1 -U postgres -d heycar_matrix -Atqc "SELECT COUNT(*) FROM valet_push_tokens WHERE staff_id='00000000-0000-4000-8000-000000000553' AND active=TRUE")
+          test "$concurrent_push_active" = "0"
+          echo "MATRIX_VALET_CONCURRENT_PUSH_REVOCATION_OK"
 
 
 
