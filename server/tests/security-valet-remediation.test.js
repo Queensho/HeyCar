@@ -47,7 +47,8 @@ test('valet status transition locks session row before mutation',()=>{
  assert.match(src,/SELECT status,staff_id FROM valet_sessions WHERE id=\$1 AND business_id=\$2 FOR UPDATE/);
  assert.match(src,/if\(!current\.rowCount\)\{await client\.query\('ROLLBACK'\)/);
  assert.match(src,/INSERT INTO valet_audit_log\(business_id,session_id,staff_id,actor_type,action,from_status,to_status,metadata\)/);
- assert.ok(src.indexOf("await client.query('COMMIT');if(status==='delivered')await dispatchNext")>0);
+ const statusRoute=src.slice(src.indexOf("app.patch('/api/valet/sessions/:id/status'"),src.indexOf("app.patch('/api/valet/sessions/:id/status'")+7000);
+ assert.match(statusRoute,/await client\.query\('COMMIT'\);[\s\S]*?finally\{client\.release\(\);\}[\s\S]*?if\(status==='delivered'\)await dispatchNext/);
 });
 
 test('offline sync claims operation id before locking and mutating session',()=>{
