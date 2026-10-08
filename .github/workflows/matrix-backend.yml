@@ -496,6 +496,31 @@ jobs:
 
 
 
+          # Two real authenticated owners must not read, track or cancel each
+          # other's towing request. Use the isolated Matrix PostgreSQL database.
+          TOWING_MATRIX_ID="00000000-0000-4000-8000-000000000991"
+          psql -h 127.0.0.1 -U postgres -d heycar_matrix -v ON_ERROR_STOP=1 <<SQL
+          INSERT INTO towing_requests
+            (id,owner_id,vehicle_id,vehicle_type,truck_type,issue_type,
+             pickup_lat,pickup_lng,destination_lat,destination_lng,distance_km,quoted_total,status)
+          SELECT '$TOWING_MATRIX_ID','$OWNER_ID','$VEHICLE_ID',v.code,t.code,'other',
+                 41.0,29.0,41.01,29.01,2,200,'searching'
+          FROM (SELECT code FROM towing_vehicle_types LIMIT 1) v
+          CROSS JOIN (SELECT code FROM towing_truck_types LIMIT 1) t;
+          SQL
+          towing_fixture_count=$(psql -h 127.0.0.1 -U postgres -d heycar_matrix -Atqc "SELECT COUNT(*) FROM towing_requests WHERE id='$TOWING_MATRIX_ID'")
+          test "$towing_fixture_count" = "1"
+
+          assert_status 200 -H "Authorization: Bearer $owner1_token" "http://127.0.0.1:8090/api/owner/towing/requests/$TOWING_MATRIX_ID"
+          assert_status 404 -H "Authorization: Bearer $owner2_token" "http://127.0.0.1:8090/api/owner/towing/requests/$TOWING_MATRIX_ID"
+          assert_status 200 -H "Authorization: Bearer $owner1_token" "http://127.0.0.1:8090/api/owner/towing/requests/$TOWING_MATRIX_ID/tracking"
+          assert_status 404 -H "Authorization: Bearer $owner2_token" "http://127.0.0.1:8090/api/owner/towing/requests/$TOWING_MATRIX_ID/tracking"
+          assert_status 409 -X POST -H "Authorization: Bearer $owner2_token" -H 'Content-Type: application/json' -d '{}' "http://127.0.0.1:8090/api/owner/towing/requests/$TOWING_MATRIX_ID/cancel"
+          towing_still_searching=$(psql -h 127.0.0.1 -U postgres -d heycar_matrix -Atqc "SELECT status FROM towing_requests WHERE id='$TOWING_MATRIX_ID'")
+          test "$towing_still_searching" = "searching"
+          assert_status 200 -X POST -H "Authorization: Bearer $owner1_token" -H 'Content-Type: application/json' -d '{}' "http://127.0.0.1:8090/api/owner/towing/requests/$TOWING_MATRIX_ID/cancel"
+          echo "MATRIX_TOWING_TWO_OWNER_HTTP_ISOLATION_OK"
+
           # CORS must fail closed for unknown browser origins while preserving
           # the canonical GitHub Pages origin used by the public/admin web apps.
           cors_allowed=$(curl -sS -o /tmp/cors-allowed.json -w '%{http_code}'             -H 'Origin: https://queensho.github.io'             http://127.0.0.1:8090/health)
