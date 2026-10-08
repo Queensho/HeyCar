@@ -313,3 +313,22 @@ requireText(
   "if-none-match",
   'APP_BUILDER_ETAG_HINT_MISSING'
 );
+
+
+// Towing read, tracking and cancellation must scope the requested job to the
+// authenticated owner. Guard against future IDOR regressions in route SQL.
+const towing=read('towing-routes.js');
+for(const [route,requiredSql] of [
+  ["app.get('/api/owner/towing/requests/:id',", 'WHERE id=$1 AND owner_id=$2 LIMIT 1'],
+  ["app.post('/api/owner/towing/requests/:id/cancel',", 'WHERE id=$1 AND owner_id=$2 AND status IN'],
+  ["app.get('/api/owner/towing/requests/:id/tracking',", 'WHERE r.id=$1 AND r.owner_id=$2 LIMIT 1'],
+]){
+  const start=towing.indexOf(route);
+  if(start<0)throw new Error('TOWING_OWNER_ROUTE_MISSING: '+route);
+  const end=towing.indexOf("\n  app.",start+route.length);
+  const body=towing.slice(start,end<0?undefined:end);
+  if(!body.includes('authenticatedOwnerId(req)')||!body.includes(requiredSql)){
+    throw new Error('TOWING_OWNER_IDOR_GUARD_MISSING: '+route);
+  }
+}
+console.log('MATRIX_TOWING_OWNER_SQL_ISOLATION_OK');
