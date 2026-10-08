@@ -186,6 +186,12 @@ jobs:
 
           echo "MATRIX_AUTH_BOUNDARIES_OK"
 
+          # F-05: unauthenticated valet endpoints must reject requests.
+          assert_status 401 http://127.0.0.1:8090/api/valet/sessions
+          assert_status 401 -X POST -H 'Content-Type: application/json' -d '{}' http://127.0.0.1:8090/api/valet/push-token
+          echo "MATRIX_VALET_HTTP_AUTH_BOUNDARIES_OK"
+
+
           # Cross-principal regression: a valid Owner session must never authorize
           # another Owner's vehicle resource.
           OWNER2_ID="00000000-0000-4000-8000-000000000112"
