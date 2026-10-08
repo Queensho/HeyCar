@@ -357,9 +357,9 @@ jobs:
           VALUES
             ('$DRIVER1_ID','matrix-driver1@test.local','+905551234571','Matrix Driver 1',crypt('MatrixPass123!',gen_salt('bf',12)),'user','active',false),
             ('$DRIVER2_ID','matrix-driver2@test.local','+905551234572','Matrix Driver 2',crypt('MatrixPass123!',gen_salt('bf',12)),'user','active',false);
-          INSERT INTO vehicle_drivers(vehicle_id,driver_user_id) VALUES
-            ('$VEHICLE_ID','$DRIVER1_ID'),
-            ('$VEHICLE2_ID','$DRIVER2_ID');
+          INSERT INTO vehicle_drivers(vehicle_id,owner_id,driver_user_id,driver_name) VALUES
+            ('$VEHICLE_ID','$OWNER_ID','$DRIVER1_ID','Matrix Driver 1'),
+            ('$VEHICLE2_ID','$OWNER2_ID','$DRIVER2_ID','Matrix Driver 2');
           UPDATE vehicle_notifications SET recipient_user_id='$DRIVER1_ID' WHERE id='$notification_id';
           SQL
 
