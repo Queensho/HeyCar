@@ -77,6 +77,10 @@ jobs:
         working-directory: server
         run: node --test tests/security-valet-remediation.test.js
 
+      - name: Verify conversation authorization invariants
+        working-directory: server
+        run: node --test tests/security-conversation-isolation.test.js
+
       - name: Syntax-check guarded live sync
         shell: bash
         run: |
