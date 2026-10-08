@@ -651,10 +651,7 @@ jobs:
           # Vehicle transfer must revoke old scan sessions and private visitor data.
           # Run last: transfer intentionally deletes existing conversation/call fixtures.
           psql -h 127.0.0.1 -U postgres -d heycar_matrix -v ON_ERROR_STOP=1 -c "DELETE FROM qr_security_request_log WHERE owner_id='$OWNER_ID'"
-          transfer_new_owner="00000000-0000-4000-8000-000000000119"
-          psql -h 127.0.0.1 -U postgres -d heycar_matrix -v ON_ERROR_STOP=1 <<SQL
-          INSERT INTO users(id,phone) VALUES('$transfer_new_owner','+905550001119') ON CONFLICT(id) DO NOTHING;
-          SQL
+          transfer_new_owner="$OWNER2_ID"
           # Exercise the actual transfer privacy helper and ownership update in one DB transaction.
           VEHICLE_ID="$VEHICLE_ID" NEW_OWNER="$transfer_new_owner" node - <<'NODE'
           const {Pool}=require("./server/node_modules/pg");
