@@ -97,3 +97,11 @@ test('valet logout clears session and push registration', () => {
  assert.ok(section.includes('UPDATE valet_staff SET on_shift=FALSE'));
  assert.ok(section.includes('COMMIT'));
 });
+
+test('valet logout guards against active jobs', () => {
+ const source=fs.readFileSync(path.join(__dirname,'../valet-routes.js'),'utf8');
+ const section=source.split("app.post('/api/valet/logout'")[1]?.split("app.post('/api/valet/shift'")[0] || '';
+ assert.ok(section.includes('ACTIVE_JOB_EXISTS'));
+ assert.ok(section.includes('ROLLBACK'));
+ assert.ok(section.includes('logoutBlocked:true'));
+});
