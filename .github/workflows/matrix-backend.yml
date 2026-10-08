@@ -191,6 +191,13 @@ jobs:
           assert_status 401 -X POST -H 'Content-Type: application/json' -d '{}' http://127.0.0.1:8090/api/valet/push-token
           echo "MATRIX_VALET_HTTP_AUTH_BOUNDARIES_OK"
 
+          psql -h 127.0.0.1 -U postgres -d heycar_matrix -v ON_ERROR_STOP=1 <<'SQL'
+          INSERT INTO business_accounts(id,email,password_hash) VALUES('00000000-0000-4000-8000-000000000551','matrix-valet@test.local','matrix-fixture');
+          INSERT INTO businesses(id,account_id,name,category,valet_enabled) VALUES('00000000-0000-4000-8000-000000000552','00000000-0000-4000-8000-000000000551','Matrix Valet','parking',TRUE);
+          INSERT INTO valet_staff(id,business_id,name,phone,pin_hash) VALUES('00000000-0000-4000-8000-000000000553','00000000-0000-4000-8000-000000000552','Matrix Valet Staff','+905551112233',encode(digest('246810','sha256'),'hex'));
+          SQL
+
+
 
           # Cross-principal regression: a valid Owner session must never authorize
           # another Owner's vehicle resource.
