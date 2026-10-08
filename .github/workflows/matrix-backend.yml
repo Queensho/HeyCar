@@ -248,6 +248,26 @@ jobs:
           assert_status 401 -X POST -H "Authorization: Bearer $valet_token" -H 'Content-Type: application/json' -d '{"token":"matrix-stale-device","deviceId":"matrix-device-2"}' http://127.0.0.1:8090/api/valet/push-token
           echo "MATRIX_VALET_STALE_DEVICE_REJECTED_OK"
 
+          # Concurrent registration and logout: registration may win before
+          # revocation or be rejected afterwards, but must never survive logout.
+          valet_login_code=$(curl -sS -o /tmp/matrix-valet-race-login.json -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{"phone":"+905551112233","pin":"246810"}' http://127.0.0.1:8090/api/valet/login)
+          test "$valet_login_code" = "200"
+          valet_token=$(node -e "const x=require('/tmp/matrix-valet-race-login.json');process.stdout.write(x.token||'')")
+          test -n "$valet_token"
+          curl -sS -o /tmp/valet-race-register.json -w '%{http_code}' -X POST -H "Authorization: Bearer $valet_token" -H 'Content-Type: application/json' -d '{"token":"matrix-race-push","deviceId":"matrix-race-device"}' http://127.0.0.1:8090/api/valet/push-token > /tmp/valet-race-register.code &
+          race_register_pid=$!
+          curl -sS -o /tmp/valet-race-logout.json -w '%{http_code}' -X POST -H "Authorization: Bearer $valet_token" http://127.0.0.1:8090/api/valet/logout > /tmp/valet-race-logout.code &
+          race_logout_pid=$!
+          wait "$race_register_pid"
+          wait "$race_logout_pid"
+          test "$(cat /tmp/valet-race-logout.code)" = "200"
+          register_code=$(cat /tmp/valet-race-register.code)
+          test "$register_code" = "200" || test "$register_code" = "401"
+          assert_status 401 -H "Authorization: Bearer $valet_token" http://127.0.0.1:8090/api/valet/sessions
+          race_push_active=$(psql -h 127.0.0.1 -U postgres -d heycar_matrix -Atqc "SELECT COUNT(*) FROM valet_push_tokens WHERE staff_id='00000000-0000-4000-8000-000000000553' AND active=TRUE")
+          test "$race_push_active" = "0"
+          echo "MATRIX_VALET_REGISTER_LOGOUT_RACE_OK"
+
 
 
 
