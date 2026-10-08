@@ -437,7 +437,7 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
                 if (token.isNotEmpty) ...[
                   Container(
                     padding: const EdgeInsets.all(14),
-                    color: Colors.white,
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
                     child: Image.network(
                       'https://quickchart.io/qr?text=${Uri.encodeComponent('https://queensho.github.io/HeyCar/?tag=${Uri.encodeComponent(token)}')}&size=420',
                       width: 210,
