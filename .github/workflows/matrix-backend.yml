@@ -305,7 +305,7 @@ jobs:
           test -n "$notification_id"
           conversation_code=$(curl -sS -o /tmp/matrix-conversation.json -w '%{http_code}' \
             -X POST -H 'Content-Type: application/json' -H "X-Scan-Token: $scan_token" \
-            -d "{\\"notificationId\\":\\"$notification_id\\"}" \
+            -d "{\"notificationId\":\"$notification_id\"}" \
             "http://127.0.0.1:8090/api/qr/$QR_TOKEN/conversations")
           test "$conversation_code" = "201"
           conversation_id=$(node -e "const x=require('/tmp/matrix-conversation.json');process.stdout.write(String(x.conversation?.id||''))")
