@@ -513,6 +513,8 @@ jobs:
 
 
 
+          # Reset earlier abuse-limit fixture so this test exercises scan validation.
+          psql -h 127.0.0.1 -U postgres -d heycar_matrix -v ON_ERROR_STOP=1 -c "DELETE FROM qr_security_request_log WHERE owner_id='$OWNER_ID'"
           # Expired and blocked scan sessions must reject both messages and calls.
           scan_hash=$(node -e "const c=require('crypto');process.stdout.write(c.createHash('sha256').update(process.argv[1]).digest('hex'))" "$scan_token")
           psql -h 127.0.0.1 -U postgres -d heycar_matrix -v ON_ERROR_STOP=1 -c "UPDATE qr_scan_sessions SET expires_at=NOW()-INTERVAL '1 minute' WHERE token_hash='$scan_hash'"
