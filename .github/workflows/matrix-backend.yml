@@ -467,6 +467,36 @@ jobs:
             "http://127.0.0.1:8090/api/qr/$QR_TOKEN/conversations/$conversation_id/messages"
           echo "MATRIX_CONVERSATION_HTTP_GUEST_ISOLATION_OK"
 
+          # A valid scan session can create a call, but it must not grant
+          # access to the call without the distinct per-call visitor token.
+          call_create_code=$(curl -sS -o /tmp/matrix-call.json -w '%{http_code}' \
+            -X POST -H 'Content-Type: application/json' \
+            -H "X-Scan-Token: $scan_token" \
+            -d "{\"qrToken\":\"$QR_TOKEN\"}" \
+            "http://127.0.0.1:8090/api/public/calls")
+          test "$call_create_code" = "201"
+          call_id=$(node -e "const x=require('/tmp/matrix-call.json');process.stdout.write(x.call?.id||'')")
+          call_visitor_token=$(node -e "const x=require('/tmp/matrix-call.json');process.stdout.write(x.call?.visitor_token||'')")
+          test -n "$call_id"
+          test -n "$call_visitor_token"
+          call_url="http://127.0.0.1:8090/api/public/calls/$call_id"
+          assert_status 200 -H "X-Visitor-Token: $call_visitor_token" "$call_url"
+          assert_status 401 "$call_url"
+          assert_status 404 -H 'X-Visitor-Token: invalid-other-visitor' "$call_url"
+          assert_status 404 -H "X-Visitor-Token: $second_scan_token" "$call_url"
+          assert_status 401 -X PATCH -H 'Content-Type: application/json' \
+            -d '{"action":"cancel"}' "$call_url"
+          assert_status 409 -X PATCH -H 'Content-Type: application/json' \
+            -H 'X-Visitor-Token: invalid-other-visitor' \
+            -d '{"action":"cancel"}' "$call_url"
+          assert_status 200 -H "X-Visitor-Token: $call_visitor_token" "$call_url"
+          assert_status 200 -X PATCH -H 'Content-Type: application/json' \
+            -H "X-Visitor-Token: $call_visitor_token" \
+            -d '{"action":"cancel"}' "$call_url"
+          echo "MATRIX_PUBLIC_CALL_VISITOR_HTTP_ISOLATION_OK"
+
+
+
           # Owner credentials cannot be used to access driver conversation endpoints.
           assert_status 401 -H "Authorization: Bearer $owner1_token" "http://127.0.0.1:8090/api/driver/conversations/$conversation_id"
           assert_status 401 -X POST -H 'Content-Type: application/json' \
