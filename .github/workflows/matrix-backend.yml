@@ -349,6 +349,47 @@ jobs:
             "http://127.0.0.1:8090/api/driver/conversations/$conversation_id/messages"
           echo "MATRIX_CONVERSATION_HTTP_DRIVER_ROLE_BOUNDARY_OK"
 
+          # Two authenticated drivers must not access each other's conversation.
+          DRIVER1_ID="00000000-0000-4000-8000-000000000114"
+          DRIVER2_ID="00000000-0000-4000-8000-000000000115"
+          psql -h 127.0.0.1 -U postgres -d heycar_matrix -v ON_ERROR_STOP=1 <<SQL
+          INSERT INTO users(id,email,phone,display_name,password_hash,role,status,premium)
+          VALUES
+            ('$DRIVER1_ID','matrix-driver1@test.local','+905551234571','Matrix Driver 1',crypt('MatrixPass123!',gen_salt('bf',12)),'user','active',false),
+            ('$DRIVER2_ID','matrix-driver2@test.local','+905551234572','Matrix Driver 2',crypt('MatrixPass123!',gen_salt('bf',12)),'user','active',false);
+          INSERT INTO vehicle_drivers(vehicle_id,driver_user_id) VALUES
+            ('$VEHICLE_ID','$DRIVER1_ID'),
+            ('$VEHICLE2_ID','$DRIVER2_ID');
+          UPDATE vehicle_notifications SET recipient_user_id='$DRIVER1_ID' WHERE id='$notification_id';
+          SQL
+
+          driver1_login=$(curl -sS -o /tmp/matrix-driver1-login.json -w '%{http_code}' \
+            -X POST -H 'Content-Type: application/json' \
+            -d '{"phone":"+905551234571","password":"MatrixPass123!"}' \
+            http://127.0.0.1:8090/api/driver/login-phone)
+          test "$driver1_login" = "200"
+          driver1_token=$(node -e "const x=require('/tmp/matrix-driver1-login.json');process.stdout.write(x.accessToken||'')")
+          test -n "$driver1_token"
+
+          driver2_login=$(curl -sS -o /tmp/matrix-driver2-login.json -w '%{http_code}' \
+            -X POST -H 'Content-Type: application/json' \
+            -d '{"phone":"+905551234572","password":"MatrixPass123!"}' \
+            http://127.0.0.1:8090/api/driver/login-phone)
+          test "$driver2_login" = "200"
+          driver2_token=$(node -e "const x=require('/tmp/matrix-driver2-login.json');process.stdout.write(x.accessToken||'')")
+          test -n "$driver2_token"
+
+          assert_status 200 -H "Authorization: Bearer $driver1_token" \
+            "http://127.0.0.1:8090/api/driver/conversations/$conversation_id"
+          assert_status 404 -H "Authorization: Bearer $driver2_token" \
+            "http://127.0.0.1:8090/api/driver/conversations/$conversation_id"
+          assert_status 404 -X POST -H 'Content-Type: application/json' \
+            -H "Authorization: Bearer $driver2_token" \
+            -d '{"message":"other driver isolation probe"}' \
+            "http://127.0.0.1:8090/api/driver/conversations/$conversation_id/messages"
+          echo "MATRIX_CONVERSATION_HTTP_DRIVER_ISOLATION_OK"
+
+
 
 
 
