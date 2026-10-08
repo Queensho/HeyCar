@@ -88,3 +88,12 @@ test('business valet accept maps active vehicle unique violation to 409 conflict
 });
 
 test('valet logout route is present', () => { assert.ok(fs.readFileSync(path.join(__dirname,'../valet-routes.js'),'utf8').includes("app.post('/api/valet/logout'")); });
+
+test('valet logout clears session and push registration', () => {
+ const source=fs.readFileSync(path.join(__dirname,'../valet-routes.js'),'utf8');
+ const section=source.split("app.post('/api/valet/logout'")[1]?.split("app.post('/api/valet/shift'")[0] || '';
+ assert.ok(section.includes('DELETE FROM valet_staff_sessions'));
+ assert.ok(section.includes('UPDATE valet_push_tokens SET active=FALSE'));
+ assert.ok(section.includes('UPDATE valet_staff SET on_shift=FALSE'));
+ assert.ok(section.includes('COMMIT'));
+});
