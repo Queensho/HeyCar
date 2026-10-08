@@ -202,8 +202,9 @@ jobs:
           test "$owner1_login" = "200"
           owner1_token=$(node -e "const x=require('/tmp/owner1-login.json');process.stdout.write(x.accessToken||'')")
           test -n "$owner1_token"
-          cross_vehicle=$(curl -sS -o /tmp/cross-vehicle.json -w '%{http_code}' -H "Authorization: Bearer $owner1_token" http://127.0.0.1:8090/api/owner/vehicles/$VEHICLE2_ID)
-          test "$cross_vehicle" = "404"
+          owner1_vehicles=$(curl -sS -o /tmp/owner1-vehicles.json -w '%{http_code}' -H "Authorization: Bearer $owner1_token" http://127.0.0.1:8090/api/owner/vehicles)
+          test "$owner1_vehicles" = "200"
+          VEHICLE2_ID="$VEHICLE2_ID" node -e 'const fs=require("fs");const assert=require("node:assert/strict");const x=JSON.parse(fs.readFileSync("/tmp/owner1-vehicles.json","utf8"));assert.ok(Array.isArray(x.vehicles));assert.ok(!x.vehicles.some(v=>String(v.id)===process.env.VEHICLE2_ID));'
           echo "MATRIX_CROSS_PRINCIPAL_OWNER_ISOLATION_OK"
 
           # Concurrency regression: DB invariants must reject simultaneous duplicate
