@@ -209,7 +209,7 @@ jobs:
           # Concurrency regression: DB invariants must reject simultaneous duplicate
           # active assignments even if two application requests race.
           psql -h 127.0.0.1 -U postgres -d heycar_matrix -v ON_ERROR_STOP=1 <<'SQL'
-          DO $
+          DO $$
           DECLARE idx_count int;
           BEGIN
             SELECT count(*) INTO idx_count FROM pg_indexes
@@ -218,7 +218,7 @@ jobs:
             IF idx_count <> 2 THEN
               RAISE EXCEPTION 'Concurrency protection indexes missing: %',idx_count;
             END IF;
-          END $;
+          END $$;
           SQL
           echo "MATRIX_CONCURRENCY_INVARIANTS_OK"
 
