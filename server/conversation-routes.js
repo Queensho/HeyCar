@@ -13,7 +13,8 @@ module.exports = function registerConversationRoutes(app, pool) {
     return true;
   }
   async function ensureStatusColumns() {
-    await pool.query(`ALTER TABLE qr_conversations ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active'; ALTER TABLE qr_conversations ADD COLUMN IF NOT EXISTS closed_at TIMESTAMPTZ; ALTER TABLE qr_conversations ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ; ALTER TABLE qr_conversations ADD COLUMN IF NOT EXISTS scan_session_hash TEXT;`);
+    // These columns are managed by tracked migration 025_notification_read_indexes.sql.
+    // Runtime API connections must not require DDL privileges.
   }
 
   async function expireConversation(id) {

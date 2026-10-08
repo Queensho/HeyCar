@@ -47,7 +47,8 @@ test('valet status transition locks session row before mutation',()=>{
  assert.match(src,/SELECT status,staff_id FROM valet_sessions WHERE id=\$1 AND business_id=\$2 FOR UPDATE/);
  assert.match(src,/if\(!current\.rowCount\)\{await client\.query\('ROLLBACK'\)/);
  assert.match(src,/INSERT INTO valet_audit_log\(business_id,session_id,staff_id,actor_type,action,from_status,to_status,metadata\)/);
- assert.ok(src.indexOf("await client.query('COMMIT');if(status==='delivered')await dispatchNext")>0);
+ const statusRoute=src.slice(src.indexOf("app.patch('/api/valet/sessions/:id/status'"),src.indexOf("app.patch('/api/valet/sessions/:id/status'")+7000);
+ assert.match(statusRoute,/await client\.query\('COMMIT'\);[\s\S]*?finally\{client\.release\(\);\}[\s\S]*?if\(status==='delivered'\)await dispatchNext/);
 });
 
 test('offline sync claims operation id before locking and mutating session',()=>{
@@ -84,4 +85,23 @@ test('business valet accept maps active vehicle unique violation to 409 conflict
  const start=src.indexOf("app.post('/api/business/valet/accept'");
  const end=src.indexOf("app.get('/api/owner/valet/:vehicleId'",start);
  assert.match(src.slice(start,end),/e\?\.code==='23505'.*status\(409\).*VEHICLE_ALREADY_IN_VALET/s);
+});
+
+test('valet logout route is present', () => { assert.ok(fs.readFileSync(path.join(__dirname,'../valet-routes.js'),'utf8').includes("app.post('/api/valet/logout'")); });
+
+test('valet logout clears session and push registration', () => {
+ const source=fs.readFileSync(path.join(__dirname,'../valet-routes.js'),'utf8');
+ const section=source.split("app.post('/api/valet/logout'")[1]?.split("app.post('/api/valet/shift'")[0] || '';
+ assert.ok(section.includes('DELETE FROM valet_staff_sessions'));
+ assert.ok(section.includes('UPDATE valet_push_tokens SET active=FALSE'));
+ assert.ok(section.includes('UPDATE valet_staff SET on_shift=FALSE'));
+ assert.ok(section.includes('COMMIT'));
+});
+
+test('valet logout guards against active jobs', () => {
+ const source=fs.readFileSync(path.join(__dirname,'../valet-routes.js'),'utf8');
+ const section=source.split("app.post('/api/valet/logout'")[1]?.split("app.post('/api/valet/shift'")[0] || '';
+ assert.ok(section.includes('ACTIVE_JOB_EXISTS'));
+ assert.ok(section.includes('ROLLBACK'));
+ assert.ok(section.includes('logoutBlocked:true'));
 });

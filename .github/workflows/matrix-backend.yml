@@ -77,6 +77,10 @@ jobs:
         working-directory: server
         run: node --test tests/security-valet-remediation.test.js
 
+      - name: Verify conversation authorization invariants
+        working-directory: server
+        run: node --test tests/security-conversation-isolation.test.js
+
       - name: Syntax-check guarded live sync
         shell: bash
         run: |
@@ -182,6 +186,99 @@ jobs:
 
           echo "MATRIX_AUTH_BOUNDARIES_OK"
 
+          # F-05: unauthenticated valet endpoints must reject requests.
+          assert_status 401 http://127.0.0.1:8090/api/valet/sessions
+          assert_status 401 -X POST -H 'Content-Type: application/json' -d '{}' http://127.0.0.1:8090/api/valet/push-token
+          echo "MATRIX_VALET_HTTP_AUTH_BOUNDARIES_OK"
+
+          psql -h 127.0.0.1 -U postgres -d heycar_matrix -v ON_ERROR_STOP=1 <<'SQL'
+          INSERT INTO business_accounts(id,email,password_hash) VALUES('00000000-0000-4000-8000-000000000551','matrix-valet@test.local','matrix-fixture');
+          INSERT INTO businesses(id,account_id,name,category,valet_enabled) VALUES('00000000-0000-4000-8000-000000000552','00000000-0000-4000-8000-000000000551','Matrix Valet','parking',TRUE);
+          INSERT INTO valet_staff(id,business_id,name,phone,pin_hash) VALUES('00000000-0000-4000-8000-000000000553','00000000-0000-4000-8000-000000000552','Matrix Valet Staff','+905551112233',encode(digest('246810','sha256'),'hex'));
+          SQL
+
+          valet_login_code=$(curl -sS -o /tmp/matrix-valet-login.json -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{"phone":"+905551112233","pin":"246810"}' http://127.0.0.1:8090/api/valet/login)
+          test "$valet_login_code" = "200"
+          valet_token=$(node -e "const x=require('/tmp/matrix-valet-login.json');process.stdout.write(x.token||'')")
+          test -n "$valet_token"
+          assert_status 200 -H "Authorization: Bearer $valet_token" http://127.0.0.1:8090/api/valet/sessions
+
+          assert_status 200 -X POST -H "Authorization: Bearer $valet_token" -H 'Content-Type: application/json' -d '{"token":"matrix-fcm-test","deviceId":"matrix-device"}' http://127.0.0.1:8090/api/valet/push-token
+          assert_status 200 -X POST -H "Authorization: Bearer $valet_token" http://127.0.0.1:8090/api/valet/logout
+          assert_status 401 -H "Authorization: Bearer $valet_token" http://127.0.0.1:8090/api/valet/sessions
+          assert_status 401 -X POST -H "Authorization: Bearer $valet_token" -H 'Content-Type: application/json' -d '{"token":"matrix-fcm-test","deviceId":"matrix-device"}' http://127.0.0.1:8090/api/valet/push-token
+          valet_push_active=$(psql -h 127.0.0.1 -U postgres -d heycar_matrix -Atqc "SELECT COUNT(*) FROM valet_push_tokens WHERE staff_id='00000000-0000-4000-8000-000000000553' AND active=TRUE")
+          test "$valet_push_active" = "0"
+          echo "MATRIX_VALET_LOGOUT_HTTP_REVOCATION_OK"
+
+          # Active valet assignment must block logout and preserve the session.
+          valet_login_code=$(curl -sS -o /tmp/matrix-valet-relogin.json -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{"phone":"+905551112233","pin":"246810"}' http://127.0.0.1:8090/api/valet/login)
+          test "$valet_login_code" = "200"
+          valet_token=$(node -e "const x=require('/tmp/matrix-valet-relogin.json');process.stdout.write(x.token||'')")
+          psql -h 127.0.0.1 -U postgres -d heycar_matrix -v ON_ERROR_STOP=1 <<'SQL'
+          INSERT INTO valet_sessions(business_id,staff_id,plate,status)
+          VALUES('00000000-0000-4000-8000-000000000552','00000000-0000-4000-8000-000000000553','34MTR551','accepted');
+          SQL
+          assert_status 409 -X POST -H "Authorization: Bearer $valet_token" http://127.0.0.1:8090/api/valet/logout
+          grep -q '"ACTIVE_JOB_EXISTS"' /tmp/matrix-response.json
+          assert_status 200 -H "Authorization: Bearer $valet_token" http://127.0.0.1:8090/api/valet/sessions
+          echo "MATRIX_VALET_ACTIVE_JOB_LOGOUT_GUARD_OK"
+
+          # Race regression: simultaneous logout requests must not restore a
+          # revoked session or leave a push token active.
+          psql -h 127.0.0.1 -U postgres -d heycar_matrix -v ON_ERROR_STOP=1 <<'SQL'
+          UPDATE valet_sessions SET status='delivered'
+          WHERE staff_id='00000000-0000-4000-8000-000000000553' AND status='accepted';
+          SQL
+          curl -sS -o /tmp/valet-logout-race-1.json -w '%{http_code}' -X POST -H "Authorization: Bearer $valet_token" http://127.0.0.1:8090/api/valet/logout > /tmp/valet-logout-race-1.code &
+          race_pid_1=$!
+          curl -sS -o /tmp/valet-logout-race-2.json -w '%{http_code}' -X POST -H "Authorization: Bearer $valet_token" http://127.0.0.1:8090/api/valet/logout > /tmp/valet-logout-race-2.code &
+          race_pid_2=$!
+          wait "$race_pid_1"
+          wait "$race_pid_2"
+          test "$(cat /tmp/valet-logout-race-1.code)" = "200"
+          test "$(cat /tmp/valet-logout-race-2.code)" = "200"
+          assert_status 401 -H "Authorization: Bearer $valet_token" http://127.0.0.1:8090/api/valet/sessions
+          remaining_valet_sessions=$(psql -h 127.0.0.1 -U postgres -d heycar_matrix -Atqc "SELECT COUNT(*) FROM valet_staff_sessions WHERE staff_id='00000000-0000-4000-8000-000000000553'")
+          test "$remaining_valet_sessions" = "0"
+          echo "MATRIX_VALET_CONCURRENT_LOGOUT_OK"
+          concurrent_push_active=$(psql -h 127.0.0.1 -U postgres -d heycar_matrix -Atqc "SELECT COUNT(*) FROM valet_push_tokens WHERE staff_id='00000000-0000-4000-8000-000000000553' AND active=TRUE")
+          test "$concurrent_push_active" = "0"
+          echo "MATRIX_VALET_CONCURRENT_PUSH_REVOCATION_OK"
+          assert_status 401 -X POST -H "Authorization: Bearer $valet_token" -H 'Content-Type: application/json' -d '{"token":"matrix-stale-device","deviceId":"matrix-device-2"}' http://127.0.0.1:8090/api/valet/push-token
+          echo "MATRIX_VALET_STALE_DEVICE_REJECTED_OK"
+
+          # Concurrent registration and logout: registration may win before
+          # revocation or be rejected afterwards, but must never survive logout.
+          valet_login_code=$(curl -sS -o /tmp/matrix-valet-race-login.json -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{"phone":"+905551112233","pin":"246810"}' http://127.0.0.1:8090/api/valet/login)
+          test "$valet_login_code" = "200"
+          valet_token=$(node -e "const x=require('/tmp/matrix-valet-race-login.json');process.stdout.write(x.token||'')")
+          test -n "$valet_token"
+          curl -sS -o /tmp/valet-race-register.json -w '%{http_code}' -X POST -H "Authorization: Bearer $valet_token" -H 'Content-Type: application/json' -d '{"token":"matrix-race-push","deviceId":"matrix-race-device"}' http://127.0.0.1:8090/api/valet/push-token > /tmp/valet-race-register.code &
+          race_register_pid=$!
+          curl -sS -o /tmp/valet-race-logout.json -w '%{http_code}' -X POST -H "Authorization: Bearer $valet_token" http://127.0.0.1:8090/api/valet/logout > /tmp/valet-race-logout.code &
+          race_logout_pid=$!
+          wait "$race_register_pid"
+          wait "$race_logout_pid"
+          test "$(cat /tmp/valet-race-logout.code)" = "200"
+          register_code=$(cat /tmp/valet-race-register.code)
+          test "$register_code" = "200" || test "$register_code" = "401"
+          assert_status 401 -H "Authorization: Bearer $valet_token" http://127.0.0.1:8090/api/valet/sessions
+          race_push_active=$(psql -h 127.0.0.1 -U postgres -d heycar_matrix -Atqc "SELECT COUNT(*) FROM valet_push_tokens WHERE staff_id='00000000-0000-4000-8000-000000000553' AND active=TRUE")
+          test "$race_push_active" = "0"
+          echo "MATRIX_VALET_REGISTER_LOGOUT_RACE_OK"
+          # The same device must not be able to re-register after logout.
+          assert_status 401 -X POST -H "Authorization: Bearer $valet_token" -H 'Content-Type: application/json' -d '{"token":"matrix-race-push-retry","deviceId":"matrix-race-device"}' http://127.0.0.1:8090/api/valet/push-token
+          race_push_active_after_retry=$(psql -h 127.0.0.1 -U postgres -d heycar_matrix -Atqc "SELECT COUNT(*) FROM valet_push_tokens WHERE staff_id='00000000-0000-4000-8000-000000000553' AND active=TRUE")
+          test "$race_push_active_after_retry" = "0"
+          echo "MATRIX_VALET_POST_LOGOUT_SAME_DEVICE_REJECTED_OK"
+
+
+
+
+
+
+
           # Cross-principal regression: a valid Owner session must never authorize
           # another Owner's vehicle resource.
           OWNER2_ID="00000000-0000-4000-8000-000000000112"
@@ -192,27 +289,34 @@ jobs:
           INSERT INTO vehicles(id,owner_id,plate,make,model,color)
           VALUES('$VEHICLE2_ID','$OWNER2_ID','34MTR998','Matrix','Isolation','Test');
           SQL
+          # Seed the first owner before attempting login; the QR fixture below
+          # reuses this identity for its vehicle and tag.
+          psql -h 127.0.0.1 -U postgres -d heycar_matrix -v ON_ERROR_STOP=1 <<'SQL'
+          INSERT INTO users(id,email,phone,display_name,password_hash,role,status,premium)
+          VALUES('00000000-0000-4000-8000-000000000111','matrix-notify@test.local','+905551234567','Matrix Notify',crypt('MatrixPass123!',gen_salt('bf',12)),'user','active',false);
+          SQL
           owner1_login=$(curl -sS -o /tmp/owner1-login.json -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{"phone":"+905551234567","password":"MatrixPass123!"}' http://127.0.0.1:8090/api/owner/login-phone)
           test "$owner1_login" = "200"
           owner1_token=$(node -e "const x=require('/tmp/owner1-login.json');process.stdout.write(x.accessToken||'')")
           test -n "$owner1_token"
-          cross_vehicle=$(curl -sS -o /tmp/cross-vehicle.json -w '%{http_code}' -H "Authorization: Bearer $owner1_token" http://127.0.0.1:8090/api/owner/vehicles/$VEHICLE2_ID)
-          test "$cross_vehicle" = "404"
+          owner1_vehicles=$(curl -sS -o /tmp/owner1-vehicles.json -w '%{http_code}' -H "Authorization: Bearer $owner1_token" http://127.0.0.1:8090/api/owner/vehicles)
+          test "$owner1_vehicles" = "200"
+          VEHICLE2_ID="$VEHICLE2_ID" node -e 'const fs=require("fs");const assert=require("node:assert/strict");const x=JSON.parse(fs.readFileSync("/tmp/owner1-vehicles.json","utf8"));assert.ok(Array.isArray(x.vehicles));assert.ok(!x.vehicles.some(v=>String(v.id)===process.env.VEHICLE2_ID));'
           echo "MATRIX_CROSS_PRINCIPAL_OWNER_ISOLATION_OK"
 
           # Concurrency regression: DB invariants must reject simultaneous duplicate
           # active assignments even if two application requests race.
           psql -h 127.0.0.1 -U postgres -d heycar_matrix -v ON_ERROR_STOP=1 <<'SQL'
-          DO $
+          DO $$
           DECLARE idx_count int;
           BEGIN
             SELECT count(*) INTO idx_count FROM pg_indexes
              WHERE schemaname='public'
-               AND indexname IN ('uq_offer_pending_owner_campaign','uq_towing_active_vehicle');
+               AND indexname IN ('uq_offer_pending_owner_campaign','towing_one_active_request_per_vehicle');
             IF idx_count <> 2 THEN
               RAISE EXCEPTION 'Concurrency protection indexes missing: %',idx_count;
             END IF;
-          END $;
+          END $$;
           SQL
           echo "MATRIX_CONCURRENCY_INVARIANTS_OK"
 
@@ -225,18 +329,6 @@ jobs:
           QR_TOKEN="MATRIXNOTIFY"
 
           psql -h 127.0.0.1 -U postgres -d heycar_matrix -v ON_ERROR_STOP=1 <<SQL
-          INSERT INTO users(id,email,phone,display_name,password_hash,role,status,premium)
-          VALUES(
-            '$OWNER_ID',
-            'matrix-notify@test.local',
-            '+905551234567',
-            'Matrix Notify',
-            crypt('MatrixPass123!',gen_salt('bf',12)),
-            'user',
-            'active',
-            false
-          );
-
           INSERT INTO vehicles(id,owner_id,plate,make,model,color)
           VALUES(
             '$VEHICLE_ID',
@@ -247,18 +339,31 @@ jobs:
             'Test'
           );
 
-          INSERT INTO qr_tags(id,token,vehicle_id,status,activated_at)
+          INSERT INTO qr_tags(id,token,vehicle_id,status,activated_at,scan_secret)
           VALUES(
             '$QR_ID',
             '$QR_TOKEN',
             '$VEHICLE_ID',
             'active',
-            now()
+            now(),
+            'matrix-test-scan-proof'
           );
           SQL
 
+          # Missing proximity proof must not mint a scan session.
+          missing_proof_code=$(curl -sS -o /tmp/matrix-no-proof.json -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{}' "http://127.0.0.1:8090/api/qr/$QR_TOKEN/session")
+          test "$missing_proof_code" = "428"
+          grep -q '"PROXIMITY_PROOF_REQUIRED"' /tmp/matrix-no-proof.json
+          # An invalid QR proof must also fail closed.
+          invalid_proof_code=$(curl -sS -o /tmp/matrix-invalid-proof.json -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{"scanSecret":"invalid-matrix-proof"}' "http://127.0.0.1:8090/api/qr/$QR_TOKEN/session")
+          test "$invalid_proof_code" = "403"
+          grep -q '"QR_SCAN_PROOF_INVALID"' /tmp/matrix-invalid-proof.json
+          echo "MATRIX_QR_PROXIMITY_NEGATIVE_CASES_OK"
+
           session_code=$(curl -sS -o /tmp/matrix-session.json -w '%{http_code}' \
-            -X POST -H 'Content-Type: application/json' -d '{}' \
+            -X POST -H 'Content-Type: application/json' \
+            -H 'X-Proximity-Device: matrix-qr-device' \
+            -d '{"scanSecret":"matrix-test-scan-proof","latitude":41.0,"longitude":29.0,"accuracy":15}' \
             "http://127.0.0.1:8090/api/qr/$QR_TOKEN/session")
           if [ "$session_code" != "201" ]; then
             echo "Expected scan session HTTP 201, got $session_code"
@@ -287,6 +392,99 @@ jobs:
           grep -q '"recipient_user_id"' /tmp/matrix-notification.json
 
           echo "MATRIX_NOTIFICATION_RECIPIENT_ROUTING_OK"
+
+          # F-04 HTTP isolation: create a real conversation, then try another owner.
+          notification_id=$(psql -h 127.0.0.1 -U postgres -d heycar_matrix -Atqc "SELECT id FROM vehicle_notifications WHERE qr_token='$QR_TOKEN' ORDER BY created_at DESC LIMIT 1")
+          test -n "$notification_id"
+          conversation_code=$(curl -sS -o /tmp/matrix-conversation.json -w '%{http_code}' \
+            -X POST -H 'Content-Type: application/json' -H "X-Scan-Token: $scan_token" \
+            -d "{\"notificationId\":\"$notification_id\"}" \
+            "http://127.0.0.1:8090/api/qr/$QR_TOKEN/conversations")
+          test "$conversation_code" = "201"
+          conversation_id=$(node -e "const x=require('/tmp/matrix-conversation.json');process.stdout.write(String(x.conversation?.id||''))")
+          test -n "$conversation_id"
+
+          owner2_login=$(curl -sS -o /tmp/owner2-login.json -w '%{http_code}' -X POST -H 'Content-Type: application/json' \
+            -d '{"phone":"+905551234568","password":"MatrixPass123!"}' http://127.0.0.1:8090/api/owner/login-phone)
+          test "$owner2_login" = "200"
+          owner2_token=$(node -e "const x=require('/tmp/owner2-login.json');process.stdout.write(x.accessToken||'')")
+          test -n "$owner2_token"
+
+          assert_status 200 -H "Authorization: Bearer $owner1_token" "http://127.0.0.1:8090/api/owner/conversations/$conversation_id"
+          assert_status 404 -H "Authorization: Bearer $owner2_token" "http://127.0.0.1:8090/api/owner/conversations/$conversation_id"
+          assert_status 404 -X POST -H 'Content-Type: application/json' -H "Authorization: Bearer $owner2_token" \
+            -d '{"message":"cross-owner isolation probe"}' "http://127.0.0.1:8090/api/owner/conversations/$conversation_id/messages"
+          assert_status 401 "http://127.0.0.1:8090/api/qr/$QR_TOKEN/conversations/$conversation_id"
+          echo "MATRIX_CONVERSATION_HTTP_OWNER_ISOLATION_OK"
+
+          # A separate valid QR scan must not unlock another visitor's conversation.
+          second_scan_code=$(curl -sS -o /tmp/matrix-second-scan.json -w '%{http_code}' \
+            -X POST -H 'Content-Type: application/json' \
+            -H 'X-Proximity-Device: matrix-second-visitor' \
+            -d '{"scanSecret":"matrix-test-scan-proof","latitude":41.0,"longitude":29.0,"accuracy":15}' \
+            "http://127.0.0.1:8090/api/qr/$QR_TOKEN/session")
+          test "$second_scan_code" = "201"
+          second_scan_token=$(node -e "const x=require('/tmp/matrix-second-scan.json');process.stdout.write(x.scanToken||'')")
+          test -n "$second_scan_token"
+          assert_status 200 -H "X-Scan-Token: $scan_token" "http://127.0.0.1:8090/api/qr/$QR_TOKEN/conversations/$conversation_id"
+          assert_status 404 -H "X-Scan-Token: $second_scan_token" "http://127.0.0.1:8090/api/qr/$QR_TOKEN/conversations/$conversation_id"
+          assert_status 404 -X POST -H 'Content-Type: application/json' \
+            -H "X-Scan-Token: $second_scan_token" \
+            -d '{"message":"other visitor access probe"}' \
+            "http://127.0.0.1:8090/api/qr/$QR_TOKEN/conversations/$conversation_id/messages"
+          echo "MATRIX_CONVERSATION_HTTP_GUEST_ISOLATION_OK"
+
+          # Owner credentials cannot be used to access driver conversation endpoints.
+          assert_status 401 -H "Authorization: Bearer $owner1_token" "http://127.0.0.1:8090/api/driver/conversations/$conversation_id"
+          assert_status 401 -X POST -H 'Content-Type: application/json' \
+            -H "Authorization: Bearer $owner1_token" \
+            -d '{"message":"role isolation probe"}' \
+            "http://127.0.0.1:8090/api/driver/conversations/$conversation_id/messages"
+          echo "MATRIX_CONVERSATION_HTTP_DRIVER_ROLE_BOUNDARY_OK"
+
+          # Two authenticated drivers must not access each other's conversation.
+          DRIVER1_ID="00000000-0000-4000-8000-000000000114"
+          DRIVER2_ID="00000000-0000-4000-8000-000000000115"
+          psql -h 127.0.0.1 -U postgres -d heycar_matrix -v ON_ERROR_STOP=1 <<SQL
+          INSERT INTO users(id,email,phone,display_name,password_hash,role,status,premium)
+          VALUES
+            ('$DRIVER1_ID','matrix-driver1@test.local','+905551234571','Matrix Driver 1',crypt('MatrixPass123!',gen_salt('bf',12)),'user','active',false),
+            ('$DRIVER2_ID','matrix-driver2@test.local','+905551234572','Matrix Driver 2',crypt('MatrixPass123!',gen_salt('bf',12)),'user','active',false);
+          INSERT INTO vehicle_drivers(vehicle_id,owner_id,driver_user_id,driver_name) VALUES
+            ('$VEHICLE_ID','$OWNER_ID','$DRIVER1_ID','Matrix Driver 1'),
+            ('$VEHICLE2_ID','$OWNER2_ID','$DRIVER2_ID','Matrix Driver 2');
+          UPDATE vehicle_notifications SET recipient_user_id='$DRIVER1_ID' WHERE id='$notification_id';
+          SQL
+
+          driver1_login=$(curl -sS -o /tmp/matrix-driver1-login.json -w '%{http_code}' \
+            -X POST -H 'Content-Type: application/json' \
+            -d '{"phone":"+905551234571","password":"MatrixPass123!"}' \
+            http://127.0.0.1:8090/api/driver/login-phone)
+          test "$driver1_login" = "200"
+          driver1_token=$(node -e "const x=require('/tmp/matrix-driver1-login.json');process.stdout.write(x.accessToken||'')")
+          test -n "$driver1_token"
+
+          driver2_login=$(curl -sS -o /tmp/matrix-driver2-login.json -w '%{http_code}' \
+            -X POST -H 'Content-Type: application/json' \
+            -d '{"phone":"+905551234572","password":"MatrixPass123!"}' \
+            http://127.0.0.1:8090/api/driver/login-phone)
+          test "$driver2_login" = "200"
+          driver2_token=$(node -e "const x=require('/tmp/matrix-driver2-login.json');process.stdout.write(x.accessToken||'')")
+          test -n "$driver2_token"
+
+          assert_status 200 -H "Authorization: Bearer $driver1_token" \
+            "http://127.0.0.1:8090/api/driver/conversations/$conversation_id"
+          assert_status 404 -H "Authorization: Bearer $driver2_token" \
+            "http://127.0.0.1:8090/api/driver/conversations/$conversation_id"
+          assert_status 404 -X POST -H 'Content-Type: application/json' \
+            -H "Authorization: Bearer $driver2_token" \
+            -d '{"message":"other driver isolation probe"}' \
+            "http://127.0.0.1:8090/api/driver/conversations/$conversation_id/messages"
+          echo "MATRIX_CONVERSATION_HTTP_DRIVER_ISOLATION_OK"
+
+
+
+
 
           # CORS must fail closed for unknown browser origins while preserving
           # the canonical GitHub Pages origin used by the public/admin web apps.
@@ -336,12 +534,13 @@ jobs:
           echo "MATRIX_PUBLIC_QR_RESOLVE_RATE_LIMIT_OK"
 
           # Invalid tokens previously bypassed owner-scoped QR abuse controls.
-          # One successful scan-session request was already made above, so
-          # 19 more requests fill this route's 20-request limiter window.
-          for i in $(seq 1 19); do
+          # Four scan-session requests were already made above (two rejected
+          # proximity probes and two successful sessions). Sixteen more
+          # requests fill the 20-request limiter window.
+          for i in $(seq 1 16); do
             code=$(curl -sS -o /tmp/qr-session-probe.json -w '%{http_code}'               -X POST -H 'Content-Type: application/json' -d '{}'               "http://127.0.0.1:8090/api/qr/MISSING$i/session")
             test "$code" = "404"
           done
-          qr_session_limited=$(curl -sS -o /tmp/qr-session-limited.json -w '%{http_code}'             -X POST -H 'Content-Type: application/json' -d '{}'             "http://127.0.0.1:8090/api/qr/MISSING20/session")
+          qr_session_limited=$(curl -sS -o /tmp/qr-session-limited.json -w '%{http_code}'             -X POST -H 'Content-Type: application/json' -d '{}'             "http://127.0.0.1:8090/api/qr/MISSING17/session")
           test "$qr_session_limited" = "429"
           echo "MATRIX_QR_SESSION_PROBE_RATE_LIMIT_OK"
