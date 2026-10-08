@@ -12,7 +12,8 @@ async function main(){
   const sessionDb={
     async query(sql){
       if(String(sql).includes('security_version'))return {rows:[{status:'active',security_version:1}],rowCount:1};
-      return {rows:[],rowCount:1};
+      if (/INSERT INTO (owner_auth_sessions|driver_auth_sessions)/i.test(String(sql))) return {rows:[{id:'10000000-0000-4000-8000-000000000004'}],rowCount:1};
+      throw new Error('Unexpected Matrix auth DB query: '+String(sql));
     },
   };
 
