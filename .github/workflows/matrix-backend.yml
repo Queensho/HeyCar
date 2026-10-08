@@ -211,6 +211,20 @@ jobs:
           test "$valet_push_active" = "0"
           echo "MATRIX_VALET_LOGOUT_HTTP_REVOCATION_OK"
 
+          # Active valet assignment must block logout and preserve the session.
+          valet_login_code=$(curl -sS -o /tmp/matrix-valet-relogin.json -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{"phone":"+905551112233","pin":"246810"}' http://127.0.0.1:8090/api/valet/login)
+          test "$valet_login_code" = "200"
+          valet_token=$(node -e "const x=require('/tmp/matrix-valet-relogin.json');process.stdout.write(x.token||'')")
+          psql -h 127.0.0.1 -U postgres -d heycar_matrix -v ON_ERROR_STOP=1 <<'SQL'
+          INSERT INTO valet_sessions(business_id,staff_id,plate,status)
+          VALUES('00000000-0000-4000-8000-000000000552','00000000-0000-4000-8000-000000000553','34MTR551','accepted');
+          SQL
+          assert_status 409 -X POST -H "Authorization: Bearer $valet_token" http://127.0.0.1:8090/api/valet/logout
+          grep -q '"ACTIVE_JOB_EXISTS"' /tmp/matrix-response.json
+          assert_status 200 -H "Authorization: Bearer $valet_token" http://127.0.0.1:8090/api/valet/sessions
+          echo "MATRIX_VALET_ACTIVE_JOB_LOGOUT_GUARD_OK"
+
+
 
 
 
