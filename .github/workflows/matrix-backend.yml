@@ -411,6 +411,19 @@ jobs:
             "http://127.0.0.1:8090/api/qr/$QR_TOKEN/notifications"
           echo "MATRIX_QR_MESSAGE_SCAN_SESSION_HTTP_GUARD_OK"
 
+          # Public call creation must reject an absent or invalid scan session
+          # before an anonymous caller can reach a vehicle owner.
+          assert_status 401 -X POST -H 'Content-Type: application/json' \
+            -d "{\"qrToken\":\"$QR_TOKEN\"}" \
+            "http://127.0.0.1:8090/api/public/calls"
+          assert_status 401 -X POST -H 'Content-Type: application/json' \
+            -H 'X-Scan-Token: invalid-matrix-session' \
+            -d "{\"qrToken\":\"$QR_TOKEN\"}" \
+            "http://127.0.0.1:8090/api/public/calls"
+          echo "MATRIX_PUBLIC_CALL_SCAN_SESSION_HTTP_GUARD_OK"
+
+
+
           echo "MATRIX_NOTIFICATION_RECIPIENT_ROUTING_OK"
 
           # F-04 HTTP isolation: create a real conversation, then try another owner.
