@@ -267,6 +267,11 @@ jobs:
           race_push_active=$(psql -h 127.0.0.1 -U postgres -d heycar_matrix -Atqc "SELECT COUNT(*) FROM valet_push_tokens WHERE staff_id='00000000-0000-4000-8000-000000000553' AND active=TRUE")
           test "$race_push_active" = "0"
           echo "MATRIX_VALET_REGISTER_LOGOUT_RACE_OK"
+          # The same device must not be able to re-register after logout.
+          assert_status 401 -X POST -H "Authorization: Bearer $valet_token" -H 'Content-Type: application/json' -d '{"token":"matrix-race-push-retry","deviceId":"matrix-race-device"}' http://127.0.0.1:8090/api/valet/push-token
+          race_push_active_after_retry=$(psql -h 127.0.0.1 -U postgres -d heycar_matrix -Atqc "SELECT COUNT(*) FROM valet_push_tokens WHERE staff_id='00000000-0000-4000-8000-000000000553' AND active=TRUE")
+          test "$race_push_active_after_retry" = "0"
+          echo "MATRIX_VALET_POST_LOGOUT_SAME_DEVICE_REJECTED_OK"
 
 
 
