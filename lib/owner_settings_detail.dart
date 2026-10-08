@@ -10,10 +10,10 @@ import 'owner_auth.dart';
 import 'cepqar_theme.dart';
 
 const _bg = CepqarTheme.darkBg;
-Color get _panel = CepqarTheme.panel;
-Color get _line = CepqarTheme.line;
+const _panel = CepqarTheme.darkPanel;
+const _line = CepqarTheme.darkLine;
 const _purple = Color(0xFF8B5CFF);
-Color get _muted = CepqarTheme.muted;
+const _muted = CepqarTheme.darkMuted;
 const _baseUrl = 'https://heycar-api-185-165-46-213.nip.io';
 
 Map<String, String> get _ownerHeaders => const {};
@@ -1092,9 +1092,9 @@ class _SwitchTile extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
         decoration: BoxDecoration(
-          color: _panel,
+          color: CepqarTheme.panel,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: _line),
+          border: Border.all(color: CepqarTheme.line),
         ),
         child: Row(
           children: [
@@ -1113,7 +1113,7 @@ class _SwitchTile extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    style: TextStyle(color: _muted, fontSize: 12.5, height: 1.25),
+                    style: TextStyle(color: CepqarTheme.muted, fontSize: 12.5, height: 1.25),
                   ),
                 ],
               ),
