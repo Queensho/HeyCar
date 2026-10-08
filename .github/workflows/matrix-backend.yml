@@ -495,6 +495,22 @@ jobs:
             -d '{"action":"cancel"}' "$call_url"
           echo "MATRIX_PUBLIC_CALL_VISITOR_HTTP_ISOLATION_OK"
 
+          # Rolling limit applies even after a call is cancelled.
+          psql -h 127.0.0.1 -U postgres -d heycar_matrix -v ON_ERROR_STOP=1 <<SQL
+          INSERT INTO anonymous_call_attempts(scan_session_hash)
+          SELECT c.scan_session_hash FROM anonymous_calls c
+          CROSS JOIN generate_series(1,4) WHERE c.id='$call_id';
+          SQL
+          call_attempt_count=$(psql -h 127.0.0.1 -U postgres -d heycar_matrix -Atqc "SELECT COUNT(*) FROM anonymous_call_attempts WHERE scan_session_hash=(SELECT scan_session_hash FROM anonymous_calls WHERE id='$call_id') AND attempted_at>NOW()-INTERVAL '10 minutes'")
+          test "$call_attempt_count" = "5"
+          assert_status 429 -X POST -H 'Content-Type: application/json' \
+            -H "X-Scan-Token: $scan_token" \
+            -d "{\"qrToken\":\"$QR_TOKEN\"}" \
+            "http://127.0.0.1:8090/api/public/calls"
+          echo "MATRIX_PUBLIC_CALL_ROLLING_RATE_LIMIT_HTTP_OK"
+
+
+
 
 
           # Owner credentials cannot be used to access driver conversation endpoints.
