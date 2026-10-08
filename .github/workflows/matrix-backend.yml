@@ -203,6 +203,15 @@ jobs:
           test -n "$valet_token"
           assert_status 200 -H "Authorization: Bearer $valet_token" http://127.0.0.1:8090/api/valet/sessions
 
+          assert_status 200 -X POST -H "Authorization: Bearer $valet_token" -H 'Content-Type: application/json' -d '{"token":"matrix-fcm-test","deviceId":"matrix-device"}' http://127.0.0.1:8090/api/valet/push-token
+          assert_status 200 -X POST -H "Authorization: Bearer $valet_token" http://127.0.0.1:8090/api/valet/logout
+          assert_status 401 -H "Authorization: Bearer $valet_token" http://127.0.0.1:8090/api/valet/sessions
+          assert_status 401 -X POST -H "Authorization: Bearer $valet_token" -H 'Content-Type: application/json' -d '{"token":"matrix-fcm-test","deviceId":"matrix-device"}' http://127.0.0.1:8090/api/valet/push-token
+          valet_push_active=$(psql -h 127.0.0.1 -U postgres -d heycar_matrix -Atqc "SELECT COUNT(*) FROM valet_push_tokens WHERE staff_id='00000000-0000-4000-8000-000000000553' AND active=TRUE")
+          test "$valet_push_active" = "0"
+          echo "MATRIX_VALET_LOGOUT_HTTP_REVOCATION_OK"
+
+
 
 
 
