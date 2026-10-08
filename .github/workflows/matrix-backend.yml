@@ -603,6 +603,38 @@ jobs:
           grep -q '"TOO_MANY_ATTEMPTS"' /tmp/driver-limited.json
           echo "MATRIX_DRIVER_LOGIN_RATE_LIMIT_OK"
 
+          # Real QR message requests must be blocked when the owner's
+          # per-visitor abuse window is exhausted, even with a valid scan token.
+          psql -h 127.0.0.1 -U postgres -d heycar_matrix -v ON_ERROR_STOP=1 <<SQL
+          INSERT INTO owner_privacy_settings(owner_id,qr_abuse_protection)
+          VALUES('$OWNER_ID',TRUE)
+          ON CONFLICT(owner_id) DO UPDATE SET qr_abuse_protection=TRUE;
+          DELETE FROM qr_security_request_log WHERE owner_id='$OWNER_ID';
+          SQL
+          assert_status 201 -X POST -H 'Content-Type: application/json' \
+            -H "X-Scan-Token: $scan_token" \
+            -d '{"type":"message","message":"Matrix message rate-limit baseline"}' \
+            "http://127.0.0.1:8090/api/qr/$QR_TOKEN/notifications"
+          psql -h 127.0.0.1 -U postgres -d heycar_matrix -v ON_ERROR_STOP=1 <<SQL
+          INSERT INTO qr_security_request_log(owner_id,qr_token,visitor_key)
+          SELECT '$OWNER_ID','$QR_TOKEN',visitor_key
+          FROM qr_security_request_log WHERE owner_id='$OWNER_ID'
+          ORDER BY created_at DESC LIMIT 1;
+          SQL
+          # Fill the window using the same visitor identity captured by HTTP.
+          psql -h 127.0.0.1 -U postgres -d heycar_matrix -v ON_ERROR_STOP=1 <<SQL
+          INSERT INTO qr_security_request_log(owner_id,qr_token,visitor_key)
+          SELECT '$OWNER_ID','$QR_TOKEN',visitor_key
+          FROM (SELECT visitor_key FROM qr_security_request_log
+                WHERE owner_id='$OWNER_ID' ORDER BY created_at DESC LIMIT 1) v
+          CROSS JOIN generate_series(1,100);
+          SQL
+          assert_status 429 -X POST -H 'Content-Type: application/json' \
+            -H "X-Scan-Token: $scan_token" \
+            -d '{"type":"message","message":"Matrix spam message should be denied"}' \
+            "http://127.0.0.1:8090/api/qr/$QR_TOKEN/notifications"
+          echo "MATRIX_QR_MESSAGE_RATE_LIMIT_HTTP_OK"
+
           # Public QR resolution must throttle enumeration attempts.
           for i in $(seq 1 30); do
             code=$(curl -sS -o /tmp/qr-resolve.json -w '%{http_code}'               "http://127.0.0.1:8090/api/qr/$QR_TOKEN")
