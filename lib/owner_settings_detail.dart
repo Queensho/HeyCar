@@ -1023,7 +1023,7 @@ class _SettingsScaffold extends StatelessWidget {
         backgroundColor: CepqarTheme.bg,
         appBar: AppBar(
           backgroundColor: CepqarTheme.bg,
-          foregroundColor: Colors.white,
+          foregroundColor: CepqarTheme.text,
           elevation: 0,
           title: Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
         ),
@@ -1092,9 +1092,9 @@ class _SwitchTile extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
         decoration: BoxDecoration(
-          color: _panel,
+          color: CepqarTheme.panel,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: _line),
+          border: Border.all(color: CepqarTheme.line),
         ),
         child: Row(
           children: [
@@ -1104,8 +1104,8 @@ class _SwitchTile extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: CepqarTheme.text,
                       fontSize: 15.5,
                       fontWeight: FontWeight.w800,
                     ),
@@ -1113,7 +1113,7 @@ class _SwitchTile extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    style: const TextStyle(color: _muted, fontSize: 12.5, height: 1.25),
+                    style: TextStyle(color: CepqarTheme.muted, fontSize: 12.5, height: 1.25),
                   ),
                 ],
               ),
