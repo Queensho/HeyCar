@@ -180,6 +180,20 @@ jobs:
             -d '{"token":"MATRIXTEST","vehicleId":"00000000-0000-4000-8000-000000000001"}' \
             http://127.0.0.1:8090/api/qr/activate
 
+          # Towing customer routes must reject anonymous requests before accessing jobs.
+          assert_status 401 http://127.0.0.1:8090/api/owner/towing/requests
+          assert_status 401 http://127.0.0.1:8090/api/owner/towing/requests/00000000-0000-4000-8000-000000000001
+          assert_status 401 http://127.0.0.1:8090/api/owner/towing/requests/00000000-0000-4000-8000-000000000001/tracking
+          assert_status 401 -X POST -H 'Content-Type: application/json' -d '{}' http://127.0.0.1:8090/api/owner/towing/requests
+          assert_status 401 -X POST -H 'Content-Type: application/json' -d '{}' http://127.0.0.1:8090/api/owner/towing/requests/00000000-0000-4000-8000-000000000001/cancel
+          echo "MATRIX_TOWING_ANONYMOUS_BOUNDARIES_OK"
+
+          # Admin towing management must never accept anonymous callers.
+          assert_status 401 http://127.0.0.1:8090/api/admin/manage/towing/providers
+          assert_status 401 http://127.0.0.1:8090/api/admin/manage/towing/pricing
+          assert_status 401 -X PATCH -H 'Content-Type: application/json' -d '{"status":"approved"}' http://127.0.0.1:8090/api/admin/manage/towing/providers/00000000-0000-4000-8000-000000000001/status
+          echo "MATRIX_TOWING_ADMIN_AUTH_BOUNDARIES_OK"
+
           echo "MATRIX_AUTH_BOUNDARIES_OK"
 
           # F-05: unauthenticated valet endpoints must reject requests.
