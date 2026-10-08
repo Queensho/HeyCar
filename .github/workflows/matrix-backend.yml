@@ -192,6 +192,12 @@ jobs:
           INSERT INTO vehicles(id,owner_id,plate,make,model,color)
           VALUES('$VEHICLE2_ID','$OWNER2_ID','34MTR998','Matrix','Isolation','Test');
           SQL
+          # Seed the first owner before attempting login; the QR fixture below
+          # reuses this identity for its vehicle and tag.
+          psql -h 127.0.0.1 -U postgres -d heycar_matrix -v ON_ERROR_STOP=1 <<'SQL'
+          INSERT INTO users(id,email,phone,display_name,password_hash,role,status,premium)
+          VALUES('00000000-0000-4000-8000-000000000111','matrix-notify@test.local','+905551234567','Matrix Notify',crypt('MatrixPass123!',gen_salt('bf',12)),'user','active',false);
+          SQL
           owner1_login=$(curl -sS -o /tmp/owner1-login.json -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{"phone":"+905551234567","password":"MatrixPass123!"}' http://127.0.0.1:8090/api/owner/login-phone)
           test "$owner1_login" = "200"
           owner1_token=$(node -e "const x=require('/tmp/owner1-login.json');process.stdout.write(x.accessToken||'')")
@@ -208,7 +214,7 @@ jobs:
           BEGIN
             SELECT count(*) INTO idx_count FROM pg_indexes
              WHERE schemaname='public'
-               AND indexname IN ('uq_offer_pending_owner_campaign','uq_towing_active_vehicle');
+               AND indexname IN ('uq_offer_pending_owner_campaign','towing_one_active_request_per_vehicle');
             IF idx_count <> 2 THEN
               RAISE EXCEPTION 'Concurrency protection indexes missing: %',idx_count;
             END IF;
@@ -225,18 +231,6 @@ jobs:
           QR_TOKEN="MATRIXNOTIFY"
 
           psql -h 127.0.0.1 -U postgres -d heycar_matrix -v ON_ERROR_STOP=1 <<SQL
-          INSERT INTO users(id,email,phone,display_name,password_hash,role,status,premium)
-          VALUES(
-            '$OWNER_ID',
-            'matrix-notify@test.local',
-            '+905551234567',
-            'Matrix Notify',
-            crypt('MatrixPass123!',gen_salt('bf',12)),
-            'user',
-            'active',
-            false
-          );
-
           INSERT INTO vehicles(id,owner_id,plate,make,model,color)
           VALUES(
             '$VEHICLE_ID',
