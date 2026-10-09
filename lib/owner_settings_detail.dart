@@ -30,7 +30,7 @@ Future<void> _showOwnerRecoveryCode(BuildContext context) async {
       backgroundColor:CepqarTheme.panel,
       title:const Text('Kurtarma kodun',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w900)),
       content:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.stretch,children:[
-        const Text('Bu kod şifreni unutursan hesabını kurtarmak için kullanılır. Güvenli bir yerde sakla. Yeni kod oluşturursan eskisi geçersiz olur.',style:TextStyle(color:CepqarTheme.muted,height:1.35)),
+        Text('Bu kod şifreni unutursan hesabını kurtarmak için kullanılır. Güvenli bir yerde sakla. Yeni kod oluşturursan eskisi geçersiz olur.',style:TextStyle(color:CepqarTheme.muted,height:1.35)),
         const SizedBox(height:16),
         SelectableText(code,textAlign:TextAlign.center,style:const TextStyle(color:Colors.white,fontSize:21,fontWeight:FontWeight.w900,letterSpacing:1.2)),
       ]),
@@ -51,7 +51,7 @@ Future<void> _deleteOwnerAccount(BuildContext context) async {
     backgroundColor:CepqarTheme.panel,
     title:const Text('Hesabı kalıcı olarak sil',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w900)),
     content:Column(mainAxisSize:MainAxisSize.min,children:[
-      const Text('Araçların, QR bağlantıların, mesajların, bildirimlerin ve hesap oturumların silinecek. Bu işlem geri alınamaz.',style:TextStyle(color:CepqarTheme.muted,height:1.35)),
+      Text('Araçların, QR bağlantıların, mesajların, bildirimlerin ve hesap oturumların silinecek. Bu işlem geri alınamaz.',style:TextStyle(color:CepqarTheme.muted,height:1.35)),
       const SizedBox(height:14),
       TextField(controller:pass,obscureText:true,style:const TextStyle(color:Colors.white),decoration:const InputDecoration(labelText:'Şifren',border:OutlineInputBorder())),
       if(error!=null)...[const SizedBox(height:8),Text(error!,style:const TextStyle(color:Colors.redAccent))],
@@ -92,7 +92,7 @@ class _AccountDeletedPage extends StatelessWidget{
       const SizedBox(height:18),
       const Text('Hesabın silindi',style:TextStyle(color:Colors.white,fontSize:25,fontWeight:FontWeight.w900)),
       const SizedBox(height:10),
-      const Text('Hesabın ve bağlı verilerin silindi. Yeni hesap oluşturmak için CepQontag uygulamasını yeniden açabilirsin.',textAlign:TextAlign.center,style:TextStyle(color:CepqarTheme.muted,height:1.4)),
+      Text('Hesabın ve bağlı verilerin silindi. Yeni hesap oluşturmak için CepQontag uygulamasını yeniden açabilirsin.',textAlign:TextAlign.center,style:TextStyle(color:CepqarTheme.muted,height:1.4)),
       const SizedBox(height:22),
       OutlinedButton.icon(onPressed:SystemNavigator.pop,icon:const Icon(Icons.close_rounded),label:const Text('Uygulamayı Kapat')),
     ])))),
@@ -413,7 +413,7 @@ class _EditableAccountField extends StatelessWidget {
                 ),
                 decoration: InputDecoration(
                   labelText: label,
-                  labelStyle: const TextStyle(
+                  labelStyle: TextStyle(
                     color: CepqarTheme.muted,
                     fontSize: 12,
                   ),
