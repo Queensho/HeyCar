@@ -655,9 +655,9 @@ jobs:
           # Seed an unused driver invite before transfer; it must be revoked.
           psql -h 127.0.0.1 -U postgres -d heycar_matrix -v ON_ERROR_STOP=1 <<SQL
           INSERT INTO vehicle_driver_invites(vehicle_id,owner_id,token,expires_at)
-          VALUES('$VEHICLE_ID','$OWNER_ID','PQMATRIX1',NOW()+INTERVAL '1 day');
+          VALUES('$VEHICLE_ID','$OWNER_ID','PQMATRX2',NOW()+INTERVAL '1 day');
           SQL
-          assert_status 200 "http://127.0.0.1:8090/api/driver/invites/PQMATRIX1"
+          assert_status 200 "http://127.0.0.1:8090/api/driver/invites/PQMATRX2"
           # Exercise full production transfer finalization, including driver revocation.
           VEHICLE_ID="$VEHICLE_ID" NEW_OWNER="$transfer_new_owner" node - <<'NODE'
           const {Pool}=require("pg");
@@ -724,8 +724,8 @@ jobs:
           NODE
           echo "MATRIX_TRANSFER_PRIVATE_HISTORY_HTTP_ISOLATION_OK"
           # A former invite must not attach a driver to the transferred vehicle.
-          assert_status 410 "http://127.0.0.1:8090/api/driver/invites/PQMATRIX1"
-          assert_status 410 -X POST -H "Content-Type: application/json" -d '{"phone":"+905551234571","password":"MatrixPass123!","displayName":"Matrix Driver 1","legalAccepted":true,"legalVersion":"1.0"}' "http://127.0.0.1:8090/api/driver/invites/PQMATRIX1/accept"
+          assert_status 410 "http://127.0.0.1:8090/api/driver/invites/PQMATRX2"
+          assert_status 410 -X POST -H "Content-Type: application/json" -d '{"phone":"+905551234571","password":"MatrixPass123!","displayName":"Matrix Driver 1","legalAccepted":true,"legalVersion":"1.0"}' "http://127.0.0.1:8090/api/driver/invites/PQMATRX2/accept"
           assert_status 200 -H "Authorization: Bearer $driver1_token" "http://127.0.0.1:8090/api/driver/vehicles"
           VEHICLE_ID="$VEHICLE_ID" node -e 'const fs=require("fs");const assert=require("node:assert/strict");const x=JSON.parse(fs.readFileSync("/tmp/matrix-response.json","utf8"));assert.ok(!x.vehicles.some(v=>String(v.vehicle_id)===process.env.VEHICLE_ID),"Former driver reattached via revoked invite");'
           echo "MATRIX_TRANSFER_DRIVER_INVITE_REVOKED_HTTP_OK"
