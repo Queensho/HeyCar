@@ -674,6 +674,21 @@ jobs:
           assert_status 401 -X POST -H "Content-Type: application/json" -H "X-Scan-Token: $second_scan_token" -d '{"type":"message","message":"second old visitor after transfer"}' "http://127.0.0.1:8090/api/qr/$QR_TOKEN/notifications"
           echo "MATRIX_VEHICLE_TRANSFER_QR_REVOCATION_HTTP_OK"
 
+          # Previously issued owner JWT must not retain transferred vehicle access.
+          assert_status 403 -X PUT -H "Content-Type: application/json" -H "Authorization: Bearer $owner1_token" -d '{"plate":"34MTR999","make":"Matrix","model":"Notify"}' "http://127.0.0.1:8090/api/owner/vehicles/$VEHICLE_ID"
+          assert_status 404 -X DELETE -H "Authorization: Bearer $owner1_token" "http://127.0.0.1:8090/api/owner/vehicles/$VEHICLE_ID"
+          assert_status 404 -X POST -H "Authorization: Bearer $owner1_token" "http://127.0.0.1:8090/api/owner/vehicles/$VEHICLE_ID/transfer"
+          assert_status 200 -H "Authorization: Bearer $owner1_token" "http://127.0.0.1:8090/api/owner/vehicles"
+          VEHICLE_ID="$VEHICLE_ID" node -e 'const fs=require("fs");const assert=require("node:assert/strict");const x=JSON.parse(fs.readFileSync("/tmp/matrix-response.json","utf8"));assert.ok(Array.isArray(x.vehicles));assert.ok(!x.vehicles.some(v=>String(v.id)===process.env.VEHICLE_ID),"Transferred vehicle exposed to previous owner");'
+          owner2_login=$(curl -sS -o /tmp/owner2-after-transfer.json -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{"phone":"+905551234568","password":"MatrixPass123!"}' http://127.0.0.1:8090/api/owner/login-phone)
+          test "$owner2_login" = "200"
+          owner2_token=$(node -e "const x=require('/tmp/owner2-after-transfer.json');process.stdout.write(x.accessToken||'')")
+          test -n "$owner2_token"
+          assert_status 200 -H "Authorization: Bearer $owner2_token" "http://127.0.0.1:8090/api/owner/vehicles"
+          VEHICLE_ID="$VEHICLE_ID" node -e 'const fs=require("fs");const assert=require("node:assert/strict");const x=JSON.parse(fs.readFileSync("/tmp/matrix-response.json","utf8"));assert.ok(x.vehicles.some(v=>String(v.id)===process.env.VEHICLE_ID),"Transferred vehicle missing for new owner");'
+          echo "MATRIX_TRANSFER_OLD_OWNER_HTTP_ISOLATION_OK"
+
+
           # Public QR resolution must throttle enumeration attempts.
           for i in $(seq 1 30); do
             code=$(curl -sS -o /tmp/qr-resolve.json -w '%{http_code}'               "http://127.0.0.1:8090/api/qr/$QR_TOKEN")
