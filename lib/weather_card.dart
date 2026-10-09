@@ -56,250 +56,115 @@ class WeatherCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final foreground = _dark ? Colors.white : const Color(0xFF0C1020);
-    final secondary = _dark
-        ? Colors.white.withValues(alpha: .78)
-        : const Color(0xFF5D6272);
+    const ink = Color(0xFF10102C);
+    const secondary = Color(0xFF5B5484);
     final location = (weather?.location ?? '').trim();
-    final condition = loading && weather == null
+    final description = loading && weather == null
         ? 'Hava yükleniyor'
         : (weather?.description ?? 'Hava durumu kullanılamıyor');
-
-    return GestureDetector(
-      behavior:HitTestBehavior.opaque,
-      onTap:onTap,
-      child:SizedBox(
-      height: 138,
-      width: double.infinity,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: CustomPaint(
-                painter: WeatherCardPainter(condition: _condition),
-              ),
-            ),
-            Positioned(
-              left: 14,
-              top: 12,
-              right: 142,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _greeting,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: secondary,
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 1),
-                  Text(
-                    _displayName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: foreground,
-                      fontSize: 20.5,
-                      height: 1.03,
-                      letterSpacing: -.45,
-                      fontWeight: FontWeight.w900,
-                      shadows: _dark
-                          ? const [
-                              Shadow(
-                                color: Color(0x33000000),
-                                blurRadius: 4,
-                                offset: Offset(0, 1),
-                              ),
-                            ]
-                          : null,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    'Aracınızla dünya sizinle iletişimde.',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: secondary,
-                      fontSize: 9.8,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Positioned(
-              top: 31,
-              right: 12,
-              width: 126,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        _degree(weather?.temperature),
-                        style: TextStyle(
-                          color: foreground,
-                          fontSize: 29,
-                          height: .92,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -1.0,
-                          shadows: _dark
-                              ? const [
-                                  Shadow(
-                                    color: Color(0x33000000),
-                                    blurRadius: 4,
-                                    offset: Offset(0, 1),
-                                  ),
-                                ]
-                              : null,
-                        ),
-                      ),
-                      const SizedBox(width: 5),
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.only(bottom: 2),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.location_on_rounded,
-                                size: 13,
-                                color: _dark ? lime : purple,
-                              ),
-                              const SizedBox(width: 1),
-                              Expanded(
-                                child: Text(
-                                  location.isEmpty ? 'Konum' : location,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: foreground,
-                                    fontSize: 9.7,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    condition,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: secondary,
-                      fontSize: 9.2,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.arrow_upward_rounded,
-                        size: 14,
-                        color: Color(0xFFFF343D),
-                      ),
-                      Text(
-                        _degree(weather?.maxTemperature),
-                        style: TextStyle(
-                          color: foreground,
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      const Icon(
-                        Icons.arrow_downward_rounded,
-                        size: 14,
-                        color: Color(0xFF1976FF),
-                      ),
-                      Text(
-                        _degree(weather?.minTemperature),
-                        style: TextStyle(
-                          color: foreground,
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            if (premium)
-              Positioned(
-                right: 10,
-                top: 8,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 11, vertical: 4),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF5A18E8), Color(0xFF8F17FF)],
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: purple.withValues(alpha: .22),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: const Text(
-                    'PRO',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 9.3,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: .25,
-                    ),
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    return LayoutBuilder(builder: (context, constraints) {
+      final narrow = constraints.maxWidth < 350;
+      final cardHeight = narrow ? 184.0 : 176.0;
+      final rightWidth = narrow ? 112.0 : 132.0;
+      final leftWidth = constraints.maxWidth - rightWidth - 42;
+      return Semantics(
+        label: 'Hava durumu ve araç özeti',
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+          child: SizedBox(
+            width: double.infinity,
+            height: cardHeight,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: Stack(children: [
+                Positioned.fill(child: CustomPaint(
+                  painter: WeatherCardPainter(condition: _condition),
+                )),
+                Positioned(
+                  left: 16, top: 18, width: math.max(90, leftWidth),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(_greeting, maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: secondary, fontSize: 11, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 4),
+                    Text(_displayName, maxLines: 2, overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: ink, fontSize: narrow ? 17 : 20,
+                        height: 1.03, letterSpacing: -.45, fontWeight: FontWeight.w900)),
+                    const SizedBox(height: 6),
+                    const Text('Aracınızla dünya sizinle iletişimde.',
+                      maxLines: 2, overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: secondary, fontSize: 10.5,
+                        height: 1.2, fontWeight: FontWeight.w600)),
+                  ]),
+                ),
+                Positioned(
+                  right: 12, top: 41, width: rightWidth,
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Row(children: [
+                      Text(_degree(weather?.temperature),
+                        style: TextStyle(color: Colors.white, fontSize: narrow ? 30 : 34,
+                          height: 1, fontWeight: FontWeight.w900)),
+                      const SizedBox(width: 3),
+                      Expanded(child: Row(children: [
+                        const Icon(Icons.location_on_rounded, size: 12, color: Colors.white),
+                        Expanded(child: Text(location.isEmpty ? 'Konum' : location,
+                          maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: Colors.white, fontSize: 10,
+                            fontWeight: FontWeight.w800))),
+                      ])),
+                    ]),
+                    const SizedBox(height: 5),
+                    Text(description, maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Color(0xFFF0DEFF), fontSize: 10.5,
+                        fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 8),
+                    Row(children: [
+                      const Icon(Icons.arrow_upward_rounded, color: Color(0xFFFF8B9C), size: 15),
+                      Text(_degree(weather?.maxTemperature),
+                        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w900)),
+                      const SizedBox(width: 9),
+                      const Icon(Icons.arrow_downward_rounded, color: Color(0xFF8BD6FF), size: 15),
+                      Text(_degree(weather?.minTemperature),
+                        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w900)),
+                    ]),
+                  ]),
+                ),
+                if (premium) Positioned(
+                  right: 12, top: 10,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 5),
+                    decoration: BoxDecoration(color: const Color(0xFF7514EF),
+                      borderRadius: BorderRadius.circular(20)),
+                    child: const Text('PRO', style: TextStyle(
+                      color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900)),
                   ),
                 ),
-              ),
-            Positioned(
-              left: 14,
-              bottom: 10,
-              child: Row(
-                children: [
-                  _pill(
-                    icon: Icons.directions_car_filled_rounded,
-                    text:
-                        '$activeVehicleCount araç aktif',
-                    foreground: foreground,
-                    dark: _dark,
-                    onTap: onVehicles,
-                  ),
-                  const SizedBox(width: 7),
-                  _pill(
-                    icon: Icons.shield_rounded,
-                    text: qrProtection
-                        ? 'QR Koruması açık'
-                        : 'QR Koruması kapalı',
-                    foreground: foreground,
-                    dark: _dark,
-                    onTap: onQrSecurity,
-                  ),
-                ],
-              ),
+                Positioned(
+                  left: 12, right: 12, bottom: 12,
+                  child: Row(children: [
+                    Expanded(child: _pill(
+                      icon: Icons.directions_car_filled_rounded,
+                      text: '$activeVehicleCount araç aktif',
+                      foreground: ink, dark: false, onTap: onVehicles,
+                    )),
+                    const SizedBox(width: 7),
+                    Expanded(child: _pill(
+                      icon: Icons.shield_rounded,
+                      text: qrProtection ? 'QR Koruması açık' : 'QR Koruması kapalı',
+                      foreground: ink, dark: false, onTap: onQrSecurity,
+                    )),
+                  ]),
+                ),
+                // Keep the static painter for reduced-motion users. No repeating
+                // animation controllers or frame-by-frame parent rebuilds.
+                if (reduceMotion) const SizedBox.shrink(),
+              ]),
             ),
-          ],
+          ),
         ),
-      ),
-    ),
-    );
+      );
+    });
   }
 
   Widget _pill({
@@ -321,26 +186,28 @@ class WeatherCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(18),
         child: Container(
-          height: 29,
-          padding: const EdgeInsets.symmetric(horizontal: 9),
+          height: 34,
+          padding: const EdgeInsets.symmetric(horizontal: 7),
           decoration: BoxDecoration(
             color: fill,
             borderRadius: BorderRadius.circular(18),
             border: Border.all(color: border),
           ),
           child: Row(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisSize: MainAxisSize.max,
             children: [
               Icon(icon, size: 15, color: foreground),
               const SizedBox(width: 5),
-              Text(
+              Flexible(child: Text(
                 text,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: foreground,
                   fontSize: 9.6,
                   fontWeight: FontWeight.w900,
                 ),
-              ),
+              )),
               const SizedBox(width: 3),
               Icon(
                 Icons.chevron_right_rounded,
@@ -367,69 +234,39 @@ class WeatherCardPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
-    final colors = switch (condition) {
-      WeatherCondition.clear => const [
-          Color(0xFFEFFF8E),
-          Color(0xFFD8F7E7),
-          Color(0xFF65B9FF),
-        ],
-      WeatherCondition.partlyCloudy => const [
-          Color(0xFFEFFF9B),
-          Color(0xFFDDEBEF),
-          Color(0xFF80BCEB),
-        ],
-      WeatherCondition.cloudy => const [
-          Color(0xFFE7F5D2),
-          Color(0xFFD2DFE8),
-          Color(0xFF9AB8CF),
-        ],
-      WeatherCondition.rain => const [
-          Color(0xFF3E286E),
-          Color(0xFF3D5794),
-          Color(0xFF536FA8),
-        ],
-      WeatherCondition.snow => const [
-          Color(0xFFF5FFF7),
-          Color(0xFFE7F5FF),
-          Color(0xFFB8D8F4),
-        ],
-      WeatherCondition.thunderstorm => const [
-          Color(0xFF30215D),
-          Color(0xFF493A82),
-          Color(0xFF6554A5),
-        ],
-      WeatherCondition.night => const [
-          Color(0xFF11193D),
-          Color(0xFF2E2867),
-          Color(0xFF503884),
-        ],
-    };
+    const colors = [
+      Color(0xFFF0E4FF), Color(0xFFE4CBFF), Color(0xFFBB85FF),
+      Color(0xFF9045F8), Color(0xFF7028EA), Color(0xFFA34CF6),
+    ];
 
     canvas.drawRect(
       rect,
       Paint()
         ..shader = LinearGradient(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: colors,
-          stops: const [0, .48, 1],
+          stops: const [0, .20, .42, .63, .82, 1],
         ).createShader(rect),
     );
 
-    canvas.drawRect(
-      rect,
-      Paint()
-        ..shader = RadialGradient(
-          center: const Alignment(-.72, .92),
-          radius: 1.0,
-          colors: [
-            WeatherCard.lime.withValues(alpha: _dark ? .15 : .48),
-            WeatherCard.lime.withValues(alpha: _dark ? .04 : .14),
-            Colors.transparent,
-          ],
-          stops: const [0, .48, 1],
-        ).createShader(rect),
-    );
+    final wave = Path()
+      ..moveTo(size.width * .34, size.height * .18)
+      ..cubicTo(size.width * .58, size.height * -.15, size.width * .75,
+        size.height * .07, size.width, size.height * .02)
+      ..lineTo(size.width, size.height * .87)
+      ..cubicTo(size.width * .78, size.height * 1.08,
+        size.width * .56, size.height * .50, size.width * .34, size.height * .18)
+      ..close();
+    canvas.drawPath(wave, Paint()..color = const Color(0xFF6B22E5).withValues(alpha: .22));
+    final lowerWave = Path()
+      ..moveTo(0, size.height * .80)
+      ..cubicTo(size.width * .32, size.height * .48,
+        size.width * .62, size.height * 1.19, size.width, size.height * .72)
+      ..lineTo(size.width, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+    canvas.drawPath(lowerWave, Paint()..color = const Color(0xFFDDA3FF).withValues(alpha: .30));
 
     if (condition == WeatherCondition.night) {
       _drawMoon(canvas, size);
