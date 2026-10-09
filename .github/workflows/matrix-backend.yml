@@ -437,11 +437,14 @@ jobs:
           conversation_id=$(node -e "const x=require('/tmp/matrix-conversation.json');process.stdout.write(String(x.conversation?.id||''))")
           test -n "$conversation_id"
 
+          echo "MATRIX_TRANSFER_OLD_OWNER_CHECKS_OK"
           owner2_login=$(curl -sS -o /tmp/owner2-login.json -w '%{http_code}' -X POST -H 'Content-Type: application/json' \
             -d '{"phone":"+905551234568","password":"MatrixPass123!"}' http://127.0.0.1:8090/api/owner/login-phone)
+          echo "MATRIX_TRANSFER_NEW_OWNER_LOGIN_STATUS=$owner2_login"
           test "$owner2_login" = "200"
           owner2_token=$(node -e "const x=require('/tmp/owner2-login.json');process.stdout.write(x.accessToken||'')")
           test -n "$owner2_token"
+          echo "MATRIX_TRANSFER_NEW_OWNER_LOGIN_OK"
 
           assert_status 200 -H "Authorization: Bearer $owner1_token" "http://127.0.0.1:8090/api/owner/conversations/$conversation_id"
           assert_status 404 -H "Authorization: Bearer $owner2_token" "http://127.0.0.1:8090/api/owner/conversations/$conversation_id"
@@ -675,6 +678,7 @@ jobs:
           echo "MATRIX_VEHICLE_TRANSFER_QR_REVOCATION_HTTP_OK"
 
           # Previously issued owner JWT must not retain transferred vehicle access.
+          echo "MATRIX_TRANSFER_OWNER_CHECK_START"
           assert_status 403 -X PUT -H "Content-Type: application/json" -H "Authorization: Bearer $owner1_token" -d '{"plate":"34MTR999","make":"Matrix","model":"Notify"}' "http://127.0.0.1:8090/api/owner/vehicles/$VEHICLE_ID"
           assert_status 404 -X DELETE -H "Authorization: Bearer $owner1_token" "http://127.0.0.1:8090/api/owner/vehicles/$VEHICLE_ID"
           assert_status 404 -X POST -H "Authorization: Bearer $owner1_token" "http://127.0.0.1:8090/api/owner/vehicles/$VEHICLE_ID/transfer"
