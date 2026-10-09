@@ -648,6 +648,32 @@ jobs:
             "http://127.0.0.1:8090/api/qr/$QR_TOKEN/notifications"
           echo "MATRIX_QR_MESSAGE_RATE_LIMIT_HTTP_OK"
 
+          # Vehicle transfer must revoke old scan sessions and private visitor data.
+          # Run last: transfer intentionally deletes existing conversation/call fixtures.
+          psql -h 127.0.0.1 -U postgres -d heycar_matrix -v ON_ERROR_STOP=1 -c "DELETE FROM qr_security_request_log WHERE owner_id='$OWNER_ID'"
+          transfer_new_owner="$OWNER2_ID"
+          # Exercise the actual transfer privacy helper and ownership update in one DB transaction.
+          VEHICLE_ID="$VEHICLE_ID" NEW_OWNER="$transfer_new_owner" node - <<'NODE'
+          const {Pool}=require("pg");
+          const {clearPrivateVehicleHistory}=require("./vehicle-transfer-privacy");
+          (async()=>{
+            const pool=new Pool({host:"127.0.0.1",user:"postgres",password:"postgres",database:"heycar_matrix"});
+            const db=await pool.connect();
+            try {
+              await db.query("BEGIN");
+              const result=await clearPrivateVehicleHistory(db,process.env.VEHICLE_ID);
+              if(!(result.scanSessions>=2))throw new Error("TRANSFER_SCAN_SESSIONS_NOT_REVOKED");
+              await db.query("UPDATE vehicles SET owner_id=$1 WHERE id=$2",[process.env.NEW_OWNER,process.env.VEHICLE_ID]);
+              await db.query("COMMIT");
+            }catch(e){await db.query("ROLLBACK");throw e;}
+            finally{db.release();await pool.end();}
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+          assert_status 401 -X POST -H "Content-Type: application/json" -H "X-Scan-Token: $scan_token" -d '{"type":"message","message":"old owner scan after transfer"}' "http://127.0.0.1:8090/api/qr/$QR_TOKEN/notifications"
+          assert_status 401 -X POST -H "Content-Type: application/json" -H "X-Scan-Token: $scan_token" -d "{\"qrToken\":\"$QR_TOKEN\"}" "http://127.0.0.1:8090/api/public/calls"
+          assert_status 401 -X POST -H "Content-Type: application/json" -H "X-Scan-Token: $second_scan_token" -d '{"type":"message","message":"second old visitor after transfer"}' "http://127.0.0.1:8090/api/qr/$QR_TOKEN/notifications"
+          echo "MATRIX_VEHICLE_TRANSFER_QR_REVOCATION_HTTP_OK"
+
           # Public QR resolution must throttle enumeration attempts.
           for i in $(seq 1 30); do
             code=$(curl -sS -o /tmp/qr-resolve.json -w '%{http_code}'               "http://127.0.0.1:8090/api/qr/$QR_TOKEN")
