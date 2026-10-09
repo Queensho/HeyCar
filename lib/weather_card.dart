@@ -65,7 +65,7 @@ class WeatherCard extends StatelessWidget {
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
     return LayoutBuilder(builder: (context, constraints) {
       final narrow = constraints.maxWidth < 350;
-      final cardHeight = narrow ? 184.0 : 176.0;
+      final cardHeight = narrow ? 148.0 : 138.0;
       final rightWidth = narrow ? 112.0 : 132.0;
       final leftWidth = constraints.maxWidth - rightWidth - 42;
       return Semantics(
@@ -83,7 +83,7 @@ class WeatherCard extends StatelessWidget {
                   painter: WeatherCardPainter(condition: _condition),
                 )),
                 Positioned(
-                  left: 16, top: 18, width: math.max(90, leftWidth),
+                  left: 14, top: 12, width: math.max(90, leftWidth),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(_greeting, maxLines: 1, overflow: TextOverflow.ellipsis,
                       style: const TextStyle(color: secondary, fontSize: 11, fontWeight: FontWeight.w700)),
@@ -99,7 +99,7 @@ class WeatherCard extends StatelessWidget {
                   ]),
                 ),
                 Positioned(
-                  right: 12, top: 41, width: rightWidth,
+                  right: 12, top: 28, width: rightWidth,
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
                       Text(_degree(weather?.temperature),
@@ -141,7 +141,7 @@ class WeatherCard extends StatelessWidget {
                   ),
                 ),
                 Positioned(
-                  left: 12, right: 12, bottom: 12,
+                  left: 12, right: 12, bottom: 9,
                   child: Row(children: [
                     Expanded(child: _pill(
                       icon: Icons.directions_car_filled_rounded,
@@ -186,7 +186,7 @@ class WeatherCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(18),
         child: Container(
-          height: 34,
+          height: 29,
           padding: const EdgeInsets.symmetric(horizontal: 7),
           decoration: BoxDecoration(
             color: fill,
