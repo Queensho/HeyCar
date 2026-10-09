@@ -1185,7 +1185,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     child:Opacity(
       opacity:enabled?1:.78,
       child:Container(
-        height:86,
+        height:160,
         clipBehavior:Clip.hardEdge,
         decoration:card(),
         child:Stack(children:[
@@ -1273,16 +1273,17 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     ),
   );
 
-  Widget servicesGrid()=>Padding(
-    padding:const EdgeInsets.symmetric(horizontal:16),
-    child:GridView.count(
-      crossAxisCount:2,shrinkWrap:true,physics:const NeverScrollableScrollPhysics(),
-      crossAxisSpacing:9,mainAxisSpacing:9,childAspectRatio:1.78,
+  Widget servicesGrid()=>SizedBox(
+    height:176,
+    child:ListView(
+      scrollDirection:Axis.horizontal,
+      physics:const BouncingScrollPhysics(),
+      padding:const EdgeInsets.symmetric(horizontal:16),
       children:[
-        service(Icons.fire_truck_rounded,'Çekici','Çekici çağır ve canlı takip et.',const Color(0xFFFF8A43),()=>widget.shortcut('towing'),car:true,comingSoon:true,enabled:testAccount),
-        service(Icons.sos_rounded,'Yol Yardım','Akü, lastik, yakıt ve yerinde destek.',const Color(0xFFFF775F),()=>widget.shortcut('roadside_help'),comingSoon:true,enabled:testAccount),
-        service(Icons.support_agent_rounded,'Vale','Aracınızı güvenle teslim edin.',const Color(0xFF8B36FF),widget.services,comingSoon:true,enabled:testAccount),
-        service(Icons.local_offer_rounded,'Fırsatlar','Size özel kampanya ve ayrıcalıklar.',const Color(0xFF23C976),()=>widget.shortcut('offers'),comingSoon:true,enabled:testAccount),
+        SizedBox(width:252,child:Padding(padding:const EdgeInsets.only(right:12),child:service(Icons.fire_truck_rounded,'Çekici','Çekici çağır ve canlı takip et.',const Color(0xFFFF8A43),()=>widget.shortcut('towing'),car:true,comingSoon:true,enabled:testAccount))),
+        SizedBox(width:252,child:Padding(padding:const EdgeInsets.only(right:12),child:service(Icons.sos_rounded,'Yol Yardım','Akü, lastik, yakıt ve yerinde destek.',const Color(0xFFFF775F),()=>widget.shortcut('roadside_help'),comingSoon:true,enabled:testAccount))),
+        SizedBox(width:252,child:Padding(padding:const EdgeInsets.only(right:12),child:service(Icons.support_agent_rounded,'Vale','Aracınızı güvenle teslim edin.',const Color(0xFF8B36FF),widget.services,comingSoon:true,enabled:testAccount))),
+        SizedBox(width:252,child:Padding(padding:const EdgeInsets.only(right:12),child:service(Icons.local_offer_rounded,'Fırsatlar','Size özel kampanya ve ayrıcalıklar.',const Color(0xFF23C976),()=>widget.shortcut('offers'),comingSoon:true,enabled:testAccount))),
       ],
     ),
   );
@@ -1374,7 +1375,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       child:Opacity(
         opacity:available?1:.78,
         child:Container(
-          height:86,
+          height:160,
           clipBehavior:Clip.hardEdge,
           decoration:BoxDecoration(
             color:background,
@@ -1443,12 +1444,15 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     if(items.isEmpty)return const SizedBox.shrink();
     return Column(children:[
       section('Hizmetler',widget.services),
-      Padding(
-        padding:const EdgeInsets.symmetric(horizontal:16),
-        child:GridView.count(
-          crossAxisCount:2,shrinkWrap:true,physics:const NeverScrollableScrollPhysics(),
-          crossAxisSpacing:9,mainAxisSpacing:9,childAspectRatio:1.78,
-          children:items.map(_managedServiceCard).toList(),
+      SizedBox(
+        height:176,
+        child:ListView.separated(
+          scrollDirection:Axis.horizontal,
+          physics:const BouncingScrollPhysics(),
+          padding:const EdgeInsets.symmetric(horizontal:16),
+          itemCount:items.length,
+          separatorBuilder:(_,__)=>const SizedBox(width:12),
+          itemBuilder:(_,index)=>SizedBox(width:240,child:_managedServiceCard(items[index])),
         ),
       ),
     ]);
