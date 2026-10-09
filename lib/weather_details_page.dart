@@ -25,7 +25,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
   WeatherSnapshot? weather;
   bool loading = false;
 
-  Color get bg => CepqarTheme.bg;
+  Color get bg => CepqarTheme.isLight ? const Color(0xFFF8F7FC) : CepqarTheme.bg;
   Color get panel => CepqarTheme.panel;
   Color get line => CepqarTheme.line;
   Color get text => CepqarTheme.text;
@@ -240,12 +240,12 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
     final dark = w.condition == WeatherCondition.rain ||
         w.condition == WeatherCondition.thunderstorm ||
         w.condition == WeatherCondition.night;
-    final foreground = dark ? Colors.white : const Color(0xFF071126);
-    final secondary = dark
-        ? Colors.white.withValues(alpha: .78)
-        : const Color(0xFF535D73);
+    final foreground = CepqarTheme.isLight ? const Color(0xFF10112D) : Colors.white;
+    final secondary = CepqarTheme.isLight
+        ? const Color(0xFF625A85)
+        : Colors.white.withValues(alpha: .80);
     return SizedBox(
-      height: 365,
+      height: 385,
       child: Stack(
         children: [
           Positioned.fill(
@@ -297,7 +297,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
                       children: [
                         Icon(
                           Icons.location_on_rounded,
-                          color: dark ? lime : const Color(0xFF1976FF),
+                          color: CepqarTheme.isLight ? purple : const Color(0xFFC5A4FF),
                           size: 22,
                         ),
                         const SizedBox(width: 4),
@@ -380,8 +380,13 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
     Color foreground,
     Color secondary,
   ) {
-    return SizedBox(
-      height: 58,
+    return Container(
+      height: 68,
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      decoration: BoxDecoration(
+        color: CepqarTheme.isLight ? const Color(0xFFEDE0FC).withValues(alpha: .74) : const Color(0xFF312250).withValues(alpha: .65),
+        borderRadius: BorderRadius.circular(15),
+      ),
       child: Row(
         children: [
           _metric(
@@ -503,9 +508,9 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                guidance.accent.withValues(alpha: .09),
-                lime.withValues(alpha: .10),
-                Colors.white.withValues(alpha: .94),
+                guidance.accent.withValues(alpha: .10),
+                const Color(0xFFF1E6FF),
+                CepqarTheme.isLight ? const Color(0xFFF9F3FF) : panel,
               ],
             ),
             borderRadius: BorderRadius.circular(20),
@@ -524,7 +529,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: lime.withValues(alpha: .25),
+                  color: guidance.accent.withValues(alpha: .15),
                   borderRadius: BorderRadius.circular(13),
                 ),
                 child: Icon(
@@ -588,8 +593,8 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
           padding: const EdgeInsets.fromLTRB(12, 14, 12, 13),
           decoration: BoxDecoration(
             color: panel,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: line),
+            borderRadius: BorderRadius.circular(23),
+            border: Border.all(color: CepqarTheme.isLight ? const Color(0xFFE8D9FB) : line),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: .03),
@@ -666,9 +671,9 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
               color: now
                   ? purple.withValues(alpha: .09)
                   : CepqarTheme.isLight
-                      ? const Color(0xFFFBFBFE)
+                      ? const Color(0xFFFAF5FF)
                       : const Color(0xFF151D2D),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(16),
               border: now
                   ? Border.all(color: purple.withValues(alpha: .12))
                   : null,
@@ -732,7 +737,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
               color: index == 0
                   ? purple.withValues(alpha: .06)
                   : CepqarTheme.isLight
-                      ? const Color(0xFFFBFBFE)
+                      ? const Color(0xFFFAF5FF)
                       : const Color(0xFF151D2D),
               borderRadius: BorderRadius.circular(14),
             ),
@@ -1259,43 +1264,11 @@ class _WeatherHeroPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
-    final colors = switch (condition) {
-      WeatherCondition.clear => const [
-          Color(0xFF71BDFF),
-          Color(0xFFAEDCFF),
-          Color(0xFFF5FFE0),
-        ],
-      WeatherCondition.partlyCloudy => const [
-          Color(0xFF78BEF8),
-          Color(0xFFB5DDF4),
-          Color(0xFFF0F7DF),
-        ],
-      WeatherCondition.cloudy => const [
-          Color(0xFF9EC3DA),
-          Color(0xFFC5D5E1),
-          Color(0xFFF1F5EE),
-        ],
-      WeatherCondition.rain => const [
-          Color(0xFF314B7D),
-          Color(0xFF526998),
-          Color(0xFF8778B4),
-        ],
-      WeatherCondition.snow => const [
-          Color(0xFFC8E4F8),
-          Color(0xFFEAF7FF),
-          Color(0xFFF6FFF4),
-        ],
-      WeatherCondition.thunderstorm => const [
-          Color(0xFF222D57),
-          Color(0xFF4A487D),
-          Color(0xFF7664A2),
-        ],
-      WeatherCondition.night => const [
-          Color(0xFF111A3A),
-          Color(0xFF30285F),
-          Color(0xFF5A3D7E),
-        ],
-    };
+    final colors = CepqarTheme.isLight
+        ? const [Color(0xFFF0E4FF), Color(0xFFE4CBFF), Color(0xFFBB85FF),
+            Color(0xFF9045F8), Color(0xFF7028EA), Color(0xFFA34CF6)]
+        : const [Color(0xFF100C27), Color(0xFF2C1958), Color(0xFF4A2188),
+            Color(0xFF5E25AC), Color(0xFF381571), Color(0xFF190D3B)];
     canvas.drawRect(
       rect,
       Paint()
@@ -1303,7 +1276,7 @@ class _WeatherHeroPainter extends CustomPainter {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: colors,
-          stops: const [0, .58, 1],
+          stops: const [0, .20, .42, .63, .82, 1],
         ).createShader(rect),
     );
 
@@ -1314,8 +1287,8 @@ class _WeatherHeroPainter extends CustomPainter {
           center: const Alignment(-.75, .88),
           radius: 1.1,
           colors: [
-            lime.withValues(alpha: dark ? .12 : .25),
-            lime.withValues(alpha: .02),
+            const Color(0xFFE3B5FF).withValues(alpha: .28),
+            const Color(0xFFA268ED).withValues(alpha: .06),
             Colors.transparent,
           ],
         ).createShader(rect),
