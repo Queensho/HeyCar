@@ -9,11 +9,11 @@ import 'qr_backend.dart';
 import 'owner_auth.dart';
 import 'cepqar_theme.dart';
 
-const _bg = CepqarTheme.darkBg;
-const _panel = CepqarTheme.darkPanel;
-const _line = CepqarTheme.darkLine;
+const _bg = CepqarTheme.bg;
+const _panel = CepqarTheme.panel;
+const _line = CepqarTheme.line;
 const _purple = Color(0xFF8B5CFF);
-const _muted = CepqarTheme.darkMuted;
+const _muted = CepqarTheme.muted;
 const _baseUrl = 'https://heycar-api-185-165-46-213.nip.io';
 
 Map<String, String> get _ownerHeaders => const {};
@@ -262,7 +262,7 @@ class _OwnerAccountSettingsPageState extends State<OwnerAccountSettingsPage> {
                 child: Text(
                   editing ? 'Bilgilerini düzenle' : 'Kişisel bilgiler',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: CepqarTheme.text,
                     fontSize: 16,
                     fontWeight: FontWeight.w900,
                   ),
@@ -1057,12 +1057,12 @@ class _InfoTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label, style: const TextStyle(color: _muted, fontSize: 12)),
+                  Text(label, style: TextStyle(color: _muted, fontSize: 12)),
                   const SizedBox(height: 3),
                   Text(
                     value,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: CepqarTheme.text,
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
                     ),
@@ -1175,12 +1175,12 @@ class _ActionTile extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text(
                           subtitle,
-                          style: const TextStyle(color: _muted, fontSize: 12.5, height: 1.25),
+                          style: TextStyle(color: _muted, fontSize: 12.5, height: 1.25),
                         ),
                       ],
                     ),
                   ),
-                  const Icon(Icons.chevron_right_rounded, color: Colors.white54),
+                  Icon(Icons.chevron_right_rounded, color: CepqarTheme.muted),
                 ],
               ),
             ),
