@@ -20,14 +20,12 @@ SELECT *, CASE WHEN NOT exists THEN 'MISSING_TABLE'
                ELSE 'OK' END AS audit_status
 FROM checks ORDER BY table_name;
 
-WITH required_sequences(sequence_name) AS (
- VALUES ('valet_shift_history_id_seq'),('valet_audit_log_id_seq'),
-        ('valet_offline_ops_id_seq'),('owner_push_tokens_id_seq')
-)
-SELECT sequence_name,
-       to_regclass('public.'||sequence_name) IS NOT NULL AS exists,
-       CASE WHEN to_regclass('public.'||sequence_name) IS NULL THEN NULL
-            ELSE has_sequence_privilege('heycar_user','public.'||sequence_name,'USAGE') END AS can_use,
-       CASE WHEN to_regclass('public.'||sequence_name) IS NULL THEN NULL
-            ELSE has_sequence_privilege('heycar_user','public.'||sequence_name,'SELECT') END AS can_select
-FROM required_sequences ORDER BY sequence_name;
+-- Discover actual owned sequences instead of assuming BIGSERIAL names.
+SELECT c.relname AS sequence_name,
+       has_sequence_privilege('heycar_user',c.oid,'USAGE') AS can_use,
+       has_sequence_privilege('heycar_user',c.oid,'SELECT') AS can_select
+FROM pg_class c
+JOIN pg_namespace n ON n.oid=c.relnamespace
+WHERE n.nspname='public' AND c.relkind='S'
+  AND (c.relname LIKE 'valet_%' OR c.relname LIKE 'owner_%')
+ORDER BY c.relname;
