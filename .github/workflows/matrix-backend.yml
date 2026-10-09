@@ -437,14 +437,11 @@ jobs:
           conversation_id=$(node -e "const x=require('/tmp/matrix-conversation.json');process.stdout.write(String(x.conversation?.id||''))")
           test -n "$conversation_id"
 
-          echo "MATRIX_TRANSFER_OLD_OWNER_CHECKS_OK"
           owner2_login=$(curl -sS -o /tmp/owner2-login.json -w '%{http_code}' -X POST -H 'Content-Type: application/json' \
             -d '{"phone":"+905551234568","password":"MatrixPass123!"}' http://127.0.0.1:8090/api/owner/login-phone)
-          echo "MATRIX_TRANSFER_NEW_OWNER_LOGIN_STATUS=$owner2_login"
           test "$owner2_login" = "200"
           owner2_token=$(node -e "const x=require('/tmp/owner2-login.json');process.stdout.write(x.accessToken||'')")
           test -n "$owner2_token"
-          echo "MATRIX_TRANSFER_NEW_OWNER_LOGIN_OK"
 
           assert_status 200 -H "Authorization: Bearer $owner1_token" "http://127.0.0.1:8090/api/owner/conversations/$conversation_id"
           assert_status 404 -H "Authorization: Bearer $owner2_token" "http://127.0.0.1:8090/api/owner/conversations/$conversation_id"
@@ -678,22 +675,13 @@ jobs:
           echo "MATRIX_VEHICLE_TRANSFER_QR_REVOCATION_HTTP_OK"
 
           # Previously issued owner JWT must not retain transferred vehicle access.
-          echo "MATRIX_TRANSFER_OWNER_CHECK_START"
-          echo "MATRIX_TRANSFER_ASSERT_NEXT"
           assert_status 403 -X PUT -H "Content-Type: application/json" -H "Authorization: Bearer $owner1_token" -d '{"plate":"34MTR999","make":"Matrix","model":"Notify"}' "http://127.0.0.1:8090/api/owner/vehicles/$VEHICLE_ID"
-          echo "MATRIX_TRANSFER_ASSERT_NEXT"
           assert_status 404 -X DELETE -H "Authorization: Bearer $owner1_token" "http://127.0.0.1:8090/api/owner/vehicles/$VEHICLE_ID"
-          echo "MATRIX_TRANSFER_ASSERT_NEXT"
           assert_status 404 -X POST -H "Authorization: Bearer $owner1_token" "http://127.0.0.1:8090/api/owner/vehicles/$VEHICLE_ID/transfer"
-          echo "MATRIX_TRANSFER_ASSERT_NEXT"
           assert_status 200 -H "Authorization: Bearer $owner1_token" "http://127.0.0.1:8090/api/owner/vehicles"
           VEHICLE_ID="$VEHICLE_ID" node -e 'const fs=require("fs");const assert=require("node:assert/strict");const x=JSON.parse(fs.readFileSync("/tmp/matrix-response.json","utf8"));assert.ok(Array.isArray(x.vehicles));assert.ok(!x.vehicles.some(v=>String(v.id)===process.env.VEHICLE_ID),"Transferred vehicle exposed to previous owner");'
-          echo "MATRIX_TRANSFER_OLD_OWNER_ASSERTIONS_COMPLETE"
-          owner2_login=$(curl -sS -o /tmp/owner2-after-transfer.json -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{"phone":"+905551234568","password":"MatrixPass123!"}' http://127.0.0.1:8090/api/owner/login-phone)
-          test "$owner2_login" = "200"
-          owner2_token=$(node -e "const x=require('/tmp/owner2-after-transfer.json');process.stdout.write(x.accessToken||'')")
+          # Reuse the new owner JWT minted earlier: repeat login can hit auth rate limits.
           test -n "$owner2_token"
-          echo "MATRIX_TRANSFER_ASSERT_NEXT"
           assert_status 200 -H "Authorization: Bearer $owner2_token" "http://127.0.0.1:8090/api/owner/vehicles"
           VEHICLE_ID="$VEHICLE_ID" node -e 'const fs=require("fs");const assert=require("node:assert/strict");const x=JSON.parse(fs.readFileSync("/tmp/matrix-response.json","utf8"));assert.ok(x.vehicles.some(v=>String(v.id)===process.env.VEHICLE_ID),"Transferred vehicle missing for new owner");'
           echo "MATRIX_TRANSFER_OLD_OWNER_HTTP_ISOLATION_OK"
