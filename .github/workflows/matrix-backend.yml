@@ -573,6 +573,12 @@ jobs:
             -d '{"message":"other driver isolation probe"}' \
             "http://127.0.0.1:8090/api/driver/conversations/$conversation_id/messages"
           echo "MATRIX_CONVERSATION_HTTP_DRIVER_ISOLATION_OK"
+          # Explicitly select the driver before testing revocation.
+          assert_status 200 -X PUT -H "Authorization: Bearer $owner1_token" -H "Content-Type: application/json" \
+            -d "{\"driverUserId\":\"$DRIVER1_ID\",\"hours\":1}" \
+            "http://127.0.0.1:8090/api/owner/vehicles/$VEHICLE_ID/selected-driver"
+          assert_status 200 -H "Authorization: Bearer $driver1_token" \
+            "http://127.0.0.1:8090/api/driver/conversations/$conversation_id"
           # Revoking active-driver selection must immediately invalidate an open conversation.
           assert_status 200 -X DELETE -H "Authorization: Bearer $owner1_token" \
             "http://127.0.0.1:8090/api/owner/vehicles/$VEHICLE_ID/selected-driver"
