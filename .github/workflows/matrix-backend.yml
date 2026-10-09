@@ -654,8 +654,8 @@ jobs:
           transfer_new_owner="$OWNER2_ID"
           # Exercise the actual transfer privacy helper and ownership update in one DB transaction.
           VEHICLE_ID="$VEHICLE_ID" NEW_OWNER="$transfer_new_owner" node - <<'NODE'
-          const {Pool}=require("./server/node_modules/pg");
-          const {clearPrivateVehicleHistory}=require("./server/vehicle-transfer-privacy");
+          const {Pool}=require("pg");
+          const {clearPrivateVehicleHistory}=require("./vehicle-transfer-privacy");
           (async()=>{
             const pool=new Pool({host:"127.0.0.1",user:"postgres",password:"postgres",database:"heycar_matrix"});
             const db=await pool.connect();
