@@ -184,7 +184,7 @@ class _PremiumPageState extends State<PremiumPage>{
               onTapCancel:()=>setState(()=>_pressed=false),
               onTapUp:(_)=>setState(()=>_pressed=false),
               child:AnimatedScale(
-                scale:_pressed?.98:1,
+                scale:_pressed ? 0.98 : 1.0,
                 duration:const Duration(milliseconds:160),
                 child:Container(
                   height:56,
@@ -225,7 +225,7 @@ class _PremiumHero extends StatelessWidget{
        const Spacer(),
        Text.rich(TextSpan(children:[TextSpan(text:'Premium paketini ',style:TextStyle(color:dark?Colors.white:_ink)),const TextSpan(text:'seç.',style:TextStyle(color:_purple))]),style:const TextStyle(fontSize:20,fontWeight:FontWeight.w900)),
        const SizedBox(height:6),
-       SizedBox(width:230,child:Text('Bireysel sadece araç sahibine, Aile ise yetkili sürücülere de premium erişim verir.',style:TextStyle(color:dark?const Color(0xFFF2EAFE):const Color(0xFF4F536D),fontSize:12.3,height:1.3))),
+       SizedBox(width:195,child:Text('Bireysel sadece araç sahibine, Aile ise yetkili sürücülere de premium erişim verir.',style:TextStyle(color:dark?const Color(0xFFF2EAFE):const Color(0xFF4F536D),fontSize:12.3,height:1.3))),
        const SizedBox(height:6),
      ])),
      // Max artwork is intentionally a placeholder until an approved project asset exists.
