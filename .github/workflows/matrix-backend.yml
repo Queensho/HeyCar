@@ -729,6 +729,29 @@ jobs:
           assert_status 200 -H "Authorization: Bearer $driver1_token" "http://127.0.0.1:8090/api/driver/vehicles"
           VEHICLE_ID="$VEHICLE_ID" node -e 'const fs=require("fs");const assert=require("node:assert/strict");const x=JSON.parse(fs.readFileSync("/tmp/matrix-response.json","utf8"));assert.ok(!x.vehicles.some(v=>String(v.vehicle_id)===process.env.VEHICLE_ID),"Former driver reattached via revoked invite");'
           echo "MATRIX_TRANSFER_DRIVER_INVITE_REVOKED_HTTP_OK"
+          # The former owner cannot mint driver invites after the transfer.
+          assert_status 404 -X POST -H "Authorization: Bearer $owner1_token" "http://127.0.0.1:8090/api/owner/vehicles/$VEHICLE_ID/driver-invites"
+          # The new owner can mint a fresh invitation for this vehicle.
+          assert_status 201 -X POST -H "Authorization: Bearer $owner2_token" "http://127.0.0.1:8090/api/owner/vehicles/$VEHICLE_ID/driver-invites"
+          new_owner_invite=$(node -e 'const fs=require("fs");const assert=require("node:assert/strict");const x=JSON.parse(fs.readFileSync("/tmp/matrix-response.json","utf8"));assert.equal(x.ok,true);assert.match(x.code,/^PQ[A-Z2-9]{6}$/);process.stdout.write(x.code);')
+          assert_status 200 "http://127.0.0.1:8090/api/driver/invites/$new_owner_invite"
+          # The new invitation must belong to the transferred vehicle and current owner.
+          VEHICLE_ID="$VEHICLE_ID" OWNER2_ID="$OWNER2_ID" NEW_INVITE="$new_owner_invite" node - <<'NODE'
+          const assert=require("node:assert/strict");
+          const {Pool}=require("pg");
+          (async()=>{
+            const p=new Pool({host:"127.0.0.1",user:"postgres",password:"postgres",database:"heycar_matrix"});
+            try{
+              const r=await p.query("SELECT vehicle_id::text,owner_id::text,accepted_at,expires_at>NOW() AS valid FROM vehicle_driver_invites WHERE token=$1",[process.env.NEW_INVITE]);
+              assert.equal(r.rowCount,1);
+              assert.equal(r.rows[0].vehicle_id,process.env.VEHICLE_ID);
+              assert.equal(r.rows[0].owner_id,process.env.OWNER2_ID);
+              assert.equal(r.rows[0].accepted_at,null);
+              assert.equal(r.rows[0].valid,true);
+            }finally{await p.end();}
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+          echo "MATRIX_TRANSFER_NEW_OWNER_INVITE_AUTHORITY_HTTP_OK"
 
 
 
