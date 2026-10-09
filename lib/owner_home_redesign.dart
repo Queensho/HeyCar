@@ -1185,7 +1185,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     child:Opacity(
       opacity:enabled?1:.78,
       child:Container(
-        height:86,
+        height:160,
         clipBehavior:Clip.hardEdge,
         decoration:card(),
         child:Stack(children:[
@@ -1375,7 +1375,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       child:Opacity(
         opacity:available?1:.78,
         child:Container(
-          height:86,
+          height:160,
           clipBehavior:Clip.hardEdge,
           decoration:BoxDecoration(
             color:background,
