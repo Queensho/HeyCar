@@ -696,6 +696,27 @@ jobs:
           assert_status 200 -H "Authorization: Bearer $driver2_token" "http://127.0.0.1:8090/api/driver/vehicles"
           VEHICLE2_ID="$VEHICLE2_ID" node -e 'const fs=require("fs");const assert=require("node:assert/strict");const x=JSON.parse(fs.readFileSync("/tmp/matrix-response.json","utf8"));assert.ok(x.vehicles.some(v=>String(v.vehicle_id)===process.env.VEHICLE2_ID),"Unrelated driver assignment was lost");'
           echo "MATRIX_TRANSFER_DRIVER_HTTP_ISOLATION_OK"
+          # Transfer must erase old notifications/conversations for all principals.
+          assert_status 403 -H "Authorization: Bearer $driver1_token" "http://127.0.0.1:8090/api/driver/conversations/$conversation_id"
+          assert_status 403 -X POST -H "Content-Type: application/json" -H "Authorization: Bearer $driver1_token" -d '{"message":"former driver must be denied"}' "http://127.0.0.1:8090/api/driver/conversations/$conversation_id/messages"
+          assert_status 200 -H "Authorization: Bearer $driver1_token" "http://127.0.0.1:8090/api/driver/notifications"
+          VEHICLE_ID="$VEHICLE_ID" node -e 'const fs=require("fs");const assert=require("node:assert/strict");const x=JSON.parse(fs.readFileSync("/tmp/matrix-response.json","utf8"));assert.ok(!x.notifications.some(n=>String(n.vehicle_id)===process.env.VEHICLE_ID),"Old driver still sees transferred vehicle notifications");'
+          assert_status 404 -H "Authorization: Bearer $owner1_token" "http://127.0.0.1:8090/api/owner/conversations/$conversation_id"
+          assert_status 404 -H "Authorization: Bearer $owner2_token" "http://127.0.0.1:8090/api/owner/conversations/$conversation_id"
+          VEHICLE_ID="$VEHICLE_ID" node - <<'NODE'
+          const assert=require("node:assert/strict");
+          const {Pool}=require("pg");
+          (async()=>{
+            const p=new Pool({host:"127.0.0.1",user:"postgres",password:"postgres",database:"heycar_matrix"});
+            try{
+              for(const table of ["qr_conversations","vehicle_notifications","anonymous_calls","vehicle_drivers","vehicle_active_drivers"]){
+                const r=await p.query("SELECT COUNT(*)::int AS count FROM "+table+" WHERE vehicle_id::text=$1",[process.env.VEHICLE_ID]);
+                assert.equal(r.rows[0].count,0,table+" must have no prior private records");
+              }
+            }finally{await p.end();}
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+          echo "MATRIX_TRANSFER_PRIVATE_HISTORY_HTTP_ISOLATION_OK"
 
 
 
