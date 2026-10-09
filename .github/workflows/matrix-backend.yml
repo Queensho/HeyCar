@@ -564,6 +564,10 @@ jobs:
           driver2_token=$(node -e "const x=require('/tmp/matrix-driver2-login.json');process.stdout.write(x.accessToken||'')")
           test -n "$driver2_token"
 
+          # Select the fixture driver before asserting authorized conversation access.
+          assert_status 200 -X PUT -H "Authorization: Bearer $owner1_token" -H "Content-Type: application/json" \
+            -d "{\"driverUserId\":\"$DRIVER1_ID\",\"hours\":1}" \
+            "http://127.0.0.1:8090/api/owner/vehicles/$VEHICLE_ID/selected-driver"
           assert_status 200 -H "Authorization: Bearer $driver1_token" \
             "http://127.0.0.1:8090/api/driver/conversations/$conversation_id"
           assert_status 404 -H "Authorization: Bearer $driver2_token" \
@@ -573,6 +577,30 @@ jobs:
             -d '{"message":"other driver isolation probe"}' \
             "http://127.0.0.1:8090/api/driver/conversations/$conversation_id/messages"
           echo "MATRIX_CONVERSATION_HTTP_DRIVER_ISOLATION_OK"
+          # Explicitly select the driver before testing revocation.
+          assert_status 200 -X PUT -H "Authorization: Bearer $owner1_token" -H "Content-Type: application/json" \
+            -d "{\"driverUserId\":\"$DRIVER1_ID\",\"hours\":1}" \
+            "http://127.0.0.1:8090/api/owner/vehicles/$VEHICLE_ID/selected-driver"
+          assert_status 200 -H "Authorization: Bearer $driver1_token" \
+            "http://127.0.0.1:8090/api/driver/conversations/$conversation_id"
+          # Revoking active-driver selection must immediately invalidate an open conversation.
+          assert_status 200 -X DELETE -H "Authorization: Bearer $owner1_token" \
+            "http://127.0.0.1:8090/api/owner/vehicles/$VEHICLE_ID/selected-driver"
+          # Verify the delete really removed the active assignment before testing conversation access.
+          active_after_revoke=$(psql -h 127.0.0.1 -U postgres -d heycar_matrix -Atqc "SELECT COUNT(*) FROM vehicle_active_drivers WHERE vehicle_id='$VEHICLE_ID'")
+          test "$active_after_revoke" = "0" || { echo "Active driver rows remain after revoke: $active_after_revoke"; exit 1; }
+          assert_status 404 -H "Authorization: Bearer $driver1_token" \
+            "http://127.0.0.1:8090/api/driver/conversations/$conversation_id"
+          assert_status 404 -X POST -H "Authorization: Bearer $driver1_token" -H "Content-Type: application/json" \
+            -d '{"message":"revoked driver must not send"}' \
+            "http://127.0.0.1:8090/api/driver/conversations/$conversation_id/messages"
+          assert_status 403 -H "Authorization: Bearer $driver1_token" \
+            "http://127.0.0.1:8090/api/driver/notifications/$notification_id/conversation"
+          # Restore selection for subsequent unrelated matrix fixtures.
+          assert_status 200 -X PUT -H "Authorization: Bearer $owner1_token" -H "Content-Type: application/json" \
+            -d "{\"driverUserId\":\"$DRIVER1_ID\",\"hours\":1}" \
+            "http://127.0.0.1:8090/api/owner/vehicles/$VEHICLE_ID/selected-driver"
+          echo "MATRIX_DRIVER_ACTIVE_CONVERSATION_REVOCATION_HTTP_OK"
 
 
 
