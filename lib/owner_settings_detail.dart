@@ -262,7 +262,7 @@ class _OwnerAccountSettingsPageState extends State<OwnerAccountSettingsPage> {
                 child: Text(
                   editing ? 'Bilgilerini düzenle' : 'Kişisel bilgiler',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: CepqarTheme.text,
                     fontSize: 16,
                     fontWeight: FontWeight.w900,
                   ),
@@ -391,7 +391,7 @@ class _EditableAccountField extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: _panel,
+          color: CepqarTheme.panel,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: _line),
         ),
@@ -407,14 +407,14 @@ class _EditableAccountField extends StatelessWidget {
                 textCapitalization: textCapitalization,
                 autocorrect: false,
                 style: const TextStyle(
-                  color: Colors.white,
+                  color: CepqarTheme.text,
                   fontSize: 15.5,
                   fontWeight: FontWeight.w800,
                 ),
                 decoration: InputDecoration(
                   labelText: label,
                   labelStyle: const TextStyle(
-                    color: _muted,
+                    color: CepqarTheme.muted,
                     fontSize: 12,
                   ),
                   border: InputBorder.none,
@@ -1045,7 +1045,7 @@ class _InfoTile extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(15),
         decoration: BoxDecoration(
-          color: _panel,
+          color: CepqarTheme.panel,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: _line),
         ),
@@ -1057,12 +1057,12 @@ class _InfoTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label, style: const TextStyle(color: _muted, fontSize: 12)),
+                  Text(label, style: const TextStyle(color: CepqarTheme.muted, fontSize: 12)),
                   const SizedBox(height: 3),
                   Text(
                     value,
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: CepqarTheme.text,
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
                     ),
@@ -1145,7 +1145,7 @@ class _ActionTile extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(
-          color: _panel,
+          color: CepqarTheme.panel,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: _line),
         ),
@@ -1167,7 +1167,7 @@ class _ActionTile extends StatelessWidget {
                         Text(
                           title,
                           style: const TextStyle(
-                            color: Colors.white,
+                            color: CepqarTheme.text,
                             fontSize: 15.5,
                             fontWeight: FontWeight.w800,
                           ),
@@ -1175,12 +1175,12 @@ class _ActionTile extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text(
                           subtitle,
-                          style: const TextStyle(color: _muted, fontSize: 12.5, height: 1.25),
+                          style: const TextStyle(color: CepqarTheme.muted, fontSize: 12.5, height: 1.25),
                         ),
                       ],
                     ),
                   ),
-                  const Icon(Icons.chevron_right_rounded, color: Colors.white54),
+                  const Icon(Icons.chevron_right_rounded, color: CepqarTheme.muted),
                 ],
               ),
             ),
