@@ -771,6 +771,21 @@ jobs:
             "http://127.0.0.1:8090/api/owner/vehicles/$VEHICLE_ID/drivers"
           DRIVER1_ID="$DRIVER1_ID" node -e 'const fs=require("fs");const assert=require("node:assert/strict");const x=JSON.parse(fs.readFileSync("/tmp/matrix-response.json","utf8"));assert.ok(x.drivers.some(d=>String(d.driver_user_id)===process.env.DRIVER1_ID && d.active===true),"New owner cannot manage invited driver");'
           echo "MATRIX_TRANSFER_NEW_OWNER_DRIVER_ACCEPTANCE_ISOLATION_HTTP_OK"
+          # After reauthorization, each driver must remain scoped to their vehicle.
+          assert_status 200 -H "Authorization: Bearer $driver1_token" "http://127.0.0.1:8090/api/driver/vehicles"
+          VEHICLE_ID="$VEHICLE_ID" VEHICLE2_ID="$VEHICLE2_ID" node -e 'const fs=require("fs");const assert=require("node:assert/strict");const x=JSON.parse(fs.readFileSync("/tmp/matrix-response.json","utf8"));assert.ok(x.vehicles.some(v=>String(v.vehicle_id)===process.env.VEHICLE_ID));assert.ok(!x.vehicles.some(v=>String(v.vehicle_id)===process.env.VEHICLE2_ID),"Driver 1 can list unrelated vehicle");'
+          assert_status 200 -H "Authorization: Bearer $driver2_token" "http://127.0.0.1:8090/api/driver/vehicles"
+          VEHICLE_ID="$VEHICLE_ID" VEHICLE2_ID="$VEHICLE2_ID" node -e 'const fs=require("fs");const assert=require("node:assert/strict");const x=JSON.parse(fs.readFileSync("/tmp/matrix-response.json","utf8"));assert.ok(x.vehicles.some(v=>String(v.vehicle_id)===process.env.VEHICLE2_ID));assert.ok(!x.vehicles.some(v=>String(v.vehicle_id)===process.env.VEHICLE_ID),"Driver 2 can list transferred vehicle");'
+          assert_status 200 -H "Authorization: Bearer $driver1_token" "http://127.0.0.1:8090/api/driver/notifications"
+          VEHICLE2_ID="$VEHICLE2_ID" node -e 'const fs=require("fs");const assert=require("node:assert/strict");const x=JSON.parse(fs.readFileSync("/tmp/matrix-response.json","utf8"));assert.ok(!x.notifications.some(n=>String(n.vehicle_id)===process.env.VEHICLE2_ID),"Driver 1 sees other vehicle notifications");'
+          assert_status 200 -H "Authorization: Bearer $driver2_token" "http://127.0.0.1:8090/api/driver/notifications"
+          VEHICLE_ID="$VEHICLE_ID" node -e 'const fs=require("fs");const assert=require("node:assert/strict");const x=JSON.parse(fs.readFileSync("/tmp/matrix-response.json","utf8"));assert.ok(!x.notifications.some(n=>String(n.vehicle_id)===process.env.VEHICLE_ID),"Driver 2 sees transferred vehicle notifications");'
+          assert_status 403 -H "Authorization: Bearer $driver1_token" "http://127.0.0.1:8090/api/driver/vehicles/$VEHICLE2_ID/park-note"
+          assert_status 403 -H "Authorization: Bearer $driver2_token" "http://127.0.0.1:8090/api/driver/vehicles/$VEHICLE_ID/park-note"
+          # The former private conversation must remain inaccessible even after re-invitation.
+          assert_status 404 -H "Authorization: Bearer $driver1_token" "http://127.0.0.1:8090/api/driver/conversations/$conversation_id"
+          assert_status 404 -H "Authorization: Bearer $driver2_token" "http://127.0.0.1:8090/api/driver/conversations/$conversation_id"
+          echo "MATRIX_TRANSFER_DRIVER_CROSS_VEHICLE_PRIVATE_ISOLATION_HTTP_OK"
 
 
 
