@@ -543,7 +543,7 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
           if(action=='EXTERNAL_URL')...[const SizedBox(height:8),TextField(controller:target,decoration:const InputDecoration(labelText:'http/https URL'))],
           const SizedBox(height:8),TextField(controller:cta,decoration:const InputDecoration(labelText:'CTA metni')),
         ]))),
-        actions:[TextButton(onPressed:()=>Navigator.pop(d),child:const Text('Vazgeç')),FilledButton(onPressed:!(_validServiceTextColor(titleTextColor.text)&&_validServiceTextColor(subtitleTextColor.text)&&_validServiceTextColor(badgeTextColor.text))||title.text.trim().isEmpty?null:()=>Navigator.pop(d,{'title':title.text.trim(),'subtitle':subtitle.text.trim(),'imageUrl':imageUrl,'backgroundToken':background,'action':action,'actionTarget':action=='EXTERNAL_URL'?target.text.trim():'','ctaText':cta.text.trim()}),child:const Text('Uygula'))],
+        actions:[TextButton(onPressed:()=>Navigator.pop(d),child:const Text('Vazgeç')),FilledButton(onPressed:title.text.trim().isEmpty?null:()=>Navigator.pop(d,{'title':title.text.trim(),'subtitle':subtitle.text.trim(),'imageUrl':imageUrl,'backgroundToken':background,'action':action,'actionTarget':action=='EXTERNAL_URL'?target.text.trim():'','ctaText':cta.text.trim()}),child:const Text('Uygula'))],
       )));
       if(nextCfg==null)return;row['config']=nextCfg;
     }
