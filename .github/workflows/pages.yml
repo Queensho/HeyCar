@@ -34,6 +34,11 @@ jobs:
         run: flutter analyze lib/admin_app_management_page.dart --no-fatal-infos --no-fatal-warnings
       - name: Analyze owner APK and app-config dependency graph
         run: flutter analyze lib/app_ui_config.dart lib/owner_home_redesign.dart lib/owner_home_component_registry.dart lib/entry_theme_live.dart --no-fatal-infos --no-fatal-warnings
+      - name: Verify towing interest demo modules
+        run: |
+          flutter analyze lib/towing_interest_page.dart lib/owner_dashboard_live.dart lib/owner_home_redesign.dart lib/admin_towing_page.dart lib/admin_towing_interest_page.dart --no-fatal-infos --no-fatal-warnings
+          node --check server/towing-interest-routes.js
+          node --test server/tests/towing-interest-demo.test.js
 
   build:
     if: github.event_name != 'pull_request'
