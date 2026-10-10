@@ -34,6 +34,10 @@ jobs:
         run: flutter analyze lib/admin_app_management_page.dart --no-fatal-infos --no-fatal-warnings
       - name: Analyze owner APK and app-config dependency graph
         run: flutter analyze lib/app_ui_config.dart lib/owner_home_redesign.dart lib/owner_home_component_registry.dart lib/entry_theme_live.dart --no-fatal-infos --no-fatal-warnings
+      - name: Test owner session refresh-storm prevention
+        run: |
+          flutter analyze lib/owner_auth.dart test/owner_refresh_storm_test.dart --no-fatal-infos --no-fatal-warnings
+          flutter test test/owner_refresh_storm_test.dart
 
   build:
     if: github.event_name != 'pull_request'
