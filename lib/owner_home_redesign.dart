@@ -1461,15 +1461,15 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
               child:Container(
                 padding:const EdgeInsets.symmetric(horizontal:7,vertical:3),
                 decoration:BoxDecoration(color:badgeColor.withValues(alpha:.12),borderRadius:BorderRadius.circular(8)),
-                child:Text(item.badgeText,style:TextStyle(color:badgeColor,fontSize:8,fontWeight:FontWeight.w900)),
+                child:Text(item.badgeText,style:TextStyle(color:item.badgeTextColor??badgeColor,fontSize:8,fontWeight:FontWeight.w900)),
               ),
             ),
             Positioned(
               left:11,right:available?40:11,bottom:9,
               child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisSize:MainAxisSize.min,children:[
-                Text(item.title,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:text,fontSize:12.5,fontWeight:FontWeight.w900,height:1.05)),
+                Text(item.title,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:item.titleTextColor??text,fontSize:12.5,fontWeight:FontWeight.w900,height:1.05)),
                 const SizedBox(height:3),
-                Text(item.subtitle,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:muted,fontSize:CepqarTheme.caption,height:1.08)),
+                Text(item.subtitle,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:item.subtitleTextColor??muted,fontSize:CepqarTheme.caption,height:1.08)),
               ]),
             ),
             if(available)Positioned(
