@@ -185,7 +185,7 @@ class WeatherCard extends StatelessWidget {
       return Icon(Icons.thunderstorm_rounded, size: size, color: Colors.white);
     }
     if (condition == WeatherCondition.snow) {
-      return Icon(Icons.ac_unit_rounded, size: size, color: white);
+      return Icon(Icons.ac_unit_rounded, size: size, color: Colors.white);
     }
     return SizedBox(width: size + 5, height: size + 5, child: Stack(children: [
       Positioned(top: 0, right: 0, child: Icon(Icons.wb_sunny_rounded,
