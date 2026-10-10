@@ -58,115 +58,141 @@ class WeatherCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const ink = Color(0xFF10102C);
-    const secondary = Color(0xFF5B5484);
+    const white = Colors.white;
     final location = (weather?.location ?? '').trim();
     final description = loading && weather == null
         ? 'Hava yükleniyor'
         : (weather?.description ?? 'Hava durumu kullanılamıyor');
-    final reduceMotion = MediaQuery.disableAnimationsOf(context);
     return LayoutBuilder(builder: (context, constraints) {
-      final narrow = constraints.maxWidth < 350;
-      final cardHeight = narrow ? 177.0 : 170.0;
-      final rightWidth = narrow ? 132.0 : 154.0;
-      final leftWidth = constraints.maxWidth - rightWidth - 42;
+      final width = constraints.maxWidth;
+      final compact = width < 350;
+      final height = compact ? 208.0 : 202.0;
+      final actionsWidth = math.min(112.0, width * .34);
+      final weatherWidth = math.min(148.0, width * .43);
+      final leftWidth = width - weatherWidth - 30;
       return Semantics(
         label: 'Hava durumu ve araç özeti',
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: onTap,
-          child: SizedBox(
-            width: double.infinity,
-            height: cardHeight,
-            child: Stack(children: [
-              ClipPath(clipper: const _WeatherNotchClipper(), child: Stack(children: [
+        child: SizedBox(
+          height: height,
+          child: Stack(children: [
+            ClipPath(
+              clipper: _WeatherNotchClipper(actionsWidth: actionsWidth),
+              child: Stack(children: [
                 Positioned.fill(child: CustomPaint(
                   painter: WeatherCardPainter(condition: _condition),
                 )),
                 Positioned(
-                  left: 14, top: 33, width: math.max(90, leftWidth),
+                  top: 34, left: 17, width: math.max(90, leftWidth),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(_greeting, maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: secondary, fontSize: 11, fontWeight: FontWeight.w700)),
+                      style: const TextStyle(color: white, fontSize: 12, fontWeight: FontWeight.w400)),
                     const SizedBox(height: 4),
-                    Text(_displayName, maxLines: 2, overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: ink, fontSize: narrow ? 17 : 20,
-                        height: 1.03, letterSpacing: -.45, fontWeight: FontWeight.w900)),
-                    const SizedBox(height: 6),
+                    Text(displayName.trim().isEmpty ? 'Araç Sahibi' : displayName.trim(),
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: white, fontSize: compact ? 21 : 24,
+                        height: 1.06, fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 7),
                     const Text('Aracınızla dünya sizinle iletişimde.',
                       maxLines: 2, overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: secondary, fontSize: 10.5,
-                        height: 1.2, fontWeight: FontWeight.w600)),
+                      style: TextStyle(color: white, fontSize: 10.5, height: 1.2)),
                   ]),
                 ),
                 Positioned(
-                  right: 12, top: 72, width: rightWidth,
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Row(children: [
+                  top: 76, right: 13, width: weatherWidth,
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                    Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                      _weatherSymbol(_condition, compact),
+                      const SizedBox(width: 4),
                       Text(_degree(weather?.temperature),
-                        style: TextStyle(color: Colors.white, fontSize: narrow ? 30 : 34,
-                          height: 1, fontWeight: FontWeight.w900)),
-                      const SizedBox(width: 3),
-                      Expanded(child: Row(children: [
-                        const Icon(Icons.location_on_rounded, size: 12, color: Colors.white),
-                        Expanded(child: Text(location.isEmpty ? 'Konum' : location,
-                          maxLines: 1, overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: Colors.white, fontSize: 10,
-                            fontWeight: FontWeight.w800))),
-                      ])),
+                        style: TextStyle(color: white, fontSize: compact ? 30 : 35,
+                          height: 1, fontWeight: FontWeight.w800)),
                     ]),
-                    const SizedBox(height: 5),
-                    Row(children: [
-                      Flexible(child: Text(description, maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: Color(0xFFF0DEFF), fontSize: 10.5,
-                          fontWeight: FontWeight.w700))),
-                      const SizedBox(width: 5),
-                      const Icon(Icons.arrow_upward_rounded, color: Color(0xFFFF8B9C), size: 12),
+                    const SizedBox(height: 3),
+                    Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                      const Icon(Icons.location_on_rounded, color: white, size: 12),
+                      Flexible(child: Text(location.isEmpty ? 'Konum' : location,
+                        maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: white, fontSize: 10.5, fontWeight: FontWeight.w600))),
+                    ]),
+                    const SizedBox(height: 3),
+                    Text(description, maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: white, fontSize: 10.5)),
+                    const SizedBox(height: 4),
+                    Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                      const Icon(Icons.arrow_upward_rounded, color: Color(0xFFFF94B3), size: 12),
                       Text(_degree(weather?.maxTemperature),
-                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900)),
-                      const SizedBox(width: 3),
+                        style: const TextStyle(color: white, fontSize: 10.5)),
+                      const SizedBox(width: 7),
                       const Icon(Icons.arrow_downward_rounded, color: Color(0xFF8BD6FF), size: 12),
                       Text(_degree(weather?.minTemperature),
-                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900)),
+                        style: const TextStyle(color: white, fontSize: 10.5)),
                     ]),
                   ]),
                 ),
                 if (premium) Positioned(
-                  left: 14, bottom: 49,
+                  left: 16, bottom: 49,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 5),
-                    decoration: BoxDecoration(color: const Color(0xFF7514EF),
-                      borderRadius: BorderRadius.circular(20)),
-                    child: const Text('PRO', style: TextStyle(
-                      color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900)),
+                    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: .23),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: Colors.white.withValues(alpha: .3)),
+                    ),
+                    child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.workspace_premium_rounded, color: white, size: 16),
+                      SizedBox(width: 5),
+                      Text('PRO', style: TextStyle(color: white, fontSize: 11,
+                        fontWeight: FontWeight.w800)),
+                    ]),
                   ),
                 ),
                 Positioned(
-                  left: 12, right: 12, bottom: 9,
+                  left: 12, right: 12, bottom: 8,
                   child: Row(children: [
                     Expanded(child: _pill(
                       icon: Icons.directions_car_filled_rounded,
                       text: '$activeVehicleCount araç aktif',
-                      foreground: ink, dark: false, onTap: onVehicles,
+                      foreground: white, dark: true, onTap: onVehicles,
                     )),
                     const SizedBox(width: 7),
                     Expanded(child: _pill(
                       icon: Icons.shield_rounded,
                       text: qrProtection ? 'QR Koruması açık' : 'QR Koruması kapalı',
-                      foreground: ink, dark: false, onTap: onQrSecurity,
+                      foreground: white, dark: true, onTap: onQrSecurity,
                     )),
                   ]),
                 ),
-                // Keep the static painter for reduced-motion users. No repeating
-                // animation controllers or frame-by-frame parent rebuilds.
-                if (reduceMotion) const SizedBox.shrink(),
-              ])),
-              if (headerActions != null) Positioned(right: 22, top: 0, child: headerActions!),
-            ]),
-          ),
+              ]),
+            ),
+            if (headerActions != null)
+              Positioned(right: 2, top: 0, child: headerActions!),
+          ]),
         ),
       );
     });
+  }
+
+  Widget _weatherSymbol(WeatherCondition condition, bool compact) {
+    final size = compact ? 29.0 : 33.0;
+    if (condition == WeatherCondition.night) {
+      return Icon(Icons.nightlight_round, size: size, color: const Color(0xFFFFE8A0));
+    }
+    if (condition == WeatherCondition.clear) {
+      return Icon(Icons.wb_sunny_rounded, size: size, color: const Color(0xFFFFD94F));
+    }
+    if (condition == WeatherCondition.rain ||
+        condition == WeatherCondition.thunderstorm) {
+      return Icon(Icons.thunderstorm_rounded, size: size, color: white);
+    }
+    if (condition == WeatherCondition.snow) {
+      return Icon(Icons.ac_unit_rounded, size: size, color: white);
+    }
+    return SizedBox(width: size + 5, height: size + 5, child: Stack(children: [
+      Positioned(top: 0, right: 0, child: Icon(Icons.wb_sunny_rounded,
+        size: size * .78, color: const Color(0xFFFFD94F))),
+      Positioned(bottom: 0, left: 0, child: Icon(Icons.cloud_rounded,
+        size: size * .87, color: Colors.white)),
+    ]));
   }
 
   Widget _pill({
