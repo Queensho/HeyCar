@@ -14,6 +14,9 @@ void main() {
     });
     await OwnerAuth.restore();
 
+    // flutter_test installs an HTTP override that always returns 400.
+    // This test uses only a localhost server, so restore the real HttpClient.
+    HttpOverrides.global = null;
     final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     var rejectedOld = 0;
     var acceptedNew = 0;
