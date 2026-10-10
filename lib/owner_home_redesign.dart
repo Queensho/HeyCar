@@ -575,7 +575,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   }
 
   Widget header()=>SizedBox(
-    height:240,
+    height:286,
     child:Stack(children:[
       Positioned.fill(
         child:Container(
@@ -628,51 +628,14 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       Padding(
         padding:EdgeInsets.fromLTRB(20,MediaQuery.paddingOf(context).top+8,18,0),
         child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-          Row(children:[
-            brand(),
-            const Spacer(),
-            InkWell(
-              onTap:widget.notifications,
-              borderRadius:BorderRadius.circular(22),
-              child:Stack(
-                clipBehavior:Clip.none,
-                children:[
-                  Padding(
-                    padding:const EdgeInsets.all(8),
-                    child:Icon(Icons.notifications_none_rounded,color:text,size:25),
-                  ),
-                  if(unread>0)
-                    const Positioned(
-                      right:5,
-                      top:5,
-                      child:CircleAvatar(radius:4.5,backgroundColor:Color(0xFFFF425D)),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(width:7),
-            Container(
-              width:42,
-              height:42,
-              alignment:Alignment.center,
-              decoration:BoxDecoration(
-                shape:BoxShape.circle,
-                gradient:const LinearGradient(
-                  colors:[Color(0xFF5820C8),Color(0xFF8C4DFF)],
-                ),
-              ),
-              child:Text(
-                initials,
-                style:const TextStyle(
-                  color:Colors.white,
-                  fontSize:14,
-                  fontWeight:FontWeight.w900,
-                ),
-              ),
-            ),
-          ]),
+          brand(),
           const SizedBox(height:13),
           WeatherCard(
+            headerActions: Row(mainAxisSize:MainAxisSize.min,children:[
+              Material(color:CepqarTheme.panel,shape:const CircleBorder(),child:SizedBox(width:42,height:42,child:InkWell(onTap:widget.notifications,customBorder:const CircleBorder(),child:Stack(children:[Center(child:Icon(Icons.notifications_none_rounded,color:text,size:25)),if(unread>0)const Positioned(right:6,top:6,child:CircleAvatar(radius:4.5,backgroundColor:Color(0xFFFF425D)))])))),
+              const SizedBox(width:8),
+              Container(width:42,height:42,alignment:Alignment.center,decoration:const BoxDecoration(shape:BoxShape.circle,gradient:LinearGradient(colors:[Color(0xFF5820C8),Color(0xFF8C4DFF)])),child:Text(initials,style:const TextStyle(color:Colors.white,fontSize:14,fontWeight:FontWeight.w900))),
+            ]),
             displayName:OnboardingDraft.displayName.trim().isEmpty?'Araç Sahibi':OnboardingDraft.displayName.trim(),
             premium:premium,
             activeVehicleCount:activeVehicleCount,
