@@ -1329,7 +1329,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       physics:const BouncingScrollPhysics(),
       padding:const EdgeInsets.symmetric(horizontal:16),
       children:[
-        SizedBox(width:180,child:Padding(padding:const EdgeInsets.only(right:12),child:service(Icons.fire_truck_rounded,'Çekici','Çekici çağır ve canlı takip et.',const Color(0xFFFF8A43),()=>widget.shortcut('towing'),car:true,comingSoon:true,enabled:testAccount))),
+        SizedBox(width:180,child:Padding(padding:const EdgeInsets.only(right:12),child:service(Icons.fire_truck_rounded,'Çekici','Çekici çağır ve canlı takip et.',const Color(0xFFFF8A43),()=>widget.shortcut('towing'),car:true,comingSoon:true,enabled:true))),
         SizedBox(width:180,child:Padding(padding:const EdgeInsets.only(right:12),child:service(Icons.sos_rounded,'Yol Yardım','Akü, lastik, yakıt ve yerinde destek.',const Color(0xFFFF775F),()=>widget.shortcut('roadside_help'),comingSoon:true,enabled:testAccount))),
         SizedBox(width:180,child:Padding(padding:const EdgeInsets.only(right:12),child:service(Icons.support_agent_rounded,'Vale','Aracınızı güvenle teslim edin.',const Color(0xFF8B36FF),widget.services,comingSoon:true,enabled:testAccount))),
         SizedBox(width:180,child:Padding(padding:const EdgeInsets.only(right:12),child:service(Icons.local_offer_rounded,'Fırsatlar','Size özel kampanya ve ayrıcalıklar.',const Color(0xFF23C976),()=>widget.shortcut('offers'),comingSoon:true,enabled:testAccount))),
@@ -1414,12 +1414,12 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   }
 
   Widget _managedServiceCard(AppUiServiceItem item){
-    final available=!item.testOnly||testAccount;
+    final available=item.id=='towing'||!item.testOnly||testAccount;
     final background=_ui.token(item.backgroundToken);
     final iconColor=_ui.token(item.iconToken);
     final badgeColor=_ui.token(item.badgeToken);
     return InkWell(
-      onTap:available?()=>_runManagedAction(item):null,
+      onTap:available?()=>item.id=='towing'?widget.shortcut('app_towing'):_runManagedAction(item):null,
       borderRadius:BorderRadius.circular(_ui.cardRadius),
       child:Opacity(
         opacity:available?1:.78,
@@ -1458,12 +1458,12 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                 child:item.iconUrl.isNotEmpty?Padding(padding:const EdgeInsets.all(7),child:Image.network(item.iconUrl,fit:BoxFit.contain,errorBuilder:(_,__,___)=>Icon(_managedIcon(item.icon),color:iconColor,size:21))):Icon(_managedIcon(item.icon),color:iconColor,size:21),
               ),
             ),
-            if(item.badgeText.isNotEmpty)Positioned(
+            if(item.badgeText.isNotEmpty||item.id=='towing')Positioned(
               right:10,top:10,
               child:Container(
                 padding:const EdgeInsets.symmetric(horizontal:7,vertical:3),
                 decoration:BoxDecoration(color:badgeColor.withValues(alpha:.12),borderRadius:BorderRadius.circular(8)),
-                child:Text(item.badgeText,style:TextStyle(color:item.badgeTextColor??badgeColor,fontSize:8,fontWeight:FontWeight.w900)),
+                child:Text(item.id=='towing'?'Yakında':item.badgeText,style:TextStyle(color:item.badgeTextColor??badgeColor,fontSize:8,fontWeight:FontWeight.w900)),
               ),
             ),
             Positioned(
@@ -1851,7 +1851,7 @@ class OwnerServicesRedesign extends StatelessWidget{
     final light=CepqarTheme.isLight,text=CepqarTheme.text,muted=CepqarTheme.muted,panel=CepqarTheme.panel,line=CepqarTheme.line;
     final items=<({IconData icon,String title,String subtitle,Color color,VoidCallback tap,bool comingSoon,bool enabled})>[
       (icon:Icons.storefront_rounded,title:'CepQontag Mağaza',subtitle:'Araç etiketi, yedek ürünler ve yeni CepQontag ürünleri.',color:const Color(0xFF713BFF),tap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const CepqontagStorePage())),comingSoon:false,enabled:true),
-      (icon:Icons.fire_truck_rounded,title:'Çekici',subtitle:'Yolda kaldığınızda çekici çağırın ve canlı takip edin.',color:const Color(0xFFFF8A43),tap:onTowing,comingSoon:true,enabled:_ownerServicesTestAccount),
+      (icon:Icons.fire_truck_rounded,title:'Çekici',subtitle:'Yolda kaldığınızda çekici çağırın ve canlı takip edin.',color:const Color(0xFFFF8A43),tap:onTowing,comingSoon:true,enabled:true),
       (icon:Icons.sos_rounded,title:'Yol Yardım',subtitle:'Akü, lastik, yakıt ve yerinde müdahale desteği.',color:const Color(0xFFFF775F),tap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const RoadsideHelpPage(initialTab:0))),comingSoon:true,enabled:_ownerServicesTestAccount),
       (icon:Icons.support_agent_rounded,title:'Vale',subtitle:'Aracınızı güvenle teslim edin, zaman kazanın.',color:const Color(0xFF8B36FF),tap:onVale,comingSoon:true,enabled:_ownerServicesTestAccount),
       (icon:Icons.local_offer_rounded,title:'Fırsatlar',subtitle:'Size özel kampanya ve ayrıcalıkları keşfedin.',color:const Color(0xFF23C976),tap:onOffers,comingSoon:true,enabled:_ownerServicesTestAccount),
