@@ -34,12 +34,40 @@ class _TowingInterestPageState extends State<TowingInterestPage>{
   @override void dispose(){_district.dispose();super.dispose();}
 
   Future<void> _load()async{
+    if(mounted)setState((){checking=true;error=null;});
     try{
-      final r=await OwnerHttp.get(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/towing-interest'));
+      final r=await OwnerHttp.get(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/towing-interest'))
+        .timeout(const Duration(seconds:15));
       if(!mounted)return;
-      if(r.statusCode!=200)throw StateError('HTTP ${r.statusCode}');
+      if(r.statusCode!=200){
+        String? apiError;
+        try{
+          final parsed=jsonDecode(r.body);
+          if(parsed is Map)apiError=parsed['error']?.toString();
+        }catch(_){}
+        final message=switch(r.statusCode){
+          401=>'Oturumunuz doğrulanamadı (401). Hesabınızdan çıkış yapıp tekrar giriş yapın.',
+          403=>'Web uygulamasının API erişimi engellendi (403).',
+          404=>'Çekici ön talep API adresi bulunamadı (404).',
+          409=>'Çekici ön talep kayıtları sunucuda henüz etkin değil (409).',
+          429=>'Çok fazla deneme yapıldı (429). Bir süre sonra tekrar deneyin.',
+          503=>'Çekici kayıt servisi veya veritabanı şu anda yanıt vermiyor (503).',
+          _=>'Kayıt kontrolü başarısız oldu (HTTP ${r.statusCode}).',
+        };
+        setState((){
+          backendReady=false;
+          error=apiError==null?message:'$message Hata kodu: $apiError';
+        });
+        return;
+      }
       final d=jsonDecode(r.body);
-      if(d is! Map||d['demo']==true)throw StateError('NOT_YET_ACTIVE');
+      if(d is! Map||d['demo']==true){
+        setState((){
+          backendReady=false;
+          error='Sunucu henüz gerçek kayıt modunda değil. Talebiniz kaydedilmeyecek.';
+        });
+        return;
+      }
       setState((){
         backendReady=true;error=null;
         if(d['interest'] is Map){
@@ -54,7 +82,7 @@ class _TowingInterestPageState extends State<TowingInterestPage>{
     }catch(_){
       if(mounted)setState((){
         backendReady=false;
-        error='Ön talep kayıtları henüz aktif değil. Tercih kaydedilmeyecek; lütfen daha sonra tekrar deneyin.';
+        error='API bağlantısı kurulamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.';
       });
     }finally{if(mounted)setState(()=>checking=false);}
   }
@@ -137,6 +165,14 @@ class _TowingInterestPageState extends State<TowingInterestPage>{
               style:TextStyle(color:ink,fontSize:12,fontWeight:FontWeight.w700))),
           ]),
         ),
+        if(!checking&&!backendReady)...[
+          const SizedBox(height:8),
+          Align(alignment:Alignment.centerRight,child:TextButton.icon(
+            onPressed:_load,
+            icon:const Icon(Icons.refresh_rounded),
+            label:const Text('Tekrar Kontrol Et'),
+          )),
+        ],
         const SizedBox(height:16),
         if(submitted)...[
           Container(
