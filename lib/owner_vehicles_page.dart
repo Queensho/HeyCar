@@ -18,7 +18,51 @@ const _purple=Color(0xFF8B5CFF),_gold=Color(0xFFFFC857),_green=Color(0xFF38D178)
 Color get _bg=>CepqarTheme.bg; Color get _panel=>CepqarTheme.panel; Color get _line=>CepqarTheme.line; Color get _muted=>CepqarTheme.muted; Color get _text=>CepqarTheme.text;
 class OwnerVehiclesPage extends StatefulWidget{const OwnerVehiclesPage({super.key,this.onVehicleChanged});final VoidCallback? onVehicleChanged;@override State<OwnerVehiclesPage> createState()=>_S();}
 class _S extends State<OwnerVehiclesPage>{List<Map<String,dynamic>> vehicles=[];bool loading=true,premium=false;int limit=1;String? error;String get selected=>QrDraft.vehicleId.trim().isNotEmpty?QrDraft.vehicleId.trim():OnboardingDraft.vehicleId.trim();@override void initState(){super.initState();_load();}
-Future<void> _load()async{final owner=OnboardingDraft.userId.trim();if(owner.isEmpty){setState((){loading=false;error='Araç sahibi oturumu bulunamadı.';});return;}try{final r=await OwnerHttp.get(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/vehicles'),json:false).timeout(const Duration(seconds:15));final d=jsonDecode(r.body);if(r.statusCode<200||r.statusCode>=300||d is! Map)throw Exception();final list=d['vehicles'];final next=list is List?list.whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).toList():<Map<String,dynamic>>[];if(next.isNotEmpty&&!next.any((v)=>'${v['id']}'==selected))_select(next.first,notify:false);if(!mounted)return;setState((){vehicles=next;premium=d['premium']==true;limit=int.tryParse('${d['limit']}')??1;loading=false;error=null;});}catch(_){if(mounted)setState((){loading=false;error='Araçlar yüklenemedi.';});}}
+Future<void> _load()async{
+  if(mounted)setState(()=>loading=true);
+  final owner=OnboardingDraft.userId.trim();
+  if(owner.isEmpty){
+    if(mounted)setState((){loading=false;error='Araç sahibi oturumu bulunamadı. Yeniden giriş yapın.';});
+    return;
+  }
+  try{
+    final r=await OwnerHttp.get(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/vehicles'),json:false)
+        .timeout(const Duration(seconds:15));
+    if(!mounted)return;
+    if(r.statusCode==401){
+      setState((){
+        loading=false;
+        error='Oturumunuz geçersiz veya iptal edilmiş (401). Profil bölümünden çıkış yapıp yeniden giriş yapın. Araçlarınız silinmedi.';
+      });
+      return;
+    }
+    if(r.statusCode<200||r.statusCode>=300){
+      setState((){
+        loading=false;
+        error='Araçlar sunucudan yüklenemedi (HTTP ${r.statusCode}). Tekrar deneyin.';
+      });
+      return;
+    }
+    final d=jsonDecode(r.body);
+    if(d is! Map)throw const FormatException('INVALID_VEHICLES_RESPONSE');
+    final list=d['vehicles'];
+    final next=list is List?list.whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).toList():<Map<String,dynamic>>[];
+    if(next.isNotEmpty&&!next.any((v)=>'${v['id']}'==selected))_select(next.first,notify:false);
+    if(!mounted)return;
+    setState((){
+      vehicles=next;
+      premium=d['premium']==true;
+      limit=int.tryParse('${d['limit']}')??1;
+      loading=false;
+      error=null;
+    });
+  }catch(_){
+    if(mounted)setState((){
+      loading=false;
+      error='Araç bilgileri alınamadı. Bağlantınızı kontrol edip yeniden deneyin.';
+    });
+  }
+}
 void _select(Map<String,dynamic> v,{bool notify=true}){final id='${v['id']??''}';QrDraft.vehicleId=id;OnboardingDraft.vehicleId=id;QrDraft.plate='${v['plate']??''}';QrDraft.make='${v['make']??''}';QrDraft.model='${v['model']??''}';QrDraft.token='${v['qr_token']??''}'.trim();QrDraft.scanSecret='${v['qr_scan_secret']??''}'.trim();_persistSelection();if(notify){setState((){});widget.onVehicleChanged?.call();}}
 Future<void> _persistSelection()async{final p=await SharedPreferences.getInstance();await p.setString('owner_vehicle_id',QrDraft.vehicleId);await p.setString('owner_plate',QrDraft.plate);await p.setString('owner_make',QrDraft.make);await p.setString('owner_model',QrDraft.model);await p.setString('owner_qr_token',QrDraft.token);await p.setString('owner_qr_scan_secret',QrDraft.scanSecret);}
 Future<void> _qr(Map<String,dynamic> v)async{_select(v);if('${v['qr_token']??''}'.trim().isNotEmpty){_showQr(v);return;}await Navigator.push(context,MaterialPageRoute(builder:(c)=>RealQrScanPage(onBack:()=>Navigator.pop(c),onFound:(){Navigator.pop(c);_activate(v);})));}
@@ -237,7 +281,15 @@ Widget _bottomAction(IconData icon,String title,String subtitle,VoidCallback tap
             if(loading)
               const Padding(padding:EdgeInsets.all(28),child:Center(child:CircularProgressIndicator(color:_purple)))
             else if(error!=null)
-              Container(padding:const EdgeInsets.all(18),decoration:BoxDecoration(color:_panel,borderRadius:BorderRadius.circular(15),border:Border.all(color:_line)),child:Text(error!,textAlign:TextAlign.center,style:TextStyle(color:_muted)))
+              Container(
+                padding:const EdgeInsets.all(18),
+                decoration:BoxDecoration(color:_panel,borderRadius:BorderRadius.circular(15),border:Border.all(color:_line)),
+                child:Column(children:[
+                  Text(error!,textAlign:TextAlign.center,style:TextStyle(color:_muted)),
+                  const SizedBox(height:9),
+                  TextButton.icon(onPressed:_load,icon:const Icon(Icons.refresh_rounded),label:const Text('Tekrar Dene')),
+                ]),
+              )
             else if(vehicles.isEmpty)
               Container(
                 padding:const EdgeInsets.all(18),

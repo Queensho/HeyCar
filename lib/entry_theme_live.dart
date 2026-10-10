@@ -127,12 +127,29 @@ Future<void> _restoreSession()async{
     var ownerNeedsRelogin=false;
 
     if(ownerFlag){
-      if(OwnerAuth.accessTokenUsable()){
-        loggedIn=true;
+      // A locally unexpired JWT is not proof of a live backend session.
+      // Refresh rotation or account security changes may revoke its sid.
+      final localSessionCandidate=OwnerAuth.accessTokenUsable();
+      final refreshResult=localSessionCandidate
+          ? OwnerRefreshResult.success
+          : await OwnerAuth.refreshResult();
+      if(refreshResult==OwnerRefreshResult.invalid){
+        ownerNeedsRelogin=true;
       }else{
-        final refreshResult=await OwnerAuth.refreshResult();
-        loggedIn=refreshResult!=OwnerRefreshResult.invalid;
-        ownerNeedsRelogin=refreshResult==OwnerRefreshResult.invalid;
+        try{
+          // Use an existing authenticated route, no new VPS endpoint needed.
+          // OwnerHttp automatically retries once with refreshed credentials.
+          final response=await OwnerHttp.get(
+            Uri.parse('${OnboardingBackend.baseUrl}/api/owner/vehicles'),
+            json:false,
+          ).timeout(const Duration(seconds:12));
+          ownerNeedsRelogin=response.statusCode==401;
+          // For non-auth errors (503/network) retain the cached shell so
+          // temporary outages do not silently sign users out.
+          loggedIn=!ownerNeedsRelogin;
+        }catch(_){
+          loggedIn=true; // transient connectivity issue, not proof of revocation
+        }
       }
       if(ownerNeedsRelogin){
         await OwnerAuth.clear();
