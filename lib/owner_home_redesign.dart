@@ -25,13 +25,14 @@ class OwnerHomeRedesign extends StatefulWidget{
   const OwnerHomeRedesign({
     super.key,
     required this.notifications,
+    required this.profile,
     required this.vehicles,
     required this.services,
     required this.park,
     required this.shortcut,
     this.active=true,
   });
-  final VoidCallback notifications,vehicles,services,park;
+  final VoidCallback notifications,profile,vehicles,services,park;
   final ValueChanged<String> shortcut;
   final bool active;
   @override State<OwnerHomeRedesign> createState()=>_OwnerHomeRedesignState();
@@ -575,7 +576,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   }
 
   Widget header()=>SizedBox(
-    height:274,
+    height:308,
     child:Stack(children:[
       Positioned.fill(
         child:Container(
@@ -632,9 +633,9 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
           const SizedBox(height:13),
           WeatherCard(
             headerActions: Row(mainAxisSize:MainAxisSize.min,children:[
-              Material(color:CepqarTheme.panel,shape:const CircleBorder(),child:SizedBox(width:42,height:42,child:InkWell(onTap:widget.notifications,customBorder:const CircleBorder(),child:Stack(children:[Center(child:Icon(Icons.notifications_none_rounded,color:text,size:25)),if(unread>0)const Positioned(right:6,top:6,child:CircleAvatar(radius:4.5,backgroundColor:Color(0xFFFF425D)))])))),
+              Material(color:Colors.white,shape:const CircleBorder(),child:SizedBox(width:48,height:48,child:InkWell(onTap:widget.notifications,customBorder:const CircleBorder(),child:Stack(children:[const Center(child:Icon(Icons.notifications_rounded,color:Color(0xFF6327EF),size:25)),if(unread>0)const Positioned(right:7,top:7,child:CircleAvatar(radius:4.5,backgroundColor:Color(0xFFFF4275)))])))),
               const SizedBox(width:8),
-              Container(width:42,height:42,alignment:Alignment.center,decoration:const BoxDecoration(shape:BoxShape.circle,gradient:LinearGradient(colors:[Color(0xFF5820C8),Color(0xFF8C4DFF)])),child:Text(initials,style:const TextStyle(color:Colors.white,fontSize:14,fontWeight:FontWeight.w900))),
+              Material(color:Colors.white,shape:const CircleBorder(),child:SizedBox(width:48,height:48,child:InkWell(onTap:widget.profile,customBorder:const CircleBorder(),child:Center(child:CircleAvatar(radius:19,backgroundColor:const Color(0xFF7536ED),child:Text(initials,style:const TextStyle(color:Colors.white,fontSize:13,fontWeight:FontWeight.w800))))))),
             ]),
             displayName:OnboardingDraft.displayName.trim().isEmpty?'Araç Sahibi':OnboardingDraft.displayName.trim(),
             premium:premium,
