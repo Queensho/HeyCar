@@ -70,7 +70,7 @@ for i in 1 2 3 4 5 6 7 8; do
   sleep 2
 done
 test -s "$TMP/health.json"
-curl --fail --silent --show-error --max-time 6 "http://127.0.0.1:$PORT/api/towing/interest/availability?city=Istanbul&district=Avcilar" > "$TMP/availability.json"
+curl --fail --silent --show-error --max-time 6 "http://127.0.0.1:$PORT/api/towing/interest/availability?city=%C4%B0stanbul&district=Avc%C4%B1lar" > "$TMP/availability.json"
 node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync(process.argv[1]));if(j.ok!==true||j.demo!==false||j.mode!=='coming_soon')process.exit(1)" "$TMP/availability.json"
 ROLLED_OUT=1
 echo "LIVE_TOWING_INTEREST_OK sha=$COMMIT (only opt-in data collection; no dispatch)"
