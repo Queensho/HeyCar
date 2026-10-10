@@ -345,7 +345,9 @@ class _VehicleReferenceCard extends StatelessWidget{
       :(dark?_purple.withValues(alpha:.38):_line);
 
     return Container(
-      height:142,
+      // Keep the model/details and "Ana araç yap" row above the action strip.
+      // 142 px clips the non-selected card on common Android font metrics.
+      height:162,
       padding:const EdgeInsets.fromLTRB(11,8,11,8),
       decoration:BoxDecoration(
         color:dark?const Color(0xFF090E1D):_panel,
