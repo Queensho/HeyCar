@@ -84,7 +84,7 @@ class WeatherCard extends StatelessWidget {
                   painter: WeatherCardPainter(condition: _condition),
                 )),
                 Positioned(
-                  left: 14, top: 54, width: math.max(90, leftWidth),
+                  left: 14, top: 33, width: math.max(90, leftWidth),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(_greeting, maxLines: 1, overflow: TextOverflow.ellipsis,
                       style: const TextStyle(color: secondary, fontSize: 11, fontWeight: FontWeight.w700)),
@@ -132,7 +132,7 @@ class WeatherCard extends StatelessWidget {
                   ]),
                 ),
                 if (premium) Positioned(
-                  left: 14, bottom: 40,
+                  left: 14, bottom: 49,
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 5),
                     decoration: BoxDecoration(color: const Color(0xFF7514EF),
@@ -161,7 +161,7 @@ class WeatherCard extends StatelessWidget {
                 // animation controllers or frame-by-frame parent rebuilds.
                 if (reduceMotion) const SizedBox.shrink(),
               ])),
-              if (headerActions != null) Positioned(right: 2, top: 0, child: headerActions!),
+              if (headerActions != null) Positioned(right: 16, top: 0, child: headerActions!),
             ]),
           ),
         ),
@@ -505,7 +505,7 @@ class _WeatherNotchClipper extends CustomClipper<Path> {
     final h = size.height;
     // The shoulder is tangent to the horizontal notch floor. Both the
     // cutout and button row are anchored to the same right-hand edge.
-    final shoulder = math.max(70.0, w - 116.0);
+    final shoulder = math.max(70.0, w - 130.0);
     const notchFloor = 52.0;
     const r = 25.0;
     return Path()
