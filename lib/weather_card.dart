@@ -17,6 +17,7 @@ class WeatherCard extends StatelessWidget {
     this.onVehicles,
     this.onQrSecurity,
     this.onTap,
+    this.headerActions,
   });
 
   final String displayName;
@@ -28,6 +29,7 @@ class WeatherCard extends StatelessWidget {
   final VoidCallback? onVehicles;
   final VoidCallback? onQrSecurity;
   final VoidCallback? onTap;
+  final Widget? headerActions;
 
   static const purple = CepqarTheme.purple;
   static const lime = CepqarTheme.lime;
@@ -65,7 +67,7 @@ class WeatherCard extends StatelessWidget {
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
     return LayoutBuilder(builder: (context, constraints) {
       final narrow = constraints.maxWidth < 350;
-      final cardHeight = narrow ? 148.0 : 138.0;
+      final cardHeight = narrow ? 194.0 : 184.0;
       final rightWidth = narrow ? 112.0 : 132.0;
       final leftWidth = constraints.maxWidth - rightWidth - 42;
       return Semantics(
@@ -76,14 +78,13 @@ class WeatherCard extends StatelessWidget {
           child: SizedBox(
             width: double.infinity,
             height: cardHeight,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(24),
-              child: Stack(children: [
+            child: Stack(children: [
+              ClipPath(clipper: const _WeatherNotchClipper(), child: Stack(children: [
                 Positioned.fill(child: CustomPaint(
                   painter: WeatherCardPainter(condition: _condition),
                 )),
                 Positioned(
-                  left: 14, top: 12, width: math.max(90, leftWidth),
+                  left: 14, top: 58, width: math.max(90, leftWidth),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(_greeting, maxLines: 1, overflow: TextOverflow.ellipsis,
                       style: const TextStyle(color: secondary, fontSize: 11, fontWeight: FontWeight.w700)),
@@ -99,7 +100,7 @@ class WeatherCard extends StatelessWidget {
                   ]),
                 ),
                 Positioned(
-                  right: 12, top: 28, width: rightWidth,
+                  right: 12, top: 74, width: rightWidth,
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
                       Text(_degree(weather?.temperature),
@@ -159,8 +160,9 @@ class WeatherCard extends StatelessWidget {
                 // Keep the static painter for reduced-motion users. No repeating
                 // animation controllers or frame-by-frame parent rebuilds.
                 if (reduceMotion) const SizedBox.shrink(),
-              ]),
-            ),
+              ])),
+              if (headerActions != null) Positioned(right: 2, top: 0, child: headerActions!),
+            ]),
           ),
         ),
       );
@@ -488,4 +490,22 @@ class WeatherCardPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant WeatherCardPainter oldDelegate) =>
       oldDelegate.condition != condition;
+}
+
+class _WeatherNotchClipper extends CustomClipper<Path> {
+  const _WeatherNotchClipper();
+  @override
+  Path getClip(Size size) {
+    final w=size.width, h=size.height;
+    final x=math.max(45.0,w-124);
+    return Path()
+      ..moveTo(24,0)..lineTo(x-24,0)
+      ..cubicTo(x-7,0,x-8,46,x+28,46)
+      ..lineTo(w-24,46)..quadraticBezierTo(w,46,w,70)
+      ..lineTo(w,h-24)..quadraticBezierTo(w,h,w-24,h)
+      ..lineTo(24,h)..quadraticBezierTo(0,h,0,h-24)
+      ..lineTo(0,24)..quadraticBezierTo(0,0,24,0)..close();
+  }
+  @override
+  bool shouldReclip(covariant _WeatherNotchClipper oldClipper)=>false;
 }
