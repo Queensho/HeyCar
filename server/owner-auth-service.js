@@ -7,10 +7,28 @@ function sign(payload){const head=b64(JSON.stringify({alg:'HS256',typ:'JWT'}));c
 function verify(token){try{const [h,b,s]=String(token||'').split('.');if(!h||!b||!s)return null;const expected=crypto.createHmac('sha256',secret()).update(h+'.'+b).digest();const got=Buffer.from(s,'base64url');if(got.length!==expected.length||!crypto.timingSafeEqual(got,expected))return null;const p=JSON.parse(Buffer.from(b,'base64url').toString());if(p.typ!=='owner'||!p.sub||!p.exp||p.exp<=Math.floor(Date.now()/1000))return null;return p;}catch(_){return null;}}
 function accessToken(ownerId,securityVersion=1,sessionId=''){const now=Math.floor(Date.now()/1000);return sign({sub:String(ownerId),typ:'owner',sv:Number(securityVersion||1),sid:String(sessionId),iat:now,exp:now+ACCESS_TTL_SECONDS});}
 function hash(v){return crypto.createHash('sha256').update(v).digest('hex');}
-async function issueTokens(db,ownerId){const state=await db.query("SELECT u.status,COALESCE(p.security_version,1)::int AS security_version FROM users u LEFT JOIN owner_privacy_settings p ON p.owner_id=u.id::text WHERE u.id=$1 LIMIT 1",[ownerId]);if(!state.rows.length||state.rows[0].status!=='active')throw new Error('OWNER_NOT_ACTIVE');const securityVersion=Number(state.rows[0].security_version||1);const refresh=crypto.randomBytes(48).toString('base64url');const created=await db.query("INSERT INTO owner_auth_sessions(owner_id,refresh_token_hash,expires_at) VALUES($1,$2,now()+interval '30 days') RETURNING id",[ownerId,hash(refresh)]);return{accessToken:accessToken(ownerId,securityVersion,created.rows[0].id),refreshToken:refresh,expiresIn:ACCESS_TTL_SECONDS};}
+// The optional session ID is used only during a verified, locked refresh.
+// Keeping the session ID stable avoids invalidating in-flight access tokens.
+async function issueTokens(db,ownerId,existingSessionId=''){
+  const state=await db.query("SELECT u.status,COALESCE(p.security_version,1)::int AS security_version FROM users u LEFT JOIN owner_privacy_settings p ON p.owner_id=u.id::text WHERE u.id=$1 LIMIT 1",[ownerId]);
+  if(!state.rows.length||state.rows[0].status!=='active')throw new Error('OWNER_NOT_ACTIVE');
+  const securityVersion=Number(state.rows[0].security_version||1);
+  const refresh=crypto.randomBytes(48).toString('base64url');
+  let session;
+  if(existingSessionId){
+    session=await db.query("UPDATE owner_auth_sessions SET refresh_token_hash=$2,expires_at=now()+interval '30 days' WHERE id=$1 AND owner_id=$3 AND revoked_at IS NULL AND expires_at>now() RETURNING id",[existingSessionId,hash(refresh),ownerId]);
+    if(session.rowCount!==1)throw new Error('OWNER_SESSION_ROTATION_CONFLICT');
+  }else{
+    session=await db.query("INSERT INTO owner_auth_sessions(owner_id,refresh_token_hash,expires_at) VALUES($1,$2,now()+interval '30 days') RETURNING id",[ownerId,hash(refresh)]);
+  }
+  return{accessToken:accessToken(ownerId,securityVersion,session.rows[0].id),refreshToken:refresh,expiresIn:ACCESS_TTL_SECONDS};
+}
 function bearer(req){const h=String(req.headers.authorization||'');return h.toLowerCase().startsWith('bearer ')?h.slice(7).trim():'';}
 function ownerId(req){const p=verify(bearer(req));return p?String(p.sub):'';}
-async function rotateRefresh(db,refresh){const h=hash(refresh);const c=await db.connect();try{await c.query('BEGIN');const r=await c.query("SELECT s.id,s.owner_id FROM owner_auth_sessions s JOIN users u ON u.id=s.owner_id WHERE s.refresh_token_hash=$1 AND s.revoked_at IS NULL AND s.expires_at>now() AND u.status='active' FOR UPDATE OF s",[h]);if(!r.rows.length){await c.query('ROLLBACK');return null;}await c.query('UPDATE owner_auth_sessions SET revoked_at=now() WHERE id=$1',[r.rows[0].id]);const out=await issueTokens(c,r.rows[0].owner_id);await c.query('COMMIT');return out;}catch(e){await c.query('ROLLBACK').catch(()=>{});throw e;}finally{c.release();}}
+async function rotateRefresh(db,refresh){const h=hash(refresh);const c=await db.connect();try{await c.query('BEGIN');const r=await c.query("SELECT s.id,s.owner_id FROM owner_auth_sessions s JOIN users u ON u.id=s.owner_id WHERE s.refresh_token_hash=$1 AND s.revoked_at IS NULL AND s.expires_at>now() AND u.status='active' FOR UPDATE OF s",[h]);if(!r.rows.length){await c.query('ROLLBACK');return null;}// Rotate the refresh secret inside the same session record. The old refresh
+// token becomes unusable immediately; access JWTs issued for this session
+// remain valid until their natural expiry or an explicit revoke/logout.
+const out=await issueTokens(c,r.rows[0].owner_id,r.rows[0].id);await c.query('COMMIT');return out;}catch(e){await c.query('ROLLBACK').catch(()=>{});throw e;}finally{c.release();}}
 async function revokeRefresh(db,refresh){if(!refresh)return;await db.query('UPDATE owner_auth_sessions SET revoked_at=now() WHERE refresh_token_hash=$1',[hash(refresh)]);}
 async function revokeAll(db,ownerId){await db.query('UPDATE owner_auth_sessions SET revoked_at=now() WHERE owner_id=$1 AND revoked_at IS NULL',[ownerId]);}
 module.exports={issueTokens,rotateRefresh,revokeRefresh,revokeAll,ownerId,verify,ACCESS_TTL_SECONDS,REFRESH_TTL_DAYS};
