@@ -515,7 +515,7 @@ class _WeatherNotchClipper extends CustomClipper<Path> {
       ..lineTo(curveStart, 0)
       ..cubicTo(
         curveStart + (curveEnd - curveStart) * .36, 0,
-        curveStart + (curveEnd - curveStart) * .28, notchFloor * .72,
+        curveEnd - (curveEnd - curveStart) * .17, notchFloor,
         curveEnd, notchFloor,
       )
       ..lineTo(w - r, notchFloor)
