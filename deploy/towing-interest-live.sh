@@ -50,7 +50,9 @@ echo 'Backing up the database before applying the new additive migration...'
 sudo -u postgres pg_dump -Fc "$DB" > "$BACKUP/heycar-db-before-towing-interest.dump"
 test -s "$BACKUP/heycar-db-before-towing-interest.dump"
 chmod 600 "$BACKUP/heycar-db-before-towing-interest.dump"
-sudo -u postgres psql -X -v ON_ERROR_STOP=1 -d "$DB" -f "$TMP/103_towing_interest_pilot_regions.sql"
+# Open the private SQL file as root before switching to postgres.
+# mktemp -d uses mode 0700; postgres cannot traverse that directory for -f.
+sudo -u postgres psql -X -v ON_ERROR_STOP=1 -d "$DB" < "$TMP/103_towing_interest_pilot_regions.sql"
 install -m 644 "$TMP/server.js" "$ROOT/server.js"
 install -m 644 "$TMP/towing-interest-routes.js" "$ROOT/towing-interest-routes.js"
 if grep -q '^TOWING_INTEREST_ENABLED=' "$ROOT/.env"; then
