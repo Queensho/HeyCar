@@ -182,7 +182,7 @@ class WeatherCard extends StatelessWidget {
     }
     if (condition == WeatherCondition.rain ||
         condition == WeatherCondition.thunderstorm) {
-      return Icon(Icons.thunderstorm_rounded, size: size, color: white);
+      return Icon(Icons.thunderstorm_rounded, size: size, color: Colors.white);
     }
     if (condition == WeatherCondition.snow) {
       return Icon(Icons.ac_unit_rounded, size: size, color: white);
@@ -262,104 +262,44 @@ class WeatherCardPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
-    const colors = [
-      Color(0xFFF0E4FF), Color(0xFFE4CBFF), Color(0xFFBB85FF),
-      Color(0xFF9045F8), Color(0xFF7028EA), Color(0xFFA34CF6),
-    ];
+    canvas.drawRect(rect, Paint()..shader = const LinearGradient(
+      begin: Alignment.topLeft, end: Alignment.bottomRight,
+      colors: [Color(0xFF5630F5), Color(0xFF6627F5),
+        Color(0xFF7626F4), Color(0xFF6724DE), Color(0xFFA64CF1)],
+      stops: [0, .25, .47, .72, 1],
+    ).createShader(rect));
 
-    canvas.drawRect(
-      rect,
-      Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: colors,
-          stops: const [0, .20, .42, .63, .82, 1],
-        ).createShader(rect),
-    );
-
-    final wave = Path()
-      ..moveTo(size.width * .34, size.height * .18)
-      ..cubicTo(size.width * .58, size.height * -.15, size.width * .75,
-        size.height * .07, size.width, size.height * .02)
-      ..lineTo(size.width, size.height * .87)
-      ..cubicTo(size.width * .78, size.height * 1.08,
-        size.width * .56, size.height * .50, size.width * .34, size.height * .18)
-      ..close();
-    canvas.drawPath(wave, Paint()..color = const Color(0xFF6B22E5).withValues(alpha: .22));
-    final lowerWave = Path()
-      ..moveTo(0, size.height * .80)
-      ..cubicTo(size.width * .32, size.height * .48,
-        size.width * .62, size.height * 1.19, size.width, size.height * .72)
+    final backWave = Path()
+      ..moveTo(0, size.height * .68)
+      ..cubicTo(size.width * .22, size.height * .48,
+        size.width * .34, size.height * .93,
+        size.width * .54, size.height * .72)
+      ..cubicTo(size.width * .75, size.height * .46,
+        size.width * .84, size.height * .64,
+        size.width, size.height * .50)
       ..lineTo(size.width, size.height)
-      ..lineTo(0, size.height)
-      ..close();
-    canvas.drawPath(lowerWave, Paint()..color = const Color(0xFFDDA3FF).withValues(alpha: .30));
+      ..lineTo(0, size.height)..close();
+    canvas.drawPath(backWave, Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topLeft, end: Alignment.bottomRight,
+        colors: [Color(0x557B40F5), Color(0x66B86AF5)],
+      ).createShader(rect));
 
-    canvas.save();
-    canvas.translate(0, 46);
-    if (condition == WeatherCondition.night) {
-      _drawMoon(canvas, size);
-      _drawStars(canvas, size);
-      _drawCloud(canvas, Offset(size.width * .68, 57), 1.0, .16);
-    } else {
-      if (condition == WeatherCondition.clear ||
-          condition == WeatherCondition.partlyCloudy) {
-        _drawSun(canvas, size);
-      }
-      if (condition == WeatherCondition.partlyCloudy ||
-          condition == WeatherCondition.cloudy ||
-          condition == WeatherCondition.rain ||
-          condition == WeatherCondition.snow ||
-          condition == WeatherCondition.thunderstorm) {
-        _drawCloud(
-          canvas,
-          Offset(size.width * .63, condition == WeatherCondition.cloudy ? 42 : 52),
-          1.18,
-          _dark ? .22 : .70,
-        );
-        _drawCloud(
-          canvas,
-          Offset(size.width * .79, 69),
-          .86,
-          _dark ? .13 : .48,
-        );
-      }
-      if (condition == WeatherCondition.rain) {
-        _drawRain(canvas, size);
-      } else if (condition == WeatherCondition.snow) {
-        _drawSnow(canvas, size);
-      } else if (condition == WeatherCondition.thunderstorm) {
-        _drawLightning(canvas, size);
-      }
-    }
-
-    canvas.restore();
-
-    final sheen = Path()
-      ..moveTo(size.width * .29, 0)
-      ..cubicTo(
-        size.width * .43,
-        size.height * .34,
-        size.width * .53,
-        size.height * .62,
-        size.width * .71,
-        size.height,
-      )
-      ..lineTo(size.width * .52, size.height)
-      ..cubicTo(
-        size.width * .43,
-        size.height * .64,
-        size.width * .37,
-        size.height * .33,
-        size.width * .22,
-        0,
-      )
-      ..close();
-    canvas.drawPath(
-      sheen,
-      Paint()..color = Colors.white.withValues(alpha: _dark ? .035 : .13),
-    );
+    final frontWave = Path()
+      ..moveTo(0, size.height * .84)
+      ..cubicTo(size.width * .25, size.height * .61,
+        size.width * .39, size.height * 1.08,
+        size.width * .63, size.height * .85)
+      ..cubicTo(size.width * .80, size.height * .72,
+        size.width * .90, size.height * .92,
+        size.width, size.height * .76)
+      ..lineTo(size.width, size.height)
+      ..lineTo(0, size.height)..close();
+    canvas.drawPath(frontWave, Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topLeft, end: Alignment.bottomRight,
+        colors: [Color(0x55A75AF8), Color(0x99B86AF5)],
+      ).createShader(rect));
   }
 
   void _drawSun(Canvas canvas, Size size) {
@@ -523,32 +463,33 @@ class WeatherCardPainter extends CustomPainter {
 }
 
 class _WeatherNotchClipper extends CustomClipper<Path> {
-  const _WeatherNotchClipper();
+  const _WeatherNotchClipper({required this.actionsWidth});
+  final double actionsWidth;
 
   @override
   Path getClip(Size size) {
     final w = size.width;
     final h = size.height;
-    // The shoulder is tangent to the horizontal notch floor. Both the
-    // cutout and button row are anchored to the same right-hand edge.
-    final shoulder = math.max(70.0, w - 138.0);
-    const notchFloor = 52.0;
-    const r = 25.0;
+    final shoulder = math.max(68.0, w - actionsWidth - 27);
+    const depth = 48.0;
+    const radius = 27.0;
     return Path()
-      ..moveTo(r, 0)
+      ..moveTo(radius, 0)
       ..lineTo(shoulder - 30, 0)
-      ..cubicTo(shoulder - 8, 0, shoulder - 20, notchFloor, shoulder + 28, notchFloor)
-      ..lineTo(w - r, notchFloor)
-      ..quadraticBezierTo(w, notchFloor, w, notchFloor + r)
-      ..lineTo(w, h - r)
-      ..quadraticBezierTo(w, h, w - r, h)
-      ..lineTo(r, h)
-      ..quadraticBezierTo(0, h, 0, h - r)
-      ..lineTo(0, r)
-      ..quadraticBezierTo(0, 0, r, 0)
+      ..cubicTo(shoulder - 4, 0, shoulder - 19, depth,
+        shoulder + 25, depth)
+      ..lineTo(w - radius, depth)
+      ..quadraticBezierTo(w, depth, w, depth + radius)
+      ..lineTo(w, h - radius)
+      ..quadraticBezierTo(w, h, w - radius, h)
+      ..lineTo(radius, h)
+      ..quadraticBezierTo(0, h, 0, h - radius)
+      ..lineTo(0, radius)
+      ..quadraticBezierTo(0, 0, radius, 0)
       ..close();
   }
 
   @override
-  bool shouldReclip(covariant _WeatherNotchClipper oldClipper) => false;
+  bool shouldReclip(covariant _WeatherNotchClipper oldClipper) =>
+      actionsWidth != oldClipper.actionsWidth;
 }
