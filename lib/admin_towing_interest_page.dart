@@ -72,8 +72,8 @@ class _AdminTowingInterestPageState extends State<AdminTowingInterestPage>{
   Future<void> editPilot(Map<String,dynamic> row)async{
     String status='${row['status']??'gathering'}';
     if(!_pilotStatuses.containsKey(status))status='gathering';
-    final capacity=TextEditingController(text='${row['providerCapacity']??0}');
-    final note=TextEditingController(text='${row['adminNote']??''}');
+    final capacity=TextEditingController(text:'${row['providerCapacity']??0}');
+    final note=TextEditingController(text:'${row['adminNote']??''}');
     final choice=await showDialog<(String,int,String)?>(context:context,builder:(d)=>StatefulBuilder(builder:(d,setD)=>AlertDialog(
       title:Text('${row['city']} / ${row['district']}'),
       content:SizedBox(width:430,child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
@@ -172,7 +172,6 @@ class _AdminTowingInterestPageState extends State<AdminTowingInterestPage>{
               style:const TextStyle(fontWeight:FontWeight.w800,fontSize:12,color:AdminUi.purple)),
             if(showPilots)Text('Hazır çekici: ${area['providerCapacity']??0}',style:const TextStyle(fontSize:12)),
           ]))),
-        ),
         const SizedBox(height:5),
       ],
       if((showPilots?pilots:areas).isEmpty)const Padding(padding:EdgeInsets.all(24),
