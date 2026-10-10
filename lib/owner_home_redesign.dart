@@ -1054,16 +1054,16 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                     minHeight: 2, color: Colors.white)))
                 else
                   Row(children: [
-                    _monthlyMetric(Icons.phone_rounded, calls, 'Gelen\\nArama',
+                    _monthlyMetric(Icons.phone_rounded, calls, 'Gelen\nArama',
                       const Color(0xFF8B36FF), const Color(0xFFF5EEFF), tileSize, numberSize),
                     _monthlyDivider(),
-                    _monthlyMetric(Icons.chat_bubble_rounded, messages, 'Mesaj\\nTalebi',
+                    _monthlyMetric(Icons.chat_bubble_rounded, messages, 'Mesaj\nTalebi',
                       const Color(0xFF397DFF), const Color(0xFFF0F6FF), tileSize, numberSize),
                     _monthlyDivider(),
-                    _monthlyMetric(Icons.warning_rounded, warnings, 'Park\\nUyarısı',
+                    _monthlyMetric(Icons.warning_rounded, warnings, 'Park\nUyarısı',
                       const Color(0xFFFF5E76), const Color(0xFFFFEFF4), tileSize, numberSize),
                     _monthlyDivider(),
-                    _monthlyMetric(Icons.local_offer_rounded, 0, 'Fırsat\\nKullanımı',
+                    _monthlyMetric(Icons.local_offer_rounded, 0, 'Fırsat\nKullanımı',
                       const Color(0xFFFF9D47), const Color(0xFFFFF3E9), tileSize, numberSize),
                   ]),
               ]),
