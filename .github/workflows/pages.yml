@@ -37,6 +37,8 @@ jobs:
       - name: Verify towing interest demo modules
         run: |
           flutter analyze lib/towing_interest_page.dart lib/owner_dashboard_live.dart lib/owner_home_redesign.dart lib/admin_towing_page.dart lib/admin_towing_interest_page.dart --no-fatal-infos --no-fatal-warnings
+          npm --prefix server install --ignore-scripts --no-package-lock --no-audit --no-fund
+          bash -n deploy/towing-interest-live.sh
           node --check server/towing-interest-routes.js
           node --test server/tests/towing-interest-demo.test.js
 

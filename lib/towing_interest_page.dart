@@ -6,10 +6,6 @@ import 'cepqar_theme.dart';
 import 'onboarding_backend.dart';
 import 'owner_auth.dart';
 
-// Demo builds cannot write to the database. Enable only after a separate
-// backend rollout and pilot-region access enforcement review.
-const bool towingInterestLive=bool.fromEnvironment('TOWING_INTEREST_LIVE',defaultValue:false);
-
 class TowingInterestPage extends StatefulWidget {
   const TowingInterestPage({super.key});
   @override
@@ -29,40 +25,47 @@ class _TowingInterestPageState extends State<TowingInterestPage>{
     'Siirt','Sinop','Sivas','Şanlıurfa','Şırnak','Tekirdağ','Tokat','Trabzon','Tunceli',
     'Uşak','Van','Yalova','Yozgat','Zonguldak',
   ];
-  final _district=TextEditingController(text:'Avcılar');
-  String city='İstanbul';
-  bool notify=true,busy=false,submitted=false;
+  final _district=TextEditingController();
+  String? city;
+  bool notify=false,busy=false,submitted=false,checking=true,backendReady=false,hasSavedInterest=false;
   String? error;
-  String availability='coming_soon';
 
-  @override void initState(){super.initState();if(towingInterestLive)_load();}
+  @override void initState(){super.initState();_load();}
   @override void dispose(){_district.dispose();super.dispose();}
 
   Future<void> _load()async{
     try{
       final r=await OwnerHttp.get(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/towing-interest'));
-      if(r.statusCode!=200||!mounted)return;
+      if(!mounted)return;
+      if(r.statusCode!=200)throw StateError('HTTP ${r.statusCode}');
       final d=jsonDecode(r.body);
-      if(d is Map&&d['interest'] is Map){
-        final saved=d['interest'] as Map;
-        final savedCity='${saved['city']??''}';
-        setState((){
+      if(d is! Map||d['demo']==true)throw StateError('NOT_YET_ACTIVE');
+      setState((){
+        backendReady=true;error=null;
+        if(d['interest'] is Map){
+          final saved=d['interest'] as Map;
+          final savedCity='${saved['city']??''}';
           if(_cities.contains(savedCity))city=savedCity;
           _district.text='${saved['district']??''}';
           notify=saved['notify_on_launch']==true;
-        });
-      }
-    }catch(_){}
+          hasSavedInterest=true;
+        }
+      });
+    }catch(_){
+      if(mounted)setState((){
+        backendReady=false;
+        error='Ön talep kayıtları henüz aktif değil. Tercih kaydedilmeyecek; lütfen daha sonra tekrar deneyin.';
+      });
+    }finally{if(mounted)setState(()=>checking=false);}
   }
   Future<void> _submit()async{
     final district=_district.text.trim().replaceAll(RegExp(r'\s+'),' ');
-    if(district.length<2||district.length>90){
-      setState(()=>error='Lütfen geçerli bir ilçe adı girin.');
+    if(!backendReady||checking){
+      setState(()=>error='Kayıt servisi hazır değil; talep gönderilmedi.');
       return;
     }
-    if(!towingInterestLive){
-      // Deliberately no local storage, HTTP call, or database change.
-      setState((){error=null;submitted=true;});
+    if(city==null||district.length<2||district.length>90){
+      setState(()=>error='Lütfen il ve ilçenizi belirtin.');
       return;
     }
     setState((){busy=true;error=null;});
@@ -72,8 +75,19 @@ class _TowingInterestPageState extends State<TowingInterestPage>{
         body:jsonEncode({'city':city,'district':district,'notifyOnLaunch':notify}),
       );
       if(r.statusCode!=200)throw StateError('Talep kaydedilemedi (HTTP ${r.statusCode}).');
-      if(mounted)setState(()=>submitted=true);
+      if(mounted)setState((){submitted=true;hasSavedInterest=true;});
     }catch(_){if(mounted)setState(()=>error='Tercih kaydedilemedi. Lütfen tekrar deneyin.');}
+    finally{if(mounted)setState(()=>busy=false);}
+  }
+
+  Future<void> _withdraw()async{
+    if(!backendReady||busy)return;
+    setState(()=>busy=true);
+    try{
+      final r=await OwnerHttp.delete(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/towing-interest'));
+      if(r.statusCode!=200)throw StateError('HTTP ${r.statusCode}');
+      if(mounted)setState((){hasSavedInterest=false;submitted=false;city=null;_district.clear();notify=false;error=null;});
+    }catch(_){if(mounted)setState(()=>error='Tercih kaldırılamadı. Lütfen tekrar deneyin.');}
     finally{if(mounted)setState(()=>busy=false);}
   }
 
@@ -113,13 +127,13 @@ class _TowingInterestPageState extends State<TowingInterestPage>{
           ]),
         ),
         const SizedBox(height:17),
-        if(!towingInterestLive)Container(
+        if(checking||!backendReady)Container(
           padding:const EdgeInsets.all(12),
           decoration:BoxDecoration(color:_purple.withValues(alpha:.10),borderRadius:BorderRadius.circular(13)),
           child:Row(children:[
-            const Icon(Icons.science_outlined,color:_purple),
+            const Icon(Icons.info_outline,color:_purple),
             const SizedBox(width:9),
-            Expanded(child:Text('Demo ekranı: Tercihiniz gerçek veritabanına kaydedilmez.',
+            Expanded(child:Text(checking?'Ön talep servisine bağlanılıyor...':'Şu anda kayıt alınamıyor. Talebiniz kaydedilmeyecek.',
               style:TextStyle(color:ink,fontSize:12,fontWeight:FontWeight.w700))),
           ]),
         ),
@@ -131,17 +145,16 @@ class _TowingInterestPageState extends State<TowingInterestPage>{
             child:Column(children:[
               const Icon(Icons.check_circle_rounded,color:Color(0xFF24B879),size:52),
               const SizedBox(height:12),
-              Text(towingInterestLive?'Tercihiniz alındı!':'Demo tamamlandı!',style:TextStyle(fontSize:20,fontWeight:FontWeight.w900,color:ink)),
+              Text('Tercihiniz kaydedildi!',style:TextStyle(fontSize:20,fontWeight:FontWeight.w900,color:ink)),
               const SizedBox(height:8),
               Text('$city / ${_district.text.trim()} • ${notify?'Bildirim açık':'Bildirim kapalı'}',
                 textAlign:TextAlign.center,style:TextStyle(color:muted)),
               const SizedBox(height:8),
-              Text(towingInterestLive
-                ?'Bölgenizde çekici hizmeti başladığında, izin verdiyseniz bilgilendirileceksiniz.'
-                :'Bu bir ön izlemedir. Gerçek talep oluşturulmadı ve kimseye bildirim gönderilmeyecek.',
+              Text('Bölgenizde çekici hizmeti başladığında, izin verdiyseniz bilgilendirileceksiniz.',
                 textAlign:TextAlign.center,style:TextStyle(color:muted,height:1.4)),
               const SizedBox(height:14),
               TextButton(onPressed:()=>setState(()=>submitted=false),child:const Text('Tercihi düzenle')),
+              TextButton(onPressed:busy?null:_withdraw,child:const Text('Ön talebimi kaldır',style:TextStyle(color:Colors.redAccent))),
             ]),
           ),
         ]else...[
@@ -152,10 +165,10 @@ class _TowingInterestPageState extends State<TowingInterestPage>{
               Text('Tercih ettiğiniz il',style:TextStyle(color:ink,fontSize:13,fontWeight:FontWeight.w800)),
               const SizedBox(height:8),
               DropdownButtonFormField<String>(
-                value:city,isExpanded:true,
+                initialValue:city,hint:const Text('İl seçiniz'),isExpanded:true,
                 decoration:InputDecoration(border:OutlineInputBorder(borderRadius:BorderRadius.circular(12))),
                 items:_cities.map((x)=>DropdownMenuItem(value:x,child:Text(x))).toList(),
-                onChanged:(v){if(v!=null)setState(()=>city=v);},
+                onChanged:(v){if(v!=null)setState((){city=v;_district.clear();});},
               ),
               const SizedBox(height:17),
               Text('İlçe',style:TextStyle(color:ink,fontSize:13,fontWeight:FontWeight.w800)),
@@ -169,17 +182,18 @@ class _TowingInterestPageState extends State<TowingInterestPage>{
                 contentPadding:EdgeInsets.zero,
                 title:Text('Hizmet açılınca haber ver',style:TextStyle(color:ink,fontWeight:FontWeight.w800,fontSize:13)),
                 subtitle:Text('Yalnızca seçtiğiniz bölgedeki açılış duyurusu için.',style:TextStyle(color:muted,fontSize:11)),
-                value:notify,activeColor:_purple,onChanged:(v)=>setState(()=>notify=v),
+                value:notify,activeThumbColor:_purple,onChanged:(v)=>setState(()=>notify=v),
               ),
               if(error!=null)Padding(padding:const EdgeInsets.only(bottom:9),
                 child:Text(error!,style:const TextStyle(color:Colors.red,fontSize:12))),
               const SizedBox(height:10),
               SizedBox(width:double.infinity,height:49,child:FilledButton.icon(
-                onPressed:busy?null:_submit,
+                onPressed:busy||checking||!backendReady?null:_submit,
                 style:FilledButton.styleFrom(backgroundColor:_purple,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(13))),
                 icon:busy?const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)):const Icon(Icons.location_on_outlined),
                 label:Text(busy?'Kaydediliyor...':'Bölgeme Çekici İstiyorum',style:const TextStyle(fontWeight:FontWeight.w900)),
               )),
+              if(hasSavedInterest)TextButton(onPressed:busy?null:_withdraw,child:const Text('Ön talebimi kaldır',style:TextStyle(color:Colors.redAccent))),
             ]),
           ),
         ],

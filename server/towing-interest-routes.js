@@ -1,20 +1,23 @@
 'use strict';
 const {ownerId:authenticatedOwnerId}=require('./owner-auth-service');
 const {writeAdminAudit}=require('./admin-audit');
+const {rateLimit}=require('express-rate-limit');
 
 // Fails CLOSED. Production writes must be explicitly enabled only after migration,
 // privacy review, and a separate operator-approved rollout.
 const live=()=>process.env.TOWING_INTEREST_ENABLED==='1';
 const statuses=new Set(['gathering','evaluating','negotiating','preparing','pilot','active']);
-const demoRegion={city:'İstanbul',district:'Avcılar',status:'gathering',providerCapacity:0,requests:1,notifyCount:1,updatedAt:null};
+const interestWriteLimiter=rateLimit({windowMs:60*60*1000,limit:20,standardHeaders:'draft-7',legacyHeaders:false,message:{error:'TOO_MANY_REQUESTS'}});
 function normalize(v){
   const value=typeof v==='string'?v.normalize('NFC').trim().replace(/\s+/g,' '):'';
   if(value.length<2||value.length>90||!(/^[\p{L}0-9 .'-]+$/u).test(value))return '';
   return value;
 }
 function key(value){return value.toLocaleLowerCase('tr-TR');}
+const provinces=new Map(["Adana","Adıyaman","Afyonkarahisar","Ağrı","Aksaray","Amasya","Ankara","Antalya","Ardahan","Artvin","Aydın","Balıkesir","Bartın","Batman","Bayburt","Bilecik","Bingöl","Bitlis","Bolu","Burdur","Bursa","Çanakkale","Çankırı","Çorum","Denizli","Diyarbakır","Düzce","Edirne","Elazığ","Erzincan","Erzurum","Eskişehir","Gaziantep","Giresun","Gümüşhane","Hakkâri","Hatay","Iğdır","Isparta","İstanbul","İzmir","Kahramanmaraş","Karabük","Karaman","Kars","Kastamonu","Kayseri","Kırıkkale","Kırklareli","Kırşehir","Kilis","Kocaeli","Konya","Kütahya","Malatya","Manisa","Mardin","Mersin","Muğla","Muş","Nevşehir","Niğde","Ordu","Osmaniye","Rize","Sakarya","Samsun","Siirt","Sinop","Sivas","Şanlıurfa","Şırnak","Tekirdağ","Tokat","Trabzon","Tunceli","Uşak","Van","Yalova","Yozgat","Zonguldak"].map(value=>[key(value),value]));
 function area(body){
-  const city=normalize(body?.city),district=normalize(body?.district);
+  const input=normalize(body?.city),district=normalize(body?.district);
+  const city=provinces.get(key(input));
   return city&&district?{city,district,cityKey:key(city),districtKey:key(district)}:null;
 }
 function requireLive(req,res,next){
@@ -26,7 +29,7 @@ function requireOwner(req,res,next){
   if(!req.towingInterestOwner)return res.status(401).json({error:'OWNER_REQUIRED'});
   next();
 }
-const demoSummary=()=>({ok:true,demo:true,total:1,notifyCount:1,regionCount:1,items:[demoRegion]});
+const demoSummary=()=>({ok:true,demo:true,total:0,notifyCount:0,regionCount:0,items:[]});
 
 module.exports=function registerTowingInterestRoutes(app,pool,adminGuard){
   const guard=typeof adminGuard==='function'?adminGuard:(_req,res)=>res.status(500).json({error:'ADMIN_GUARD_NOT_CONFIGURED'});
@@ -50,7 +53,7 @@ module.exports=function registerTowingInterestRoutes(app,pool,adminGuard){
     }catch(e){console.error('towing interest read',e);return res.status(503).json({error:'TOWING_INTEREST_UNAVAILABLE'});}
   });
 
-  app.put('/api/owner/towing-interest',requireOwner,requireLive,async(req,res)=>{
+  app.put('/api/owner/towing-interest',requireOwner,requireLive,interestWriteLimiter,async(req,res)=>{
     const selected=area(req.body);
     if(!selected||typeof req.body?.notifyOnLaunch!=='boolean')return res.status(400).json({error:'INVALID_INTEREST'});
     try{
@@ -66,7 +69,7 @@ module.exports=function registerTowingInterestRoutes(app,pool,adminGuard){
     }catch(e){console.error('towing interest save',e);return res.status(503).json({error:'TOWING_INTEREST_UNAVAILABLE'});}
   });
 
-  app.delete('/api/owner/towing-interest',requireOwner,requireLive,async(req,res)=>{
+  app.delete('/api/owner/towing-interest',requireOwner,requireLive,interestWriteLimiter,async(req,res)=>{
     try{await pool.query('DELETE FROM towing_service_interests WHERE owner_id=$1',[req.towingInterestOwner]);return res.json({ok:true});}
     catch(e){console.error('towing interest remove',e);return res.status(503).json({error:'TOWING_INTEREST_UNAVAILABLE'});}
   });
@@ -75,30 +78,42 @@ module.exports=function registerTowingInterestRoutes(app,pool,adminGuard){
     if(!live())return res.json(demoSummary());
     try{
       const [totals,areas]=await Promise.all([
-        pool.query('SELECT COUNT(*)::int AS total,COUNT(*) FILTER (WHERE notify_on_launch)::int AS notify_count FROM towing_service_interests'),
-        pool.query(`SELECT i.city,i.district,i.city_key,i.district_key,COUNT(*)::int AS requests,
+        pool.query('SELECT COUNT(*)::int AS total, COUNT(*) FILTER (WHERE notify_on_launch)::int AS notify_count, COUNT(DISTINCT (city_key,district_key))::int AS region_count FROM towing_service_interests'),
+        pool.query(`SELECT MIN(i.city) AS city, MIN(i.district) AS district,i.city_key,i.district_key,COUNT(*)::int AS requests,
           COUNT(*) FILTER (WHERE i.notify_on_launch)::int AS notify_count,
           COALESCE(p.status,'gathering') AS status,COALESCE(p.provider_capacity,0)::int AS provider_capacity,
           MAX(i.updated_at) AS updated_at
           FROM towing_service_interests i LEFT JOIN towing_pilot_regions p
             ON p.city_key=i.city_key AND p.district_key=i.district_key
-          GROUP BY i.city,i.district,i.city_key,i.district_key,p.status,p.provider_capacity
+          GROUP BY i.city_key,i.district_key,p.status,p.provider_capacity
           ORDER BY requests DESC,i.city_key,i.district_key LIMIT 200`)
       ]);
-      return res.json({ok:true,demo:false,total:totals.rows[0]?.total||0,notifyCount:totals.rows[0]?.notify_count||0,regionCount:areas.rows.length,items:areas.rows.map(x=>({
+      return res.json({ok:true,demo:false,total:totals.rows[0]?.total||0,notifyCount:totals.rows[0]?.notify_count||0,regionCount:totals.rows[0]?.region_count||0,items:areas.rows.map(x=>({
         city:x.city,district:x.district,requests:x.requests,notifyCount:x.notify_count,status:x.status,providerCapacity:x.provider_capacity,updatedAt:x.updated_at
       }))});
     }catch(e){console.error('towing interest summary',e);return res.status(503).json({error:'TOWING_INTEREST_UNAVAILABLE'});}
   });
 
   app.get('/api/admin/manage/towing/pilot-regions',guard,async(req,res)=>{
-    if(!live())return res.json({ok:true,demo:true,items:[demoRegion]});
+    if(!live())return res.json({ok:true,demo:true,items:[]});
     try{
-      const r=await pool.query(`SELECT p.city,p.district,p.status,p.provider_capacity AS "providerCapacity",
-        p.admin_note AS "adminNote",p.planned_launch_at AS "plannedLaunchAt",p.updated_at AS "updatedAt",
-        (SELECT COUNT(*)::int FROM towing_service_interests i WHERE i.city_key=p.city_key AND i.district_key=p.district_key) AS requests,
-        (SELECT COUNT(*)::int FROM towing_service_interests i WHERE i.city_key=p.city_key AND i.district_key=p.district_key AND i.notify_on_launch) AS "notifyCount"
-        FROM towing_pilot_regions p ORDER BY p.updated_at DESC LIMIT 200`);
+      const r=await pool.query(`WITH interest_areas AS (
+          SELECT city_key,district_key,MIN(city) AS city,MIN(district) AS district,
+            COUNT(*)::int AS requests,COUNT(*) FILTER (WHERE notify_on_launch)::int AS notify_count,
+            MAX(updated_at) AS updated_at
+          FROM towing_service_interests GROUP BY city_key,district_key
+        )
+        SELECT COALESCE(p.city,i.city) AS city,COALESCE(p.district,i.district) AS district,
+          COALESCE(p.status,'gathering') AS status,
+          COALESCE(p.provider_capacity,0)::int AS "providerCapacity",
+          COALESCE(p.admin_note,'') AS "adminNote",
+          p.planned_launch_at AS "plannedLaunchAt",
+          COALESCE(p.updated_at,i.updated_at) AS "updatedAt",
+          COALESCE(i.requests,0)::int AS requests,
+          COALESCE(i.notify_count,0)::int AS "notifyCount"
+        FROM interest_areas i FULL OUTER JOIN towing_pilot_regions p
+          ON p.city_key=i.city_key AND p.district_key=i.district_key
+        ORDER BY "updatedAt" DESC NULLS LAST LIMIT 200`);
       return res.json({ok:true,demo:false,items:r.rows});
     }catch(e){console.error('towing pilot list',e);return res.status(503).json({error:'TOWING_PILOT_UNAVAILABLE'});}
   });
@@ -110,6 +125,9 @@ module.exports=function registerTowingInterestRoutes(app,pool,adminGuard){
     const parsedDate=rawDate?new Date(rawDate):null;
     if(!selected||!statuses.has(status)||!Number.isInteger(capacity)||capacity<0||capacity>10000||
        (parsedDate&&!Number.isFinite(parsedDate.getTime())))return res.status(400).json({error:'INVALID_PILOT_REGION'});
+    // Preinterest rollout never silently activates real towing dispatch.
+    if(['pilot','active'].includes(status)&&process.env.TOWING_PILOT_DISPATCH_READY!=='1')
+      return res.status(409).json({error:'TOWING_PILOT_DISPATCH_NOT_READY'});
     if(['pilot','active'].includes(status)&&(!req.body?.confirmActivation||capacity===0))
       return res.status(409).json({error:'PILOT_ACTIVATION_CONFIRMATION_REQUIRED'});
     const note=String(req.body?.adminNote||'').trim().slice(0,500);

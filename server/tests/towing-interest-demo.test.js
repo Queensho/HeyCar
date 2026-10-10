@@ -39,7 +39,8 @@ test('demo-only public and admin routes do not touch the database',async()=>{
     const summary=await invoke('GET','/api/admin/manage/towing/interest/summary');
     assert.equal(summary.status,200);
     assert.equal(summary.body.demo,true);
-    assert.equal(summary.body.items[0].district,'Avcılar');
+    assert.equal(summary.body.total,0);
+    assert.deepEqual(summary.body.items,[]);
     const pilot=await invoke('GET','/api/admin/manage/towing/pilot-regions');
     assert.equal(pilot.body.demo,true);
     const update=await invoke('PUT','/api/admin/manage/towing/pilot-regions',
@@ -63,6 +64,35 @@ test('owner interest requires JWT even in demo mode',async()=>{
     const update=await invoke('PUT','/api/owner/towing-interest',
       {body:{city:'İstanbul',district:'Avcılar',notifyOnLaunch:true}});
     assert.equal(update.status,401);
+  }finally{
+    if(before===undefined)delete process.env.TOWING_INTEREST_ENABLED;
+    else process.env.TOWING_INTEREST_ENABLED=before;
+  }
+});
+
+test('live mode reports actual aggregate counts, never a fabricated Avcılar record',async()=>{
+  const before=process.env.TOWING_INTEREST_ENABLED;
+  process.env.TOWING_INTEREST_ENABLED='1';
+  try{
+    let seen=0;
+    const pool={query:async sql=>{
+      seen++;
+      if(sql.includes('COUNT(DISTINCT'))return {rows:[{total:2,notify_count:1,region_count:1}]};
+      if(sql.includes('LEFT JOIN towing_pilot_regions'))return {rows:[{
+        city:'İstanbul',district:'Kadıköy',requests:2,notify_count:1,
+        status:'gathering',provider_capacity:0,updated_at:null
+      }]};
+      throw Error('Unexpected query');
+    }};
+    const {app,invoke}=appStub();
+    register(app,pool,(_req,_res,next)=>next());
+    const data=await invoke('GET','/api/admin/manage/towing/interest/summary');
+    assert.equal(data.status,200);
+    assert.equal(data.body.demo,false);
+    assert.equal(data.body.total,2);
+    assert.equal(data.body.regionCount,1);
+    assert.equal(data.body.items[0].district,'Kadıköy');
+    assert.equal(seen,2);
   }finally{
     if(before===undefined)delete process.env.TOWING_INTEREST_ENABLED;
     else process.env.TOWING_INTEREST_ENABLED=before;
