@@ -68,7 +68,7 @@ class WeatherCard extends StatelessWidget {
     return LayoutBuilder(builder: (context, constraints) {
       final narrow = constraints.maxWidth < 350;
       final cardHeight = narrow ? 177.0 : 170.0;
-      final rightWidth = narrow ? 112.0 : 132.0;
+      final rightWidth = narrow ? 132.0 : 154.0;
       final leftWidth = constraints.maxWidth - rightWidth - 42;
       return Semantics(
         label: 'Hava durumu ve araç özeti',
@@ -116,18 +116,18 @@ class WeatherCard extends StatelessWidget {
                       ])),
                     ]),
                     const SizedBox(height: 5),
-                    Text(description, maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Color(0xFFF0DEFF), fontSize: 10.5,
-                        fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 8),
                     Row(children: [
-                      const Icon(Icons.arrow_upward_rounded, color: Color(0xFFFF8B9C), size: 15),
+                      Flexible(child: Text(description, maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: Color(0xFFF0DEFF), fontSize: 10.5,
+                          fontWeight: FontWeight.w700))),
+                      const SizedBox(width: 5),
+                      const Icon(Icons.arrow_upward_rounded, color: Color(0xFFFF8B9C), size: 12),
                       Text(_degree(weather?.maxTemperature),
-                        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w900)),
-                      const SizedBox(width: 9),
-                      const Icon(Icons.arrow_downward_rounded, color: Color(0xFF8BD6FF), size: 15),
+                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900)),
+                      const SizedBox(width: 3),
+                      const Icon(Icons.arrow_downward_rounded, color: Color(0xFF8BD6FF), size: 12),
                       Text(_degree(weather?.minTemperature),
-                        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w900)),
+                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900)),
                     ]),
                   ]),
                 ),
@@ -161,7 +161,7 @@ class WeatherCard extends StatelessWidget {
                 // animation controllers or frame-by-frame parent rebuilds.
                 if (reduceMotion) const SizedBox.shrink(),
               ])),
-              if (headerActions != null) Positioned(right: 16, top: 0, child: headerActions!),
+              if (headerActions != null) Positioned(right: 22, top: 0, child: headerActions!),
             ]),
           ),
         ),
@@ -505,7 +505,7 @@ class _WeatherNotchClipper extends CustomClipper<Path> {
     final h = size.height;
     // The shoulder is tangent to the horizontal notch floor. Both the
     // cutout and button row are anchored to the same right-hand edge.
-    final shoulder = math.max(70.0, w - 130.0);
+    final shoulder = math.max(70.0, w - 138.0);
     const notchFloor = 52.0;
     const r = 25.0;
     return Path()
