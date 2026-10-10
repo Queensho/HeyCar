@@ -95,11 +95,23 @@ module.exports=function registerTowingInterestRoutes(app,pool,adminGuard){
   app.get('/api/admin/manage/towing/pilot-regions',guard,async(req,res)=>{
     if(!live())return res.json({ok:true,demo:true,items:[]});
     try{
-      const r=await pool.query(`SELECT p.city,p.district,p.status,p.provider_capacity AS "providerCapacity",
-        p.admin_note AS "adminNote",p.planned_launch_at AS "plannedLaunchAt",p.updated_at AS "updatedAt",
-        (SELECT COUNT(*)::int FROM towing_service_interests i WHERE i.city_key=p.city_key AND i.district_key=p.district_key) AS requests,
-        (SELECT COUNT(*)::int FROM towing_service_interests i WHERE i.city_key=p.city_key AND i.district_key=p.district_key AND i.notify_on_launch) AS "notifyCount"
-        FROM towing_pilot_regions p ORDER BY p.updated_at DESC LIMIT 200`);
+      const r=await pool.query(`WITH interest_areas AS (
+          SELECT city_key,district_key,MIN(city) AS city,MIN(district) AS district,
+            COUNT(*)::int AS requests,COUNT(*) FILTER (WHERE notify_on_launch)::int AS notify_count,
+            MAX(updated_at) AS updated_at
+          FROM towing_service_interests GROUP BY city_key,district_key
+        )
+        SELECT COALESCE(p.city,i.city) AS city,COALESCE(p.district,i.district) AS district,
+          COALESCE(p.status,'gathering') AS status,
+          COALESCE(p.provider_capacity,0)::int AS "providerCapacity",
+          COALESCE(p.admin_note,'') AS "adminNote",
+          p.planned_launch_at AS "plannedLaunchAt",
+          COALESCE(p.updated_at,i.updated_at) AS "updatedAt",
+          COALESCE(i.requests,0)::int AS requests,
+          COALESCE(i.notify_count,0)::int AS "notifyCount"
+        FROM interest_areas i FULL OUTER JOIN towing_pilot_regions p
+          ON p.city_key=i.city_key AND p.district_key=i.district_key
+        ORDER BY "updatedAt" DESC NULLS LAST LIMIT 200`);
       return res.json({ok:true,demo:false,items:r.rows});
     }catch(e){console.error('towing pilot list',e);return res.status(503).json({error:'TOWING_PILOT_UNAVAILABLE'});}
   });
