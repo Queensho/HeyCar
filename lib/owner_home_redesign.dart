@@ -1010,7 +1010,9 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         builder: (context, opacity, child) =>
           Opacity(opacity: opacity, child: child),
         child: Container(
-          height: compact ? 151 : 156,
+          // A minimum height lets the header + 90 px metrics grow naturally.
+          // Fixed heights of 151/156 px overflow when Android text metrics differ.
+          constraints: BoxConstraints(minHeight: compact ? 151 : 156),
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(24),
