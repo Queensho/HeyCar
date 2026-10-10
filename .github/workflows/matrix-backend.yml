@@ -97,6 +97,9 @@ jobs:
       - name: Verify token role isolation
         working-directory: server
         run: node matrix-auth-check.js
+      - name: Test stable owner session refresh
+        working-directory: server
+        run: node --test tests/owner-auth-stable-session.test.js
 
       - name: Verify Matrix source invariants
         working-directory: server
