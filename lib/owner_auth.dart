@@ -10,9 +10,6 @@ class OwnerAuth{
 
   static Future<void> restore()async{
     final p=await SharedPreferences.getInstance();
-    // Legacy SharedPreferences caches values per browser tab. Reload to pick up
-    // a new token pair written by a different open Chrome/PWA tab.
-    await p.reload();
     accessToken=p.getString('owner_access_token')??'';
     refreshToken=p.getString('owner_refresh_token')??'';
   }
@@ -73,8 +70,7 @@ class OwnerAuth{
   }
 
   static Future<OwnerRefreshResult> _refreshOnce()async{
-    // Avoid rotating an obsolete refresh token held in another tab's cache.
-    await restore();
+    if(refreshToken.isEmpty)await restore();
     if(refreshToken.isEmpty)return OwnerRefreshResult.invalid;
     final tokenToRotate=refreshToken;
     try{
@@ -109,40 +105,4 @@ class OwnerAuth{
   }
 }
 // OwnerHttp retries once after a 401 by rotating the JWT refresh token.
-class OwnerHttp{
-  static Future<http.Response> get(Uri u,{bool json=true,Map<String,String>? headers})=>
-    _send((h)=>http.get(u,headers:{...h,...?headers}),json:json);
-  static Future<http.Response> delete(Uri u,{Object? body,bool json=true,Map<String,String>? headers})=>
-    _send((h)=>http.delete(u,headers:{...h,...?headers},body:body),json:json);
-  static Future<http.Response> post(Uri u,{Object? body,bool json=true,Map<String,String>? headers})=>
-    _send((h)=>http.post(u,headers:{...h,...?headers},body:body),json:json);
-  static Future<http.Response> put(Uri u,{Object? body,bool json=true,Map<String,String>? headers})=>
-    _send((h)=>http.put(u,headers:{...h,...?headers},body:body),json:json);
-  static Future<http.Response> patch(Uri u,{Object? body,bool json=true,Map<String,String>? headers})=>
-    _send((h)=>http.patch(u,headers:{...h,...?headers},body:body),json:json);
-
-  static Future<http.Response> _send(
-    Future<http.Response> Function(Map<String,String>) fn,{bool json=true}
-  )async{
-    final headers=await OwnerAuth.headers(json:json);
-    final previousAccess=headers['Authorization'];
-    var r=await fn(headers);
-    if(r.statusCode!=401)return r;
-
-    // Session refreshes in another browser tab can revoke the token from
-    // this tab. Read shared browser storage before rotating anything.
-    await OwnerAuth.restore();
-    final current=await OwnerAuth.headers(json:json);
-    if(current['Authorization']!=previousAccess&&OwnerAuth.accessTokenUsable()){
-      r=await fn(current);
-      if(r.statusCode!=401)return r;
-    }
-
-    // If the stored session really is revoked, try the standard rotating
-    // refresh once. Never bypass the backend's session-liveness checks.
-    if(await OwnerAuth.refresh()){
-      r=await fn(await OwnerAuth.headers(json:json));
-    }
-    return r;
-  }
-}
+class OwnerHttp{static Future<http.Response> get(Uri u,{bool json=true,Map<String,String>? headers})=>_send((h)=>http.get(u,headers:{...h,...?headers}),json:json);static Future<http.Response> delete(Uri u,{Object? body,bool json=true,Map<String,String>? headers})=>_send((h)=>http.delete(u,headers:{...h,...?headers},body:body),json:json);static Future<http.Response> post(Uri u,{Object? body,bool json=true,Map<String,String>? headers})=>_send((h)=>http.post(u,headers:{...h,...?headers},body:body),json:json);static Future<http.Response> put(Uri u,{Object? body,bool json=true,Map<String,String>? headers})=>_send((h)=>http.put(u,headers:{...h,...?headers},body:body),json:json);static Future<http.Response> patch(Uri u,{Object? body,bool json=true,Map<String,String>? headers})=>_send((h)=>http.patch(u,headers:{...h,...?headers},body:body),json:json);static Future<http.Response> _send(Future<http.Response> Function(Map<String,String>) fn,{bool json=true})async{var r=await fn(await OwnerAuth.headers(json:json));if(r.statusCode==401&&await OwnerAuth.refresh())r=await fn(await OwnerAuth.headers(json:json));return r;}}
