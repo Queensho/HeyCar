@@ -67,7 +67,7 @@ class WeatherCard extends StatelessWidget {
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
     return LayoutBuilder(builder: (context, constraints) {
       final narrow = constraints.maxWidth < 350;
-      final cardHeight = narrow ? 205.0 : 195.0;
+      final cardHeight = narrow ? 177.0 : 170.0;
       final rightWidth = narrow ? 112.0 : 132.0;
       final leftWidth = constraints.maxWidth - rightWidth - 42;
       return Semantics(
@@ -84,7 +84,7 @@ class WeatherCard extends StatelessWidget {
                   painter: WeatherCardPainter(condition: _condition),
                 )),
                 Positioned(
-                  left: 14, top: 62, width: math.max(90, leftWidth),
+                  left: 14, top: 54, width: math.max(90, leftWidth),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(_greeting, maxLines: 1, overflow: TextOverflow.ellipsis,
                       style: const TextStyle(color: secondary, fontSize: 11, fontWeight: FontWeight.w700)),
@@ -100,7 +100,7 @@ class WeatherCard extends StatelessWidget {
                   ]),
                 ),
                 Positioned(
-                  right: 12, top: 89, width: rightWidth,
+                  right: 12, top: 72, width: rightWidth,
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
                       Text(_degree(weather?.temperature),
@@ -132,7 +132,7 @@ class WeatherCard extends StatelessWidget {
                   ]),
                 ),
                 if (premium) Positioned(
-                  left: 14, bottom: 44,
+                  left: 14, bottom: 40,
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 5),
                     decoration: BoxDecoration(color: const Color(0xFF7514EF),
@@ -271,7 +271,7 @@ class WeatherCardPainter extends CustomPainter {
     canvas.drawPath(lowerWave, Paint()..color = const Color(0xFFDDA3FF).withValues(alpha: .30));
 
     canvas.save();
-    canvas.translate(0, 60);
+    canvas.translate(0, 46);
     if (condition == WeatherCondition.night) {
       _drawMoon(canvas, size);
       _drawStars(canvas, size);

@@ -575,7 +575,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   }
 
   Widget header()=>SizedBox(
-    height:300,
+    height:274,
     child:Stack(children:[
       Positioned.fill(
         child:Container(
