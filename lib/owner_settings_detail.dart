@@ -9,11 +9,11 @@ import 'qr_backend.dart';
 import 'owner_auth.dart';
 import 'cepqar_theme.dart';
 
-const _bg = CepqarTheme.darkBg;
-const _panel = CepqarTheme.darkPanel;
-const _line = CepqarTheme.darkLine;
+
+
+
 const _purple = Color(0xFF8B5CFF);
-const _muted = CepqarTheme.darkMuted;
+
 const _baseUrl = 'https://heycar-api-185-165-46-213.nip.io';
 
 Map<String, String> get _ownerHeaders => const {};
@@ -30,7 +30,7 @@ Future<void> _showOwnerRecoveryCode(BuildContext context) async {
       backgroundColor:CepqarTheme.panel,
       title:const Text('Kurtarma kodun',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w900)),
       content:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.stretch,children:[
-        const Text('Bu kod şifreni unutursan hesabını kurtarmak için kullanılır. Güvenli bir yerde sakla. Yeni kod oluşturursan eskisi geçersiz olur.',style:TextStyle(color:_muted,height:1.35)),
+        Text('Bu kod şifreni unutursan hesabını kurtarmak için kullanılır. Güvenli bir yerde sakla. Yeni kod oluşturursan eskisi geçersiz olur.',style:TextStyle(color:CepqarTheme.muted,height:1.35)),
         const SizedBox(height:16),
         SelectableText(code,textAlign:TextAlign.center,style:const TextStyle(color:Colors.white,fontSize:21,fontWeight:FontWeight.w900,letterSpacing:1.2)),
       ]),
@@ -51,7 +51,7 @@ Future<void> _deleteOwnerAccount(BuildContext context) async {
     backgroundColor:CepqarTheme.panel,
     title:const Text('Hesabı kalıcı olarak sil',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w900)),
     content:Column(mainAxisSize:MainAxisSize.min,children:[
-      const Text('Araçların, QR bağlantıların, mesajların, bildirimlerin ve hesap oturumların silinecek. Bu işlem geri alınamaz.',style:TextStyle(color:_muted,height:1.35)),
+      Text('Araçların, QR bağlantıların, mesajların, bildirimlerin ve hesap oturumların silinecek. Bu işlem geri alınamaz.',style:TextStyle(color:CepqarTheme.muted,height:1.35)),
       const SizedBox(height:14),
       TextField(controller:pass,obscureText:true,style:const TextStyle(color:Colors.white),decoration:const InputDecoration(labelText:'Şifren',border:OutlineInputBorder())),
       if(error!=null)...[const SizedBox(height:8),Text(error!,style:const TextStyle(color:Colors.redAccent))],
@@ -92,7 +92,7 @@ class _AccountDeletedPage extends StatelessWidget{
       const SizedBox(height:18),
       const Text('Hesabın silindi',style:TextStyle(color:Colors.white,fontSize:25,fontWeight:FontWeight.w900)),
       const SizedBox(height:10),
-      const Text('Hesabın ve bağlı verilerin silindi. Yeni hesap oluşturmak için CepQontag uygulamasını yeniden açabilirsin.',textAlign:TextAlign.center,style:TextStyle(color:_muted,height:1.4)),
+      Text('Hesabın ve bağlı verilerin silindi. Yeni hesap oluşturmak için CepQontag uygulamasını yeniden açabilirsin.',textAlign:TextAlign.center,style:TextStyle(color:CepqarTheme.muted,height:1.4)),
       const SizedBox(height:22),
       OutlinedButton.icon(onPressed:SystemNavigator.pop,icon:const Icon(Icons.close_rounded),label:const Text('Uygulamayı Kapat')),
     ])))),
@@ -262,7 +262,7 @@ class _OwnerAccountSettingsPageState extends State<OwnerAccountSettingsPage> {
                 child: Text(
                   editing ? 'Bilgilerini düzenle' : 'Kişisel bilgiler',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: CepqarTheme.text,
                     fontSize: 16,
                     fontWeight: FontWeight.w900,
                   ),
@@ -391,9 +391,9 @@ class _EditableAccountField extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: _panel,
+          color: CepqarTheme.panel,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: _line),
+          border: Border.all(color: CepqarTheme.line),
         ),
         child: Row(
           children: [
@@ -413,8 +413,8 @@ class _EditableAccountField extends StatelessWidget {
                 ),
                 decoration: InputDecoration(
                   labelText: label,
-                  labelStyle: const TextStyle(
-                    color: _muted,
+                  labelStyle: TextStyle(
+                    color: CepqarTheme.muted,
                     fontSize: 12,
                   ),
                   border: InputBorder.none,
@@ -683,9 +683,9 @@ class _OwnerPrivacySettingsPageState extends State<OwnerPrivacySettingsPage> {
           'Güvenlik kodunu yenile',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900),
         ),
-        content: const Text(
+        content: Text(
           'Eski cihaz oturumları kapatılacak. Devam edilsin mi?',
-          style: TextStyle(color: _muted),
+          style: TextStyle(color: CepqarTheme.muted),
         ),
         actions: [
           TextButton(
@@ -797,18 +797,18 @@ class _OwnerPrivacySettingsPageState extends State<OwnerPrivacySettingsPage> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: _panel,
+                      color: CepqarTheme.panel,
                       borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: _line),
+                      border: Border.all(color: CepqarTheme.line),
                     ),
-                    child: const Row(
+                    child: Row(
                       children: [
-                        Icon(Icons.shield_outlined, color: _purple),
-                        SizedBox(width: 12),
+                        const Icon(Icons.shield_outlined, color: _purple),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: Text(
                             'Telefon numaran ve kişisel bilgilerin HeyCar public QR ekranında hiçbir zaman gösterilmez.',
-                            style: TextStyle(color: _muted, height: 1.35),
+                            style: TextStyle(color: CepqarTheme.muted, height: 1.35),
                           ),
                         ),
                       ],
@@ -949,9 +949,9 @@ class _OwnerBlockedVisitorsPageState extends State<OwnerBlockedVisitorsPage> {
                         margin: const EdgeInsets.only(bottom: 10),
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: _panel,
+                          color: CepqarTheme.panel,
                           borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: _line),
+                          border: Border.all(color: CepqarTheme.line),
                         ),
                         child: Row(
                           children: [
@@ -1045,9 +1045,9 @@ class _InfoTile extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(15),
         decoration: BoxDecoration(
-          color: _panel,
+          color: CepqarTheme.panel,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: _line),
+          border: Border.all(color: CepqarTheme.line),
         ),
         child: Row(
           children: [
@@ -1057,12 +1057,12 @@ class _InfoTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label, style: const TextStyle(color: _muted, fontSize: 12)),
+                  Text(label, style: TextStyle(color: CepqarTheme.muted, fontSize: 12)),
                   const SizedBox(height: 3),
                   Text(
                     value,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: CepqarTheme.text,
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
                     ),
@@ -1145,9 +1145,9 @@ class _ActionTile extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(
-          color: _panel,
+          color: CepqarTheme.panel,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: _line),
+          border: Border.all(color: CepqarTheme.line),
         ),
         child: Material(
           color: Colors.transparent,
@@ -1175,12 +1175,12 @@ class _ActionTile extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text(
                           subtitle,
-                          style: const TextStyle(color: _muted, fontSize: 12.5, height: 1.25),
+                          style: TextStyle(color: CepqarTheme.muted, fontSize: 12.5, height: 1.25),
                         ),
                       ],
                     ),
                   ),
-                  const Icon(Icons.chevron_right_rounded, color: Colors.white54),
+                  Icon(Icons.chevron_right_rounded, color: CepqarTheme.muted),
                 ],
               ),
             ),
@@ -1199,9 +1199,9 @@ class _EmptyBox extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: _panel,
+          color: CepqarTheme.panel,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: _line),
+          border: Border.all(color: CepqarTheme.line),
         ),
         child: Column(
           children: [
@@ -1212,7 +1212,7 @@ class _EmptyBox extends StatelessWidget {
               style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 6),
-            Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(color: _muted)),
+            Text(subtitle, textAlign: TextAlign.center, style: TextStyle(color: CepqarTheme.muted)),
           ],
         ),
       );
