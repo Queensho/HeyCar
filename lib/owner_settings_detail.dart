@@ -683,7 +683,7 @@ class _OwnerPrivacySettingsPageState extends State<OwnerPrivacySettingsPage> {
           'Güvenlik kodunu yenile',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900),
         ),
-        content: const Text(
+        content: Text(
           'Eski cihaz oturumları kapatılacak. Devam edilsin mi?',
           style: TextStyle(color: CepqarTheme.muted),
         ),
@@ -801,10 +801,10 @@ class _OwnerPrivacySettingsPageState extends State<OwnerPrivacySettingsPage> {
                       borderRadius: BorderRadius.circular(18),
                       border: Border.all(color: CepqarTheme.line),
                     ),
-                    child: const Row(
+                    child: Row(
                       children: [
-                        Icon(Icons.shield_outlined, color: _purple),
-                        SizedBox(width: 12),
+                        const Icon(Icons.shield_outlined, color: _purple),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: Text(
                             'Telefon numaran ve kişisel bilgilerin HeyCar public QR ekranında hiçbir zaman gösterilmez.',
