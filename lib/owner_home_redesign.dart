@@ -962,37 +962,121 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     );
   }
 
-  Widget stat(IconData icon,int value,String label,Color color)=>Expanded(child:Column(children:[
-    Row(mainAxisAlignment:MainAxisAlignment.center,children:[
-      Container(width:29,height:29,decoration:BoxDecoration(color:color.withValues(alpha:light ? 0.11 : 0.16),shape:BoxShape.circle),child:Icon(icon,color:color,size:16)),
-      const SizedBox(width:5),
-      Text('$value',style:TextStyle(color:text,fontSize:18,fontWeight:FontWeight.w900)),
-    ]),
-    const SizedBox(height:5),
-    Text(label,textAlign:TextAlign.center,style:TextStyle(color:muted,fontSize:CepqarTheme.caption,height:1.15,fontWeight:FontWeight.w600)),
-  ]));
-  Widget vline()=>Container(width:1,height:41,color:line);
+  Widget _monthlyMetric(IconData icon, int value, String label, Color accent, Color tileColor, double tileSize, double numberSize) {
+    return Expanded(child: Container(
+      height: 90,
+      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 9),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: .095),
+        borderRadius: BorderRadius.circular(19),
+      ),
+      child: Column(mainAxisAlignment: MainAxisAlignment.start, children: [
+        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Container(
+            width: tileSize, height: tileSize,
+            decoration: BoxDecoration(
+              color: tileColor, borderRadius: BorderRadius.circular(12)),
+            child: Icon(icon, color: accent, size: tileSize * .55),
+          ),
+          const SizedBox(width: 3),
+          Flexible(child: TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: 0, end: value.toDouble()),
+            duration: const Duration(milliseconds: 650),
+            curve: Curves.easeOutCubic,
+            builder: (context, current, child) => Text('${current.round()}',
+              maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: Colors.white, fontSize: numberSize,
+                height: 1, fontWeight: FontWeight.w900)),
+          )),
+        ]),
+        const SizedBox(height: 5),
+        Text(label, maxLines: 2, textAlign: TextAlign.center,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(color: Colors.white, fontSize: 10,
+            height: 1.1, fontWeight: FontWeight.w600)),
+      ]),
+    ));
+  }
 
   Widget monthly()=>Padding(
-    padding:const EdgeInsets.fromLTRB(16,13,16,0),
-    child:Container(
-      height:124,padding:const EdgeInsets.fromLTRB(14,12,14,12),decoration:card(),
-      child:Column(children:[
-        Row(children:[
-          const Icon(Icons.bar_chart_rounded,color:purple,size:22),const SizedBox(width:7),
-          Expanded(child:Text('Bu Ayki Özetim',style:TextStyle(color:text,fontSize:15,fontWeight:FontWeight.w900))),
-          InkWell(onTap:widget.notifications,child:const Row(children:[Text('Tümünü Gör',style:TextStyle(color:purple,fontSize:CepqarTheme.bodySmall,fontWeight:FontWeight.w800)),Icon(Icons.chevron_right_rounded,color:purple,size:18)])),
-        ]),
-        const Spacer(),
-        if(loading)const LinearProgressIndicator(minHeight:2,color:purple)else Row(children:[
-          stat(Icons.phone_rounded,calls,'Gelen\nArama',const Color(0xFF8B36FF)),vline(),
-          stat(Icons.chat_bubble_rounded,messages,'Mesaj\nTalebi',const Color(0xFF397DFF)),vline(),
-          stat(Icons.warning_rounded,warnings,'Park\nUyarısı',const Color(0xFFFF5E76)),vline(),
-          stat(Icons.local_offer_rounded,0,'Fırsat\nKullanımı',const Color(0xFFFF9D47)),
-        ]),
-      ]),
-    ),
+    padding: const EdgeInsets.fromLTRB(16, 13, 16, 0),
+    child: LayoutBuilder(builder: (context, constraints) {
+      final compact = constraints.maxWidth < 375;
+      final tileSize = compact ? 30.0 : 36.0;
+      final numberSize = compact ? 21.0 : 24.0;
+      return TweenAnimationBuilder<double>(
+        tween: Tween<double>(begin: 0, end: 1),
+        duration: const Duration(milliseconds: 320),
+        builder: (context, opacity, child) =>
+          Opacity(opacity: opacity, child: child),
+        child: Container(
+          height: compact ? 151 : 156,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [BoxShadow(
+              color: const Color(0xFF6825F5).withValues(alpha: .16),
+              blurRadius: 15, offset: const Offset(0, 5))],
+          ),
+          child: Stack(children: [
+            const Positioned.fill(child: CustomPaint(painter: _MonthlySummaryPainter())),
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(children: [
+                Row(children: [
+                  const Icon(Icons.bar_chart_rounded, color: Colors.white, size: 23),
+                  const SizedBox(width: 7),
+                  Expanded(child: Text('Bu Ayki Özetim',
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: Colors.white,
+                      fontSize: compact ? 14 : 16, fontWeight: FontWeight.w900))),
+                  Material(
+                    color: Colors.white.withValues(alpha: .20),
+                    borderRadius: BorderRadius.circular(25),
+                    child: InkWell(
+                      onTap: widget.notifications,
+                      borderRadius: BorderRadius.circular(25),
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          Text('Tümünü Gör', style: TextStyle(
+                            color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w800)),
+                          SizedBox(width: 4),
+                          Icon(Icons.chevron_right_rounded, color: Colors.white, size: 17),
+                        ]),
+                      ),
+                    ),
+                  ),
+                ]),
+                const SizedBox(height: 10),
+                if (loading)
+                  const Expanded(child: Center(child: LinearProgressIndicator(
+                    minHeight: 2, color: Colors.white)))
+                else
+                  Row(children: [
+                    _monthlyMetric(Icons.phone_rounded, calls, 'Gelen\nArama',
+                      const Color(0xFF8B36FF), const Color(0xFFF5EEFF), tileSize, numberSize),
+                    _monthlyDivider(),
+                    _monthlyMetric(Icons.chat_bubble_rounded, messages, 'Mesaj\nTalebi',
+                      const Color(0xFF397DFF), const Color(0xFFF0F6FF), tileSize, numberSize),
+                    _monthlyDivider(),
+                    _monthlyMetric(Icons.warning_rounded, warnings, 'Park\nUyarısı',
+                      const Color(0xFFFF5E76), const Color(0xFFFFEFF4), tileSize, numberSize),
+                    _monthlyDivider(),
+                    _monthlyMetric(Icons.local_offer_rounded, 0, 'Fırsat\nKullanımı',
+                      const Color(0xFFFF9D47), const Color(0xFFFFF3E9), tileSize, numberSize),
+                  ]),
+              ]),
+            ),
+          ]),
+        ),
+      );
+    }),
   );
+
+  Widget _monthlyDivider()=>Container(
+    width: 1, height: 39, margin: const EdgeInsets.symmetric(horizontal: 3),
+    color: Colors.white.withValues(alpha: .48));
 
   Widget security()=>Padding(
     padding:const EdgeInsets.fromLTRB(16,13,16,0),
@@ -1822,4 +1906,40 @@ class OwnerServicesRedesign extends StatelessWidget{
       ])),
     );
   }
+}
+
+class _MonthlySummaryPainter extends CustomPainter {
+  const _MonthlySummaryPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    canvas.drawRect(rect, Paint()..shader = const LinearGradient(
+      begin: Alignment.topLeft, end: Alignment.bottomRight,
+      colors: [Color(0xFF7133FF), Color(0xFF6825F5),
+        Color(0xFF9636F9), Color(0xFFB54CF5)],
+      stops: [0, .39, .72, 1],
+    ).createShader(rect));
+    final rear = Path()
+      ..moveTo(0, size.height * .76)
+      ..cubicTo(size.width * .16, size.height * .31,
+        size.width * .24, size.height * .94, size.width * .43, size.height * .82)
+      ..cubicTo(size.width * .65, size.height * .65,
+        size.width * .76, size.height * .99, size.width, size.height * .46)
+      ..lineTo(size.width, size.height)..lineTo(0, size.height)..close();
+    canvas.drawPath(rear, Paint()
+      ..color = const Color(0xFFC16AF8).withValues(alpha: .31));
+    final front = Path()
+      ..moveTo(0, size.height * .90)
+      ..cubicTo(size.width * .21, size.height * .62,
+        size.width * .34, size.height * 1.11, size.width * .54, size.height * .89)
+      ..cubicTo(size.width * .76, size.height * .71,
+        size.width * .82, size.height * 1.08, size.width, size.height * .68)
+      ..lineTo(size.width, size.height)..lineTo(0, size.height)..close();
+    canvas.drawPath(front, Paint()
+      ..color = const Color(0xFFD58AFF).withValues(alpha: .28));
+  }
+
+  @override
+  bool shouldRepaint(covariant _MonthlySummaryPainter oldDelegate) => false;
 }
