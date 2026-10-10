@@ -30,6 +30,8 @@ jobs:
         run: flutter pub get
       - name: Analyze owner light theme screens
         run: flutter analyze lib/maintenance_detail_page.dart lib/owner_settings_detail.dart lib/vehicle_center_page.dart --no-fatal-infos --no-fatal-warnings
+      - name: Analyze admin app management
+        run: flutter analyze lib/admin_app_management_page.dart --no-fatal-infos --no-fatal-warnings
 
   build:
     if: github.event_name != 'pull_request'
