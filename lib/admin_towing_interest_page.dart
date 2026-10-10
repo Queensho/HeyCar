@@ -21,16 +21,13 @@ class AdminTowingInterestPage extends StatefulWidget{
 }
 class _AdminTowingInterestPageState extends State<AdminTowingInterestPage>{
   bool loading=true,demo=true,showPilots=false;
-  int total=1,notifyCount=1,regionCount=1;
+  int total=0,notifyCount=0,regionCount=0;
   String? error;
   List<Map<String,dynamic>> areas=[],pilots=[];
   Map<String,String> get headers=>{
     'Authorization':'Bearer ${widget.token}',
     'Content-Type':'application/json',
     if((widget.admin?['id']??'').toString().isNotEmpty)'X-Admin-Id':'${widget.admin?['id']}',
-  };
-  static const sample=<String,dynamic>{
-    'city':'İstanbul','district':'Avcılar','requests':1,'notifyCount':1,'status':'gathering','providerCapacity':0
   };
   @override void initState(){super.initState();reload();}
   Future<void> reload()async{
@@ -55,14 +52,18 @@ class _AdminTowingInterestPageState extends State<AdminTowingInterestPage>{
     }catch(_){
       // Backend may not be deployed yet. Never present example counts as live.
       if(mounted)setState((){
-        demo=true;total=1;notifyCount=1;regionCount=1;areas=[Map.of(sample)];pilots=[Map.of(sample)];
-        error='Ön talep API henüz aktif değil. Yalnızca örnek İstanbul / Avcılar verileri gösteriliyor.';
+        demo=true;total=0;notifyCount=0;regionCount=0;areas=[];pilots=[];
+        error='Ön talep API şu an kullanılamıyor. Gerçek talep sayıları yüklenemedi.';
       });
     }finally{if(mounted)setState(()=>loading=false);}
   }
   Future<void> exportCsv()async{
     String quote(Object? v)=>'"'+'${v??''}'.replaceAll('"','""')+'"';
     final csv=<String>['İl,İlçe,Talep,Bildirim İzni,Pilot Durumu'];
+    if(demo){
+      if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Gerçek veriler kullanılamıyor; CSV oluşturulmadı.')));
+      return;
+    }
     for(final x in areas){
       csv.add([x['city'],x['district'],x['requests'],x['notifyCount'],_pilotStatuses['${x['status']}']??'Talep Toplanıyor'].map(quote).join(','));
     }
@@ -100,10 +101,7 @@ class _AdminTowingInterestPageState extends State<AdminTowingInterestPage>{
     capacity.dispose();note.dispose();
     if(choice==null||!mounted)return;
     if(demo){
-      setState((){
-        row['status']=choice.$1;row['providerCapacity']=choice.$2;row['adminNote']=choice.$3;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Demo: Durum yalnızca bu ekranda değişti. Kaydedilmedi.')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Pilot yönetimi servis açılana kadar devre dışı.')));
       return;
     }
     if(['pilot','active'].contains(choice.$1)){
@@ -141,7 +139,7 @@ class _AdminTowingInterestPageState extends State<AdminTowingInterestPage>{
       if(demo)Container(padding:const EdgeInsets.all(13),
         decoration:BoxDecoration(color:AdminUi.purple.withValues(alpha:.09),borderRadius:BorderRadius.circular(11)),
         child:const Row(children:[Icon(Icons.science_outlined,color:AdminUi.purple),
-          SizedBox(width:9),Expanded(child:Text('DEMO VERİLERİ — Gerçek kullanıcı talebi yok. Veritabanına kayıt yapılmadı.',style:TextStyle(fontWeight:FontWeight.w800,fontSize:12)))])),
+          SizedBox(width:9),Expanded(child:Text('Talep toplama servisi henüz açılmadı. Gösterilen sıfırlar doğrulanmış canlı sayılar değildir.',style:TextStyle(fontWeight:FontWeight.w800,fontSize:12)))])),
       if(error!=null)Padding(padding:const EdgeInsets.symmetric(vertical:9),child:Text(error!,style:const TextStyle(fontSize:11,color:AdminUi.muted))),
       const SizedBox(height:12),
       Row(children:[metric('Tekil talep','$total',Icons.people_alt_outlined),const SizedBox(width:8),
