@@ -503,15 +503,21 @@ class _WeatherNotchClipper extends CustomClipper<Path> {
   Path getClip(Size size) {
     final w = size.width;
     final h = size.height;
-    // The shoulder is tangent to the horizontal notch floor. Both the
-    // cutout and button row are anchored to the same right-hand edge.
-    final shoulder = math.max(70.0, w - 138.0);
-    const notchFloor = 52.0;
+    // Follow the orange-marked contour: the descent starts earlier on the
+    // top edge and eases into the inset floor without a corner or V-shape.
+    // All offsets scale with card width while retaining safe narrow bounds.
+    final curveStart = math.max(72.0, w * .49);
+    final curveEnd = math.min(w - 54.0, w * .77);
+    const notchFloor = 74.0;
     const r = 25.0;
     return Path()
       ..moveTo(r, 0)
-      ..lineTo(shoulder - 30, 0)
-      ..cubicTo(shoulder - 8, 0, shoulder - 20, notchFloor, shoulder + 28, notchFloor)
+      ..lineTo(curveStart, 0)
+      ..cubicTo(
+        curveStart + (curveEnd - curveStart) * .36, 0,
+        curveEnd - (curveEnd - curveStart) * .17, notchFloor,
+        curveEnd, notchFloor,
+      )
       ..lineTo(w - r, notchFloor)
       ..quadraticBezierTo(w, notchFloor, w, notchFloor + r)
       ..lineTo(w, h - r)
