@@ -178,15 +178,54 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
     home['components']=rows;next['home']=home;_replaceConfig(next);
   }
 
-  Future<void> saveDraft({bool notify=true})async{
-    if(draft==null||saving)return;
+  // The VPS can be running an older app-builder-routes.js that silently
+  // strips these three optional properties. Treat that as a failed save.
+  // Never publish a draft whose service text colors did not round-trip.
+  void _verifyServiceTextColors(
+    Map<String,dynamic> requested,Map<String,dynamic> returned,
+  ){
+    List<Map<String,dynamic>> items(Map<String,dynamic> conf){
+      final raw=conf['services'];
+      return raw is List
+          ?raw.whereType<Map>().map((x)=>Map<String,dynamic>.from(x)).toList()
+          :<Map<String,dynamic>>[];
+    }
+    final saved={for(final row in items(returned))'${row['id']}':row};
+    for(final row in items(requested)){
+      final stored=saved['${row['id']}'];
+      if(stored==null)throw StateError('Hizmet kaydı sunucudan geri dönmedi.');
+      for(final field in ['titleTextColor','subtitleTextColor','badgeTextColor']){
+        final want='${row[field]??''}'.trim().toUpperCase();
+        final got='${stored[field]??''}'.trim().toUpperCase();
+        if(want!=got){
+          throw StateError(
+            'Yazı rengi sunucuda korunmadı (${row['title']} / $field). '
+            'VPS app-builder-routes.js güncel değil. Yayınlama durduruldu.',
+          );
+        }
+      }
+    }
+  }
+
+  Future<bool> saveDraft({bool notify=true})async{
+    if(draft==null||saving)return false;
+    final requested=_cloneConfig();
+    final draftId=draft!['id'];
     setState(()=>saving=true);
     try{
-      final d=await request('PATCH','/api/admin/app-management/drafts/${draft!['id']}',{'config':config});
-      if(mounted)setState((){draft=Map<String,dynamic>.from(d['draft'] as Map);dirty=false;});
-      if(notify&&mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Taslak kaydedildi. Canlı uygulama henüz değişmedi.')));
-    }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString().replaceFirst('Exception: ',''))));}
-    finally{if(mounted)setState(()=>saving=false);}
+      final d=await request('PATCH','/api/admin/app-management/drafts/$draftId',{'config':requested});
+      final storedDraft=Map<String,dynamic>.from(d['draft'] as Map);
+      final persisted=storedDraft['config'];
+      if(persisted is! Map)throw StateError('Sunucu taslak yapılandırmasını döndürmedi.');
+      _verifyServiceTextColors(requested,Map<String,dynamic>.from(persisted));
+      if(mounted)setState((){draft=storedDraft;dirty=false;});
+      if(notify&&mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Taslak ve yazı renkleri sunucuda doğrulandı. Canlı uygulama henüz değişmedi.')));
+      return true;
+    }catch(e){
+      if(mounted)setState(()=>dirty=true);
+      if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString().replaceFirst('Bad state: ','').replaceFirst('Exception: ',''))));
+      return false;
+    }finally{if(mounted)setState(()=>saving=false);}
   }
 
   Future<void> publish()async{
@@ -199,10 +238,15 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
     if(yes!=true)return;
     setState(()=>publishing=true);
     try{
-      if(dirty)await saveDraft(notify:false);
-      await request('POST','/api/admin/app-management/drafts/${draft!['id']}/publish',{});
+      if(dirty&&!(await saveDraft(notify:false)))return;
+      final expected=_cloneConfig();
+      final response=await request('POST','/api/admin/app-management/drafts/${draft!['id']}/publish',{});
+      final published=response['live'];
+      final publishedConfig=published is Map?published['config']:null;
+      if(publishedConfig is! Map)throw StateError('Yayınlanan yapılandırma doğrulanamadı.');
+      _verifyServiceTextColors(expected,Map<String,dynamic>.from(publishedConfig));
       await load();
-      if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Yeni uygulama config sürümü yayınlandı.')));
+      if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Yeni uygulama config sürümü yazı renkleriyle birlikte yayınlandı.')));
     }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString().replaceFirst('Exception: ',''))));}
     finally{if(mounted)setState(()=>publishing=false);}
   }
