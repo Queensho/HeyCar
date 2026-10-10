@@ -111,6 +111,9 @@ module.exports=function registerTowingInterestRoutes(app,pool,adminGuard){
     const parsedDate=rawDate?new Date(rawDate):null;
     if(!selected||!statuses.has(status)||!Number.isInteger(capacity)||capacity<0||capacity>10000||
        (parsedDate&&!Number.isFinite(parsedDate.getTime())))return res.status(400).json({error:'INVALID_PILOT_REGION'});
+    // Preinterest rollout never silently activates real towing dispatch.
+    if(['pilot','active'].includes(status)&&process.env.TOWING_PILOT_DISPATCH_READY!=='1')
+      return res.status(409).json({error:'TOWING_PILOT_DISPATCH_NOT_READY'});
     if(['pilot','active'].includes(status)&&(!req.body?.confirmActivation||capacity===0))
       return res.status(409).json({error:'PILOT_ACTIVATION_CONFIRMATION_REQUIRED'});
     const note=String(req.body?.adminNote||'').trim().slice(0,500);
