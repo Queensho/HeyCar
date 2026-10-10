@@ -109,6 +109,12 @@ function sanitizeSchedule(raw,out){
   if(max)out.maxAppVersion=max;
   if(min&&max&&compareVersion(min,max)>0)throw new Error('INVALID_APP_VERSION_RANGE');
 }
+function optionalTextColor(value){
+  const s=clean(value,9).trim();
+  if(!s)return '';
+  if(!HEX.test(s))throw new Error('INVALID_TEXT_COLOR');
+  return s.toUpperCase();
+}
 function iconKey(v){const x=clean(v,50);return x||'campaign';}
 function token(v,fallback='primary'){const x=clean(v,30);return TOKENS.has(x)?x:fallback;}
 function sanitizeItem(raw,kind){
@@ -125,6 +131,10 @@ function sanitizeItem(raw,kind){
     out.imageScale=clamp(raw.imageScale,0,1.5);out.imageX=clamp(raw.imageX,-100,100);out.imageY=clamp(raw.imageY,-100,100);out.imageOpacity=clamp(raw.imageOpacity,0,1);
     out.fit=FITS.has(raw.fit)?raw.fit:'contain';out.alignment=ALIGNS.has(raw.alignment)?raw.alignment:'bottomRight';
     out.badgeText=clean(raw.badgeText,40);out.badgeToken=token(raw.badgeToken,'primary');
+    for(const key of ['titleTextColor','subtitleTextColor','badgeTextColor']){
+      const color=optionalTextColor(raw[key]);
+      if(color)out[key]=color;
+    }
     const a=action(raw.action,raw.actionTarget);if(!a)throw new Error('INVALID_ACTION');out.action=a.type;if(a.target)out.actionTarget=a.target;
     out.testOnly=raw.testOnly===true;
   }else if(kind==='quick'){
