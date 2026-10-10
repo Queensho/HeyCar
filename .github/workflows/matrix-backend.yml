@@ -100,6 +100,11 @@ jobs:
       - name: Test stable owner session refresh
         working-directory: server
         run: node --test tests/owner-auth-stable-session.test.js
+      - name: Test service text colors survive publish
+        working-directory: server
+        run: node --test tests/service-text-color-publish.test.js
+      - name: Parse service text-color VPS deployment script
+        run: bash -n deploy/app-service-text-colors-live.sh
       - name: Parse targeted owner refresh deploy script
         run: bash -n deploy/owner-refresh-stable-session-live.sh
 
