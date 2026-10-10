@@ -66,6 +66,7 @@ void action(String a){
         OwnerHomeRedesign(
           key:ValueKey('home-$vid-${QrDraft.token}'),
           notifications:()=>setState(()=>tab=3),
+          profile:()=>setState(()=>tab=4),
           vehicles:()=>setState(()=>tab=1),
           services:()=>setState(()=>tab=2),
           park:_park,
