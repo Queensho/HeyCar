@@ -10,6 +10,8 @@ class OwnerAuth{
 
   static Future<void> restore()async{
     final p=await SharedPreferences.getInstance();
+    // On web, other tabs/PWA windows can rotate credentials in storage.
+    await p.reload();
     accessToken=p.getString('owner_access_token')??'';
     refreshToken=p.getString('owner_refresh_token')??'';
   }
@@ -70,7 +72,8 @@ class OwnerAuth{
   }
 
   static Future<OwnerRefreshResult> _refreshOnce()async{
-    if(refreshToken.isEmpty)await restore();
+    // Always re-read the freshest refresh token before rotating a session.
+    await restore();
     if(refreshToken.isEmpty)return OwnerRefreshResult.invalid;
     final tokenToRotate=refreshToken;
     try{
@@ -104,5 +107,45 @@ class OwnerAuth{
     };
   }
 }
-// OwnerHttp retries once after a 401 by rotating the JWT refresh token.
-class OwnerHttp{static Future<http.Response> get(Uri u,{bool json=true,Map<String,String>? headers})=>_send((h)=>http.get(u,headers:{...h,...?headers}),json:json);static Future<http.Response> delete(Uri u,{Object? body,bool json=true,Map<String,String>? headers})=>_send((h)=>http.delete(u,headers:{...h,...?headers},body:body),json:json);static Future<http.Response> post(Uri u,{Object? body,bool json=true,Map<String,String>? headers})=>_send((h)=>http.post(u,headers:{...h,...?headers},body:body),json:json);static Future<http.Response> put(Uri u,{Object? body,bool json=true,Map<String,String>? headers})=>_send((h)=>http.put(u,headers:{...h,...?headers},body:body),json:json);static Future<http.Response> patch(Uri u,{Object? body,bool json=true,Map<String,String>? headers})=>_send((h)=>http.patch(u,headers:{...h,...?headers},body:body),json:json);static Future<http.Response> _send(Future<http.Response> Function(Map<String,String>) fn,{bool json=true})async{var r=await fn(await OwnerAuth.headers(json:json));if(r.statusCode==401&&await OwnerAuth.refresh())r=await fn(await OwnerAuth.headers(json:json));return r;}}
+// Do not rotate refresh tokens for every late 401 from an older concurrent
+// request. Rotation immediately revokes that request's JWT session ID, so
+// repeated 401s could otherwise create an unbounded refresh storm.
+class OwnerHttp {
+  static Future<http.Response> get(Uri u,{bool json=true,Map<String,String>? headers})=>
+    _send((h)=>http.get(u,headers:{...h,...?headers}),json:json);
+  static Future<http.Response> delete(Uri u,{Object? body,bool json=true,Map<String,String>? headers})=>
+    _send((h)=>http.delete(u,headers:{...h,...?headers},body:body),json:json);
+  static Future<http.Response> post(Uri u,{Object? body,bool json=true,Map<String,String>? headers})=>
+    _send((h)=>http.post(u,headers:{...h,...?headers},body:body),json:json);
+  static Future<http.Response> put(Uri u,{Object? body,bool json=true,Map<String,String>? headers})=>
+    _send((h)=>http.put(u,headers:{...h,...?headers},body:body),json:json);
+  static Future<http.Response> patch(Uri u,{Object? body,bool json=true,Map<String,String>? headers})=>
+    _send((h)=>http.patch(u,headers:{...h,...?headers},body:body),json:json);
+
+  static Future<http.Response> _send(
+    Future<http.Response> Function(Map<String,String>) fn,{bool json=true}
+  )async{
+    final initialHeaders=await OwnerAuth.headers(json:json);
+    var sentAuth=initialHeaders['Authorization']??'';
+    var response=await fn(initialHeaders);
+    if(response.statusCode!=401)return response;
+
+    // Another concurrent request or browser tab may already have rotated the
+    // refresh token. Replay with the latest valid access token first; never
+    // revoke that new session just because an older request completed late.
+    for(var attempt=0;attempt<2;attempt++){
+      await OwnerAuth.restore();
+      final newerHeaders=await OwnerAuth.headers(json:json);
+      final newerAuth=newerHeaders['Authorization']??'';
+      if(newerAuth.isEmpty||newerAuth==sentAuth)break;
+      sentAuth=newerAuth;
+      response=await fn(newerHeaders);
+      if(response.statusCode!=401)return response;
+    }
+
+    // Only if no newer credential worked, try the existing single-flight
+    // refresh once. Preserve the server's 401 when that refresh fails.
+    if(!await OwnerAuth.refresh())return response;
+    return fn(await OwnerAuth.headers(json:json));
+  }
+}
