@@ -55,6 +55,8 @@ class PushNotifications{
   static int _tokenRetryAttempt=0;
   static Timer? _tokenRetryTimer;
   static Future<void> Function(Map<String,dynamic> data)? onNavigationRequested;
+  // Delivers a native Accept to an already visible Flutter call screen.
+  static final ValueNotifier<String> nativeAcceptedCallId=ValueNotifier<String>('');
   static final Map<String,DateTime> _recentLocalNotifications=<String,DateTime>{};
 
   static Future<void> bootstrap()async{
@@ -126,6 +128,7 @@ class PushNotifications{
       final data=Map<String,dynamic>.from(params.extra??const <String,dynamic>{});
       final callId=(data['callId']??params.id).toString();
       if(event is CallEventActionCallAccept){
+        nativeAcceptedCallId.value=callId;
         await _rememberNavigation({...data,'callId':callId,'type':'incoming_call'});
         final prefs=await SharedPreferences.getInstance();
         await prefs.setString('pending_incoming_call_auto_accept',callId);
@@ -469,6 +472,7 @@ class PushNotifications{
 
   static Future<void> cancelIncomingCall(String callId)async{
     if(callId.isEmpty)return;
+    if(nativeAcceptedCallId.value==callId)nativeAcceptedCallId.value='';
     try{await FlutterCallkitIncoming.hideCallkitIncoming(CallKitParams(id:callId));}catch(_){}
     try{await FlutterCallkitIncoming.endCall(callId);}catch(_){}
     try{await FlutterCallkitIncoming.endAllCalls();}catch(_){}
