@@ -9,7 +9,7 @@ class CallkitFlutterRoutePatchTests(unittest.TestCase):
         result = patch_source(before)
         self.assertIn(NEW_BLOCK, result)
         self.assertIn("setContentIntent(getAppPendingIntent", result)
-        self.assertIn("setFullScreenIntent(\\n            getAppPendingIntent", result)
+        self.assertIn("getAppPendingIntent(notificationId, data), true", result)
         self.assertNotIn("setContentIntent(getActivityPendingIntent", result)
         self.assertEqual(result.count("setFullScreenIntent("), 1)
 
