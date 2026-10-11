@@ -5,6 +5,7 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:flutter_callkit_incoming/entities/entities.dart';
 import 'anonymous_call_api.dart';
+import 'push_notifications.dart';
 
 const _ownerCallBg = Color(0xFF070B22);
 const _ownerCallPurple = Color(0xFF7C2CFF);
@@ -61,21 +62,32 @@ class _OwnerCallPageState extends State<OwnerCallPage> with SingleTickerProvider
       ? AnonymousCallApi.driverSignal(callId, action: action, answer: answer, candidate: candidate)
       : AnonymousCallApi.ownerSignal(callId, action: action, answer: answer, candidate: candidate);
 
+  void _handleNativeAccept() {
+    if(PushNotifications.nativeAcceptedCallId.value!=callId||closing||connected)return;
+    if(mounted)setState(()=>nativeAccepted=true);
+    if(!busy)_accept();
+  }
+
   @override
   void initState() {
     super.initState();
-    nativeAccepted = widget.autoAccept;
+    nativeAccepted = widget.autoAccept ||
+        PushNotifications.nativeAcceptedCallId.value==callId;
+    PushNotifications.nativeAcceptedCallId.addListener(_handleNativeAccept);
     pulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 2200))..repeat();
     remoteRenderer.initialize();
     poller = Timer.periodic(const Duration(milliseconds: 700), (_) => _poll());
     Future.microtask(() async {
       await _poll();
-      if (widget.autoAccept && mounted && !closing && !connected && !busy) await _accept();
+      if (nativeAccepted && mounted && !closing && !connected && !busy) await _accept();
     });
   }
 
   Future<void> _clearNativeCall() async {
     if (callId.isEmpty) return;
+    if(PushNotifications.nativeAcceptedCallId.value==callId){
+      PushNotifications.nativeAcceptedCallId.value='';
+    }
     try { await FlutterCallkitIncoming.hideCallkitIncoming(CallKitParams(id: callId)); } catch (_) {}
     try { await FlutterCallkitIncoming.endCall(callId); } catch (_) {}
     try { await FlutterCallkitIncoming.endAllCalls(); } catch (_) {}
@@ -218,6 +230,7 @@ class _OwnerCallPageState extends State<OwnerCallPage> with SingleTickerProvider
 
   @override
   void dispose() {
+    PushNotifications.nativeAcceptedCallId.removeListener(_handleNativeAccept);
     poller?.cancel();
     durationTimer?.cancel();
     pulseController.dispose();
