@@ -116,6 +116,12 @@ module.exports=function registerPushRoutes(app,pool){
     health.lastAttemptAt=new Date().toISOString();
     health.lastError=null;
     await schema();
+    // Skip remote OAuth when there are no push registrations for this user.
+    const rows=(await pool.query(
+      `SELECT DISTINCT ON (fcm_token) id,fcm_token,platform FROM ${table} WHERE ${idColumn}=$1 AND active=TRUE ORDER BY fcm_token,updated_at DESC`,
+      [String(userId)]
+    )).rows;
+    if(!rows.length){health.lastAttempted=0;health.lastDelivered=0;return {attempted:0,delivered:0};}
     let sa,key;
     try{
       sa=serviceAccount();
@@ -131,12 +137,6 @@ module.exports=function registerPushRoutes(app,pool){
       return {attempted:0,delivered:0};
     }
     const project=sa.project_id;
-    const rows=(await pool.query(
-      `SELECT DISTINCT ON (fcm_token) id,fcm_token,platform FROM ${table} WHERE ${idColumn}=$1 AND active=TRUE ORDER BY fcm_token,updated_at DESC`,
-      [String(userId)]
-    )).rows;
-    if(!rows.length){health.lastAttempted=0;health.lastDelivered=0;return {attempted:0,delivered:0};}
-
     const callEvent=data.type==='incoming_call'||data.type==='incoming_call_cancelled';
     const fcmData=Object.fromEntries(Object.entries({...data,title,body}).map(([k,v])=>[k,String(v??'')]));
     const endpoint=`https://fcm.googleapis.com/v1/projects/${project}/messages:send`;
