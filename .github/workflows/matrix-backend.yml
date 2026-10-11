@@ -115,6 +115,9 @@ jobs:
       - name: Verify QR calls use the scanned vehicle across recipient APIs
         working-directory: server
         run: node --test tests/call-qr-vehicle-identity.test.js
+      - name: Verify motorcycle profile privacy and km reminders
+        working-directory: server
+        run: node --test tests/motorcycle-service-profile.test.js
       - name: Test legacy printed QR rescan quota
         working-directory: server
         run: |
