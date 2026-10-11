@@ -145,6 +145,10 @@ jobs:
           grep -q "MIGRATION_CHECKSUM_MISMATCH" deploy/motorcycle-profile-live.sh
       - name: Verify motorcycle migration parser handles SQL comments
         run: python3 -m unittest discover -s deploy/tests -p 'test_motorcycle_migration_parser.py' -v
+      - name: Verify scoped motorcycle brand logo VPS rollout
+        run: |
+          bash -n deploy/motorcycle-brand-logos-live.sh
+          python3 -m unittest discover -s deploy/tests -p 'test_moto_logo_deploy_patch.py' -v
       - name: Check no-device driver call VPS deployment syntax
         run: bash -n deploy/call-offline-driver-live.sh
       - name: Check QR-bound call vehicle deploy syntax
