@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'anonymous_call_api.dart';
 import 'public_notification_api.dart';
+import 'qr_outgoing_call_view.dart';
 
 const _callBg = Color(0xFF07111F);
 const _callPurple = Color(0xFF7C4DFF);
@@ -26,7 +27,7 @@ class _PublicCallPageState extends State<PublicCallPage> with SingleTickerProvid
   int _statusFailures=0;
 
   @override void initState(){super.initState();pulseController=AnimationController(vsync:this,duration:const Duration(milliseconds:1900))..repeat();_start();}
-  Future<void> _start() async {try{await remoteRenderer.initialize();final scan=await PublicNotificationApi.scanToken();final created=await AnonymousCallApi.create(widget.qrToken,scanToken:scan);callId=created['id']?.toString();visitorToken=created['visitor_token']?.toString();if(callId==null||visitorToken==null)throw Exception('CALL_ID_MISSING');localStream=await navigator.mediaDevices.getUserMedia({'audio':true,'video':false});for(final track in localStream!.getAudioTracks()){track.enabled=true;}try{await Helper.setSpeakerphoneOn(false);}catch(_){}peer=await createPeerConnection({'iceServers':[{'urls':'stun:stun.l.google.com:19302'},{'urls':'stun:stun1.l.google.com:19302'}]});for(final track in localStream!.getTracks()){await peer!.addTrack(track,localStream!);}peer!.onIceCandidate=(candidate){final id=callId,visitor=visitorToken;if(candidate.candidate==null||id==null||visitor==null)return;AnonymousCallApi.publicSignal(id,visitor,candidate:{'candidate':candidate.candidate,'sdpMid':candidate.sdpMid,'sdpMLineIndex':candidate.sdpMLineIndex}).catchError((_){ });};peer!.onTrack=(event){if(event.streams.isNotEmpty)remoteRenderer.srcObject=event.streams.first;};final offer=await peer!.createOffer({'offerToReceiveAudio':1});await peer!.setLocalDescription(offer);await AnonymousCallApi.publicSignal(callId!,visitorToken!,offer:{'sdp':offer.sdp,'type':offer.type});if(mounted)setState(()=>status='ringing');poller=Timer.periodic(const Duration(milliseconds:900),(_)=>_poll());}catch(e){final id=callId,visitor=visitorToken;if(id!=null&&visitor!=null){try{await AnonymousCallApi.publicSignal(id,visitor,action:'cancel');}catch(_){}}if(mounted)setState((){error=_friendly(e);status='failed';});}}
+  Future<void> _start() async {try{await remoteRenderer.initialize();final scan=await PublicNotificationApi.scanToken();final created=await AnonymousCallApi.create(widget.qrToken,scanToken:scan);callId=created['id']?.toString();visitorToken=created['visitor_token']?.toString();if(callId==null||visitorToken==null)throw Exception('CALL_ID_MISSING');localStream=await navigator.mediaDevices.getUserMedia({'audio':true,'video':false});for(final track in localStream!.getAudioTracks()){track.enabled=true;}try{await Helper.setSpeakerphoneOn(false);}catch(_){}peer=await createPeerConnection({'iceServers':[{'urls':'stun:stun.l.google.com:19302'},{'urls':'stun:stun1.l.google.com:19302'}]});for(final track in localStream!.getTracks()){await peer!.addTrack(track,localStream!);}peer!.onIceCandidate=(candidate){final id=callId,visitor=visitorToken;if(candidate.candidate==null||id==null||visitor==null)return;AnonymousCallApi.publicSignal(id,visitor,candidate:{'candidate':candidate.candidate,'sdpMid':candidate.sdpMid,'sdpMLineIndex':candidate.sdpMLineIndex}).catchError((_){ });};peer!.onTrack=(event){if(event.streams.isNotEmpty)remoteRenderer.srcObject=event.streams.first;};final offer=await peer!.createOffer({'offerToReceiveAudio':1});await peer!.setLocalDescription(offer);await AnonymousCallApi.publicSignal(callId!,visitorToken!,offer:{'sdp':offer.sdp,'type':offer.type});if(mounted)setState(()=>status='ringing');poller=Timer.periodic(const Duration(milliseconds:900),(_)=>_poll());}catch(e){final id=callId,visitor=visitorToken;if(id!=null&&visitor!=null){try{await AnonymousCallApi.publicSignal(id,visitor,action:'cancel');}catch(_){}}if(mounted){setState((){error=_friendly(e);status='failed';});_syncVisualPulse();}}}
   Future<void> _poll() async {
     final id=callId,visitor=visitorToken;
     if(id==null||visitor==null||exiting||_pollInFlight)return;
@@ -38,7 +39,7 @@ class _PublicCallPageState extends State<PublicCallPage> with SingleTickerProvid
       // Remote hangup must be honored even when WebRTC SDP/ICE fails.
       // A malformed or stale answer must never trap the caller on screen.
       if(const {'rejected','missed','ended','cancelled'}.contains(next)){
-        if(mounted)setState(()=>status=next);
+        if(mounted){setState(()=>status=next);_syncVisualPulse();}
         poller?.cancel();
         await Future<void>.delayed(const Duration(milliseconds:350));
         _exit();
@@ -70,6 +71,7 @@ class _PublicCallPageState extends State<PublicCallPage> with SingleTickerProvid
       }
       if(mounted&&(next!=status||error!=null)){
         setState((){status=next;error=null;});
+        _syncVisualPulse();
       }
     }catch(e){
       _statusFailures++;
@@ -80,13 +82,34 @@ class _PublicCallPageState extends State<PublicCallPage> with SingleTickerProvid
       _pollInFlight=false;
     }
   }
+  void _syncVisualPulse() {
+    // UI-only: no fake call state or signaling side effects.
+    final active=status=='preparing'||status=='ringing'||status=='connecting';
+    if(active&&!pulseController.isAnimating)pulseController.repeat();
+    if(!active&&pulseController.isAnimating)pulseController.stop();
+  }
   String _friendly(Object e){final value=e.toString();if(value.contains('VEHICLE_NOT_NEARBY'))return'Araç yanında değilsiniz. Güvenlik nedeniyle arama başlatılamadı.';if(value.contains('LOCATION_ACCURACY_TOO_LOW'))return'Konum doğruluğu yetersiz. Araca yaklaşın ve tekrar deneyin.';if(value.contains('LOCATION_REQUIRED'))return'Devam etmek için konum izni gerekli.';if(value.contains('OWNER_BUSY'))return'Araç yetkilisi şu anda başka bir görüşmede.';if(value.contains('OWNER_DND_ACTIVE'))return'Araç sahibi şu anda Rahatsız Etmeyin modunda. Lütfen daha sonra tekrar deneyin.';if(value.contains('PROXIMITY_PROOF_REQUIRED'))return'QR doğrulaması bulunamadı. Araç üzerindeki gerçek QR kodunu tekrar okutun.';if(value.contains('TOO_MANY_REQUESTS'))return'Çok fazla deneme yapıldı. Bir süre bekleyip QR kodunu yeniden okutun.';if(value.contains('QR_SCAN_PROOF_INVALID'))return'QR güvenlik kodu geçersiz. Güncel etiketi okutun.';if(value.toLowerCase().contains('permission'))return'Mikrofon izni verilmedi.';return'Arama başlatılamadı. Tekrar deneyin.';}
   void _exit(){if(exiting)return;exiting=true;if(widget.onExit!=null){widget.onExit!();return;}if(mounted&&Navigator.of(context).canPop())Navigator.of(context).pop();}
   Future<void> _hangup() async {if(exiting)return;poller?.cancel();final id=callId,visitor=visitorToken;if(id!=null&&visitor!=null&&!const {'ended','rejected','missed','cancelled'}.contains(status)){try{await AnonymousCallApi.publicSignal(id,visitor,action:'cancel');}catch(_){}}_exit();}
   void _toggleMute(){muted=!muted;for(final track in localStream?.getAudioTracks()??<MediaStreamTrack>[]){track.enabled=!muted;}if(mounted)setState((){});}
   @override void dispose(){poller?.cancel();pulseController.dispose();for(final track in localStream?.getTracks()??<MediaStreamTrack>[]){track.stop();}peer?.close();remoteRenderer.dispose();super.dispose();}
   String get title=>switch(status){'accepted'=>'Bağlandı','rejected'=>'Arama reddedildi','missed'=>'Cevap verilmedi','ended'=>'Görüşme sona erdi','cancelled'=>'Arama iptal edildi','failed'=>'Bağlantı kurulamadı','preparing'=>'Arama hazırlanıyor…',_=>'Araç yetkilisi aranıyor…'};
-  @override Widget build(BuildContext context){final connected=status=='accepted';return PopScope(canPop:false,onPopInvokedWithResult:(didPop,_){if(!didPop)_hangup();},child:Scaffold(backgroundColor:_callBg,body:SafeArea(child:Padding(padding:const EdgeInsets.fromLTRB(22,28,22,26),child:Column(crossAxisAlignment:CrossAxisAlignment.center,children:[const SizedBox(width:double.infinity,child:Text('CepQontag',textAlign:TextAlign.center,style:TextStyle(color:Colors.white,fontSize:28,fontWeight:FontWeight.w900))),const Spacer(flex:2),SizedBox(width:double.infinity,child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.center,children:[_PulsingCar(controller:pulseController,active:!connected),const SizedBox(height:28),Text(widget.plate,textAlign:TextAlign.center,style:const TextStyle(color:Colors.white,fontSize:25,fontWeight:FontWeight.w900)),const SizedBox(height:8),Text(title,textAlign:TextAlign.center,style:const TextStyle(color:_callMuted,fontSize:17,fontWeight:FontWeight.w700)),if(error!=null)...[const SizedBox(height:10),Text(error!,textAlign:TextAlign.center,style:const TextStyle(color:Colors.redAccent))],const SizedBox(height:24),const Text('Telefon numaraları karşı tarafa gösterilmez.',textAlign:TextAlign.center,style:TextStyle(color:_callMuted,fontSize:13))])),const Spacer(flex:3),if(connected)Row(mainAxisAlignment:MainAxisAlignment.center,children:[_CircleAction(icon:muted?Icons.mic_off_rounded:Icons.mic_rounded,label:muted?'Sesi aç':'Sessiz',onTap:_toggleMute),const SizedBox(width:34),_CircleAction(icon:Icons.call_end_rounded,label:'Kapat',danger:true,onTap:_hangup)])else _CircleAction(icon:Icons.call_end_rounded,label:'İptal',danger:true,onTap:_hangup)])))));}
+  @override Widget build(BuildContext context){final connected=status=='accepted';
+    if(!connected){
+      return PopScope(
+        canPop:false,
+        onPopInvokedWithResult:(didPop,_){if(!didPop)_hangup();},
+        child:QrOutgoingCallView(
+          pulse:pulseController,
+          status:status,
+          error:error,
+          onCancel:_hangup,
+        ),
+      );
+    }
+    // Keep the existing accepted-call screen, microphone controls, signaling
+    // and hang-up UI unchanged. Only the waiting/calling view is redesigned.
+    return PopScope(canPop:false,onPopInvokedWithResult:(didPop,_){if(!didPop)_hangup();},child:Scaffold(backgroundColor:_callBg,body:SafeArea(child:Padding(padding:const EdgeInsets.fromLTRB(22,28,22,26),child:Column(crossAxisAlignment:CrossAxisAlignment.center,children:[const SizedBox(width:double.infinity,child:Text('CepQontag',textAlign:TextAlign.center,style:TextStyle(color:Colors.white,fontSize:28,fontWeight:FontWeight.w900))),const Spacer(flex:2),SizedBox(width:double.infinity,child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.center,children:[_PulsingCar(controller:pulseController,active:!connected),const SizedBox(height:28),Text(widget.plate,textAlign:TextAlign.center,style:const TextStyle(color:Colors.white,fontSize:25,fontWeight:FontWeight.w900)),const SizedBox(height:8),Text(title,textAlign:TextAlign.center,style:const TextStyle(color:_callMuted,fontSize:17,fontWeight:FontWeight.w700)),if(error!=null)...[const SizedBox(height:10),Text(error!,textAlign:TextAlign.center,style:const TextStyle(color:Colors.redAccent))],const SizedBox(height:24),const Text('Telefon numaraları karşı tarafa gösterilmez.',textAlign:TextAlign.center,style:TextStyle(color:_callMuted,fontSize:13))])),const Spacer(flex:3),if(connected)Row(mainAxisAlignment:MainAxisAlignment.center,children:[_CircleAction(icon:muted?Icons.mic_off_rounded:Icons.mic_rounded,label:muted?'Sesi aç':'Sessiz',onTap:_toggleMute),const SizedBox(width:34),_CircleAction(icon:Icons.call_end_rounded,label:'Kapat',danger:true,onTap:_hangup)])else _CircleAction(icon:Icons.call_end_rounded,label:'İptal',danger:true,onTap:_hangup)])))));}
 }
 class _PulsingCar extends StatelessWidget{const _PulsingCar({required this.controller,required this.active});final AnimationController controller;final bool active;@override Widget build(BuildContext context){return SizedBox(width:190,height:190,child:AnimatedBuilder(animation:controller,builder:(context,child){Widget ring(double phase,double maxScale,double maxOpacity){final t=active?(controller.value+phase)%1.0:0.0;final scale=active?0.82+(maxScale-0.82)*t:0.82;final opacity=active?maxOpacity*(1-t):0.0;return Transform.scale(scale:scale,child:Opacity(opacity:opacity.clamp(0.0,1.0),child:Container(width:150,height:150,decoration:BoxDecoration(shape:BoxShape.circle,border:Border.all(color:_callPurple,width:2)))));}return Stack(alignment:Alignment.center,children:[ring(0,1.28,.42),ring(.34,1.28,.32),ring(.67,1.28,.24),Container(width:116,height:116,decoration:const BoxDecoration(color:Color(0xFF1B2850),shape:BoxShape.circle),child:const Icon(Icons.directions_car_filled_rounded,color:_callPurple,size:58))]);}));}}
 class _CircleAction extends StatelessWidget{const _CircleAction({required this.icon,required this.label,required this.onTap,this.danger=false});final IconData icon;final String label;final VoidCallback onTap;final bool danger;@override Widget build(BuildContext context)=>Column(children:[InkWell(onTap:onTap,customBorder:const CircleBorder(),child:Container(width:68,height:68,decoration:BoxDecoration(color:danger?const Color(0xFFE53935):const Color(0xFF1B2850),shape:BoxShape.circle),child:Icon(icon,color:Colors.white,size:30))),const SizedBox(height:8),Text(label,style:const TextStyle(color:Colors.white70,fontWeight:FontWeight.w700))]);}
