@@ -79,7 +79,7 @@ module.exports = function registerVehicleManagementRoutes(app, pool) {
       const base=publicBase(req);
       const enriched=await Promise.all(vehicles.rows.map(async v=>{
         const brandLogo=await cachedLogo(pool,v.make);
-        if(!brandLogo.available)queueResolve(pool,v.make,base);
+        if(!brandLogo.available)queueResolve(pool,v.make,base,{vehicleType:v.vehicle_type});
         return {...v,brandLogo};
       }));
       return res.json({ ok:true, premium, premiumPlan, familyPremium, limit: premium ? 3 : 1, vehicles: enriched });
@@ -129,7 +129,7 @@ module.exports = function registerVehicleManagementRoutes(app, pool) {
       const created = await client.query(`INSERT INTO vehicles(owner_id,plate,make,model,color,model_year,vehicle_type,fuel_type) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id,plate,make,model,color,model_year,vehicle_type,fuel_type,created_at`, [owner,plate,make,model || null,color || null,modelYear,vehicleType,fuelType]);
       await client.query('COMMIT');
       const brandLogo=await cachedLogo(pool,created.rows[0].make);
-      if(!brandLogo.available)queueResolve(pool,created.rows[0].make,publicBase(req));
+      if(!brandLogo.available)queueResolve(pool,created.rows[0].make,publicBase(req),{vehicleType:created.rows[0].vehicle_type});
       return res.status(201).json({ ok:true, vehicle:{...created.rows[0],brandLogo}, limit, premium, premiumPlan, familyPremium });
     } catch (e) {
       await client.query('ROLLBACK').catch(()=>{});
@@ -195,7 +195,7 @@ module.exports = function registerVehicleManagementRoutes(app, pool) {
       await client.query('COMMIT');
       if(mileage!==null)updated.rows[0].mileage=mileage;
       const brandLogo=await cachedLogo(pool,updated.rows[0].make);
-      if(!brandLogo.available)queueResolve(pool,updated.rows[0].make,publicBase(req));
+      if(!brandLogo.available)queueResolve(pool,updated.rows[0].make,publicBase(req),{vehicleType:updated.rows[0].vehicle_type});
       return res.json({ ok: true, vehicle:{...updated.rows[0],brandLogo} });
     } catch (e) {
       if (client) await client.query('ROLLBACK').catch(() => {});
