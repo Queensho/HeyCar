@@ -21,6 +21,7 @@ import 'story_service.dart';
 import 'owner_story_highlights.dart';
 import 'app_ui_config.dart';
 import 'owner_home_component_registry.dart';
+import 'call_activity.dart';
 
 class OwnerHomeRedesign extends StatefulWidget{
   const OwnerHomeRedesign({
@@ -131,14 +132,14 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     storyTimer?.cancel();
     appConfigTimer?.cancel();
     if(!widget.active)return;
-    timer=Timer.periodic(const Duration(seconds:20),(_)=>load(silent:true));
-    valetTimer=Timer.periodic(const Duration(seconds:3),(_)=>_loadValetStatus());
-    storyTimer=Timer.periodic(const Duration(seconds:60),(_)=>_loadStories());
-    appConfigTimer=Timer.periodic(const Duration(seconds:60),(_)=>_refreshAppUiConfig());
+    timer=Timer.periodic(const Duration(seconds:20),(_){if(!CallActivity.isActive)load(silent:true);});
+    valetTimer=Timer.periodic(const Duration(seconds:3),(_){if(!CallActivity.isActive)_loadValetStatus();});
+    storyTimer=Timer.periodic(const Duration(seconds:60),(_){if(!CallActivity.isActive)_loadStories();});
+    appConfigTimer=Timer.periodic(const Duration(seconds:60),(_){if(!CallActivity.isActive)_refreshAppUiConfig();});
   }
 
   Future<void> _loadValetStatus()async{
-    if(_valetRefreshing||!widget.active)return;
+    if(_valetRefreshing||!widget.active||CallActivity.isActive)return;
     final vehicleId=QrDraft.vehicleId.trim();
     if(vehicleId.isEmpty)return;
     _valetRefreshing=true;
@@ -403,7 +404,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   }
 
   Future<void> load({bool silent=false})async{
-    if(_refreshing||(!widget.active&&silent))return;
+    if(_refreshing||(!widget.active&&silent)||(silent&&CallActivity.isActive))return;
     _refreshing=true;
     if(!silent&&mounted)setState(()=>loading=true);
     try{
