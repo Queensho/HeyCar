@@ -79,7 +79,7 @@ Future<void> _deleteOwnerAccount(BuildContext context) async {
   if(confirmed!=true)return;
   await OwnerAuth.clear();
   final p=await SharedPreferences.getInstance();
-  for(final k in ['owner_logged_in','owner_user_id','owner_phone','owner_display_name','owner_email','owner_vehicle_id','owner_plate','owner_make','owner_model','owner_qr_token','push_token_registered']){await p.remove(k);}
+  for(final k in ['owner_logged_in','owner_user_id','owner_phone','owner_display_name','owner_email','owner_vehicle_id','owner_plate','owner_vehicle_type','owner_make','owner_model','owner_qr_token','push_token_registered']){await p.remove(k);}
   if(!context.mounted)return;
   Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder:(_)=>const _AccountDeletedPage()),(_)=>false);
 }
