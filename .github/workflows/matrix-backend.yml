@@ -112,6 +112,9 @@ jobs:
       - name: Verify no-device driver routes call to reachable owner
         working-directory: server
         run: node --test tests/call-recipient-selection.test.js
+      - name: Verify QR calls use the scanned vehicle across recipient APIs
+        working-directory: server
+        run: node --test tests/call-qr-vehicle-identity.test.js
       - name: Test legacy printed QR rescan quota
         working-directory: server
         run: |
@@ -128,6 +131,8 @@ jobs:
         run: bash -n deploy/call-recipient-fallback-live.sh
       - name: Check no-device driver call VPS deployment syntax
         run: bash -n deploy/call-offline-driver-live.sh
+      - name: Check QR-bound call vehicle deploy syntax
+        run: bash -n deploy/call-qr-vehicle-identity-live.sh
       - name: Parse service text-color VPS deployment script
         run: bash -n deploy/app-service-text-colors-live.sh
       - name: Parse targeted owner refresh deploy script
