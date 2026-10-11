@@ -46,6 +46,10 @@ jobs:
         run: |
           flutter analyze lib/owner_auth.dart test/owner_refresh_storm_test.dart --no-fatal-infos --no-fatal-warnings
           flutter test test/owner_refresh_storm_test.dart
+      - name: Check fast owner startup and nonblocking call acceptance
+        run: |
+          flutter analyze lib/app_runtime_config.dart lib/call_accept_policy.dart lib/call_activity.dart lib/entry_theme_live.dart lib/owner_call_page.dart lib/owner_home_redesign.dart test/call_accept_policy_test.dart test/call_activity_test.dart --no-fatal-infos --no-fatal-warnings
+          flutter test test/call_accept_policy_test.dart test/call_activity_test.dart
       - name: Verify branded Flutter call screen source patch
         run: python3 -m unittest discover -s tool -p test_callkit_flutter_route_patch.py
 
@@ -321,5 +325,13 @@ jobs:
         with:
           name: heycar-android-test
           path: build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 7
+      - name: Build Android optimized release test APK
+        run: flutter build apk --release --target lib/entry_theme_live.dart
+      - name: Upload Android optimized release test APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: cepqontag-android-release-test
+          path: build/app/outputs/flutter-apk/app-release.apk
           retention-days: 7
 

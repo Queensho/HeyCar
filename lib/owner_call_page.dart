@@ -5,6 +5,8 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:flutter_callkit_incoming/entities/entities.dart';
 import 'anonymous_call_api.dart';
+import 'call_accept_policy.dart';
+import 'call_activity.dart';
 import 'push_notifications.dart';
 
 const _ownerCallBg = Color(0xFF070B22);
@@ -37,6 +39,7 @@ class _OwnerCallPageState extends State<OwnerCallPage> with SingleTickerProvider
   bool speakerOn = false;
   bool closing = false;
   bool staleAccepted = false;
+  bool _pollInFlight = false;
   String? error;
   int connectedSeconds = 0;
   final Set<String> callerCandidateKeys = <String>{};
@@ -72,15 +75,20 @@ class _OwnerCallPageState extends State<OwnerCallPage> with SingleTickerProvider
   @override
   void initState() {
     super.initState();
+    CallActivity.opened();
     nativeAccepted = widget.autoAccept ||
         PushNotifications.nativeAcceptedCallId.value==callId;
     PushNotifications.nativeAcceptedCallId.addListener(_handleNativeAccept);
     pulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 2200))..repeat();
     remoteRenderer.initialize();
-    poller = Timer.periodic(const Duration(milliseconds: 700), (_) => _poll());
+    poller = Timer.periodic(const Duration(milliseconds: 1400), (_) => _poll());
     Future.microtask(() async {
-      await _poll();
-      if (nativeAccepted && mounted && !closing && !connected && !busy) await _accept();
+      // Do not start another status fetch ahead of native auto-accept.
+      if (nativeAccepted && mounted && !closing && !connected && !busy) {
+        await _accept();
+      } else {
+        await _poll();
+      }
     });
   }
 
@@ -141,8 +149,11 @@ class _OwnerCallPageState extends State<OwnerCallPage> with SingleTickerProvider
   Future<void> _accept() async {
     if (busy || closing || callId.isEmpty) return;
     setState(() { busy = true; error = null; });
+    final stopwatch=Stopwatch()..start();
     try {
-      final latest = await _status();
+      final latest = CallAcceptPolicy.hasReadyRingingOffer(widget.call)
+          ? widget.call
+          : await _status();
       final currentStatus = latest['status']?.toString() ?? '';
       if (const {'ended','cancelled','missed','rejected'}.contains(currentStatus)) {
         await _closeFromRemote();
@@ -193,6 +204,7 @@ class _OwnerCallPageState extends State<OwnerCallPage> with SingleTickerProvider
       try { await FlutterCallkitIncoming.setCallConnected(callId); } catch (_) {}
       try { await Helper.setSpeakerphoneOn(false); } catch (_) {}
       for (final track in localStream?.getAudioTracks() ?? <MediaStreamTrack>[]) { track.enabled = true; }
+      pulseController.stop();
       durationTimer?.cancel();
       durationTimer = Timer.periodic(const Duration(seconds: 1), (_) {
         if (mounted && connected) setState(() => connectedSeconds++);
@@ -200,6 +212,8 @@ class _OwnerCallPageState extends State<OwnerCallPage> with SingleTickerProvider
       if (mounted) setState(() { connected = true; busy = false; nativeAccepted = false; });
     } catch (e) {
       if (mounted && !closing) setState(() { error = e.toString().replaceFirst('Exception: ', ''); busy = false; nativeAccepted = false; });
+    } finally {
+      debugPrint('CepQontag call acceptance elapsed=${stopwatch.elapsedMilliseconds}ms');
     }
   }
 
@@ -217,7 +231,8 @@ class _OwnerCallPageState extends State<OwnerCallPage> with SingleTickerProvider
   }
 
   Future<void> _poll() async {
-    if (closing || callId.isEmpty) return;
+    if (closing || callId.isEmpty || busy || _pollInFlight) return;
+    _pollInFlight = true;
     try {
       final latest = await _status();
       final status = latest['status']?.toString() ?? '';
@@ -226,7 +241,11 @@ class _OwnerCallPageState extends State<OwnerCallPage> with SingleTickerProvider
         return;
       }
       if (connected) await _addCallerCandidates(latest['caller_candidates']);
-    } catch (_) {}
+    } catch (_) {
+      // Transient network errors must not terminate a live call.
+    } finally {
+      _pollInFlight = false;
+    }
   }
 
   Future<void> _end() async {
@@ -266,6 +285,7 @@ class _OwnerCallPageState extends State<OwnerCallPage> with SingleTickerProvider
 
   @override
   void dispose() {
+    CallActivity.closed();
     PushNotifications.nativeAcceptedCallId.removeListener(_handleNativeAccept);
     poller?.cancel();
     durationTimer?.cancel();

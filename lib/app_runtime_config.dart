@@ -54,9 +54,42 @@ class RuntimeConfigService {
   static const _cacheKey='runtime_app_config_v1';
   static const _cacheAtKey='runtime_app_config_at_v1';
 
-  static Future<RuntimeAppConfig> load({bool allowCache=true}) async {
-    Map<String,dynamic>? config;
+  static Future<Map<String,dynamic>?> _readCached() async {
     try {
+      final p=await SharedPreferences.getInstance();
+      final raw=p.getString(_cacheKey);
+      final at=p.getInt(_cacheAtKey)??0;
+      final age=DateTime.now().millisecondsSinceEpoch-at;
+      if(raw!=null&&raw.isNotEmpty&&age>=0&&
+          age<=const Duration(days:7).inMilliseconds){
+        final value=jsonDecode(raw);
+        if(value is Map)return Map<String,dynamic>.from(value);
+      }
+    }catch(_){}
+    return null;
+  }
+
+  /// Render from a recent configuration immediately, then revalidate the
+  /// maintenance/update gate in the background. Cold installs still fetch.
+  static Future<RuntimeAppConfig> load({
+    bool allowCache=true,
+    bool preferCache=false,
+    bool requireFresh=false,
+    void Function(RuntimeAppConfig)? onRevalidated,
+  }) async {
+    Map<String,dynamic>? config=
+        allowCache&&preferCache ? await _readCached() : null;
+    if(config!=null&&preferCache&&onRevalidated!=null){
+      // Keep the most recently verified gate visible without waiting for the
+      // network, while still enforcing any newer maintenance/update policy.
+      Future<void>(()async{
+        try{
+          final fresh=await load(allowCache:false,requireFresh:true);
+          onRevalidated(fresh);
+        }catch(_){}
+      });
+    }
+    if(config==null)try {
       final r=await http.get(
         Uri.parse('${OnboardingBackend.baseUrl}/api/app/config'),
         headers:const {'Accept':'application/json'},
@@ -72,18 +105,8 @@ class RuntimeConfigService {
       }
     } catch (_) {}
 
-    if(config==null&&allowCache){
-      try{
-        final p=await SharedPreferences.getInstance();
-        final raw=p.getString(_cacheKey);
-        final at=p.getInt(_cacheAtKey)??0;
-        final age=DateTime.now().millisecondsSinceEpoch-at;
-        if(raw!=null&&raw.isNotEmpty&&age<=const Duration(days:7).inMilliseconds){
-          final d=jsonDecode(raw);
-          if(d is Map)config=Map<String,dynamic>.from(d);
-        }
-      }catch(_){}
-    }
+    if(config==null&&allowCache)config=await _readCached();
+    if(requireFresh&&config==null)throw StateError('Runtime config unavailable');
 
     final package=await PackageInfo.fromPlatform();
     final current=package.version.trim().isEmpty?'0.0.0':package.version.trim();

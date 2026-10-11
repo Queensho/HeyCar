@@ -49,6 +49,7 @@ Future<void> heyCarFirebaseBackgroundHandler(RemoteMessage m)async{
 
 class PushNotifications{
   static bool _bootstrapped=false;
+  static Future<void>? _bootstrapPending;
   static bool _callEventsReady=false;
   static bool _tokenRegistrationInFlight=false;
   static bool _timeZonesReady=false;
@@ -59,12 +60,22 @@ class PushNotifications{
   static final ValueNotifier<String> nativeAcceptedCallId=ValueNotifier<String>('');
   static final Map<String,DateTime> _recentLocalNotifications=<String,DateTime>{};
 
-  static Future<void> bootstrap()async{
-    if(_bootstrapped)return;
-    if(Firebase.apps.isEmpty)await Firebase.initializeApp();
-    FirebaseMessaging.onBackgroundMessage(heyCarFirebaseBackgroundHandler);
-    await FirebaseMessaging.instance.setAutoInitEnabled(true);
-    _bootstrapped=true;
+  static Future<void> bootstrap(){
+    if(_bootstrapped)return Future<void>.value();
+    // App/session restoration may request FCM concurrently with first-frame
+    // initialization. Register the handler and initialize Firebase once.
+    return _bootstrapPending??=_bootstrapOnce();
+  }
+
+  static Future<void> _bootstrapOnce()async{
+    try{
+      if(Firebase.apps.isEmpty)await Firebase.initializeApp();
+      FirebaseMessaging.onBackgroundMessage(heyCarFirebaseBackgroundHandler);
+      await FirebaseMessaging.instance.setAutoInitEnabled(true);
+      _bootstrapped=true;
+    }finally{
+      _bootstrapPending=null;
+    }
   }
 
   static Future<void> prepareCallPermissions()async{
