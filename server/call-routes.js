@@ -31,7 +31,8 @@ module.exports = function registerCallRoutes(app, pool) {
     if(recipientType==='owner'&&await isOwnerDndActive(pool,recipientId))return null;
     await expireCalls();
     const result=await pool.query(
-      `SELECT c.id,c.status,c.offer,c.caller_candidates,c.created_at,c.expires_at,c.recipient_type,v.plate
+      `SELECT c.id,c.status,c.offer,c.caller_candidates,c.created_at,c.expires_at,
+              c.recipient_type,c.vehicle_id,v.plate,v.make,v.model
        FROM anonymous_calls c
        LEFT JOIN vehicles v ON v.id=c.vehicle_id
        WHERE c.recipient_user_id=$1 AND c.recipient_type=$2
@@ -46,9 +47,12 @@ module.exports = function registerCallRoutes(app, pool) {
   async function statusFor(callId, recipientId, recipientType) {
     await expireCalls();
     const result=await pool.query(
-      `SELECT id,status,offer,caller_candidates,created_at,expires_at,answered_at,ended_at,recipient_type
-       FROM anonymous_calls
-       WHERE id=$1 AND recipient_user_id=$2 AND recipient_type=$3
+      `SELECT c.id,c.status,c.offer,c.caller_candidates,c.created_at,c.expires_at,
+              c.answered_at,c.ended_at,c.recipient_type,c.vehicle_id,
+              v.plate,v.make,v.model
+       FROM anonymous_calls c
+       LEFT JOIN vehicles v ON v.id=c.vehicle_id
+       WHERE c.id=$1 AND c.recipient_user_id=$2 AND c.recipient_type=$3
        LIMIT 1`,
       [callId,String(recipientId),recipientType]
     );
