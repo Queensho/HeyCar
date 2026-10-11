@@ -22,8 +22,18 @@ void main(){
     expect(result,isNull);
   });
 
-  test('do not reopen a finished or already accepted call as a new incoming call',()async{
-    for(final status in ['ended','rejected','cancelled','missed','accepted']){
+  test('recover the exact previously accepted call after native resume',()async{
+    final result=await IncomingCallNavigation.resolve(
+      expectedId:'call-A',
+      getById:(_)async=>{'id':'call-A','status':'accepted'},
+      getIncoming:()async=>{'id':'call-B','status':'ringing'},
+    );
+    expect(result?['id'],'call-A');
+    expect(result?['status'],'accepted');
+  });
+
+  test('do not reopen a finished call as a new incoming call',()async{
+    for(final status in ['ended','rejected','cancelled','missed']){
       final result=await IncomingCallNavigation.resolve(
         expectedId:'call-A',
         getById:(_)async=>{'id':'call-A','status':status},
