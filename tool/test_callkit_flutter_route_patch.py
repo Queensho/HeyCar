@@ -9,8 +9,8 @@ class CallkitFlutterRoutePatchTests(unittest.TestCase):
         result = patch_source(before)
         self.assertIn(NEW_BLOCK, result)
         self.assertIn("setContentIntent(getAppPendingIntent", result)
-        self.assertIn("EXTRA_CALLKIT_IS_FULL_SCREEN, false", result)
-        self.assertIn("EXTRA_CALLKIT_IS_SHOW_FULL_LOCKED_SCREEN, false", result)
+        self.assertIn("setFullScreenIntent(\\n            getAppPendingIntent", result)
+        self.assertNotIn("setContentIntent(getActivityPendingIntent", result)
         self.assertEqual(result.count("setFullScreenIntent("), 1)
 
     def test_stable_if_rerun(self):
