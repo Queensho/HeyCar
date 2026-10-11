@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'onboarding_backend.dart';
 import 'qr_backend.dart';
 import 'owner_auth.dart';
+import 'owner_dnd_card.dart';
 import 'cepqar_theme.dart';
 
 const _bg = CepqarTheme.darkBg;
@@ -537,6 +538,8 @@ class _OwnerNotificationSettingsPageState extends State<OwnerNotificationSetting
               )
             : Column(
                 children: [
+                  const OwnerDndCard(),
+                  const SizedBox(height: 12),
                   if (error != null)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 10),
