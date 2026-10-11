@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'anonymous_call_api.dart';
 import 'owner_call_page.dart';
+import 'push_notifications.dart';
 
 class OwnerCallWatcher extends StatefulWidget {
   const OwnerCallWatcher({super.key, required this.child});
@@ -59,8 +60,26 @@ class _OwnerCallWatcherState extends State<OwnerCallWatcher> with WidgetsBinding
       await prefs.remove('pending_incoming_call_id');
       if (autoAccept) await prefs.remove('pending_incoming_call_auto_accept');
       activeCallId = id;
-      await Navigator.of(context).push(MaterialPageRoute(fullscreenDialog: true, builder: (_) => OwnerCallPage(call: call, autoAccept: autoAccept)));
-      if (mounted) activeCallId = null;
+      try {
+        final onNavigate = PushNotifications.onNavigationRequested;
+        if (onNavigate != null) {
+          // Route all calls via the root MaterialApp navigator. Using this
+          // nested widget's context can fail during a cold-start rebuild.
+          await onNavigate({
+            'type':'incoming_call',
+            'callId':id,
+            'plate':call['plate']?.toString()??'',
+            if(autoAccept)'autoAccept':'1',
+          });
+        } else {
+          await Navigator.of(context).push(MaterialPageRoute(
+            fullscreenDialog:true,
+            builder:(_)=>OwnerCallPage(call:call,autoAccept:autoAccept),
+          ));
+        }
+      } finally {
+        if(mounted)activeCallId=null;
+      }
     } catch (_) {
       // Next wake/poll retries.
     } finally {

@@ -38,6 +38,10 @@ jobs:
         run: flutter analyze lib/admin_app_management_page.dart --no-fatal-infos --no-fatal-warnings
       - name: Analyze owner APK and app-config dependency graph
         run: flutter analyze lib/app_ui_config.dart lib/owner_home_redesign.dart lib/owner_home_component_registry.dart lib/entry_theme_live.dart --no-fatal-infos --no-fatal-warnings
+      - name: Verify native call accept opens the authenticated Flutter conversation screen
+        run: |
+          flutter analyze lib/incoming_call_navigation.dart lib/entry_theme_live.dart lib/owner_call_watcher.dart lib/owner_call_page.dart lib/push_notifications.dart test/incoming_call_navigation_test.dart --no-fatal-infos --no-fatal-warnings
+          flutter test test/incoming_call_navigation_test.dart
       - name: Test owner session refresh-storm prevention
         run: |
           flutter analyze lib/owner_auth.dart test/owner_refresh_storm_test.dart --no-fatal-infos --no-fatal-warnings
