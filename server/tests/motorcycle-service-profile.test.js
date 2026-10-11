@@ -3,7 +3,18 @@
 const test=require('node:test');
 const assert=require('node:assert/strict');
 process.env.OWNER_AUTH_SECRET='motorcycle-test-secret-must-be-more-than-32-characters';
-const {accessToken}=require('../owner-auth-service');
+const crypto=require('node:crypto');
+function accessToken(owner){
+  const h=Buffer.from(JSON.stringify({alg:'HS256',typ:'JWT'})).toString('base64url');
+  const now=Math.floor(Date.now()/1000);
+  const b=Buffer.from(JSON.stringify({
+    sub:owner,typ:'owner',sv:1,sid:'test-owner-session',
+    iat:now,exp:now+900,
+  })).toString('base64url');
+  const sig=crypto.createHmac('sha256',process.env.OWNER_AUTH_SECRET)
+    .update(h+'.'+b).digest('base64url');
+  return h+'.'+b+'.'+sig;
+}
 const {validateMotorcycleProfile,motorcycleServiceOverview}=require('../motorcycle-service-policy');
 const register=require('../motorcycle-profile-routes');
 
