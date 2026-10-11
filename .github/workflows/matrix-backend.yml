@@ -106,6 +106,8 @@ jobs:
       - name: Verify owner Rahatsız Etmeyin enforcement
         working-directory: server
         run: node --test tests/owner-dnd-enforcement.test.js
+      - name: Check DND VPS deployment syntax
+        run: bash -n deploy/dnd-enforcement-live.sh
       - name: Parse service text-color VPS deployment script
         run: bash -n deploy/app-service-text-colors-live.sh
       - name: Parse targeted owner refresh deploy script
