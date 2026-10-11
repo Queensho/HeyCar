@@ -112,7 +112,7 @@ test('driver push exception can be safely routed to owner',async()=>{
   assert.equal(x.state.ownerPush,1);
 });
 
-test('call must be for the owner's own driver; no cross-account reassignment',async()=>{
+test('call must belong to the owner; no cross-account reassignment',async()=>{
   const x=fixture();
   assert.equal(await reassignRingingCallToOwner(x.args.pool,{
     callId:'call-1',driverId:'owner-1',ownerId:'owner-1',
