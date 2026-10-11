@@ -123,7 +123,7 @@ module.exports = function registerCallRoutes(app, pool) {
            ended_at=CASE WHEN $4 IN ('rejected','ended') THEN NOW() ELSE ended_at END
        WHERE id=$1 AND recipient_user_id=$2 AND recipient_type=$3
          AND expires_at>NOW()
-         AND (($4='accepted' AND status='ringing') OR ($4='rejected' AND status='ringing') OR ($4='ended' AND status='accepted') OR ($4 IS NULL AND status IN ('ringing','accepted')))
+         AND (($4='accepted' AND status='ringing') OR ($4='rejected' AND status='ringing') OR ($4='ended' AND status IN ('ringing','accepted')) OR ($4 IS NULL AND status IN ('ringing','accepted')))
        RETURNING id,status,answer,owner_candidates`,
       [callId,String(recipientId),recipientType,nextStatus,answer,candidate]
     );

@@ -36,6 +36,7 @@ class _OwnerCallPageState extends State<OwnerCallPage> with SingleTickerProvider
   bool muted = false;
   bool speakerOn = false;
   bool closing = false;
+  bool staleAccepted = false;
   String? error;
   int connectedSeconds = 0;
   final Set<String> callerCandidateKeys = <String>{};
@@ -108,10 +109,31 @@ class _OwnerCallPageState extends State<OwnerCallPage> with SingleTickerProvider
     if (mounted) Navigator.of(context).pop();
   }
 
+  Future<bool> _terminateOnServer(String action) async {
+    try {
+      await _signal(action: action);
+      return true;
+    } catch (e) {
+      // Another device/caller may already have ended the same call.
+      try {
+        final latest = await _status();
+        if (const {'ended','cancelled','missed','rejected'}.contains(latest['status']?.toString())) return true;
+      } catch (_) {}
+      if (mounted) setState(() => error = 'Görüşme sonlandırılamadı. Bağlantıyı kontrol edip tekrar deneyin.');
+      return false;
+    }
+  }
+
   Future<void> _reject() async {
     if (busy || closing || callId.isEmpty) return;
     setState(() => busy = true);
-    try { await _signal(action: 'reject'); } catch (_) {}
+    if (!await _terminateOnServer(staleAccepted ? 'end' : 'reject')) {
+      if (mounted) setState(() => busy = false);
+      return;
+    }
+    closing = true;
+    poller?.cancel();
+    await _cleanupMedia();
     await _clearNativeCall();
     if (mounted) Navigator.pop(context);
   }
@@ -124,6 +146,17 @@ class _OwnerCallPageState extends State<OwnerCallPage> with SingleTickerProvider
       final currentStatus = latest['status']?.toString() ?? '';
       if (const {'ended','cancelled','missed','rejected'}.contains(currentStatus)) {
         await _closeFromRemote();
+        return;
+      }
+      if (currentStatus == 'accepted') {
+        // A recovered Android call has no surviving WebRTC peer after process
+        // death. Do not attempt to accept a second time or claim audio works.
+        if (mounted) setState(() {
+          staleAccepted = true;
+          nativeAccepted = false;
+          busy = false;
+          error = 'Görüşme bağlantısı kayboldu. Aramayı kapatıp tekrar deneyin.';
+        });
         return;
       }
       final offer = latest['offer'];
@@ -199,8 +232,11 @@ class _OwnerCallPageState extends State<OwnerCallPage> with SingleTickerProvider
   Future<void> _end() async {
     if (closing) return;
     closing = true;
+    if (!await _terminateOnServer('end')) {
+      closing = false;
+      return;
+    }
     poller?.cancel();
-    try { await _signal(action: 'end'); } catch (_) {}
     await _cleanupMedia();
     await _clearNativeCall();
     if (mounted) Navigator.pop(context);
@@ -290,7 +326,9 @@ class _OwnerCallPageState extends State<OwnerCallPage> with SingleTickerProvider
                       Text(error!, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFFFF808A), fontWeight: FontWeight.w600)),
                     ],
                     const Spacer(),
-                    if (!connected && (nativeAccepted || busy))
+                    if (!connected && staleAccepted)
+                      _CallAction(icon: Icons.call_end_rounded, label: 'Kapat', color: const Color(0xFFFF3F4A), onTap: _end, semantics: 'Kopan görüşmeyi kapat')
+                    else if (!connected && (nativeAccepted || busy))
                       const Column(children: [
                         SizedBox(width: 34, height: 34, child: CircularProgressIndicator(strokeWidth: 3, color: _ownerCallGreen)),
                         SizedBox(height: 10),

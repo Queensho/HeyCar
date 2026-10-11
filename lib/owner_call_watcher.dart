@@ -57,8 +57,8 @@ class _OwnerCallWatcherState extends State<OwnerCallWatcher> with WidgetsBinding
           }
         } catch (_) {}
       }
-      await prefs.remove('pending_incoming_call_id');
-      if (autoAccept) await prefs.remove('pending_incoming_call_auto_accept');
+      // The root navigator clears these only after successfully pushing the
+      // call route. Clearing here loses native Accept when routing races init.
       activeCallId = id;
       try {
         final onNavigate = PushNotifications.onNavigationRequested;

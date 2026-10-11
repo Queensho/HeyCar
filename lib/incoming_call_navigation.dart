@@ -13,6 +13,7 @@ class IncomingCallNavigation {
 
   static Future<Map<String, dynamic>?> resolve({
     required String expectedId,
+    bool recoverAccepted = false,
     required Future<Map<String, dynamic>> Function(String) getById,
     required Future<Map<String, dynamic>?> Function() getIncoming,
   }) async {
@@ -22,7 +23,8 @@ class IncomingCallNavigation {
         final exact = await getById(id);
         // Never substitute another caller if the notification specifies an ID.
         if (exact['id']?.toString() != id) return null;
-        return isRinging(exact) ? exact : null;
+        return isRinging(exact) || (recoverAccepted &&
+            exact['status']?.toString() == 'accepted') ? exact : null;
       } catch (_) {
         // A temporarily unavailable specific status may still be found via
         // the older incoming endpoint, but ONLY with an exact ID match.
