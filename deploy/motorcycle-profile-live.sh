@@ -115,7 +115,9 @@ echo "BACKUP_READY: $BACKUP"
 python3 - "$TMP/server/migrations/$MIGRATION" "$TMP/install.sql" "$CHECKSUM" "$TRACKING" <<'PY'
 import pathlib,re,sys
 raw=pathlib.Path(sys.argv[1]).read_text()
-body,n=re.subn(r'^\s*BEGIN;\s*','',raw,count=1,flags=re.I)
+# Migration 106 starts with informative "--" comment lines. Strip only
+# the leading comment/whitespace prelude before the SQL transaction.
+body,n=re.subn(r'\A(?:\s|--[^\n]*(?:\n|$))*BEGIN;\s*','',raw,count=1,flags=re.I)
 if n!=1:raise SystemExit("MIGRATION_BEGIN_MISSING")
 body,n=re.subn(r'\s*COMMIT;\s*$','',body,count=1,flags=re.I)
 if n!=1:raise SystemExit("MIGRATION_COMMIT_MISSING")
