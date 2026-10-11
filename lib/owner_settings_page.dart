@@ -10,6 +10,7 @@ import 'cepqontag_store_page.dart';
 import 'legal_pages.dart';
 import 'onboarding_backend.dart';
 import 'owner_auth.dart';
+import 'owner_dnd_card.dart';
 import 'owner_qr_dialog.dart';
 import 'owner_settings_detail.dart';
 import 'premium_page.dart';
@@ -292,6 +293,11 @@ class OwnerSettingsPage extends StatelessWidget {
                     icon: Icons.notifications_none_rounded,
                     title: 'Bildirim Ayarları',
                     onTap: () => _push(context, const OwnerNotificationSettingsPage()),
+                  ),
+                  _ProfileMenuRow(
+                    icon: Icons.do_not_disturb_on_outlined,
+                    title: 'Rahatsız Etmeyin',
+                    onTap: () => _push(context, const OwnerDndPage()),
                   ),
                   const _ThemeProfileRow(),
                   _ProfileMenuRow(
