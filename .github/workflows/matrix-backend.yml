@@ -112,6 +112,9 @@ jobs:
       - name: Verify no-device driver routes call to reachable owner
         working-directory: server
         run: node --test tests/call-recipient-selection.test.js
+      - name: Verify QR calls use the scanned vehicle across recipient APIs
+        working-directory: server
+        run: node --test tests/call-qr-vehicle-identity.test.js
       - name: Test legacy printed QR rescan quota
         working-directory: server
         run: |
