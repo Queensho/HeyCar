@@ -9,6 +9,7 @@ import 'owner_password_login.dart';
 import 'owner_dashboard_live.dart';
 import 'owner_call_watcher.dart';
 import 'anonymous_call_api.dart';
+import 'incoming_call_navigation.dart';
 import 'owner_call_page.dart';
 import 'owner_vehicle_setup.dart';
 import 'owner_guide_page.dart';
@@ -102,7 +103,7 @@ class ThemeOwnerApp extends StatelessWidget{
   );
 }
 class ThemeOwnerEntry extends StatefulWidget{const ThemeOwnerEntry({super.key});@override State<ThemeOwnerEntry> createState()=>_ThemeOwnerEntryState();}
-class _ThemeOwnerEntryState extends State<ThemeOwnerEntry> with WidgetsBindingObserver{int index=0;bool loginMode=false,registerMode=false,restoring=true,hasSession=false,callPermissionSetupDone=false,runtimeLoading=true;String driverId='';RuntimeAppConfig? runtimeConfig;Widget ownerHome()=>const OwnerCallWatcher(child:OwnerDashboardLive());@override void initState(){super.initState();WidgetsBinding.instance.addObserver(this);PushNotifications.onNavigationRequested=_routePush;_loadRuntimeConfig();_restoreSession();}@override void didChangeAppLifecycleState(AppLifecycleState state){if(state==AppLifecycleState.resumed){_loadRuntimeConfig(silent:true);if(!kIsWeb)PushNotifications.refreshTokenRegistration();Future.delayed(const Duration(milliseconds:250),_openPendingPush);}}
+class _ThemeOwnerEntryState extends State<ThemeOwnerEntry> with WidgetsBindingObserver{int index=0;bool loginMode=false,registerMode=false,restoring=true,hasSession=false,callPermissionSetupDone=false,runtimeLoading=true;String driverId='';RuntimeAppConfig? runtimeConfig;bool _openingIncomingCall=false;String _displayedIncomingCallId='';int _callLookupRetries=0;Widget ownerHome()=>const OwnerCallWatcher(child:OwnerDashboardLive());@override void initState(){super.initState();WidgetsBinding.instance.addObserver(this);PushNotifications.onNavigationRequested=_routePush;_loadRuntimeConfig();_restoreSession();}@override void didChangeAppLifecycleState(AppLifecycleState state){if(state==AppLifecycleState.resumed){_loadRuntimeConfig(silent:true);if(!kIsWeb)PushNotifications.refreshTokenRegistration();Future.delayed(const Duration(milliseconds:250),_openPendingPush);}}
 Future<void> _loadRuntimeConfig({bool silent=false})async{
   if(!silent&&mounted)setState(()=>runtimeLoading=true);
   try{
@@ -191,8 +192,134 @@ Future<void> _restoreSession()async{
     if(mounted)setState((){hasSession=false;restoring=false;});
   }
 }
-Future<void> _routePush(Map<String,dynamic> d)async{if(!mounted||restoring)return;final prefs=await SharedPreferences.getInstance();final activeDriverId=driverId.isNotEmpty?driverId:((prefs.getBool('driver_logged_in')??false)?(prefs.getString('driver_user_id')??''):'');if(!hasSession&&activeDriverId.isEmpty)return;final type='${d['type']??''}';final nav=cepqarNavigatorKey.currentState;if(nav==null){Future.delayed(const Duration(milliseconds:250),()=>_routePush(d));return;}final notificationId='${d['notificationId']??''}',vehicleId='${d['vehicleId']??''}',plate='${d['plate']??QrDraft.plate}';await prefs.remove('pending_push_navigation');if(!hasSession&&activeDriverId.isNotEmpty){if(type=='incoming_call'||type=='call_request'){final expected='${d['callId']??''}';final call=await AnonymousCallApi.driverIncoming();if(call==null)return;final id='${call['id']??''}';if(id.isEmpty||(expected.isNotEmpty&&id!=expected))return;final autoAccept='${d['autoAccept']??''}'=='1'||(prefs.getString('pending_incoming_call_auto_accept')??'')==id;await prefs.remove('pending_incoming_call_id');if(autoAccept)await prefs.remove('pending_incoming_call_auto_accept');nav.push(MaterialPageRoute(fullscreenDialog:true,builder:(_)=>OwnerCallPage(call:call,autoAccept:autoAccept,driverMode:true)));return;}if(type=='message'&&notificationId.isNotEmpty){nav.push(MaterialPageRoute(builder:(_)=>DriverChatPage(userId:activeDriverId,notificationId:notificationId,plate:plate)));}else{nav.push(MaterialPageRoute(builder:(_)=>DriverHomePage(userId:activeDriverId,initialTab:1)));}return;}if(type=='incoming_call'||type=='call_request'){final expected='${d['callId']??''}';final call=await AnonymousCallApi.incoming();if(call==null)return;final id='${call['id']??''}';if(id.isEmpty||(expected.isNotEmpty&&id!=expected))return;final autoAccept='${d['autoAccept']??''}'=='1'||(prefs.getString('pending_incoming_call_auto_accept')??'')==id;await prefs.remove('pending_incoming_call_id');if(autoAccept)await prefs.remove('pending_incoming_call_auto_accept');nav.push(MaterialPageRoute(fullscreenDialog:true,builder:(_)=>OwnerCallPage(call:call,autoAccept:autoAccept)));return;}if(type=='message'&&notificationId.isNotEmpty){nav.push(MaterialPageRoute(builder:(_)=>OwnerChatPage(notificationId:notificationId,plate:plate)));}else if(type=='qr_security_alert'&&vehicleId.isNotEmpty){nav.push(MaterialPageRoute(builder:(_)=>QrSecurityPage(vehicleId:vehicleId,plate:plate)));}else{nav.push(MaterialPageRoute(builder:(_)=>OwnerNotificationsPage(vehicleId:vehicleId,plate:plate)));}}
-Future<void> _openPendingPush()async{final prefs=await SharedPreferences.getInstance();final raw=prefs.getString('pending_push_navigation');if(raw==null||raw.isEmpty){final callId=prefs.getString('pending_incoming_call_id')??'';if(callId.isNotEmpty)await _routePush({'type':'incoming_call','callId':callId,'recipientType':driverId.isNotEmpty?'driver':'owner'});return;}Map<String,dynamic> d={};try{d=Map<String,dynamic>.from(jsonDecode(raw));}catch(_){await prefs.remove('pending_push_navigation');return;}await _routePush(d);}
+
+Future<void> _openIncomingCall(Map<String,dynamic> d,{required bool driver})async{
+  if(!mounted||restoring||_openingIncomingCall||_displayedIncomingCallId.isNotEmpty)return;
+  final expected='${d['callId']??''}'.trim();
+  _openingIncomingCall=true;
+  try{
+    final call=await IncomingCallNavigation.resolve(
+      expectedId:expected,
+      getById:driver?AnonymousCallApi.driverStatus:AnonymousCallApi.ownerStatus,
+      getIncoming:driver?AnonymousCallApi.driverIncoming:AnonymousCallApi.incoming,
+    );
+    if(!mounted)return;
+    if(call==null){
+      // A native Accept can wake Flutter before the backend call appears.
+      // Keep the pending ID and retry a few times instead of showing Home.
+      if(expected.isNotEmpty&&_callLookupRetries<5){
+        _callLookupRetries++;
+        Future<void>.delayed(const Duration(milliseconds:900),(){
+          if(mounted)_openPendingPush();
+        });
+      }
+      return;
+    }
+    _callLookupRetries=0;
+    final id='${call['id']??''}';
+    if(id.isEmpty||id==_displayedIncomingCallId)return;
+    final nav=cepqarNavigatorKey.currentState;
+    if(nav==null){
+      Future<void>.delayed(const Duration(milliseconds:300),(){
+        if(mounted)_openPendingPush();
+      });
+      return;
+    }
+    final prefs=await SharedPreferences.getInstance();
+    final autoAccept='${d['autoAccept']??''}'=='1'||
+        (prefs.getString('pending_incoming_call_auto_accept')??'')==id;
+    final enriched=<String,dynamic>{
+      ...call,
+      if((call['plate']??'').toString().isEmpty)
+        'plate':'${d['plate']??QrDraft.plate}',
+    };
+    _displayedIncomingCallId=id;
+    await prefs.remove('pending_incoming_call_id');
+    if(autoAccept)await prefs.remove('pending_incoming_call_auto_accept');
+    nav.push(MaterialPageRoute(
+      fullscreenDialog:true,
+      builder:(_)=>OwnerCallPage(call:enriched,autoAccept:autoAccept,driverMode:driver),
+    )).whenComplete((){
+      if(mounted&&_displayedIncomingCallId==id)_displayedIncomingCallId='';
+    });
+  }catch(e){
+    debugPrint('Incoming call navigation failed: $e');
+  }finally{
+    _openingIncomingCall=false;
+  }
+}
+
+Future<void> _routePush(Map<String,dynamic> d)async{
+  if(!mounted||restoring)return;
+  final prefs=await SharedPreferences.getInstance();
+  final activeDriverId=driverId.isNotEmpty?driverId:
+      ((prefs.getBool('driver_logged_in')??false)?(prefs.getString('driver_user_id')??''):'');
+  if(!hasSession&&activeDriverId.isEmpty)return;
+  final type='${d['type']??''}';
+  if(type=='incoming_call'||type=='call_request'){
+    await _openIncomingCall(d,driver:!hasSession&&activeDriverId.isNotEmpty);
+    return;
+  }
+  final nav=cepqarNavigatorKey.currentState;
+  if(nav==null){
+    Future<void>.delayed(const Duration(milliseconds:250),()=>_routePush(d));
+    return;
+  }
+  final notificationId='${d['notificationId']??''}';
+  final vehicleId='${d['vehicleId']??''}';
+  final plate='${d['plate']??QrDraft.plate}';
+  await prefs.remove('pending_push_navigation');
+  if(!hasSession&&activeDriverId.isNotEmpty){
+    if(type=='message'&&notificationId.isNotEmpty){
+      nav.push(MaterialPageRoute(builder:(_)=>DriverChatPage(
+        userId:activeDriverId,notificationId:notificationId,plate:plate,
+      )));
+    }else{
+      nav.push(MaterialPageRoute(builder:(_)=>DriverHomePage(
+        userId:activeDriverId,initialTab:1,
+      )));
+    }
+    return;
+  }
+  if(type=='message'&&notificationId.isNotEmpty){
+    nav.push(MaterialPageRoute(builder:(_)=>OwnerChatPage(
+      notificationId:notificationId,plate:plate,
+    )));
+  }else if(type=='qr_security_alert'&&vehicleId.isNotEmpty){
+    nav.push(MaterialPageRoute(builder:(_)=>QrSecurityPage(
+      vehicleId:vehicleId,plate:plate,
+    )));
+  }else{
+    nav.push(MaterialPageRoute(builder:(_)=>OwnerNotificationsPage(
+      vehicleId:vehicleId,plate:plate,
+    )));
+  }
+}
+
+Future<void> _openPendingPush()async{
+  if(!mounted||restoring)return;
+  final prefs=await SharedPreferences.getInstance();
+  final raw=prefs.getString('pending_push_navigation');
+  if(raw==null||raw.isEmpty){
+    final callId=prefs.getString('pending_incoming_call_id')??'';
+    if(callId.isNotEmpty){
+      await _routePush({
+        'type':'incoming_call',
+        'callId':callId,
+        'recipientType':driverId.isNotEmpty&&!hasSession?'driver':'owner',
+        if((prefs.getString('pending_incoming_call_auto_accept')??'')==callId)
+          'autoAccept':'1',
+      });
+    }
+    return;
+  }
+  try{
+    final data=Map<String,dynamic>.from(jsonDecode(raw));
+    await _routePush(data);
+  }catch(e){
+    debugPrint('Pending push navigation failed: $e');
+  }
+}
 void _registerPushLater(){
   if(kIsWeb){
     Future<void>(() async{
@@ -212,6 +339,6 @@ void _registerPushLater(){
   });
 }
 Future<void> _saveSession()async{final p=await SharedPreferences.getInstance();await p.setBool('owner_logged_in',true);await p.setString('owner_user_id',OnboardingDraft.userId);await p.setString('owner_phone',OnboardingDraft.phone);await p.setString('owner_display_name',OnboardingDraft.displayName);await p.setString('owner_email',OnboardingDraft.email);await p.setString('owner_vehicle_id',OnboardingDraft.vehicleId);await p.setString('owner_plate',QrDraft.plate);await p.setString('owner_make',QrDraft.make);await p.setString('owner_model',QrDraft.model);await p.setString('owner_qr_token',QrDraft.token);_registerPushLater();}
-void next()=>setState(()=>index=(index+1).clamp(0,4));void back()=>setState(()=>index=(index-1).clamp(0,4));Future<void> done()async{await _saveSession();if(mounted)Navigator.pushReplacement(context,MaterialPageRoute(builder:(_)=>ownerHome()));}void resetToWelcome()=>setState((){loginMode=false;registerMode=false;index=0;});
+void next()=>setState(()=>index=(index+1).clamp(0,4));void back()=>setState(()=>index=(index-1).clamp(0,4));Future<void> done()async{await _saveSession();if(mounted){setState((){hasSession=true;loginMode=false;registerMode=false;});Future<void>.delayed(const Duration(milliseconds:350),(){if(mounted)_openPendingPush();});}}void resetToWelcome()=>setState((){loginMode=false;registerMode=false;index=0;});
 @override void dispose(){WidgetsBinding.instance.removeObserver(this);PushNotifications.onNavigationRequested=null;super.dispose();}
 @override Widget build(BuildContext context){if(runtimeLoading||restoring)return const Scaffold(body:Center(child:CircularProgressIndicator(color:CepqarTheme.purple)));final cfg=runtimeConfig;if(cfg!=null&&(cfg.maintenanceMode||cfg.updateRequired))return AppAccessGatePage(config:cfg,onRetry:()=>_loadRuntimeConfig());if(!kIsWeb&&!callPermissionSetupDone)return CallPermissionSetupPage(onDone:()=>setState(()=>callPermissionSetupDone=true));if(driverId.isNotEmpty&&!hasSession)return DriverHomePage(userId:driverId);if(hasSession)return ownerHome();if(loginMode)return Stack(children:[PasswordOwnerLoginScreen(onDone:done,onBack:resetToWelcome),Positioned(left:20,right:20,bottom:16,child:SafeArea(child:SizedBox(height:46,child:OutlinedButton.icon(onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const DriverCodeEntryPage())),style:OutlinedButton.styleFrom(backgroundColor:Colors.white,foregroundColor:const Color(0xFF5E24F5),side:const BorderSide(color:Color(0xFF5E24F5),width:1.5),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15))),icon:const Icon(Icons.vpn_key_outlined,size:18),label:const Text('Davet kodum var',style:TextStyle(fontSize:12.5,fontWeight:FontWeight.w800))))))]);if(registerMode)return OwnerRegisterScreen(onBack:resetToWelcome,onContinue:()async{if(OnboardingDraft.transferCode.isNotEmpty){await done();}else if(mounted){setState((){registerMode=false;index=1;});}});final screens=<Widget>[OwnerWelcomeOverlay(onRegister:()=>setState(()=>registerMode=true),onLogin:()=>setState(()=>loginMode=true)),OwnerVehicleSetupPage(onDone:next,onBack:resetToWelcome),RealQrScanPage(onFound:next,onBack:back),RealQrConfirmPage(onDone:next,onBack:back),OwnerGuidePage(onDone:done,onBack:back)];return screens[index];}}
