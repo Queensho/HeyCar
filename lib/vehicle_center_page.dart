@@ -19,6 +19,7 @@ import 'owner_settings_detail.dart';
 import 'public_qr_link.dart';
 import 'owner_notifications_page.dart';
 import 'vehicle_identity_card.dart';
+import 'vehicle_kind.dart';
 import 'vehicle_edit_sheet.dart';
 
 Color get _bg => CepqarTheme.bg;
@@ -899,9 +900,37 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
     ])),
   ]);
 
+  bool get _isMotorcycle=>VehicleKind.isMotorcycle(_vehicle['vehicle_type']??QrDraft.vehicleType);
+
+  Widget _motorcyclePanel()=>Container(
+    padding:const EdgeInsets.all(14),
+    decoration:_compactCard(),
+    child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      const Row(children:[Icon(Icons.two_wheeler_rounded,color:Color(0xFF8B5CFF),size:24),SizedBox(width:9),Text('Motor Kontrol Merkezi',style:TextStyle(fontWeight:FontWeight.w900,fontSize:16))]),
+      const SizedBox(height:8),
+      Text(VehicleKind.maintenanceHint(VehicleKind.motorcycle),style:TextStyle(color:_muted,fontSize:12.5)),
+      const SizedBox(height:10),
+      Wrap(spacing:7,runSpacing:7,children:[
+        for(final item in const [
+          (Icons.oil_barrel_outlined,'Motor Yağı'),
+          (Icons.settings_outlined,'Zincir / Kayış'),
+          (Icons.tire_repair_outlined,'Lastikler'),
+          (Icons.car_repair_outlined,'Frenler'),
+          (Icons.battery_charging_full_rounded,'Akü')
+        ]) ActionChip(
+          avatar:Icon(item.$1,color:_purple,size:17),
+          label:Text(item.$2,style:TextStyle(color:_text,fontWeight:FontWeight.w600,fontSize:11)),
+          backgroundColor:_panel,
+          onPressed:maintenance,
+        ),
+      ]),
+    ]),
+  );
+
   Widget _heroCard()=>VehicleIdentityCard(
     vehicle:_vehicle.isEmpty?<String,dynamic>{
       'plate':_plate,'make':_make,'model':_model,
+      'vehicle_type':QrDraft.vehicleType,
       'qr_status':QrDraft.token.trim().isNotEmpty?'active':'inactive',
       'qr_token':QrDraft.token,
     }:_vehicle,
@@ -1214,6 +1243,7 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
                   const SizedBox(height:11),
                   _heroCard(),
                   const SizedBox(height:9),
+                  if(_isMotorcycle)...[_motorcyclePanel(),const SizedBox(height:9)],
                   Row(children:[
                     _miniAction(Icons.qr_code_2_rounded,'QR Etiket','Etiketi görüntüleyin',_qrActive?_showQr:qr),
                     const SizedBox(width:7),
@@ -1239,10 +1269,10 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
                   Container(
                     decoration:_compactCard(),
                     child:Column(children:[
-                      _menuItem(icon:Icons.directions_car_filled_rounded,title:'Araç Bilgileri',subtitle:'Marka, model ve diğer detaylar',tap:_editVehicle),
+                      _menuItem(icon:_isMotorcycle?Icons.two_wheeler_rounded:Icons.directions_car_filled_rounded,title:_isMotorcycle?'Motosiklet Bilgileri':'Araç Bilgileri',subtitle:'Marka, model ve diğer detaylar',tap:_editVehicle),
                       _menuItem(icon:Icons.nfc_rounded,title:'NFC Etiketi',subtitle:'NFC desteği yakında kullanıma açılacak',tap:(){},enabled:false,badge:'Yakında'),
                       _menuItem(icon:Icons.analytics_outlined,title:'Etiket Analitiği',subtitle:'QR ve NFC kullanımını birlikte takip et',tap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>VehicleAnalyticsPage(vehicleId:vid,plate:_plate)))),
-                      _menuItem(icon:Icons.build_rounded,title:'Bakım Kayıtları',subtitle:'Aracınızın bakım geçmişi',tap:maintenance),
+                      _menuItem(icon:Icons.build_rounded,title:'Bakım Kayıtları',subtitle:_isMotorcycle?'Motosikletin bakım geçmişi':'Aracınızın bakım geçmişi',tap:maintenance),
                       _menuItem(icon:Icons.local_parking_rounded,title:'Park Geçmişi',subtitle:'Otopark ve park konumlarını yönetin',tap:_parking),
                       _menuItem(icon:Icons.notifications_none_rounded,title:'Bildirim Ayarları',subtitle:'Mesaj, arama ve park uyarı tercihleri',tap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const OwnerNotificationSettingsPage()))),
                       _menuItem(icon:Icons.swap_horiz_rounded,title:'Araç Devri',subtitle:'Aracınızı başka bir kullanıcıya devredin',tap:_transferVehicle,divider:false),
