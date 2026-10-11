@@ -6,6 +6,7 @@ import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:flutter_callkit_incoming/entities/entities.dart';
 import 'anonymous_call_api.dart';
 import 'call_accept_policy.dart';
+import 'call_activity.dart';
 import 'push_notifications.dart';
 
 const _ownerCallBg = Color(0xFF070B22);
@@ -74,6 +75,7 @@ class _OwnerCallPageState extends State<OwnerCallPage> with SingleTickerProvider
   @override
   void initState() {
     super.initState();
+    CallActivity.opened();
     nativeAccepted = widget.autoAccept ||
         PushNotifications.nativeAcceptedCallId.value==callId;
     PushNotifications.nativeAcceptedCallId.addListener(_handleNativeAccept);
@@ -283,6 +285,7 @@ class _OwnerCallPageState extends State<OwnerCallPage> with SingleTickerProvider
 
   @override
   void dispose() {
+    CallActivity.closed();
     PushNotifications.nativeAcceptedCallId.removeListener(_handleNativeAccept);
     poller?.cancel();
     durationTimer?.cancel();
