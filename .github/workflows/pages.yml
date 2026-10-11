@@ -42,6 +42,10 @@ jobs:
         run: flutter analyze lib/admin_app_management_page.dart --no-fatal-infos --no-fatal-warnings
       - name: Analyze owner APK and app-config dependency graph
         run: flutter analyze lib/app_ui_config.dart lib/owner_dashboard_live.dart lib/owner_home_redesign.dart lib/owner_home_component_registry.dart lib/entry_theme_live.dart --no-fatal-infos --no-fatal-warnings
+      - name: Verify car/motorcycle registration and active vehicle UI
+        run: |
+          flutter analyze lib/vehicle_kind.dart lib/onboarding_backend.dart lib/owner_vehicle_setup.dart lib/owner_new_vehicle_page.dart lib/owner_vehicles_page.dart lib/owner_dashboard_live.dart lib/owner_home_redesign.dart lib/vehicle_center_page.dart lib/vehicle_identity_card.dart lib/entry_theme_live.dart test/vehicle_kind_test.dart --no-fatal-infos --no-fatal-warnings
+          flutter test test/vehicle_kind_test.dart
       - name: Verify native call accept opens the authenticated Flutter conversation screen
         run: |
           flutter analyze lib/incoming_call_navigation.dart lib/entry_theme_live.dart lib/owner_call_watcher.dart lib/owner_call_page.dart lib/push_notifications.dart test/incoming_call_navigation_test.dart --no-fatal-infos --no-fatal-warnings

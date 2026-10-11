@@ -156,6 +156,7 @@ Future<void> _restoreSession()async{
           'owner_email',
           'owner_vehicle_id',
           'owner_plate',
+          'owner_vehicle_type',
           'owner_make',
           'owner_model',
           'owner_qr_token',
@@ -179,6 +180,7 @@ Future<void> _restoreSession()async{
       QrDraft.plate=prefs.getString('owner_plate')??'';
       QrDraft.make=prefs.getString('owner_make')??'';
       QrDraft.model=prefs.getString('owner_model')??'';
+      QrDraft.vehicleType=prefs.getString('owner_vehicle_type')??'car';
       QrDraft.token=prefs.getString('owner_qr_token')??'';
       QrDraft.scanSecret=prefs.getString('owner_qr_scan_secret')??'';
       QrDraft.ownerName=OnboardingDraft.displayName.isEmpty?'CepQontag Kullanıcısı':OnboardingDraft.displayName;

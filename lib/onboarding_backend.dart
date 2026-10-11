@@ -27,6 +27,7 @@ class OnboardingBackend {
     required String make,
     required String model,
     String color = '',
+    String vehicleType = 'car',
     String transferCode = '',
   }) async {
     final response = await http
@@ -42,6 +43,7 @@ class OnboardingBackend {
             'make': make.trim(),
             'model': model.trim(),
             'color': color.trim(),
+            'vehicleType': vehicleType,
             'transferCode': transferCode.trim().toUpperCase(),
             'legalAccepted': true,
             'legalVersion': legalVersion,
@@ -66,6 +68,7 @@ class OnboardingBackend {
       QrDraft.plate = vehicle is Map ? (vehicle['plate']?.toString() ?? plate.trim().toUpperCase()) : plate.trim().toUpperCase();
       QrDraft.make = vehicle is Map ? (vehicle['make']?.toString() ?? make.trim()) : make.trim();
       QrDraft.model = vehicle is Map ? (vehicle['model']?.toString() ?? model.trim()) : model.trim();
+      QrDraft.vehicleType = vehicle is Map ? (vehicle['vehicle_type']?.toString() ?? vehicleType) : vehicleType;
       if (vehicle is Map && vehicle['qr_token'] != null) QrDraft.token = vehicle['qr_token'].toString();
       QrDraft.ownerName = displayName.trim().isEmpty ? 'HeyCar Kullanıcısı' : displayName.trim();
 

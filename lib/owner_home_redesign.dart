@@ -21,6 +21,7 @@ import 'story_service.dart';
 import 'owner_story_highlights.dart';
 import 'app_ui_config.dart';
 import 'owner_home_component_registry.dart';
+import 'vehicle_kind.dart';
 import 'call_activity.dart';
 
 class OwnerHomeRedesign extends StatefulWidget{
@@ -836,6 +837,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   }
 
   Widget vehicleQr(){
+    final motorcycle=VehicleKind.isMotorcycle(QrDraft.vehicleType);
     final car='${QrDraft.make} ${QrDraft.model}'.trim();
     return Padding(
       padding:const EdgeInsets.symmetric(horizontal:16),
@@ -859,7 +861,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                   const SizedBox(height:3),
                   Text(car.isEmpty?'Araç bilgilerini ekle':car,style:TextStyle(color:text,fontSize:13,fontWeight:FontWeight.w700)),
                   const SizedBox(height:1),
-                  Text('CepQontag aracınız',style:TextStyle(color:muted,fontSize:CepqarTheme.body)),
+                  Text(motorcycle?'CepQontag motosikletiniz':'CepQontag otomobiliniz',style:TextStyle(color:muted,fontSize:CepqarTheme.body)),
                   const Spacer(),
                   Row(children:[
                     Container(
@@ -872,7 +874,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                       ]),
                     ),
                     const Spacer(),
-                    Container(width:54,height:36,decoration:BoxDecoration(color:purple.withValues(alpha:light ? 0.08 : 0.16),borderRadius:BorderRadius.circular(10)),child:const Icon(Icons.directions_car_filled_rounded,color:purple,size:26)),
+                    Container(width:54,height:36,decoration:BoxDecoration(color:purple.withValues(alpha:light ? 0.08 : 0.16),borderRadius:BorderRadius.circular(10)),child:Icon(motorcycle?Icons.two_wheeler_rounded:Icons.directions_car_filled_rounded,color:purple,size:26)),
                     Icon(Icons.chevron_right_rounded,color:muted,size:20),
                   ]),
                 ]),
@@ -1586,10 +1588,45 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     );
   }
 
+  Widget _motorcycleHomePanel(){
+    if(!VehicleKind.isMotorcycle(QrDraft.vehicleType))return const SizedBox.shrink();
+    return Padding(
+      padding:const EdgeInsets.fromLTRB(16,10,16,0),
+      child:Container(
+        padding:const EdgeInsets.all(12),
+        decoration:card(),
+        child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          Row(children:[
+            Icon(Icons.two_wheeler_rounded,color:purple,size:22),
+            const SizedBox(width:9),
+            Expanded(child:Text('Motosikletim',style:TextStyle(color:text,fontSize:15,fontWeight:FontWeight.w900))),
+            Text('Motor Kontrol',style:TextStyle(color:muted,fontSize:11)),
+          ]),
+          const SizedBox(height:6),
+          Text('Motor yağı • zincir/kayış • lastikler • frenler',style:TextStyle(color:muted,fontSize:11.5)),
+          const SizedBox(height:10),
+          Row(children:[
+            Expanded(child:OutlinedButton.icon(
+              onPressed:()=>widget.shortcut('maintenance'),
+              icon:const Icon(Icons.build_rounded,size:16),
+              label:const Text('Motor Bakımı',maxLines:1),
+            )),
+            const SizedBox(width:8),
+            Expanded(child:OutlinedButton.icon(
+              onPressed:()=>widget.shortcut('reminders'),
+              icon:const Icon(Icons.event_available_rounded,size:16),
+              label:const Text('Hatırlatmalar',maxLines:1),
+            )),
+          ]),
+        ]),
+      ),
+    );
+  }
+
   Widget _managedComponent(AppUiComponent component){
     final registry=OwnerHomeComponentRegistry({
       'weather_card':(_)=>header(),
-      'vehicle_security':(_)=>Column(children:[const SizedBox(height:14),vehicleQr()]),
+      'vehicle_security':(_)=>Column(children:[const SizedBox(height:14),vehicleQr(),_motorcycleHomePanel()]),
       'story_carousel':(_)=>stories.isEmpty?const SizedBox.shrink():OwnerStoryHighlights(
         items:stories,service:_storyService,shortcut:widget.shortcut,onChanged:()=>_loadStories(force:true),
       ),

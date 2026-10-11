@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 
 import 'onboarding_backend.dart';
 import 'vehicle_api.dart';
+import 'vehicle_kind.dart';
 import 'cepqar_theme.dart';
 
 class OwnerNewVehicleDraft {
@@ -13,6 +14,7 @@ class OwnerNewVehicleDraft {
     required this.model,
     required this.color,
     required this.year,
+    this.vehicleType=VehicleKind.car,
   });
 
   final String plate;
@@ -20,6 +22,7 @@ class OwnerNewVehicleDraft {
   final String model;
   final String color;
   final int? year;
+  final String vehicleType;
 }
 
 class OwnerNewVehiclePage extends StatefulWidget {
@@ -49,6 +52,8 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
   Color get _infoLine => _light ? const Color(0xFFE4D9FB) : const Color(0xFF282653);
 
   final plate = TextEditingController();
+  final motorcycleModel = TextEditingController();
+  String vehicleType=VehicleKind.car;
   String? make;
   String? model;
   String? color;
@@ -85,6 +90,10 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
   @override
   void initState() {
     super.initState();
+    _loadCarMakes();
+  }
+
+  void _loadCarMakes() {
     VehicleApi.getMakes().then((x) {
       if (!mounted) return;
       final unique = <String, String>{};
@@ -93,7 +102,7 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
         if (clean.isNotEmpty) unique.putIfAbsent(clean.toLowerCase(), () => clean);
       }
       setState(() {
-        makes = unique.values.toList();
+        if(vehicleType==VehicleKind.car)makes = unique.values.toList();
         loadingMakes = false;
       });
     }).catchError((_) {
@@ -104,11 +113,40 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
   @override
   void dispose() {
     plate.dispose();
+    motorcycleModel.dispose();
     super.dispose();
+  }
+
+  void _changeType(String next){
+    if(next==vehicleType)return;
+    ++_modelRequest;
+    setState((){
+      vehicleType=next;
+      make=null;
+      model=null;
+      models=[];
+      loadingModels=false;
+      loadingMakes=next==VehicleKind.car;
+      makes=next==VehicleKind.motorcycle
+          ?List<String>.from(VehicleKind.motorcycleMakes):[];
+      motorcycleModel.clear();
+    });
+    if(next==VehicleKind.car)_loadCarMakes();
   }
 
   Future<void> _changeMake(String? value) async {
     if (value == null) return;
+    if(vehicleType==VehicleKind.motorcycle){
+      ++_modelRequest;
+      setState((){
+        make=value;
+        model=null;
+        motorcycleModel.clear();
+        models=[];
+        loadingModels=false;
+      });
+      return;
+    }
     final request = ++_modelRequest;
     setState(() {
       make = value;
@@ -152,12 +190,20 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
       );
       return;
     }
+    if(vehicleType==VehicleKind.motorcycle&&motorcycleModel.text.trim().isEmpty){
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content:Text('Motosiklet modelini girin.')),
+      );
+      return;
+    }
     Navigator.pop(
       context,
       OwnerNewVehicleDraft(
         plate: p,
         make: make!,
-        model: model ?? '',
+        model: vehicleType==VehicleKind.motorcycle
+            ?motorcycleModel.text.trim():model ?? '',
+        vehicleType:vehicleType,
         color: color ?? '',
         year: year,
       ),
@@ -728,6 +774,20 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
                 children: [
                   _sectionHeader(),
                   const SizedBox(height: 16),
+                  SegmentedButton<String>(
+                    segments:const [
+                      ButtonSegment(value:VehicleKind.car,
+                        label:Text('Otomobil'),
+                        icon:Icon(Icons.directions_car_rounded)),
+                      ButtonSegment(value:VehicleKind.motorcycle,
+                        label:Text('Motosiklet'),
+                        icon:Icon(Icons.two_wheeler_rounded)),
+                    ],
+                    selected:{vehicleType},
+                    onSelectionChanged:(v)=>_changeType(v.first),
+                    style:ButtonStyle(visualDensity:VisualDensity.compact),
+                  ),
+                  const SizedBox(height:16),
                   _plateField(),
                   const SizedBox(height: 13),
                   Row(
@@ -740,13 +800,26 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
                           items: makes,
                           hint: 'Marka seçin',
                           onChanged: loadingMakes ? null : _changeMake,
-                          icon: Icons.directions_car_outlined,
+                          icon:vehicleType==VehicleKind.motorcycle
+                            ?Icons.two_wheeler_rounded:Icons.directions_car_outlined,
                           loading: loadingMakes,
                         ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: _selector<String>(
+                        child:vehicleType==VehicleKind.motorcycle
+                          ?TextField(
+                            controller:motorcycleModel,
+                            onChanged:(_)=>setState((){}),
+                            textCapitalization:TextCapitalization.words,
+                            decoration:InputDecoration(
+                              labelText:'Model',
+                              hintText:'Örn. Reale 125',
+                              border:OutlineInputBorder(
+                                borderRadius:BorderRadius.circular(12)),
+                            ),
+                          )
+                          :_selector<String>(
                           label: 'Model',
                           value: safeModel,
                           items: models,

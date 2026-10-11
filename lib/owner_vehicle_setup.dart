@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'vehicle_api.dart';
+import 'vehicle_kind.dart';
 import 'onboarding_backend.dart';
 
 const _bg = Color(0xFFFDFDFF);
@@ -23,6 +24,7 @@ class OwnerVehicleSetupPage extends StatefulWidget {
 
 class _OwnerVehicleSetupPageState extends State<OwnerVehicleSetupPage> {
   final plate = TextEditingController(text: '34 ABC 123');
+  String vehicleType=VehicleKind.car;
   String make = 'BMW';
   String model = '3 Series';
   List<String> makes = const [];
@@ -49,11 +51,27 @@ class _OwnerVehicleSetupPageState extends State<OwnerVehicleSetupPage> {
   Future<void> _load() async {
     final all = await VehicleApi.getMakes();
     if (!mounted) return;
-    setState(() => makes = all);
-    await _loadModels(make);
+    if(vehicleType==VehicleKind.car)setState(() => makes = all);
+    if(vehicleType==VehicleKind.car)await _loadModels(make);
+  }
+
+  void _changeType(String next) {
+    if(next==vehicleType)return;
+    setState((){
+      vehicleType=next;
+      make='';
+      model='';
+      makes=next==VehicleKind.motorcycle
+          ?VehicleKind.motorcycleMakes
+          :const <String>[];
+      models=const [];
+      loadingModels=false;
+    });
+    if(next==VehicleKind.car)_load();
   }
 
   Future<void> _loadModels(String value) async {
+    if(vehicleType==VehicleKind.motorcycle)return;
     setState(() => loadingModels = true);
     final result = await VehicleApi.getModels(value);
     if (!mounted) return;
@@ -85,6 +103,7 @@ class _OwnerVehicleSetupPageState extends State<OwnerVehicleSetupPage> {
         plate: plate.text.trim(),
         make: make,
         model: model,
+        vehicleType: vehicleType,
       );
       if (mounted) widget.onDone();
     } catch (e) {
@@ -165,16 +184,38 @@ class _OwnerVehicleSetupPageState extends State<OwnerVehicleSetupPage> {
                   const Expanded(child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.camera_alt_rounded, color: _muted, size: 18), SizedBox(width: 7), Text('Ruhsat fotoğrafı', style: TextStyle(color: _muted, fontWeight: FontWeight.w700, fontSize: 12))])),
                 ]),
               ),
+              const SizedBox(height:14),
+              Row(children:[
+                Expanded(child:_typeChip(
+                    VehicleKind.car,'Otomobil',Icons.directions_car_rounded)),
+                const SizedBox(width:10),
+                Expanded(child:_typeChip(
+                    VehicleKind.motorcycle,'Motosiklet',Icons.two_wheeler_rounded)),
+              ]),
               const SizedBox(height: 14),
               _PlateField(controller: plate),
               const SizedBox(height: 14),
-              _label('Araç markası', 'Marka seç', _showMakes),
+              _label(vehicleType==VehicleKind.motorcycle?'Motosiklet markası':'Araç markası', 'Marka seç', _showMakes),
               const SizedBox(height: 7),
               _Selector(onTap: _showMakes, leading: _BrandLogo(make), title: make, trailing: const Icon(Icons.chevron_right_rounded, color: Color(0xFF9AA0AF))),
               const SizedBox(height: 14),
               _label('Model', 'Model seç', _showModels),
               const SizedBox(height: 7),
-              _Selector(onTap: loadingModels ? null : _showModels, leading: const Icon(Icons.badge_outlined, color: _purple), title: loadingModels ? 'Modeller yükleniyor...' : (model.isEmpty ? 'Model seç' : model), trailing: const Icon(Icons.chevron_right_rounded, color: Color(0xFF9AA0AF))),
+              if(vehicleType==VehicleKind.motorcycle)
+                TextFormField(
+                  initialValue:model,
+                  key:ValueKey('motorcycle-model-$make'),
+                  onChanged:(value)=>setState(()=>model=value),
+                  textCapitalization:TextCapitalization.words,
+                  decoration:InputDecoration(
+                    labelText:'Motosiklet modeli',
+                    hintText:'Örn. Reale 125, PCX 125, NMAX',
+                    filled:true,fillColor:_panel,
+                    border:OutlineInputBorder(borderRadius:BorderRadius.circular(17)),
+                  ),
+                )
+              else
+                _Selector(onTap: loadingModels ? null : _showModels, leading: const Icon(Icons.badge_outlined, color: _purple), title: loadingModels ? 'Modeller yükleniyor...' : (model.isEmpty ? 'Model seç' : model), trailing: const Icon(Icons.chevron_right_rounded, color: Color(0xFF9AA0AF))),
               const SizedBox(height: 14),
               Container(
                 height: 84,
@@ -197,13 +238,28 @@ class _OwnerVehicleSetupPageState extends State<OwnerVehicleSetupPage> {
     );
   }
 
+  Widget _typeChip(String value,String label,IconData icon){
+    final active=vehicleType==value;
+    return OutlinedButton.icon(
+      onPressed:()=>_changeType(value),
+      icon:Icon(icon,size:20),
+      label:Text(label),
+      style:OutlinedButton.styleFrom(
+        foregroundColor:active?Colors.white:_purple,
+        backgroundColor:active?_purple:_panel,
+        side:BorderSide(color:active?_purple:_line),
+        padding:const EdgeInsets.symmetric(vertical:14),
+        shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(14)),
+      ),
+    );
+  }
   Widget _label(String left, String right, VoidCallback tap) => Row(children: [Text(left, style: const TextStyle(color: _muted, fontSize: 13, fontWeight: FontWeight.w800)), const Spacer(), InkWell(onTap: tap, child: Row(children: [Text(right, style: const TextStyle(color: _purple, fontSize: 12, fontWeight: FontWeight.w900)), const Icon(Icons.chevron_right_rounded, color: _purple, size: 19)]))]);
 
   Future<void> _showMakes() async {
-    final selected = await showModalBottomSheet<String>(context: context, isScrollControlled: true, backgroundColor: Colors.transparent, builder: (_) => _PickerSheet(title: 'Araç markasını seç', values: makes, selected: make, showLogos: true));
+    final selected = await showModalBottomSheet<String>(context: context, isScrollControlled: true, backgroundColor: Colors.transparent, builder: (_) => _PickerSheet(title: 'Araç markasını seç', values: makes, selected: make, showLogos: vehicleType!=VehicleKind.motorcycle));
     if (selected == null || selected == make) return;
     setState(() { make = selected; model = ''; });
-    await _loadModels(make);
+    if(vehicleType==VehicleKind.car)await _loadModels(make);
   }
 
   Future<void> _showModels() async {

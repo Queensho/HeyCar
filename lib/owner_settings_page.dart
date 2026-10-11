@@ -123,6 +123,7 @@ class OwnerSettingsPage extends StatelessWidget {
       'owner_email',
       'owner_vehicle_id',
       'owner_plate',
+      'owner_vehicle_type',
       'owner_make',
       'owner_model',
       'owner_qr_token',
