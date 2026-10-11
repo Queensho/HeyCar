@@ -206,8 +206,13 @@ Future<void> _openIncomingCall(Map<String,dynamic> d,{required bool driver})asyn
   final expected='${d['callId']??''}'.trim();
   _openingIncomingCall=true;
   try{
+    final prefs=await SharedPreferences.getInstance();
+    final autoAccept='${d['autoAccept']??''}'=='1'||
+        (prefs.getString('pending_incoming_call_auto_accept')??'')==expected||
+        PushNotifications.nativeAcceptedCallId.value==expected;
     final call=await IncomingCallNavigation.resolve(
       expectedId:expected,
+      recoverAccepted:autoAccept,
       getById:driver?AnonymousCallApi.driverStatus:AnonymousCallApi.ownerStatus,
       getIncoming:driver?AnonymousCallApi.driverIncoming:AnonymousCallApi.incoming,
     );
@@ -233,9 +238,6 @@ Future<void> _openIncomingCall(Map<String,dynamic> d,{required bool driver})asyn
       });
       return;
     }
-    final prefs=await SharedPreferences.getInstance();
-    final autoAccept='${d['autoAccept']??''}'=='1'||
-        (prefs.getString('pending_incoming_call_auto_accept')??'')==id;
     final enriched=<String,dynamic>{
       ...call,
       if((call['plate']??'').toString().isEmpty)
