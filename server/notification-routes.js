@@ -83,7 +83,7 @@ module.exports = function registerNotificationRoutes(app, pool) {
 
   async function activeQr(token) {
     const r = await pool.query(
-      `SELECT q.token, q.vehicle_id, q.scan_secret, v.owner_id, v.plate
+      `SELECT q.token, q.vehicle_id, q.scan_secret, q.legacy_contact_enabled, v.owner_id, v.plate
        FROM qr_tags q
        JOIN vehicles v ON v.id = q.vehicle_id
        WHERE q.token = $1 AND q.status = 'active'
@@ -145,12 +145,23 @@ module.exports = function registerNotificationRoutes(app, pool) {
       const accuracyRaw=Number(req.body?.accuracy);
       const accuracy=Number.isFinite(accuracyRaw)&&accuracyRaw>=0?accuracyRaw:null;
       const validQrProof=proof.length>0&&secretMatches(qr.scan_secret,proof);
+      // Existing printed tag-only labels cannot carry the new scan secret.
+      // Only labels flagged by one-time migration use this weaker compatibility path.
+      const legacyMode=proof.length===0&&qr.legacy_contact_enabled===true;
 
       await pool.query(`DELETE FROM qr_scan_sessions WHERE expires_at<=NOW()`);
       await pool.query(`DELETE FROM qr_proximity_proofs WHERE expires_at<=NOW()`);
 
       if(proof.length>0&&!validQrProof){
         return res.status(403).json({error:'QR_SCAN_PROOF_INVALID'});
+      }
+      if(legacyMode){
+        if(!deviceKey)return res.status(400).json({error:'PROXIMITY_DEVICE_REQUIRED'});
+        // Legacy tag-only links cannot prove a physical scan. GPS plus strict
+        // throttling are a risk-reducing fallback, NOT equivalent proof.
+        if(lat==null||lng==null)return res.status(428).json({error:'LOCATION_REQUIRED'});
+        if(accuracy==null||accuracy>75)return res.status(422).json({error:'LOCATION_ACCURACY_TOO_LOW'});
+        if(!security.visitorKey)return res.status(403).json({error:'VISITOR_IDENTITY_REQUIRED'});
       }
 
       if(validQrProof){
@@ -188,13 +199,38 @@ module.exports = function registerNotificationRoutes(app, pool) {
         }
       }
 
-      let proximityOk=validQrProof;
+      let proximityOk=validQrProof||legacyMode;
       if(!proximityOk&&deviceKey){
         const existing=await pool.query('SELECT 1 FROM qr_proximity_proofs WHERE qr_token=$1 AND visitor_key=$2 AND expires_at>NOW() LIMIT 1',[token,deviceKey]);
         proximityOk=existing.rows.length>0;
       }
       if(!proximityOk)return res.status(428).json({error:'PROXIMITY_PROOF_REQUIRED'});
-      const session = await createScanSession(pool, qr, security.visitorKey);
+      let session;
+      if(legacyMode){
+        // Lock counter + creation in one transaction to prevent parallel
+        // requests from evading a per-visitor/per-tag 3-session / 10m limit.
+        const client=await pool.connect();
+        try{
+          await client.query('BEGIN');
+          await client.query('SELECT pg_advisory_xact_lock(hashtext($1))',
+            ['legacy-qr|'+token+'|'+security.visitorKey]);
+          const recent=await client.query(
+            `SELECT COUNT(*)::int AS n FROM qr_scan_sessions
+              WHERE qr_token=$1 AND visitor_key=$2
+                AND created_at>NOW()-INTERVAL '10 minutes'`,
+            [token,security.visitorKey]
+          );
+          if(Number(recent.rows[0]?.n||0)>=3){
+            await client.query('ROLLBACK');
+            return res.status(429).json({error:'TOO_MANY_REQUESTS'});
+          }
+          session=await createScanSession(client,qr,security.visitorKey,600);
+          await client.query('COMMIT');
+        }catch(err){await client.query('ROLLBACK').catch(()=>{});throw err;}
+        finally{client.release();}
+      }else{
+        session=await createScanSession(pool,qr,security.visitorKey);
+      }
       const sourceValue=String(req.body?.source||'').toLowerCase();
       const scanSource=['nfc','qr','direct','app'].includes(sourceValue)?sourceValue:'qr';
       await qrSecurity.recordScan({qr,req,scanSessionHash:hashScanToken(session.token),visitorKey:security.visitorKey,source:scanSource});
@@ -204,6 +240,7 @@ module.exports = function registerNotificationRoutes(app, pool) {
         scanToken:session.token,
         expiresInSeconds:session.expiresInSeconds,
         proximityVerified:validQrProof,
+        legacyMode,
         proximityExpiresInSeconds:validQrProof?86400:null
       });
     } catch (e) { console.error(e); return res.status(500).json({ error: 'SERVER_ERROR' }); }
