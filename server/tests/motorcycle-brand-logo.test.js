@@ -19,6 +19,19 @@ test('RKS motorcycle logo has a narrowly allowlisted HTTPS API source',()=>{
   assert.equal(normalizeBrand('QJ Motor'),'qjmotor');
 });
 
+test('Benelli motorcycle emblem uses the real motorcycle manufacturer source',()=>{
+  const b=motorcycleLogoSource('Benelli','motorcycle');
+  assert.ok(b);
+  assert.equal(
+    b.url,
+    'https://benelli.co.id/front-end/benelli/uploads/logo/benelli_web.png',
+  );
+  assert.deepEqual(b.allowedHosts,['benelli.co.id']);
+  assert.equal(new URL(b.url).protocol,'https:');
+  assert.equal(motorcycleLogoSource('Benelli','car'),null);
+  assert.equal(motorcycleLogoSource('benelli','MOTORCYCLE')?.url,b.url);
+});
+
 test('unknown manufacturers cannot inject arbitrary logo URL via vehicle name',()=>{
   assert.equal(motorcycleLogoSource('Other motorcycle','motorcycle'),null);
   assert.equal(motorcycleLogoSource('https://example.com/evil.png','motorcycle'),null);
