@@ -132,6 +132,14 @@ jobs:
         run: bash -n deploy/dnd-enforcement-live.sh
       - name: Check targeted call fallback VPS deployment syntax
         run: bash -n deploy/call-recipient-fallback-live.sh
+      - name: Verify targeted motorcycle VPS rollout guardrails
+        run: |
+          bash -n deploy/motorcycle-profile-live.sh
+          grep -q "BACKUP_READY:" deploy/motorcycle-profile-live.sh
+          grep -q "pg_dump -Fc" deploy/motorcycle-profile-live.sh
+          grep -q "CEPQONTAG_MOTORCYCLE_PROFILE_OK" deploy/motorcycle-profile-live.sh
+          grep -q "ROLLING_BACK_MOTORCYCLE_MODULES" deploy/motorcycle-profile-live.sh
+          grep -q "MIGRATION_CHECKSUM_MISMATCH" deploy/motorcycle-profile-live.sh
       - name: Check no-device driver call VPS deployment syntax
         run: bash -n deploy/call-offline-driver-live.sh
       - name: Check QR-bound call vehicle deploy syntax
