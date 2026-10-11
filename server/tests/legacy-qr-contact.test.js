@@ -50,8 +50,8 @@ test('legacy scan issues only a ten minute session inside transaction',async()=>
  assert.equal(state.commits,1);
  assert.equal(state.released,true);
 });
-test('three sessions in 10 minutes blocks next attempt',async()=>{
- const {pool,state}=fakePool(3);
+test('eight sessions in 10 minutes blocks next attempt',async()=>{
+ const {pool,state}=fakePool(8);
  const out=await createLegacyContactSession(pool,qr,'visitor-hash',async()=>{throw Error('must not issue token')});
  assert.equal(out.limited,true);
  assert.equal(state.rollbacks,1);
