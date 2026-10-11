@@ -11,6 +11,13 @@ class IncomingCallNavigation {
       (call['id']?.toString() ?? '').isNotEmpty &&
       call['status']?.toString() == 'ringing';
 
+  // A native-accepted call may already be marked accepted when Flutter
+  // resumes. Only recover it by exact ID, never from the incoming list.
+  static bool isLive(Map<String, dynamic>? call) =>
+      call != null &&
+      (call['id']?.toString() ?? '').isNotEmpty &&
+      const {'ringing', 'accepted'}.contains(call['status']?.toString());
+
   static Future<Map<String, dynamic>?> resolve({
     required String expectedId,
     required Future<Map<String, dynamic>> Function(String) getById,
@@ -22,7 +29,7 @@ class IncomingCallNavigation {
         final exact = await getById(id);
         // Never substitute another caller if the notification specifies an ID.
         if (exact['id']?.toString() != id) return null;
-        return isRinging(exact) ? exact : null;
+        return isLive(exact) ? exact : null;
       } catch (_) {
         // A temporarily unavailable specific status may still be found via
         // the older incoming endpoint, but ONLY with an exact ID match.
