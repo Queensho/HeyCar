@@ -69,5 +69,7 @@ test('call endpoint guards owner ringing and does not block active drivers',()=>
  const src=fs.readFileSync(path.join(__dirname,'../call-routes.js'),'utf8');
  assert.match(src,/recipientType==='owner'&&await isOwnerDndActive\(pool,vehicle.owner_id\)/);
  assert.match(src,/status\(409\)\.json\(\{error:'OWNER_DND_ACTIVE'\}\)/);
- assert.match(src,/recipientType==='owner'&&await isOwnerDndActive\(pool,recipientId\)/);
+ const routing=fs.readFileSync(path.join(__dirname,'../call-push-routing.js'),'utf8');
+ assert.match(routing,/await isOwnerDndActive\\(pool,ownerTarget\\)/);
+ assert.match(routing,/await isOwnerDndActive\\(pool,owner\\)/);
 });
