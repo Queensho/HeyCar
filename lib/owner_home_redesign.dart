@@ -22,6 +22,7 @@ import 'owner_story_highlights.dart';
 import 'app_ui_config.dart';
 import 'owner_home_component_registry.dart';
 import 'vehicle_kind.dart';
+import 'motorcycle_profile_page.dart';
 import 'call_activity.dart';
 
 class OwnerHomeRedesign extends StatefulWidget{
@@ -1588,6 +1589,14 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     );
   }
 
+  void _motorProfile(){
+    final id=QrDraft.vehicleId.trim();
+    if(id.isEmpty)return;
+    Navigator.push(context,MaterialPageRoute(builder:(_)=>MotorcycleProfilePage(
+      vehicleId:id,plate:QrDraft.plate,
+    )));
+  }
+
   Widget _motorcycleHomePanel(){
     if(!VehicleKind.isMotorcycle(QrDraft.vehicleType))return const SizedBox.shrink();
     return Padding(
@@ -1600,7 +1609,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             Icon(Icons.two_wheeler_rounded,color:purple,size:22),
             const SizedBox(width:9),
             Expanded(child:Text('Motosikletim',style:TextStyle(color:text,fontSize:15,fontWeight:FontWeight.w900))),
-            Text('Motor Kontrol',style:TextStyle(color:muted,fontSize:11)),
+            TextButton(onPressed:_motorProfile,child:const Text('Motor Profili')),
           ]),
           const SizedBox(height:6),
           Text('Motor yağı • zincir/kayış • lastikler • frenler',style:TextStyle(color:muted,fontSize:11.5)),
