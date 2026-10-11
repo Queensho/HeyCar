@@ -1,3 +1,5 @@
+const {isOwnerDndActive}=require('./dnd-service');
+
 function notificationPushEnabled(type, settings) {
   return (
     (type === 'message' && settings.message_notifications) ||
@@ -7,7 +9,7 @@ function notificationPushEnabled(type, settings) {
   );
 }
 
-async function sendQrNotificationPush({ app, push: providedPush, qr, type, message, notificationId, recipientUserId, token, getPrivacy }) {
+async function sendQrNotificationPush({ app, pool, push: providedPush, qr, type, message, notificationId, recipientUserId, token, getPrivacy }) {
   try {
     const ownerId=String(qr.owner_id);
     const push=providedPush||app.locals.heycarPush;
@@ -39,6 +41,9 @@ async function sendQrNotificationPush({ app, push: providedPush, qr, type, messa
     const body=message||titles[type]||'Aracınız için yeni bir bildirim var';
     const routedRecipient=String(recipientUserId||ownerId);
     const recipientType=routedRecipient&&routedRecipient!==ownerId?'driver':'owner';
+    // Quiet only QR contact alerts for the owner; active drivers remain reachable.
+    const quietOwner=(type==='message'||type==='call_request')
+      ?await isOwnerDndActive(pool,ownerId):false;
     const payload={
       type:type==='message'?'message':'vehicle_notification',
       sourceType:type,
@@ -62,7 +67,7 @@ async function sendQrNotificationPush({ app, push: providedPush, qr, type, messa
         return {attempted:0,delivered:0,skipped:'DRIVER_SENDER_MISSING'};
       }
       driverResult=await push.sendDriver(routedRecipient,payload,notificationTitle,body);
-      if(Number(driverResult?.delivered||0)===0&&ownerId&&ownerId!==routedRecipient){
+      if(Number(driverResult?.delivered||0)===0&&ownerId&&ownerId!==routedRecipient&&!quietOwner){
         const ownerSender=push.sendOwner||push.send;
         if(typeof ownerSender==='function'){
           ownerResult=await ownerSender(
@@ -82,6 +87,10 @@ async function sendQrNotificationPush({ app, push: providedPush, qr, type, messa
         }
       }
     }else{
+      if(quietOwner){
+        console.info('QR owner push suppressed by DND',{type,ownerId,notificationId:String(notificationId)});
+        return {attempted:0,delivered:0,skipped:'OWNER_DND_ACTIVE'};
+      }
       const ownerSender=push.sendOwner||push.send;
       if(typeof ownerSender!=='function'){
         console.error('QR push skipped',{reason:'OWNER_SENDER_MISSING',type,ownerId,notificationId:String(notificationId)});
