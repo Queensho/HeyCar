@@ -46,6 +46,8 @@ jobs:
         run: |
           flutter analyze lib/owner_auth.dart test/owner_refresh_storm_test.dart --no-fatal-infos --no-fatal-warnings
           flutter test test/owner_refresh_storm_test.dart
+      - name: Verify branded Flutter call screen source patch
+        run: python3 -m unittest discover -s tool -p test_callkit_flutter_route_patch.py
 
   build:
     if: github.event_name != 'pull_request'
