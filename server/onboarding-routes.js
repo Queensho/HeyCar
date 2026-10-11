@@ -24,6 +24,8 @@ module.exports = function registerOnboardingRoutes(app, pool) {
     const make = String(req.body.make || '').trim();
     const model = String(req.body.model || '').trim();
     const color = String(req.body.color || '').trim();
+    // Optional for old APKs: historic vehicles are treated as cars.
+    const vehicleType = String(req.body.vehicleType ?? 'car').trim().toLowerCase();
     const transferCode = String(req.body.transferCode || '').trim().toUpperCase();
     const legalAccepted = req.body.legalAccepted === true;
     const legalVersion = String(req.body.legalVersion || '').trim();
@@ -33,6 +35,9 @@ module.exports = function registerOnboardingRoutes(app, pool) {
     }
     if (!displayName || password.length < 6 || (!transferCode && (!plate || !make))) {
       return res.status(400).json({ error: 'INVALID_INPUT' });
+    }
+    if (!['car','motorcycle'].includes(vehicleType)) {
+      return res.status(400).json({ error: 'INVALID_VEHICLE_TYPE' });
     }
     if (!legalAccepted || legalVersion !== LEGAL_VERSION) {
       return res.status(400).json({ error: 'LEGAL_CONSENT_REQUIRED', legalVersion: LEGAL_VERSION });
@@ -94,10 +99,10 @@ module.exports = function registerOnboardingRoutes(app, pool) {
         vehicleResult={rows:[{id:t.vehicle_id,owner_id:user.id,plate:t.plate,make:t.make,model:t.model,color:t.color}]};
       } else {
         vehicleResult = await client.query(
-          `INSERT INTO vehicles (owner_id, plate, make, model, color)
-           VALUES ($1, $2, $3, $4, $5)
-           RETURNING id, owner_id, plate, make, model, color, created_at`,
-          [user.id, plate, make, model || null, color || null]
+          `INSERT INTO vehicles (owner_id, plate, make, model, color, vehicle_type)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           RETURNING id, owner_id, plate, make, model, color, vehicle_type, created_at`,
+          [user.id, plate, make, model || null, color || null, vehicleType]
         );
       }
 
