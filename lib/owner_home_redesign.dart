@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'cepqar_theme.dart';
 import 'onboarding_backend.dart';
 import 'qr_backend.dart';
+import 'public_qr_link.dart';
 import 'owner_auth.dart';
 import 'owner_valet_card.dart';
 import 'owner_shortcuts.dart';
@@ -528,10 +529,16 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
 
   String publicUrl(){
     final t=QrDraft.token.trim(),s=QrDraft.scanSecret.trim();
-    if(t.isEmpty)return'https://cepqontag.com';
-    return'https://queensho.github.io/HeyCar/?tag=${Uri.encodeComponent(t)}${s.isEmpty?'':'&s=${Uri.encodeComponent(s)}'}';
+    if(t.isEmpty||s.isEmpty)throw StateError('Aktif QR güvenlik bağlantısı bulunamadı. Araçlarım bölümünden QR bilgilerini yenileyin.');
+    return PublicQrLink.forVehicle(token:t,scanSecret:s);
   }
-  Future<void> shareLink(String intro)=>SharePlus.instance.share(ShareParams(title:'CepQontag',text:'$intro\n${publicUrl()}'));
+  Future<void> shareLink(String intro)async{
+    try{
+      await SharePlus.instance.share(ShareParams(title:'CepQontag',text:'$intro\n${publicUrl()}'));
+    }catch(_){
+      if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('QR güvenlik bağlantısı bulunamadı. Araçlarım bölümünden QR bilgilerini yenileyin.')));
+    }
+  }
   Future<void> shareLocation()async{
     try{
       var p=await Geolocator.checkPermission();

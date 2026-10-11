@@ -16,6 +16,7 @@ import 'vehicle_analytics_page.dart';
 import 'cepqar_theme.dart';
 import 'owner_auth.dart';
 import 'owner_settings_detail.dart';
+import 'public_qr_link.dart';
 import 'owner_notifications_page.dart';
 import 'vehicle_identity_card.dart';
 import 'vehicle_edit_sheet.dart';
@@ -413,6 +414,10 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
       final token = selected['qr_status'] == 'active'
           ? '${selected['qr_token'] ?? ''}'.trim()
           : '';
+      final scanSecret='${selected['qr_scan_secret']??''}'.trim();
+      // Never render a QR that omits its proximity proof; that QR cannot
+      // create a scan session, so messages and calls would always fail 428.
+      final publicQrUrl=token.isEmpty?null:PublicQrLink.forVehicle(token:token,scanSecret:scanSecret);
       if (!mounted) return;
       final activate = await showDialog<bool>(
         context: context,
@@ -439,7 +444,7 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
                     child: Image.network(
-                      'https://quickchart.io/qr?text=${Uri.encodeComponent('https://queensho.github.io/HeyCar/?tag=${Uri.encodeComponent(token)}')}&size=420',
+                      'https://quickchart.io/qr?text=${Uri.encodeComponent(publicQrUrl!)}&size=420',
                       width: 210,
                       height: 210,
                       fit: BoxFit.contain,

@@ -62,6 +62,7 @@ class _PublicQrPersonalizedScreenState extends State<PublicQrPersonalizedScreen>
       if (r.statusCode >= 200 && r.statusCode < 300 && decoded is Map) {
         final map = Map<String, dynamic>.from(decoded);
         if (map['status'] == 'active' && map['vehicle'] is Map) {
+          PublicNotificationApi.configureContactQr(raw);
           if (mounted) setState(() => data = map);
         } else {
           if (mounted) setState(() => error = 'Bu HeyCar etiketi henüz aktif değil.');
@@ -1146,13 +1147,19 @@ class _MessageComposerState extends State<_MessageComposer>{
     }catch(e){
       if(!mounted)return;
       final raw=e.toString();
-      final text=raw.contains('VEHICLE_NOT_NEARBY')
-          ?'Araç yanında değilsiniz. Güvenlik nedeniyle işlem gönderilmedi.'
-          :raw.contains('LOCATION_ACCURACY_TOO_LOW')
-              ?'Konum doğruluğu yetersiz. Araca yaklaşın ve konumu tekrar deneyin.'
-              :raw.contains('LOCATION_REQUIRED')
-                  ?'Devam etmek için konum izni gerekli.'
-                  :'Mesaj gönderilemedi. Tekrar dene.';
+      final text=raw.contains('PROXIMITY_PROOF_REQUIRED')
+          ?'Bu cihazda QR doğrulaması yok. Araçtaki gerçek QR kodunu kamerayla yeniden okutun. Sadece etiket numarası iletişim için yeterli değildir.'
+          :raw.contains('TOO_MANY_REQUESTS')
+              ?'Çok fazla deneme yapıldı. Lütfen kısa bir süre bekleyip QR kodunu yeniden okutun.'
+              :raw.contains('QR_SCAN_PROOF_INVALID')
+                  ?'Bu QR güvenlik kodu geçersiz. Güncel etiketi yeniden okutun.'
+                  :raw.contains('VEHICLE_NOT_NEARBY')
+                      ?'Araç yanında değilsiniz. Güvenlik nedeniyle işlem gönderilmedi.'
+                      :raw.contains('LOCATION_ACCURACY_TOO_LOW')
+                          ?'Konum doğruluğu yetersiz. Araca yaklaşın ve konumu tekrar deneyin.'
+                          :raw.contains('LOCATION_REQUIRED')
+                              ?'Devam etmek için konum izni gerekli.'
+                              :'Mesaj gönderilemedi. Tekrar dene.';
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(text)));
     }finally{
       if(mounted)setState(()=>sending=false);

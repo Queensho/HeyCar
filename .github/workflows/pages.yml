@@ -30,6 +30,10 @@ jobs:
         run: flutter pub get
       - name: Analyze owner light theme screens
         run: flutter analyze lib/maintenance_detail_page.dart lib/owner_settings_detail.dart lib/vehicle_center_page.dart --no-fatal-infos --no-fatal-warnings
+      - name: Verify secure public QR links and contact error screens
+        run: |
+          flutter analyze lib/public_qr_link.dart lib/public_notification_api.dart lib/public_qr_personalized.dart lib/public_call_page.dart lib/vehicle_center_page.dart test/public_qr_link_test.dart --no-fatal-infos --no-fatal-warnings
+          flutter test test/public_qr_link_test.dart
       - name: Analyze admin app management
         run: flutter analyze lib/admin_app_management_page.dart --no-fatal-infos --no-fatal-warnings
       - name: Analyze owner APK and app-config dependency graph
