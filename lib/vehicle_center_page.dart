@@ -20,6 +20,7 @@ import 'public_qr_link.dart';
 import 'owner_notifications_page.dart';
 import 'vehicle_identity_card.dart';
 import 'vehicle_kind.dart';
+import 'motorcycle_profile_page.dart';
 import 'vehicle_edit_sheet.dart';
 
 Color get _bg => CepqarTheme.bg;
@@ -902,6 +903,12 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
 
   bool get _isMotorcycle=>VehicleKind.isMotorcycle(_vehicle['vehicle_type']??QrDraft.vehicleType);
 
+  void _openMotorcycleProfile(){
+    Navigator.push(context,MaterialPageRoute(builder:(_)=>MotorcycleProfilePage(
+      vehicleId:vid,plate:_plate,
+    ))).then((_){if(mounted)load();});
+  }
+
   Widget _motorcyclePanel()=>Container(
     padding:const EdgeInsets.all(14),
     decoration:_compactCard(),
@@ -910,6 +917,13 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
       const SizedBox(height:8),
       Text(VehicleKind.maintenanceHint(VehicleKind.motorcycle),style:TextStyle(color:_muted,fontSize:12.5)),
       const SizedBox(height:10),
+      SizedBox(width:double.infinity,child:FilledButton.icon(
+        onPressed:_openMotorcycleProfile,
+        icon:const Icon(Icons.tune_rounded),
+        label:const Text('Motor Profili ve Km Hatırlatmaları'),
+        style:FilledButton.styleFrom(backgroundColor:_purple),
+      )),
+      const SizedBox(height:8),
       Wrap(spacing:7,runSpacing:7,children:[
         for(final item in const [
           (Icons.oil_barrel_outlined,'Motor Yağı'),
@@ -1270,6 +1284,7 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
                     decoration:_compactCard(),
                     child:Column(children:[
                       _menuItem(icon:_isMotorcycle?Icons.two_wheeler_rounded:Icons.directions_car_filled_rounded,title:_isMotorcycle?'Motosiklet Bilgileri':'Araç Bilgileri',subtitle:'Marka, model ve diğer detaylar',tap:_editVehicle),
+                      if(_isMotorcycle)_menuItem(icon:Icons.oil_barrel_outlined,title:'Motor Profili',subtitle:'Hacim, yağ kapasitesi ve bakım kilometreleri',tap:_openMotorcycleProfile),
                       _menuItem(icon:Icons.nfc_rounded,title:'NFC Etiketi',subtitle:'NFC desteği yakında kullanıma açılacak',tap:(){},enabled:false,badge:'Yakında'),
                       _menuItem(icon:Icons.analytics_outlined,title:'Etiket Analitiği',subtitle:'QR ve NFC kullanımını birlikte takip et',tap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>VehicleAnalyticsPage(vehicleId:vid,plate:_plate)))),
                       _menuItem(icon:Icons.build_rounded,title:'Bakım Kayıtları',subtitle:_isMotorcycle?'Motosikletin bakım geçmişi':'Aracınızın bakım geçmişi',tap:maintenance),
