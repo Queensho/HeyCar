@@ -63,10 +63,11 @@ class _OwnerVehicleSetupPageState extends State<OwnerVehicleSetupPage> {
       model='';
       makes=next==VehicleKind.motorcycle
           ?VehicleKind.motorcycleMakes
-          :VehicleApi.carMakes;
+          :const <String>[];
       models=const [];
       loadingModels=false;
     });
+    if(next==VehicleKind.car)_load();
   }
 
   Future<void> _loadModels(String value) async {
