@@ -14,19 +14,13 @@ OLD_BLOCK = """        notificationBuilder?.setFullScreenIntent(
         )
         notificationBuilder?.setContentIntent(getActivityPendingIntent(notificationId, data))"""
 
-NEW_BLOCK = """        // Respect the app's isFullScreen=false choice. Keep native ringing,
-        // lockscreen notification, accept/decline and foreground service.
-        // Only explicit full-screen requests may launch the plugin's Activity.
-        val useNativeFullScreen =
-            data.getBoolean(CallkitConstants.EXTRA_CALLKIT_IS_FULL_SCREEN, false) &&
-            data.getBoolean(CallkitConstants.EXTRA_CALLKIT_IS_SHOW_FULL_LOCKED_SCREEN, false)
-        if (useNativeFullScreen) {
-            notificationBuilder?.setFullScreenIntent(
-                getActivityPendingIntent(notificationId, data), true
-            )
-        }
-        // Tapping a call notification opens the authenticated Flutter route,
-        // not the plugin's unbranded incoming-call Activity.
+NEW_BLOCK = """        // Retain the system call notification and full-screen intent for
+        // supported locked devices, but always open the branded Flutter route
+        // rather than the plugin's unbranded native incoming-call Activity.
+        // Existing accept/decline PendingIntents and ringtone remain unchanged.
+        notificationBuilder?.setFullScreenIntent(
+            getAppPendingIntent(notificationId, data), true
+        )
         notificationBuilder?.setContentIntent(getAppPendingIntent(notificationId, data))"""
 
 
