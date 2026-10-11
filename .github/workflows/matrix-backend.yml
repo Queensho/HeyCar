@@ -103,6 +103,9 @@ jobs:
       - name: Test service text colors survive publish
         working-directory: server
         run: node --test tests/service-text-color-publish.test.js
+      - name: Verify owner Rahatsız Etmeyin enforcement
+        working-directory: server
+        run: node --test tests/owner-dnd-enforcement.test.js
       - name: Parse service text-color VPS deployment script
         run: bash -n deploy/app-service-text-colors-live.sh
       - name: Parse targeted owner refresh deploy script
