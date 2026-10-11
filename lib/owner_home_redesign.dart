@@ -21,6 +21,7 @@ import 'story_service.dart';
 import 'owner_story_highlights.dart';
 import 'app_ui_config.dart';
 import 'owner_home_component_registry.dart';
+import 'vehicle_kind.dart';
 import 'call_activity.dart';
 
 class OwnerHomeRedesign extends StatefulWidget{
@@ -836,6 +837,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   }
 
   Widget vehicleQr(){
+    final motorcycle=VehicleKind.isMotorcycle(QrDraft.vehicleType);
     final car='${QrDraft.make} ${QrDraft.model}'.trim();
     return Padding(
       padding:const EdgeInsets.symmetric(horizontal:16),
@@ -859,7 +861,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                   const SizedBox(height:3),
                   Text(car.isEmpty?'Araç bilgilerini ekle':car,style:TextStyle(color:text,fontSize:13,fontWeight:FontWeight.w700)),
                   const SizedBox(height:1),
-                  Text('CepQontag aracınız',style:TextStyle(color:muted,fontSize:CepqarTheme.body)),
+                  Text(motorcycle?'CepQontag motosikletiniz':'CepQontag otomobiliniz',style:TextStyle(color:muted,fontSize:CepqarTheme.body)),
                   const Spacer(),
                   Row(children:[
                     Container(
@@ -872,7 +874,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                       ]),
                     ),
                     const Spacer(),
-                    Container(width:54,height:36,decoration:BoxDecoration(color:purple.withValues(alpha:light ? 0.08 : 0.16),borderRadius:BorderRadius.circular(10)),child:const Icon(Icons.directions_car_filled_rounded,color:purple,size:26)),
+                    Container(width:54,height:36,decoration:BoxDecoration(color:purple.withValues(alpha:light ? 0.08 : 0.16),borderRadius:BorderRadius.circular(10)),child:Icon(motorcycle?Icons.two_wheeler_rounded:Icons.directions_car_filled_rounded,color:purple,size:26)),
                     Icon(Icons.chevron_right_rounded,color:muted,size:20),
                   ]),
                 ]),
