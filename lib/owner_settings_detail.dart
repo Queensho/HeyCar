@@ -538,6 +538,8 @@ class _OwnerNotificationSettingsPageState extends State<OwnerNotificationSetting
               )
             : Column(
                 children: [
+                  const OwnerDndCard(),
+                  const SizedBox(height: 12),
                   if (error != null)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 10),
