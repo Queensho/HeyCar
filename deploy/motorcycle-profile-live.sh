@@ -126,8 +126,10 @@ if sys.argv[4]=="t":
               "ON CONFLICT(filename) DO NOTHING;\n")
 pathlib.Path(sys.argv[2]).write_text("BEGIN;\n"+body+"\n"+tracking+"COMMIT;\n")
 PY
+# PostgreSQL user cannot traverse root-only temporary directories; feed SQL via
+# root's stdin rather than giving postgres filesystem access to the temp file.
 runuser -u postgres -- psql -d "$DB" -v ON_ERROR_STOP=1 \
-  -f "$TMP/install.sql" > "$BACKUP/migration-output.log"
+  < "$TMP/install.sql" > "$BACKUP/migration-output.log"
 [[ "$(scalar "SELECT to_regclass('public.vehicle_motorcycle_profiles') IS NOT NULL")" == "t" ]] || {
   echo MOTORCYCLE_TABLE_MISSING >&2; exit 1;
 }
