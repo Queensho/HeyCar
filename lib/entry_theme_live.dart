@@ -238,11 +238,10 @@ Future<void> _openIncomingCall(Map<String,dynamic> d,{required bool driver})asyn
       });
       return;
     }
-    final enriched=<String,dynamic>{
-      ...call,
-      if((call['plate']??'').toString().isEmpty)
-        'plate':'${d['plate']??QrDraft.plate}',
-    };
+    final enriched=IncomingCallNavigation.withVehicleIdentity(
+      call:call,
+      push:d,
+    );
     _displayedIncomingCallId=id;
     await prefs.remove('pending_incoming_call_id');
     if(autoAccept)await prefs.remove('pending_incoming_call_auto_accept');
