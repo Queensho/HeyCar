@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'public_theme_backend.dart';
+import 'public_qr_link.dart';
 
 class PublicNotificationApi {
   static final ImagePicker _picker = ImagePicker();
@@ -16,8 +17,25 @@ class PublicNotificationApi {
   static String? lastStatusToken;
   static String? _scanToken;
   static Future<String>? _scanTokenFuture;
+  static String? _selectedQrToken;
+  static String? _scannedQrSecret;
 
-  static String currentToken() => (Uri.base.queryParameters['tag'] ?? '').trim().toUpperCase();
+  // The in-page camera scanner is not a browser navigation. Preserve its
+  // QR proof in memory and scope scan sessions to the selected vehicle.
+  static void configureContactQr(String raw){
+    final parsed=PublicQrLink.parse(raw);
+    final next=parsed.token;
+    if(next.isEmpty)return;
+    if(_selectedQrToken!=next)_clearScanToken();
+    _selectedQrToken=next;
+    final uri=Uri.base;
+    final browserTag=(uri.queryParameters['tag']??'').trim().toUpperCase();
+    _scannedQrSecret=parsed.secret.isNotEmpty
+      ?parsed.secret
+      :(browserTag==next?(uri.queryParameters['s']??'').trim():'');
+  }
+
+  static String currentToken()=>_selectedQrToken??(Uri.base.queryParameters['tag']??'').trim().toUpperCase();
   static String _conversationStorageKey() => 'cepqar_conversation_${currentToken()}';
   static String _scanStorageKey() => 'cepqar_scan_${currentToken()}';
   static String _scanExpiryStorageKey() => 'cepqar_scan_exp_${currentToken()}';
@@ -60,6 +78,7 @@ class PublicNotificationApi {
   }
 
   static void _consumeScanSecret(){
+    _scannedQrSecret=null;
     final params=Map<String,String>.from(Uri.base.queryParameters);
     if(!params.containsKey('s'))return;
     params.remove('s');
@@ -69,7 +88,8 @@ class PublicNotificationApi {
   }
 
   static Future<http.Response> _openSession(String token,{Map<String,dynamic>? location})async{
-    final secret=(Uri.base.queryParameters['s']??'').trim();
+    final browserToken=(Uri.base.queryParameters['tag']??'').trim().toUpperCase();
+    final secret=(_scannedQrSecret??(browserToken==token?Uri.base.queryParameters['s']:null)??'').trim();
     final sourceParam=(Uri.base.queryParameters['src']??'').trim().toLowerCase();
     final source=sourceParam=='nfc'?'nfc':secret.isNotEmpty?'qr':'direct';
     final body=<String,dynamic>{if(secret.isNotEmpty)'scanSecret':secret,'source':source,...?location};
@@ -83,19 +103,26 @@ class PublicNotificationApi {
   static Future<String> _createScanToken() async {
     final token=currentToken();
     if(token.isEmpty)throw Exception('QR_TOKEN_MISSING');
-    final secret=(Uri.base.queryParameters['s']??'').trim();
+    final browserToken=(Uri.base.queryParameters['tag']??'').trim().toUpperCase();
+    final secret=(_scannedQrSecret??(browserToken==token?Uri.base.queryParameters['s']:null)??'').trim();
     Map<String,dynamic>? location;
     if(secret.isNotEmpty)location=await _locationPayload();
 
     var r=await _openSession(token,location:location);
-    if(r.statusCode==428){
-      location=await _locationPayload();
-      r=await _openSession(token,location:location);
-    }
     dynamic parsed;
     try{parsed=jsonDecode(r.body);}catch(_){}
+    // GPS does not substitute for physical QR proof. A second request on
+    // PROXIMITY_PROOF_REQUIRED merely causes extra 428s and then rate limits.
+    if(r.statusCode==428&&parsed is Map&&parsed['error']=='LOCATION_REQUIRED'){
+      location=await _locationPayload();
+      r=await _openSession(token,location:location);
+      try{parsed=jsonDecode(r.body);}catch(_){parsed=null;}
+    }
     if(r.statusCode<200||r.statusCode>=300){
       final code=parsed is Map?parsed['error']?.toString():'';
+      if(code=='PROXIMITY_PROOF_REQUIRED')throw Exception('PROXIMITY_PROOF_REQUIRED');
+      if(code=='TOO_MANY_REQUESTS'||r.statusCode==429)throw Exception('TOO_MANY_REQUESTS');
+      if(code=='QR_SCAN_PROOF_INVALID')throw Exception('QR_SCAN_PROOF_INVALID');
       if(code=='VEHICLE_NOT_NEARBY')throw Exception('VEHICLE_NOT_NEARBY');
       if(code=='LOCATION_ACCURACY_TOO_LOW')throw Exception('LOCATION_ACCURACY_TOO_LOW');
       if(code=='LOCATION_REQUIRED')throw Exception('LOCATION_REQUIRED');
