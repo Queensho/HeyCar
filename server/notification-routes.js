@@ -8,6 +8,7 @@ const registerConversationRoutes = require('./conversation-routes');
 const { sendQrNotificationPush } = require('./notification-push-hook');
 const registerPushRoutes = require('./push-routes');
 const { hashScanToken, createScanSession, validateScanSession } = require('./scan-session-service');
+const {isLegacyContact,validateLegacyContext,createLegacyContactSession}=require('./legacy-qr-service');
 const registerQrSecurityRoutes = require('./qr-security-routes');
 const { moderateMessage } = require('./message-moderation');
 const { enforcePublicRequest, blockVisitorSession } = require('./security-service');
@@ -83,7 +84,7 @@ module.exports = function registerNotificationRoutes(app, pool) {
 
   async function activeQr(token) {
     const r = await pool.query(
-      `SELECT q.token, q.vehicle_id, q.scan_secret, v.owner_id, v.plate
+      `SELECT q.token, q.vehicle_id, q.scan_secret, q.legacy_contact_enabled, v.owner_id, v.plate
        FROM qr_tags q
        JOIN vehicles v ON v.id = q.vehicle_id
        WHERE q.token = $1 AND q.status = 'active'
@@ -145,12 +146,21 @@ module.exports = function registerNotificationRoutes(app, pool) {
       const accuracyRaw=Number(req.body?.accuracy);
       const accuracy=Number.isFinite(accuracyRaw)&&accuracyRaw>=0?accuracyRaw:null;
       const validQrProof=proof.length>0&&secretMatches(qr.scan_secret,proof);
+      // Existing printed tag-only labels cannot carry the new scan secret.
+      // Only labels flagged by one-time migration use this weaker compatibility path.
+      const legacyMode=process.env.LEGACY_QR_CONTACTS_DISABLED!=='1'&&isLegacyContact(qr,proof);
 
       await pool.query(`DELETE FROM qr_scan_sessions WHERE expires_at<=NOW()`);
       await pool.query(`DELETE FROM qr_proximity_proofs WHERE expires_at<=NOW()`);
 
       if(proof.length>0&&!validQrProof){
         return res.status(403).json({error:'QR_SCAN_PROOF_INVALID'});
+      }
+      if(legacyMode){
+        // GPS and throttling reduce legacy tag-only abuse but do not
+        // cryptographically verify presence at the actual vehicle.
+        const failure=validateLegacyContext({deviceKey,visitorKey:security.visitorKey,lat,lng,accuracy});
+        if(failure)return res.status(failure.status).json({error:failure.error});
       }
 
       if(validQrProof){
@@ -188,13 +198,20 @@ module.exports = function registerNotificationRoutes(app, pool) {
         }
       }
 
-      let proximityOk=validQrProof;
+      let proximityOk=validQrProof||legacyMode;
       if(!proximityOk&&deviceKey){
         const existing=await pool.query('SELECT 1 FROM qr_proximity_proofs WHERE qr_token=$1 AND visitor_key=$2 AND expires_at>NOW() LIMIT 1',[token,deviceKey]);
         proximityOk=existing.rows.length>0;
       }
       if(!proximityOk)return res.status(428).json({error:'PROXIMITY_PROOF_REQUIRED'});
-      const session = await createScanSession(pool, qr, security.visitorKey);
+      let session;
+      if(legacyMode){
+        const result=await createLegacyContactSession(pool,qr,security.visitorKey,createScanSession);
+        if(result.limited)return res.status(429).json({error:'TOO_MANY_REQUESTS'});
+        session=result.session;
+      }else{
+        session=await createScanSession(pool,qr,security.visitorKey);
+      }
       const sourceValue=String(req.body?.source||'').toLowerCase();
       const scanSource=['nfc','qr','direct','app'].includes(sourceValue)?sourceValue:'qr';
       await qrSecurity.recordScan({qr,req,scanSessionHash:hashScanToken(session.token),visitorKey:security.visitorKey,source:scanSource});
@@ -204,6 +221,7 @@ module.exports = function registerNotificationRoutes(app, pool) {
         scanToken:session.token,
         expiresInSeconds:session.expiresInSeconds,
         proximityVerified:validQrProof,
+        legacyMode,
         proximityExpiresInSeconds:validQrProof?86400:null
       });
     } catch (e) { console.error(e); return res.status(500).json({ error: 'SERVER_ERROR' }); }
