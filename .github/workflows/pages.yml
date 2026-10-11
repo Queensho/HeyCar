@@ -46,6 +46,8 @@ jobs:
         run: |
           flutter analyze lib/owner_auth.dart test/owner_refresh_storm_test.dart --no-fatal-infos --no-fatal-warnings
           flutter test test/owner_refresh_storm_test.dart
+      - name: Verify branded Flutter call screen source patch
+        run: python3 -m unittest discover -s tool -p test_callkit_flutter_route_patch.py
 
   build:
     if: github.event_name != 'pull_request'
@@ -281,6 +283,10 @@ jobs:
         run: flutter pub get
       - name: Patch CallKit locked-screen ringtone
         run: python3 tool/callkit_locked_ringtone_patch.py
+      - name: Keep branded Flutter incoming call screen
+        run: |
+          python3 -m unittest discover -s tool -p test_callkit_flutter_route_patch.py
+          python3 tool/callkit_flutter_route_patch.py
       - name: Analyze app
         run: flutter analyze lib --no-fatal-infos --no-fatal-warnings || true
       - name: Verify owner weather card analyze
