@@ -188,8 +188,10 @@ if(!pushHook.includes("if(recipientType==='driver'){")){
 if(!pushHook.includes('driverResult=await push.sendDriver(routedRecipient,payload,notificationTitle,body);')){
   throw new Error('DRIVER_PUSH_BRANCH_MISSING');
 }
-if(!pushHook.includes("}else{\n      const ownerSender=push.sendOwner||push.send;")){
-  throw new Error('OWNER_PUSH_ELSE_BRANCH_MISSING');
+if(!pushHook.includes("}else{\n      if(quietOwner){")||
+   !pushHook.includes("const ownerSender=push.sendOwner||push.send;")||
+   !pushHook.includes("skipped:'OWNER_DND_ACTIVE'")){
+  throw new Error('OWNER_PUSH_DND_GUARD_OR_ELSE_BRANCH_MISSING');
 }
 
 const admin=read('admin-management-routes.js');
