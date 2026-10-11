@@ -203,6 +203,19 @@ BEGIN
     RAISE EXCEPTION 'VALET_AUDIT_RUNTIME_PRIVILEGES_MISSING';
   END IF;
 
+  -- Rolling call attempts were introduced after the generic ACL migration.
+  -- Public anonymous calls must be able to count and record attempts.
+  IF to_regclass('public.anonymous_call_attempts') IS NULL
+     OR to_regclass('public.anonymous_call_attempts_id_seq') IS NULL THEN
+    RAISE EXCEPTION 'ANONYMOUS_CALL_ATTEMPTS_RUNTIME_OBJECTS_MISSING';
+  END IF;
+
+  IF NOT has_table_privilege('heycar_user','public.anonymous_call_attempts','SELECT')
+     OR NOT has_table_privilege('heycar_user','public.anonymous_call_attempts','INSERT')
+     OR NOT has_sequence_privilege('heycar_user','public.anonymous_call_attempts_id_seq','USAGE') THEN
+    RAISE EXCEPTION 'ANONYMOUS_CALL_ATTEMPTS_RUNTIME_PRIVILEGES_MISSING';
+  END IF;
+
   IF NOT has_table_privilege('heycar_user','public.story_categories','SELECT')
      OR NOT has_table_privilege('heycar_user','public.stories','SELECT')
      OR NOT has_table_privilege('heycar_user','public.story_user_state','SELECT')
