@@ -74,9 +74,21 @@ class RuntimeConfigService {
   static Future<RuntimeAppConfig> load({
     bool allowCache=true,
     bool preferCache=false,
+    bool requireFresh=false,
+    void Function(RuntimeAppConfig)? onRevalidated,
   }) async {
     Map<String,dynamic>? config=
         allowCache&&preferCache ? await _readCached() : null;
+    if(config!=null&&preferCache&&onRevalidated!=null){
+      // Keep the most recently verified gate visible without waiting for the
+      // network, while still enforcing any newer maintenance/update policy.
+      Future<void>(()async{
+        try{
+          final fresh=await load(allowCache:false,requireFresh:true);
+          onRevalidated(fresh);
+        }catch(_){}
+      });
+    }
     if(config==null)try {
       final r=await http.get(
         Uri.parse('${OnboardingBackend.baseUrl}/api/app/config'),
@@ -94,6 +106,7 @@ class RuntimeConfigService {
     } catch (_) {}
 
     if(config==null&&allowCache)config=await _readCached();
+    if(requireFresh&&config==null)throw StateError('Runtime config unavailable');
 
     final package=await PackageInfo.fromPlatform();
     final current=package.version.trim().isEmpty?'0.0.0':package.version.trim();
