@@ -919,7 +919,7 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
           (Icons.battery_charging_full_rounded,'Akü')
         ]) ActionChip(
           avatar:Icon(item.$1,color:_purple,size:17),
-          label:Text(item.$2,style:TextStyle(color:_text,fontWeight:FontWeight.w600,fontSize:11)),
+          label:Text(item.$2,style:TextStyle(color:CepqarTheme.text,fontWeight:FontWeight.w600,fontSize:11)),
           backgroundColor:_panel,
           onPressed:maintenance,
         ),
