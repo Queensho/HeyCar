@@ -106,7 +106,13 @@ class PublicNotificationApi {
     final browserToken=(Uri.base.queryParameters['tag']??'').trim().toUpperCase();
     final secret=(_scannedQrSecret??(browserToken==token?Uri.base.queryParameters['s']:null)??'').trim();
     Map<String,dynamic>? location;
-    if(secret.isNotEmpty)location=await _locationPayload();
+    // Printed legacy QR labels contain only ?tag=. Their bounded compatibility
+    // flow requires location immediately; avoiding a 428 saves rate-limit quota.
+    try{
+      location=await _locationPayload();
+    }catch(_){
+      throw Exception('LOCATION_REQUIRED');
+    }
 
     var r=await _openSession(token,location:location);
     dynamic parsed;
