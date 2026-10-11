@@ -6,6 +6,7 @@ const {getAppSettings}=require('./app-settings-service');
 const {enforcePublicRequest}=require('./security-service');
 const {isOwnerDndActive}=require('./dnd-service');
 const {sendCallPush}=require('./call-push-routing');
+const {selectReachableCallRecipient}=require('./call-recipient-selection');
 
 function normalizeToken(raw) {
   return String(raw || '').trim().toUpperCase();
@@ -105,17 +106,11 @@ module.exports = function registerCallRoutes(app, pool) {
       if(Number(rate.rows[0]?.accepted||0)!==1)return res.status(429).json({error:'CALL_RATE_LIMITED'});
       if(Number(rate.rows[0]?.attempts||0)>5)return res.status(429).json({error:'CALL_RATE_LIMITED'});
 
-      const activeDriver=await pool.query(
-        `SELECT driver_user_id::text AS driver_user_id
-         FROM vehicle_active_drivers
-         WHERE vehicle_id::text=$1::text
-           AND driver_user_id IS NOT NULL
-           AND (active_until IS NULL OR active_until>NOW())
-         LIMIT 1`,
-        [vehicle.vehicle_id]
-      );
-      const recipientType=activeDriver.rows.length?'driver':'owner';
-      const recipientId=activeDriver.rows.length?String(activeDriver.rows[0].driver_user_id):String(vehicle.owner_id);
+      const recipient=await selectReachableCallRecipient(pool,vehicle.vehicle_id,vehicle.owner_id,{
+        webPushEnabled:Boolean(process.env.WEB_PUSH_VAPID_PUBLIC_KEY&&process.env.WEB_PUSH_VAPID_PRIVATE_KEY),
+      });
+      const recipientType=recipient.recipientType;
+      const recipientId=recipient.recipientId;
       // An owner who enabled DND cannot be rung; active drivers remain reachable.
       if(recipientType==='owner'&&await isOwnerDndActive(pool,vehicle.owner_id)){
         return res.status(409).json({error:'OWNER_DND_ACTIVE'});

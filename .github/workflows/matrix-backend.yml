@@ -109,6 +109,9 @@ jobs:
       - name: Verify driver-to-owner call fallback is recipient-safe
         working-directory: server
         run: node --test tests/call-recipient-fallback.test.js
+      - name: Verify no-device driver routes call to reachable owner
+        working-directory: server
+        run: node --test tests/call-recipient-selection.test.js
       - name: Test legacy printed QR rescan quota
         working-directory: server
         run: |
@@ -123,6 +126,8 @@ jobs:
         run: bash -n deploy/dnd-enforcement-live.sh
       - name: Check targeted call fallback VPS deployment syntax
         run: bash -n deploy/call-recipient-fallback-live.sh
+      - name: Check no-device driver call VPS deployment syntax
+        run: bash -n deploy/call-offline-driver-live.sh
       - name: Parse service text-color VPS deployment script
         run: bash -n deploy/app-service-text-colors-live.sh
       - name: Parse targeted owner refresh deploy script
