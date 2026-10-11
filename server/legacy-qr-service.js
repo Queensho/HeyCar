@@ -31,7 +31,13 @@ async function createLegacyContactSession(pool,qr,visitorKey,createScanSession) 
           AND created_at>NOW()-INTERVAL '10 minutes'`,
       [token,visitorKey]
     );
-    if(Number(recent.rows[0]?.n||0)>=3){
+    // A phone camera may open a new browser tab per scan. The old limit of
+    // three sessions counted legitimate rescans as abuse before the visitor
+    // could place a second call. Allow eight short-lived sessions per 10 min,
+    // still bound to the server-derived visitor/IP and a specific QR tag.
+    // Independent public request limits, blocked visitors and call throttles
+    // stay enforced in their existing middleware/routes.
+    if(Number(recent.rows[0]?.n||0)>=8){
       await client.query('ROLLBACK');
       return {limited:true,session:null};
     }
