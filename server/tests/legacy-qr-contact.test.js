@@ -78,7 +78,9 @@ test('API keeps invalid-proofs rejected and signed proof path intact',()=>{
 test('migration changes only active labels once and future labels remain strict',()=>{
  const sql=fs.readFileSync(path.resolve(__dirname,'../migrations/104_legacy_printed_qr_contact.sql'),'utf8');
  assert.match(sql,/DEFAULT FALSE/);
- assert.match(sql,/WHERE status='active'/);
+ assert.match(sql,/status='active'/);
+ assert.match(sql,/print_status IN \('pdf_downloaded','sent_to_print','printed'\)/);
+ assert.match(sql,/print_batch_id IS NOT NULL/);
  assert.match(sql,/qr_legacy_contact_rollout/);
  assert.match(sql,/IF NOT EXISTS/);
  assert.doesNotMatch(sql,/DELETE FROM qr_tags|TRUNCATE TABLE qr_tags/i);
