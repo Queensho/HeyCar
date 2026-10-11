@@ -4,15 +4,16 @@ function hashScanToken(raw) {
   return crypto.createHash('sha256').update(String(raw || ''), 'utf8').digest('hex');
 }
 
-async function createScanSession(pool, qr, visitorKey=null) {
+async function createScanSession(pool, qr, visitorKey=null, expiresInSeconds=1800) {
+  const ttl = Number(expiresInSeconds) === 600 ? 600 : 1800;
   const raw = crypto.randomBytes(32).toString('base64url');
   const hash = hashScanToken(raw);
   await pool.query(
     `INSERT INTO qr_scan_sessions(token_hash,qr_token,vehicle_id,owner_id,visitor_key,expires_at)
-     VALUES($1,$2,$3,$4,$5,NOW()+INTERVAL '30 minutes')`,
-    [hash, String(qr.qr_token || qr.token || '').toUpperCase(), qr.vehicle_id, String(qr.owner_id), visitorKey||null]
+     VALUES($1,$2,$3,$4,$5,NOW()+($6::int * INTERVAL '1 second'))`,
+    [hash, String(qr.qr_token || qr.token || '').toUpperCase(), qr.vehicle_id, String(qr.owner_id), visitorKey||null,ttl]
   );
-  return { token: raw, expiresInSeconds: 1800, visitorKey:visitorKey||null };
+  return { token: raw, expiresInSeconds: ttl, visitorKey:visitorKey||null };
 }
 
 async function validateScanSession(pool, raw, qrToken) {
