@@ -25,11 +25,21 @@ void main(){
   test('recover the exact previously accepted call after native resume',()async{
     final result=await IncomingCallNavigation.resolve(
       expectedId:'call-A',
+      recoverAccepted:true,
       getById:(_)async=>{'id':'call-A','status':'accepted'},
       getIncoming:()async=>{'id':'call-B','status':'ringing'},
     );
     expect(result?['id'],'call-A');
     expect(result?['status'],'accepted');
+  });
+
+  test('do not open another device accepted call without native proof',()async{
+    final result=await IncomingCallNavigation.resolve(
+      expectedId:'call-A',
+      getById:(_)async=>{'id':'call-A','status':'accepted'},
+      getIncoming:()async=>null,
+    );
+    expect(result,isNull);
   });
 
   test('do not reopen a finished call as a new incoming call',()async{
