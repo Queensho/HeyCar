@@ -106,6 +106,11 @@ jobs:
       - name: Verify owner Rahatsız Etmeyin enforcement
         working-directory: server
         run: node --test tests/owner-dnd-enforcement.test.js
+      - name: Test legacy printed QR rescan quota
+        working-directory: server
+        run: |
+          node --test tests/legacy-qr-contact.test.js tests/legacy-qr-rescan-cap.test.js
+          bash -n ../deploy/legacy-qr-rescan-cap-live.sh
       - name: Verify compatibility for previously printed QR labels
         working-directory: server
         run: node --test tests/legacy-qr-contact.test.js
