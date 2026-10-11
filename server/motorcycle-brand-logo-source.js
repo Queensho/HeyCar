@@ -6,6 +6,12 @@
 // Future manufacturers can be added here after verifying the actual image.
 // Manual logos uploaded from admin always take precedence.
 const sources=Object.freeze({
+  // Benelli motorcycle emblem from Benelli Indonesia's branded website.
+  // Never substitute the unrelated Benelli Armi/firearms logo.
+  benelli: Object.freeze({
+    url:'https://benelli.co.id/front-end/benelli/uploads/logo/benelli_web.png',
+    allowedHosts:Object.freeze(['benelli.co.id']),
+  }),
   rks: Object.freeze({
     url:'https://rksmoto.com/upload/1724395399-66c82f8797f76.png',
     allowedHosts:Object.freeze(['rksmoto.com']),
