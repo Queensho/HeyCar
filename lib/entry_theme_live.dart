@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'owner_login.dart';
 import 'owner_welcome_overlay.dart';
 import 'owner_password_login.dart';
@@ -194,7 +195,14 @@ Future<void> _restoreSession()async{
 }
 
 Future<void> _openIncomingCall(Map<String,dynamic> d,{required bool driver})async{
-  if(!mounted||restoring||_openingIncomingCall||_displayedIncomingCallId.isNotEmpty)return;
+  if(!mounted||restoring||_displayedIncomingCallId.isNotEmpty)return;
+  if(_openingIncomingCall){
+    // Accept and resume may arrive together. Keep the pending call queued.
+    Future<void>.delayed(const Duration(milliseconds:350),(){
+      if(mounted)_openPendingPush();
+    });
+    return;
+  }
   final expected='${d['callId']??''}'.trim();
   _openingIncomingCall=true;
   try{
@@ -310,6 +318,28 @@ Future<void> _openPendingPush()async{
         if((prefs.getString('pending_incoming_call_auto_accept')??'')==callId)
           'autoAccept':'1',
       });
+      return;
+    }
+    // When Android starts the process from its native Accept button, Dart
+    // may miss the event (and therefore never write pending preferences).
+    // Recover only a genuinely accepted CallKit session by its exact ID.
+    if(!kIsWeb){
+      try{
+        final nativeCalls=await FlutterCallkitIncoming.activeCalls();
+        for(final nativeCall in nativeCalls){
+          if(nativeCall.isAccepted!=true)continue;
+          final id=nativeCall.id.trim();
+          if(id.isEmpty)continue;
+          final extra=Map<String,dynamic>.from(nativeCall.extra??const <String,dynamic>{});
+          await _routePush({
+            ...extra,
+            'type':'incoming_call',
+            'callId':id,
+            'autoAccept':'1',
+          });
+          break;
+        }
+      }catch(e){debugPrint('Native accepted-call recovery failed: $e');}
     }
     return;
   }
