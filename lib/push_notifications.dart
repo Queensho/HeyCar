@@ -137,6 +137,18 @@ class PushNotifications{
         if(callback!=null)await callback({...data,'callId':callId,'type':'incoming_call','autoAccept':'1'});
       }else if(event is CallEventActionCallDecline){
         await _callAction(callId,'reject',data);
+      }else if(event is CallEventActionCallEnded){
+        // The notification's red Hang Up button is an Android action, not a
+        // Flutter page action. Propagate it to the caller via the call API.
+        await _callAction(callId,'end',data);
+        if(nativeAcceptedCallId.value==callId)nativeAcceptedCallId.value='';
+        final prefs=await SharedPreferences.getInstance();
+        if((prefs.getString('pending_incoming_call_id')??'')==callId){
+          await prefs.remove('pending_incoming_call_id');
+        }
+        if((prefs.getString('pending_incoming_call_auto_accept')??'')==callId){
+          await prefs.remove('pending_incoming_call_auto_accept');
+        }
       }
     });
   }
