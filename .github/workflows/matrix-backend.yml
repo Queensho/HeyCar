@@ -109,6 +109,9 @@ jobs:
       - name: Verify driver-to-owner call fallback is recipient-safe
         working-directory: server
         run: node --test tests/call-recipient-fallback.test.js
+      - name: Verify no-device driver routes call to reachable owner
+        working-directory: server
+        run: node --test tests/call-recipient-selection.test.js
       - name: Test legacy printed QR rescan quota
         working-directory: server
         run: |
