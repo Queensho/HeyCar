@@ -326,4 +326,12 @@ jobs:
           name: heycar-android-test
           path: build/app/outputs/flutter-apk/app-debug.apk
           retention-days: 7
+      - name: Build Android optimized release test APK
+        run: flutter build apk --release --target lib/entry_theme_live.dart
+      - name: Upload Android optimized release test APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: cepqontag-android-release-test
+          path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 7
 
