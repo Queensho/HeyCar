@@ -148,7 +148,7 @@ module.exports = function registerNotificationRoutes(app, pool) {
       const validQrProof=proof.length>0&&secretMatches(qr.scan_secret,proof);
       // Existing printed tag-only labels cannot carry the new scan secret.
       // Only labels flagged by one-time migration use this weaker compatibility path.
-      const legacyMode=isLegacyContact(qr,proof);
+      const legacyMode=process.env.LEGACY_QR_CONTACTS_DISABLED!=='1'&&isLegacyContact(qr,proof);
 
       await pool.query(`DELETE FROM qr_scan_sessions WHERE expires_at<=NOW()`);
       await pool.query(`DELETE FROM qr_proximity_proofs WHERE expires_at<=NOW()`);
