@@ -4,6 +4,7 @@ const { validateScanSession } = require('./scan-session-service');
 const registerPushRoutes = require('./push-routes');
 const {getAppSettings}=require('./app-settings-service');
 const {enforcePublicRequest}=require('./security-service');
+const {isOwnerDndActive}=require('./dnd-service');
 
 function normalizeToken(raw) {
   return String(raw || '').trim().toUpperCase();
@@ -32,7 +33,7 @@ module.exports = function registerCallRoutes(app, pool) {
         return {owner:null,driver:null};
       }
       driverResult=await push.sendDriver(target,{...data,recipientType:'driver'},title,body);
-      if(Number(driverResult?.delivered||0)===0&&ownerId&&String(ownerId)!==target){
+      if(Number(driverResult?.delivered||0)===0&&ownerId&&String(ownerId)!==target&&!(await isOwnerDndActive(pool,ownerId))){
         const ownerSender=push.sendOwner||push.send;
         if(typeof ownerSender==='function'){
           ownerResult=await ownerSender(
@@ -57,6 +58,10 @@ module.exports = function registerCallRoutes(app, pool) {
         console.error('Call push skipped',{reason:'OWNER_SENDER_MISSING',callId:String(data.callId||''),recipientId:ownerTarget});
         return {owner:null,driver:null};
       }
+      if(await isOwnerDndActive(pool,ownerTarget)){
+        console.info('Call owner push suppressed by DND',{callId:String(data.callId||''),ownerId:ownerTarget});
+        return {owner:null,driver:driverResult};
+      }
       ownerResult=await ownerSender(ownerTarget,{...data,recipientType:'owner'},title,body);
     }
 
@@ -73,6 +78,7 @@ module.exports = function registerCallRoutes(app, pool) {
   }
 
   async function incomingFor(recipientId, recipientType) {
+    if(recipientType==='owner'&&await isOwnerDndActive(pool,recipientId))return null;
     await expireCalls();
     const result=await pool.query(
       `SELECT c.id,c.status,c.offer,c.caller_candidates,c.created_at,c.expires_at,c.recipient_type,v.plate
@@ -161,6 +167,10 @@ module.exports = function registerCallRoutes(app, pool) {
       );
       const recipientType=activeDriver.rows.length?'driver':'owner';
       const recipientId=activeDriver.rows.length?String(activeDriver.rows[0].driver_user_id):String(vehicle.owner_id);
+      // An owner who enabled DND cannot be rung; active drivers remain reachable.
+      if(recipientType==='owner'&&await isOwnerDndActive(pool,vehicle.owner_id)){
+        return res.status(409).json({error:'OWNER_DND_ACTIVE'});
+      }
 
       await expireCalls();
       let created;
