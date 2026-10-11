@@ -131,6 +131,8 @@ jobs:
         run: bash -n deploy/call-recipient-fallback-live.sh
       - name: Check no-device driver call VPS deployment syntax
         run: bash -n deploy/call-offline-driver-live.sh
+      - name: Check QR-bound call vehicle deploy syntax
+        run: bash -n deploy/call-qr-vehicle-identity-live.sh
       - name: Parse service text-color VPS deployment script
         run: bash -n deploy/app-service-text-colors-live.sh
       - name: Parse targeted owner refresh deploy script
