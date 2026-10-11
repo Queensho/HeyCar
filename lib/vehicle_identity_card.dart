@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'cepqar_theme.dart';
+import 'vehicle_kind.dart';
 
 class VehicleIdentityCard extends StatelessWidget {
   const VehicleIdentityCard({
@@ -17,6 +18,7 @@ class VehicleIdentityCard extends StatelessWidget {
   bool get _qrActive=>_s('qr_status')=='active'&&_s('qr_token').isNotEmpty;
   String get _make=>_s('make');
   String get _model=>_s('model');
+  bool get _motorcycle=>VehicleKind.isMotorcycle(vehicle['vehicle_type']);
   String get _logoUrl {
     final raw=vehicle['brandLogo'];
     if(raw is Map)return '${raw['url']??''}'.trim();
@@ -37,7 +39,7 @@ class VehicleIdentityCard extends StatelessWidget {
     final fallback=Container(
       width:size,height:size,alignment:Alignment.center,
       decoration:BoxDecoration(color:Colors.white.withValues(alpha:.08),shape:BoxShape.circle),
-      child:Text(letter,style:TextStyle(color:Colors.white.withValues(alpha:opacity),fontSize:size*.4,fontWeight:FontWeight.w900)),
+      child:_motorcycle?Icon(Icons.two_wheeler_rounded,color:Colors.white.withValues(alpha:opacity),size:size*.52):Text(letter,style:TextStyle(color:Colors.white.withValues(alpha:opacity),fontSize:size*.4,fontWeight:FontWeight.w900)),
     );
     if(!url.toLowerCase().startsWith('https://'))return fallback;
     return Opacity(
@@ -97,6 +99,7 @@ class VehicleIdentityCard extends StatelessWidget {
     final plate=_s('plate');
     final title=[_make,_model].where((e)=>e.isNotEmpty).join(' ');
     final type=_s('vehicle_type').isNotEmpty?_s('vehicle_type'):_s('type');
+    final typeLabel=VehicleKind.label(type);
     final fuel=_s('fuel_type').isNotEmpty?_s('fuel_type'):_s('fuel');
     final statusColor=_active?const Color(0xFF20E979):const Color(0xFFFFA23A);
     final driverTitle='$_driverCount Sürücü';
@@ -140,7 +143,7 @@ class VehicleIdentityCard extends StatelessWidget {
                 Text(title,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:Colors.white,fontSize:compact?14:16,fontWeight:FontWeight.w800)),
                 const SizedBox(height:6),
                 if(type.isNotEmpty||fuel.isNotEmpty)Wrap(spacing:6,runSpacing:5,children:[
-                  if(type.isNotEmpty)_chip(type.toLowerCase().contains('moto')?Icons.two_wheeler_rounded:Icons.directions_car_rounded,type),
+                  if(type.isNotEmpty)_chip(_motorcycle?Icons.two_wheeler_rounded:Icons.directions_car_rounded,typeLabel),
                   if(fuel.isNotEmpty)_chip(Icons.local_gas_station_rounded,fuel),
                 ]),
                 if(currentKm>0)...[const SizedBox(height:5),Text('${_number(currentKm)} km',style:const TextStyle(color:Color(0xFFD0D5E5),fontSize:13,fontWeight:FontWeight.w700))],
