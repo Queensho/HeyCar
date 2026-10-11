@@ -34,6 +34,10 @@ jobs:
         run: |
           flutter analyze lib/public_qr_link.dart lib/public_notification_api.dart lib/public_qr_personalized.dart lib/public_call_page.dart lib/vehicle_center_page.dart test/public_qr_link_test.dart --no-fatal-infos --no-fatal-warnings
           flutter test test/public_qr_link_test.dart
+      - name: Verify visitor QR calling UI only
+        run: |
+          flutter analyze lib/public_call_page.dart lib/qr_outgoing_call_view.dart test/qr_outgoing_call_view_test.dart --no-fatal-infos --no-fatal-warnings
+          flutter test test/qr_outgoing_call_view_test.dart
       - name: Analyze admin app management
         run: flutter analyze lib/admin_app_management_page.dart --no-fatal-infos --no-fatal-warnings
       - name: Analyze owner APK and app-config dependency graph
