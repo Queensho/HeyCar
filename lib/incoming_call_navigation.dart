@@ -6,6 +6,31 @@
 class IncomingCallNavigation {
   const IncomingCallNavigation._();
 
+  /// The backend's call.vehicle_id is the QR-bound vehicle, not the
+  /// vehicle currently selected on the user's home screen.
+  /// Accept a notification plate only for the same vehicle (or older API
+  /// records that do not contain vehicle_id); never use global QrDraft.
+  static Map<String, dynamic> withVehicleIdentity({
+    required Map<String, dynamic> call,
+    required Map<String, dynamic> push,
+  }) {
+    String normalized(Object? value) => value?.toString().trim() ?? '';
+    final serverVehicleId = normalized(call['vehicle_id'] ?? call['vehicleId']);
+    final pushVehicleId = normalized(push['vehicleId'] ?? push['vehicle_id']);
+    final serverPlate = normalized(call['plate']);
+    final pushPlate = normalized(push['plate']);
+    final sameVehicle = serverVehicleId.isEmpty ||
+        (pushVehicleId.isNotEmpty && serverVehicleId == pushVehicleId);
+    final plate = serverPlate.isNotEmpty
+        ? serverPlate
+        : (sameVehicle ? pushPlate : '');
+    return <String, dynamic>{
+      ...call,
+      'vehicleId': serverVehicleId.isNotEmpty ? serverVehicleId : pushVehicleId,
+      'plate': plate.toUpperCase(),
+    };
+  }
+
   static bool isRinging(Map<String, dynamic>? call) =>
       call != null &&
       (call['id']?.toString() ?? '').isNotEmpty &&
