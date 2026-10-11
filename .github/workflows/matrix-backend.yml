@@ -109,6 +109,8 @@ jobs:
       - name: Verify compatibility for previously printed QR labels
         working-directory: server
         run: node --test tests/legacy-qr-contact.test.js
+      - name: Parse old printed QR VPS rollout script
+        run: bash -n deploy/legacy-printed-qr-live.sh
       - name: Check DND VPS deployment syntax
         run: bash -n deploy/dnd-enforcement-live.sh
       - name: Parse service text-color VPS deployment script
