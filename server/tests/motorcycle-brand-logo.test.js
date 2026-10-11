@@ -12,7 +12,7 @@ test('RKS motorcycle logo has a narrowly allowlisted HTTPS API source',()=>{
   assert.equal(new URL(source.url).protocol,'https:');
   assert.deepEqual(source.allowedHosts,[new URL(source.url).hostname]);
   assert.ok(source.url.endsWith('.png'));
-  assert.equal(motorcycleLogoSource('rks','MOTORCYCLE'),null);
+  assert.equal(motorcycleLogoSource('rks','MOTORCYCLE')?.url,source.url);
   assert.equal(motorcycleLogoSource('RKS','car'),null);
   assert.equal(motorcycleLogoSource('RKS',null),null);
   assert.equal(normalizeBrand('RKS'),'rks');
