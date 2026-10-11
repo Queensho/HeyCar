@@ -3,6 +3,7 @@ const path=require('path');
 const dns=require('dns').promises;
 const net=require('net');
 const crypto=require('crypto');
+const {motorcycleLogoSource}=require('./motorcycle-brand-logo-source');
 
 const NEGATIVE_TTL_MS=7*24*60*60*1000;
 const MAX_BYTES=2*1024*1024;
@@ -76,32 +77,60 @@ async function fetchImage(url,allowedHosts){
   }
   throw new Error('TOO_MANY_REDIRECTS');
 }
-async function resolveExternal(pool,brand,base){
+async function resolveExternal(pool,brand,base,{vehicleType='car'}={}){
   if(!brand||brand.logo_source==='manual')return brand;
   if(brand.logo_status==='ready'&&brand.logo_url)return brand;
-  if(brand.last_checked_at&&Date.now()-new Date(brand.last_checked_at).getTime()<NEGATIVE_TTL_MS&&['not_found','error'].includes(brand.logo_status))return brand;
-  const template=String(process.env.VEHICLE_LOGO_PROVIDER_URL||'https://raw.githubusercontent.com/filippofilip95/car-logos-dataset/master/logos/optimized/{slug}.png').trim();
+  const motorSource=motorcycleLogoSource(brand.name,vehicleType);
+  // Revisit a cached car-dataset "not_found" once when a newly supported
+  // motorcycle logo source becomes available, without hammering failures.
+  const recentlyMissing=brand.last_checked_at&&
+    Date.now()-new Date(brand.last_checked_at).getTime()<NEGATIVE_TTL_MS&&
+    ['not_found','error'].includes(brand.logo_status);
+  if(recentlyMissing&&
+      (!motorSource||brand.logo_source_url===motorSource.url))return brand;
+  const template=String(process.env.VEHICLE_LOGO_PROVIDER_URL||
+    'https://raw.githubusercontent.com/filippofilip95/car-logos-dataset/master/logos/optimized/{slug}.png').trim();
   const providerKey=String(process.env.VEHICLE_LOGO_API_KEY||'').trim();
-  const source=template.replace('{brand}',encodeURIComponent(brand.name)).replace('{slug}',encodeURIComponent(brand.slug)).replace('{key}',encodeURIComponent(providerKey));
-  const configuredHosts=String(process.env.VEHICLE_LOGO_ALLOWED_HOSTS||'').split(',').map(x=>x.trim().toLowerCase()).filter(Boolean);
-  const allowed=configuredHosts.length?configuredHosts:['raw.githubusercontent.com'];
-  try{
-    const img=await fetchImage(source,allowed);
-    const dir=process.env.VEHICLE_BRAND_LOGO_DIR||'/opt/heycar/uploads/vehicle-brands';fs.mkdirSync(dir,{recursive:true});
-    const hash=crypto.createHash('sha256').update(img.buf).digest('hex').slice(0,12);
-    const file=brand.slug+'-'+hash+'.'+img.meta.ext;fs.writeFileSync(path.join(dir,file),img.buf,{mode:0o644});
-    const url=base+'/uploads/vehicle-brands/'+file;
-    const q=await pool.query(`UPDATE vehicle_brands SET logo_url=$2,logo_source_url=$3,logo_storage_key=$4,logo_status='ready',logo_source='external',last_checked_at=NOW(),updated_at=NOW() WHERE id=$1 AND logo_source<>'manual' RETURNING *`,[brand.id,url,img.sourceUrl,file]);
-    return q.rows[0]||brand;
-  }catch(e){
-    await pool.query(`UPDATE vehicle_brands SET logo_status='not_found',last_checked_at=NOW(),updated_at=NOW() WHERE id=$1 AND logo_source<>'manual'`,[brand.id]).catch(()=>{});
-    throw e;
+  const genericSource=template.replace('{brand}',encodeURIComponent(brand.name))
+    .replace('{slug}',encodeURIComponent(brand.slug))
+    .replace('{key}',encodeURIComponent(providerKey));
+  const configuredHosts=String(process.env.VEHICLE_LOGO_ALLOWED_HOSTS||'')
+    .split(',').map(x=>x.trim().toLowerCase()).filter(Boolean);
+  const providers=[
+    ...(motorSource?[{url:motorSource.url,hosts:motorSource.allowedHosts}]:[]),
+    {url:genericSource,hosts:configuredHosts.length?configuredHosts:['raw.githubusercontent.com']},
+  ];
+  let lastError;
+  for(const provider of providers){
+    try{
+      const img=await fetchImage(provider.url,provider.hosts);
+      const dir=process.env.VEHICLE_BRAND_LOGO_DIR||'/opt/heycar/uploads/vehicle-brands';
+      fs.mkdirSync(dir,{recursive:true});
+      const hash=crypto.createHash('sha256').update(img.buf).digest('hex').slice(0,12);
+      const file=brand.slug+'-'+hash+'.'+img.meta.ext;
+      fs.writeFileSync(path.join(dir,file),img.buf,{mode:0o644});
+      const url=base+'/uploads/vehicle-brands/'+file;
+      const q=await pool.query(`UPDATE vehicle_brands SET logo_url=$2,logo_source_url=$3,logo_storage_key=$4,logo_status='ready',logo_source='external',last_checked_at=NOW(),updated_at=NOW() WHERE id=$1 AND logo_source<>'manual' RETURNING *`,[brand.id,url,img.sourceUrl,file]);
+      return q.rows[0]||brand;
+    }catch(e){lastError=e;}
   }
+  // Store which motorcycle-specific source failed so the seven-day retry
+  // throttle applies after this attempt too; preserve manual override.
+  await pool.query(`UPDATE vehicle_brands SET logo_status='not_found',
+    logo_source_url=COALESCE($2,logo_source_url),
+    last_checked_at=NOW(),updated_at=NOW()
+    WHERE id=$1 AND logo_source<>'manual'`,
+    [brand.id,motorSource?.url||null]).catch(()=>{});
+  throw lastError||new Error('BRAND_LOGO_NOT_FOUND');
 }
-function queueResolve(pool,make,base){
+function queueResolve(pool,make,base,{vehicleType='car'}={}){
   const key=normalizeBrand(make);if(!key||inflight.has(key))return;
-  const p=(async()=>{const b=await findBrand(pool,make);if(b&&b.logo_status!=='ready')await resolveExternal(pool,b,base);})()
-    .catch(e=>console.error('vehicle brand logo resolve',key,e.message)).finally(()=>inflight.delete(key));
+  const p=(async()=>{
+    const b=await findBrand(pool,make);
+    if(b&&b.logo_status!=='ready')await resolveExternal(pool,b,base,{vehicleType});
+  })()
+    .catch(e=>console.error('vehicle brand logo resolve',key,e.message))
+    .finally(()=>inflight.delete(key));
   inflight.set(key,p);
 }
 module.exports={normalizeBrand,findBrand,logoPayload,cachedLogo,resolveExternal,queueResolve,publicBase,imageMeta,assertPublicHttps};
