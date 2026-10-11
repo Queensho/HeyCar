@@ -20,6 +20,7 @@ BEGIN
         ('qr_conversations'),
         ('anonymous_calls'),
         ('vehicle_maintenance_records'),
+        ('vehicle_motorcycle_profiles'),
         ('vehicle_reminders'),
         ('vehicle_parking_locations'),
         ('vehicle_transfers'),
@@ -73,6 +74,11 @@ BEGIN
 
   IF bad_count <> 1 THEN
     RAISE EXCEPTION 'VEHICLE_NOTIFICATION_RECIPIENT_COLUMN_INVALID';
+  END IF;
+
+  IF NOT has_table_privilege('heycar_user',
+      'public.vehicle_motorcycle_profiles','SELECT,INSERT,UPDATE,DELETE') THEN
+    RAISE EXCEPTION 'MOTORCYCLE_PROFILE_RUNTIME_ACL_MISSING';
   END IF;
 
   IF to_regclass('public.vehicles_plate_normalized_unique') IS NULL THEN
