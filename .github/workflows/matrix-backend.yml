@@ -106,6 +106,9 @@ jobs:
       - name: Verify owner Rahatsız Etmeyin enforcement
         working-directory: server
         run: node --test tests/owner-dnd-enforcement.test.js
+      - name: Verify driver-to-owner call fallback is recipient-safe
+        working-directory: server
+        run: node --test tests/call-recipient-fallback.test.js
       - name: Test legacy printed QR rescan quota
         working-directory: server
         run: |
