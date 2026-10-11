@@ -246,8 +246,18 @@ requireText(
 );
 requireText(
   'call-routes.js',
+  "sendCallPush}=require('./call-push-routing')",
+  'CALL_PUSH_ROUTE_MODULE_NOT_USED'
+);
+requireText(
+  'call-push-routing.js',
   "routedFrom:'driver_fallback'",
   'CALL_PUSH_OWNER_FALLBACK_MISSING'
+);
+requireText(
+  'call-push-routing.js',
+  "status='ringing' AND expires_at>NOW()",
+  'CALL_PUSH_FALLBACK_ACTIVE_CALL_GUARD_MISSING'
 );
 
 requireText(

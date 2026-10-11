@@ -5,6 +5,7 @@ const registerPushRoutes = require('./push-routes');
 const {getAppSettings}=require('./app-settings-service');
 const {enforcePublicRequest}=require('./security-service');
 const {isOwnerDndActive}=require('./dnd-service');
+const {sendCallPush}=require('./call-push-routing');
 
 function normalizeToken(raw) {
   return String(raw || '').trim().toUpperCase();
@@ -16,65 +17,13 @@ module.exports = function registerCallRoutes(app, pool) {
     await pool.query(`UPDATE anonymous_calls SET status=CASE WHEN status='ringing' THEN 'missed' ELSE 'ended' END, ended_at=COALESCE(ended_at,NOW()) WHERE status IN ('ringing','accepted') AND expires_at<=NOW()`);
   }
 
-  async function sendRecipientPush(recipientId, recipientType, data, title, body, ownerId=null) {
-    const push=pushService||app.locals.heycarPush;
-    if(!push){
-      console.error('Call push skipped',{reason:'PUSH_SERVICE_MISSING',callId:String(data.callId||''),recipientId:String(recipientId||''),recipientType});
-      return {owner:null,driver:null};
-    }
-
-    const target=String(recipientId||'');
-    let ownerResult=null;
-    let driverResult=null;
-
-    if(recipientType==='driver'){
-      if(typeof push.sendDriver!=='function'){
-        console.error('Call push skipped',{reason:'DRIVER_SENDER_MISSING',callId:String(data.callId||''),recipientId:target});
-        return {owner:null,driver:null};
-      }
-      driverResult=await push.sendDriver(target,{...data,recipientType:'driver'},title,body);
-      if(Number(driverResult?.delivered||0)===0&&ownerId&&String(ownerId)!==target&&!(await isOwnerDndActive(pool,ownerId))){
-        const ownerSender=push.sendOwner||push.send;
-        if(typeof ownerSender==='function'){
-          ownerResult=await ownerSender(
-            String(ownerId),
-            {...data,recipientType:'owner',routedFrom:'driver_fallback'},
-            title,
-            body
-          );
-          console.warn('Call push fallback to owner',{
-            callId:String(data.callId||''),
-            ownerId:String(ownerId),
-            recipientId:target,
-            driver:driverResult,
-            owner:ownerResult,
-          });
-        }
-      }
-    }else{
-      const ownerTarget=target||String(ownerId||'');
-      const ownerSender=push.sendOwner||push.send;
-      if(!ownerTarget||typeof ownerSender!=='function'){
-        console.error('Call push skipped',{reason:'OWNER_SENDER_MISSING',callId:String(data.callId||''),recipientId:ownerTarget});
-        return {owner:null,driver:null};
-      }
-      if(await isOwnerDndActive(pool,ownerTarget)){
-        console.info('Call owner push suppressed by DND',{callId:String(data.callId||''),ownerId:ownerTarget});
-        return {owner:null,driver:driverResult};
-      }
-      ownerResult=await ownerSender(ownerTarget,{...data,recipientType:'owner'},title,body);
-    }
-
-    console.log('Call push delivery',{
-      callId:String(data.callId||''),
-      ownerId:String(ownerId||''),
-      recipientId:target,
-      recipientType,
-      owner:ownerResult,
-      driver:driverResult,
+  async function sendRecipientPush(recipientId,recipientType,data,title,body,ownerId=null) {
+    return sendCallPush({
+      pool,
+      push:pushService||app.locals.heycarPush,
+      recipientId,recipientType,data,title,body,ownerId,
+      isOwnerDndActive,
     });
-
-    return {owner:ownerResult,driver:driverResult};
   }
 
   async function incomingFor(recipientId, recipientType) {
@@ -190,7 +139,7 @@ module.exports = function registerCallRoutes(app, pool) {
       const call=created.rows[0];
 
       try{
-        await sendRecipientPush(
+        const dispatched=await sendRecipientPush(
           recipientId,
           recipientType,
           {type:'incoming_call',callId:String(call.id),visitorToken:String(call.visitor_token),vehicleId:String(vehicle.vehicle_id),plate:vehicle.plate||'',sentAt:String(Date.now())},
@@ -198,6 +147,8 @@ module.exports = function registerCallRoutes(app, pool) {
           `${vehicle.plate||'Aracınız'} için biri sizi arıyor`,
           String(vehicle.owner_id)
         );
+        // Response metadata must reflect the authoritative DB recipient too.
+        if(dispatched.routedTo==='owner')call.recipient_type='owner';
       }catch(err){
         console.error('incoming call push',err);
       }
