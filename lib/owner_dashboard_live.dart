@@ -26,7 +26,7 @@ bool get testAccount{
   return digits=='5074035857';
 }
 @override void initState(){super.initState();_loadVehicle();}
-Future<void> _loadVehicle()async{if(oid.isEmpty){if(mounted)setState(()=>vehicleLoading=false);return;}try{final r=await OwnerHttp.get(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/vehicles'),json:false);final d=jsonDecode(r.body);if(d is Map&&d['vehicles'] is List){final vs=(d['vehicles'] as List).whereType<Map>().toList();if(vs.isNotEmpty){var v=vs.first;for(final x in vs){if('${x['id']}'==vid){v=x;break;}}_apply(v,notify:false);}}}catch(_){}if(mounted)setState(()=>vehicleLoading=false);await _parking();}
+Future<void> _loadVehicle()async{if(oid.isEmpty){if(mounted)setState(()=>vehicleLoading=false);return;}try{final r=await OwnerHttp.get(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/vehicles'),json:false).timeout(const Duration(seconds:7));final d=jsonDecode(r.body);if(d is Map&&d['vehicles'] is List){final vs=(d['vehicles'] as List).whereType<Map>().toList();if(vs.isNotEmpty){var v=vs.first;for(final x in vs){if('${x['id']}'==vid){v=x;break;}}_apply(v,notify:false);}}}catch(_){}if(mounted)setState(()=>vehicleLoading=false);await _parking();}
 void _apply(Map v,{bool notify=true}){QrDraft.vehicleId='${v['id']??''}';OnboardingDraft.vehicleId=QrDraft.vehicleId;QrDraft.plate='${v['plate']??''}';QrDraft.make='${v['make']??''}';QrDraft.model='${v['model']??''}';QrDraft.token='${v['qr_token']??''}'.trim();QrDraft.scanSecret='${v['qr_scan_secret']??''}'.trim();_persistVehicle();if(notify&&mounted)setState((){});}
 Future<void> _persistVehicle()async{final p=await SharedPreferences.getInstance();await p.setString('owner_vehicle_id',QrDraft.vehicleId);await p.setString('owner_plate',QrDraft.plate);await p.setString('owner_make',QrDraft.make);await p.setString('owner_model',QrDraft.model);await p.setString('owner_qr_token',QrDraft.token);await p.setString('owner_qr_scan_secret',QrDraft.scanSecret);}
 Future<void> _vehicleChanged()async{setState(()=>parked=false);await _loadVehicle();if(mounted)setState((){});}
@@ -89,7 +89,7 @@ void action(String a){
       const icons=[Icons.home_rounded,Icons.directions_car_outlined,Icons.grid_view_rounded,Icons.receipt_long_outlined,Icons.person_outline_rounded];
       return Scaffold(
         backgroundColor:CepqarTheme.bg,
-        body:vehicleLoading?const Center(child:CircularProgressIndicator()):IndexedStack(index:tab,children:pages),
+        body:IndexedStack(index:tab,children:pages),
         bottomNavigationBar:SafeArea(
           top:false,
           child:Container(
