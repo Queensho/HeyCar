@@ -22,10 +22,64 @@ class _PublicCallPageState extends State<PublicCallPage> with SingleTickerProvid
   RTCPeerConnection? peer; MediaStream? localStream; final remoteRenderer = RTCVideoRenderer(); Timer? poller;
   late final AnimationController pulseController; String? callId; String? visitorToken; String status='preparing'; String? error; bool muted=false; bool remoteSet=false; bool exiting=false;
   final Set<String> ownerCandidateKeys=<String>{};
+  bool _pollInFlight=false;
+  int _statusFailures=0;
 
   @override void initState(){super.initState();pulseController=AnimationController(vsync:this,duration:const Duration(milliseconds:1900))..repeat();_start();}
-  Future<void> _start() async {try{await remoteRenderer.initialize();final scan=await PublicNotificationApi.scanToken();final created=await AnonymousCallApi.create(widget.qrToken,scanToken:scan);callId=created['id']?.toString();visitorToken=created['visitor_token']?.toString();if(callId==null||visitorToken==null)throw Exception('CALL_ID_MISSING');localStream=await navigator.mediaDevices.getUserMedia({'audio':true,'video':false});for(final track in localStream!.getAudioTracks()){track.enabled=true;}try{await Helper.setSpeakerphoneOn(false);}catch(_){}peer=await createPeerConnection({'iceServers':[{'urls':'stun:stun.l.google.com:19302'},{'urls':'stun:stun1.l.google.com:19302'}]});for(final track in localStream!.getTracks()){await peer!.addTrack(track,localStream!);}peer!.onIceCandidate=(candidate){final id=callId,visitor=visitorToken;if(candidate.candidate==null||id==null||visitor==null)return;AnonymousCallApi.publicSignal(id,visitor,candidate:{'candidate':candidate.candidate,'sdpMid':candidate.sdpMid,'sdpMLineIndex':candidate.sdpMLineIndex}).catchError((_){ });};peer!.onTrack=(event){if(event.streams.isNotEmpty)remoteRenderer.srcObject=event.streams.first;};final offer=await peer!.createOffer({'offerToReceiveAudio':1});await peer!.setLocalDescription(offer);await AnonymousCallApi.publicSignal(callId!,visitorToken!,offer:{'sdp':offer.sdp,'type':offer.type});if(mounted)setState(()=>status='ringing');poller=Timer.periodic(const Duration(milliseconds:900),(_)=>_poll());}catch(e){if(mounted)setState((){error=_friendly(e);status='failed';});}}
-  Future<void> _poll() async {final id=callId,visitor=visitorToken;if(id==null||visitor==null)return;try{final call=await AnonymousCallApi.publicStatus(id,visitor);final next=call['status']?.toString()??status;final answer=call['answer'];if(!remoteSet&&answer is Map&&answer['sdp']!=null&&answer['type']!=null){await peer?.setRemoteDescription(RTCSessionDescription(answer['sdp']?.toString(),answer['type']?.toString()));remoteSet=true;}final candidates=call['owner_candidates'];if(candidates is List){for(final raw in candidates.whereType<Map>()){final key='${raw['candidate']}|${raw['sdpMid']}|${raw['sdpMLineIndex']}';if(!ownerCandidateKeys.add(key)||raw['candidate']==null)continue;await peer?.addCandidate(RTCIceCandidate(raw['candidate']?.toString(),raw['sdpMid']?.toString(),raw['sdpMLineIndex'] is int?raw['sdpMLineIndex'] as int:int.tryParse('${raw['sdpMLineIndex']}')));}}if(next=='accepted'&&status!='accepted'){try{await Helper.setSpeakerphoneOn(false);}catch(_){}for(final track in localStream?.getAudioTracks()??<MediaStreamTrack>[]){track.enabled=true;}}if(mounted&&next!=status)setState(()=>status=next);if(const {'rejected','missed','ended','cancelled'}.contains(next)){poller?.cancel();await Future.delayed(const Duration(milliseconds:500));_exit();}}catch(_){}}
+  Future<void> _start() async {try{await remoteRenderer.initialize();final scan=await PublicNotificationApi.scanToken();final created=await AnonymousCallApi.create(widget.qrToken,scanToken:scan);callId=created['id']?.toString();visitorToken=created['visitor_token']?.toString();if(callId==null||visitorToken==null)throw Exception('CALL_ID_MISSING');localStream=await navigator.mediaDevices.getUserMedia({'audio':true,'video':false});for(final track in localStream!.getAudioTracks()){track.enabled=true;}try{await Helper.setSpeakerphoneOn(false);}catch(_){}peer=await createPeerConnection({'iceServers':[{'urls':'stun:stun.l.google.com:19302'},{'urls':'stun:stun1.l.google.com:19302'}]});for(final track in localStream!.getTracks()){await peer!.addTrack(track,localStream!);}peer!.onIceCandidate=(candidate){final id=callId,visitor=visitorToken;if(candidate.candidate==null||id==null||visitor==null)return;AnonymousCallApi.publicSignal(id,visitor,candidate:{'candidate':candidate.candidate,'sdpMid':candidate.sdpMid,'sdpMLineIndex':candidate.sdpMLineIndex}).catchError((_){ });};peer!.onTrack=(event){if(event.streams.isNotEmpty)remoteRenderer.srcObject=event.streams.first;};final offer=await peer!.createOffer({'offerToReceiveAudio':1});await peer!.setLocalDescription(offer);await AnonymousCallApi.publicSignal(callId!,visitorToken!,offer:{'sdp':offer.sdp,'type':offer.type});if(mounted)setState(()=>status='ringing');poller=Timer.periodic(const Duration(milliseconds:900),(_)=>_poll());}catch(e){final id=callId,visitor=visitorToken;if(id!=null&&visitor!=null){try{await AnonymousCallApi.publicSignal(id,visitor,action:'cancel');}catch(_){}}if(mounted)setState((){error=_friendly(e);status='failed';});}}
+  Future<void> _poll() async {
+    final id=callId,visitor=visitorToken;
+    if(id==null||visitor==null||exiting||_pollInFlight)return;
+    _pollInFlight=true;
+    try{
+      final call=await AnonymousCallApi.publicStatus(id,visitor);
+      _statusFailures=0;
+      final next=call['status']?.toString()??status;
+      // Remote hangup must be honored even when WebRTC SDP/ICE fails.
+      // A malformed or stale answer must never trap the caller on screen.
+      if(const {'rejected','missed','ended','cancelled'}.contains(next)){
+        if(mounted)setState(()=>status=next);
+        poller?.cancel();
+        await Future<void>.delayed(const Duration(milliseconds:350));
+        _exit();
+        return;
+      }
+      final answer=call['answer'];
+      if(!remoteSet&&answer is Map&&answer['sdp']!=null&&answer['type']!=null){
+        await peer?.setRemoteDescription(RTCSessionDescription(
+          answer['sdp']?.toString(),answer['type']?.toString()));
+        remoteSet=true;
+      }
+      final candidates=call['owner_candidates'];
+      if(candidates is List){
+        for(final raw in candidates.whereType<Map>()){
+          final key="${raw['candidate']}|${raw['sdpMid']}|${raw['sdpMLineIndex']}";
+          if(!ownerCandidateKeys.add(key)||raw['candidate']==null)continue;
+          await peer?.addCandidate(RTCIceCandidate(
+            raw['candidate']?.toString(),
+            raw['sdpMid']?.toString(),
+            raw['sdpMLineIndex'] is int?raw['sdpMLineIndex'] as int:int.tryParse("${raw['sdpMLineIndex']}"),
+          ));
+        }
+      }
+      if(next=='accepted'&&status!='accepted'){
+        try{await Helper.setSpeakerphoneOn(false);}catch(_){}
+        for(final track in localStream?.getAudioTracks()??<MediaStreamTrack>[]){
+          track.enabled=true;
+        }
+      }
+      if(mounted&&(next!=status||error!=null)){
+        setState((){status=next;error=null;});
+      }
+    }catch(e){
+      _statusFailures++;
+      if(_statusFailures>=4&&mounted&&!exiting){
+        setState(()=>error='Bağlantı durumu kontrol edilemiyor. Görüşmeyi kapatıp tekrar deneyebilirsiniz.');
+      }
+    }finally{
+      _pollInFlight=false;
+    }
+  }
   String _friendly(Object e){final value=e.toString();if(value.contains('VEHICLE_NOT_NEARBY'))return'Araç yanında değilsiniz. Güvenlik nedeniyle arama başlatılamadı.';if(value.contains('LOCATION_ACCURACY_TOO_LOW'))return'Konum doğruluğu yetersiz. Araca yaklaşın ve tekrar deneyin.';if(value.contains('LOCATION_REQUIRED'))return'Devam etmek için konum izni gerekli.';if(value.contains('OWNER_BUSY'))return'Araç yetkilisi şu anda başka bir görüşmede.';if(value.contains('OWNER_DND_ACTIVE'))return'Araç sahibi şu anda Rahatsız Etmeyin modunda. Lütfen daha sonra tekrar deneyin.';if(value.contains('PROXIMITY_PROOF_REQUIRED'))return'QR doğrulaması bulunamadı. Araç üzerindeki gerçek QR kodunu tekrar okutun.';if(value.contains('TOO_MANY_REQUESTS'))return'Çok fazla deneme yapıldı. Bir süre bekleyip QR kodunu yeniden okutun.';if(value.contains('QR_SCAN_PROOF_INVALID'))return'QR güvenlik kodu geçersiz. Güncel etiketi okutun.';if(value.toLowerCase().contains('permission'))return'Mikrofon izni verilmedi.';return'Arama başlatılamadı. Tekrar deneyin.';}
   void _exit(){if(exiting)return;exiting=true;if(widget.onExit!=null){widget.onExit!();return;}if(mounted&&Navigator.of(context).canPop())Navigator.of(context).pop();}
   Future<void> _hangup() async {if(exiting)return;poller?.cancel();final id=callId,visitor=visitorToken;if(id!=null&&visitor!=null&&!const {'ended','rejected','missed','cancelled'}.contains(status)){try{await AnonymousCallApi.publicSignal(id,visitor,action:'cancel');}catch(_){}}_exit();}
