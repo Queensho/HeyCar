@@ -17,8 +17,15 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM public.qr_legacy_contact_rollout WHERE singleton_id=1) THEN
     UPDATE public.qr_tags
        SET legacy_contact_enabled=TRUE
-     WHERE status='active'
-       AND legacy_contact_enabled=FALSE;
+     WHERE legacy_contact_enabled=FALSE
+       AND (
+         status='active'
+         OR print_status IN ('pdf_downloaded','sent_to_print','printed')
+         OR printed_at IS NOT NULL
+         OR sent_to_print_at IS NOT NULL
+         OR pdf_downloaded_at IS NOT NULL
+         OR print_batch_id IS NOT NULL
+       );
     INSERT INTO public.qr_legacy_contact_rollout(singleton_id) VALUES(1);
   END IF;
 END;
