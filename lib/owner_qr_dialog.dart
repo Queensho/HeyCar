@@ -5,6 +5,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'onboarding_backend.dart';
 import 'qr_backend.dart';
 import 'cepqar_theme.dart';
+import 'public_qr_link.dart';
 
 const _bg = CepqarTheme.darkPanel;
 const _line = CepqarTheme.darkLine;
@@ -57,9 +58,9 @@ Future<void> showOwnerQrDialog(BuildContext context) async {
   final token = await _resolveOwnerQrToken();
   if (!context.mounted) return;
   final secret=QrDraft.scanSecret.trim();
-  final publicUrl = token.isEmpty
+  final publicUrl=(token.isEmpty||secret.isEmpty)
       ? ''
-      : 'https://queensho.github.io/HeyCar/?tag=${Uri.encodeComponent(token)}${secret.isEmpty?'':'&s=${Uri.encodeComponent(secret)}'}';
+      : PublicQrLink.forVehicle(token:token,scanSecret:secret);
 
   await showDialog<void>(
     context: context,
@@ -124,7 +125,7 @@ Future<void> showOwnerQrDialog(BuildContext context) async {
                 const Icon(Icons.qr_code_2_rounded, size: 72, color: _purple),
                 const SizedBox(height: 10),
                 Text(
-                  'Aktif QR kodu bulunamadı.',
+                  token.isEmpty?'Aktif QR kodu bulunamadı.':'QR güvenlik anahtarı yüklenmedi. Araçlarım bölümünden QR bilgilerini yenileyin.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: CepqarTheme.muted, fontSize: 14),
                 ),
