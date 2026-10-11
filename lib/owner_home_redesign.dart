@@ -409,9 +409,9 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     try{
       final vehicleId=QrDraft.vehicleId.trim();
       final futures=<Future>[
-        OwnerHttp.get(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/notifications'),json:false),
-        OwnerHttp.get(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/vehicles'),json:false),
-        if(vehicleId.isNotEmpty)OwnerHttp.get(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/valet/$vehicleId'),json:false),
+        OwnerHttp.get(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/notifications'),json:false).timeout(const Duration(seconds:8)),
+        OwnerHttp.get(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/vehicles'),json:false).timeout(const Duration(seconds:8)),
+        if(vehicleId.isNotEmpty)OwnerHttp.get(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/valet/$vehicleId'),json:false).timeout(const Duration(seconds:8)),
       ];
       final rs=await Future.wait(futures);
 
