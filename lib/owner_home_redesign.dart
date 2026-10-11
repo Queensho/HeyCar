@@ -1588,10 +1588,45 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     );
   }
 
+  Widget _motorcycleHomePanel(){
+    if(!VehicleKind.isMotorcycle(QrDraft.vehicleType))return const SizedBox.shrink();
+    return Padding(
+      padding:const EdgeInsets.fromLTRB(16,10,16,0),
+      child:Container(
+        padding:const EdgeInsets.all(12),
+        decoration:card(),
+        child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          Row(children:[
+            Icon(Icons.two_wheeler_rounded,color:purple,size:22),
+            const SizedBox(width:9),
+            Expanded(child:Text('Motosikletim',style:TextStyle(color:text,fontSize:15,fontWeight:FontWeight.w900))),
+            Text('Motor Kontrol',style:TextStyle(color:muted,fontSize:11)),
+          ]),
+          const SizedBox(height:6),
+          Text('Motor yağı • zincir/kayış • lastikler • frenler',style:TextStyle(color:muted,fontSize:11.5)),
+          const SizedBox(height:10),
+          Row(children:[
+            Expanded(child:OutlinedButton.icon(
+              onPressed:()=>widget.shortcut('maintenance'),
+              icon:const Icon(Icons.build_rounded,size:16),
+              label:const Text('Motor Bakımı',maxLines:1),
+            )),
+            const SizedBox(width:8),
+            Expanded(child:OutlinedButton.icon(
+              onPressed:()=>widget.shortcut('reminders'),
+              icon:const Icon(Icons.event_available_rounded,size:16),
+              label:const Text('Hatırlatmalar',maxLines:1),
+            )),
+          ]),
+        ]),
+      ),
+    );
+  }
+
   Widget _managedComponent(AppUiComponent component){
     final registry=OwnerHomeComponentRegistry({
       'weather_card':(_)=>header(),
-      'vehicle_security':(_)=>Column(children:[const SizedBox(height:14),vehicleQr()]),
+      'vehicle_security':(_)=>Column(children:[const SizedBox(height:14),vehicleQr(),_motorcycleHomePanel()]),
       'story_carousel':(_)=>stories.isEmpty?const SizedBox.shrink():OwnerStoryHighlights(
         items:stories,service:_storyService,shortcut:widget.shortcut,onChanged:()=>_loadStories(force:true),
       ),
