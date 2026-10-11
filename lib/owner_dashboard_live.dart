@@ -11,6 +11,7 @@ import 'admin_promo_banner.dart';
 import 'owner_valet_card.dart';
 import 'roadside_help_page.dart';
 import 'owner_home_redesign.dart';
+import 'vehicle_kind.dart';
 import 'valet_info_page.dart';
 import 'weather_service.dart';
 import 'weather_details_page.dart';
@@ -27,8 +28,8 @@ bool get testAccount{
 }
 @override void initState(){super.initState();_loadVehicle();}
 Future<void> _loadVehicle()async{if(oid.isEmpty){if(mounted)setState(()=>vehicleLoading=false);return;}try{final r=await OwnerHttp.get(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/vehicles'),json:false).timeout(const Duration(seconds:7));final d=jsonDecode(r.body);if(d is Map&&d['vehicles'] is List){final vs=(d['vehicles'] as List).whereType<Map>().toList();if(vs.isNotEmpty){var v=vs.first;for(final x in vs){if('${x['id']}'==vid){v=x;break;}}_apply(v,notify:false);}}}catch(_){}if(mounted)setState(()=>vehicleLoading=false);await _parking();}
-void _apply(Map v,{bool notify=true}){QrDraft.vehicleId='${v['id']??''}';OnboardingDraft.vehicleId=QrDraft.vehicleId;QrDraft.plate='${v['plate']??''}';QrDraft.make='${v['make']??''}';QrDraft.model='${v['model']??''}';QrDraft.token='${v['qr_token']??''}'.trim();QrDraft.scanSecret='${v['qr_scan_secret']??''}'.trim();_persistVehicle();if(notify&&mounted)setState((){});}
-Future<void> _persistVehicle()async{final p=await SharedPreferences.getInstance();await p.setString('owner_vehicle_id',QrDraft.vehicleId);await p.setString('owner_plate',QrDraft.plate);await p.setString('owner_make',QrDraft.make);await p.setString('owner_model',QrDraft.model);await p.setString('owner_qr_token',QrDraft.token);await p.setString('owner_qr_scan_secret',QrDraft.scanSecret);}
+void _apply(Map v,{bool notify=true}){QrDraft.vehicleId='${v['id']??''}';OnboardingDraft.vehicleId=QrDraft.vehicleId;QrDraft.plate='${v['plate']??''}';QrDraft.make='${v['make']??''}';QrDraft.model='${v['model']??''}';QrDraft.vehicleType=VehicleKind.normalize(v['vehicle_type']);QrDraft.token='${v['qr_token']??''}'.trim();QrDraft.scanSecret='${v['qr_scan_secret']??''}'.trim();_persistVehicle();if(notify&&mounted)setState((){});}
+Future<void> _persistVehicle()async{final p=await SharedPreferences.getInstance();await p.setString('owner_vehicle_id',QrDraft.vehicleId);await p.setString('owner_plate',QrDraft.plate);await p.setString('owner_make',QrDraft.make);await p.setString('owner_model',QrDraft.model);await p.setString('owner_vehicle_type',QrDraft.vehicleType);await p.setString('owner_qr_token',QrDraft.token);await p.setString('owner_qr_scan_secret',QrDraft.scanSecret);}
 Future<void> _vehicleChanged()async{setState(()=>parked=false);await _loadVehicle();if(mounted)setState((){});}
 Future<void> _parking()async{if(vid.isEmpty)return;bool garage=false,street=false;try{final p=await SharedPreferences.getInstance(),prefix='street_park_${vid}_';street=p.getDouble('${prefix}lat')!=null&&p.getDouble('${prefix}lng')!=null&&p.getString('${prefix}time')!=null;}catch(_){}try{final r=await OwnerHttp.get(Uri.parse('${QrBackend.baseUrl}/api/vehicles/$vid/parking'),json:false);if(r.statusCode>=200&&r.statusCode<300){final d=jsonDecode(r.body);garage=d is Map&&d['parking'] is Map;}}catch(_){}if(mounted)setState(()=>parked=garage||street);}
 void _qr(){final t=QrDraft.token.trim();if(t.isEmpty){ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('${QrDraft.plate.trim().isEmpty?'Seçili araç':QrDraft.plate} için QR aktif değil. Araçlarım bölümünden QR Aktif Et’e bas.')));return;}final secret=QrDraft.scanSecret.trim();final u='https://queensho.github.io/HeyCar/?tag=${Uri.encodeComponent(t)}${secret.isEmpty?'':'&s=${Uri.encodeComponent(secret)}'}';showModalBottomSheet(context:context,backgroundColor:CepqarTheme.panel,builder:(c)=>Padding(padding:const EdgeInsets.all(22),child:Column(mainAxisSize:MainAxisSize.min,children:[Text('${QrDraft.plate} QR',style:TextStyle(color:CepqarTheme.text,fontSize:23,fontWeight:FontWeight.w900)),const SizedBox(height:14),Container(width:225,height:225,padding:const EdgeInsets.all(12),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(22)),child:QrImageView(data:u,version:QrVersions.auto,backgroundColor:Colors.white)),const SizedBox(height:10),Text(t,style:TextStyle(color:CepqarTheme.muted,fontWeight:FontWeight.w700))])));}
@@ -64,7 +65,7 @@ void action(String a){
     builder:(c,unread,_){
       final pages=[
         OwnerHomeRedesign(
-          key:ValueKey('home-$vid-${QrDraft.token}'),
+          key:ValueKey('home-$vid-${QrDraft.token}-${QrDraft.vehicleType}'),
           notifications:()=>setState(()=>tab=3),
           vehicles:()=>setState(()=>tab=1),
           services:()=>setState(()=>tab=2),
