@@ -91,12 +91,12 @@ module.exports = function registerOnboardingRoutes(app, pool) {
 
       let vehicleResult;
       if (transferCode) {
-        const tr=await client.query(`SELECT t.*,v.plate,v.make,v.model,v.color FROM vehicle_transfers t JOIN vehicles v ON v.id=t.vehicle_id WHERE t.transfer_code=$1 FOR UPDATE`,[transferCode]);
+        const tr=await client.query(`SELECT t.*,v.plate,v.make,v.model,v.color,v.vehicle_type FROM vehicle_transfers t JOIN vehicles v ON v.id=t.vehicle_id WHERE t.transfer_code=$1 FOR UPDATE`,[transferCode]);
         if(!tr.rows.length){await client.query('ROLLBACK');return res.status(404).json({error:'TRANSFER_NOT_FOUND'});}
         const t=tr.rows[0];
         if(t.status!=='pending'||new Date(t.expires_at)<=new Date()){if(t.status==='pending')await client.query("UPDATE vehicle_transfers SET status='expired' WHERE id=$1",[t.id]);await client.query('COMMIT');return res.status(410).json({error:'TRANSFER_EXPIRED'});}
         await finalizeVehicleTransfer(client,{vehicleId:t.vehicle_id,transferId:t.id,newOwnerId:user.id});
-        vehicleResult={rows:[{id:t.vehicle_id,owner_id:user.id,plate:t.plate,make:t.make,model:t.model,color:t.color}]};
+        vehicleResult={rows:[{id:t.vehicle_id,owner_id:user.id,plate:t.plate,make:t.make,model:t.model,color:t.color,vehicle_type:t.vehicle_type}]};
       } else {
         vehicleResult = await client.query(
           `INSERT INTO vehicles (owner_id, plate, make, model, color, vehicle_type)
