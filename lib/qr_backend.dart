@@ -9,6 +9,7 @@ class QrDraft {
   static String plate = '';
   static String make = '';
   static String model = '';
+  static String vehicleType = 'car';
   static String ownerName = 'HeyCar Kullanıcısı';
   static String vehicleId = '';
 }
