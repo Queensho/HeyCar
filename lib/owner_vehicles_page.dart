@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -18,8 +19,23 @@ import 'vehicle_kind.dart';
 const _purple=Color(0xFF8B5CFF),_gold=Color(0xFFFFC857),_green=Color(0xFF38D178);
 Color get _bg=>CepqarTheme.bg; Color get _panel=>CepqarTheme.panel; Color get _line=>CepqarTheme.line; Color get _muted=>CepqarTheme.muted; Color get _text=>CepqarTheme.text;
 class OwnerVehiclesPage extends StatefulWidget{const OwnerVehiclesPage({super.key,this.onVehicleChanged});final VoidCallback? onVehicleChanged;@override State<OwnerVehiclesPage> createState()=>_S();}
-class _S extends State<OwnerVehiclesPage>{List<Map<String,dynamic>> vehicles=[];bool loading=true,premium=false;int limit=1;String? error;String get selected=>QrDraft.vehicleId.trim().isNotEmpty?QrDraft.vehicleId.trim():OnboardingDraft.vehicleId.trim();@override void initState(){super.initState();_load();}
-Future<void> _load()async{final owner=OnboardingDraft.userId.trim();if(owner.isEmpty){setState((){loading=false;error='Araç sahibi oturumu bulunamadı.';});return;}try{final r=await OwnerHttp.get(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/vehicles'),json:false).timeout(const Duration(seconds:15));final d=jsonDecode(r.body);if(r.statusCode<200||r.statusCode>=300||d is! Map)throw Exception();final list=d['vehicles'];final next=list is List?list.whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).toList():<Map<String,dynamic>>[];if(next.isNotEmpty&&!next.any((v)=>'${v['id']}'==selected))_select(next.first,notify:false);if(!mounted)return;setState((){vehicles=next;premium=d['premium']==true;limit=int.tryParse('${d['limit']}')??1;loading=false;error=null;});}catch(_){if(mounted)setState((){loading=false;error='Araçlar yüklenemedi.';});}}
+class _S extends State<OwnerVehiclesPage>{List<Map<String,dynamic>> vehicles=[];bool loading=true,premium=false;int limit=1;String? error;Timer? _logoRetryTimer;int _logoRetryAttempts=0;String get selected=>QrDraft.vehicleId.trim().isNotEmpty?QrDraft.vehicleId.trim():OnboardingDraft.vehicleId.trim();@override void initState(){super.initState();_load();}
+@override void dispose(){_logoRetryTimer?.cancel();super.dispose();}
+void _scheduleMotorcycleLogoRefresh(List<Map<String,dynamic>> list){
+  final missing=list.any((vehicle){
+    if(!VehicleKind.isMotorcycle(vehicle['vehicle_type']))return false;
+    final raw=vehicle['brandLogo'];
+    return raw is! Map || raw['available']!=true;
+  });
+  if(!missing||_logoRetryAttempts>=2)return;
+  _logoRetryTimer?.cancel();
+  final seconds=_logoRetryAttempts==0?4:9;
+  _logoRetryAttempts++;
+  _logoRetryTimer=Timer(Duration(seconds:seconds),(){
+    if(mounted)_load();
+  });
+}
+Future<void> _load()async{final owner=OnboardingDraft.userId.trim();if(owner.isEmpty){setState((){loading=false;error='Araç sahibi oturumu bulunamadı.';});return;}try{final r=await OwnerHttp.get(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/vehicles'),json:false).timeout(const Duration(seconds:15));final d=jsonDecode(r.body);if(r.statusCode<200||r.statusCode>=300||d is! Map)throw Exception();final list=d['vehicles'];final next=list is List?list.whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).toList():<Map<String,dynamic>>[];if(next.isNotEmpty&&!next.any((v)=>'${v['id']}'==selected))_select(next.first,notify:false);if(!mounted)return;setState((){vehicles=next;premium=d['premium']==true;limit=int.tryParse('${d['limit']}')??1;loading=false;error=null;});_scheduleMotorcycleLogoRefresh(next);}catch(_){if(mounted)setState((){loading=false;error='Araçlar yüklenemedi.';});}}
 void _select(Map<String,dynamic> v,{bool notify=true}){final id='${v['id']??''}';QrDraft.vehicleId=id;OnboardingDraft.vehicleId=id;QrDraft.plate='${v['plate']??''}';QrDraft.make='${v['make']??''}';QrDraft.model='${v['model']??''}';QrDraft.vehicleType=VehicleKind.normalize(v['vehicle_type']);QrDraft.token='${v['qr_token']??''}'.trim();QrDraft.scanSecret='${v['qr_scan_secret']??''}'.trim();_persistSelection();if(notify){setState((){});widget.onVehicleChanged?.call();}}
 Future<void> _persistSelection()async{final p=await SharedPreferences.getInstance();await p.setString('owner_vehicle_id',QrDraft.vehicleId);await p.setString('owner_plate',QrDraft.plate);await p.setString('owner_make',QrDraft.make);await p.setString('owner_model',QrDraft.model);await p.setString('owner_vehicle_type',QrDraft.vehicleType);await p.setString('owner_qr_token',QrDraft.token);await p.setString('owner_qr_scan_secret',QrDraft.scanSecret);}
 Future<void> _qr(Map<String,dynamic> v)async{_select(v);if('${v['qr_token']??''}'.trim().isNotEmpty){_showQr(v);return;}await Navigator.push(context,MaterialPageRoute(builder:(c)=>RealQrScanPage(onBack:()=>Navigator.pop(c),onFound:(){Navigator.pop(c);_activate(v);})));}
@@ -484,7 +500,9 @@ class _VehicleBrandLogo extends StatelessWidget{
     Widget fallback()=>Container(
       width:72,height:72,alignment:Alignment.center,
       decoration:BoxDecoration(color:_purple.withValues(alpha:CepqarTheme.isLight ? .08 : .16),shape:BoxShape.circle,border:Border.all(color:_purple.withValues(alpha:.16))),
-      child:Text(letter,style:const TextStyle(color:_purple,fontSize:28,fontWeight:FontWeight.w900)),
+      child:VehicleKind.isMotorcycle(vehicle['vehicle_type'])
+        ?const Icon(Icons.two_wheeler_rounded,color:_purple,size:36)
+        :Text(letter,style:const TextStyle(color:_purple,fontSize:28,fontWeight:FontWeight.w900)),
     );
     if(!url.toLowerCase().startsWith('https://'))return fallback();
     return SizedBox(
