@@ -71,7 +71,7 @@ test('API keeps invalid-proofs rejected and signed proof path intact',()=>{
  const src=fs.readFileSync(path.resolve(__dirname,'../notification-routes.js'),'utf8');
  assert.match(src,/if\(proof.length>0&&!validQrProof\)/);
  assert.match(src,/error:'QR_SCAN_PROOF_INVALID'/);
- assert.match(src,/const legacyMode=isLegacyContact\(qr,proof\)/);
+ assert.match(src,/const legacyMode=process\\.env\\.LEGACY_QR_CONTACTS_DISABLED!==['\"]1['\"]&&isLegacyContact\\(qr,proof\\)/);
  assert.match(src,/createLegacyContactSession\(pool,qr,security.visitorKey,createScanSession\)/);
  assert.match(src,/const security = await enforcePublicRequest\(pool, token, req\)/);
 });
