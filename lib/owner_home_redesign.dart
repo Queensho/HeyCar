@@ -1515,7 +1515,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   }
 
   Widget _managedServiceCard(AppUiServiceItem item){
-    final available=!item.testOnly||testAccount;
+    final available=(!item.testOnly||testAccount)&&item.action!='NONE';
     final background=_ui.token(item.backgroundToken);
     final iconColor=_ui.token(item.iconToken);
     final badgeColor=_ui.token(item.badgeToken);
@@ -1557,6 +1557,17 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                 width:36,height:36,
                 decoration:BoxDecoration(color:iconColor.withValues(alpha:.12),borderRadius:BorderRadius.circular(11)),
                 child:item.iconUrl.isNotEmpty?Padding(padding:const EdgeInsets.all(7),child:Image.network(item.iconUrl,fit:BoxFit.contain,errorBuilder:(_,__,___)=>Icon(_managedIcon(item.icon),color:iconColor,size:21))):Icon(_managedIcon(item.icon),color:iconColor,size:21),
+              ),
+            ),
+            if(!available&&item.badgeText.isEmpty)Positioned(
+              right:10,top:10,
+              child:Container(
+                padding:const EdgeInsets.symmetric(horizontal:8,vertical:4),
+                decoration:BoxDecoration(
+                  color:purple.withValues(alpha:.10),
+                  borderRadius:BorderRadius.circular(9)),
+                child:const Text('Yakında',
+                  style:TextStyle(color:purple,fontSize:10,fontWeight:FontWeight.w800)),
               ),
             ),
             if(item.badgeText.isNotEmpty)Positioned(
