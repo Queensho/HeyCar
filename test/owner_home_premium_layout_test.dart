@@ -58,6 +58,7 @@ void main(){
       await tester.drag(find.byType(ListView).first,const Offset(0,-510));
       await tester.pumpAndSettle();
       expect(find.text('Bu Ayki Özetim'),findsOneWidget);
+      expect(find.byKey(const ValueKey('owner-monthly-summary-panel')),findsOneWidget);
       expect(tester.takeException(),isNull);
     });
   }
