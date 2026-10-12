@@ -24,6 +24,7 @@ import 'owner_home_component_registry.dart';
 import 'vehicle_kind.dart';
 import 'owner_vehicle_brand_mark.dart';
 import 'owner_quick_access_panel.dart';
+import 'owner_monthly_summary_panel.dart';
 import 'motorcycle_profile_page.dart';
 import 'call_activity.dart';
 
@@ -62,6 +63,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   List<String> quickAccessIds=const ['parking','maintenance','drivers','inspection'];
   bool valetRequesting=false;
   bool loading=true;
+  bool _monthlyFetchFailed=false;
   bool _refreshing=false;
   bool premium=false;
   int activeVehicleCount=0;
@@ -423,8 +425,9 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
 
       final nr=rs[0];
       final nd=nr.body.isEmpty?null:jsonDecode(nr.body);
-      var nextNotices=<Map<String,dynamic>>[];
-      if(nr.statusCode>=200&&nr.statusCode<300&&nd is Map&&nd['notifications'] is List){
+      final noticesOk=nr.statusCode>=200&&nr.statusCode<300&&nd is Map&&nd['notifications'] is List;
+      var nextNotices=notices;
+      if(noticesOk){
         nextNotices=(nd['notifications'] as List).whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).toList();
         if(vehicleId.isNotEmpty){
           nextNotices=nextNotices.where((e)=>'${e['vehicle_id']??''}'==vehicleId).toList();
@@ -504,9 +507,10 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         final valetChanged=jsonEncode(nextValet)!=jsonEncode(valetSession);
         final codeChanged=nextDeliveryCode!=valetDeliveryCode;
         final ownerStateChanged=nextPremium!=premium||nextActiveVehicleCount!=activeVehicleCount||nextQrProtection!=qrProtection||jsonEncode(nextSelectedVehicle)!=jsonEncode(_selectedVehicle);
-        if(noticesChanged||valetChanged||codeChanged||ownerStateChanged){
+        if(noticesChanged||valetChanged||codeChanged||ownerStateChanged||_monthlyFetchFailed==noticesOk){
           setState((){
             notices=nextNotices;
+            _monthlyFetchFailed=!noticesOk;
             valetSession=nextValet;
             valetDeliveryCode=nextDeliveryCode;
             premium=nextPremium;
@@ -517,6 +521,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         }
       }
     }catch(_){
+      if(mounted)setState(()=>_monthlyFetchFailed=true);
       if(mounted&&!silent)setState(()=>loading=false);
     }finally{
       _refreshing=false;
@@ -1149,79 +1154,47 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   }).length;
 
 
-  Widget _homeMonthlyMetric(IconData icon,int count,String label,Color tint)=>
-    Expanded(child:Column(mainAxisSize:MainAxisSize.min,children:[
-      Row(mainAxisAlignment:MainAxisAlignment.center,children:[
-        Container(width:_narrowHome?23:28,height:_narrowHome?23:28,
-          decoration:BoxDecoration(color:tint.withValues(alpha:.10),
-            shape:BoxShape.circle),
-          child:Icon(icon,color:tint,size:_narrowHome?14:17)),
-        const SizedBox(width:4),
-        Flexible(child:Text('${count<0?0:count}',maxLines:1,
-          overflow:TextOverflow.ellipsis,
-          style:TextStyle(color:_homeText,fontWeight:FontWeight.w900,
-            fontSize:_narrowHome?15:18))),
-      ]),
-      const SizedBox(height:6),
-      Text(label,maxLines:2,overflow:TextOverflow.ellipsis,
-        textAlign:TextAlign.center,
-        style:TextStyle(color:_homeSecondary,fontSize:_narrowHome?9.3:10,
-          height:1.08,fontWeight:FontWeight.w600)),
-    ]));
-
   Widget monthly()=>Padding(
     padding:const EdgeInsets.fromLTRB(16,12,16,0),
-    child:Container(
-      decoration:BoxDecoration(
-        color:_homeCardBackground,
-        borderRadius:BorderRadius.circular(23),
-        border:Border.all(color:light?const Color(0xFFF0F0F7):line),
-        boxShadow:light?[const BoxShadow(
-          color:Color(0x0F101426),blurRadius:16,offset:Offset(0,5))]:null),
-      child:Padding(
-        padding:const EdgeInsets.fromLTRB(11,11,11,13),
-        child:Column(children:[
-          Row(children:[
-            const Icon(Icons.bar_chart_rounded,color:_homePurple,size:23),
-            const SizedBox(width:6),
-            Expanded(child:Text('Bu Ayki Özetim',maxLines:1,
-              overflow:TextOverflow.ellipsis,
-              style:TextStyle(color:_homeText,fontSize:15,
-                fontWeight:FontWeight.w900))),
-            InkWell(
-              onTap:widget.notifications,
-              child:const Row(mainAxisSize:MainAxisSize.min,children:[
-                Text('Tümünü Gör',style:TextStyle(
-                  color:_homePurple,fontSize:10.5,fontWeight:FontWeight.w800)),
-                Icon(Icons.chevron_right_rounded,color:_homePurple,size:18),
-              ]),
-            ),
-          ]),
-          const SizedBox(height:12),
-          if(loading)
-            const SizedBox(height:33,child:Center(
-              child:SizedBox(width:32,child:LinearProgressIndicator(minHeight:2))))
-          else
-            Row(crossAxisAlignment:CrossAxisAlignment.center,children:[
-              _homeMonthlyMetric(Icons.phone_rounded,calls,'Gelen\nArama',
-                const Color(0xFF712DFF)),
-              _homeMetricDivider(),
-              _homeMonthlyMetric(Icons.chat_bubble_rounded,messages,
-                'Mesaj\nTalebi',const Color(0xFF2984FF)),
-              _homeMetricDivider(),
-              _homeMonthlyMetric(Icons.warning_rounded,warnings,
-                'Park\nUyarısı',const Color(0xFFF04A69)),
-              _homeMetricDivider(),
-              _homeMonthlyMetric(Icons.local_offer_rounded,_monthlyOfferUsage,
-                'Fırsat\nKullanımı',const Color(0xFFF4A025)),
-            ]),
-        ]),
-      ),
+    child:OwnerMonthlySummaryPanel(
+      isLoading:loading,
+      hasError:_monthlyFetchFailed,
+      onRetry:()=>load(),
+      // There is no dedicated analytics destination yet. Notifications is
+      // the existing owner history screen; do not invent a new page.
+      onViewAll:widget.notifications,
+      metrics:[
+        OwnerMonthlyMetric(
+          id:'messages',label:'Mesaj Talebi',icon:Icons.chat_bubble_rounded,
+          tint:const Color(0xFF651FFF),
+          background:const Color(0xFFF3EDFF),
+          count:messages,
+          onTap:widget.notifications,
+        ),
+        OwnerMonthlyMetric(
+          id:'park',label:'Park Uyarısı',icon:Icons.warning_rounded,
+          tint:const Color(0xFFE84D66),
+          background:const Color(0xFFFFF0F2),
+          count:warnings,
+          onTap:widget.notifications,
+        ),
+        OwnerMonthlyMetric(
+          id:'calls',label:'Gelen Arama',icon:Icons.phone_rounded,
+          tint:const Color(0xFF59667C),
+          background:const Color(0xFFF3F5F9),
+          count:calls,
+          onTap:widget.notifications,
+        ),
+        OwnerMonthlyMetric(
+          id:'offers',label:'Fırsat Kullanımı',icon:Icons.local_offer_rounded,
+          tint:const Color(0xFF478D19),
+          background:const Color(0xFFF1FBDD),
+          count:_monthlyOfferUsage,
+          // No owner redemption-history route exists yet. Browsing new offers
+          // would not represent an actual usage history.
+        ),
+      ],
     ),
-  );
-
-  Widget _homeMetricDivider()=>Container(
-    width:1,height:29,color:light?const Color(0xFFD5D5E2):line,
   );
 
   Widget security()=>Padding(
