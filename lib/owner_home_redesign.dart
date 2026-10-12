@@ -1564,27 +1564,45 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     );
   }
 
+
   Widget _managedServiceCard(AppUiServiceItem item){
     final available=(!item.testOnly||testAccount)&&item.action!='NONE';
     final background=_ui.token(item.backgroundToken);
+    final hasArtwork=item.imageUrl.isNotEmpty;
+    final vibrant=item.id=='towing'||item.id=='valet';
+    final fallbackColor=switch(item.id){
+      'towing'=>const Color(0xFF793AFF),
+      'valet'=>const Color(0xFF9E48EB),
+      'offers'=>const Color(0xFFDDD1FF),
+      _=>const Color(0xFFF0EBFF),
+    };
     final iconColor=_ui.token(item.iconToken);
-    final badgeColor=_ui.token(item.badgeToken);
+    final titleColor=item.titleTextColor??(hasArtwork?text:vibrant?Colors.white:text);
     return InkWell(
       onTap:available?()=>_runManagedAction(item):null,
-      borderRadius:BorderRadius.circular(_ui.cardRadius),
+      borderRadius:BorderRadius.circular(19),
       child:Opacity(
-        opacity:available?1:.78,
+        opacity:available?1:.84,
         child:Container(
-          height:120,
+          height:116,
           clipBehavior:Clip.hardEdge,
           decoration:BoxDecoration(
-            color:background,
-            borderRadius:BorderRadius.circular(_ui.cardRadius),
-            border:Border.all(color:line),
-            boxShadow:light&&_ui.shadowLevel>0&&!kIsWeb?[BoxShadow(color:Colors.black.withValues(alpha:.035*_ui.shadowLevel),blurRadius:8.0*_ui.shadowLevel,offset:Offset(0,2.0*_ui.shadowLevel))]:null,
+            color:hasArtwork?background:fallbackColor,
+            borderRadius:BorderRadius.circular(19),
+            border:Border.all(color:line.withValues(alpha:.36)),
           ),
           child:Stack(children:[
-            if(item.imageUrl.isNotEmpty)Positioned.fill(child:IgnorePointer(child:Align(
+            if(!hasArtwork)Positioned(
+              right:-17,top:-28,
+              child:Container(width:115,height:110,decoration:BoxDecoration(
+                shape:BoxShape.circle,
+                gradient:RadialGradient(colors:[
+                  Colors.white.withValues(alpha:.60),
+                  Colors.white.withValues(alpha:0),
+                ]),
+              )),
+            ),
+            if(hasArtwork)Positioned.fill(child:IgnorePointer(child:Align(
               alignment:_managedAlignment(item.alignment),
               child:Transform.translate(
                 offset:Offset(item.imageX,item.imageY),
@@ -1592,57 +1610,42 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                   opacity:item.imageOpacity,
                   child:Image.network(
                     item.imageUrl,
-                    width:108*item.imageScale,
-                    height:70*item.imageScale,
+                    width:103*item.imageScale,
+                    height:99*item.imageScale,
                     fit:_managedFit(item.fit),
                     gaplessPlayback:true,
                     errorBuilder:(_,__,___)=>const SizedBox.shrink(),
                   ),
                 ),
               ),
-            ))),
-            Positioned(
-              left:11,top:11,
-              child:Container(
-                width:36,height:36,
-                decoration:BoxDecoration(color:iconColor.withValues(alpha:.12),borderRadius:BorderRadius.circular(11)),
-                child:item.iconUrl.isNotEmpty?Padding(padding:const EdgeInsets.all(7),child:Image.network(item.iconUrl,fit:BoxFit.contain,errorBuilder:(_,__,___)=>Icon(_managedIcon(item.icon),color:iconColor,size:21))):Icon(_managedIcon(item.icon),color:iconColor,size:21),
-              ),
-            ),
-            if(!available&&item.badgeText.isEmpty)Positioned(
-              right:10,top:10,
-              child:Container(
-                padding:const EdgeInsets.symmetric(horizontal:8,vertical:4),
-                decoration:BoxDecoration(
-                  color:purple.withValues(alpha:.10),
-                  borderRadius:BorderRadius.circular(9)),
-                child:const Text('Yakında',
-                  style:TextStyle(color:purple,fontSize:10,fontWeight:FontWeight.w800)),
-              ),
-            ),
-            if(item.badgeText.isNotEmpty)Positioned(
-              right:10,top:10,
-              child:Container(
-                padding:const EdgeInsets.symmetric(horizontal:7,vertical:3),
-                decoration:BoxDecoration(color:badgeColor.withValues(alpha:.12),borderRadius:BorderRadius.circular(8)),
-                child:Text(item.badgeText,style:TextStyle(color:item.badgeTextColor??badgeColor,fontSize:8,fontWeight:FontWeight.w900)),
-              ),
+            )))else Positioned(
+              left:14,right:14,top:12,height:69,
+              child:Icon(_managedIcon(item.icon),color:iconColor.withValues(alpha:.87),size:58),
             ),
             Positioned(
-              left:11,right:available?40:11,bottom:9,
-              child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisSize:MainAxisSize.min,children:[
-                Text(item.title,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:item.titleTextColor??text,fontSize:12.5,fontWeight:FontWeight.w900,height:1.05)),
-                const SizedBox(height:3),
-                Text(item.subtitle,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:item.subtitleTextColor??muted,fontSize:CepqarTheme.caption,height:1.08)),
-              ]),
+              left:0,right:0,bottom:0,height:44,
+              child:DecoratedBox(decoration:BoxDecoration(
+                gradient:LinearGradient(begin:Alignment.topCenter,end:Alignment.bottomCenter,
+                  colors:[Colors.transparent,
+                    hasArtwork?Colors.black.withValues(alpha:.34):
+                    (vibrant?const Color(0xFF3C168E):Colors.white).withValues(alpha:.18)]),
+              )),
             ),
-            if(available)Positioned(
-              right:9,bottom:9,
-              child:Container(
-                width:24,height:24,
-                decoration:BoxDecoration(color:(light?Colors.white:Colors.black).withValues(alpha:light ? .86 : .28),shape:BoxShape.circle),
-                child:Icon(Icons.chevron_right_rounded,color:text,size:16),
-              ),
+            Positioned(
+              left:8,right:21,bottom:12,
+              child:Text(item.title,maxLines:2,overflow:TextOverflow.ellipsis,
+                style:TextStyle(color:titleColor,fontSize:11.5,
+                  fontWeight:FontWeight.w900,height:1.05)),
+            ),
+            Positioned(right:6,bottom:7,child:Container(
+              width:21,height:21,
+              decoration:BoxDecoration(shape:BoxShape.circle,
+                color:Colors.white.withValues(alpha:.90)),
+              child:const Icon(Icons.chevron_right_rounded,color:OwnerReference.purple,size:16),
+            )),
+            if(!available&&item.badgeText.isEmpty)const Positioned(
+              top:5,right:5,
+              child:Text('Yakında',style:TextStyle(color:OwnerReference.purple,fontSize:8)),
             ),
           ]),
         ),
