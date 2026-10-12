@@ -1065,18 +1065,18 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     onLongPress:_editQuickAccess,
     borderRadius:BorderRadius.circular(17),
     child:Container(
-      height:78,
+      height:83,
       decoration:card(),
       child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[
         Container(
-          width:36,height:36,
-          decoration:BoxDecoration(color:_quickColor(d.id).withValues(alpha:light ? .11 : .17),shape:BoxShape.circle),
+          width:35,height:35,
+          decoration:BoxDecoration(color:_quickColor(d.id).withValues(alpha:light ? .15 : .22),borderRadius:BorderRadius.circular(11)),
           child:Icon(d.icon,color:_quickColor(d.id),size:20),
         ),
         const SizedBox(height:6),
         Padding(
           padding:const EdgeInsets.symmetric(horizontal:3),
-          child:Text(d.title,maxLines:1,overflow:TextOverflow.ellipsis,textAlign:TextAlign.center,style:TextStyle(color:text,fontSize:CepqarTheme.caption,fontWeight:FontWeight.w800)),
+          child:Text(d.title,maxLines:2,overflow:TextOverflow.ellipsis,textAlign:TextAlign.center,style:TextStyle(color:text,fontSize:11,fontWeight:FontWeight.w700,height:1.1)),
         ),
       ]),
     ),
@@ -1085,7 +1085,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   Widget quickRow(){
     final items=quickAccessIds.map(_quickDef).whereType<OwnerShortcutDefinition>().take(maxOwnerShortcuts).toList();
     return Padding(
-      padding:const EdgeInsets.fromLTRB(16,10,16,0),
+      padding:const EdgeInsets.fromLTRB(16,8,16,0),
       child:Column(children:[
         Row(children:[
           Expanded(child:Text('Hızlı Erişim',style:TextStyle(color:text,fontSize:CepqarTheme.cardTitle,fontWeight:FontWeight.w900))),
@@ -1095,9 +1095,9 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             child:Padding(
               padding:const EdgeInsets.symmetric(horizontal:5,vertical:4),
               child:Row(children:[
-                const Icon(Icons.tune_rounded,color:purple,size:15),
+                const Icon(Icons.chevron_right_rounded,color:purple,size:15),
                 const SizedBox(width:3),
-                Text('Düzenle',style:TextStyle(color:purple,fontSize:CepqarTheme.caption,fontWeight:FontWeight.w900)),
+                Text('Tümünü Gör',style:TextStyle(color:purple,fontSize:11,fontWeight:FontWeight.w800)),
               ]),
             ),
           ),
@@ -1523,11 +1523,11 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     final items=_appUiConfig.quickActions.take(4).toList();
     if(items.isEmpty)return const SizedBox.shrink();
     return Padding(
-      padding:const EdgeInsets.fromLTRB(16,10,16,0),
+      padding:const EdgeInsets.fromLTRB(16,8,16,0),
       child:Column(children:[
         Row(children:[
           Expanded(child:Text('Hızlı Erişim',style:TextStyle(color:text,fontSize:CepqarTheme.cardTitle,fontWeight:FontWeight.w900))),
-          Text('Admin',style:TextStyle(color:muted,fontSize:9,fontWeight:FontWeight.w700)),
+          InkWell(onTap:_editQuickAccess,child:const Row(children:[Text('Tümünü Gör',style:TextStyle(color:OwnerReference.purple,fontSize:11,fontWeight:FontWeight.w800)),Icon(Icons.chevron_right_rounded,color:OwnerReference.purple,size:17)])),
         ]),
         const SizedBox(height:6),
         Row(children:[
@@ -1537,7 +1537,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
               onTap:()=>_runManagedAction(items[i]),
               borderRadius:BorderRadius.circular(_ui.cardRadius),
               child:Container(
-                height:78,
+                height:83,
                 decoration:BoxDecoration(
                   color:_ui.token(items[i].backgroundToken),
                   borderRadius:BorderRadius.circular(_ui.cardRadius),
@@ -1546,14 +1546,14 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                 ),
                 child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[
                   Container(
-                    width:36,height:36,
-                    decoration:BoxDecoration(color:_ui.token(items[i].iconToken).withValues(alpha:.12),shape:BoxShape.circle),
+                    width:35,height:35,
+                    decoration:BoxDecoration(color:_ui.token(items[i].iconToken).withValues(alpha:.16),borderRadius:BorderRadius.circular(11)),
                     child:items[i].iconUrl.isNotEmpty?Padding(padding:const EdgeInsets.all(7),child:Image.network(items[i].iconUrl,fit:BoxFit.contain,errorBuilder:(_,__,___)=>Icon(_managedIcon(items[i].icon),color:_ui.token(items[i].iconToken),size:20))):Icon(_managedIcon(items[i].icon),color:_ui.token(items[i].iconToken),size:20),
                   ),
                   const SizedBox(height:6),
                   Padding(
                     padding:const EdgeInsets.symmetric(horizontal:3),
-                    child:Text(items[i].title,maxLines:1,overflow:TextOverflow.ellipsis,textAlign:TextAlign.center,style:TextStyle(color:text,fontSize:CepqarTheme.caption,fontWeight:FontWeight.w800)),
+                    child:Text(items[i].title,maxLines:2,overflow:TextOverflow.ellipsis,textAlign:TextAlign.center,style:TextStyle(color:text,fontSize:11,fontWeight:FontWeight.w700,height:1.1)),
                   ),
                 ]),
               ),
@@ -1656,14 +1656,14 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     return Column(children:[
       section('Hizmetler',widget.services),
       SizedBox(
-        height:124,
+        height:120,
         child:ListView.separated(
           scrollDirection:Axis.horizontal,
           physics:const BouncingScrollPhysics(),
           padding:const EdgeInsets.symmetric(horizontal:16),
           itemCount:items.length,
-          separatorBuilder:(_,__)=>const SizedBox(width:12),
-          itemBuilder:(_,index)=>SizedBox(width:174,child:_managedServiceCard(items[index])),
+          separatorBuilder:(_,__)=>const SizedBox(width:8),
+          itemBuilder:(_,index)=>SizedBox(width:105,child:_managedServiceCard(items[index])),
         ),
       ),
     ]);
@@ -1840,6 +1840,21 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     );
   }
 
+
+  // The reference's first four sections stay in visual order; admin config
+  // still controls each section's content, presence, and actions.
+  List<AppUiComponent> _referenceOrderedComponents(){
+    final visible=_appUiConfig.components.where(_referenceShows).toList();
+    if(_referenceCategory!='Tümü')return visible;
+    const order=['weather_card','quick_actions','services_grid','story_carousel'];
+    final result=<AppUiComponent>[];
+    for(final type in order){
+      result.addAll(visible.where((component)=>component.type==type));
+    }
+    result.addAll(visible.where((component)=>!order.contains(component.type)));
+    return result;
+  }
+
   @override Widget build(BuildContext context)=>ColoredBox(
     color:bg,
     child:RefreshIndicator(
@@ -1848,9 +1863,12 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         padding:EdgeInsets.zero,
         physics:const ClampingScrollPhysics(parent:AlwaysScrollableScrollPhysics()),
         children:[
-          for(final component in _appUiConfig.components)
-            if(_referenceShows(component))RepaintBoundary(key:ValueKey('sd-ui-${component.id}-${_appUiConfig.version}'),child:_managedComponent(component)),
-          const SizedBox(height:20),
+          for(final component in _referenceOrderedComponents())
+            RepaintBoundary(
+              key:ValueKey('sd-ui-${component.id}-${_appUiConfig.version}'),
+              child:_managedComponent(component),
+            ),
+          const SizedBox(height:16),
         ],
       ),
     ),
