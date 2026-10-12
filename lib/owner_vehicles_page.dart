@@ -495,7 +495,7 @@ class _VehicleBrandLogo extends StatelessWidget{
   @override Widget build(BuildContext context){
     final raw=vehicle['brandLogo'];
     final logo=raw is Map?Map<String,dynamic>.from(raw):const <String,dynamic>{};
-    // Prefer the current API origin instead of a cached hostname.
+    // Prefer the current API host over an obsolete cached absolute URL.
     final imagePath=(logo['path']??'').toString().trim();
     final safeImagePath=imagePath.startsWith('/uploads/vehicle-brands/')
         && !imagePath.contains('..')
