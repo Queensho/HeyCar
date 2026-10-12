@@ -2160,6 +2160,21 @@ class _OwnerServicesRedesignState extends State<OwnerServicesRedesign>{
                 fontSize:14,height:1.4)),
             const SizedBox(height:22),
             for(var i=0;i<items.length;i++)_referenceService(items[i],i),
+            if(!items.any((item)=>item.id=='store'))Padding(
+              padding:const EdgeInsets.only(top:2,bottom:14),
+              child:OutlinedButton.icon(
+                onPressed:()=>Navigator.push(context,MaterialPageRoute(
+                  builder:(_)=>const CepqontagStorePage())),
+                icon:const Icon(Icons.storefront_outlined),
+                label:const Text('CepQontag Mağaza'),
+                style:OutlinedButton.styleFrom(
+                  foregroundColor:OwnerReference.purple,
+                  backgroundColor:OwnerReference.surface,
+                  minimumSize:const Size(double.infinity,44),
+                  shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15)),
+                ),
+              ),
+            ),
             if(_ownerServicesTestAccount)
               OwnerValetCard(vehicleId:QrDraft.vehicleId,active:widget.active),
           ],
