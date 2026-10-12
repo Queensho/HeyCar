@@ -81,89 +81,93 @@ class _OwnerStoryHighlightsState extends State<OwnerStoryHighlights>{
     widget.onChanged();
   }
 
-
   @override Widget build(BuildContext context){
     final g=groups;
     if(g.isEmpty)return const SizedBox.shrink();
-    final compact=MediaQuery.sizeOf(context).height<790;
     return Padding(
-      padding:EdgeInsets.fromLTRB(16,compact?8:15,0,0),
+      padding:const EdgeInsets.fromLTRB(16,14,0,0),
       child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
         Padding(
           padding:const EdgeInsets.only(right:16),
           child:Row(children:[
-            Expanded(child:Text('Öne Çıkanlar',
-              style:TextStyle(color:CepqarTheme.text,fontSize:18,fontWeight:FontWeight.w900))),
+            Expanded(child:Text('Öne Çıkanlar',style:TextStyle(color:CepqarTheme.text,fontSize:16,fontWeight:FontWeight.w900))),
             InkWell(
               onTap:()=>_open(g.firstWhere((x)=>!x.viewed,orElse:()=>g.first)),
               borderRadius:BorderRadius.circular(12),
               child:const Padding(
-                padding:EdgeInsets.symmetric(horizontal:3,vertical:4),
+                padding:EdgeInsets.symmetric(horizontal:3,vertical:5),
                 child:Row(children:[
-                  Text('Tümünü Gör',style:TextStyle(color:CepqarTheme.purple,fontSize:11,fontWeight:FontWeight.w800)),
+                  Text('Tümünü Gör',style:TextStyle(color:CepqarTheme.purple,fontSize:11,fontWeight:FontWeight.w900)),
                   Icon(Icons.chevron_right_rounded,color:CepqarTheme.purple,size:17),
                 ]),
               ),
             ),
           ]),
         ),
-        SizedBox(height:compact?4:8),
+        const SizedBox(height:9),
         SizedBox(
-          height:compact?76:84,
+          height:126,
           child:ListView.separated(
             scrollDirection:Axis.horizontal,
-            physics:const BouncingScrollPhysics(),
             padding:const EdgeInsets.only(right:16),
             itemCount:g.length,
-            separatorBuilder:(_,__)=>const SizedBox(width:8),
+            separatorBuilder:(_,__)=>const SizedBox(width:10),
             itemBuilder:(_,i){
-              final group=g[i],item=group.first;
+              final group=g[i],s=group.first;
+              final viewed=group.viewed;
               return SizedBox(
-                width:137,
+                width:76,
                 child:InkWell(
                   onTap:()=>_open(group),
-                  borderRadius:BorderRadius.circular(17),
-                  child:ClipRRect(
-                    borderRadius:BorderRadius.circular(17),
-                    child:Stack(fit:StackFit.expand,children:[
-                      DecoratedBox(decoration:const BoxDecoration(
-                        gradient:LinearGradient(
-                          begin:Alignment.topLeft,end:Alignment.bottomRight,
-                          colors:[Color(0xFF141735),Color(0xFF6945AC)],
+                  borderRadius:BorderRadius.circular(38),
+                  child:Column(children:[
+                    Stack(clipBehavior:Clip.none,children:[
+                      Container(
+                        width:70,height:70,padding:const EdgeInsets.all(3),
+                        decoration:BoxDecoration(
+                          shape:BoxShape.circle,
+                          gradient:viewed?null:const LinearGradient(
+                            begin:Alignment.topLeft,end:Alignment.bottomRight,
+                            colors:[CepqarTheme.purple,Color(0xFF8759FF),CepqarTheme.lime],
+                          ),
+                          color:viewed?const Color(0xFFCED1D9):null,
                         ),
-                      )),
-                      if(item.thumbnailUrl.isNotEmpty)Image.network(
-                        item.thumbnailUrl,fit:BoxFit.cover,
-                        errorBuilder:(_,__,___)=>Center(child:Icon(
-                          _icon(item.categoryIcon),color:Colors.white70,size:42)),
-                      )else Center(child:Icon(
-                        _icon(item.categoryIcon),color:Colors.white70,size:42)),
-                      const DecoratedBox(decoration:BoxDecoration(
-                        gradient:LinearGradient(
-                          begin:Alignment.topCenter,end:Alignment.bottomCenter,
-                          colors:[Colors.transparent,Color(0xD9000014)],
-                          stops:[.25,1],
+                        child:Container(
+                          padding:const EdgeInsets.all(2),
+                          decoration:BoxDecoration(shape:BoxShape.circle,color:CepqarTheme.panel),
+                          child:ClipOval(
+                            child:s.thumbnailUrl.isEmpty
+                              ?Container(color:CepqarTheme.purple.withValues(alpha:.10),child:Icon(_icon(s.categoryIcon),color:CepqarTheme.purple,size:30))
+                              :Image.network(
+                                  s.thumbnailUrl,
+                                  fit:BoxFit.cover,
+                                  errorBuilder:(_,__,___)=>Container(color:CepqarTheme.purple.withValues(alpha:.10),child:Icon(_icon(s.categoryIcon),color:CepqarTheme.purple,size:30)),
+                                ),
+                          ),
                         ),
-                      )),
-                      Positioned(left:9,right:25,bottom:9,child:Column(
-                        mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,
-                        children:[
-                          Text(item.categoryName.isNotEmpty?item.categoryName:item.title,
-                            maxLines:1,overflow:TextOverflow.ellipsis,
-                            style:const TextStyle(color:Colors.white,fontSize:12,
-                              fontWeight:FontWeight.w900,height:1.1)),
-                          if(item.subtitle.isNotEmpty)...[
-                            const SizedBox(height:3),
-                            Text(item.subtitle,maxLines:1,overflow:TextOverflow.ellipsis,
-                              style:const TextStyle(color:Colors.white70,fontSize:9,height:1.1)),
-                          ],
-                        ],
-                      )),
-                      const Positioned(right:7,bottom:8,
-                        child:CircleAvatar(radius:11,backgroundColor:Color(0xEFFFFFFF),
-                          child:Icon(Icons.chevron_right_rounded,size:17,color:Color(0xFF5C20E3)))),
+                      ),
+                      if(s.badgeType!='none'&&s.badgeText.isNotEmpty)
+                        Positioned(
+                          right:-5,top:0,
+                          child:Container(
+                            constraints:const BoxConstraints(maxWidth:58),
+                            padding:const EdgeInsets.symmetric(horizontal:7,vertical:4),
+                            decoration:BoxDecoration(
+                              color:const Color(0xFFFF465D),
+                              borderRadius:BorderRadius.circular(12),
+                              boxShadow:[BoxShadow(color:Colors.black.withValues(alpha:.10),blurRadius:5,offset:const Offset(0,2))],
+                            ),
+                            child:Text(s.badgeText,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Colors.white,fontSize:8.5,fontWeight:FontWeight.w900)),
+                          ),
+                        ),
                     ]),
-                  ),
+                    const SizedBox(height:6),
+                    Text(s.categoryName.isNotEmpty?s.categoryName:s.title,maxLines:1,overflow:TextOverflow.ellipsis,textAlign:TextAlign.center,style:TextStyle(color:CepqarTheme.text,fontSize:10.5,fontWeight:FontWeight.w900)),
+                    if(s.subtitle.isNotEmpty)...[
+                      const SizedBox(height:2),
+                      Text(s.subtitle,maxLines:2,overflow:TextOverflow.ellipsis,textAlign:TextAlign.center,style:TextStyle(color:CepqarTheme.muted,fontSize:8.2,height:1.12,fontWeight:FontWeight.w600)),
+                    ],
+                  ]),
                 ),
               );
             },
