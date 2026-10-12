@@ -1675,7 +1675,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   Widget _managedComponent(AppUiComponent component){
     final registry=OwnerHomeComponentRegistry({
       'weather_card':(_)=>header(),
-      'vehicle_security':(_)=>Column(children:[const SizedBox(height:14),vehicleQr(),_motorcycleHomePanel()]),
+      'vehicle_security':(_)=>vehicleQr(),
       'story_carousel':(_)=>stories.isEmpty?const SizedBox.shrink():OwnerStoryHighlights(
         items:stories,service:_storyService,shortcut:widget.shortcut,onChanged:()=>_loadStories(force:true),
       ),
@@ -1689,6 +1689,21 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       'spacer':(x)=>SizedBox(height:((x.config['height'] is num?(x.config['height'] as num).toDouble():0).clamp(0,64)).toDouble()),
     });
     return registry.build(component)??const SizedBox.shrink();
+  }
+
+  // The reference fixes only the five main home sections. Published admin
+  // visibility, service/quick-action order and remaining component content
+  // remain intact. Banners, highlights and notifications stay available below.
+  List<AppUiComponent> _premiumHomeOrder(){
+    final visible=_appUiConfig.components;
+    const ordered=['weather_card','vehicle_security','quick_actions',
+      'services_grid','monthly_summary'];
+    final result=<AppUiComponent>[];
+    for(final type in ordered){
+      result.addAll(visible.where((c)=>c.type==type));
+    }
+    result.addAll(visible.where((c)=>!ordered.contains(c.type)));
+    return result;
   }
 
   String nt(Map<String,dynamic> n)=>{'move_vehicle':'Park Uyarısı','lights_on':'Far Uyarısı','damage':'Hasar Bildirimi','call_request':'İletişim Talebi'}['${n['type']??''}']??'Yeni Bildirim';
@@ -1730,16 +1745,26 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   }
 
   @override Widget build(BuildContext context)=>ColoredBox(
-    color:bg,
+    color:light?const Color(0xFFF9FAFD):bg,
     child:RefreshIndicator(
-      onRefresh:_refreshAll,color:uiPrimary,
+      onRefresh:_refreshAll,color:_homePurple,
       child:ListView(
         padding:EdgeInsets.zero,
         physics:const ClampingScrollPhysics(parent:AlwaysScrollableScrollPhysics()),
         children:[
-          for(final component in _appUiConfig.components)
-            RepaintBoundary(key:ValueKey('sd-ui-${component.id}-${_appUiConfig.version}'),child:_managedComponent(component)),
-          const SizedBox(height:20),
+          for(final component in _premiumHomeOrder())...[
+            RepaintBoundary(
+              key:ValueKey('sd-ui-${component.id}-${_appUiConfig.version}'),
+              child:_managedComponent(component)),
+            if(component.type=='monthly_summary')...[
+              _motorcycleHomePanel(),
+              if(valetSession!=null)
+                Padding(
+                  padding:const EdgeInsets.fromLTRB(16,11,16,0),
+                  child:_valetVehicleCard(valetSession!)),
+            ],
+          ],
+          const SizedBox(height:22),
         ],
       ),
     ),
