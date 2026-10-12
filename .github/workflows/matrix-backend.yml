@@ -118,6 +118,9 @@ jobs:
       - name: Verify motorcycle profile privacy and km reminders
         working-directory: server
         run: node --test tests/motorcycle-service-profile.test.js
+      - name: Verify motorcycle emergency card privacy and QR scan authorization
+        working-directory: server
+        run: node --test tests/motorcycle-emergency-card.test.js
       - name: Verify motorcycle brand logos use safeguarded backend API
         working-directory: server
         run: node --test tests/motorcycle-brand-logo.test.js
