@@ -45,6 +45,8 @@ void main(){
       expect(find.byKey(const ValueKey('owner-brand-logo-bmw')),findsOneWidget);
       expect(find.byKey(const ValueKey('premium-home-qr-security')),findsOneWidget);
       expect(find.text('Hızlı Erişim'),findsOneWidget);
+      expect(find.byKey(const ValueKey('owner-home-quick-panel')),findsOneWidget);
+      expect(find.byKey(const ValueKey('owner-quick-parking')),findsOneWidget);
       expect(tester.getTopLeft(find.byKey(
         const ValueKey('premium-home-qr-security'))).dy,
         greaterThan(tester.getTopLeft(find.byKey(

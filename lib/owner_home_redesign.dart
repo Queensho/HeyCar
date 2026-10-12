@@ -23,6 +23,7 @@ import 'app_ui_config.dart';
 import 'owner_home_component_registry.dart';
 import 'vehicle_kind.dart';
 import 'owner_vehicle_brand_mark.dart';
+import 'owner_quick_access_panel.dart';
 import 'motorcycle_profile_page.dart';
 import 'call_activity.dart';
 
@@ -1052,40 +1053,51 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   }
 
 
-  Widget _premiumQuickTile({
-    required String title,required IconData icon,required Color color,
-    required VoidCallback onTap,VoidCallback? onLongPress,String iconUrl='',
-  })=>Expanded(child:InkWell(
-    onTap:onTap,onLongPress:onLongPress,
-    borderRadius:BorderRadius.circular(19),
-    child:Container(
-      height:74,
-      decoration:BoxDecoration(color:_homeCardBackground,
-        borderRadius:BorderRadius.circular(19),
-        border:Border.all(color:light?const Color(0xFFEDEDF5):line),
-        boxShadow:light?[const BoxShadow(
-          color:Color(0x0D101426),blurRadius:9,offset:Offset(0,3))]:null),
-      child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[
-        Container(
-          width:35,height:35,
-          decoration:BoxDecoration(color:color.withValues(alpha:.11),
-            shape:BoxShape.circle),
-          child:iconUrl.isNotEmpty
-            ?Padding(padding:const EdgeInsets.all(7),
-              child:Image.network(iconUrl,fit:BoxFit.contain,
-                errorBuilder:(_,__,___)=>Icon(icon,color:color,size:20)))
-            :Icon(icon,color:color,size:20),
-        ),
-        const SizedBox(height:4),
-        Padding(
-          padding:const EdgeInsets.symmetric(horizontal:2),
-          child:Text(title,maxLines:2,overflow:TextOverflow.ellipsis,
-            textAlign:TextAlign.center,style:TextStyle(color:_homeText,
-              fontSize:_narrowHome?9.2:10.7,fontWeight:FontWeight.w800,height:1.03)),
-        ),
-      ]),
-    ),
-  ));
+  // The existing shortcut and server-driven action definitions are reused.
+  // Only their presentation changes to the reference's shared white panel.
+  Color _quickPanelTint(String id)=>id=='parking'
+    ?const Color(0xFF478D19):const Color(0xFF651FFF);
+
+  Color _quickPanelBackground(String id)=>id=='parking'
+    ?const Color(0xFFEEFFD8):const Color(0xFFF1EAFF);
+
+  IconData _quickPanelIcon(String id,IconData fallback)=>switch(id){
+    'parking'=>Icons.location_on_rounded,
+    'maintenance'=>Icons.build_rounded,
+    'drivers'=>Icons.groups_rounded,
+    'inspection'=>Icons.fact_check_rounded,
+    _=>fallback,
+  };
+
+  Widget _quickAccessPanel(List<OwnerQuickPanelItem> items)=>Padding(
+    padding:const EdgeInsets.symmetric(horizontal:16),
+    child:OwnerQuickAccessPanel(items:items),
+  );
+
+  Color _managedQuickTint(AppUiQuickAction item){
+    final defaultToken=switch(item.id){
+      'parking'=>'success','inspection'=>'info',
+      'maintenance'||'drivers'=>'primary',_=>'',
+    };
+    return defaultToken==item.iconToken
+      ?_quickPanelTint(item.id):_ui.token(item.iconToken);
+  }
+
+  Color _managedQuickBackground(AppUiQuickAction item)=>
+    item.backgroundToken=='surface'
+      ?_quickPanelBackground(item.id)
+      :_ui.token(item.backgroundToken);
+
+  IconData _managedQuickIcon(AppUiQuickAction item){
+    final expected=switch(item.id){
+      'parking'=>'parking','maintenance'=>'maintenance',
+      'drivers'=>'drivers','inspection'=>'inspection',_=>'',
+    };
+    final configured=_managedIcon(item.icon);
+    return expected==item.icon
+      ?_quickPanelIcon(item.id,configured)
+      :configured;
+  }
 
   Widget _homeSectionHeading(String title,VoidCallback tap,{double top=12})=>
     Padding(
@@ -1113,19 +1125,17 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     if(items.isEmpty)return const SizedBox.shrink();
     return Column(children:[
       _homeSectionHeading('Hızlı Erişim',_editQuickAccess,top:11),
-      Padding(
-        padding:const EdgeInsets.symmetric(horizontal:16),
-        child:Row(children:[
-          for(var i=0;i<items.length;i++)...[
-            if(i>0)const SizedBox(width:7),
-            _premiumQuickTile(
-              title:items[i].title,icon:items[i].icon,
-              color:_quickColor(items[i].id),
-              onTap:()=>widget.shortcut(items[i].action),
-              onLongPress:_editQuickAccess),
-          ],
-        ]),
-      ),
+      _quickAccessPanel([
+        for(final item in items)OwnerQuickPanelItem(
+          id:item.id,
+          title:item.title,
+          icon:_quickPanelIcon(item.id,item.icon),
+          iconColor:_quickPanelTint(item.id),
+          iconBackground:_quickPanelBackground(item.id),
+          onTap:()=>widget.shortcut(item.action),
+          onLongPress:_editQuickAccess,
+        ),
+      ]),
     ]);
   }
 
@@ -1493,19 +1503,18 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     if(items.isEmpty)return const SizedBox.shrink();
     return Column(children:[
       _homeSectionHeading('Hızlı Erişim',_editQuickAccess,top:11),
-      Padding(padding:const EdgeInsets.symmetric(horizontal:16),
-        child:Row(children:[
-          for(var i=0;i<items.length;i++)...[
-            if(i>0)const SizedBox(width:7),
-            _premiumQuickTile(title:items[i].title,
-              icon:_managedIcon(items[i].icon),
-              color:_ui.token(items[i].iconToken),
-              iconUrl:items[i].iconUrl,
-              onTap:()=>_runManagedAction(items[i]),
-              onLongPress:_editQuickAccess),
-          ],
-        ]),
-      ),
+      _quickAccessPanel([
+        for(final item in items)OwnerQuickPanelItem(
+          id:item.id,
+          title:item.title,
+          icon:_managedQuickIcon(item),
+          iconColor:_managedQuickTint(item),
+          iconBackground:_managedQuickBackground(item),
+          iconUrl:item.iconUrl,
+          onTap:()=>_runManagedAction(item),
+          onLongPress:_editQuickAccess,
+        ),
+      ]),
     ]);
   }
 
