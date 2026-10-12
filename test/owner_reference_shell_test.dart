@@ -47,6 +47,32 @@ void main(){
     );
   }
 
+
+  testWidgets('active navigation light stays circular and bottom bar compact',
+    (tester)async{
+      tester.view.physicalSize=const Size(393,852);
+      tester.view.devicePixelRatio=1;
+      addTearDown((){
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+      await tester.pumpWidget(MaterialApp(home:Scaffold(
+        body:const SizedBox.expand(),
+        bottomNavigationBar:OwnerReferenceBottomNav(
+          selected:0,unread:false,onChanged:(_){},
+        ),
+      )));
+      final nav=tester.getRect(find.byType(OwnerReferenceBottomNav));
+      final glow=tester.getRect(find.byKey(const ValueKey('owner-reference-active-glow')));
+      expect(nav.height,lessThanOrEqualTo(82));
+      expect(glow.width,58);
+      expect(glow.height,58);
+      expect(glow.center.dx,closeTo(43.3,2));
+      expect(find.byType(ClipPath),findsWidgets);
+      expect(tester.takeException(),isNull);
+    },
+  );
+
   testWidgets('shared header routes notifications and settings independently',
     (tester)async{
       var notifications=0,settings=0;

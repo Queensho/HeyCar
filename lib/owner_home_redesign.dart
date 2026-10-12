@@ -598,6 +598,9 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     return hour<12?'Günaydın,':hour<18?'İyi günler,':'İyi akşamlar,';
   }
 
+
+  // The reference hero has an illustration, not a standalone vehicle tile.
+  // Motorcycle users retain their server-provided brand logo in the same space.
   Widget _heroBrandLogo(){
     final data=_selectedVehicle?['brandLogo'];
     final logo=data is Map?Map<String,dynamic>.from(data):<String,dynamic>{};
@@ -608,34 +611,40 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       ?OnboardingBackend.baseUrl.replaceFirst(RegExp(r'/$'),'')+storedPath
       :'${logo['url']??''}'.trim();
     final hasLogo=logo['available']==true&&url.startsWith('https://');
-    return Container(
-      height:105,width:135,
-      alignment:Alignment.center,
-      decoration:BoxDecoration(
-        borderRadius:BorderRadius.circular(23),
-        gradient:LinearGradient(colors:[
-          OwnerReference.lilac.withValues(alpha:.32),
-          const Color(0xFF9C70FF).withValues(alpha:.23),
-        ]),
-      ),
-      child:hasLogo
-        ?Image.network(url,height:85,width:112,fit:BoxFit.contain,
+    final motorcycle=VehicleKind.isMotorcycle(QrDraft.vehicleType);
+    return SizedBox(
+      height:124,width:204,
+      child:hasLogo&&motorcycle
+        ?Image.network(url,fit:BoxFit.contain,
             errorBuilder:(_,__,___)=>_logoFallback())
-        :_logoFallback(),
+        :motorcycle
+          ?_logoFallback()
+          :Image.asset('assets/Arac.png',fit:BoxFit.contain,
+              errorBuilder:(_,__,___)=>_logoFallback()),
     );
   }
   Widget _logoFallback()=>Icon(
     VehicleKind.isMotorcycle(QrDraft.vehicleType)
       ?Icons.two_wheeler_rounded:Icons.directions_car_rounded,
-    size:66,color:OwnerReference.purple.withValues(alpha:.56),
+    size:92,color:OwnerReference.purple.withValues(alpha:.65),
   );
+
+  IconData get _weatherIcon=>switch(weather?.condition){
+    WeatherCondition.clear=>Icons.wb_sunny_rounded,
+    WeatherCondition.partlyCloudy=>Icons.wb_cloudy_rounded,
+    WeatherCondition.rain=>Icons.water_drop_rounded,
+    WeatherCondition.snow=>Icons.ac_unit_rounded,
+    WeatherCondition.thunderstorm=>Icons.thunderstorm_rounded,
+    WeatherCondition.night=>Icons.nights_stay_rounded,
+    _=>Icons.cloud_rounded,
+  };
 
   Widget _referenceFilters(){
     const categories=['Tümü','Araç & QR','Hizmetler','Fırsatlar','Yakında'];
     return SizedBox(
-      height:42,
+      height:36,
       child:ListView.separated(
-        padding:const EdgeInsets.symmetric(horizontal:17),
+        padding:const EdgeInsets.symmetric(horizontal:16),
         scrollDirection:Axis.horizontal,
         itemCount:categories.length,
         separatorBuilder:(_,__)=>const SizedBox(width:8),
@@ -646,10 +655,12 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             selected:active,
             onSelected:(_)=>setState(()=>_referenceCategory=name),
             showCheckmark:false,
-            padding:const EdgeInsets.symmetric(horizontal:12,vertical:3),
+            materialTapTargetSize:MaterialTapTargetSize.shrinkWrap,
+            visualDensity:VisualDensity.compact,
+            padding:const EdgeInsets.symmetric(horizontal:11,vertical:1),
             labelStyle:TextStyle(
               color:active?Colors.white:OwnerReference.subtitle,
-              fontWeight:FontWeight.w700,fontSize:12,
+              fontWeight:FontWeight.w700,fontSize:11.5,
             ),
             selectedColor:OwnerReference.purple,
             backgroundColor:OwnerReference.surface,
@@ -672,81 +683,122 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     }
   }
 
+
   Widget header()=>Container(
-    padding:EdgeInsets.fromLTRB(18,MediaQuery.paddingOf(context).top+4,18,16),
-    decoration:BoxDecoration(
-      gradient:light?const LinearGradient(
+    padding:EdgeInsets.fromLTRB(18,MediaQuery.paddingOf(context).top+4,18,8),
+    decoration:light?const BoxDecoration(
+      gradient:LinearGradient(
         begin:Alignment.topLeft,end:Alignment.bottomRight,
-        colors:[Color(0xFFFCFAFF),Color(0xFFF1EAFE),Color(0xFFF8F6FF)],
-      ):null,
-    ),
+        colors:[Color(0xFFFEFDFF),Color(0xFFF1E9FF),Color(0xFFFBFAFF)],
+      ),
+    ):null,
     child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
       OwnerReferenceHeader(
         onNotifications:widget.notifications,
         onSettings:()=>widget.shortcut('settings'),
         unread:unread>0,
       ),
-      const SizedBox(height:14),
-      Row(children:[
-        Container(
-          height:65,width:65,
-          alignment:Alignment.center,
-          decoration:BoxDecoration(
-            shape:BoxShape.circle,
-            gradient:const LinearGradient(colors:[
-              Color(0xFF4920B2),Color(0xFFA86CFF)]),
-            border:Border.all(color:Colors.white,width:3),
+      const SizedBox(height:6),
+      SizedBox(
+        height:98,
+        child:Row(children:[
+          Container(
+            height:68,width:68,
+            alignment:Alignment.center,
+            decoration:BoxDecoration(
+              shape:BoxShape.circle,
+              gradient:const LinearGradient(colors:[
+                Color(0xFF4920B2),Color(0xFFA86CFF)]),
+              border:Border.all(color:Colors.white,width:3),
+            ),
+            child:Text(initials,style:const TextStyle(color:Colors.white,
+              fontSize:23,fontWeight:FontWeight.w900)),
           ),
-          child:Text(initials,style:const TextStyle(color:Colors.white,
-            fontSize:23,fontWeight:FontWeight.w900)),
+          const SizedBox(width:11),
+          Expanded(child:Column(
+            mainAxisAlignment:MainAxisAlignment.center,
+            crossAxisAlignment:CrossAxisAlignment.start,
+            children:[
+              Text(_greeting,style:TextStyle(color:muted,fontSize:12)),
+              const SizedBox(height:1),
+              Text(_displayNameParts.join(' '),
+                maxLines:2,overflow:TextOverflow.ellipsis,
+                style:TextStyle(color:text,fontSize:16,fontWeight:FontWeight.w900,height:1.08)),
+              const SizedBox(height:5),
+              Text('Aracınızla dünya sizinle iletişimde.',
+                maxLines:2,overflow:TextOverflow.ellipsis,
+                style:TextStyle(color:muted,fontSize:11.2,height:1.25)),
+            ],
+          )),
+          const SizedBox(width:6),
+          InkWell(
+            onTap:_openWeatherDetails,
+            borderRadius:BorderRadius.circular(23),
+            child:Container(
+              width:124,height:94,
+              padding:const EdgeInsets.fromLTRB(10,9,8,8),
+              decoration:OwnerReference.card(radius:23),
+              child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[
+                Row(mainAxisAlignment:MainAxisAlignment.center,children:[
+                  Icon(_weatherIcon,color:const Color(0xFFFFC83B),size:28),
+                  const SizedBox(width:5),
+                  Flexible(child:Text(weather?.temperature==null?'--°':
+                    '${weather!.temperature!.round()}°',
+                    maxLines:1,style:TextStyle(color:text,fontSize:23,
+                      fontWeight:FontWeight.w900,height:1))),
+                ]),
+                const SizedBox(height:3),
+                Text(weather?.location.isNotEmpty==true?weather!.location:'Konum',
+                  maxLines:1,overflow:TextOverflow.ellipsis,
+                  style:TextStyle(color:text,fontSize:11,fontWeight:FontWeight.w700)),
+                Text(weather?.description??'',
+                  maxLines:1,overflow:TextOverflow.ellipsis,
+                  style:TextStyle(color:muted,fontSize:9)),
+                const SizedBox(height:2),
+                Row(mainAxisAlignment:MainAxisAlignment.center,children:[
+                  const Icon(Icons.arrow_upward_rounded,color:Color(0xFFEC405C),size:12),
+                  Text(weather?.maxTemperature==null?'--°':
+                    '${weather!.maxTemperature!.round()}°',
+                    style:TextStyle(color:muted,fontSize:10)),
+                  const SizedBox(width:6),
+                  const Icon(Icons.arrow_downward_rounded,color:Color(0xFF3D83FA),size:12),
+                  Text(weather?.minTemperature==null?'--°':
+                    '${weather!.minTemperature!.round()}°',
+                    style:TextStyle(color:muted,fontSize:10)),
+                ]),
+              ]),
+            ),
+          ),
+        ]),
+      ),
+      const SizedBox(height:3),
+      SizedBox(height:122,child:Stack(clipBehavior:Clip.none,children:[
+        if(light)Positioned(
+          right:-18,top:0,bottom:-10,width:215,
+          child:IgnorePointer(child:DecoratedBox(decoration:BoxDecoration(
+            gradient:RadialGradient(
+              center:const Alignment(.6,.25),radius:1.0,
+              colors:[const Color(0xFF8D44FF).withValues(alpha:.55),
+                const Color(0xFFCAA8FF).withValues(alpha:.23),
+                const Color(0x008F55FF)],
+            ),
+          ))),
         ),
-        const SizedBox(width:12),
-        Expanded(child:Column(
-          crossAxisAlignment:CrossAxisAlignment.start,
-          children:[
-            Text(_greeting,style:TextStyle(color:muted,fontSize:13)),
-            Text(OnboardingDraft.displayName.trim().isEmpty
-              ?'Araç Sahibi':OnboardingDraft.displayName.trim(),
-              maxLines:2,overflow:TextOverflow.ellipsis,
-              style:TextStyle(color:text,fontSize:17,fontWeight:FontWeight.w900)),
-            Text('Aracınızla dünya sizinle iletişimde.',
-              maxLines:2,style:TextStyle(color:muted,fontSize:11.5)),
+        Positioned(
+          right:-9,bottom:-6,
+          child:IgnorePointer(child:_heroBrandLogo()),
+        ),
+        Positioned(left:0,top:9,child:Column(
+          crossAxisAlignment:CrossAxisAlignment.start,children:[
+            Text('${DateTime.now().day.toString().padLeft(2,'0')}.${DateTime.now().month.toString().padLeft(2,'0')}',
+              style:const TextStyle(fontSize:57,fontWeight:FontWeight.w900,
+                letterSpacing:-2.5,height:1.05,color:OwnerReference.purple)),
+            Text(_todayName,style:TextStyle(color:text,
+              fontSize:27,fontWeight:FontWeight.w700,height:1.05)),
           ],
         )),
-        const SizedBox(width:8),
-        InkWell(
-          onTap:_openWeatherDetails,
-          borderRadius:BorderRadius.circular(20),
-          child:Container(
-            width:112,
-            padding:const EdgeInsets.symmetric(horizontal:9,vertical:11),
-            decoration:OwnerReference.card(radius:21),
-            child:Column(children:[
-              Icon(weather?.condition==WeatherCondition.rain
-                ?Icons.umbrella_rounded:Icons.wb_cloudy_rounded,
-                color:OwnerReference.purple,size:22),
-              Text(weather?.temperature==null?'--°':
-                '${weather!.temperature!.round()}°',
-                style:TextStyle(color:text,fontSize:25,fontWeight:FontWeight.w900)),
-              Text(weather?.location.isNotEmpty==true?weather!.location:'Konum',
-                maxLines:1,overflow:TextOverflow.ellipsis,
-                style:TextStyle(color:muted,fontSize:10)),
-            ]),
-          ),
-        ),
-      ]),
-      const SizedBox(height:14),
-      Row(crossAxisAlignment:CrossAxisAlignment.center,children:[
-        Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-          Text('${DateTime.now().day.toString().padLeft(2,'0')}.${DateTime.now().month.toString().padLeft(2,'0')}',
-            style:const TextStyle(fontSize:58,fontWeight:FontWeight.w900,
-              letterSpacing:-2.5,height:1,color:OwnerReference.purple)),
-          Text(_todayName,style:TextStyle(color:text,
-            fontSize:27,fontWeight:FontWeight.w800)),
-        ])),
-        _heroBrandLogo(),
-      ]),
-      const SizedBox(height:16),
+      ])),
+      const SizedBox(height:7),
       _referenceFilters(),
     ]),
   );
@@ -1015,18 +1067,18 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     onLongPress:_editQuickAccess,
     borderRadius:BorderRadius.circular(17),
     child:Container(
-      height:78,
+      height:83,
       decoration:card(),
       child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[
         Container(
-          width:36,height:36,
-          decoration:BoxDecoration(color:_quickColor(d.id).withValues(alpha:light ? .11 : .17),shape:BoxShape.circle),
+          width:35,height:35,
+          decoration:BoxDecoration(color:_quickColor(d.id).withValues(alpha:light ? .15 : .22),borderRadius:BorderRadius.circular(11)),
           child:Icon(d.icon,color:_quickColor(d.id),size:20),
         ),
         const SizedBox(height:6),
         Padding(
           padding:const EdgeInsets.symmetric(horizontal:3),
-          child:Text(d.title,maxLines:1,overflow:TextOverflow.ellipsis,textAlign:TextAlign.center,style:TextStyle(color:text,fontSize:CepqarTheme.caption,fontWeight:FontWeight.w800)),
+          child:Text(d.title,maxLines:2,overflow:TextOverflow.ellipsis,textAlign:TextAlign.center,style:TextStyle(color:text,fontSize:11,fontWeight:FontWeight.w700,height:1.1)),
         ),
       ]),
     ),
@@ -1035,7 +1087,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   Widget quickRow(){
     final items=quickAccessIds.map(_quickDef).whereType<OwnerShortcutDefinition>().take(maxOwnerShortcuts).toList();
     return Padding(
-      padding:const EdgeInsets.fromLTRB(16,10,16,0),
+      padding:const EdgeInsets.fromLTRB(16,8,16,0),
       child:Column(children:[
         Row(children:[
           Expanded(child:Text('Hızlı Erişim',style:TextStyle(color:text,fontSize:CepqarTheme.cardTitle,fontWeight:FontWeight.w900))),
@@ -1045,9 +1097,9 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             child:Padding(
               padding:const EdgeInsets.symmetric(horizontal:5,vertical:4),
               child:Row(children:[
-                const Icon(Icons.tune_rounded,color:purple,size:15),
+                const Icon(Icons.chevron_right_rounded,color:purple,size:15),
                 const SizedBox(width:3),
-                Text('Düzenle',style:TextStyle(color:purple,fontSize:CepqarTheme.caption,fontWeight:FontWeight.w900)),
+                Text('Tümünü Gör',style:TextStyle(color:purple,fontSize:11,fontWeight:FontWeight.w800)),
               ]),
             ),
           ),
@@ -1473,11 +1525,11 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     final items=_appUiConfig.quickActions.take(4).toList();
     if(items.isEmpty)return const SizedBox.shrink();
     return Padding(
-      padding:const EdgeInsets.fromLTRB(16,10,16,0),
+      padding:const EdgeInsets.fromLTRB(16,8,16,0),
       child:Column(children:[
         Row(children:[
           Expanded(child:Text('Hızlı Erişim',style:TextStyle(color:text,fontSize:CepqarTheme.cardTitle,fontWeight:FontWeight.w900))),
-          Text('Admin',style:TextStyle(color:muted,fontSize:9,fontWeight:FontWeight.w700)),
+          InkWell(onTap:_editQuickAccess,child:const Row(children:[Text('Tümünü Gör',style:TextStyle(color:OwnerReference.purple,fontSize:11,fontWeight:FontWeight.w800)),Icon(Icons.chevron_right_rounded,color:OwnerReference.purple,size:17)])),
         ]),
         const SizedBox(height:6),
         Row(children:[
@@ -1487,7 +1539,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
               onTap:()=>_runManagedAction(items[i]),
               borderRadius:BorderRadius.circular(_ui.cardRadius),
               child:Container(
-                height:78,
+                height:83,
                 decoration:BoxDecoration(
                   color:_ui.token(items[i].backgroundToken),
                   borderRadius:BorderRadius.circular(_ui.cardRadius),
@@ -1496,14 +1548,14 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                 ),
                 child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[
                   Container(
-                    width:36,height:36,
-                    decoration:BoxDecoration(color:_ui.token(items[i].iconToken).withValues(alpha:.12),shape:BoxShape.circle),
+                    width:35,height:35,
+                    decoration:BoxDecoration(color:_ui.token(items[i].iconToken).withValues(alpha:.16),borderRadius:BorderRadius.circular(11)),
                     child:items[i].iconUrl.isNotEmpty?Padding(padding:const EdgeInsets.all(7),child:Image.network(items[i].iconUrl,fit:BoxFit.contain,errorBuilder:(_,__,___)=>Icon(_managedIcon(items[i].icon),color:_ui.token(items[i].iconToken),size:20))):Icon(_managedIcon(items[i].icon),color:_ui.token(items[i].iconToken),size:20),
                   ),
                   const SizedBox(height:6),
                   Padding(
                     padding:const EdgeInsets.symmetric(horizontal:3),
-                    child:Text(items[i].title,maxLines:1,overflow:TextOverflow.ellipsis,textAlign:TextAlign.center,style:TextStyle(color:text,fontSize:CepqarTheme.caption,fontWeight:FontWeight.w800)),
+                    child:Text(items[i].title,maxLines:2,overflow:TextOverflow.ellipsis,textAlign:TextAlign.center,style:TextStyle(color:text,fontSize:11,fontWeight:FontWeight.w700,height:1.1)),
                   ),
                 ]),
               ),
@@ -1514,27 +1566,45 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     );
   }
 
+
   Widget _managedServiceCard(AppUiServiceItem item){
     final available=(!item.testOnly||testAccount)&&item.action!='NONE';
     final background=_ui.token(item.backgroundToken);
+    final hasArtwork=item.imageUrl.isNotEmpty;
+    final vibrant=item.id=='towing'||item.id=='valet';
+    final fallbackColor=switch(item.id){
+      'towing'=>const Color(0xFF793AFF),
+      'valet'=>const Color(0xFF9E48EB),
+      'offers'=>const Color(0xFFDDD1FF),
+      _=>const Color(0xFFF0EBFF),
+    };
     final iconColor=_ui.token(item.iconToken);
-    final badgeColor=_ui.token(item.badgeToken);
+    final titleColor=item.titleTextColor??(hasArtwork?text:vibrant?Colors.white:text);
     return InkWell(
       onTap:available?()=>_runManagedAction(item):null,
-      borderRadius:BorderRadius.circular(_ui.cardRadius),
+      borderRadius:BorderRadius.circular(19),
       child:Opacity(
-        opacity:available?1:.78,
+        opacity:available?1:.84,
         child:Container(
-          height:120,
+          height:116,
           clipBehavior:Clip.hardEdge,
           decoration:BoxDecoration(
-            color:background,
-            borderRadius:BorderRadius.circular(_ui.cardRadius),
-            border:Border.all(color:line),
-            boxShadow:light&&_ui.shadowLevel>0&&!kIsWeb?[BoxShadow(color:Colors.black.withValues(alpha:.035*_ui.shadowLevel),blurRadius:8.0*_ui.shadowLevel,offset:Offset(0,2.0*_ui.shadowLevel))]:null,
+            color:hasArtwork?background:fallbackColor,
+            borderRadius:BorderRadius.circular(19),
+            border:Border.all(color:line.withValues(alpha:.36)),
           ),
           child:Stack(children:[
-            if(item.imageUrl.isNotEmpty)Positioned.fill(child:IgnorePointer(child:Align(
+            if(!hasArtwork)Positioned(
+              right:-17,top:-28,
+              child:Container(width:115,height:110,decoration:BoxDecoration(
+                shape:BoxShape.circle,
+                gradient:RadialGradient(colors:[
+                  Colors.white.withValues(alpha:.60),
+                  Colors.white.withValues(alpha:0),
+                ]),
+              )),
+            ),
+            if(hasArtwork)Positioned.fill(child:IgnorePointer(child:Align(
               alignment:_managedAlignment(item.alignment),
               child:Transform.translate(
                 offset:Offset(item.imageX,item.imageY),
@@ -1542,57 +1612,42 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                   opacity:item.imageOpacity,
                   child:Image.network(
                     item.imageUrl,
-                    width:108*item.imageScale,
-                    height:70*item.imageScale,
+                    width:103*item.imageScale,
+                    height:99*item.imageScale,
                     fit:_managedFit(item.fit),
                     gaplessPlayback:true,
                     errorBuilder:(_,__,___)=>const SizedBox.shrink(),
                   ),
                 ),
               ),
-            ))),
-            Positioned(
-              left:11,top:11,
-              child:Container(
-                width:36,height:36,
-                decoration:BoxDecoration(color:iconColor.withValues(alpha:.12),borderRadius:BorderRadius.circular(11)),
-                child:item.iconUrl.isNotEmpty?Padding(padding:const EdgeInsets.all(7),child:Image.network(item.iconUrl,fit:BoxFit.contain,errorBuilder:(_,__,___)=>Icon(_managedIcon(item.icon),color:iconColor,size:21))):Icon(_managedIcon(item.icon),color:iconColor,size:21),
-              ),
-            ),
-            if(!available&&item.badgeText.isEmpty)Positioned(
-              right:10,top:10,
-              child:Container(
-                padding:const EdgeInsets.symmetric(horizontal:8,vertical:4),
-                decoration:BoxDecoration(
-                  color:purple.withValues(alpha:.10),
-                  borderRadius:BorderRadius.circular(9)),
-                child:const Text('Yakında',
-                  style:TextStyle(color:purple,fontSize:10,fontWeight:FontWeight.w800)),
-              ),
-            ),
-            if(item.badgeText.isNotEmpty)Positioned(
-              right:10,top:10,
-              child:Container(
-                padding:const EdgeInsets.symmetric(horizontal:7,vertical:3),
-                decoration:BoxDecoration(color:badgeColor.withValues(alpha:.12),borderRadius:BorderRadius.circular(8)),
-                child:Text(item.badgeText,style:TextStyle(color:item.badgeTextColor??badgeColor,fontSize:8,fontWeight:FontWeight.w900)),
-              ),
+            )))else Positioned(
+              left:14,right:14,top:12,height:69,
+              child:Icon(_managedIcon(item.icon),color:iconColor.withValues(alpha:.87),size:58),
             ),
             Positioned(
-              left:11,right:available?40:11,bottom:9,
-              child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisSize:MainAxisSize.min,children:[
-                Text(item.title,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:item.titleTextColor??text,fontSize:12.5,fontWeight:FontWeight.w900,height:1.05)),
-                const SizedBox(height:3),
-                Text(item.subtitle,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:item.subtitleTextColor??muted,fontSize:CepqarTheme.caption,height:1.08)),
-              ]),
+              left:0,right:0,bottom:0,height:44,
+              child:DecoratedBox(decoration:BoxDecoration(
+                gradient:LinearGradient(begin:Alignment.topCenter,end:Alignment.bottomCenter,
+                  colors:[Colors.transparent,
+                    hasArtwork?Colors.black.withValues(alpha:.34):
+                    (vibrant?const Color(0xFF3C168E):Colors.white).withValues(alpha:.18)]),
+              )),
             ),
-            if(available)Positioned(
-              right:9,bottom:9,
-              child:Container(
-                width:24,height:24,
-                decoration:BoxDecoration(color:(light?Colors.white:Colors.black).withValues(alpha:light ? .86 : .28),shape:BoxShape.circle),
-                child:Icon(Icons.chevron_right_rounded,color:text,size:16),
-              ),
+            Positioned(
+              left:8,right:21,bottom:12,
+              child:Text(item.title,maxLines:2,overflow:TextOverflow.ellipsis,
+                style:TextStyle(color:titleColor,fontSize:11.5,
+                  fontWeight:FontWeight.w900,height:1.05)),
+            ),
+            Positioned(right:6,bottom:7,child:Container(
+              width:21,height:21,
+              decoration:BoxDecoration(shape:BoxShape.circle,
+                color:Colors.white.withValues(alpha:.90)),
+              child:const Icon(Icons.chevron_right_rounded,color:OwnerReference.purple,size:16),
+            )),
+            if(!available&&item.badgeText.isEmpty)const Positioned(
+              top:5,right:5,
+              child:Text('Yakında',style:TextStyle(color:OwnerReference.purple,fontSize:8)),
             ),
           ]),
         ),
@@ -1606,14 +1661,14 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     return Column(children:[
       section('Hizmetler',widget.services),
       SizedBox(
-        height:124,
+        height:120,
         child:ListView.separated(
           scrollDirection:Axis.horizontal,
           physics:const BouncingScrollPhysics(),
           padding:const EdgeInsets.symmetric(horizontal:16),
           itemCount:items.length,
-          separatorBuilder:(_,__)=>const SizedBox(width:12),
-          itemBuilder:(_,index)=>SizedBox(width:174,child:_managedServiceCard(items[index])),
+          separatorBuilder:(_,__)=>const SizedBox(width:8),
+          itemBuilder:(_,index)=>SizedBox(width:105,child:_managedServiceCard(items[index])),
         ),
       ),
     ]);
@@ -1733,11 +1788,88 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     );
   }
 
+
+  // Empty published stories still have usable reference-shaped entry points.
+  // As soon as an admin publishes stories the real StoryService cards replace
+  // these links; no remote story or publishing contract is changed.
+  Widget _fallbackHighlights()=>Padding(
+    padding:const EdgeInsets.fromLTRB(16,15,0,0),
+    child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      Padding(
+        padding:const EdgeInsets.only(right:16),
+        child:Row(children:[
+          Expanded(child:Text('Öne Çıkanlar',
+            style:TextStyle(color:text,fontSize:18,fontWeight:FontWeight.w900))),
+          InkWell(
+            onTap:()=>widget.shortcut('services'),
+            child:const Row(children:[
+              Text('Tümünü Gör',style:TextStyle(color:OwnerReference.purple,fontSize:11,fontWeight:FontWeight.w800)),
+              Icon(Icons.chevron_right_rounded,color:OwnerReference.purple,size:17),
+            ]),
+          ),
+        ]),
+      ),
+      const SizedBox(height:8),
+      SizedBox(height:84,child:ListView(
+        scrollDirection:Axis.horizontal,
+        padding:const EdgeInsets.only(right:16),
+        children:[
+          _fallbackHighlight('Araç & QR','QR güvenliği',
+            Icons.qr_code_2_rounded,'qr_security',const Color(0xFF111C53),image:'assets/Arac.png'),
+          const SizedBox(width:8),
+          _fallbackHighlight('Otoparklar','Size yakın park yerleri',
+            Icons.local_parking_rounded,'parking',const Color(0xFF263048)),
+          const SizedBox(width:8),
+          _fallbackHighlight('Bakım İpuçları','Aracınız için',
+            Icons.build_rounded,'maintenance',const Color(0xFF44325D)),
+        ],
+      )),
+    ]),
+  );
+
+  Widget _fallbackHighlight(String title,String subtitle,IconData icon,
+      String action,Color color,{String? image})=>SizedBox(
+    width:137,
+    child:InkWell(
+      onTap:()=>widget.shortcut(action),
+      borderRadius:BorderRadius.circular(17),
+      child:ClipRRect(
+        borderRadius:BorderRadius.circular(17),
+        child:Stack(fit:StackFit.expand,children:[
+          ColoredBox(color:color),
+          if(image!=null)Opacity(opacity:.65,child:Image.asset(image,
+            fit:BoxFit.cover,errorBuilder:(_,__,___)=>const SizedBox.shrink())),
+          Positioned(right:9,top:6,child:Icon(icon,size:43,
+            color:Colors.white.withValues(alpha:.25))),
+          const DecoratedBox(decoration:BoxDecoration(
+            gradient:LinearGradient(
+              begin:Alignment.topCenter,end:Alignment.bottomCenter,
+              colors:[Colors.transparent,Color(0xEE07041B)],
+            ),
+          )),
+          Positioned(left:9,right:25,bottom:9,child:Column(
+            crossAxisAlignment:CrossAxisAlignment.start,mainAxisSize:MainAxisSize.min,
+            children:[
+              Text(title,maxLines:1,overflow:TextOverflow.ellipsis,
+                style:const TextStyle(color:Colors.white,fontSize:12,fontWeight:FontWeight.w900)),
+              const SizedBox(height:2),
+              Text(subtitle,maxLines:1,overflow:TextOverflow.ellipsis,
+                style:const TextStyle(color:Colors.white70,fontSize:9)),
+            ],
+          )),
+          const Positioned(right:7,bottom:8,
+            child:CircleAvatar(radius:11,backgroundColor:Color(0xEFFFFFFF),
+              child:Icon(Icons.chevron_right_rounded,color:OwnerReference.purple,size:16))),
+        ]),
+      ),
+    ),
+  );
+
   Widget _managedComponent(AppUiComponent component){
     final registry=OwnerHomeComponentRegistry({
       'weather_card':(_)=>header(),
       'vehicle_security':(_)=>Column(children:[const SizedBox(height:14),vehicleQr(),_motorcycleHomePanel()]),
-      'story_carousel':(_)=>stories.isEmpty?const SizedBox.shrink():OwnerStoryHighlights(
+      'story_carousel':(_)=>stories.isEmpty?_fallbackHighlights():OwnerStoryHighlights(
         items:stories,service:_storyService,shortcut:widget.shortcut,onChanged:()=>_loadStories(force:true),
       ),
       'quick_actions':(_)=>_appUiConfig.version<=1?quickRow():_managedQuickActions(),
@@ -1790,6 +1922,21 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     );
   }
 
+
+  // The reference's first four sections stay in visual order; admin config
+  // still controls each section's content, presence, and actions.
+  List<AppUiComponent> _referenceOrderedComponents(){
+    final visible=_appUiConfig.components.where(_referenceShows).toList();
+    if(_referenceCategory!='Tümü')return visible;
+    const order=['weather_card','quick_actions','services_grid','story_carousel'];
+    final result=<AppUiComponent>[];
+    for(final type in order){
+      result.addAll(visible.where((component)=>component.type==type));
+    }
+    result.addAll(visible.where((component)=>!order.contains(component.type)));
+    return result;
+  }
+
   @override Widget build(BuildContext context)=>ColoredBox(
     color:bg,
     child:RefreshIndicator(
@@ -1798,9 +1945,12 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         padding:EdgeInsets.zero,
         physics:const ClampingScrollPhysics(parent:AlwaysScrollableScrollPhysics()),
         children:[
-          for(final component in _appUiConfig.components)
-            if(_referenceShows(component))RepaintBoundary(key:ValueKey('sd-ui-${component.id}-${_appUiConfig.version}'),child:_managedComponent(component)),
-          const SizedBox(height:20),
+          for(final component in _referenceOrderedComponents())
+            RepaintBoundary(
+              key:ValueKey('sd-ui-${component.id}-${_appUiConfig.version}'),
+              child:_managedComponent(component),
+            ),
+          const SizedBox(height:16),
         ],
       ),
     ),
