@@ -641,17 +641,17 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         height:_narrowHome?101:109,
         child:Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
           Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-            Text(_welcomeText,style:TextStyle(color:_homeSecondary,fontSize:13)),
+            Text(_welcomeText,style:TextStyle(color:_homeSecondary,fontSize:_narrowHome?11:13)),
             const SizedBox(height:1),
             Text(_displayNameParts.join(' ').toUpperCase(),
               maxLines:2,overflow:TextOverflow.ellipsis,
               style:TextStyle(color:_homeText,fontWeight:FontWeight.w900,
-                fontSize:_narrowHome?19:22,height:1.05,letterSpacing:-.55)),
-            const SizedBox(height:4),
+                fontSize:_narrowHome?16.5:22,height:1.05,letterSpacing:-.55)),
+            SizedBox(height:_narrowHome?2:4),
             Text('Aracınızla dünya sizinle iletişimde.',
               maxLines:2,overflow:TextOverflow.ellipsis,
-              style:TextStyle(color:_homeSecondary,fontSize:10.7,height:1.18)),
-            const SizedBox(height:5),
+              style:TextStyle(color:_homeSecondary,fontSize:_narrowHome?9:10.7,height:_narrowHome?1.05:1.18)),
+            SizedBox(height:_narrowHome?2:5),
             if(premium)Container(
               padding:const EdgeInsets.symmetric(horizontal:12,vertical:3),
               decoration:BoxDecoration(color:_homePurple.withValues(alpha:.08),
