@@ -1,6 +1,16 @@
 import 'package:flutter/material.dart';
 import 'public_motorcycle_emergency_card.dart';
 
+// The server flag is consent-aware and has no personal information.
+// Retain the legacy motorcycle fallback until the VPS publishes this flag.
+bool motorcycleEmergencyEntryVisible({
+  required Map<String,dynamic> vehicle,
+  bool? published,
+}){
+  if(published!=null)return published;
+  return vehicle['vehicle_type']?.toString().trim().toLowerCase()=='motorcycle';
+}
+
 /// Visitor-facing emergency access never contains private data until the
 /// server verifies a matching, unexpired physical QR scan session.
 String motorcycleEmergencyAccessMessage({
