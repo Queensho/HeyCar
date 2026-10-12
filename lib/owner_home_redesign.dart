@@ -24,6 +24,7 @@ import 'owner_home_component_registry.dart';
 import 'vehicle_kind.dart';
 import 'motorcycle_profile_page.dart';
 import 'call_activity.dart';
+import 'owner_reference_design.dart';
 
 class OwnerHomeRedesign extends StatefulWidget{
   const OwnerHomeRedesign({
@@ -62,6 +63,8 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   bool loading=true;
   bool _refreshing=false;
   bool premium=false;
+  Map<String,dynamic>? _selectedVehicle;
+  String _referenceCategory='Tümü';
   int activeVehicleCount=0;
   bool qrProtection=false;
   WeatherSnapshot? weather;
@@ -429,6 +432,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       }
 
       var nextPremium=premium;
+      Map<String,dynamic>? nextSelectedVehicle=_selectedVehicle;
       var nextActiveVehicleCount=activeVehicleCount;
       var nextQrProtection=qrProtection;
       final vehiclesResponse=rs[1];
@@ -442,6 +446,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         for(final v in vehicles){
           if('${v['id']??''}'==vehicleId){selected=v;break;}
         }
+        nextSelectedVehicle=selected==null?null:Map<String,dynamic>.from(selected);
         nextQrProtection=selected!=null&&'${selected['qr_status']??''}'=='active'&&'${selected['qr_token']??''}'.trim().isNotEmpty;
       }
 
@@ -498,7 +503,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         final noticesChanged=jsonEncode(nextNotices)!=jsonEncode(notices);
         final valetChanged=jsonEncode(nextValet)!=jsonEncode(valetSession);
         final codeChanged=nextDeliveryCode!=valetDeliveryCode;
-        final ownerStateChanged=nextPremium!=premium||nextActiveVehicleCount!=activeVehicleCount||nextQrProtection!=qrProtection;
+        final ownerStateChanged=nextPremium!=premium||nextActiveVehicleCount!=activeVehicleCount||nextQrProtection!=qrProtection||jsonEncode(nextSelectedVehicle)!=jsonEncode(_selectedVehicle);
         if(noticesChanged||valetChanged||codeChanged||ownerStateChanged){
           setState((){
             notices=nextNotices;
@@ -507,6 +512,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             premium=nextPremium;
             activeVehicleCount=nextActiveVehicleCount;
             qrProtection=nextQrProtection;
+            _selectedVehicle=nextSelectedVehicle;
           });
         }
       }
@@ -584,80 +590,164 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     );
   }
 
-  Widget header()=>SizedBox(
-    height:274,
-    child:Stack(children:[
-      Positioned.fill(
-        child:Container(
-          decoration:BoxDecoration(
-            gradient:light
-              ?const LinearGradient(
-                  begin:Alignment.topLeft,
-                  end:Alignment.bottomRight,
-                  colors:[
-                    Color(0xFFFBFAFF),
-                    Color(0xFFF6F2FF),
-                    Color(0xFFEDE6FF),
-                    Color(0xFFF9F8FF),
-                  ],
-                  stops:[0,.38,.76,1],
-                )
-              :const LinearGradient(
-                  begin:Alignment.topLeft,
-                  end:Alignment.bottomRight,
-                  colors:[
-                    Color(0xFF050913),
-                    Color(0xFF0B1020),
-                    Color(0xFF17102E),
-                    Color(0xFF080B15),
-                  ],
-                  stops:[0,.40,.76,1],
-                ),
-          ),
-        ),
-      ),
-      Positioned(
-        right:-58,
-        top:-72,
-        child:Container(
-          width:250,
-          height:230,
-          decoration:BoxDecoration(
-            shape:BoxShape.circle,
-            gradient:RadialGradient(
-              colors:[
-                const Color(0xFF8D63FF).withValues(alpha:light ? .20 : .28),
-                const Color(0xFF8D63FF).withValues(alpha:light ? .08 : .12),
-                Colors.transparent,
-              ],
-              stops:const [0,.48,1],
-            ),
-          ),
-        ),
-      ),
-      Padding(
-        padding:EdgeInsets.fromLTRB(20,MediaQuery.paddingOf(context).top+8,18,0),
-        child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-          brand(),
-          const SizedBox(height:13),
-          WeatherCard(
-            headerActions: Row(mainAxisSize:MainAxisSize.min,children:[
-              Material(color:CepqarTheme.panel,shape:const CircleBorder(),child:SizedBox(width:42,height:42,child:InkWell(onTap:widget.notifications,customBorder:const CircleBorder(),child:Stack(children:[Center(child:Icon(Icons.notifications_none_rounded,color:text,size:25)),if(unread>0)const Positioned(right:6,top:6,child:CircleAvatar(radius:4.5,backgroundColor:Color(0xFFFF425D)))])))),
-              const SizedBox(width:8),
-              Container(width:42,height:42,alignment:Alignment.center,decoration:const BoxDecoration(shape:BoxShape.circle,gradient:LinearGradient(colors:[Color(0xFF5820C8),Color(0xFF8C4DFF)])),child:Text(initials,style:const TextStyle(color:Colors.white,fontSize:14,fontWeight:FontWeight.w900))),
-            ]),
-            displayName:OnboardingDraft.displayName.trim().isEmpty?'Araç Sahibi':OnboardingDraft.displayName.trim(),
-            premium:premium,
-            activeVehicleCount:activeVehicleCount,
-            qrProtection:qrProtection,
-            weather:weather,
-            loading:weatherLoading,
-            onVehicles:widget.vehicles,
-            onQrSecurity:()=>widget.shortcut('qr_security'),
-            onTap:_openWeatherDetails,
-          ),
+  String get _todayName=>const [
+    'Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi','Pazar'
+  ][DateTime.now().weekday-1];
+  String get _greeting{
+    final hour=DateTime.now().hour;
+    return hour<12?'Günaydın,':hour<18?'İyi günler,':'İyi akşamlar,';
+  }
+
+  Widget _heroBrandLogo(){
+    final data=_selectedVehicle?['brandLogo'];
+    final logo=data is Map?Map<String,dynamic>.from(data):<String,dynamic>{};
+    final storedPath='${logo['path']??''}'.trim();
+    final safePath=storedPath.startsWith('/uploads/vehicle-brands/')&&
+        !storedPath.contains('..')&&!storedPath.contains('?');
+    final url=safePath
+      ?OnboardingBackend.baseUrl.replaceFirst(RegExp(r'/$'),'')+storedPath
+      :'${logo['url']??''}'.trim();
+    final hasLogo=logo['available']==true&&url.startsWith('https://');
+    return Container(
+      height:105,width:135,
+      alignment:Alignment.center,
+      decoration:BoxDecoration(
+        borderRadius:BorderRadius.circular(23),
+        gradient:LinearGradient(colors:[
+          OwnerReference.lilac.withValues(alpha:.32),
+          const Color(0xFF9C70FF).withValues(alpha:.23),
         ]),
       ),
+      child:hasLogo
+        ?Image.network(url,height:85,width:112,fit:BoxFit.contain,
+            errorBuilder:(_,__,___)=>_logoFallback())
+        :_logoFallback(),
+    );
+  }
+  Widget _logoFallback()=>Icon(
+    VehicleKind.isMotorcycle(QrDraft.vehicleType)
+      ?Icons.two_wheeler_rounded:Icons.directions_car_rounded,
+    size:66,color:OwnerReference.purple.withValues(alpha:.56),
+  );
+
+  Widget _referenceFilters(){
+    const categories=['Tümü','Araç & QR','Hizmetler','Fırsatlar','Yakında'];
+    return SizedBox(
+      height:42,
+      child:ListView.separated(
+        padding:const EdgeInsets.symmetric(horizontal:17),
+        scrollDirection:Axis.horizontal,
+        itemCount:categories.length,
+        separatorBuilder:(_,__)=>const SizedBox(width:8),
+        itemBuilder:(_,index){
+          final name=categories[index],active=_referenceCategory==name;
+          return ChoiceChip(
+            label:Text(name),
+            selected:active,
+            onSelected:(_)=>setState(()=>_referenceCategory=name),
+            showCheckmark:false,
+            padding:const EdgeInsets.symmetric(horizontal:12,vertical:3),
+            labelStyle:TextStyle(
+              color:active?Colors.white:OwnerReference.subtitle,
+              fontWeight:FontWeight.w700,fontSize:12,
+            ),
+            selectedColor:OwnerReference.purple,
+            backgroundColor:OwnerReference.surface,
+            side:BorderSide.none,
+            shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(23)),
+          );
+        },
+      ),
+    );
+  }
+
+  bool _referenceShows(AppUiComponent component){
+    if(component.type=='weather_card')return true;
+    switch(_referenceCategory){
+      case 'Araç & QR':return component.type=='vehicle_security'||component.type=='quick_actions';
+      case 'Hizmetler':return component.type=='services_grid';
+      case 'Fırsatlar':return component.type=='story_carousel'||component.type=='promo_banner';
+      case 'Yakında':return component.type=='services_grid';
+      default:return true;
+    }
+  }
+
+  Widget header()=>Container(
+    padding:EdgeInsets.fromLTRB(18,MediaQuery.paddingOf(context).top+4,18,16),
+    decoration:BoxDecoration(
+      gradient:light?const LinearGradient(
+        begin:Alignment.topLeft,end:Alignment.bottomRight,
+        colors:[Color(0xFFFCFAFF),Color(0xFFF1EAFE),Color(0xFFF8F6FF)],
+      ):null,
+    ),
+    child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      OwnerReferenceHeader(
+        onNotifications:widget.notifications,
+        onSettings:()=>widget.shortcut('settings'),
+        unread:unread>0,
+      ),
+      const SizedBox(height:14),
+      Row(children:[
+        Container(
+          height:65,width:65,
+          alignment:Alignment.center,
+          decoration:BoxDecoration(
+            shape:BoxShape.circle,
+            gradient:const LinearGradient(colors:[
+              Color(0xFF4920B2),Color(0xFFA86CFF)]),
+            border:Border.all(color:Colors.white,width:3),
+          ),
+          child:Text(initials,style:const TextStyle(color:Colors.white,
+            fontSize:23,fontWeight:FontWeight.w900)),
+        ),
+        const SizedBox(width:12),
+        Expanded(child:Column(
+          crossAxisAlignment:CrossAxisAlignment.start,
+          children:[
+            Text(_greeting,style:TextStyle(color:muted,fontSize:13)),
+            Text(OnboardingDraft.displayName.trim().isEmpty
+              ?'Araç Sahibi':OnboardingDraft.displayName.trim(),
+              maxLines:2,overflow:TextOverflow.ellipsis,
+              style:TextStyle(color:text,fontSize:17,fontWeight:FontWeight.w900)),
+            Text('Aracınızla dünya sizinle iletişimde.',
+              maxLines:2,style:TextStyle(color:muted,fontSize:11.5)),
+          ],
+        )),
+        const SizedBox(width:8),
+        InkWell(
+          onTap:_openWeatherDetails,
+          borderRadius:BorderRadius.circular(20),
+          child:Container(
+            width:112,
+            padding:const EdgeInsets.symmetric(horizontal:9,vertical:11),
+            decoration:OwnerReference.card(radius:21),
+            child:Column(children:[
+              Icon(weather?.condition==WeatherCondition.rain
+                ?Icons.umbrella_rounded:Icons.wb_cloudy_rounded,
+                color:OwnerReference.purple,size:22),
+              Text(weather?.temperature==null?'--°':
+                '${weather!.temperature!.round()}°',
+                style:TextStyle(color:text,fontSize:25,fontWeight:FontWeight.w900)),
+              Text(weather?.location.isNotEmpty==true?weather!.location:'Konum',
+                maxLines:1,overflow:TextOverflow.ellipsis,
+                style:TextStyle(color:muted,fontSize:10)),
+            ]),
+          ),
+        ),
+      ]),
+      const SizedBox(height:14),
+      Row(crossAxisAlignment:CrossAxisAlignment.center,children:[
+        Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          Text('${DateTime.now().day.toString().padLeft(2,'0')}.${DateTime.now().month.toString().padLeft(2,'0')}',
+            style:const TextStyle(fontSize:58,fontWeight:FontWeight.w900,
+              letterSpacing:-2.5,height:1,color:OwnerReference.purple)),
+          Text(_todayName,style:TextStyle(color:text,
+            fontSize:27,fontWeight:FontWeight.w800)),
+        ])),
+        _heroBrandLogo(),
+      ]),
+      const SizedBox(height:16),
+      _referenceFilters(),
     ]),
   );
 
@@ -1698,7 +1788,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         physics:const ClampingScrollPhysics(parent:AlwaysScrollableScrollPhysics()),
         children:[
           for(final component in _appUiConfig.components)
-            RepaintBoundary(key:ValueKey('sd-ui-${component.id}-${_appUiConfig.version}'),child:_managedComponent(component)),
+            if(_referenceShows(component))RepaintBoundary(key:ValueKey('sd-ui-${component.id}-${_appUiConfig.version}'),child:_managedComponent(component)),
           const SizedBox(height:20),
         ],
       ),
