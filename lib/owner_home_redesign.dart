@@ -615,7 +615,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     final hasLogo=logo['available']==true&&url.startsWith('https://');
     final motorcycle=VehicleKind.isMotorcycle(QrDraft.vehicleType);
     return SizedBox(
-      height:124,width:204,
+      height:_shortViewport?106:124,width:204,
       child:hasLogo&&motorcycle
         ?Image.network(url,fit:BoxFit.contain,
             errorBuilder:(_,__,___)=>_logoFallback())
@@ -687,7 +687,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
 
 
   Widget header()=>Container(
-    padding:EdgeInsets.fromLTRB(18,MediaQuery.paddingOf(context).top+4,18,8),
+    padding:EdgeInsets.fromLTRB(18,MediaQuery.paddingOf(context).top+4,18,_shortViewport?6:8),
     decoration:light?const BoxDecoration(
       gradient:LinearGradient(
         begin:Alignment.topLeft,end:Alignment.bottomRight,
@@ -700,12 +700,12 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         onSettings:()=>widget.shortcut('settings'),
         unread:unread>0,
       ),
-      const SizedBox(height:6),
+      SizedBox(height:_shortViewport?4:6),
       SizedBox(
-        height:98,
+        height:_shortViewport?86:98,
         child:Row(children:[
           Container(
-            height:68,width:68,
+            height:_shortViewport?62:68,width:_shortViewport?62:68,
             alignment:Alignment.center,
             decoration:BoxDecoration(
               shape:BoxShape.circle,
@@ -737,7 +737,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             onTap:_openWeatherDetails,
             borderRadius:BorderRadius.circular(23),
             child:Container(
-              width:124,height:94,
+              width:124,height:_shortViewport?88:94,
               padding:const EdgeInsets.fromLTRB(10,9,8,8),
               decoration:OwnerReference.card(radius:23),
               child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[
@@ -773,15 +773,15 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
           ),
         ]),
       ),
-      const SizedBox(height:3),
-      SizedBox(height:122,child:Stack(clipBehavior:Clip.none,children:[
+      SizedBox(height:_shortViewport?2:3),
+      SizedBox(height:_shortViewport?104:122,child:Stack(clipBehavior:Clip.none,children:[
         if(light)Positioned(
           right:-18,top:0,bottom:-10,width:215,
           child:IgnorePointer(child:DecoratedBox(decoration:BoxDecoration(
             gradient:RadialGradient(
               center:const Alignment(.6,.25),radius:1.0,
-              colors:[const Color(0xFF8D44FF).withValues(alpha:.55),
-                const Color(0xFFCAA8FF).withValues(alpha:.23),
+              colors:[const Color(0xFF7E2EFF).withValues(alpha:.76),
+                const Color(0xFFB88CFF).withValues(alpha:.31),
                 const Color(0x008F55FF)],
             ),
           ))),
@@ -793,14 +793,14 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         Positioned(left:0,top:9,child:Column(
           crossAxisAlignment:CrossAxisAlignment.start,children:[
             Text('${DateTime.now().day.toString().padLeft(2,'0')}.${DateTime.now().month.toString().padLeft(2,'0')}',
-              style:const TextStyle(fontSize:57,fontWeight:FontWeight.w900,
+              style:const TextStyle(fontSize:_shortViewport?51:57,fontWeight:FontWeight.w900,
                 letterSpacing:-2.5,height:1.05,color:OwnerReference.purple)),
             Text(_todayName,style:TextStyle(color:text,
-              fontSize:27,fontWeight:FontWeight.w700,height:1.05)),
+              fontSize:_shortViewport?23:27,fontWeight:FontWeight.w700,height:1.05)),
           ],
         )),
       ])),
-      const SizedBox(height:7),
+      SizedBox(height:_shortViewport?4:7),
       _referenceFilters(),
     ]),
   );
