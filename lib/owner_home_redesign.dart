@@ -1786,11 +1786,88 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     );
   }
 
+
+  // Empty published stories still have usable reference-shaped entry points.
+  // As soon as an admin publishes stories the real StoryService cards replace
+  // these links; no remote story or publishing contract is changed.
+  Widget _fallbackHighlights()=>Padding(
+    padding:const EdgeInsets.fromLTRB(16,15,0,0),
+    child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      Padding(
+        padding:const EdgeInsets.only(right:16),
+        child:Row(children:[
+          Expanded(child:Text('Öne Çıkanlar',
+            style:TextStyle(color:text,fontSize:18,fontWeight:FontWeight.w900))),
+          InkWell(
+            onTap:()=>widget.shortcut('services'),
+            child:const Row(children:[
+              Text('Tümünü Gör',style:TextStyle(color:OwnerReference.purple,fontSize:11,fontWeight:FontWeight.w800)),
+              Icon(Icons.chevron_right_rounded,color:OwnerReference.purple,size:17),
+            ]),
+          ),
+        ]),
+      ),
+      const SizedBox(height:8),
+      SizedBox(height:84,child:ListView(
+        scrollDirection:Axis.horizontal,
+        padding:const EdgeInsets.only(right:16),
+        children:[
+          _fallbackHighlight('Araç & QR','QR güvenliği',
+            Icons.qr_code_2_rounded,'qr_security',const Color(0xFF111C53),image:'assets/Arac.png'),
+          const SizedBox(width:8),
+          _fallbackHighlight('Otoparklar','Size yakın park yerleri',
+            Icons.local_parking_rounded,'parking',const Color(0xFF263048)),
+          const SizedBox(width:8),
+          _fallbackHighlight('Bakım İpuçları','Aracınız için',
+            Icons.build_rounded,'maintenance',const Color(0xFF44325D)),
+        ],
+      )),
+    ]),
+  );
+
+  Widget _fallbackHighlight(String title,String subtitle,IconData icon,
+      String action,Color color,{String? image})=>SizedBox(
+    width:137,
+    child:InkWell(
+      onTap:()=>widget.shortcut(action),
+      borderRadius:BorderRadius.circular(17),
+      child:ClipRRect(
+        borderRadius:BorderRadius.circular(17),
+        child:Stack(fit:StackFit.expand,children:[
+          ColoredBox(color:color),
+          if(image!=null)Opacity(opacity:.65,child:Image.asset(image,
+            fit:BoxFit.cover,errorBuilder:(_,__,___)=>const SizedBox.shrink())),
+          Positioned(right:9,top:6,child:Icon(icon,size:43,
+            color:Colors.white.withValues(alpha:.25))),
+          const DecoratedBox(decoration:BoxDecoration(
+            gradient:LinearGradient(
+              begin:Alignment.topCenter,end:Alignment.bottomCenter,
+              colors:[Colors.transparent,Color(0xEE07041B)],
+            ),
+          )),
+          Positioned(left:9,right:25,bottom:9,child:Column(
+            crossAxisAlignment:CrossAxisAlignment.start,mainAxisSize:MainAxisSize.min,
+            children:[
+              Text(title,maxLines:1,overflow:TextOverflow.ellipsis,
+                style:const TextStyle(color:Colors.white,fontSize:12,fontWeight:FontWeight.w900)),
+              const SizedBox(height:2),
+              Text(subtitle,maxLines:1,overflow:TextOverflow.ellipsis,
+                style:const TextStyle(color:Colors.white70,fontSize:9)),
+            ],
+          )),
+          const Positioned(right:7,bottom:8,
+            child:CircleAvatar(radius:11,backgroundColor:Color(0xEFFFFFFF),
+              child:Icon(Icons.chevron_right_rounded,color:OwnerReference.purple,size:16))),
+        ]),
+      ),
+    ),
+  );
+
   Widget _managedComponent(AppUiComponent component){
     final registry=OwnerHomeComponentRegistry({
       'weather_card':(_)=>header(),
       'vehicle_security':(_)=>Column(children:[const SizedBox(height:14),vehicleQr(),_motorcycleHomePanel()]),
-      'story_carousel':(_)=>stories.isEmpty?const SizedBox.shrink():OwnerStoryHighlights(
+      'story_carousel':(_)=>stories.isEmpty?_fallbackHighlights():OwnerStoryHighlights(
         items:stories,service:_storyService,shortcut:widget.shortcut,onChanged:()=>_loadStories(force:true),
       ),
       'quick_actions':(_)=>_appUiConfig.version<=1?quickRow():_managedQuickActions(),
