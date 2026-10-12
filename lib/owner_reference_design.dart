@@ -46,7 +46,7 @@ class OwnerReferenceHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context){
     return SizedBox(
-      height:60,
+      height:52,
       child:Row(children:[
         Image.asset(
           CepqarTheme.isLight
