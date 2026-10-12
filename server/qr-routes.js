@@ -21,14 +21,14 @@ function validHexColor(value){return /^#[0-9A-Fa-f]{6}$/.test(String(value||''))
 // rider/contact details. The separate scan-session endpoint stays the sole
 // route that can reveal personal emergency information.
 async function publicEmergencyAvailable(pool,vehicle,status){
- if(status!=='active'||vehicle.vehicle_type!=='motorcycle'||!vehicle.vehicle_id)return false;
+ if(status!=='active'||!vehicle.vehicle_id)return false;
  try{
   const r=await pool.query(
    `SELECT EXISTS(
       SELECT 1 FROM vehicle_motorcycle_emergency_cards card
       JOIN vehicles owner_vehicle ON owner_vehicle.id=card.vehicle_id
         AND owner_vehicle.owner_id=card.owner_id
-      WHERE card.vehicle_id=$1 AND card.is_public=TRUE
+      WHERE card.vehicle_id=$1 AND owner_vehicle.vehicle_type='motorcycle' AND card.is_public=TRUE
     ) AS available`,[vehicle.vehicle_id]);
   return r.rows[0]?.available===true;
  }catch(_){
