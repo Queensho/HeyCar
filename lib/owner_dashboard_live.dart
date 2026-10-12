@@ -76,7 +76,7 @@ void action(String a){
         ),
         OwnerVehiclesPage(onVehicleChanged:_vehicleChanged,
           onNotifications:()=>setState(()=>tab=3),
-          onSettings:()=>setState(()=>tab=4)),
+          onSettings:()=>setState(()=>tab=4),unread:unread>0),
         OwnerServicesRedesign(
           onVale:()=>testAccount?Navigator.push(context,MaterialPageRoute(builder:(_)=>ValetInfoPage(vehicleId:vid))):null,
           onTowing:()=>action('towing'),
@@ -87,10 +87,11 @@ void action(String a){
           onNotifications:()=>setState(()=>tab=3),
           onSettings:()=>setState(()=>tab=4),
           onShortcut:action,
+          unread:unread>0,
           active:tab==2,
         ),
         OwnerNotificationsPage(key:ValueKey('notifications-$vid'),vehicleId:vid,plate:QrDraft.plate,active:tab==3,onSettings:()=>setState(()=>tab=4)),
-        OwnerSettingsPage(onOpenVehicles:()=>setState(()=>tab=1),onOpenQr:_qr,onOpenNotifications:()=>setState(()=>tab=3)),
+        OwnerSettingsPage(onOpenVehicles:()=>setState(()=>tab=1),onOpenQr:_qr,onOpenNotifications:()=>setState(()=>tab=3),unread:unread>0),
       ];
       return Scaffold(
         backgroundColor:OwnerReference.background,
