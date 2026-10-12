@@ -57,11 +57,13 @@ import sys
 live=Path(sys.argv[1]).read_text()
 latest=Path(sys.argv[2]).read_text()
 vehicle_routes=Path(sys.argv[3]).read_text()
-start='async function resolveExternal('
+legacy_start='function logoPayload('
+managed_start='const STORAGE_IMAGE='
 end='module.exports={normalizeBrand,findBrand,logoPayload,cachedLogo,resolveExternal,queueResolve,publicBase,imageMeta,assertPublicHttps};'
 imp="const {motorcycleLogoSource}=require('./motorcycle-brand-logo-source');"
 anchor="const crypto=require('crypto');"
 def segment(data):
+    start=managed_start if managed_start in data else legacy_start
     if data.count(start)!=1 or data.count(end)!=1:
         raise SystemExit('LOGO_RESOLVER_ANCHOR_MISMATCH')
     a,b=data.index(start),data.index(end)
@@ -116,4 +118,4 @@ for i in 1 2 3 4 5 6 7 8 9 10; do
 done
 [[ "$SUCCESS" == "1" ]] || { echo MOTORCYCLE_BRAND_LOGOS_HEALTH_FAILED >&2; exit 1; }
 echo "CEPQONTAG_MOTORCYCLE_BRAND_LOGOS_OK sha=$SHA backup=$BACKUP"
-echo 'RKS is resolved in the background. Refresh Vehicles after several seconds.'
+echo 'Cached images are served by the API. Refresh Vehicles after resolution.'

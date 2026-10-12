@@ -52,9 +52,32 @@ async function findBrand(pool,make,{create=true}={}){
   q=await pool.query(`INSERT INTO vehicle_brands(name,normalized_name,slug,logo_status,logo_source) VALUES($1,$2,$3,'pending','fallback') ON CONFLICT(normalized_name) DO UPDATE SET updated_at=NOW() RETURNING *`,[name,norm,slugify(name)]);
   return q.rows[0];
 }
+// Never advertise a missing server-side image as "ready". Older database
+// entries can retain ready status after a file was moved or lost.
+const STORAGE_IMAGE=/^[a-z0-9-]+-[a-f0-9]{12}\.(?:png|jpg|webp)$/i;
+function brandImageLocalPath(row){
+  const key=String(row?.logo_storage_key||'');
+  if(!key||!STORAGE_IMAGE.test(key))return '';
+  const directory=process.env.VEHICLE_BRAND_LOGO_DIR||'/opt/heycar/uploads/vehicle-brands';
+  return path.join(directory,key);
+}
+function localBrandLogoReady(row){
+  const key=String(row?.logo_storage_key||'');
+  if(!key)return true; // backwards compatibility: remote-only legacy URL
+  const location=brandImageLocalPath(row);
+  return Boolean(location&&fs.existsSync(location));
+}
 function logoPayload(row){
-  const ready=row&&row.logo_status==='ready'&&/^https:\/\//i.test(String(row.logo_url||''));
-  return {url:ready?String(row.logo_url):'',available:Boolean(ready),source:ready?String(row.logo_source||'external'):'fallback',brand:row?String(row.name):''};
+  const ready=Boolean(row&&row.logo_status==='ready'&&
+    /^https:\/\//i.test(String(row.logo_url||''))&&localBrandLogoReady(row));
+  const key=ready&&brandImageLocalPath(row)?String(row.logo_storage_key):'';
+  return {
+    url:ready?String(row.logo_url):'',
+    path:key?'/uploads/vehicle-brands/'+key:'',
+    available:ready,
+    source:ready?String(row.logo_source||'external'):'fallback',
+    brand:row?String(row.name):'',
+  };
 }
 async function cachedLogo(pool,make){
   try{return logoPayload(await findBrand(pool,make));}catch(e){console.error('brand logo cache lookup',e);return {url:'',available:false,source:'fallback',brand:String(make||'')};}
@@ -79,7 +102,7 @@ async function fetchImage(url,allowedHosts){
 }
 async function resolveExternal(pool,brand,base,{vehicleType='car'}={}){
   if(!brand||brand.logo_source==='manual')return brand;
-  if(brand.logo_status==='ready'&&brand.logo_url)return brand;
+  if(brand.logo_status==='ready'&&logoPayload(brand).available)return brand;
   const motorSource=motorcycleLogoSource(brand.name,vehicleType);
   // Revisit a cached car-dataset "not_found" once when a newly supported
   // motorcycle logo source becomes available, without hammering failures.
@@ -127,7 +150,8 @@ function queueResolve(pool,make,base,{vehicleType='car'}={}){
   const key=normalizeBrand(make);if(!key||inflight.has(key))return;
   const p=(async()=>{
     const b=await findBrand(pool,make);
-    if(b&&b.logo_status!=='ready')await resolveExternal(pool,b,base,{vehicleType});
+    if(b&&b.logo_source!=='manual'&&!logoPayload(b).available)
+      await resolveExternal(pool,b,base,{vehicleType});
   })()
     .catch(e=>console.error('vehicle brand logo resolve',key,e.message))
     .finally(()=>inflight.delete(key));

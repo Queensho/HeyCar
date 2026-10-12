@@ -49,6 +49,40 @@ test('existing backend returns only its cached ready logo to vehicle cards',()=>
     logo_source:'manual',logo_url:'https://example.org/manual.png'}).source,'manual');
 });
 
+test('ready images use their API-local route and missing files are not advertised',()=>{
+  const os=require('node:os');
+  const directory=fs.mkdtempSync(path.join(os.tmpdir(),'cepqontag-logos-'));
+  const old=process.env.VEHICLE_BRAND_LOGO_DIR;
+  process.env.VEHICLE_BRAND_LOGO_DIR=directory;
+  try{
+    const filename='benelli-0123456789ab.png';
+    const row={name:'Benelli',logo_status:'ready',
+      logo_source:'external',logo_storage_key:filename,
+      logo_url:'https://old-api.example.net/uploads/vehicle-brands/'+filename};
+    assert.equal(logoPayload(row).available,false);
+    fs.writeFileSync(path.join(directory,filename),Buffer.from('image-byte-fixture'));
+    const resolved=logoPayload(row);
+    assert.equal(resolved.available,true);
+    assert.equal(resolved.path,'/uploads/vehicle-brands/'+filename);
+    assert.equal(resolved.url,row.logo_url);
+    fs.unlinkSync(path.join(directory,filename));
+    assert.equal(logoPayload(row).available,false);
+    // Files outside the managed image directory are never advertised.
+    assert.equal(logoPayload({...row,logo_storage_key:'../secret'}).available,false);
+  }finally{
+    if(old==null)delete process.env.VEHICLE_BRAND_LOGO_DIR;
+    else process.env.VEHICLE_BRAND_LOGO_DIR=old;
+    fs.rmSync(directory,{force:true,recursive:true});
+  }
+});
+
+test('non-managed legacy image URLs remain backwards compatible',()=>{
+  const row={name:'BMW',logo_status:'ready',
+    logo_source:'external',logo_url:'https://legacy.example.net/car.png'};
+  assert.equal(logoPayload(row).available,true);
+  assert.equal(logoPayload(row).path,'');
+});
+
 test('brand service preserves admin manual-logo priority and only accepts verified image bytes',()=>{
   const source=fs.readFileSync(path.join(__dirname,'../vehicle-brand-logo-service.js'),'utf8');
   assert.match(source,/brand\.logo_source==='manual'/);

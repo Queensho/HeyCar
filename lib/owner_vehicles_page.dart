@@ -495,7 +495,14 @@ class _VehicleBrandLogo extends StatelessWidget{
   @override Widget build(BuildContext context){
     final raw=vehicle['brandLogo'];
     final logo=raw is Map?Map<String,dynamic>.from(raw):const <String,dynamic>{};
-    final url='${logo['url']??''}'.trim();
+    // Use the same API host used to load the vehicles.
+    final imagePath=(logo['path']??'').toString().trim();
+    final safeImagePath=imagePath.startsWith('/uploads/vehicle-brands/')
+        && !imagePath.contains('..')
+        && !imagePath.contains('?')
+        && !imagePath.contains('#');
+    final apiBase=OnboardingBackend.baseUrl.replaceFirst(RegExp(r'/$'),'');
+    final url=safeImagePath?apiBase+imagePath:(logo['url']??'').toString().trim();
     final letter=make.trim().isEmpty?'?':make.trim().characters.first.toUpperCase();
     Widget fallback()=>Container(
       width:72,height:72,alignment:Alignment.center,
