@@ -642,7 +642,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   Widget _referenceFilters(){
     const categories=['Tümü','Araç & QR','Hizmetler','Fırsatlar','Yakında'];
     return SizedBox(
-      height:38,
+      height:36,
       child:ListView.separated(
         padding:const EdgeInsets.symmetric(horizontal:16),
         scrollDirection:Axis.horizontal,
@@ -655,6 +655,8 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             selected:active,
             onSelected:(_)=>setState(()=>_referenceCategory=name),
             showCheckmark:false,
+            materialTapTargetSize:MaterialTapTargetSize.shrinkWrap,
+            visualDensity:VisualDensity.compact,
             padding:const EdgeInsets.symmetric(horizontal:11,vertical:1),
             labelStyle:TextStyle(
               color:active?Colors.white:OwnerReference.subtitle,
@@ -683,7 +685,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
 
 
   Widget header()=>Container(
-    padding:EdgeInsets.fromLTRB(18,MediaQuery.paddingOf(context).top+4,18,10),
+    padding:EdgeInsets.fromLTRB(18,MediaQuery.paddingOf(context).top+4,18,8),
     decoration:light?const BoxDecoration(
       gradient:LinearGradient(
         begin:Alignment.topLeft,end:Alignment.bottomRight,
@@ -696,9 +698,9 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         onSettings:()=>widget.shortcut('settings'),
         unread:unread>0,
       ),
-      const SizedBox(height:8),
+      const SizedBox(height:6),
       SizedBox(
-        height:103,
+        height:98,
         child:Row(children:[
           Container(
             height:68,width:68,
@@ -770,7 +772,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         ]),
       ),
       const SizedBox(height:3),
-      SizedBox(height:132,child:Stack(clipBehavior:Clip.none,children:[
+      SizedBox(height:122,child:Stack(clipBehavior:Clip.none,children:[
         if(light)Positioned(
           right:-18,top:0,bottom:-10,width:215,
           child:IgnorePointer(child:DecoratedBox(decoration:BoxDecoration(
@@ -796,7 +798,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
           ],
         )),
       ])),
-      const SizedBox(height:9),
+      const SizedBox(height:7),
       _referenceFilters(),
     ]),
   );
