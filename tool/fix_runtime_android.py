@@ -8,7 +8,16 @@ new = "return Scaffold(backgroundColor:_bg,body:SafeArea(bottom:false,child:Refr
 if old in s:
     s = s.replace(old, new, 1)
 elif new not in s:
-    raise SystemExit('owner notifications root pattern not found')
+    # The five-screen reference UI already uses Scaffold as the page root.
+    # Do not fail the Android pipeline merely because the older exact
+    # pre-redesign ColoredBox expression is no longer present.
+    modern_scaffold = (
+        'return Scaffold(backgroundColor:OwnerReference.background,body:SafeArea(' in s
+        and 'Widget _card(Map<String,dynamic> n)' in s
+        and 'Material(color:Colors.transparent' in s
+    )
+    if not modern_scaffold:
+        raise SystemExit('owner notifications root pattern not found')
 p.write_text(s)
 
 # Android notification small icon must be a drawable. The full-colour Cepqar launcher
