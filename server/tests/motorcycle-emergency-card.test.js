@@ -8,6 +8,7 @@ process.env.OWNER_AUTH_SECRET='emergency-test-secret-longer-than-thirty-two-char
 
 const register=require('../motorcycle-emergency-routes');
 const {validateEmergencyCard}=register;
+const {publicEmergencyAvailable}=require('../qr-routes');
 const {hashScanToken}=require('../scan-session-service');
 const OWNER='11111111-1111-4111-8111-111111111111';
 const BIKE='22222222-2222-4222-8222-222222222222';
@@ -159,4 +160,26 @@ test('transfer, car conversion and public QR URL never leak prior emergency deta
   assert.match(transfer,/DELETE FROM vehicle_motorcycle_emergency_cards/);
   assert.match(manage,/vehicleType!=='motorcycle'/);
   assert.doesNotMatch(qr,/emergency_contact_phone|rider_full_name|blood_group/);
+});
+
+test('QR resolver reports only opt-in emergency availability',async()=>{
+  const queries=[];
+  const livePool={async query(sql,params){
+    queries.push({sql,params});
+    return {rows:[{available:true}]};
+  }};
+  const vehicle={vehicle_id:BIKE,vehicle_type:'motorcycle'};
+  assert.equal(await publicEmergencyAvailable(livePool,vehicle,'active'),true);
+  assert.equal(queries.length,1);
+  assert.deepEqual(queries[0].params,[BIKE]);
+  assert.match(queries[0].sql,/card\.is_public=TRUE/);
+  assert.match(queries[0].sql,/owner_vehicle\.owner_id=card\.owner_id/);
+  assert.doesNotMatch(queries[0].sql,/rider_full_name|blood_group|emergency_contact_phone/);
+  assert.equal(await publicEmergencyAvailable(livePool,vehicle,'paused'),false);
+  assert.equal(await publicEmergencyAvailable(livePool,{...vehicle,vehicle_type:'car'},'active'),false);
+  assert.equal(queries.length,1);
+  const missingTable={query:async()=>{throw Error('undefined_table');}};
+  assert.equal(await publicEmergencyAvailable(missingTable,vehicle,'active'),false);
+  const unpublished={query:async()=>({rows:[{available:false}]})};
+  assert.equal(await publicEmergencyAvailable(unpublished,vehicle,'active'),false);
 });
