@@ -50,7 +50,7 @@ class MotorcycleLogoDeployTest(unittest.TestCase):
     def test_preserves_other_live_functions_and_inserts_logo_resolver(self):
         latest=SERVICE.read_text()
         anchor="const {motorcycleLogoSource}=require('./motorcycle-brand-logo-source');"
-        from_part="function logoPayload("
+        from_part="const STORAGE_IMAGE="
         to_part="module.exports={normalizeBrand,findBrand,logoPayload,cachedLogo,resolveExternal,queueResolve,publicBase,imageMeta,assertPublicHttps};"
         x,y=latest.index(from_part),latest.index(to_part)
         old=latest.replace(anchor,"")
