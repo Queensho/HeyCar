@@ -23,19 +23,33 @@ const _purple = Color(0xFF7A35F5);
 const _gold = Color(0xFFFFB51B);
 const _danger = Color(0xFFFF405D);
 
-class OwnerSettingsPage extends StatelessWidget {
+class OwnerSettingsPage extends StatefulWidget {
   const OwnerSettingsPage({
     super.key,
     this.onOpenVehicles,
     this.onOpenQr,
     this.onOpenNotifications,
     this.unread=false,
+    this.active=false,
   });
 
   final VoidCallback? onOpenVehicles;
   final VoidCallback? onOpenQr;
   final VoidCallback? onOpenNotifications;
-  final bool unread;
+  final bool unread,active;
+
+  @override State<OwnerSettingsPage> createState()=>_OwnerSettingsPageState();
+}
+
+class _OwnerSettingsPageState extends State<OwnerSettingsPage>{
+  late Future<({int? count,int? drivers,bool? premium})> _statsFuture;
+  @override void initState(){super.initState();_statsFuture=_vehicleStats();}
+  @override void didUpdateWidget(covariant OwnerSettingsPage oldWidget){
+    super.didUpdateWidget(oldWidget);
+    if(widget.active&&!oldWidget.active){
+      setState(()=>_statsFuture=_vehicleStats());
+    }
+  }
 
   void _push(BuildContext context, Widget page) {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
@@ -262,10 +276,10 @@ class OwnerSettingsPage extends StatelessWidget {
         onTap:()=>_openQrSecurity(context)),
       (icon:Icons.directions_car_outlined,title:'Araçlarım',
         subtitle:'Araç ekle, düzenle, QR ayarları',
-        onTap:onOpenVehicles??()=>_push(context,const OwnerVehicleSummaryPage())),
+        onTap:widget.onOpenVehicles??()=>_push(context,const OwnerVehicleSummaryPage())),
       (icon:Icons.groups_outlined,title:'Sürücüler',
         subtitle:'Sürücü ekle, yetkilendir',
-        onTap:onOpenVehicles??()=>_push(context,const OwnerVehicleSummaryPage())),
+        onTap:widget.onOpenVehicles??()=>_push(context,const OwnerVehicleSummaryPage())),
       (icon:Icons.workspace_premium_outlined,title:'Premium',
         subtitle:'Paketler ve üyelik yönetimi',
         onTap:()=>_showPremium(context)),
@@ -352,17 +366,17 @@ class OwnerSettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context){
-    final statsFuture=_vehicleStats();
+    final statsFuture=_statsFuture;
     return Scaffold(
       backgroundColor:OwnerReference.background,
       body:SafeArea(bottom:false,child:ListView(
         padding:const EdgeInsets.fromLTRB(17,7,17,28),
         children:[
           OwnerReferenceHeader(
-            onNotifications:onOpenNotifications??
+            onNotifications:widget.onOpenNotifications??
               ()=>_push(context,const OwnerNotificationSettingsPage()),
             onSettings:()=>_appSettings(context),
-            unread:unread,
+            unread:widget.unread,
           ),
           const SizedBox(height:21),
           Row(children:[
