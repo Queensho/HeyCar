@@ -85,8 +85,9 @@ class _OwnerStoryHighlightsState extends State<OwnerStoryHighlights>{
   @override Widget build(BuildContext context){
     final g=groups;
     if(g.isEmpty)return const SizedBox.shrink();
+    final compact=MediaQuery.sizeOf(context).height<790;
     return Padding(
-      padding:const EdgeInsets.fromLTRB(16,15,0,0),
+      padding:EdgeInsets.fromLTRB(16,compact?8:15,0,0),
       child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
         Padding(
           padding:const EdgeInsets.only(right:16),
@@ -106,9 +107,9 @@ class _OwnerStoryHighlightsState extends State<OwnerStoryHighlights>{
             ),
           ]),
         ),
-        const SizedBox(height:8),
+        SizedBox(height:compact?4:8),
         SizedBox(
-          height:84,
+          height:compact?76:84,
           child:ListView.separated(
             scrollDirection:Axis.horizontal,
             physics:const BouncingScrollPhysics(),
