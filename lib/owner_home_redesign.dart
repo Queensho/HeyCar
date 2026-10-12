@@ -25,6 +25,7 @@ import 'vehicle_kind.dart';
 import 'owner_vehicle_brand_mark.dart';
 import 'owner_quick_access_panel.dart';
 import 'owner_monthly_summary_panel.dart';
+import 'owner_home_services_promo.dart';
 import 'motorcycle_profile_page.dart';
 import 'call_activity.dart';
 
@@ -1337,108 +1338,6 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   );
 
 
-  Widget _premiumServiceTile({
-    required String title,required IconData icon,
-    required Color tint,required bool highlighted,
-    VoidCallback? onTap,String iconUrl='',String imageUrl='',
-    double imageScale=1, double imageOpacity=1,
-    double imageX=0,double imageY=0,BoxFit imageFit=BoxFit.contain,
-    String badge='',Color? titleColor,
-  })=>Material(
-    color:highlighted?_homePurple:_homeCardBackground,
-    borderRadius:BorderRadius.circular(19),
-    child:InkWell(
-      onTap:onTap,
-      borderRadius:BorderRadius.circular(19),
-      child:Container(
-        height:75,
-        clipBehavior:Clip.antiAlias,
-        decoration:BoxDecoration(
-          borderRadius:BorderRadius.circular(19),
-          border:Border.all(color:highlighted?_homePurple:
-            (light?const Color(0xFFF0F0F6):line)),
-          boxShadow:light?[const BoxShadow(
-            color:Color(0x09101426),blurRadius:8)]:null),
-        child:Stack(children:[
-          if(imageUrl.isNotEmpty)Positioned.fill(
-            child:IgnorePointer(child:Opacity(
-              opacity:imageOpacity.clamp(0,1).toDouble(),
-              child:Transform.translate(
-                offset:Offset(imageX,imageY),
-                child:Image.network(imageUrl,fit:imageFit,
-                  width:78*imageScale,height:62*imageScale,
-                  errorBuilder:(_,__,___)=>const SizedBox.shrink()),
-              ),
-            )),
-          ),
-          Column(mainAxisAlignment:MainAxisAlignment.center,children:[
-            if(imageUrl.isEmpty)Container(
-              width:36,height:36,
-              decoration:BoxDecoration(
-                color:highlighted?Colors.white.withValues(alpha:.13):
-                  tint.withValues(alpha:.11),
-                shape:BoxShape.circle),
-              child:iconUrl.isNotEmpty
-                ?Padding(padding:const EdgeInsets.all(7),
-                  child:Image.network(iconUrl,fit:BoxFit.contain,
-                    errorBuilder:(_,__,___)=>Icon(icon,
-                      color:highlighted?Colors.white:tint,size:23)))
-                :Icon(icon,color:highlighted?Colors.white:tint,size:23),
-            )else const SizedBox(height:35),
-            const SizedBox(height:5),
-            Padding(
-              padding:const EdgeInsets.symmetric(horizontal:2),
-              child:Text(title,maxLines:2,overflow:TextOverflow.ellipsis,
-                textAlign:TextAlign.center,
-                style:TextStyle(color:titleColor??
-                  (highlighted?Colors.white:_homeText),
-                  fontSize:_narrowHome?10:11.5,
-                  fontWeight:FontWeight.w800,height:1.05)),
-            ),
-          ]),
-          if(onTap==null||badge.isNotEmpty)Positioned(
-            top:3,right:4,
-            child:Container(
-              padding:const EdgeInsets.symmetric(horizontal:3,vertical:1),
-              decoration:BoxDecoration(
-                color:highlighted?Colors.white.withValues(alpha:.17):
-                  _homePurple.withValues(alpha:.07),
-                borderRadius:BorderRadius.circular(5)),
-              child:Text(badge.isNotEmpty?badge:'Yakında',
-                maxLines:1,overflow:TextOverflow.ellipsis,
-                style:TextStyle(color:highlighted?Colors.white:_homePurple,
-                  fontSize:6.5,fontWeight:FontWeight.w700)),
-            ),
-          ),
-        ]),
-      ),
-    ),
-  );
-
-  Widget servicesGrid()=>Column(children:[
-    _homeSectionHeading('Hizmetler',widget.services,top:11),
-    Padding(
-      padding:const EdgeInsets.symmetric(horizontal:16),
-      child:Row(children:[
-        Expanded(child:_premiumServiceTile(title:'Çekici',
-          icon:Icons.fire_truck_rounded,tint:_homePurple,highlighted:true,
-          onTap:testAccount?()=>widget.shortcut('towing'):null)),
-        const SizedBox(width:7),
-        Expanded(child:_premiumServiceTile(title:'Yol Yardım',
-          icon:Icons.build_rounded,tint:_homePurple,highlighted:false,
-          onTap:testAccount?()=>widget.shortcut('roadside_help'):null)),
-        const SizedBox(width:7),
-        Expanded(child:_premiumServiceTile(title:'Vale',
-          icon:Icons.support_agent_rounded,tint:_homePurple,highlighted:false,
-          onTap:testAccount?widget.services:null)),
-        const SizedBox(width:7),
-        Expanded(child:_premiumServiceTile(title:'Fırsatlar',
-          icon:Icons.local_offer_rounded,tint:const Color(0xFFF6A022),
-          highlighted:false,onTap:testAccount?()=>widget.shortcut('offers'):null)),
-      ]),
-    ),
-  ]);
-
   IconData _managedIcon(String key)=>switch(key){
     'tow_truck'=>Icons.fire_truck_rounded,
     'sos'=>Icons.sos_rounded,
@@ -1492,48 +1391,26 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   }
 
 
-  Widget _managedServiceCard(AppUiServiceItem item){
-    final available=(!item.testOnly||testAccount)&&item.action!='NONE';
-    final highlight=item.id=='towing';
-    final color=_ui.token(item.iconToken);
-    return _premiumServiceTile(
-      title:item.title,icon:_managedIcon(item.icon),tint:color,
-      highlighted:highlight,
-      iconUrl:item.iconUrl,
-      imageUrl:item.imageUrl,
-      imageScale:item.imageScale,
-      imageOpacity:item.imageOpacity,
-      imageX:item.imageX,imageY:item.imageY,
-      imageFit:_managedFit(item.fit),
-      titleColor:item.titleTextColor,
-      badge:item.badgeText,
-      onTap:available?()=>_runManagedAction(item):null,
-    );
-  }
-
-  Widget _managedServices(){
-    final items=_appUiConfig.services;
-    if(items.isEmpty)return const SizedBox.shrink();
+  Widget _homeServicesPromo(){
+    final services=_appUiConfig.services;
+    if(services.isEmpty)return const SizedBox.shrink();
     return Column(children:[
       _homeSectionHeading('Hizmetler',widget.services,top:11),
-      Padding(padding:const EdgeInsets.symmetric(horizontal:16),
-        child:LayoutBuilder(builder:(context,c){
-          final width=(c.maxWidth-21)/4;
-          return SizedBox(
-            height:75,
-            child:ListView.separated(
-              scrollDirection:Axis.horizontal,
-              physics:const BouncingScrollPhysics(),
-              itemCount:items.length,
-              separatorBuilder:(_,__)=>const SizedBox(width:7),
-              itemBuilder:(_,i)=>SizedBox(
-                width:width,child:_managedServiceCard(items[i])),
-            ),
-          );
-        }),
+      const SizedBox(height:3),
+      Padding(
+        padding:const EdgeInsets.symmetric(horizontal:16),
+        child:OwnerHomeServicesPromo(
+          services:services,
+          tokens:_ui,
+          onOpenServices:widget.services,
+        ),
       ),
+      // The monthly summary adds 12dp at its top. Together this is a
+      // compact 17dp separation instead of extending the home layout.
+      const SizedBox(height:5),
     ]);
   }
+
 
   Widget _managedBanner(AppUiBanner banner){
     final base=_ui.token(banner.backgroundToken);
@@ -1658,7 +1535,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       ),
       'quick_actions':(_)=>_appUiConfig.version<=1?quickRow():_managedQuickActions(),
       'monthly_summary':(_)=>monthly(),
-      'services_grid':(_)=>_appUiConfig.version<=1?Column(children:[section('Hizmetler',widget.services),servicesGrid()]):_managedServices(),
+      'services_grid':(_)=>_homeServicesPromo(),
       'promo_banner':(_)=>_appUiConfig.banners.isEmpty?const SizedBox.shrink():_managedBanner(_appUiConfig.banners.first),
       'recent_notifications':(_)=>Column(children:[section('Son Bildirimler',widget.notifications),latestCard()]),
       'image_banner':(x)=>_directBanner(x),
