@@ -57,6 +57,8 @@ jobs:
         run: flutter test test/owner_quick_access_panel_test.dart
       - name: Verify owner pastel monthly statistics panel
         run: flutter test test/owner_monthly_summary_panel_test.dart
+      - name: Verify compact admin-driven home services promo
+        run: flutter test test/owner_home_services_promo_test.dart
       - name: Verify offline brand SVG marks and vehicle alias matching
         run: flutter test test/owner_vehicle_brand_mark_test.dart
       - name: Verify car/motorcycle registration and active vehicle UI
