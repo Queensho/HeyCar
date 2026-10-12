@@ -23,6 +23,25 @@ void main(){
     'Renault':'renault',
     'renault otomobil':'renault',
     'FORD':'ford',
+    'Alfa Romeo':'alfa-romeo',
+    'ALFA-ROMEO':'alfa-romeo',
+    'AlfaRomeo':'alfa-romeo',
+    'Alfa Romeo S.p.A.':'alfa-romeo',
+    'Honda':'honda',
+    'Hyundai':'hyundai',
+    'KIA':'kia',
+    'Peugeot':'peugeot',
+    'Citroën':'citroen',
+    'Mazda':'mazda',
+    'Land Rover':'land-rover',
+    'Rolls Royce':'rolls-royce',
+    'Ducati':'ducati',
+    'KTM':'ktm',
+    'Vespa':'vespa',
+    'Fiat':'fiat',
+    'Chevrolet':'chevrolet',
+    'Nissan':'nissan',
+    'Porsche':'porsche',
   };
 
   test('aliases resolve to local monochrome marks',(){
@@ -37,8 +56,17 @@ void main(){
     expect(VehicleBrandMarkResolver.assetFor('Bilinmeyen Marka'),isNull);
   });
 
-  testWidgets('every vehicle SVG is bundled and single-tone transparent',(tester)async{
-    for(final slug in aliases.values.toSet()){
+  // Every supported brand must have a real bundled vector asset, not just
+  // a Dart mapping to a missing file.
+  const allSlugs=<String>{
+    'acura','alfa-romeo','audi','bentley','bmw','chevrolet','citroen','dacia',
+    'ducati','ferrari','fiat','ford','honda','hyundai','jaguar','jeep','kia',
+    'ktm','land-rover','lexus','maserati','mazda','mercedes-benz','mini',
+    'mitsubishi','nissan','opel','peugeot','porsche','renault','rolls-royce',
+    'seat','skoda','subaru','suzuki','tesla','toyota','vespa','volkswagen','volvo',
+  };
+  testWidgets('all 40 vehicle SVGs are bundled and single-tone transparent',(tester)async{
+    for(final slug in allSlugs){
       final source=await rootBundle.loadString(
         'assets/vehicle_brand_logos/'+slug+'.svg');
       expect(source,contains('<svg'));
@@ -46,6 +74,18 @@ void main(){
       expect(source.toLowerCase(),isNot(contains('<image')));
       expect(source.toLowerCase(),isNot(contains('<script')));
     }
+  });
+
+  testWidgets('unknown motorcycle uses motorcycle fallback, not car',(tester)async{
+    await tester.pumpWidget(const MaterialApp(home:Scaffold(
+      body:Center(child:SizedBox(width:140,height:120,
+        child:OwnerVehicleBrandMark(make:'RKS',isMotorcycle:true))),
+    )));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('owner-brand-logo-generic')),findsOneWidget);
+    final icon=tester.widget<Icon>(find.byKey(const ValueKey('owner-brand-logo-generic')));
+    expect(icon.icon,Icons.two_wheeler_rounded);
+    expect(tester.takeException(),isNull);
   });
 
   for(final width in <double>[320,393,430]){
