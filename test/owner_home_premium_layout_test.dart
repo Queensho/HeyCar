@@ -45,6 +45,8 @@ void main(){
       expect(find.byKey(const ValueKey('owner-brand-logo-bmw')),findsOneWidget);
       expect(find.byKey(const ValueKey('premium-home-qr-security')),findsOneWidget);
       expect(find.text('Hızlı Erişim'),findsOneWidget);
+      expect(find.byKey(const ValueKey('owner-home-services-promo')),findsOneWidget);
+      expect(find.text('CepQontag Hizmetleri'),findsOneWidget);
       expect(find.byKey(const ValueKey('owner-home-quick-panel')),findsOneWidget);
       expect(find.byKey(const ValueKey('owner-quick-parking')),findsOneWidget);
       expect(tester.getTopLeft(find.byKey(
