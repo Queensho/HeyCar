@@ -1056,176 +1056,168 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     );
   }
 
-  Widget quick(OwnerShortcutDefinition d)=>Expanded(child:InkWell(
-    onTap:()=>widget.shortcut(d.action),
-    onLongPress:_editQuickAccess,
-    borderRadius:BorderRadius.circular(17),
+
+  Widget _premiumQuickTile({
+    required String title,required IconData icon,required Color color,
+    required VoidCallback onTap,VoidCallback? onLongPress,String iconUrl='',
+  })=>Expanded(child:InkWell(
+    onTap:onTap,onLongPress:onLongPress,
+    borderRadius:BorderRadius.circular(19),
     child:Container(
-      height:78,
-      decoration:card(),
+      height:74,
+      decoration:BoxDecoration(color:_homeCardBackground,
+        borderRadius:BorderRadius.circular(19),
+        border:Border.all(color:light?const Color(0xFFEDEDF5):line),
+        boxShadow:light?[const BoxShadow(
+          color:Color(0x0D101426),blurRadius:9,offset:Offset(0,3))]:null),
       child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[
         Container(
-          width:36,height:36,
-          decoration:BoxDecoration(color:_quickColor(d.id).withValues(alpha:light ? .11 : .17),shape:BoxShape.circle),
-          child:Icon(d.icon,color:_quickColor(d.id),size:20),
+          width:35,height:35,
+          decoration:BoxDecoration(color:color.withValues(alpha:.11),
+            shape:BoxShape.circle),
+          child:iconUrl.isNotEmpty
+            ?Padding(padding:const EdgeInsets.all(7),
+              child:Image.network(iconUrl,fit:BoxFit.contain,
+                errorBuilder:(_,__,___)=>Icon(icon,color:color,size:20)))
+            :Icon(icon,color:color,size:20),
         ),
-        const SizedBox(height:6),
+        const SizedBox(height:4),
         Padding(
-          padding:const EdgeInsets.symmetric(horizontal:3),
-          child:Text(d.title,maxLines:1,overflow:TextOverflow.ellipsis,textAlign:TextAlign.center,style:TextStyle(color:text,fontSize:CepqarTheme.caption,fontWeight:FontWeight.w800)),
+          padding:const EdgeInsets.symmetric(horizontal:2),
+          child:Text(title,maxLines:2,overflow:TextOverflow.ellipsis,
+            textAlign:TextAlign.center,style:TextStyle(color:_homeText,
+              fontSize:_narrowHome?9.2:10.7,fontWeight:FontWeight.w800,height:1.03)),
         ),
       ]),
     ),
   ));
 
-  Widget quickRow(){
-    final items=quickAccessIds.map(_quickDef).whereType<OwnerShortcutDefinition>().take(maxOwnerShortcuts).toList();
-    return Padding(
-      padding:const EdgeInsets.fromLTRB(16,10,16,0),
-      child:Column(children:[
-        Row(children:[
-          Expanded(child:Text('Hızlı Erişim',style:TextStyle(color:text,fontSize:CepqarTheme.cardTitle,fontWeight:FontWeight.w900))),
-          InkWell(
-            onTap:_editQuickAccess,
-            borderRadius:BorderRadius.circular(12),
-            child:Padding(
-              padding:const EdgeInsets.symmetric(horizontal:5,vertical:4),
-              child:Row(children:[
-                const Icon(Icons.tune_rounded,color:purple,size:15),
-                const SizedBox(width:3),
-                Text('Düzenle',style:TextStyle(color:purple,fontSize:CepqarTheme.caption,fontWeight:FontWeight.w900)),
-              ]),
-            ),
+  Widget _homeSectionHeading(String title,VoidCallback tap,{double top=12})=>
+    Padding(
+      padding:EdgeInsets.fromLTRB(16,top,16,7),
+      child:Row(children:[
+        Expanded(child:Text(title,style:TextStyle(
+          color:_homeText,fontSize:17,fontWeight:FontWeight.w900))),
+        InkWell(
+          onTap:tap,borderRadius:BorderRadius.circular(10),
+          child:Padding(
+            padding:const EdgeInsets.symmetric(vertical:4,horizontal:3),
+            child:Row(mainAxisSize:MainAxisSize.min,children:[
+              Text('Tümünü Gör',style:TextStyle(color:_homeSecondary,
+                fontSize:10.5,fontWeight:FontWeight.w700)),
+              Icon(Icons.chevron_right_rounded,color:_homeSecondary,size:18),
+            ]),
           ),
-        ]),
-        const SizedBox(height:6),
-        Row(children:[
-          for(var i=0;i<items.length;i++)...[
-            if(i>0)const SizedBox(width:7),
-            quick(items[i]),
-          ],
-        ]),
+        ),
       ]),
     );
+
+  Widget quickRow(){
+    final items=quickAccessIds.map(_quickDef)
+      .whereType<OwnerShortcutDefinition>().take(maxOwnerShortcuts).toList();
+    if(items.isEmpty)return const SizedBox.shrink();
+    return Column(children:[
+      _homeSectionHeading('Hızlı Erişim',_editQuickAccess,top:11),
+      Padding(
+        padding:const EdgeInsets.symmetric(horizontal:16),
+        child:Row(children:[
+          for(var i=0;i<items.length;i++)...[
+            if(i>0)const SizedBox(width:7),
+            _premiumQuickTile(
+              title:items[i].title,icon:items[i].icon,
+              color:_quickColor(items[i].id),
+              onTap:()=>widget.shortcut(items[i].action),
+              onLongPress:_editQuickAccess),
+          ],
+        ]),
+      ),
+    ]);
   }
 
-  Widget _monthlyMetric(IconData icon, int value, String label, Color accent, Color tileColor, double tileSize, double numberSize) {
-    return Expanded(child: Container(
-      height: 90,
-      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 9),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: .095),
-        borderRadius: BorderRadius.circular(19),
-      ),
-      child: Column(mainAxisAlignment: MainAxisAlignment.start, children: [
-        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Container(
-            width: tileSize, height: tileSize,
-            decoration: BoxDecoration(
-              color: tileColor, borderRadius: BorderRadius.circular(12)),
-            child: Icon(icon, color: accent, size: tileSize * .55),
-          ),
-          const SizedBox(width: 3),
-          Flexible(child: TweenAnimationBuilder<double>(
-            tween: Tween<double>(begin: 0, end: value.toDouble()),
-            duration: const Duration(milliseconds: 650),
-            curve: Curves.easeOutCubic,
-            builder: (context, current, child) => Text('${current.round()}',
-              maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: Colors.white, fontSize: numberSize,
-                height: 1, fontWeight: FontWeight.w900)),
-          )),
-        ]),
-        const SizedBox(height: 5),
-        Text(label, maxLines: 2, textAlign: TextAlign.center,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(color: Colors.white, fontSize: 10,
-            height: 1.1, fontWeight: FontWeight.w600)),
+
+  int get _monthlyOfferUsage=>monthItems.where((event){
+    const counted={'offer_redeemed','offer_used','offer_redemption',
+      'coupon_redeemed','opportunity_redeemed'};
+    return counted.contains('${event['type']??''}'.toLowerCase())&&
+      !['cancelled','pending'].contains(
+        '${event['redemption_status']??event['offer_status']??''}'.toLowerCase());
+  }).length;
+
+
+  Widget _homeMonthlyMetric(IconData icon,int count,String label,Color tint)=>
+    Expanded(child:Column(mainAxisSize:MainAxisSize.min,children:[
+      Row(mainAxisAlignment:MainAxisAlignment.center,children:[
+        Container(width:_narrowHome?23:28,height:_narrowHome?23:28,
+          decoration:BoxDecoration(color:tint.withValues(alpha:.10),
+            shape:BoxShape.circle),
+          child:Icon(icon,color:tint,size:_narrowHome?14:17)),
+        const SizedBox(width:4),
+        Flexible(child:Text('${count<0?0:count}',maxLines:1,
+          overflow:TextOverflow.ellipsis,
+          style:TextStyle(color:_homeText,fontWeight:FontWeight.w900,
+            fontSize:_narrowHome?15:18))),
       ]),
-    ));
-  }
+      const SizedBox(height:6),
+      Text(label,maxLines:2,overflow:TextOverflow.ellipsis,
+        textAlign:TextAlign.center,
+        style:TextStyle(color:_homeSecondary,fontSize:_narrowHome?9.3:10,
+          height:1.08,fontWeight:FontWeight.w600)),
+    ]));
 
   Widget monthly()=>Padding(
-    padding: const EdgeInsets.fromLTRB(16, 13, 16, 0),
-    child: LayoutBuilder(builder: (context, constraints) {
-      final compact = constraints.maxWidth < 375;
-      final tileSize = compact ? 30.0 : 36.0;
-      final numberSize = compact ? 21.0 : 24.0;
-      return TweenAnimationBuilder<double>(
-        tween: Tween<double>(begin: 0, end: 1),
-        duration: const Duration(milliseconds: 320),
-        builder: (context, opacity, child) =>
-          Opacity(opacity: opacity, child: child),
-        child: Container(
-          // A minimum height lets the header + 90 px metrics grow naturally.
-          // Fixed heights of 151/156 px overflow when Android text metrics differ.
-          constraints: BoxConstraints(minHeight: compact ? 151 : 156),
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [BoxShadow(
-              color: const Color(0xFF6825F5).withValues(alpha: .16),
-              blurRadius: 15, offset: const Offset(0, 5))],
-          ),
-          child: Stack(children: [
-            const Positioned.fill(child: CustomPaint(painter: _MonthlySummaryPainter())),
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(children: [
-                Row(children: [
-                  const Icon(Icons.bar_chart_rounded, color: Colors.white, size: 23),
-                  const SizedBox(width: 7),
-                  Expanded(child: Text('Bu Ayki Özetim',
-                    maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: Colors.white,
-                      fontSize: compact ? 14 : 16, fontWeight: FontWeight.w900))),
-                  Material(
-                    color: Colors.white.withValues(alpha: .20),
-                    borderRadius: BorderRadius.circular(25),
-                    child: InkWell(
-                      onTap: widget.notifications,
-                      borderRadius: BorderRadius.circular(25),
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 11, vertical: 8),
-                        child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          Text('Tümünü Gör', style: TextStyle(
-                            color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w800)),
-                          SizedBox(width: 4),
-                          Icon(Icons.chevron_right_rounded, color: Colors.white, size: 17),
-                        ]),
-                      ),
-                    ),
-                  ),
-                ]),
-                const SizedBox(height: 10),
-                if (loading)
-                  const Expanded(child: Center(child: LinearProgressIndicator(
-                    minHeight: 2, color: Colors.white)))
-                else
-                  Row(children: [
-                    _monthlyMetric(Icons.phone_rounded, calls, 'Gelen\nArama',
-                      const Color(0xFF8B36FF), const Color(0xFFF5EEFF), tileSize, numberSize),
-                    _monthlyDivider(),
-                    _monthlyMetric(Icons.chat_bubble_rounded, messages, 'Mesaj\nTalebi',
-                      const Color(0xFF397DFF), const Color(0xFFF0F6FF), tileSize, numberSize),
-                    _monthlyDivider(),
-                    _monthlyMetric(Icons.warning_rounded, warnings, 'Park\nUyarısı',
-                      const Color(0xFFFF5E76), const Color(0xFFFFEFF4), tileSize, numberSize),
-                    _monthlyDivider(),
-                    _monthlyMetric(Icons.local_offer_rounded, 0, 'Fırsat\nKullanımı',
-                      const Color(0xFFFF9D47), const Color(0xFFFFF3E9), tileSize, numberSize),
-                  ]),
+    padding:const EdgeInsets.fromLTRB(16,12,16,0),
+    child:Container(
+      decoration:BoxDecoration(
+        color:_homeCardBackground,
+        borderRadius:BorderRadius.circular(23),
+        border:Border.all(color:light?const Color(0xFFF0F0F7):line),
+        boxShadow:light?[const BoxShadow(
+          color:Color(0x0F101426),blurRadius:16,offset:Offset(0,5))]:null),
+      child:Padding(
+        padding:const EdgeInsets.fromLTRB(11,11,11,13),
+        child:Column(children:[
+          Row(children:[
+            const Icon(Icons.bar_chart_rounded,color:_homePurple,size:23),
+            const SizedBox(width:6),
+            Expanded(child:Text('Bu Ayki Özetim',maxLines:1,
+              overflow:TextOverflow.ellipsis,
+              style:TextStyle(color:_homeText,fontSize:15,
+                fontWeight:FontWeight.w900))),
+            InkWell(
+              onTap:widget.notifications,
+              child:const Row(mainAxisSize:MainAxisSize.min,children:[
+                Text('Tümünü Gör',style:TextStyle(
+                  color:_homePurple,fontSize:10.5,fontWeight:FontWeight.w800)),
+                Icon(Icons.chevron_right_rounded,color:_homePurple,size:18),
               ]),
             ),
           ]),
-        ),
-      );
-    }),
+          const SizedBox(height:12),
+          if(loading)
+            const SizedBox(height:33,child:Center(
+              child:SizedBox(width:32,child:LinearProgressIndicator(minHeight:2))))
+          else
+            Row(crossAxisAlignment:CrossAxisAlignment.center,children:[
+              _homeMonthlyMetric(Icons.phone_rounded,calls,'Gelen\nArama',
+                const Color(0xFF712DFF)),
+              _homeMetricDivider(),
+              _homeMonthlyMetric(Icons.chat_bubble_rounded,messages,
+                'Mesaj\nTalebi',const Color(0xFF2984FF)),
+              _homeMetricDivider(),
+              _homeMonthlyMetric(Icons.warning_rounded,warnings,
+                'Park\nUyarısı',const Color(0xFFF04A69)),
+              _homeMetricDivider(),
+              _homeMonthlyMetric(Icons.local_offer_rounded,_monthlyOfferUsage,
+                'Fırsat\nKullanımı',const Color(0xFFF4A025)),
+            ]),
+        ]),
+      ),
+    ),
   );
 
-  Widget _monthlyDivider()=>Container(
-    width: 1, height: 39, margin: const EdgeInsets.symmetric(horizontal: 3),
-    color: Colors.white.withValues(alpha: .48));
+  Widget _homeMetricDivider()=>Container(
+    width:1,height:29,color:light?const Color(0xFFD5D5E2):line,
+  );
 
   Widget security()=>Padding(
     padding:const EdgeInsets.fromLTRB(16,13,16,0),
