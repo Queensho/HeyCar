@@ -16,14 +16,6 @@ void main(){
   ]){
     testWidgets('premium owner home is responsive at ${size.width}dp',(tester)async{
       SharedPreferences.setMockInitialValues(<String,Object>{});
-      final previousOnError=FlutterError.onError;
-      FlutterError.onError=(details){
-        if(size.width==320){
-          debugPrint('NARROW_HOME_DIAGNOSTIC:\n${details.toString()}');
-        }
-        previousOnError?.call(details);
-      };
-      addTearDown(()=>FlutterError.onError=previousOnError);
       tester.view.physicalSize=size;
       tester.view.devicePixelRatio=1;
       addTearDown((){
