@@ -92,7 +92,11 @@ class _PublicQrPersonalizedScreenState extends State<PublicQrPersonalizedScreen>
     final theme = PublicThemeData.fromJson(
       (data!['theme'] as Map?)?.cast<String, dynamic>() ?? const {},
     );
-    return _PublicHome(vehicle: vehicle, theme: theme);
+    return _PublicHome(
+      vehicle:vehicle,theme:theme,
+      emergencyAvailable:data!['emergencyAvailable'] is bool
+        ?data!['emergencyAvailable'] as bool:null,
+    );
   }
 }
 
@@ -338,9 +342,11 @@ class _CodeEntryState extends State<_CodeEntry> {
 }
 
 class _PublicHome extends StatefulWidget {
-  const _PublicHome({required this.vehicle, required this.theme});
+  const _PublicHome({required this.vehicle, required this.theme,this.emergencyAvailable});
   final Map<String, dynamic> vehicle;
   final PublicThemeData theme;
+  // Null means an older backend that has no public availability metadata.
+  final bool? emergencyAvailable;
   @override State<_PublicHome> createState()=>_PublicHomeState();
 }
 
@@ -355,7 +361,8 @@ class _PublicHomeState extends State<_PublicHome>{
   Map<String,dynamic>? emergencyCard;
   String? emergencyError;
   bool emergencyLoading=false;
-  bool get isMotorcycle=>widget.vehicle['vehicle_type']?.toString().toLowerCase()=='motorcycle';
+  bool get showEmergencyAccess=>motorcycleEmergencyEntryVisible(
+    vehicle:widget.vehicle,published:widget.emergencyAvailable);
   String get plate => widget.vehicle['plate']?.toString() ?? 'Araç';
 
   @override
@@ -370,7 +377,7 @@ class _PublicHomeState extends State<_PublicHome>{
     // A public landing page is not proof of a physical QR scan. Never
     // fetch sensitive rider/contact details until the visitor explicitly
     // requests them and the backend validates a matching scan session.
-    if(!isMotorcycle||emergencyLoading||emergencyCard!=null)return;
+    if(!showEmergencyAccess||emergencyLoading||emergencyCard!=null)return;
     final token=PublicNotificationApi.currentToken();
     if(token.isEmpty){
       setState(()=>emergencyError=motorcycleEmergencyAccessMessage(
@@ -636,7 +643,7 @@ class _PublicHomeState extends State<_PublicHome>{
                             ),
                           ],
                         ),
-                        if(isMotorcycle)...[
+                        if(showEmergencyAccess)...[
                           const SizedBox(height:10),
                           PublicMotorcycleEmergencyAccess(
                             loading:emergencyLoading,

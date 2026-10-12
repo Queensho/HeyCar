@@ -3,6 +3,17 @@ import 'package:flutter_test/flutter_test.dart';
 import '../lib/public_motorcycle_emergency_access.dart';
 
 void main(){
+  test('published availability controls visitor entry without personal data',(){
+    const bike=<String,dynamic>{'vehicle_type':'motorcycle'};
+    const car=<String,dynamic>{'vehicle_type':'car'};
+    expect(motorcycleEmergencyEntryVisible(vehicle:bike,published:true),isTrue);
+    expect(motorcycleEmergencyEntryVisible(vehicle:bike,published:false),isFalse);
+    expect(motorcycleEmergencyEntryVisible(vehicle:car,published:true),isTrue);
+    expect(motorcycleEmergencyEntryVisible(vehicle:car,published:false),isFalse);
+    expect(motorcycleEmergencyEntryVisible(vehicle:bike),isTrue);
+    expect(motorcycleEmergencyEntryVisible(vehicle:car),isFalse);
+  });
+
   test('scan checks explain failed access without exposing private details',(){
     expect(motorcycleEmergencyAccessMessage(error:'Exception: LOCATION_REQUIRED'),
       contains('konum izni'));
