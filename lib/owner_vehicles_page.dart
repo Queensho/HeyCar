@@ -380,7 +380,19 @@ class _VehicleReferenceCard extends StatelessWidget{
                         fontSize:12.5,fontWeight:FontWeight.w800)),
                   ],
                 )),
-                Icon(Icons.chevron_right_rounded,size:27,color:primary),
+                Icon(Icons.chevron_right_rounded,size:22,color:primary),
+                PopupMenuButton<String>(
+                  tooltip:'Diğer araç işlemleri',
+                  icon:Icon(Icons.more_vert_rounded,color:primary,size:20),
+                  onSelected:(value){
+                    if(value=='transfer')transfer();
+                    if(value=='remove')remove();
+                  },
+                  itemBuilder:(_)=>const [
+                    PopupMenuItem(value:'transfer',child:Text('Aracı devret')),
+                    PopupMenuItem(value:'remove',child:Text('Aracı kaldır')),
+                  ],
+                ),
               ])),
               Row(children:[
                 if(selected)Container(
