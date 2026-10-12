@@ -42,6 +42,19 @@ void main(){
     'Chevrolet':'chevrolet',
     'Nissan':'nissan',
     'Porsche':'porsche',
+    'YAMAHA':'yamaha',
+    'Kawasaki Motors':'kawasaki',
+    'Triumph Motorcycles':'triumph',
+    'Harley Davidson':'harley-davidson',
+    'Aprilia':'aprilia',
+    'Piaggio':'piaggio',
+    'BYD':'byd','Chery':'chery','Cupra':'cupra',
+    'Daihatsu':'daihatsu','DFSK':'dfsk',
+    'DS Automobiles':'ds','KGM':'kgm','SsangYong':'kgm',
+    'Jaecoo':'jaecoo','MG Motor':'mg',
+    'Omoda':'omoda','Rover':'rover','Saab':'saab',
+    'Smart':'smart','Togg':'togg',
+    'Maxus':'maxus','Lada':'lada',
   };
 
   test('aliases resolve to local monochrome marks',(){
@@ -64,8 +77,12 @@ void main(){
     'ktm','land-rover','lexus','maserati','mazda','mercedes-benz','mini',
     'mitsubishi','nissan','opel','peugeot','porsche','renault','rolls-royce',
     'seat','skoda','subaru','suzuki','tesla','toyota','vespa','volkswagen','volvo',
+    'aprilia','byd','chery','chrysler','cupra','daihatsu','dfsk','dodge',
+    'ds','isuzu','jaecoo','kawasaki','kgm','lada','maxus','mg',
+    'omoda','piaggio','proton','rover','saab','smart','togg','triumph',
+    'yamaha','harley-davidson',
   };
-  testWidgets('all 40 vehicle SVGs are bundled and single-tone transparent',(tester)async{
+  testWidgets('all supported vehicle SVGs are bundled and single-tone transparent',(tester)async{
     for(final slug in allSlugs){
       final source=await rootBundle.loadString(
         'assets/vehicle_brand_logos/'+slug+'.svg');
@@ -74,6 +91,25 @@ void main(){
       expect(source.toLowerCase(),isNot(contains('<image')));
       expect(source.toLowerCase(),isNot(contains('<script')));
     }
+  });
+
+  test('backend brand-logo URL accepts only valid local HTTPS image URLs',(){
+    const base='https://api.cepqontag.test';
+    const file='rks-012345abcdef.png';
+    final relative=OwnerBrandLogoUrl.resolve(
+      {'available':true,'path':'/uploads/vehicle-brands/$file'},base);
+    expect(relative,'$base/uploads/vehicle-brands/$file');
+    expect(OwnerBrandLogoUrl.resolve(
+      {'available':true,'url':'$base/uploads/vehicle-brands/$file'},base),
+      relative);
+    expect(OwnerBrandLogoUrl.resolve({'available':false,
+      'path':'/uploads/vehicle-brands/$file'},base),isNull);
+    expect(OwnerBrandLogoUrl.resolve({'available':true,
+      'url':'https://evil.example/uploads/vehicle-brands/$file'},base),isNull);
+    expect(OwnerBrandLogoUrl.resolve({'available':true,
+      'path':'/uploads/vehicle-brands/../../secret.png'},base),isNull);
+    expect(OwnerBrandLogoUrl.resolve({'available':true,
+      'path':'/uploads/vehicle-brands/$file?x=1'},base),isNull);
   });
 
   testWidgets('unknown motorcycle uses motorcycle fallback, not car',(tester)async{
