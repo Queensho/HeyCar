@@ -94,6 +94,8 @@ jobs:
         run: python3 tool/owner_header_size_patch.py
       - name: Apply Android back navigation
         run: python3 tool/back_navigation_patch.py
+      - name: Verify runtime Android fix supports five reference screens
+        run: python3 -m unittest discover -s tool/tests -p test_fix_runtime_android.py -v
       - name: Apply runtime Android fixes
         run: python3 tool/fix_runtime_android.py
       - name: Generate Android platform
