@@ -495,11 +495,17 @@ class _VehicleBrandLogo extends StatelessWidget{
   @override Widget build(BuildContext context){
     final raw=vehicle['brandLogo'];
     final logo=raw is Map?Map<String,dynamic>.from(raw):const <String,dynamic>{};
-    // Prefer the same API host used for the authenticated vehicle list.
-    // Cached absolute logo URLs may point to an obsolete proxy hostname.
-    final imagePath='${logo['path']??''}'.trim();
-    final safeImagePath=RegExp(
-      r'^/uploads/vehicle-brands/[a-z0-9-]+-[a-f0-9]{12}\\.(png|jpg|webp)
+    // The current authenticated API origin is more reliable than an older
+    // absolute hostname stored when the logo was first downloaded.
+    final imagePath=(logo['path']??'').toString().trim();
+    final safeImagePath=imagePath.startsWith('/uploads/vehicle-brands/')
+        && !imagePath.contains('..')
+        && !imagePath.contains('?')
+        && !imagePath.contains('#');
+    final apiBase=OnboardingBackend.baseUrl.replaceFirst(RegExp(r'/$'),'');
+    final url=safeImagePath
+        ?apiBase+imagePath
+        :(logo['url']??'').toString().trim();
     final letter=make.trim().isEmpty?'?':make.trim().characters.first.toUpperCase();
     Widget fallback()=>Container(
       width:72,height:72,alignment:Alignment.center,
