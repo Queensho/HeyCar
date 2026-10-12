@@ -121,6 +121,10 @@ jobs:
       - name: Verify motorcycle emergency card privacy and QR scan authorization
         working-directory: server
         run: node --test tests/motorcycle-emergency-card.test.js
+      - name: Verify targeted motorcycle emergency VPS rollout
+        run: |
+          bash -n deploy/motorcycle-emergency-live.sh
+          python3 -m unittest discover -s deploy/tests -p test_motorcycle_emergency_live.py -v
       - name: Verify motorcycle brand logos use safeguarded backend API
         working-directory: server
         run: node --test tests/motorcycle-brand-logo.test.js
