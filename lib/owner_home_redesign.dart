@@ -1358,102 +1358,78 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     ]),
   );
 
-  Widget service(
-    IconData icon,
-    String title,
-    String subtitle,
-    Color color,
-    VoidCallback tap,{
-    bool car=false,
-    bool comingSoon=false,
-    bool enabled=true,
-  })=>InkWell(
-    onTap:enabled?tap:null,
-    borderRadius:BorderRadius.circular(17),
-    child:Opacity(
-      opacity:enabled?1:.78,
+
+  Widget _premiumServiceTile({
+    required String title,required IconData icon,
+    required Color tint,required bool highlighted,
+    VoidCallback? onTap,String iconUrl='',String imageUrl='',
+    double imageScale=1, double imageOpacity=1,
+    double imageX=0,double imageY=0,BoxFit imageFit=BoxFit.contain,
+    String badge='',Color? titleColor,
+  })=>Material(
+    color:highlighted?_homePurple:_homeCardBackground,
+    borderRadius:BorderRadius.circular(19),
+    child:InkWell(
+      onTap:onTap,
+      borderRadius:BorderRadius.circular(19),
       child:Container(
-        height:108,
-        clipBehavior:Clip.hardEdge,
-        decoration:card(),
+        height:75,
+        clipBehavior:Clip.antiAlias,
+        decoration:BoxDecoration(
+          borderRadius:BorderRadius.circular(19),
+          border:Border.all(color:highlighted?_homePurple:
+            (light?const Color(0xFFF0F0F6):line)),
+          boxShadow:light?[const BoxShadow(
+            color:Color(0x09101426),blurRadius:8)]:null),
         child:Stack(children:[
-          if(car)Positioned(
-            right:-10,
-            bottom:-6,
-            child:Opacity(
-              opacity:light ? 0.15 : 0.28,
-              child:Image.asset(
-                'assets/Arac.png',
-                width:108,
-                height:66,
-                fit:BoxFit.contain,
-                errorBuilder:(_,__,___)=>const SizedBox.shrink(),
+          if(imageUrl.isNotEmpty)Positioned.fill(
+            child:IgnorePointer(child:Opacity(
+              opacity:imageOpacity.clamp(0,1).toDouble(),
+              child:Transform.translate(
+                offset:Offset(imageX,imageY),
+                child:Image.network(imageUrl,fit:imageFit,
+                  width:78*imageScale,height:62*imageScale,
+                  errorBuilder:(_,__,___)=>const SizedBox.shrink()),
               ),
-            ),
+            )),
           ),
-          Positioned(
-            left:11,
-            top:11,
-            child:Container(
-              width:36,
-              height:36,
+          Column(mainAxisAlignment:MainAxisAlignment.center,children:[
+            if(imageUrl.isEmpty)Container(
+              width:36,height:36,
               decoration:BoxDecoration(
-                color:color.withValues(alpha:light ? 0.12 : 0.18),
-                borderRadius:BorderRadius.circular(11),
-              ),
-              child:Icon(icon,color:color,size:21),
+                color:highlighted?Colors.white.withValues(alpha:.13):
+                  tint.withValues(alpha:.11),
+                shape:BoxShape.circle),
+              child:iconUrl.isNotEmpty
+                ?Padding(padding:const EdgeInsets.all(7),
+                  child:Image.network(iconUrl,fit:BoxFit.contain,
+                    errorBuilder:(_,__,___)=>Icon(icon,
+                      color:highlighted?Colors.white:tint,size:23)))
+                :Icon(icon,color:highlighted?Colors.white:tint,size:23),
+            )else const SizedBox(height:35),
+            const SizedBox(height:5),
+            Padding(
+              padding:const EdgeInsets.symmetric(horizontal:2),
+              child:Text(title,maxLines:2,overflow:TextOverflow.ellipsis,
+                textAlign:TextAlign.center,
+                style:TextStyle(color:titleColor??
+                  (highlighted?Colors.white:_homeText),
+                  fontSize:_narrowHome?10:11.5,
+                  fontWeight:FontWeight.w800,height:1.05)),
             ),
-          ),
-          if(comingSoon)Positioned(
-            right:10,
-            top:10,
+          ]),
+          if(onTap==null||badge.isNotEmpty)Positioned(
+            top:3,right:4,
             child:Container(
-              padding:const EdgeInsets.symmetric(horizontal:7,vertical:3),
+              padding:const EdgeInsets.symmetric(horizontal:3,vertical:1),
               decoration:BoxDecoration(
-                color:purple.withValues(alpha:.10),
-                borderRadius:BorderRadius.circular(8),
-              ),
-              child:const Text(
-                'Yakında',
-                style:TextStyle(color:purple,fontSize:8,fontWeight:FontWeight.w900),
-              ),
-            ),
-          ),
-          Positioned(
-            left:11,
-            right:enabled?40:11,
-            bottom:9,
-            child:Column(
-              crossAxisAlignment:CrossAxisAlignment.start,
-              mainAxisSize:MainAxisSize.min,
-              children:[
-                Text(
-                  title,
-                  maxLines:1,
-                  overflow:TextOverflow.ellipsis,
-                  style:TextStyle(color:text,fontSize:12.5,fontWeight:FontWeight.w900,height:1.05),
-                ),
-                const SizedBox(height:3),
-                Text(
-                  subtitle,
-                  maxLines:1,
-                  overflow:TextOverflow.ellipsis,
-                  style:TextStyle(color:muted,fontSize:CepqarTheme.caption,height:1.08),
-                ),
-              ],
-            ),
-          ),
-          if(enabled)Positioned(
-            right:9,
-            bottom:9,
-            child:Container(
-              width:24,
-              height:24,
-              decoration:BoxDecoration(
-                color:(light?Colors.white:Colors.black).withValues(alpha:light ? .86 : .28),
-                shape:BoxShape.circle,
-              ),
-              child:Icon(Icons.chevron_right_rounded,color:text,size:16),
+                color:highlighted?Colors.white.withValues(alpha:.17):
+                  _homePurple.withValues(alpha:.07),
+                borderRadius:BorderRadius.circular(5)),
+              child:Text(badge.isNotEmpty?badge:'Yakında',
+                maxLines:1,overflow:TextOverflow.ellipsis,
+                style:TextStyle(color:highlighted?Colors.white:_homePurple,
+                  fontSize:6.5,fontWeight:FontWeight.w700)),
             ),
           ),
         ]),
@@ -1461,20 +1437,29 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     ),
   );
 
-  Widget servicesGrid()=>SizedBox(
-    height:112,
-    child:ListView(
-      scrollDirection:Axis.horizontal,
-      physics:const BouncingScrollPhysics(),
+  Widget servicesGrid()=>Column(children:[
+    _homeSectionHeading('Hizmetler',widget.services,top:11),
+    Padding(
       padding:const EdgeInsets.symmetric(horizontal:16),
-      children:[
-        SizedBox(width:180,child:Padding(padding:const EdgeInsets.only(right:12),child:service(Icons.fire_truck_rounded,'Çekici','Çekici çağır ve canlı takip et.',const Color(0xFFFF8A43),()=>widget.shortcut('towing'),car:true,comingSoon:true,enabled:testAccount))),
-        SizedBox(width:180,child:Padding(padding:const EdgeInsets.only(right:12),child:service(Icons.sos_rounded,'Yol Yardım','Akü, lastik, yakıt ve yerinde destek.',const Color(0xFFFF775F),()=>widget.shortcut('roadside_help'),comingSoon:true,enabled:testAccount))),
-        SizedBox(width:180,child:Padding(padding:const EdgeInsets.only(right:12),child:service(Icons.support_agent_rounded,'Vale','Aracınızı güvenle teslim edin.',const Color(0xFF8B36FF),widget.services,comingSoon:true,enabled:testAccount))),
-        SizedBox(width:180,child:Padding(padding:const EdgeInsets.only(right:12),child:service(Icons.local_offer_rounded,'Fırsatlar','Size özel kampanya ve ayrıcalıklar.',const Color(0xFF23C976),()=>widget.shortcut('offers'),comingSoon:true,enabled:testAccount))),
-      ],
+      child:Row(children:[
+        Expanded(child:_premiumServiceTile(title:'Çekici',
+          icon:Icons.fire_truck_rounded,tint:_homePurple,highlighted:true,
+          onTap:testAccount?()=>widget.shortcut('towing'):null)),
+        const SizedBox(width:7),
+        Expanded(child:_premiumServiceTile(title:'Yol Yardım',
+          icon:Icons.build_rounded,tint:_homePurple,highlighted:false,
+          onTap:testAccount?()=>widget.shortcut('roadside_help'):null)),
+        const SizedBox(width:7),
+        Expanded(child:_premiumServiceTile(title:'Vale',
+          icon:Icons.support_agent_rounded,tint:_homePurple,highlighted:false,
+          onTap:testAccount?widget.services:null)),
+        const SizedBox(width:7),
+        Expanded(child:_premiumServiceTile(title:'Fırsatlar',
+          icon:Icons.local_offer_rounded,tint:const Color(0xFFF6A022),
+          highlighted:false,onTap:testAccount?()=>widget.shortcut('offers'):null)),
+      ]),
     ),
-  );
+  ]);
 
   IconData _managedIcon(String key)=>switch(key){
     'tow_truck'=>Icons.fire_truck_rounded,
@@ -1507,123 +1492,45 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     context,action:item.action,target:item.actionTarget,shortcut:widget.shortcut,
   );
 
+
   Widget _managedQuickActions(){
     final items=_appUiConfig.quickActions.take(4).toList();
     if(items.isEmpty)return const SizedBox.shrink();
-    return Padding(
-      padding:const EdgeInsets.fromLTRB(16,10,16,0),
-      child:Column(children:[
-        Row(children:[
-          Expanded(child:Text('Hızlı Erişim',style:TextStyle(color:text,fontSize:CepqarTheme.cardTitle,fontWeight:FontWeight.w900))),
-          Text('Admin',style:TextStyle(color:muted,fontSize:9,fontWeight:FontWeight.w700)),
-        ]),
-        const SizedBox(height:6),
-        Row(children:[
+    return Column(children:[
+      _homeSectionHeading('Hızlı Erişim',_editQuickAccess,top:11),
+      Padding(padding:const EdgeInsets.symmetric(horizontal:16),
+        child:Row(children:[
           for(var i=0;i<items.length;i++)...[
             if(i>0)const SizedBox(width:7),
-            Expanded(child:InkWell(
+            _premiumQuickTile(title:items[i].title,
+              icon:_managedIcon(items[i].icon),
+              color:_ui.token(items[i].iconToken),
+              iconUrl:items[i].iconUrl,
               onTap:()=>_runManagedAction(items[i]),
-              borderRadius:BorderRadius.circular(_ui.cardRadius),
-              child:Container(
-                height:78,
-                decoration:BoxDecoration(
-                  color:_ui.token(items[i].backgroundToken),
-                  borderRadius:BorderRadius.circular(_ui.cardRadius),
-                  border:Border.all(color:line),
-                  boxShadow:light&&_ui.shadowLevel>0&&!kIsWeb?[BoxShadow(color:Colors.black.withValues(alpha:.035*_ui.shadowLevel),blurRadius:8.0*_ui.shadowLevel,offset:Offset(0,2.0*_ui.shadowLevel))]:null,
-                ),
-                child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[
-                  Container(
-                    width:36,height:36,
-                    decoration:BoxDecoration(color:_ui.token(items[i].iconToken).withValues(alpha:.12),shape:BoxShape.circle),
-                    child:items[i].iconUrl.isNotEmpty?Padding(padding:const EdgeInsets.all(7),child:Image.network(items[i].iconUrl,fit:BoxFit.contain,errorBuilder:(_,__,___)=>Icon(_managedIcon(items[i].icon),color:_ui.token(items[i].iconToken),size:20))):Icon(_managedIcon(items[i].icon),color:_ui.token(items[i].iconToken),size:20),
-                  ),
-                  const SizedBox(height:6),
-                  Padding(
-                    padding:const EdgeInsets.symmetric(horizontal:3),
-                    child:Text(items[i].title,maxLines:1,overflow:TextOverflow.ellipsis,textAlign:TextAlign.center,style:TextStyle(color:text,fontSize:CepqarTheme.caption,fontWeight:FontWeight.w800)),
-                  ),
-                ]),
-              ),
-            )),
+              onLongPress:_editQuickAccess),
           ],
         ]),
-      ]),
-    );
+      ),
+    ]);
   }
 
+
   Widget _managedServiceCard(AppUiServiceItem item){
-    final available=!item.testOnly||testAccount;
-    final background=_ui.token(item.backgroundToken);
-    final iconColor=_ui.token(item.iconToken);
-    final badgeColor=_ui.token(item.badgeToken);
-    return InkWell(
+    final available=(!item.testOnly||testAccount)&&item.action!='NONE';
+    final highlight=item.id=='towing';
+    final color=_ui.token(item.iconToken);
+    return _premiumServiceTile(
+      title:item.title,icon:_managedIcon(item.icon),tint:color,
+      highlighted:highlight,
+      iconUrl:item.iconUrl,
+      imageUrl:item.imageUrl,
+      imageScale:item.imageScale,
+      imageOpacity:item.imageOpacity,
+      imageX:item.imageX,imageY:item.imageY,
+      imageFit:_managedFit(item.fit),
+      titleColor:item.titleTextColor,
+      badge:item.badgeText,
       onTap:available?()=>_runManagedAction(item):null,
-      borderRadius:BorderRadius.circular(_ui.cardRadius),
-      child:Opacity(
-        opacity:available?1:.78,
-        child:Container(
-          height:108,
-          clipBehavior:Clip.hardEdge,
-          decoration:BoxDecoration(
-            color:background,
-            borderRadius:BorderRadius.circular(_ui.cardRadius),
-            border:Border.all(color:line),
-            boxShadow:light&&_ui.shadowLevel>0&&!kIsWeb?[BoxShadow(color:Colors.black.withValues(alpha:.035*_ui.shadowLevel),blurRadius:8.0*_ui.shadowLevel,offset:Offset(0,2.0*_ui.shadowLevel))]:null,
-          ),
-          child:Stack(children:[
-            if(item.imageUrl.isNotEmpty)Positioned.fill(child:IgnorePointer(child:Align(
-              alignment:_managedAlignment(item.alignment),
-              child:Transform.translate(
-                offset:Offset(item.imageX,item.imageY),
-                child:Opacity(
-                  opacity:item.imageOpacity,
-                  child:Image.network(
-                    item.imageUrl,
-                    width:108*item.imageScale,
-                    height:70*item.imageScale,
-                    fit:_managedFit(item.fit),
-                    gaplessPlayback:true,
-                    errorBuilder:(_,__,___)=>const SizedBox.shrink(),
-                  ),
-                ),
-              ),
-            ))),
-            Positioned(
-              left:11,top:11,
-              child:Container(
-                width:36,height:36,
-                decoration:BoxDecoration(color:iconColor.withValues(alpha:.12),borderRadius:BorderRadius.circular(11)),
-                child:item.iconUrl.isNotEmpty?Padding(padding:const EdgeInsets.all(7),child:Image.network(item.iconUrl,fit:BoxFit.contain,errorBuilder:(_,__,___)=>Icon(_managedIcon(item.icon),color:iconColor,size:21))):Icon(_managedIcon(item.icon),color:iconColor,size:21),
-              ),
-            ),
-            if(item.badgeText.isNotEmpty)Positioned(
-              right:10,top:10,
-              child:Container(
-                padding:const EdgeInsets.symmetric(horizontal:7,vertical:3),
-                decoration:BoxDecoration(color:badgeColor.withValues(alpha:.12),borderRadius:BorderRadius.circular(8)),
-                child:Text(item.badgeText,style:TextStyle(color:item.badgeTextColor??badgeColor,fontSize:8,fontWeight:FontWeight.w900)),
-              ),
-            ),
-            Positioned(
-              left:11,right:available?40:11,bottom:9,
-              child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisSize:MainAxisSize.min,children:[
-                Text(item.title,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:item.titleTextColor??text,fontSize:12.5,fontWeight:FontWeight.w900,height:1.05)),
-                const SizedBox(height:3),
-                Text(item.subtitle,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:item.subtitleTextColor??muted,fontSize:CepqarTheme.caption,height:1.08)),
-              ]),
-            ),
-            if(available)Positioned(
-              right:9,bottom:9,
-              child:Container(
-                width:24,height:24,
-                decoration:BoxDecoration(color:(light?Colors.white:Colors.black).withValues(alpha:light ? .86 : .28),shape:BoxShape.circle),
-                child:Icon(Icons.chevron_right_rounded,color:text,size:16),
-              ),
-            ),
-          ]),
-        ),
-      ),
     );
   }
 
@@ -1631,17 +1538,22 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     final items=_appUiConfig.services;
     if(items.isEmpty)return const SizedBox.shrink();
     return Column(children:[
-      section('Hizmetler',widget.services),
-      SizedBox(
-        height:112,
-        child:ListView.separated(
-          scrollDirection:Axis.horizontal,
-          physics:const BouncingScrollPhysics(),
-          padding:const EdgeInsets.symmetric(horizontal:16),
-          itemCount:items.length,
-          separatorBuilder:(_,__)=>const SizedBox(width:12),
-          itemBuilder:(_,index)=>SizedBox(width:168,child:_managedServiceCard(items[index])),
-        ),
+      _homeSectionHeading('Hizmetler',widget.services,top:11),
+      Padding(padding:const EdgeInsets.symmetric(horizontal:16),
+        child:LayoutBuilder(builder:(context,c){
+          final width=(c.maxWidth-21)/4;
+          return SizedBox(
+            height:75,
+            child:ListView.separated(
+              scrollDirection:Axis.horizontal,
+              physics:const BouncingScrollPhysics(),
+              itemCount:items.length,
+              separatorBuilder:(_,__)=>const SizedBox(width:7),
+              itemBuilder:(_,i)=>SizedBox(
+                width:width,child:_managedServiceCard(items[i])),
+            ),
+          );
+        }),
       ),
     ]);
   }
