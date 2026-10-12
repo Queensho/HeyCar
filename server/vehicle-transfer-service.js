@@ -17,6 +17,8 @@ async function finalizeVehicleTransfer(db,{vehicleId,transferId,newOwnerId}){
     [vehicle]
   );
 
+  // Sensitive rider and third-party contact details belong to the OLD owner.
+  await db.query('DELETE FROM vehicle_motorcycle_emergency_cards WHERE vehicle_id::text=$1',[vehicle]);
   const privateReset=await clearPrivateVehicleHistory(db,vehicle);
 
   const changed=await db.query(
