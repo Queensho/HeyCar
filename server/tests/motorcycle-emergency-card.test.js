@@ -174,10 +174,13 @@ test('QR resolver reports only opt-in emergency availability',async()=>{
   assert.deepEqual(queries[0].params,[BIKE]);
   assert.match(queries[0].sql,/card\.is_public=TRUE/);
   assert.match(queries[0].sql,/owner_vehicle\.owner_id=card\.owner_id/);
+  assert.match(queries[0].sql,/owner_vehicle\.vehicle_type='motorcycle'/);
   assert.doesNotMatch(queries[0].sql,/rider_full_name|blood_group|emergency_contact_phone/);
   assert.equal(await publicEmergencyAvailable(livePool,vehicle,'paused'),false);
-  assert.equal(await publicEmergencyAvailable(livePool,{...vehicle,vehicle_type:'car'},'active'),false);
-  assert.equal(queries.length,1);
+  // A stale vehicle_type value in the resolver must not override the
+  // actual joined vehicle row in PostgreSQL.
+  assert.equal(await publicEmergencyAvailable(livePool,{...vehicle,vehicle_type:'car'},'active'),true);
+  assert.equal(queries.length,2);
   const missingTable={query:async()=>{throw Error('undefined_table');}};
   assert.equal(await publicEmergencyAvailable(missingTable,vehicle,'active'),false);
   const unpublished={query:async()=>({rows:[{available:false}]})};
