@@ -317,6 +317,7 @@ class OwnerSettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context){
+    final statsFuture=_vehicleStats();
     return Scaffold(
       backgroundColor:OwnerReference.background,
       body:SafeArea(bottom:false,child:ListView(
@@ -372,7 +373,7 @@ class OwnerSettingsPage extends StatelessWidget {
             )),
             const SizedBox(width:7),
             FutureBuilder<({int? count,bool? premium})>(
-              future:_vehicleStats(),
+              future:statsFuture,
               builder:(context,snapshot){
                 final isPro=snapshot.data?.premium==true;
                 return InkWell(
@@ -402,7 +403,7 @@ class OwnerSettingsPage extends StatelessWidget {
           ]),
           const SizedBox(height:20),
           FutureBuilder<({int? count,bool? premium})>(
-            future:_vehicleStats(),
+            future:statsFuture,
             builder:(context,snapshot){
               final count=snapshot.data?.count?.toString()??'—';
               return Container(
