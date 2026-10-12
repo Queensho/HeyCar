@@ -24,7 +24,7 @@ abstract final class OwnerReference {
         borderRadius:BorderRadius.circular(radius),
         border:Border.all(
           color:highlight?purple.withValues(alpha:.32):
-              purple.withValues(alpha:CepqarTheme.isLight?.08:.20),
+              purple.withValues(alpha:CepqarTheme.isLight ? .08 : .20),
         ),
         boxShadow:CepqarTheme.isLight?[
           BoxShadow(color:deep.withValues(alpha:.075),blurRadius:24,
