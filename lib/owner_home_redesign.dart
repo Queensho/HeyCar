@@ -631,7 +631,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
 
   IconData get _weatherIcon=>switch(weather?.condition){
     WeatherCondition.clear=>Icons.wb_sunny_rounded,
-    WeatherCondition.partlyCloudy=>Icons.partly_cloudy_day_rounded,
+    WeatherCondition.partlyCloudy=>Icons.wb_cloudy_rounded,
     WeatherCondition.rain=>Icons.water_drop_rounded,
     WeatherCondition.snow=>Icons.ac_unit_rounded,
     WeatherCondition.thunderstorm=>Icons.thunderstorm_rounded,
