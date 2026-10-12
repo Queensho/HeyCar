@@ -64,6 +64,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   bool premium=false;
   int activeVehicleCount=0;
   bool qrProtection=false;
+  Map<String,dynamic>? _selectedVehicle;
   WeatherSnapshot? weather;
   bool weatherLoading=true;
   final WeatherService _weatherService=WeatherService();
@@ -431,6 +432,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       var nextPremium=premium;
       var nextActiveVehicleCount=activeVehicleCount;
       var nextQrProtection=qrProtection;
+      Map<String,dynamic>? nextSelectedVehicle=_selectedVehicle;
       final vehiclesResponse=rs[1];
       final vehiclesData=vehiclesResponse.body.isEmpty?null:jsonDecode(vehiclesResponse.body);
       if(vehiclesResponse.statusCode>=200&&vehiclesResponse.statusCode<300&&vehiclesData is Map){
@@ -443,6 +445,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
           if('${v['id']??''}'==vehicleId){selected=v;break;}
         }
         nextQrProtection=selected!=null&&'${selected['qr_status']??''}'=='active'&&'${selected['qr_token']??''}'.trim().isNotEmpty;
+        nextSelectedVehicle=selected==null?null:Map<String,dynamic>.from(selected);
       }
 
       Map<String,dynamic>? nextValet;
@@ -498,7 +501,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         final noticesChanged=jsonEncode(nextNotices)!=jsonEncode(notices);
         final valetChanged=jsonEncode(nextValet)!=jsonEncode(valetSession);
         final codeChanged=nextDeliveryCode!=valetDeliveryCode;
-        final ownerStateChanged=nextPremium!=premium||nextActiveVehicleCount!=activeVehicleCount||nextQrProtection!=qrProtection;
+        final ownerStateChanged=nextPremium!=premium||nextActiveVehicleCount!=activeVehicleCount||nextQrProtection!=qrProtection||jsonEncode(nextSelectedVehicle)!=jsonEncode(_selectedVehicle);
         if(noticesChanged||valetChanged||codeChanged||ownerStateChanged){
           setState((){
             notices=nextNotices;
@@ -507,6 +510,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             premium=nextPremium;
             activeVehicleCount=nextActiveVehicleCount;
             qrProtection=nextQrProtection;
+            _selectedVehicle=nextSelectedVehicle;
           });
         }
       }
@@ -584,82 +588,138 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     );
   }
 
-  Widget header()=>SizedBox(
-    height:274,
-    child:Stack(children:[
-      Positioned.fill(
-        child:Container(
-          decoration:BoxDecoration(
-            gradient:light
-              ?const LinearGradient(
-                  begin:Alignment.topLeft,
-                  end:Alignment.bottomRight,
-                  colors:[
-                    Color(0xFFFBFAFF),
-                    Color(0xFFF6F2FF),
-                    Color(0xFFEDE6FF),
-                    Color(0xFFF9F8FF),
-                  ],
-                  stops:[0,.38,.76,1],
-                )
-              :const LinearGradient(
-                  begin:Alignment.topLeft,
-                  end:Alignment.bottomRight,
-                  colors:[
-                    Color(0xFF050913),
-                    Color(0xFF0B1020),
-                    Color(0xFF17102E),
-                    Color(0xFF080B15),
-                  ],
-                  stops:[0,.40,.76,1],
-                ),
+
+  static const _homePurple=Color(0xFF651FFF);
+  static const _homeDarkPurple=Color(0xFF4C16C9);
+  static const _homeLime=Color(0xFFB9FF4A);
+  static const _homeInk=Color(0xFF101426);
+  static const _homeMuted=Color(0xFF737B94);
+  Color get _homeText=>light?_homeInk:text;
+  Color get _homeSecondary=>light?_homeMuted:muted;
+  Color get _homeCardBackground=>light?Colors.white:panel;
+  bool get _narrowHome=>MediaQuery.sizeOf(context).width<365;
+  String get _welcomeText{
+    final hour=DateTime.now().hour;
+    if(hour<11)return'Günaydın,';
+    if(hour<17)return'İyi günler,';
+    return'İyi akşamlar,';
+  }
+  IconData get _homeWeatherIcon=>switch(weather?.condition){
+    WeatherCondition.clear=>Icons.wb_sunny_rounded,
+    WeatherCondition.partlyCloudy=>Icons.wb_cloudy_rounded,
+    WeatherCondition.cloudy=>Icons.cloud_rounded,
+    WeatherCondition.rain=>Icons.water_drop_rounded,
+    WeatherCondition.snow=>Icons.ac_unit_rounded,
+    WeatherCondition.thunderstorm=>Icons.flash_on_rounded,
+    WeatherCondition.night=>Icons.nights_stay_rounded,
+    _=>Icons.cloud_outlined,
+  };
+
+  Widget header()=>Padding(
+    padding:EdgeInsets.fromLTRB(20,MediaQuery.paddingOf(context).top+8,20,4),
+    child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      SizedBox(height:42,child:Row(children:[
+        Expanded(child:Align(alignment:Alignment.centerLeft,child:brand())),
+        _homeCircleButton(Icons.notifications_none_rounded,
+          widget.notifications,unread:unread>0),
+        const SizedBox(width:8),
+        Material(
+          color:_homePurple,shape:const CircleBorder(),
+          child:InkWell(
+            onTap:()=>widget.shortcut('settings'),
+            customBorder:const CircleBorder(),
+            child:SizedBox(width:43,height:43,child:Center(child:
+              Text(initials,style:const TextStyle(color:Colors.white,fontSize:15,
+                fontWeight:FontWeight.w800)),
+            )),
           ),
         ),
-      ),
-      Positioned(
-        right:-58,
-        top:-72,
-        child:Container(
-          width:250,
-          height:230,
-          decoration:BoxDecoration(
-            shape:BoxShape.circle,
-            gradient:RadialGradient(
-              colors:[
-                const Color(0xFF8D63FF).withValues(alpha:light ? .20 : .28),
-                const Color(0xFF8D63FF).withValues(alpha:light ? .08 : .12),
-                Colors.transparent,
-              ],
-              stops:const [0,.48,1],
+      ])),
+      const SizedBox(height:15),
+      SizedBox(
+        height:_narrowHome?101:109,
+        child:Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+            Text(_welcomeText,style:TextStyle(color:_homeSecondary,fontSize:13)),
+            const SizedBox(height:1),
+            Text(_displayNameParts.join(' ').toUpperCase(),
+              maxLines:2,overflow:TextOverflow.ellipsis,
+              style:TextStyle(color:_homeText,fontWeight:FontWeight.w900,
+                fontSize:_narrowHome?19:22,height:1.05,letterSpacing:-.55)),
+            const SizedBox(height:4),
+            Text('Aracınızla dünya sizinle iletişimde.',
+              maxLines:2,overflow:TextOverflow.ellipsis,
+              style:TextStyle(color:_homeSecondary,fontSize:10.7,height:1.18)),
+            const SizedBox(height:5),
+            if(premium)Container(
+              padding:const EdgeInsets.symmetric(horizontal:12,vertical:3),
+              decoration:BoxDecoration(color:_homePurple.withValues(alpha:.08),
+                borderRadius:BorderRadius.circular(10)),
+              child:const Text('PRO',style:TextStyle(color:_homePurple,
+                fontSize:11.5,fontWeight:FontWeight.w900)),
             ),
-          ),
-        ),
-      ),
-      Padding(
-        padding:EdgeInsets.fromLTRB(20,MediaQuery.paddingOf(context).top+8,18,0),
-        child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-          brand(),
-          const SizedBox(height:13),
-          WeatherCard(
-            headerActions: Row(mainAxisSize:MainAxisSize.min,children:[
-              Material(color:CepqarTheme.panel,shape:const CircleBorder(),child:SizedBox(width:42,height:42,child:InkWell(onTap:widget.notifications,customBorder:const CircleBorder(),child:Stack(children:[Center(child:Icon(Icons.notifications_none_rounded,color:text,size:25)),if(unread>0)const Positioned(right:6,top:6,child:CircleAvatar(radius:4.5,backgroundColor:Color(0xFFFF425D)))])))),
-              const SizedBox(width:8),
-              Container(width:42,height:42,alignment:Alignment.center,decoration:const BoxDecoration(shape:BoxShape.circle,gradient:LinearGradient(colors:[Color(0xFF5820C8),Color(0xFF8C4DFF)])),child:Text(initials,style:const TextStyle(color:Colors.white,fontSize:14,fontWeight:FontWeight.w900))),
-            ]),
-            displayName:OnboardingDraft.displayName.trim().isEmpty?'Araç Sahibi':OnboardingDraft.displayName.trim(),
-            premium:premium,
-            activeVehicleCount:activeVehicleCount,
-            qrProtection:qrProtection,
-            weather:weather,
-            loading:weatherLoading,
-            onVehicles:widget.vehicles,
-            onQrSecurity:()=>widget.shortcut('qr_security'),
+          ])),
+          const SizedBox(width:7),
+          InkWell(
             onTap:_openWeatherDetails,
+            borderRadius:BorderRadius.circular(16),
+            child:SizedBox(
+              width:_narrowHome?112:125,
+              child:Column(crossAxisAlignment:CrossAxisAlignment.center,children:[
+                Row(mainAxisAlignment:MainAxisAlignment.center,children:[
+                  Icon(_homeWeatherIcon,size:_narrowHome?32:37,
+                    color:weather?.condition==WeatherCondition.rain
+                      ?const Color(0xFF438CFF):const Color(0xFFFFC738)),
+                  const SizedBox(width:5),
+                  Flexible(child:Text(weather?.temperature==null?'--°':
+                    '${weather!.temperature!.round()}°',
+                    maxLines:1,overflow:TextOverflow.ellipsis,
+                    style:TextStyle(color:_homeText,fontSize:_narrowHome?22:27,
+                      fontWeight:FontWeight.w900,height:1))),
+                ]),
+                const SizedBox(height:5),
+                Row(mainAxisAlignment:MainAxisAlignment.center,children:[
+                  Icon(Icons.location_on_rounded,color:_homeText,size:12),
+                  Flexible(child:Text(
+                    weather?.location.isNotEmpty==true?weather!.location:'Konum',
+                    maxLines:1,overflow:TextOverflow.ellipsis,
+                    style:TextStyle(color:_homeText,fontSize:11,fontWeight:FontWeight.w800))),
+                ]),
+                const SizedBox(height:3),
+                Text(weather?.description??(weatherLoading?'Yükleniyor':'--'),
+                  maxLines:1,overflow:TextOverflow.ellipsis,
+                  style:TextStyle(color:_homeSecondary,fontSize:10)),
+                const SizedBox(height:2),
+                Row(mainAxisAlignment:MainAxisAlignment.center,children:[
+                  const Icon(Icons.arrow_upward_rounded,color:Color(0xFFF14259),size:13),
+                  Text(weather?.maxTemperature==null?'--°':
+                    '${weather!.maxTemperature!.round()}°',
+                    style:TextStyle(color:_homeText,fontSize:10.5)),
+                  const SizedBox(width:7),
+                  const Icon(Icons.arrow_downward_rounded,
+                    color:Color(0xFF297EFF),size:13),
+                  Text(weather?.minTemperature==null?'--°':
+                    '${weather!.minTemperature!.round()}°',
+                    style:TextStyle(color:_homeText,fontSize:10.5)),
+                ]),
+              ]),
+            ),
           ),
         ]),
       ),
     ]),
   );
+
+  Widget _homeCircleButton(IconData icon,VoidCallback action,{bool unread=false})=>
+    Material(color:_homeCardBackground,shape:const CircleBorder(),
+      child:InkWell(onTap:action,customBorder:const CircleBorder(),
+        child:SizedBox(width:43,height:43,child:Stack(children:[
+          Center(child:Icon(icon,color:_homeText,size:24)),
+          if(unread)const Positioned(top:6,right:6,
+            child:CircleAvatar(radius:3.8,backgroundColor:Color(0xFFFF3C53))),
+        ])),
+      ),
+    );
 
   int _valetStep(String status)=>switch(status){
     'accepted'=>0,
