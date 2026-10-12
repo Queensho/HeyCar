@@ -902,25 +902,22 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   // Vehicle identity comes from the currently selected vehicle, not remote
   // brand-logo images. Local SVG marks keep the lime area visually consistent.
   Widget _premiumCarArtwork(){
-    final selectedMake=QrDraft.make.trim();
-    final fallbackMake=(_selectedVehicle?['make']??'').toString().trim();
-    final logoData=_selectedVehicle?['brandLogo'];
-    final logo=logoData is Map
-      ?Map<String,dynamic>.from(logoData):<String,dynamic>{};
-    final path=(logo['path']??'').toString().trim();
-    final safePath=path.startsWith('/uploads/vehicle-brands/')&&
-      !path.contains('..')&&!path.contains(String.fromCharCode(92))&&
-      !path.contains('?')&&!path.contains('#')&&!path.contains('%')&&
-      (path.endsWith('.svg')||path.endsWith('.png')||path.endsWith('.webp'));
-    final apiBase=OnboardingBackend.baseUrl;
-    final root=apiBase.endsWith('/')
-      ?apiBase.substring(0,apiBase.length-1):apiBase;
-    final logoUrl=(logo['available']==true&&safePath&&
-      root.startsWith('https://'))?root+path:null;
+    final selected=_selectedVehicle;
+    final requestedId=QrDraft.vehicleId.trim();
+    final selectedId=(selected?['id']??'').toString().trim();
+    final matching=selected!=null&&selectedId.isNotEmpty&&
+      selectedId==requestedId;
+    final selectedMake=matching?(selected['make']??'').toString().trim():'';
+    final make=selectedMake.isNotEmpty?selectedMake:QrDraft.make.trim();
+    final vehicleType=matching?(selected['vehicle_type']??QrDraft.vehicleType):
+      QrDraft.vehicleType;
+    final logoData=matching?selected['brandLogo']:null;
+    final logo=logoData is Map?logoData:null;
     return OwnerVehicleBrandMark(
-      make:selectedMake.isNotEmpty?selectedMake:fallbackMake,
-      isMotorcycle:VehicleKind.isMotorcycle(QrDraft.vehicleType),
-      backendLogoUrl:logoUrl,
+      key:ValueKey('owner-brand-${matching?selectedId:requestedId}-$make'),
+      make:make,
+      isMotorcycle:VehicleKind.isMotorcycle(vehicleType),
+      backendLogoUrl:OwnerBrandLogoUrl.resolve(logo,OnboardingBackend.baseUrl),
     );
   }
 

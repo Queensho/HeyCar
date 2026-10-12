@@ -26,6 +26,15 @@ abstract final class VehicleBrandMarkResolver {
     'subaru':'subaru','suzuki':'suzuki','tesla':'tesla',
     'toyota':'toyota','vespa':'vespa','volkswagen':'volkswagen',
     'volvo':'volvo',
+    'aprilia':'aprilia','byd':'byd','chery':'chery',
+    'chrysler':'chrysler','cupra':'cupra','daihatsu':'daihatsu',
+    'dfsk':'dfsk','dodge':'dodge','dsautomobiles':'ds',
+    'isuzu':'isuzu','jaecoo':'jaecoo','kawasaki':'kawasaki',
+    'kgm':'kgm','lada':'lada','maxus':'maxus','mg':'mg',
+    'omoda':'omoda','piaggio':'piaggio','proton':'proton',
+    'rover':'rover','saab':'saab','smart':'smart',
+    'togg':'togg','triumph':'triumph','yamaha':'yamaha',
+    'harleydavidson':'harley-davidson','husqvarna':'husqvarna',
   };
   static const Map<String,String> _aliases={
     'vw':'volkswagen','vwagen':'volkswagen',
@@ -37,6 +46,16 @@ abstract final class VehicleBrandMarkResolver {
     'alfaromeospa':'alfaromeo','audiag':'audi',
     'fordmotorcompany':'ford','landrovergroup':'landrover',
     'minicooper':'mini',
+    'harleydavidsonmotorcompany':'harleydavidson',
+    'harleydavidsoninc':'harleydavidson',
+    'ds':'dsautomobiles','dsautomobile':'dsautomobiles',
+    'ssangyong':'kgm','kgmmotors':'kgm',
+    'mgmotor':'mg','mgmotors':'mg',
+    'bydauto':'byd','cheryautomobile':'chery',
+    'citroenautomobiles':'citroen',
+    'yamahamotor':'yamaha',
+    'kawasakimotors':'kawasaki','triumphmotorcycles':'triumph',
+    'apriliaspa':'aprilia','piaggiogroup':'piaggio',
   };
 
   static String? slugFor(String? make){
@@ -56,6 +75,38 @@ abstract final class VehicleBrandMarkResolver {
   static String? assetFor(String? make){
     final slug=slugFor(make);
     return slug==null?null:'assets/vehicle_brand_logos/$slug.svg';
+  }
+}
+
+
+/// Choose only safe first-party logo files from the existing owner vehicle API.
+/// The payload may contain either a relative path or a legacy absolute URL.
+abstract final class OwnerBrandLogoUrl {
+  static String? resolve(Map<dynamic,dynamic>? data,String apiBaseUrl){
+    if(data==null||data['available']!=true)return null;
+    final base=Uri.tryParse(apiBaseUrl.trim());
+    if(base==null||base.scheme!='https'||base.host.isEmpty)return null;
+    for(final field in ['path','url']){
+      final source=(data[field]??'').toString().trim();
+      if(source.isEmpty||source.contains('%')||source.contains('..'))continue;
+      final parsed=Uri.tryParse(source);
+      if(parsed==null)continue;
+      final resolved=source.startsWith('/')?base.resolveUri(parsed):parsed;
+      final prefix='/uploads/vehicle-brands/';
+      if(resolved.scheme!='https'||resolved.host!=base.host||
+        resolved.port!=base.port||resolved.hasQuery||resolved.hasFragment||
+        resolved.userInfo.isNotEmpty||!resolved.path.startsWith(prefix)){
+        continue;
+      }
+      final filename=resolved.path.substring(prefix.length);
+      final fileNamePattern=RegExp(
+        r'^[a-z0-9-]+-[a-f0-9]{12}\.(png|jpg|webp)',caseSensitive:false);
+      final match=fileNamePattern.firstMatch(filename);
+      if(match!=null&&match.start==0&&match.end==filename.length){
+        return resolved.toString();
+      }
+    }
+    return null;
   }
 }
 
@@ -85,7 +136,7 @@ class OwnerVehicleBrandMark extends StatelessWidget{
       final remote=backendLogoUrl?.trim()??'';
       final validRemote=remote.startsWith('https://')&&
         (remote.endsWith('.svg')||remote.endsWith('.png')||
-         remote.endsWith('.webp'));
+         remote.endsWith('.webp')||remote.endsWith('.jpg'));
       return Semantics(
         label:slug==null?'Araç marka simgesi':'${make.trim()} marka logosu',
         image:true,
