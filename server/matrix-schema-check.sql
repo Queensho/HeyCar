@@ -21,6 +21,7 @@ BEGIN
         ('anonymous_calls'),
         ('vehicle_maintenance_records'),
         ('vehicle_motorcycle_profiles'),
+        ('vehicle_motorcycle_emergency_cards'),
         ('vehicle_reminders'),
         ('vehicle_parking_locations'),
         ('vehicle_transfers'),
