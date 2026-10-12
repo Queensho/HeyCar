@@ -53,6 +53,8 @@ jobs:
           flutter analyze lib/owner_dashboard_live.dart lib/owner_home_redesign.dart lib/owner_story_highlights.dart lib/owner_vehicles_page.dart lib/owner_notifications_page.dart lib/owner_settings_page.dart --no-fatal-infos --no-fatal-warnings
       - name: Verify responsive purple lime owner home layouts
         run: flutter test test/owner_home_premium_layout_test.dart
+      - name: Verify single responsive server-driven quick access panel
+        run: flutter test test/owner_quick_access_panel_test.dart
       - name: Verify offline brand SVG marks and vehicle alias matching
         run: flutter test test/owner_vehicle_brand_mark_test.dart
       - name: Verify car/motorcycle registration and active vehicle UI
