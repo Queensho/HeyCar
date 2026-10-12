@@ -362,8 +362,8 @@ class _PublicHomeState extends State<_PublicHome>{
   String? emergencyError;
   bool emergencyLoading=false;
   bool get isMotorcycle=>widget.vehicle['vehicle_type']?.toString().trim().toLowerCase()=='motorcycle';
-  bool get showEmergencyAccess=>
-    widget.emergencyAvailable??isMotorcycle;
+  bool get showEmergencyAccess=>motorcycleEmergencyEntryVisible(
+    vehicle:widget.vehicle,published:widget.emergencyAvailable);
   String get plate => widget.vehicle['plate']?.toString() ?? 'Araç';
 
   @override
