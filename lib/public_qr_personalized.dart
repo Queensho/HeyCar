@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'public_theme_backend.dart';
 import 'public_notification_api.dart';
+import 'public_motorcycle_emergency_card.dart';
 import 'public_menu_pages.dart';
 
 const _bg = Color(0xFF07101F);
@@ -351,12 +352,36 @@ class _PublicHomeState extends State<_PublicHome>{
   static const _navy=Color(0xFF071A3C);
   static const _limeCta=Color(0xFFB8FF2C);
 
+  Map<String,dynamic>? emergencyCard;
   String get plate => widget.vehicle['plate']?.toString() ?? 'Araç';
 
   @override
   void initState(){
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_)=>_checkParkNote());
+    WidgetsBinding.instance.addPostFrameCallback((_){
+      _checkParkNote();
+      _loadEmergencyCard();
+    });
+  }
+
+  Future<void> _loadEmergencyCard()async{
+    if(widget.vehicle['vehicle_type']!='motorcycle')return;
+    final token=PublicNotificationApi.currentToken();
+    if(token.isEmpty)return;
+    try{
+      final proof=await PublicNotificationApi.scanToken();
+      final response=await http.get(
+        Uri.parse('${PublicThemeBackend.baseUrl}/api/qr/${Uri.encodeComponent(token)}/emergency-card'),
+        headers:{'x-scan-token':proof},
+      ).timeout(const Duration(seconds:9));
+      if(response.statusCode!=200)return;
+      final raw=jsonDecode(response.body);
+      if(raw is! Map || raw['card'] is! Map)return;
+      final card=Map<String,dynamic>.from(raw['card'] as Map);
+      if(mounted)setState(()=>emergencyCard=card);
+    }catch(_){
+      // No public emergency information is disclosed on session failure.
+    }
   }
 
   void _openMenuPage(Widget page){
@@ -590,6 +615,10 @@ class _PublicHomeState extends State<_PublicHome>{
                             ),
                           ],
                         ),
+                        if(emergencyCard!=null)...[
+                          const SizedBox(height:10),
+                          PublicMotorcycleEmergencyCard(card:emergencyCard!),
+                        ],
                         const SizedBox(height:8),
                         InkWell(
                           borderRadius:BorderRadius.circular(15),
