@@ -75,6 +75,8 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   bool _storiesLoading=false;
 
   bool get light=>CepqarTheme.isLight;
+  // Mobile Chrome leaves less vertical space than a standalone PWA.
+  bool get _shortViewport=>MediaQuery.sizeOf(context).height<790;
   AppUiTokens get _ui=>Theme.of(context).extension<AppUiTokens>()??AppUiTokens.defaults;
   Color get bg=>light?_ui.background:const Color(0xFF050913);
   Color get panel=>light?_ui.surface:const Color(0xFF0B1220);
@@ -1067,7 +1069,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     onLongPress:_editQuickAccess,
     borderRadius:BorderRadius.circular(17),
     child:Container(
-      height:83,
+      height:_shortViewport?74:80,
       decoration:card(),
       child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[
         Container(
@@ -1087,10 +1089,10 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   Widget quickRow(){
     final items=quickAccessIds.map(_quickDef).whereType<OwnerShortcutDefinition>().take(maxOwnerShortcuts).toList();
     return Padding(
-      padding:const EdgeInsets.fromLTRB(16,8,16,0),
+      padding:EdgeInsets.fromLTRB(16,_shortViewport?6:8,16,0),
       child:Column(children:[
         Row(children:[
-          Expanded(child:Text('Hızlı Erişim',style:TextStyle(color:text,fontSize:CepqarTheme.cardTitle,fontWeight:FontWeight.w900))),
+          Expanded(child:Text('Hızlı Erişim',style:TextStyle(color:text,fontSize:18,fontWeight:FontWeight.w900))),
           InkWell(
             onTap:_editQuickAccess,
             borderRadius:BorderRadius.circular(12),
@@ -1104,7 +1106,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             ),
           ),
         ]),
-        const SizedBox(height:6),
+        SizedBox(height:_shortViewport?4:6),
         Row(children:[
           for(var i=0;i<items.length;i++)...[
             if(i>0)const SizedBox(width:7),
@@ -1365,7 +1367,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   );
 
   Widget section(String title,VoidCallback tap)=>Padding(
-    padding:const EdgeInsets.fromLTRB(16,17,16,8),
+    padding:EdgeInsets.fromLTRB(16,_shortViewport?9:16,16,_shortViewport?4:7),
     child:Row(children:[
       Expanded(child:Text(title,style:TextStyle(color:text,fontSize:18,fontWeight:FontWeight.w900))),
       InkWell(onTap:tap,child:const Row(children:[Text('Tümünü Gör',style:TextStyle(color:purple,fontSize:CepqarTheme.bodySmall,fontWeight:FontWeight.w800)),Icon(Icons.chevron_right_rounded,color:purple,size:18)])),
@@ -1525,13 +1527,13 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     final items=_appUiConfig.quickActions.take(4).toList();
     if(items.isEmpty)return const SizedBox.shrink();
     return Padding(
-      padding:const EdgeInsets.fromLTRB(16,8,16,0),
+      padding:EdgeInsets.fromLTRB(16,_shortViewport?6:8,16,0),
       child:Column(children:[
         Row(children:[
-          Expanded(child:Text('Hızlı Erişim',style:TextStyle(color:text,fontSize:CepqarTheme.cardTitle,fontWeight:FontWeight.w900))),
+          Expanded(child:Text('Hızlı Erişim',style:TextStyle(color:text,fontSize:18,fontWeight:FontWeight.w900))),
           InkWell(onTap:_editQuickAccess,child:const Row(children:[Text('Tümünü Gör',style:TextStyle(color:OwnerReference.purple,fontSize:11,fontWeight:FontWeight.w800)),Icon(Icons.chevron_right_rounded,color:OwnerReference.purple,size:17)])),
         ]),
-        const SizedBox(height:6),
+        SizedBox(height:_shortViewport?4:6),
         Row(children:[
           for(var i=0;i<items.length;i++)...[
             if(i>0)const SizedBox(width:7),
@@ -1539,7 +1541,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
               onTap:()=>_runManagedAction(items[i]),
               borderRadius:BorderRadius.circular(_ui.cardRadius),
               child:Container(
-                height:83,
+                height:_shortViewport?74:80,
                 decoration:BoxDecoration(
                   color:_ui.token(items[i].backgroundToken),
                   borderRadius:BorderRadius.circular(_ui.cardRadius),
