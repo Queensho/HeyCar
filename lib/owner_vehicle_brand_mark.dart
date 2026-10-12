@@ -34,7 +34,7 @@ abstract final class VehicleBrandMarkResolver {
     'omoda':'omoda','piaggio':'piaggio','proton':'proton',
     'rover':'rover','saab':'saab','smart':'smart',
     'togg':'togg','triumph':'triumph','yamaha':'yamaha',
-    'harleydavidson':'harley-davidson',
+    'harleydavidson':'harley-davidson','husqvarna':'husqvarna',
   };
   static const Map<String,String> _aliases={
     'vw':'volkswagen','vwagen':'volkswagen',
@@ -136,7 +136,7 @@ class OwnerVehicleBrandMark extends StatelessWidget{
       final remote=backendLogoUrl?.trim()??'';
       final validRemote=remote.startsWith('https://')&&
         (remote.endsWith('.svg')||remote.endsWith('.png')||
-         remote.endsWith('.webp'));
+         remote.endsWith('.webp')||remote.endsWith('.jpg'));
       return Semantics(
         label:slug==null?'Araç marka simgesi':'${make.trim()} marka logosu',
         image:true,
