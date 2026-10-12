@@ -68,6 +68,18 @@ void main(){
       final third=tester.getRect(find.byKey(const ValueKey('owner-monthly-calls')));
       final fourth=tester.getRect(find.byKey(const ValueKey('owner-monthly-offers')));
       expect(first.width,closeTo(second.width,.1));
+      // All metric tiles keep a compact fixed height on every screen.
+      for(final rect in [first,second,third,fourth]){
+        expect(rect.height,closeTo(88,.01));
+      }
+      final messageLabel=find.descendant(
+        of:find.byKey(const ValueKey('owner-monthly-messages')),
+        matching:find.text('Mesaj Talebi Çok Uzun Başlık Sınaması'),
+      );
+      expect(messageLabel,findsOneWidget);
+      final labelBottom=tester.getRect(messageLabel).bottom;
+      // Content is vertically balanced, not pinned at the top of a tall card.
+      expect(first.bottom-labelBottom,lessThan(31));
       if(width>=390){
         expect(first.top,closeTo(third.top,1));
         expect(third.top,closeTo(fourth.top,1));
@@ -101,6 +113,8 @@ void main(){
     await tester.pumpWidget(app(metrics(messagesChange:12)));
     await tester.pumpAndSettle();
     expect(find.text('↑ %12'),findsOneWidget);
+    expect(tester.getSize(find.byKey(
+      const ValueKey('owner-monthly-messages'))).height,88);
     expect(tester.takeException(),isNull);
   });
 
