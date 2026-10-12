@@ -305,6 +305,16 @@ class OwnerSettingsPage extends StatelessWidget {
           ),
           const _ThemeProfileRow(),
           ListTile(
+            leading:const Icon(Icons.description_outlined),
+            title:const Text('Kullanım Koşulları'),
+            onTap:(){Navigator.pop(sheetContext);_push(context,const TermsOfUsePage());},
+          ),
+          ListTile(
+            leading:const Icon(Icons.policy_outlined),
+            title:const Text('Gizlilik Politikası'),
+            onTap:(){Navigator.pop(sheetContext);_push(context,const PrivacyKvkkPage());},
+          ),
+          ListTile(
             leading:const Icon(Icons.lock_outline_rounded),
             title:const Text('Gizlilik ve Güvenlik'),
             onTap:(){Navigator.pop(sheetContext);
