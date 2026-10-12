@@ -54,7 +54,7 @@ class OwnerVehicleBrandMark extends StatelessWidget{
             if(asset!=null)
               SvgPicture.asset(
                 asset,
-                key:ValueKey('owner-brand-logo-'+slug),
+                key:ValueKey('owner-brand-logo-'+slug!),
                 width:side,height:side,
                 fit:BoxFit.contain,
                 colorFilter:const ColorFilter.mode(ink,BlendMode.srcIn),
