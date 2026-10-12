@@ -491,16 +491,16 @@ class _VehicleAction extends StatelessWidget{
           padding:const EdgeInsets.symmetric(vertical:1),
           child:Column(children:[
             Container(
-              width:30,height:30,
+              width:39,height:39,
               decoration:BoxDecoration(
                 color:dark?const Color(0xFF17132E):_purple.withValues(alpha:.07),
-                borderRadius:BorderRadius.circular(7),
+                borderRadius:BorderRadius.circular(13),
                 border:dark?Border.all(color:_purple.withValues(alpha:.35)):null,
               ),
-              child:Icon(icon,color:dark?const Color(0xFFA06DFF):_purple,size:16),
+              child:Icon(icon,color:dark?const Color(0xFFA06DFF):_purple,size:22),
             ),
             const SizedBox(height:2),
-            Text(label,maxLines:1,overflow:TextOverflow.ellipsis,textAlign:TextAlign.center,style:TextStyle(color:_muted,fontSize:CepqarTheme.caption,fontWeight:FontWeight.w700)),
+            Text(label,maxLines:2,overflow:TextOverflow.ellipsis,textAlign:TextAlign.center,style:TextStyle(color:_muted,fontSize:10.4,fontWeight:FontWeight.w700)),
           ]),
         ),
       ),
