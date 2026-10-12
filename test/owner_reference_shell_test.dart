@@ -67,7 +67,7 @@ void main(){
       expect(nav.height,lessThanOrEqualTo(82));
       expect(glow.width,58);
       expect(glow.height,58);
-      expect(glow.center.dx,closeTo(393/10,3));
+      expect(glow.center.dx,closeTo(43.3,2));
       expect(find.byType(ClipPath),findsWidgets);
       expect(tester.takeException(),isNull);
     },
