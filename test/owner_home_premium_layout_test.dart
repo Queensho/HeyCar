@@ -16,6 +16,12 @@ void main(){
   ]){
     testWidgets('premium owner home is responsive at ${size.width}dp',(tester)async{
       SharedPreferences.setMockInitialValues(<String,Object>{});
+      final existingFlutterError=FlutterError.onError;
+      FlutterError.onError=(details){
+        if(size.width==320)debugPrint('BRAND_HOME_LAYOUT_DIAG:\n${details.toString()}');
+        existingFlutterError?.call(details);
+      };
+      addTearDown(()=>FlutterError.onError=existingFlutterError);
       tester.view.physicalSize=size;
       tester.view.devicePixelRatio=1;
       addTearDown((){
