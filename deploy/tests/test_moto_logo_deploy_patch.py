@@ -50,11 +50,14 @@ class MotorcycleLogoDeployTest(unittest.TestCase):
     def test_preserves_other_live_functions_and_inserts_logo_resolver(self):
         latest=SERVICE.read_text()
         anchor="const {motorcycleLogoSource}=require('./motorcycle-brand-logo-source');"
-        from_part="async function resolveExternal("
+        from_part="function logoPayload("
         to_part="module.exports={normalizeBrand,findBrand,logoPayload,cachedLogo,resolveExternal,queueResolve,publicBase,imageMeta,assertPublicHttps};"
         x,y=latest.index(from_part),latest.index(to_part)
         old=latest.replace(anchor,"")
         old=old[:old.index(from_part)]+(
+            "function logoPayload(row){return {available:false,url:''};}\n"
+            "async function cachedLogo(pool,make){return {available:false};}\n"
+            "async function fetchImage(url,hosts){return null;}\n"
             "async function resolveExternal(pool,brand,base){return brand;}\n"
             "function queueResolve(pool,make,base){}\n"
         )+old[old.index(to_part):]
@@ -78,6 +81,8 @@ class MotorcycleLogoDeployTest(unittest.TestCase):
         self.assertIn("KEEP_VPS_HOTFIX",service)
         self.assertIn(anchor,service)
         self.assertIn("motorcycleLogoSource(brand.name,vehicleType)",service)
+        self.assertIn("localBrandLogoReady",service)
+        self.assertIn("path:key?'/uploads/vehicle-brands/'",service)
         self.assertIn("vehicleType:v.vehicle_type",routes)
         self.assertIn("vehicleType:created.rows[0].vehicle_type",routes)
         self.assertIn("vehicleType:updated.rows[0].vehicle_type",routes)
