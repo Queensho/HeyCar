@@ -46,6 +46,7 @@ void main(){
     'Kawasaki Motors':'kawasaki',
     'Triumph Motorcycles':'triumph',
     'Harley Davidson':'harley-davidson',
+    'Husqvarna':'husqvarna',
     'Aprilia':'aprilia',
     'Piaggio':'piaggio',
     'BYD':'byd','Chery':'chery','Cupra':'cupra',
@@ -80,7 +81,7 @@ void main(){
     'aprilia','byd','chery','chrysler','cupra','daihatsu','dfsk','dodge',
     'ds','isuzu','jaecoo','kawasaki','kgm','lada','maxus','mg',
     'omoda','piaggio','proton','rover','saab','smart','togg','triumph',
-    'yamaha','harley-davidson',
+    'yamaha','harley-davidson','husqvarna',
   };
   testWidgets('all supported vehicle SVGs are bundled and single-tone transparent',(tester)async{
     for(final slug in allSlugs){
