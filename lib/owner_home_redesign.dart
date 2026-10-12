@@ -598,6 +598,9 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     return hour<12?'Günaydın,':hour<18?'İyi günler,':'İyi akşamlar,';
   }
 
+
+  // The reference hero has an illustration, not a standalone vehicle tile.
+  // Motorcycle users retain their server-provided brand logo in the same space.
   Widget _heroBrandLogo(){
     final data=_selectedVehicle?['brandLogo'];
     final logo=data is Map?Map<String,dynamic>.from(data):<String,dynamic>{};
@@ -608,34 +611,40 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       ?OnboardingBackend.baseUrl.replaceFirst(RegExp(r'/$'),'')+storedPath
       :'${logo['url']??''}'.trim();
     final hasLogo=logo['available']==true&&url.startsWith('https://');
-    return Container(
-      height:105,width:135,
-      alignment:Alignment.center,
-      decoration:BoxDecoration(
-        borderRadius:BorderRadius.circular(23),
-        gradient:LinearGradient(colors:[
-          OwnerReference.lilac.withValues(alpha:.32),
-          const Color(0xFF9C70FF).withValues(alpha:.23),
-        ]),
-      ),
-      child:hasLogo
-        ?Image.network(url,height:85,width:112,fit:BoxFit.contain,
+    final motorcycle=VehicleKind.isMotorcycle(QrDraft.vehicleType);
+    return SizedBox(
+      height:124,width:204,
+      child:hasLogo&&motorcycle
+        ?Image.network(url,fit:BoxFit.contain,
             errorBuilder:(_,__,___)=>_logoFallback())
-        :_logoFallback(),
+        :motorcycle
+          ?_logoFallback()
+          :Image.asset('assets/Arac.png',fit:BoxFit.contain,
+              errorBuilder:(_,__,___)=>_logoFallback()),
     );
   }
   Widget _logoFallback()=>Icon(
     VehicleKind.isMotorcycle(QrDraft.vehicleType)
       ?Icons.two_wheeler_rounded:Icons.directions_car_rounded,
-    size:66,color:OwnerReference.purple.withValues(alpha:.56),
+    size:92,color:OwnerReference.purple.withValues(alpha:.65),
   );
+
+  IconData get _weatherIcon=>switch(weather?.condition){
+    WeatherCondition.clear=>Icons.wb_sunny_rounded,
+    WeatherCondition.partlyCloudy=>Icons.partly_cloudy_day_rounded,
+    WeatherCondition.rain=>Icons.water_drop_rounded,
+    WeatherCondition.snow=>Icons.ac_unit_rounded,
+    WeatherCondition.thunderstorm=>Icons.thunderstorm_rounded,
+    WeatherCondition.night=>Icons.nights_stay_rounded,
+    _=>Icons.cloud_rounded,
+  };
 
   Widget _referenceFilters(){
     const categories=['Tümü','Araç & QR','Hizmetler','Fırsatlar','Yakında'];
     return SizedBox(
-      height:42,
+      height:38,
       child:ListView.separated(
-        padding:const EdgeInsets.symmetric(horizontal:17),
+        padding:const EdgeInsets.symmetric(horizontal:16),
         scrollDirection:Axis.horizontal,
         itemCount:categories.length,
         separatorBuilder:(_,__)=>const SizedBox(width:8),
@@ -646,10 +655,10 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             selected:active,
             onSelected:(_)=>setState(()=>_referenceCategory=name),
             showCheckmark:false,
-            padding:const EdgeInsets.symmetric(horizontal:12,vertical:3),
+            padding:const EdgeInsets.symmetric(horizontal:11,vertical:1),
             labelStyle:TextStyle(
               color:active?Colors.white:OwnerReference.subtitle,
-              fontWeight:FontWeight.w700,fontSize:12,
+              fontWeight:FontWeight.w700,fontSize:11.5,
             ),
             selectedColor:OwnerReference.purple,
             backgroundColor:OwnerReference.surface,
@@ -672,81 +681,122 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     }
   }
 
+
   Widget header()=>Container(
-    padding:EdgeInsets.fromLTRB(18,MediaQuery.paddingOf(context).top+4,18,16),
-    decoration:BoxDecoration(
-      gradient:light?const LinearGradient(
+    padding:EdgeInsets.fromLTRB(18,MediaQuery.paddingOf(context).top+4,18,10),
+    decoration:light?const BoxDecoration(
+      gradient:LinearGradient(
         begin:Alignment.topLeft,end:Alignment.bottomRight,
-        colors:[Color(0xFFFCFAFF),Color(0xFFF1EAFE),Color(0xFFF8F6FF)],
-      ):null,
-    ),
+        colors:[Color(0xFFFEFDFF),Color(0xFFF1E9FF),Color(0xFFFBFAFF)],
+      ),
+    ):null,
     child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
       OwnerReferenceHeader(
         onNotifications:widget.notifications,
         onSettings:()=>widget.shortcut('settings'),
         unread:unread>0,
       ),
-      const SizedBox(height:14),
-      Row(children:[
-        Container(
-          height:65,width:65,
-          alignment:Alignment.center,
-          decoration:BoxDecoration(
-            shape:BoxShape.circle,
-            gradient:const LinearGradient(colors:[
-              Color(0xFF4920B2),Color(0xFFA86CFF)]),
-            border:Border.all(color:Colors.white,width:3),
+      const SizedBox(height:8),
+      SizedBox(
+        height:103,
+        child:Row(children:[
+          Container(
+            height:68,width:68,
+            alignment:Alignment.center,
+            decoration:BoxDecoration(
+              shape:BoxShape.circle,
+              gradient:const LinearGradient(colors:[
+                Color(0xFF4920B2),Color(0xFFA86CFF)]),
+              border:Border.all(color:Colors.white,width:3),
+            ),
+            child:Text(initials,style:const TextStyle(color:Colors.white,
+              fontSize:23,fontWeight:FontWeight.w900)),
           ),
-          child:Text(initials,style:const TextStyle(color:Colors.white,
-            fontSize:23,fontWeight:FontWeight.w900)),
+          const SizedBox(width:11),
+          Expanded(child:Column(
+            mainAxisAlignment:MainAxisAlignment.center,
+            crossAxisAlignment:CrossAxisAlignment.start,
+            children:[
+              Text(_greeting,style:TextStyle(color:muted,fontSize:12)),
+              const SizedBox(height:1),
+              Text(_displayNameParts.join(' '),
+                maxLines:2,overflow:TextOverflow.ellipsis,
+                style:TextStyle(color:text,fontSize:16,fontWeight:FontWeight.w900,height:1.08)),
+              const SizedBox(height:5),
+              Text('Aracınızla dünya sizinle iletişimde.',
+                maxLines:2,overflow:TextOverflow.ellipsis,
+                style:TextStyle(color:muted,fontSize:11.2,height:1.25)),
+            ],
+          )),
+          const SizedBox(width:6),
+          InkWell(
+            onTap:_openWeatherDetails,
+            borderRadius:BorderRadius.circular(23),
+            child:Container(
+              width:124,height:94,
+              padding:const EdgeInsets.fromLTRB(10,9,8,8),
+              decoration:OwnerReference.card(radius:23),
+              child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[
+                Row(mainAxisAlignment:MainAxisAlignment.center,children:[
+                  Icon(_weatherIcon,color:const Color(0xFFFFC83B),size:28),
+                  const SizedBox(width:5),
+                  Flexible(child:Text(weather?.temperature==null?'--°':
+                    '${weather!.temperature!.round()}°',
+                    maxLines:1,style:TextStyle(color:text,fontSize:23,
+                      fontWeight:FontWeight.w900,height:1))),
+                ]),
+                const SizedBox(height:3),
+                Text(weather?.location.isNotEmpty==true?weather!.location:'Konum',
+                  maxLines:1,overflow:TextOverflow.ellipsis,
+                  style:TextStyle(color:text,fontSize:11,fontWeight:FontWeight.w700)),
+                Text(weather?.description??'',
+                  maxLines:1,overflow:TextOverflow.ellipsis,
+                  style:TextStyle(color:muted,fontSize:9)),
+                const SizedBox(height:2),
+                Row(mainAxisAlignment:MainAxisAlignment.center,children:[
+                  const Icon(Icons.arrow_upward_rounded,color:Color(0xFFEC405C),size:12),
+                  Text(weather?.maxTemperature==null?'--°':
+                    '${weather!.maxTemperature!.round()}°',
+                    style:TextStyle(color:muted,fontSize:10)),
+                  const SizedBox(width:6),
+                  const Icon(Icons.arrow_downward_rounded,color:Color(0xFF3D83FA),size:12),
+                  Text(weather?.minTemperature==null?'--°':
+                    '${weather!.minTemperature!.round()}°',
+                    style:TextStyle(color:muted,fontSize:10)),
+                ]),
+              ]),
+            ),
+          ),
+        ]),
+      ),
+      const SizedBox(height:3),
+      SizedBox(height:132,child:Stack(clipBehavior:Clip.none,children:[
+        if(light)Positioned(
+          right:-18,top:0,bottom:-10,width:215,
+          child:IgnorePointer(child:DecoratedBox(decoration:BoxDecoration(
+            gradient:RadialGradient(
+              center:const Alignment(.6,.25),radius:1.0,
+              colors:[const Color(0xFF8D44FF).withValues(alpha:.55),
+                const Color(0xFFCAA8FF).withValues(alpha:.23),
+                const Color(0x008F55FF)],
+            ),
+          ))),
         ),
-        const SizedBox(width:12),
-        Expanded(child:Column(
-          crossAxisAlignment:CrossAxisAlignment.start,
-          children:[
-            Text(_greeting,style:TextStyle(color:muted,fontSize:13)),
-            Text(OnboardingDraft.displayName.trim().isEmpty
-              ?'Araç Sahibi':OnboardingDraft.displayName.trim(),
-              maxLines:2,overflow:TextOverflow.ellipsis,
-              style:TextStyle(color:text,fontSize:17,fontWeight:FontWeight.w900)),
-            Text('Aracınızla dünya sizinle iletişimde.',
-              maxLines:2,style:TextStyle(color:muted,fontSize:11.5)),
+        Positioned(
+          right:-9,bottom:-6,
+          child:IgnorePointer(child:_heroBrandLogo()),
+        ),
+        Positioned(left:0,top:9,child:Column(
+          crossAxisAlignment:CrossAxisAlignment.start,children:[
+            Text('${DateTime.now().day.toString().padLeft(2,'0')}.${DateTime.now().month.toString().padLeft(2,'0')}',
+              style:const TextStyle(fontSize:57,fontWeight:FontWeight.w900,
+                letterSpacing:-2.5,height:1.05,color:OwnerReference.purple)),
+            Text(_todayName,style:TextStyle(color:text,
+              fontSize:27,fontWeight:FontWeight.w700,height:1.05)),
           ],
         )),
-        const SizedBox(width:8),
-        InkWell(
-          onTap:_openWeatherDetails,
-          borderRadius:BorderRadius.circular(20),
-          child:Container(
-            width:112,
-            padding:const EdgeInsets.symmetric(horizontal:9,vertical:11),
-            decoration:OwnerReference.card(radius:21),
-            child:Column(children:[
-              Icon(weather?.condition==WeatherCondition.rain
-                ?Icons.umbrella_rounded:Icons.wb_cloudy_rounded,
-                color:OwnerReference.purple,size:22),
-              Text(weather?.temperature==null?'--°':
-                '${weather!.temperature!.round()}°',
-                style:TextStyle(color:text,fontSize:25,fontWeight:FontWeight.w900)),
-              Text(weather?.location.isNotEmpty==true?weather!.location:'Konum',
-                maxLines:1,overflow:TextOverflow.ellipsis,
-                style:TextStyle(color:muted,fontSize:10)),
-            ]),
-          ),
-        ),
-      ]),
-      const SizedBox(height:14),
-      Row(crossAxisAlignment:CrossAxisAlignment.center,children:[
-        Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-          Text('${DateTime.now().day.toString().padLeft(2,'0')}.${DateTime.now().month.toString().padLeft(2,'0')}',
-            style:const TextStyle(fontSize:58,fontWeight:FontWeight.w900,
-              letterSpacing:-2.5,height:1,color:OwnerReference.purple)),
-          Text(_todayName,style:TextStyle(color:text,
-            fontSize:27,fontWeight:FontWeight.w800)),
-        ])),
-        _heroBrandLogo(),
-      ]),
-      const SizedBox(height:16),
+      ])),
+      const SizedBox(height:9),
       _referenceFilters(),
     ]),
   );
