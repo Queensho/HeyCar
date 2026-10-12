@@ -793,7 +793,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         Positioned(left:0,top:9,child:Column(
           crossAxisAlignment:CrossAxisAlignment.start,children:[
             Text('${DateTime.now().day.toString().padLeft(2,'0')}.${DateTime.now().month.toString().padLeft(2,'0')}',
-              style:const TextStyle(fontSize:_shortViewport?51:57,fontWeight:FontWeight.w900,
+              style:TextStyle(fontSize:_shortViewport?51:57,fontWeight:FontWeight.w900,
                 letterSpacing:-2.5,height:1.05,color:OwnerReference.purple)),
             Text(_todayName,style:TextStyle(color:text,
               fontSize:_shortViewport?23:27,fontWeight:FontWeight.w700,height:1.05)),
