@@ -495,17 +495,13 @@ class _VehicleBrandLogo extends StatelessWidget{
   @override Widget build(BuildContext context){
     final raw=vehicle['brandLogo'];
     final logo=raw is Map?Map<String,dynamic>.from(raw):const <String,dynamic>{};
-    // The current authenticated API origin is more reliable than an older
-    // absolute hostname stored when the logo was first downloaded.
+    // Prefer the current API origin instead of a cached hostname.
     final imagePath=(logo['path']??'').toString().trim();
     final safeImagePath=imagePath.startsWith('/uploads/vehicle-brands/')
         && !imagePath.contains('..')
         && !imagePath.contains('?')
         && !imagePath.contains('#');
-    final apiBase=OnboardingBackend.baseUrl.replaceFirst(RegExp(r'/$'),'');
-    final url=safeImagePath
-        ?apiBase+imagePath
-        :(logo['url']??'').toString().trim();
+    final apiBase=OnboardingBackend.baseUrl.replaceFirst(RegExp(r'/
     final letter=make.trim().isEmpty?'?':make.trim().characters.first.toUpperCase();
     Widget fallback()=>Container(
       width:72,height:72,alignment:Alignment.center,
@@ -650,157 +646,8 @@ class _D extends State<_Dialog>{
   );
  }
 }
-,
-      caseSensitive:false,
-    ).hasMatch(imagePath);
-    final url=safeImagePath
-      ?'${OnboardingBackend.baseUrl.replaceFirst(RegExp(r'/
-    final letter=make.trim().isEmpty?'?':make.trim().characters.first.toUpperCase();
-    Widget fallback()=>Container(
-      width:72,height:72,alignment:Alignment.center,
-      decoration:BoxDecoration(color:_purple.withValues(alpha:CepqarTheme.isLight ? .08 : .16),shape:BoxShape.circle,border:Border.all(color:_purple.withValues(alpha:.16))),
-      child:VehicleKind.isMotorcycle(vehicle['vehicle_type'])
-        ?const Icon(Icons.two_wheeler_rounded,color:_purple,size:36)
-        :Text(letter,style:const TextStyle(color:_purple,fontSize:28,fontWeight:FontWeight.w900)),
-    );
-    if(!url.toLowerCase().startsWith('https://'))return fallback();
-    return SizedBox(
-      width:72,
-      height:72,
-      child:Image.network(
-        url,
-        key:ValueKey<String>(url),
-        fit:BoxFit.contain,
-        gaplessPlayback:true,
-        filterQuality:FilterQuality.high,
-        frameBuilder:(context,child,frame,wasSynchronouslyLoaded){
-          if(wasSynchronouslyLoaded||frame!=null)return child;
-          return fallback();
-        },
-        errorBuilder:(_,__,___)=>fallback(),
-      ),
-    );
-  }
-}
-class _VehicleAction extends StatelessWidget{
-  const _VehicleAction({required this.icon,required this.label,required this.onTap});
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override Widget build(BuildContext context){
-    final dark=!CepqarTheme.isLight;
-    return Expanded(
-      child:InkWell(
-        onTap:onTap,
-        borderRadius:BorderRadius.circular(8),
-        child:Padding(
-          padding:const EdgeInsets.symmetric(vertical:1),
-          child:Column(children:[
-            Container(
-              width:30,height:30,
-              decoration:BoxDecoration(
-                color:dark?const Color(0xFF17132E):_purple.withValues(alpha:.07),
-                borderRadius:BorderRadius.circular(7),
-                border:dark?Border.all(color:_purple.withValues(alpha:.35)):null,
-              ),
-              child:Icon(icon,color:dark?const Color(0xFFA06DFF):_purple,size:16),
-            ),
-            const SizedBox(height:2),
-            Text(label,maxLines:1,overflow:TextOverflow.ellipsis,textAlign:TextAlign.center,style:TextStyle(color:_muted,fontSize:CepqarTheme.caption,fontWeight:FontWeight.w700)),
-          ]),
-        ),
-      ),
-    );
-  }
-}
-class _Form{const _Form(this.plate,this.make,this.model);final String plate,make,model;}
-class _Dialog extends StatefulWidget{const _Dialog();@override State<_Dialog> createState()=>_D();}
-class _D extends State<_Dialog>{
- final p=TextEditingController();
- String? make,model;
- List<String> makes=[],models=[];
- bool loading=true,loadingModels=false;
- int _modelRequest=0;
-
- @override void initState(){
-  super.initState();
-  VehicleApi.getMakes().then((x){
-   if(mounted)setState((){makes=x.toSet().toList();loading=false;});
-  });
- }
-
- Future<void> _changeMake(String? value)async{
-  if(value==null)return;
-  final request=++_modelRequest;
-  setState((){
-   make=value;
-   model=null;
-   models=[];
-   loadingModels=true;
-  });
-  final result=await VehicleApi.getModels(value);
-  if(!mounted||request!=_modelRequest||make!=value)return;
-  final unique=<String,String>{};
-  for(final item in result){
-   final clean=item.trim();
-   if(clean.isNotEmpty)unique.putIfAbsent(clean.toLowerCase(),()=>clean);
-  }
-  setState((){
-   models=unique.values.toList();
-   model=null;
-   loadingModels=false;
-  });
- }
-
- @override Widget build(BuildContext c){
-  final safeModel=model!=null&&models.where((x)=>x==model).length==1?model:null;
-  return AlertDialog(
-   backgroundColor:_panel,
-   title:Text('Yeni Araç',style:TextStyle(color:_text)),
-   content:SingleChildScrollView(
-    child:Column(mainAxisSize:MainAxisSize.min,children:[
-     TextField(controller:p,style:TextStyle(color:_text),decoration:const InputDecoration(labelText:'Plaka')),
-     const SizedBox(height:10),
-     if(loading)
-      const Padding(padding:EdgeInsets.all(12),child:CircularProgressIndicator())
-     else
-      DropdownButtonFormField<String>(
-       value:make!=null&&makes.where((x)=>x==make).length==1?make:null,
-       isExpanded:true,
-       dropdownColor:_panel,
-       items:makes.map((x)=>DropdownMenuItem(value:x,child:Text(x,overflow:TextOverflow.ellipsis))).toList(),
-       onChanged:_changeMake,
-       decoration:const InputDecoration(labelText:'Marka'),
-      ),
-     const SizedBox(height:10),
-     if(loadingModels)
-      const Padding(padding:EdgeInsets.symmetric(vertical:12),child:LinearProgressIndicator())
-     else
-      DropdownButtonFormField<String>(
-       key:ValueKey('model-${make??'none'}'),
-       value:safeModel,
-       isExpanded:true,
-       dropdownColor:_panel,
-       items:models.map((x)=>DropdownMenuItem(value:x,child:Text(x,overflow:TextOverflow.ellipsis))).toList(),
-       onChanged:models.isEmpty?null:(x)=>setState(()=>model=x),
-       decoration:InputDecoration(labelText:'Model',hintText:make==null?'Önce marka seç':'Model seç'),
-      ),
-    ]),
-   ),
-   actions:[
-    FilledButton(
-     onPressed:(){
-      if(p.text.trim().isNotEmpty&&make!=null)Navigator.pop(c,_Form(p.text.trim().toUpperCase(),make!,safeModel??''));
-     },
-     child:const Text('Aracı Ekle'),
-    ),
-   ],
-  );
- }
-}
-), '')}$imagePath'
-      :'${logo['url']??''}'.trim();
+),'');
+    final url=safeImagePath?apiBase+imagePath:(logo['url']??'').toString().trim();
     final letter=make.trim().isEmpty?'?':make.trim().characters.first.toUpperCase();
     Widget fallback()=>Container(
       width:72,height:72,alignment:Alignment.center,
