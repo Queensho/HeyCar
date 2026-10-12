@@ -1032,15 +1032,18 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                     color:Colors.white,size:26),
                 ),
                 const SizedBox(width:12),
-                const Expanded(child:Column(
+                Expanded(child:Column(
                   crossAxisAlignment:CrossAxisAlignment.start,
                   mainAxisAlignment:MainAxisAlignment.center,
                   children:[
-                    Text('QR Güvenliği',style:TextStyle(color:Colors.white,
-                      fontWeight:FontWeight.w900,fontSize:15)),
+                    Text('QR Güvenliği',maxLines:1,overflow:TextOverflow.ellipsis,
+                      style:TextStyle(color:Colors.white,height:1.08,
+                        fontWeight:FontWeight.w900,fontSize:_narrowHome?13:15)),
+                    const SizedBox(height:2),
                     Text('Etiket güvenliğini kontrol edin.',
                       maxLines:1,overflow:TextOverflow.ellipsis,
-                      style:TextStyle(color:Color(0xFFDCD0FF),fontSize:11)),
+                      style:TextStyle(color:const Color(0xFFDCD0FF),
+                        height:1.07,fontSize:_narrowHome?9:11)),
                   ],
                 )),
                 Container(width:31,height:31,
