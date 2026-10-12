@@ -192,6 +192,8 @@ module.exports = function registerVehicleManagementRoutes(app, pool) {
         await client.query(`INSERT INTO vehicle_maintenance_state(vehicle_id,current_km,updated_at) VALUES($1,$2,NOW())
           ON CONFLICT(vehicle_id) DO UPDATE SET current_km=EXCLUDED.current_km,updated_at=NOW()`,[vehicleId,mileage]);
       }
+      if(vehicleType!=='motorcycle')await client.query(
+        'DELETE FROM vehicle_motorcycle_emergency_cards WHERE vehicle_id::text=$1',[vehicleId]);
       await client.query('COMMIT');
       if(mileage!==null)updated.rows[0].mileage=mileage;
       const brandLogo=await cachedLogo(pool,updated.rows[0].make);
