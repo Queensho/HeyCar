@@ -22,6 +22,7 @@ import 'owner_story_highlights.dart';
 import 'app_ui_config.dart';
 import 'owner_home_component_registry.dart';
 import 'vehicle_kind.dart';
+import 'owner_vehicle_brand_mark.dart';
 import 'motorcycle_profile_page.dart';
 import 'call_activity.dart';
 
@@ -640,17 +641,17 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         height:_narrowHome?101:109,
         child:Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
           Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-            Text(_welcomeText,style:TextStyle(color:_homeSecondary,fontSize:13)),
+            Text(_welcomeText,style:TextStyle(color:_homeSecondary,fontSize:_narrowHome?11:13)),
             const SizedBox(height:1),
             Text(_displayNameParts.join(' ').toUpperCase(),
               maxLines:2,overflow:TextOverflow.ellipsis,
               style:TextStyle(color:_homeText,fontWeight:FontWeight.w900,
-                fontSize:_narrowHome?19:22,height:1.05,letterSpacing:-.55)),
-            const SizedBox(height:4),
+                fontSize:_narrowHome?16.5:22,height:1.05,letterSpacing:-.55)),
+            SizedBox(height:_narrowHome?2:4),
             Text('Aracınızla dünya sizinle iletişimde.',
               maxLines:2,overflow:TextOverflow.ellipsis,
-              style:TextStyle(color:_homeSecondary,fontSize:10.7,height:1.18)),
-            const SizedBox(height:5),
+              style:TextStyle(color:_homeSecondary,fontSize:_narrowHome?9:10.7,height:_narrowHome?1.05:1.18)),
+            SizedBox(height:_narrowHome?2:5),
             if(premium)Container(
               padding:const EdgeInsets.symmetric(horizontal:12,vertical:3),
               decoration:BoxDecoration(color:_homePurple.withValues(alpha:.08),
@@ -898,36 +899,15 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   }
 
 
+  // Vehicle identity comes from the currently selected vehicle, not remote
+  // brand-logo images. Local SVG marks keep the lime area visually consistent.
   Widget _premiumCarArtwork(){
-    final motorcycle=VehicleKind.isMotorcycle(QrDraft.vehicleType);
-    final logo=_selectedVehicle?['brandLogo'];
-    final map=logo is Map?Map<String,dynamic>.from(logo):<String,dynamic>{};
-    final path='${map['path']??''}'.trim();
-    final validPath=path.startsWith('/uploads/vehicle-brands/')&&!path.contains('..');
-    final url=validPath
-      ?OnboardingBackend.baseUrl.replaceFirst(RegExp(r'/$'),'')+path
-      :'${map['url']??''}'.trim();
-    if(motorcycle&&map['available']==true&&url.startsWith('https://')){
-      return Image.network(url,fit:BoxFit.contain,gaplessPlayback:true,
-        errorBuilder:(_,__,___)=>const Icon(Icons.two_wheeler_rounded,
-          size:90,color:_homeDarkPurple));
-    }
-    if(motorcycle)return const Icon(Icons.two_wheeler_rounded,
-      size:90,color:_homeDarkPurple);
-    final custom='${_selectedVehicle?['imageUrl']??''}'.trim();
-    if(custom.startsWith('https://')){
-      return Image.network(custom,fit:BoxFit.contain,gaplessPlayback:true,
-        errorBuilder:(_,__,___)=>_bundledPremiumCar());
-    }
-    return _bundledPremiumCar();
+    final selectedMake=QrDraft.make.trim();
+    final fallbackMake='${_selectedVehicle?['make']??''}'.trim();
+    return OwnerVehicleBrandMark(
+      make:selectedMake.isNotEmpty?selectedMake:fallbackMake,
+    );
   }
-
-  Widget _bundledPremiumCar()=>Image.asset(
-    'assets/Arac.png',
-    fit:BoxFit.contain,
-    errorBuilder:(_,__,___)=>const Icon(
-      Icons.directions_car_filled_rounded,size:100,color:_homeDarkPurple),
-  );
 
   Widget vehicleQr(){
     final motorcycle=VehicleKind.isMotorcycle(QrDraft.vehicleType);
@@ -957,7 +937,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                   child:const ColoredBox(color:_homePurple),
                 )),
                 Positioned(
-                  top:4,bottom:2,right:7,width:c.maxWidth*.56,
+                  top:4,bottom:2,right:7,width:c.maxWidth*.49,
                   child:IgnorePointer(child:_premiumCarArtwork()),
                 ),
                 Positioned(
