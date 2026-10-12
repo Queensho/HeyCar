@@ -1525,7 +1525,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       child:Opacity(
         opacity:available?1:.78,
         child:Container(
-          height:108,
+          height:120,
           clipBehavior:Clip.hardEdge,
           decoration:BoxDecoration(
             color:background,
@@ -1590,19 +1590,19 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   }
 
   Widget _managedServices(){
-    final items=_appUiConfig.services;
+    final items=_appUiConfig.services.where((item)=>_referenceCategory!='Yakında'||item.testOnly&&!testAccount||item.action=='NONE').toList();
     if(items.isEmpty)return const SizedBox.shrink();
     return Column(children:[
       section('Hizmetler',widget.services),
       SizedBox(
-        height:112,
+        height:124,
         child:ListView.separated(
           scrollDirection:Axis.horizontal,
           physics:const BouncingScrollPhysics(),
           padding:const EdgeInsets.symmetric(horizontal:16),
           itemCount:items.length,
           separatorBuilder:(_,__)=>const SizedBox(width:12),
-          itemBuilder:(_,index)=>SizedBox(width:168,child:_managedServiceCard(items[index])),
+          itemBuilder:(_,index)=>SizedBox(width:174,child:_managedServiceCard(items[index])),
         ),
       ),
     ]);
