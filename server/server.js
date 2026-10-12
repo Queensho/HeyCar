@@ -19,6 +19,7 @@ const registerStoryRoutes=require('./story-routes');
 const registerAppBuilderRoutes=require('./app-builder-routes');
 const registerVehicleBrandRoutes=require('./vehicle-brand-routes');
 const registerMotorcycleProfileRoutes=require('./motorcycle-profile-routes');
+const registerMotorcycleEmergencyRoutes=require('./motorcycle-emergency-routes');
 const {registerAdminAuthRoutes}=require('./admin-auth-routes');
 const {configureTrustedProxy}=require('./proxy-security');
 const {verify:verifyOwnerToken}=require('./owner-auth-service');
@@ -151,6 +152,7 @@ registerStoryRoutes(app,pool,adminAuth);
 registerAppBuilderRoutes(app,pool,adminAuth);
 registerVehicleBrandRoutes(app,pool,adminAuth);
 registerMotorcycleProfileRoutes(app,pool);
+registerMotorcycleEmergencyRoutes(app,pool);
 
 app.use((err,_req,res,next)=>{
   if(err?.message==='CORS_ORIGIN_DENIED'){
