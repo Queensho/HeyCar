@@ -59,7 +59,7 @@ class OwnerMonthlySummaryPanel extends StatelessWidget {
             ),
           ),
         ]),
-        const SizedBox(height:9),
+        const SizedBox(height:12),
         if(isLoading)
           const SizedBox(height:64,child:Center(child:SizedBox(
             width:28,height:28,child:CircularProgressIndicator(
@@ -111,18 +111,21 @@ class _MonthlyMetricTile extends StatelessWidget{
   Widget build(BuildContext context){
     final change=metric.changePercent;
     final showChange=change!=null&&change.isFinite;
-    final side=compact?29.0:37.0;
+    final side=compact?30.0:34.0;
     return Material(color:Colors.transparent,child:InkWell(
       key:ValueKey('owner-monthly-'+metric.id),
       onTap:metric.onTap,
       borderRadius:BorderRadius.circular(17),
       child:Container(
-        height:showChange?111:(compact?91:87),
-        padding:EdgeInsets.fromLTRB(compact?5:10,9,compact?5:10,7),
+        height:88,
+        padding:EdgeInsets.symmetric(horizontal:compact?4:10,vertical:6),
         decoration:BoxDecoration(
           color:metric.background,borderRadius:BorderRadius.circular(17),
         ),
-        child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        child:Column(
+          mainAxisAlignment:MainAxisAlignment.center,
+          crossAxisAlignment:CrossAxisAlignment.start,
+          children:[
           Row(children:[
             Container(
               height:side,width:side,
@@ -138,20 +141,20 @@ class _MonthlyMetricTile extends StatelessWidget{
               child:Text(metric.count==null?'—':metric.count.toString(),
                 key:ValueKey('owner-monthly-value-'+metric.id),
                 maxLines:1,style:TextStyle(color:const Color(0xFF101426),
-                  fontSize:compact?23:26,fontWeight:FontWeight.w800,height:1)),
+                  fontSize:24,fontWeight:FontWeight.w800,height:1)),
             )),
           ]),
-          const SizedBox(height:8),
+          const SizedBox(height:5),
           Text(metric.label,maxLines:2,overflow:TextOverflow.ellipsis,
             style:TextStyle(color:const Color(0xFF737B94),
-              fontSize:compact?10:11.5,fontWeight:FontWeight.w600,height:1.05)),
+              fontSize:compact?10:11,fontWeight:FontWeight.w600,height:1.07)),
           if(showChange)...[
-            const Spacer(),
+            const SizedBox(height:2),
             Align(alignment:Alignment.centerRight,child:Text(
               change>0?'↑ %'+change.abs().toStringAsFixed(0):
                 change<0?'↓ %'+change.abs().toStringAsFixed(0):'– %0',
               maxLines:1,overflow:TextOverflow.ellipsis,
-              style:TextStyle(fontSize:compact?9:10,fontWeight:FontWeight.w700,
+              style:TextStyle(fontSize:compact?8:9,fontWeight:FontWeight.w700,height:1,
                 color:change>0?const Color(0xFF29964B):
                   change<0?const Color(0xFFD84D63):
                   const Color(0xFF737B94)),
