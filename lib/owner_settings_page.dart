@@ -186,22 +186,45 @@ class OwnerSettingsPage extends StatelessWidget {
     return value.isEmpty ? 'CQ' : value;
   }
 
-  Future<({int? count,bool? premium})> _vehicleStats()async{
+  Future<({int? count,int? drivers,bool? premium})> _vehicleStats()async{
     try{
       final response=await OwnerHttp.get(
         Uri.parse('${OnboardingBackend.baseUrl}/api/owner/vehicles'),
         json:false,
       ).timeout(const Duration(seconds:8));
       if(response.statusCode<200||response.statusCode>=300){
-        return (count:null,premium:null);
+        return (count:null,drivers:null,premium:null);
       }
       final raw=jsonDecode(response.body);
       if(raw is! Map||raw['vehicles'] is! List){
-        return (count:null,premium:null);
+        return (count:null,drivers:null,premium:null);
       }
-      return (count:(raw['vehicles'] as List).length,premium:raw['premium']==true);
+      final vehicles=raw['vehicles'] as List;
+      final ids=vehicles.whereType<Map>()
+        .map((v)=>'${v['id']??''}')
+        .where((id)=>id.isNotEmpty).toList();
+      int? driverCount;
+      try{
+        final responses=await Future.wait(ids.map((id)=>OwnerHttp.get(
+          Uri.parse('${OnboardingBackend.baseUrl}/api/owner/vehicles/$id/drivers'),
+          json:false,
+        ).timeout(const Duration(seconds:7))));
+        final seen=<String>{};
+        for(final response in responses){
+          if(response.statusCode<200||response.statusCode>=300)throw Exception();
+          final data=jsonDecode(response.body);
+          if(data is! Map||data['drivers'] is! List)throw Exception();
+          for(final row in (data['drivers'] as List).whereType<Map>()){
+            final key='${row['driver_user_id']??''}'.trim();
+            if(key.isNotEmpty)seen.add(key);
+          }
+        }
+        driverCount=seen.length;
+      }catch(_){driverCount=null;}
+      return (count:vehicles.length,drivers:driverCount,
+        premium:raw['premium']==true);
     }catch(_){
-      return (count:null,premium:null);
+      return (count:null,drivers:null,premium:null);
     }
   }
 
@@ -382,7 +405,7 @@ class OwnerSettingsPage extends StatelessWidget {
               ],
             )),
             const SizedBox(width:7),
-            FutureBuilder<({int? count,bool? premium})>(
+            FutureBuilder<({int? count,int? drivers,bool? premium})>(
               future:statsFuture,
               builder:(context,snapshot){
                 final isPro=snapshot.data?.premium==true;
@@ -412,7 +435,7 @@ class OwnerSettingsPage extends StatelessWidget {
             ),
           ]),
           const SizedBox(height:20),
-          FutureBuilder<({int? count,bool? premium})>(
+          FutureBuilder<({int? count,int? drivers,bool? premium})>(
             future:statsFuture,
             builder:(context,snapshot){
               final count=snapshot.data?.count?.toString()??'—';
@@ -422,7 +445,7 @@ class OwnerSettingsPage extends StatelessWidget {
                 decoration:OwnerReference.card(),
                 child:Row(children:[
                   _profileStat(Icons.directions_car_outlined,count,'Aracım'),
-                  _profileStat(Icons.groups_rounded,'—','Sürücüm'),
+                  _profileStat(Icons.groups_rounded,snapshot.data?.drivers?.toString()??'—','Sürücüm'),
                   _profileStat(Icons.access_time_rounded,'—','Park Kaydı'),
                   _profileStat(Icons.favorite_rounded,'—','Favori Yer'),
                 ]),
