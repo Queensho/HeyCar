@@ -1982,12 +1982,12 @@ class OwnerServicesRedesign extends StatefulWidget{
     super.key,required this.onVale,required this.onTowing,
     required this.onPark,required this.onOffers,
     required this.onMaintenance,required this.onReminders,
-    this.onNotifications,this.onSettings,this.onShortcut,this.active=true,
+    this.onNotifications,this.onSettings,this.onShortcut,this.unread=false,this.active=true,
   });
   final VoidCallback onVale,onTowing,onPark,onOffers,onMaintenance,onReminders;
   final VoidCallback? onNotifications,onSettings;
   final ValueChanged<String>? onShortcut;
-  final bool active;
+  final bool active,unread;
   @override State<OwnerServicesRedesign> createState()=>_OwnerServicesRedesignState();
 }
 
@@ -2148,7 +2148,7 @@ class _OwnerServicesRedesignState extends State<OwnerServicesRedesign>{
             OwnerReferenceHeader(
               onNotifications:widget.onNotifications??(){},
               onSettings:widget.onSettings??(){},
-              unread:false,
+              unread:widget.unread,
             ),
             const SizedBox(height:19),
             Text('Hizmetlerim',
