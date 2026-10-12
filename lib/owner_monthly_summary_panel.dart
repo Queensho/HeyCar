@@ -80,7 +80,7 @@ class OwnerMonthlySummaryPanel extends StatelessWidget {
             style:TextStyle(color:Color(0xFF737B94),fontSize:12),
           )))
         else LayoutBuilder(builder:(context,box){
-          final columns=box.maxWidth>=350?4:2;
+          final columns=box.maxWidth>=320?4:2;
           const gap=7.0;
           final count=metrics.length>4?4:metrics.length;
           return Column(children:[
