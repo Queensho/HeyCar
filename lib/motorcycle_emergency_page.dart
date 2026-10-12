@@ -21,8 +21,22 @@ class _MotorcycleEmergencyPageState extends State<MotorcycleEmergencyPage>{
   String blood='';
   bool isPublic=false,consent=false,contactConsent=false,loading=true,saving=false;
   String? error;
+  String? _savedSnapshot;
+  String get _currentSnapshot=>jsonEncode([
+    rider.text.trim(),blood,contact.text.trim(),phone.text.trim(),
+    isPublic,consent,contactConsent,
+  ]);
+  bool get _unsavedChanges=>
+    _savedSnapshot!=null&&_currentSnapshot!=_savedSnapshot;
+  void _formChanged(){if(mounted&&!loading)setState((){});}
 
-  @override void initState(){super.initState();_load();}
+  @override void initState(){
+    super.initState();
+    rider.addListener(_formChanged);
+    contact.addListener(_formChanged);
+    phone.addListener(_formChanged);
+    _load();
+  }
   @override void dispose(){rider.dispose();contact.dispose();phone.dispose();super.dispose();}
 
   Uri get endpoint=>Uri.parse(
@@ -46,6 +60,7 @@ class _MotorcycleEmergencyPageState extends State<MotorcycleEmergencyPage>{
         isPublic=card['isPublic']==true;
         consent=isPublic;
         contactConsent=isPublic;
+        _savedSnapshot=_currentSnapshot;
       });
     }catch(e){
       if(mounted)setState(()=>error=e.toString().replaceFirst('Exception: ',''));
@@ -79,8 +94,11 @@ class _MotorcycleEmergencyPageState extends State<MotorcycleEmergencyPage>{
         throw Exception(detail);
       }
       if(!mounted)return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content:Text('Acil durum kartı kaydedildi.')));
+      setState(()=>_savedSnapshot=_currentSnapshot);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content:Text(isPublic
+          ?'Acil durum bilgileri QR ziyaretçileri için yayımlandı.'
+          :'Acil durum bilgileri kaydedildi, QR paylaşımı kapalı.')));
     }catch(e){
       if(mounted)setState(()=>error=e.toString().replaceFirst('Exception: ',''));
     }finally{if(mounted)setState(()=>saving=false);}
@@ -159,9 +177,11 @@ class _MotorcycleEmergencyPageState extends State<MotorcycleEmergencyPage>{
             contentPadding:EdgeInsets.zero,
             title:Text('QR’da acil bilgileri göster',style:TextStyle(
               color:color,fontWeight:FontWeight.w800)),
-            subtitle:Text(isPublic
-              ?'Açık: Bilgiler geçerli QR taraması yapan kişilere gösterilir.'
-              :'Kapalı: Bilgiler yalnızca hesabında saklanır.',
+            subtitle:Text(_unsavedChanges
+              ?'Değişiklikler henüz kaydedilmedi. Yayınlamak için aşağıdan Bilgileri Kaydet’e basın.'
+              :isPublic
+                ?'Açık ve kayıtlı: Bilgiler geçerli QR taraması sonrasında gösterilebilir.'
+                :'Kapalı: Bilgiler yalnızca hesabında saklanır.',
               style:TextStyle(color:muted,fontSize:12)),
             value:isPublic,
             activeColor:const Color(0xFF762FF5),
@@ -170,6 +190,23 @@ class _MotorcycleEmergencyPageState extends State<MotorcycleEmergencyPage>{
               if(value){consent=false;contactConsent=false;}
             }),
           ),
+          if(_unsavedChanges)...[
+            const SizedBox(height:8),
+            Container(
+              width:double.infinity,
+              padding:const EdgeInsets.all(12),
+              decoration:BoxDecoration(
+                color:const Color(0xFFFFF0D7),
+                borderRadius:BorderRadius.circular(12),
+              ),
+              child:const Row(children:[
+                Icon(Icons.info_outline_rounded,color:Color(0xFF915400),size:20),
+                SizedBox(width:8),
+                Expanded(child:Text('Henüz kaydedilmedi. QR sayfası bu değişiklikleri görmez.',
+                  style:TextStyle(fontSize:12.5,color:Color(0xFF653C00),fontWeight:FontWeight.w700))),
+              ]),
+            ),
+          ],
           if(isPublic)...[
             CheckboxListTile(
               contentPadding:EdgeInsets.zero,
