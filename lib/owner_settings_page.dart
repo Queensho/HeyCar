@@ -29,11 +29,13 @@ class OwnerSettingsPage extends StatelessWidget {
     this.onOpenVehicles,
     this.onOpenQr,
     this.onOpenNotifications,
+    this.unread=false,
   });
 
   final VoidCallback? onOpenVehicles;
   final VoidCallback? onOpenQr;
   final VoidCallback? onOpenNotifications;
+  final bool unread;
 
   void _push(BuildContext context, Widget page) {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
@@ -360,7 +362,7 @@ class OwnerSettingsPage extends StatelessWidget {
             onNotifications:onOpenNotifications??
               ()=>_push(context,const OwnerNotificationSettingsPage()),
             onSettings:()=>_appSettings(context),
-            unread:false,
+            unread:unread,
           ),
           const SizedBox(height:21),
           Row(children:[
