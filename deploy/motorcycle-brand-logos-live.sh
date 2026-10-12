@@ -57,11 +57,13 @@ import sys
 live=Path(sys.argv[1]).read_text()
 latest=Path(sys.argv[2]).read_text()
 vehicle_routes=Path(sys.argv[3]).read_text()
-start='function logoPayload('
+legacy_start='function logoPayload('
+managed_start='const STORAGE_IMAGE='
 end='module.exports={normalizeBrand,findBrand,logoPayload,cachedLogo,resolveExternal,queueResolve,publicBase,imageMeta,assertPublicHttps};'
 imp="const {motorcycleLogoSource}=require('./motorcycle-brand-logo-source');"
 anchor="const crypto=require('crypto');"
 def segment(data):
+    start=managed_start if managed_start in data else legacy_start
     if data.count(start)!=1 or data.count(end)!=1:
         raise SystemExit('LOGO_RESOLVER_ANCHOR_MISMATCH')
     a,b=data.index(start),data.index(end)
