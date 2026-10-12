@@ -897,86 +897,162 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     );
   }
 
+
+  Widget _premiumCarArtwork(){
+    final motorcycle=VehicleKind.isMotorcycle(QrDraft.vehicleType);
+    final logo=_selectedVehicle?['brandLogo'];
+    final map=logo is Map?Map<String,dynamic>.from(logo):<String,dynamic>{};
+    final path='${map['path']??''}'.trim();
+    final validPath=path.startsWith('/uploads/vehicle-brands/')&&!path.contains('..');
+    final url=validPath
+      ?OnboardingBackend.baseUrl.replaceFirst(RegExp(r'/$'),'')+path
+      :'${map['url']??''}'.trim();
+    if(motorcycle&&map['available']==true&&url.startsWith('https://')){
+      return Image.network(url,fit:BoxFit.contain,gaplessPlayback:true,
+        errorBuilder:(_,__,___)=>const Icon(Icons.two_wheeler_rounded,
+          size:90,color:_homeDarkPurple));
+    }
+    if(motorcycle)return const Icon(Icons.two_wheeler_rounded,
+      size:90,color:_homeDarkPurple);
+    final custom='${_selectedVehicle?['imageUrl']??''}'.trim();
+    if(custom.startsWith('https://')){
+      return Image.network(custom,fit:BoxFit.contain,gaplessPlayback:true,
+        errorBuilder:(_,__,___)=>_bundledPremiumCar());
+    }
+    return _bundledPremiumCar();
+  }
+
+  Widget _bundledPremiumCar()=>Image.asset(
+    'assets/Arac.png',
+    fit:BoxFit.contain,
+    errorBuilder:(_,__,___)=>const Icon(
+      Icons.directions_car_filled_rounded,size:100,color:_homeDarkPurple),
+  );
+
   Widget vehicleQr(){
     final motorcycle=VehicleKind.isMotorcycle(QrDraft.vehicleType);
     final car='${QrDraft.make} ${QrDraft.model}'.trim();
+    final hasQr=QrDraft.token.trim().isNotEmpty;
     return Padding(
-      padding:const EdgeInsets.symmetric(horizontal:16),
-      child:SizedBox(
-        height:140,
-        child:Row(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
-        Expanded(
-          flex:62,
-          child:valetSession!=null
-            ?_valetVehicleCard(valetSession!)
-            :InkWell(
-              onTap:widget.vehicles,
-              borderRadius:BorderRadius.circular(18),
-              child:Container(
-                height:132,padding:const EdgeInsets.fromLTRB(14,13,9,11),decoration:card(),
-                child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-                  Row(children:[
-                    Expanded(child:Text(QrDraft.plate.isEmpty?'Araç eklenmedi':QrDraft.plate,style:TextStyle(color:text,fontSize:20,fontWeight:FontWeight.w900))),
-                    Icon(Icons.keyboard_arrow_down_rounded,color:text,size:21),
-                  ]),
-                  const SizedBox(height:3),
-                  Text(car.isEmpty?'Araç bilgilerini ekle':car,style:TextStyle(color:text,fontSize:13,fontWeight:FontWeight.w700)),
-                  const SizedBox(height:1),
-                  Text(motorcycle?'CepQontag motosikletiniz':'CepQontag otomobiliniz',style:TextStyle(color:muted,fontSize:CepqarTheme.body)),
-                  const Spacer(),
-                  Row(children:[
-                    Container(
-                      padding:const EdgeInsets.symmetric(horizontal:10,vertical:5),
-                      decoration:BoxDecoration(color:QrDraft.token.isEmpty?const Color(0xFFFFE9E9):const Color(0xFFDFFAEA),borderRadius:BorderRadius.circular(20)),
-                      child:Row(mainAxisSize:MainAxisSize.min,children:[
-                        CircleAvatar(radius:4,backgroundColor:QrDraft.token.isEmpty?const Color(0xFFFF5A68):const Color(0xFF25D676)),
-                        const SizedBox(width:6),
-                        Text(QrDraft.token.isEmpty?'Pasif':'Aktif',style:TextStyle(color:QrDraft.token.isEmpty?const Color(0xFFC93443):const Color(0xFF158C4C),fontSize:11,fontWeight:FontWeight.w900)),
-                      ]),
-                    ),
-                    const Spacer(),
-                    Container(width:54,height:36,decoration:BoxDecoration(color:purple.withValues(alpha:light ? 0.08 : 0.16),borderRadius:BorderRadius.circular(10)),child:Icon(motorcycle?Icons.two_wheeler_rounded:Icons.directions_car_filled_rounded,color:purple,size:26)),
-                    Icon(Icons.chevron_right_rounded,color:muted,size:20),
-                  ]),
-                ]),
-              ),
-            ),
-        ),
-        const SizedBox(width:9),
-        Expanded(
-          flex:38,
-          child:InkWell(
-            onTap:()=>widget.shortcut('qr_security'),
-            borderRadius:BorderRadius.circular(18),
+      padding:const EdgeInsets.fromLTRB(16,7,16,0),
+      child:Column(children:[
+        LayoutBuilder(builder:(context,c){
+          final compact=c.maxWidth<360;
+          final height=compact?123.0:134.0;
+          return InkWell(
+            key:const ValueKey('premium-home-vehicle'),
+            onTap:widget.vehicles,
+            borderRadius:BorderRadius.circular(24),
             child:Container(
-              height:132,padding:const EdgeInsets.all(13),
-              decoration:card(gradient:const LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:[Color(0xFF4C12D0),Color(0xFF7732F4),Color(0xFF9B5DFF)])),
-              child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-                Container(
-                  width:38,height:38,
-                  decoration:BoxDecoration(color:Colors.white.withValues(alpha:.14),borderRadius:BorderRadius.circular(11)),
-                  child:Stack(alignment:Alignment.center,children:[
-                    const Icon(Icons.shield_rounded,color:Colors.white,size:27),
-                    Positioned(right:4,bottom:4,child:Container(
-                      width:14,height:14,
-                      decoration:BoxDecoration(color:const Color(0xFF6C26E8),borderRadius:BorderRadius.circular(4)),
-                      child:const Icon(Icons.qr_code_2_rounded,color:Colors.white,size:11),
-                    )),
+              width:double.infinity,height:height,
+              clipBehavior:Clip.antiAlias,
+              decoration:BoxDecoration(
+                color:_homeLime,borderRadius:BorderRadius.circular(24),
+                boxShadow:light?[BoxShadow(
+                  color:_homePurple.withValues(alpha:.08),
+                  blurRadius:15,offset:const Offset(0,5))]:null),
+              child:Stack(children:[
+                Positioned.fill(child:ClipPath(
+                  clipper:const _PremiumHomePurpleClip(),
+                  child:const ColoredBox(color:_homePurple),
+                )),
+                Positioned(
+                  top:4,bottom:2,right:7,width:c.maxWidth*.56,
+                  child:IgnorePointer(child:_premiumCarArtwork()),
+                ),
+                Positioned(
+                  left:17,top:13,bottom:12,width:c.maxWidth*.48,
+                  child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                    Row(children:[
+                      Flexible(child:Text(
+                        QrDraft.plate.trim().isEmpty?'Araç ekle':QrDraft.plate,
+                        maxLines:1,overflow:TextOverflow.ellipsis,
+                        style:TextStyle(color:Colors.white,
+                          fontWeight:FontWeight.w900,fontSize:compact?17:21))),
+                      const SizedBox(width:2),
+                      const Icon(Icons.keyboard_arrow_down_rounded,
+                        color:Colors.white,size:20),
+                    ]),
+                    const SizedBox(height:2),
+                    Text(car.isEmpty?'Araç bilgilerini ekle':car,
+                      maxLines:1,overflow:TextOverflow.ellipsis,
+                      style:TextStyle(color:Colors.white,fontSize:compact?11.5:13,
+                        fontWeight:FontWeight.w800)),
+                    const SizedBox(height:1),
+                    Text(motorcycle?'CepQontag motosikletiniz':'CepQontag aracınız',
+                      maxLines:1,overflow:TextOverflow.ellipsis,
+                      style:const TextStyle(color:Color(0xFFE3D9FF),fontSize:10.5)),
+                    const Spacer(),
+                    Row(children:[
+                      Flexible(child:Container(
+                        padding:const EdgeInsets.symmetric(horizontal:10,vertical:6),
+                        decoration:BoxDecoration(
+                          color:hasQr?const Color(0xFFDDFBE7):const Color(0xFFFFE4E9),
+                          borderRadius:BorderRadius.circular(25)),
+                        child:Row(mainAxisSize:MainAxisSize.min,children:[
+                          CircleAvatar(radius:3.7,backgroundColor:
+                            hasQr?const Color(0xFF00A55E):const Color(0xFFDF4664)),
+                          const SizedBox(width:5),
+                          Text(hasQr?'Aktif':'Pasif',style:TextStyle(
+                            color:hasQr?const Color(0xFF087C44):const Color(0xFFAD2541),
+                            fontSize:11.5,fontWeight:FontWeight.w900)),
+                        ]),
+                      )),
+                      const SizedBox(width:8),
+                      Container(
+                        width:28,height:28,
+                        decoration:BoxDecoration(
+                          color:Colors.white.withValues(alpha:.16),shape:BoxShape.circle),
+                        child:const Icon(Icons.chevron_right_rounded,
+                          color:Colors.white,size:22),
+                      ),
+                    ]),
                   ]),
                 ),
-                const Spacer(),
-                const Text('QR Güvenliği',style:TextStyle(color:Colors.white,fontSize:14,fontWeight:FontWeight.w900)),
-                const SizedBox(height:3),
-                Row(children:[
-                  const Expanded(child:Text('Etiket güvenliğini\nkontrol edin.',style:TextStyle(color:Color(0xFFE4DAFF),fontSize:CepqarTheme.caption,height:1.22))),
-                  Container(width:29,height:29,decoration:BoxDecoration(color:Colors.white.withValues(alpha:.15),shape:BoxShape.circle),child:const Icon(Icons.chevron_right_rounded,color:Colors.white,size:19)),
-                ]),
+              ]),
+            ),
+          );
+        }),
+        const SizedBox(height:7),
+        Material(
+          color:_homeDarkPurple,
+          borderRadius:BorderRadius.circular(20),
+          child:InkWell(
+            key:const ValueKey('premium-home-qr-security'),
+            onTap:()=>widget.shortcut('qr_security'),
+            borderRadius:BorderRadius.circular(20),
+            child:Container(
+              height:54,
+              padding:const EdgeInsets.symmetric(horizontal:14),
+              child:Row(children:[
+                Container(width:35,height:35,decoration:BoxDecoration(
+                  color:Colors.white.withValues(alpha:.12),
+                  borderRadius:BorderRadius.circular(12)),
+                  child:const Icon(Icons.admin_panel_settings_rounded,
+                    color:Colors.white,size:26),
+                ),
+                const SizedBox(width:12),
+                const Expanded(child:Column(
+                  crossAxisAlignment:CrossAxisAlignment.start,
+                  mainAxisAlignment:MainAxisAlignment.center,
+                  children:[
+                    Text('QR Güvenliği',style:TextStyle(color:Colors.white,
+                      fontWeight:FontWeight.w900,fontSize:15)),
+                    Text('Etiket güvenliğini kontrol edin.',
+                      maxLines:1,overflow:TextOverflow.ellipsis,
+                      style:TextStyle(color:Color(0xFFDCD0FF),fontSize:11)),
+                  ],
+                )),
+                Container(width:31,height:31,
+                  decoration:BoxDecoration(color:Colors.white.withValues(alpha:.16),
+                    shape:BoxShape.circle),
+                  child:const Icon(Icons.chevron_right_rounded,
+                    color:Colors.white,size:23)),
               ]),
             ),
           ),
         ),
       ]),
-      ),
     );
   }
 
@@ -1764,6 +1840,18 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       ),
     ),
   );
+}
+
+class _PremiumHomePurpleClip extends CustomClipper<Path>{
+  const _PremiumHomePurpleClip();
+  @override Path getClip(Size s)=>Path()
+    ..moveTo(0,0)
+    ..lineTo(s.width*.64,0)
+    ..cubicTo(s.width*.53,s.height*.24,s.width*.40,s.height*.70,
+      s.width*.48,s.height)
+    ..lineTo(0,s.height)
+    ..close();
+  @override bool shouldReclip(covariant CustomClipper<Path> oldClipper)=>false;
 }
 
 class _OwnerSafetyCardPainter extends CustomPainter{
