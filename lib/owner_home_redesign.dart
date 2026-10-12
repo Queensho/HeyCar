@@ -1588,7 +1588,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       child:Opacity(
         opacity:available?1:.84,
         child:Container(
-          height:116,
+          height:_shortViewport?100:111,
           clipBehavior:Clip.hardEdge,
           decoration:BoxDecoration(
             color:hasArtwork?background:fallbackColor,
@@ -1598,7 +1598,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
           child:Stack(children:[
             if(!hasArtwork)Positioned(
               right:-17,top:-28,
-              child:Container(width:115,height:110,decoration:BoxDecoration(
+              child:Container(width:112,height:105,decoration:BoxDecoration(
                 shape:BoxShape.circle,
                 gradient:RadialGradient(colors:[
                   Colors.white.withValues(alpha:.60),
@@ -1614,8 +1614,8 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                   opacity:item.imageOpacity,
                   child:Image.network(
                     item.imageUrl,
-                    width:103*item.imageScale,
-                    height:99*item.imageScale,
+                    width:149*item.imageScale,
+                    height:136*item.imageScale,
                     fit:_managedFit(item.fit),
                     gaplessPlayback:true,
                     errorBuilder:(_,__,___)=>const SizedBox.shrink(),
@@ -1623,7 +1623,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                 ),
               ),
             )))else Positioned(
-              left:14,right:14,top:12,height:69,
+              left:11,right:11,top:8,height:_shortViewport?64:72,
               child:Icon(_managedIcon(item.icon),color:iconColor.withValues(alpha:.87),size:58),
             ),
             Positioned(
@@ -1663,14 +1663,14 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     return Column(children:[
       section('Hizmetler',widget.services),
       SizedBox(
-        height:120,
+        height:_shortViewport?102:115,
         child:ListView.separated(
           scrollDirection:Axis.horizontal,
           physics:const BouncingScrollPhysics(),
           padding:const EdgeInsets.symmetric(horizontal:16),
           itemCount:items.length,
           separatorBuilder:(_,__)=>const SizedBox(width:8),
-          itemBuilder:(_,index)=>SizedBox(width:105,child:_managedServiceCard(items[index])),
+          itemBuilder:(_,index)=>SizedBox(width:96,child:_managedServiceCard(items[index])),
         ),
       ),
     ]);
@@ -1795,7 +1795,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   // As soon as an admin publishes stories the real StoryService cards replace
   // these links; no remote story or publishing contract is changed.
   Widget _fallbackHighlights()=>Padding(
-    padding:const EdgeInsets.fromLTRB(16,15,0,0),
+    padding:EdgeInsets.fromLTRB(16,_shortViewport?8:15,0,0),
     child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
       Padding(
         padding:const EdgeInsets.only(right:16),
@@ -1811,8 +1811,8 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
           ),
         ]),
       ),
-      const SizedBox(height:8),
-      SizedBox(height:84,child:ListView(
+      SizedBox(height:_shortViewport?4:8),
+      SizedBox(height:_shortViewport?76:84,child:ListView(
         scrollDirection:Axis.horizontal,
         padding:const EdgeInsets.only(right:16),
         children:[
