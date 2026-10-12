@@ -27,7 +27,7 @@ abstract final class VehicleBrandMarkResolver {
 
   static String? assetFor(String? make){
     final slug=slugFor(make);
-    return slug==null?null:'assets/vehicle_brand_logos/$'+'{slug}.svg';
+    return slug==null?null:'assets/vehicle_brand_logos/'+slug+'.svg';
   }
 }
 
@@ -45,7 +45,7 @@ class OwnerVehicleBrandMark extends StatelessWidget{
       final height=box.maxHeight.isFinite?box.maxHeight:130.0;
       final side=(height*.68).clamp(50.0,89.0);
       return Semantics(
-        label:slug==null?'Genel araç markası simgesi':'$'+'{make.trim()} marka logosu',
+        label:slug==null?'Genel araç markası simgesi':make.trim()+' marka logosu',
         image:true,
         child:Center(child:Column(
           mainAxisSize:MainAxisSize.min,
@@ -54,7 +54,7 @@ class OwnerVehicleBrandMark extends StatelessWidget{
             if(asset!=null)
               SvgPicture.asset(
                 asset,
-                key:ValueKey('owner-brand-logo-$'+'{slug}'),
+                key:ValueKey('owner-brand-logo-'+slug),
                 width:side,height:side,
                 fit:BoxFit.contain,
                 colorFilter:const ColorFilter.mode(ink,BlendMode.srcIn),
