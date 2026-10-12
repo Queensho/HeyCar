@@ -104,13 +104,14 @@ class OwnerReferenceBottomNav extends StatelessWidget {
     Icons.home_outlined,Icons.directions_car_outlined,
     Icons.grid_view_rounded,Icons.receipt_long_outlined,Icons.person_outline,
   ];
+
   @override Widget build(BuildContext context){
     return DecoratedBox(
       decoration:const BoxDecoration(color:OwnerReference.deep),
       child:SafeArea(
         top:false,
         child:SizedBox(
-          height:96,
+          height:78,
           child:ClipPath(
             clipper:_NavigationWave(),
             child:DecoratedBox(
@@ -119,7 +120,7 @@ class OwnerReferenceBottomNav extends StatelessWidget {
                 colors:[Color(0xFF32106F),Color(0xFF48219B),Color(0xFF290A69)],
               )),
               child:Padding(
-                padding:const EdgeInsets.fromLTRB(7,23,7,4),
+                padding:const EdgeInsets.fromLTRB(5,15,5,1),
                 child:Row(children:List.generate(labels.length,(index){
                   final active=index==selected;
                   return Expanded(
@@ -129,43 +130,42 @@ class OwnerReferenceBottomNav extends StatelessWidget {
                         key:ValueKey('owner-reference-tab-$index'),
                         onTap:()=>onChanged(index),
                         borderRadius:BorderRadius.circular(34),
-                        child:AnimatedContainer(
-                          duration:const Duration(milliseconds:210),
-                          decoration:BoxDecoration(
-                            borderRadius:BorderRadius.circular(30),
-                            gradient:active?const RadialGradient(
-                              radius:1.0,
-                              colors:[Color(0xFF942FFF),Color(0xFF641DF6),Color(0x00591BC6)],
-                            ):null,
-                            boxShadow:active?[
-                              BoxShadow(color:OwnerReference.purple.withValues(alpha:.46),
-                                blurRadius:18,spreadRadius:1),
-                            ]:null,
-                          ),
-                          child:Column(
-                            mainAxisAlignment:MainAxisAlignment.center,
-                            mainAxisSize:MainAxisSize.max,
-                            children:[
-                              Stack(clipBehavior:Clip.none,children:[
-                                Icon(icons[index],size:27,
-                                  color:active?Colors.white:const Color(0xFFC7B5EF)),
-                                if(index==3&&unread)const Positioned(
-                                  right:-3,top:-2,
-                                  child:CircleAvatar(radius:4,backgroundColor:OwnerReference.danger),
-                                ),
-                              ]),
-                              const SizedBox(height:4),
-                              FittedBox(fit:BoxFit.scaleDown,child:Text(
-                                labels[index],
-                                maxLines:1,style:TextStyle(
-                                  fontSize:11.5,
-                                  fontWeight:active?FontWeight.w800:FontWeight.w500,
-                                  color:active?Colors.white:const Color(0xFFC7B5EF),
-                                ),
-                              )),
-                            ],
-                          ),
-                        ),
+                        child:Stack(alignment:Alignment.center,children:[
+                          if(active)IgnorePointer(child:Container(
+                            key:const ValueKey('owner-reference-active-glow'),
+                            width:58,height:58,
+                            decoration:BoxDecoration(
+                              shape:BoxShape.circle,
+                              gradient:const RadialGradient(
+                                colors:[Color(0xFF9133FF),Color(0xFF651BFC),Color(0x00551ACC)],
+                                stops:[0,.63,1],
+                              ),
+                              boxShadow:[
+                                BoxShadow(color:OwnerReference.purple.withValues(alpha:.50),
+                                  blurRadius:17,spreadRadius:2),
+                              ],
+                            ),
+                          )),
+                          Column(mainAxisAlignment:MainAxisAlignment.center,children:[
+                            Stack(clipBehavior:Clip.none,children:[
+                              Icon(icons[index],size:23,
+                                color:active?Colors.white:const Color(0xFFC7B5EF)),
+                              if(index==3&&unread)const Positioned(
+                                right:-3,top:-2,
+                                child:CircleAvatar(radius:3.7,backgroundColor:OwnerReference.danger),
+                              ),
+                            ]),
+                            const SizedBox(height:3),
+                            FittedBox(fit:BoxFit.scaleDown,child:Text(
+                              labels[index],maxLines:1,
+                              style:TextStyle(
+                                fontSize:10.5,
+                                fontWeight:active?FontWeight.w700:FontWeight.w500,
+                                color:active?Colors.white:const Color(0xFFC7B5EF),
+                              ),
+                            )),
+                          ]),
+                        ]),
                       ),
                     ),
                   );
@@ -182,11 +182,11 @@ class OwnerReferenceBottomNav extends StatelessWidget {
 class _NavigationWave extends CustomClipper<Path>{
   @override Path getClip(Size s){
     final p=Path()
-      ..moveTo(0,17)
-      ..cubicTo(s.width*.11,-3,s.width*.18,0,s.width*.25,10)
-      ..cubicTo(s.width*.36,25,s.width*.38,9,s.width*.49,13)
-      ..cubicTo(s.width*.63,22,s.width*.70,-1,s.width*.78,8)
-      ..cubicTo(s.width*.89,-2,s.width*.96,7,s.width,21)
+      ..moveTo(0,12)
+      ..cubicTo(s.width*.11,-2,s.width*.18,-1,s.width*.27,8)
+      ..cubicTo(s.width*.40,19,s.width*.49,4,s.width*.59,9)
+      ..cubicTo(s.width*.72,18,s.width*.78,-2,s.width*.88,7)
+      ..cubicTo(s.width*.94,11,s.width*.98,9,s.width,14)
       ..lineTo(s.width,s.height)
       ..lineTo(0,s.height)
       ..close();
