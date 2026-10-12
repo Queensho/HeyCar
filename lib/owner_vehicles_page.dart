@@ -20,7 +20,7 @@ import 'maintenance_page.dart';
 
 const _purple=Color(0xFF8B5CFF),_gold=Color(0xFFFFC857),_green=Color(0xFF38D178);
 Color get _bg=>CepqarTheme.bg; Color get _panel=>CepqarTheme.panel; Color get _line=>CepqarTheme.line; Color get _muted=>CepqarTheme.muted; Color get _text=>CepqarTheme.text;
-class OwnerVehiclesPage extends StatefulWidget{const OwnerVehiclesPage({super.key,this.onVehicleChanged,this.onNotifications,this.onSettings});final VoidCallback? onVehicleChanged,onNotifications,onSettings;@override State<OwnerVehiclesPage> createState()=>_S();}
+class OwnerVehiclesPage extends StatefulWidget{const OwnerVehiclesPage({super.key,this.onVehicleChanged,this.onNotifications,this.onSettings,this.unread=false});final VoidCallback? onVehicleChanged,onNotifications,onSettings;final bool unread;@override State<OwnerVehiclesPage> createState()=>_S();}
 class _S extends State<OwnerVehiclesPage>{List<Map<String,dynamic>> vehicles=[];bool loading=true,premium=false;int limit=1;String? error;Timer? _logoRetryTimer;int _logoRetryAttempts=0;String get selected=>QrDraft.vehicleId.trim().isNotEmpty?QrDraft.vehicleId.trim():OnboardingDraft.vehicleId.trim();@override void initState(){super.initState();_load();}
 @override void dispose(){_logoRetryTimer?.cancel();super.dispose();}
 void _scheduleMotorcycleLogoRefresh(List<Map<String,dynamic>> list){
@@ -196,7 +196,7 @@ Widget _bottomAction(IconData icon,String title,String subtitle,VoidCallback tap
             OwnerReferenceHeader(
               onNotifications:widget.onNotifications??(){},
               onSettings:widget.onSettings??(){},
-              unread:false,
+              unread:widget.unread,
             ),
             const SizedBox(height:13),
             Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
