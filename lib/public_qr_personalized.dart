@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'public_theme_backend.dart';
 import 'public_notification_api.dart';
-import 'public_motorcycle_emergency_card.dart';
+import 'public_motorcycle_emergency_access.dart';
 import 'public_menu_pages.dart';
 
 const _bg = Color(0xFF07101F);
@@ -353,6 +353,9 @@ class _PublicHomeState extends State<_PublicHome>{
   static const _limeCta=Color(0xFFB8FF2C);
 
   Map<String,dynamic>? emergencyCard;
+  String? emergencyError;
+  bool emergencyLoading=false;
+  bool get isMotorcycle=>widget.vehicle['vehicle_type']?.toString().toLowerCase()=='motorcycle';
   String get plate => widget.vehicle['plate']?.toString() ?? 'Araç';
 
   @override
@@ -360,27 +363,45 @@ class _PublicHomeState extends State<_PublicHome>{
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_){
       _checkParkNote();
-      _loadEmergencyCard();
     });
   }
 
   Future<void> _loadEmergencyCard()async{
-    if(widget.vehicle['vehicle_type']!='motorcycle')return;
+    // A public landing page is not proof of a physical QR scan. Never
+    // fetch sensitive rider/contact details until the visitor explicitly
+    // requests them and the backend validates a matching scan session.
+    if(!isMotorcycle||emergencyLoading||emergencyCard!=null)return;
     final token=PublicNotificationApi.currentToken();
-    if(token.isEmpty)return;
+    if(token.isEmpty){
+      setState(()=>emergencyError=motorcycleEmergencyAccessMessage(
+        error:'SCAN_SESSION_REQUIRED'));
+      return;
+    }
+    setState((){emergencyLoading=true;emergencyError=null;});
     try{
       final proof=await PublicNotificationApi.scanToken();
       final response=await http.get(
         Uri.parse('${PublicThemeBackend.baseUrl}/api/qr/${Uri.encodeComponent(token)}/emergency-card'),
         headers:{'x-scan-token':proof},
-      ).timeout(const Duration(seconds:9));
-      if(response.statusCode!=200)return;
+      ).timeout(const Duration(seconds:12));
+      if(response.statusCode!=200){
+        if(mounted)setState(()=>emergencyError=motorcycleEmergencyAccessMessage(
+          statusCode:response.statusCode));
+        return;
+      }
       final raw=jsonDecode(response.body);
-      if(raw is! Map || raw['card'] is! Map)return;
+      if(raw is! Map || raw['card'] is! Map){
+        if(mounted)setState(()=>emergencyError=motorcycleEmergencyAccessMessage());
+        return;
+      }
       final card=Map<String,dynamic>.from(raw['card'] as Map);
       if(mounted)setState(()=>emergencyCard=card);
-    }catch(_){
-      // No public emergency information is disclosed on session failure.
+    }catch(e){
+      // No private details or scan token are included in visitor messages.
+      if(mounted)setState(()=>emergencyError=
+        motorcycleEmergencyAccessMessage(error:e));
+    }finally{
+      if(mounted)setState(()=>emergencyLoading=false);
     }
   }
 
@@ -615,9 +636,14 @@ class _PublicHomeState extends State<_PublicHome>{
                             ),
                           ],
                         ),
-                        if(emergencyCard!=null)...[
+                        if(isMotorcycle)...[
                           const SizedBox(height:10),
-                          PublicMotorcycleEmergencyCard(card:emergencyCard!),
+                          PublicMotorcycleEmergencyAccess(
+                            loading:emergencyLoading,
+                            error:emergencyError,
+                            card:emergencyCard,
+                            onReveal:_loadEmergencyCard,
+                          ),
                         ],
                         const SizedBox(height:8),
                         InkWell(
