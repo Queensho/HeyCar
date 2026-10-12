@@ -12,6 +12,7 @@ import 'owner_valet_card.dart';
 import 'roadside_help_page.dart';
 import 'owner_home_redesign.dart';
 import 'vehicle_kind.dart';
+import 'owner_reference_design.dart';
 import 'valet_info_page.dart';
 import 'weather_service.dart';
 import 'weather_details_page.dart';
@@ -73,7 +74,9 @@ void action(String a){
           shortcut:action,
           active:tab==0,
         ),
-        OwnerVehiclesPage(onVehicleChanged:_vehicleChanged),
+        OwnerVehiclesPage(onVehicleChanged:_vehicleChanged,
+          onNotifications:()=>setState(()=>tab=3),
+          onSettings:()=>setState(()=>tab=4),unread:unread>0),
         OwnerServicesRedesign(
           onVale:()=>testAccount?Navigator.push(context,MaterialPageRoute(builder:(_)=>ValetInfoPage(vehicleId:vid))):null,
           onTowing:()=>action('towing'),
@@ -81,53 +84,22 @@ void action(String a){
           onOffers:()=>action('offers'),
           onMaintenance:()=>action('maintenance'),
           onReminders:()=>action('reminders'),
+          onNotifications:()=>setState(()=>tab=3),
+          onSettings:()=>setState(()=>tab=4),
+          onShortcut:action,
+          unread:unread>0,
           active:tab==2,
         ),
-        OwnerNotificationsPage(key:ValueKey('notifications-$vid'),vehicleId:vid,plate:QrDraft.plate,active:tab==3),
-        OwnerSettingsPage(onOpenVehicles:()=>setState(()=>tab=1),onOpenQr:_qr),
+        OwnerNotificationsPage(key:ValueKey('notifications-$vid'),vehicleId:vid,plate:QrDraft.plate,active:tab==3,onSettings:()=>setState(()=>tab=4)),
+        OwnerSettingsPage(onOpenVehicles:()=>setState(()=>tab=1),onOpenQr:_qr,onOpenNotifications:()=>setState(()=>tab=3),unread:unread>0),
       ];
-      const labels=['Anasayfa','Araçlarım','Hizmetler','Bildirimler','Profil'];
-      const icons=[Icons.home_rounded,Icons.directions_car_outlined,Icons.grid_view_rounded,Icons.receipt_long_outlined,Icons.person_outline_rounded];
       return Scaffold(
-        backgroundColor:CepqarTheme.bg,
+        backgroundColor:OwnerReference.background,
         body:IndexedStack(index:tab,children:pages),
-        bottomNavigationBar:SafeArea(
-          top:false,
-          child:Container(
-            height:66,
-            margin:const EdgeInsets.fromLTRB(14,0,14,8),
-            padding:const EdgeInsets.symmetric(horizontal:5,vertical:5),
-            decoration:BoxDecoration(
-              color:CepqarTheme.isLight?Colors.white:const Color(0xFF090F1D),
-              borderRadius:BorderRadius.circular(25),
-              border:Border.all(color:CepqarTheme.isLight?const Color(0xFFE6E6F0):const Color(0xFF1B2540)),
-              boxShadow:[BoxShadow(color:Colors.black.withValues(alpha:CepqarTheme.isLight ? 0.08 : 0.30),blurRadius:22,offset:const Offset(0,8))],
-            ),
-            child:Row(children:List.generate(5,(i){
-              final active=tab==i;
-              return Expanded(
-                child:InkWell(
-                  onTap:()=>setState(()=>tab=i),
-                  borderRadius:BorderRadius.circular(18),
-                  child:AnimatedContainer(
-                    duration:const Duration(milliseconds:180),
-                    decoration:BoxDecoration(
-                      color:active?CepqarTheme.purple.withValues(alpha:CepqarTheme.isLight ? 0.10 : 0.18):Colors.transparent,
-                      borderRadius:BorderRadius.circular(20),
-                    ),
-                    child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[
-                      Stack(clipBehavior:Clip.none,children:[
-                        Icon(icons[i],size:22,color:active?CepqarTheme.purple:CepqarTheme.muted),
-                        if(i==3&&unread>0)const Positioned(right:-4,top:-3,child:CircleAvatar(radius:4,backgroundColor:Color(0xFFFF4158))),
-                      ]),
-                      const SizedBox(height:3),
-                      Text(labels[i],maxLines:1,style:TextStyle(fontSize:CepqarTheme.navText,fontWeight:active?FontWeight.w800:FontWeight.w600,color:active?CepqarTheme.purple:CepqarTheme.muted)),
-                    ]),
-                  ),
-                ),
-              );
-            })),
-          ),
+        bottomNavigationBar:OwnerReferenceBottomNav(
+          selected:tab,
+          unread:unread>0,
+          onChanged:(index)=>setState(()=>tab=index),
         ),
       );
     },

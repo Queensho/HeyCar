@@ -24,6 +24,7 @@ import 'owner_home_component_registry.dart';
 import 'vehicle_kind.dart';
 import 'motorcycle_profile_page.dart';
 import 'call_activity.dart';
+import 'owner_reference_design.dart';
 
 class OwnerHomeRedesign extends StatefulWidget{
   const OwnerHomeRedesign({
@@ -62,6 +63,8 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   bool loading=true;
   bool _refreshing=false;
   bool premium=false;
+  Map<String,dynamic>? _selectedVehicle;
+  String _referenceCategory='Tümü';
   int activeVehicleCount=0;
   bool qrProtection=false;
   WeatherSnapshot? weather;
@@ -429,6 +432,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       }
 
       var nextPremium=premium;
+      Map<String,dynamic>? nextSelectedVehicle=_selectedVehicle;
       var nextActiveVehicleCount=activeVehicleCount;
       var nextQrProtection=qrProtection;
       final vehiclesResponse=rs[1];
@@ -442,6 +446,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         for(final v in vehicles){
           if('${v['id']??''}'==vehicleId){selected=v;break;}
         }
+        nextSelectedVehicle=selected==null?null:Map<String,dynamic>.from(selected);
         nextQrProtection=selected!=null&&'${selected['qr_status']??''}'=='active'&&'${selected['qr_token']??''}'.trim().isNotEmpty;
       }
 
@@ -498,7 +503,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         final noticesChanged=jsonEncode(nextNotices)!=jsonEncode(notices);
         final valetChanged=jsonEncode(nextValet)!=jsonEncode(valetSession);
         final codeChanged=nextDeliveryCode!=valetDeliveryCode;
-        final ownerStateChanged=nextPremium!=premium||nextActiveVehicleCount!=activeVehicleCount||nextQrProtection!=qrProtection;
+        final ownerStateChanged=nextPremium!=premium||nextActiveVehicleCount!=activeVehicleCount||nextQrProtection!=qrProtection||jsonEncode(nextSelectedVehicle)!=jsonEncode(_selectedVehicle);
         if(noticesChanged||valetChanged||codeChanged||ownerStateChanged){
           setState((){
             notices=nextNotices;
@@ -507,6 +512,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             premium=nextPremium;
             activeVehicleCount=nextActiveVehicleCount;
             qrProtection=nextQrProtection;
+            _selectedVehicle=nextSelectedVehicle;
           });
         }
       }
@@ -584,80 +590,164 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     );
   }
 
-  Widget header()=>SizedBox(
-    height:274,
-    child:Stack(children:[
-      Positioned.fill(
-        child:Container(
-          decoration:BoxDecoration(
-            gradient:light
-              ?const LinearGradient(
-                  begin:Alignment.topLeft,
-                  end:Alignment.bottomRight,
-                  colors:[
-                    Color(0xFFFBFAFF),
-                    Color(0xFFF6F2FF),
-                    Color(0xFFEDE6FF),
-                    Color(0xFFF9F8FF),
-                  ],
-                  stops:[0,.38,.76,1],
-                )
-              :const LinearGradient(
-                  begin:Alignment.topLeft,
-                  end:Alignment.bottomRight,
-                  colors:[
-                    Color(0xFF050913),
-                    Color(0xFF0B1020),
-                    Color(0xFF17102E),
-                    Color(0xFF080B15),
-                  ],
-                  stops:[0,.40,.76,1],
-                ),
-          ),
-        ),
-      ),
-      Positioned(
-        right:-58,
-        top:-72,
-        child:Container(
-          width:250,
-          height:230,
-          decoration:BoxDecoration(
-            shape:BoxShape.circle,
-            gradient:RadialGradient(
-              colors:[
-                const Color(0xFF8D63FF).withValues(alpha:light ? .20 : .28),
-                const Color(0xFF8D63FF).withValues(alpha:light ? .08 : .12),
-                Colors.transparent,
-              ],
-              stops:const [0,.48,1],
-            ),
-          ),
-        ),
-      ),
-      Padding(
-        padding:EdgeInsets.fromLTRB(20,MediaQuery.paddingOf(context).top+8,18,0),
-        child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-          brand(),
-          const SizedBox(height:13),
-          WeatherCard(
-            headerActions: Row(mainAxisSize:MainAxisSize.min,children:[
-              Material(color:CepqarTheme.panel,shape:const CircleBorder(),child:SizedBox(width:42,height:42,child:InkWell(onTap:widget.notifications,customBorder:const CircleBorder(),child:Stack(children:[Center(child:Icon(Icons.notifications_none_rounded,color:text,size:25)),if(unread>0)const Positioned(right:6,top:6,child:CircleAvatar(radius:4.5,backgroundColor:Color(0xFFFF425D)))])))),
-              const SizedBox(width:8),
-              Container(width:42,height:42,alignment:Alignment.center,decoration:const BoxDecoration(shape:BoxShape.circle,gradient:LinearGradient(colors:[Color(0xFF5820C8),Color(0xFF8C4DFF)])),child:Text(initials,style:const TextStyle(color:Colors.white,fontSize:14,fontWeight:FontWeight.w900))),
-            ]),
-            displayName:OnboardingDraft.displayName.trim().isEmpty?'Araç Sahibi':OnboardingDraft.displayName.trim(),
-            premium:premium,
-            activeVehicleCount:activeVehicleCount,
-            qrProtection:qrProtection,
-            weather:weather,
-            loading:weatherLoading,
-            onVehicles:widget.vehicles,
-            onQrSecurity:()=>widget.shortcut('qr_security'),
-            onTap:_openWeatherDetails,
-          ),
+  String get _todayName=>const [
+    'Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi','Pazar'
+  ][DateTime.now().weekday-1];
+  String get _greeting{
+    final hour=DateTime.now().hour;
+    return hour<12?'Günaydın,':hour<18?'İyi günler,':'İyi akşamlar,';
+  }
+
+  Widget _heroBrandLogo(){
+    final data=_selectedVehicle?['brandLogo'];
+    final logo=data is Map?Map<String,dynamic>.from(data):<String,dynamic>{};
+    final storedPath='${logo['path']??''}'.trim();
+    final safePath=storedPath.startsWith('/uploads/vehicle-brands/')&&
+        !storedPath.contains('..')&&!storedPath.contains('?');
+    final url=safePath
+      ?OnboardingBackend.baseUrl.replaceFirst(RegExp(r'/$'),'')+storedPath
+      :'${logo['url']??''}'.trim();
+    final hasLogo=logo['available']==true&&url.startsWith('https://');
+    return Container(
+      height:105,width:135,
+      alignment:Alignment.center,
+      decoration:BoxDecoration(
+        borderRadius:BorderRadius.circular(23),
+        gradient:LinearGradient(colors:[
+          OwnerReference.lilac.withValues(alpha:.32),
+          const Color(0xFF9C70FF).withValues(alpha:.23),
         ]),
       ),
+      child:hasLogo
+        ?Image.network(url,height:85,width:112,fit:BoxFit.contain,
+            errorBuilder:(_,__,___)=>_logoFallback())
+        :_logoFallback(),
+    );
+  }
+  Widget _logoFallback()=>Icon(
+    VehicleKind.isMotorcycle(QrDraft.vehicleType)
+      ?Icons.two_wheeler_rounded:Icons.directions_car_rounded,
+    size:66,color:OwnerReference.purple.withValues(alpha:.56),
+  );
+
+  Widget _referenceFilters(){
+    const categories=['Tümü','Araç & QR','Hizmetler','Fırsatlar','Yakında'];
+    return SizedBox(
+      height:42,
+      child:ListView.separated(
+        padding:const EdgeInsets.symmetric(horizontal:17),
+        scrollDirection:Axis.horizontal,
+        itemCount:categories.length,
+        separatorBuilder:(_,__)=>const SizedBox(width:8),
+        itemBuilder:(_,index){
+          final name=categories[index],active=_referenceCategory==name;
+          return ChoiceChip(
+            label:Text(name),
+            selected:active,
+            onSelected:(_)=>setState(()=>_referenceCategory=name),
+            showCheckmark:false,
+            padding:const EdgeInsets.symmetric(horizontal:12,vertical:3),
+            labelStyle:TextStyle(
+              color:active?Colors.white:OwnerReference.subtitle,
+              fontWeight:FontWeight.w700,fontSize:12,
+            ),
+            selectedColor:OwnerReference.purple,
+            backgroundColor:OwnerReference.surface,
+            side:BorderSide.none,
+            shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(23)),
+          );
+        },
+      ),
+    );
+  }
+
+  bool _referenceShows(AppUiComponent component){
+    if(component.type=='weather_card')return true;
+    switch(_referenceCategory){
+      case 'Araç & QR':return component.type=='vehicle_security'||component.type=='quick_actions';
+      case 'Hizmetler':return component.type=='services_grid';
+      case 'Fırsatlar':return component.type=='story_carousel'||component.type=='promo_banner';
+      case 'Yakında':return component.type=='services_grid';
+      default:return true;
+    }
+  }
+
+  Widget header()=>Container(
+    padding:EdgeInsets.fromLTRB(18,MediaQuery.paddingOf(context).top+4,18,16),
+    decoration:BoxDecoration(
+      gradient:light?const LinearGradient(
+        begin:Alignment.topLeft,end:Alignment.bottomRight,
+        colors:[Color(0xFFFCFAFF),Color(0xFFF1EAFE),Color(0xFFF8F6FF)],
+      ):null,
+    ),
+    child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      OwnerReferenceHeader(
+        onNotifications:widget.notifications,
+        onSettings:()=>widget.shortcut('settings'),
+        unread:unread>0,
+      ),
+      const SizedBox(height:14),
+      Row(children:[
+        Container(
+          height:65,width:65,
+          alignment:Alignment.center,
+          decoration:BoxDecoration(
+            shape:BoxShape.circle,
+            gradient:const LinearGradient(colors:[
+              Color(0xFF4920B2),Color(0xFFA86CFF)]),
+            border:Border.all(color:Colors.white,width:3),
+          ),
+          child:Text(initials,style:const TextStyle(color:Colors.white,
+            fontSize:23,fontWeight:FontWeight.w900)),
+        ),
+        const SizedBox(width:12),
+        Expanded(child:Column(
+          crossAxisAlignment:CrossAxisAlignment.start,
+          children:[
+            Text(_greeting,style:TextStyle(color:muted,fontSize:13)),
+            Text(OnboardingDraft.displayName.trim().isEmpty
+              ?'Araç Sahibi':OnboardingDraft.displayName.trim(),
+              maxLines:2,overflow:TextOverflow.ellipsis,
+              style:TextStyle(color:text,fontSize:17,fontWeight:FontWeight.w900)),
+            Text('Aracınızla dünya sizinle iletişimde.',
+              maxLines:2,style:TextStyle(color:muted,fontSize:11.5)),
+          ],
+        )),
+        const SizedBox(width:8),
+        InkWell(
+          onTap:_openWeatherDetails,
+          borderRadius:BorderRadius.circular(20),
+          child:Container(
+            width:112,
+            padding:const EdgeInsets.symmetric(horizontal:9,vertical:11),
+            decoration:OwnerReference.card(radius:21),
+            child:Column(children:[
+              Icon(weather?.condition==WeatherCondition.rain
+                ?Icons.umbrella_rounded:Icons.wb_cloudy_rounded,
+                color:OwnerReference.purple,size:22),
+              Text(weather?.temperature==null?'--°':
+                '${weather!.temperature!.round()}°',
+                style:TextStyle(color:text,fontSize:25,fontWeight:FontWeight.w900)),
+              Text(weather?.location.isNotEmpty==true?weather!.location:'Konum',
+                maxLines:1,overflow:TextOverflow.ellipsis,
+                style:TextStyle(color:muted,fontSize:10)),
+            ]),
+          ),
+        ),
+      ]),
+      const SizedBox(height:14),
+      Row(crossAxisAlignment:CrossAxisAlignment.center,children:[
+        Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          Text('${DateTime.now().day.toString().padLeft(2,'0')}.${DateTime.now().month.toString().padLeft(2,'0')}',
+            style:const TextStyle(fontSize:58,fontWeight:FontWeight.w900,
+              letterSpacing:-2.5,height:1,color:OwnerReference.purple)),
+          Text(_todayName,style:TextStyle(color:text,
+            fontSize:27,fontWeight:FontWeight.w800)),
+        ])),
+        _heroBrandLogo(),
+      ]),
+      const SizedBox(height:16),
+      _referenceFilters(),
     ]),
   );
 
@@ -1425,7 +1515,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   }
 
   Widget _managedServiceCard(AppUiServiceItem item){
-    final available=!item.testOnly||testAccount;
+    final available=(!item.testOnly||testAccount)&&item.action!='NONE';
     final background=_ui.token(item.backgroundToken);
     final iconColor=_ui.token(item.iconToken);
     final badgeColor=_ui.token(item.badgeToken);
@@ -1435,7 +1525,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       child:Opacity(
         opacity:available?1:.78,
         child:Container(
-          height:108,
+          height:120,
           clipBehavior:Clip.hardEdge,
           decoration:BoxDecoration(
             color:background,
@@ -1469,6 +1559,17 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                 child:item.iconUrl.isNotEmpty?Padding(padding:const EdgeInsets.all(7),child:Image.network(item.iconUrl,fit:BoxFit.contain,errorBuilder:(_,__,___)=>Icon(_managedIcon(item.icon),color:iconColor,size:21))):Icon(_managedIcon(item.icon),color:iconColor,size:21),
               ),
             ),
+            if(!available&&item.badgeText.isEmpty)Positioned(
+              right:10,top:10,
+              child:Container(
+                padding:const EdgeInsets.symmetric(horizontal:8,vertical:4),
+                decoration:BoxDecoration(
+                  color:purple.withValues(alpha:.10),
+                  borderRadius:BorderRadius.circular(9)),
+                child:const Text('Yakında',
+                  style:TextStyle(color:purple,fontSize:10,fontWeight:FontWeight.w800)),
+              ),
+            ),
             if(item.badgeText.isNotEmpty)Positioned(
               right:10,top:10,
               child:Container(
@@ -1500,19 +1601,19 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   }
 
   Widget _managedServices(){
-    final items=_appUiConfig.services;
+    final items=_appUiConfig.services.where((item)=>_referenceCategory!='Yakında'||item.testOnly&&!testAccount||item.action=='NONE').toList();
     if(items.isEmpty)return const SizedBox.shrink();
     return Column(children:[
       section('Hizmetler',widget.services),
       SizedBox(
-        height:112,
+        height:124,
         child:ListView.separated(
           scrollDirection:Axis.horizontal,
           physics:const BouncingScrollPhysics(),
           padding:const EdgeInsets.symmetric(horizontal:16),
           itemCount:items.length,
           separatorBuilder:(_,__)=>const SizedBox(width:12),
-          itemBuilder:(_,index)=>SizedBox(width:168,child:_managedServiceCard(items[index])),
+          itemBuilder:(_,index)=>SizedBox(width:174,child:_managedServiceCard(items[index])),
         ),
       ),
     ]);
@@ -1698,7 +1799,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         physics:const ClampingScrollPhysics(parent:AlwaysScrollableScrollPhysics()),
         children:[
           for(final component in _appUiConfig.components)
-            RepaintBoundary(key:ValueKey('sd-ui-${component.id}-${_appUiConfig.version}'),child:_managedComponent(component)),
+            if(_referenceShows(component))RepaintBoundary(key:ValueKey('sd-ui-${component.id}-${_appUiConfig.version}'),child:_managedComponent(component)),
           const SizedBox(height:20),
         ],
       ),
@@ -1887,79 +1988,209 @@ bool get _ownerServicesTestAccount{
   return digits=='5074035857';
 }
 
-class OwnerServicesRedesign extends StatelessWidget{
+class OwnerServicesRedesign extends StatefulWidget{
   const OwnerServicesRedesign({
-    super.key,
-    required this.onVale,
-    required this.onTowing,
-    required this.onPark,
-    required this.onOffers,
-    required this.onMaintenance,
-    required this.onReminders,
-    this.active=true,
+    super.key,required this.onVale,required this.onTowing,
+    required this.onPark,required this.onOffers,
+    required this.onMaintenance,required this.onReminders,
+    this.onNotifications,this.onSettings,this.onShortcut,this.unread=false,this.active=true,
   });
   final VoidCallback onVale,onTowing,onPark,onOffers,onMaintenance,onReminders;
-  final bool active;
+  final VoidCallback? onNotifications,onSettings;
+  final ValueChanged<String>? onShortcut;
+  final bool active,unread;
+  @override State<OwnerServicesRedesign> createState()=>_OwnerServicesRedesignState();
+}
 
-  @override Widget build(BuildContext context){
-    final light=CepqarTheme.isLight,text=CepqarTheme.text,muted=CepqarTheme.muted,panel=CepqarTheme.panel,line=CepqarTheme.line;
-    final items=<({IconData icon,String title,String subtitle,Color color,VoidCallback tap,bool comingSoon,bool enabled})>[
-      (icon:Icons.storefront_rounded,title:'CepQontag Mağaza',subtitle:'Araç etiketi, yedek ürünler ve yeni CepQontag ürünleri.',color:const Color(0xFF713BFF),tap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const CepqontagStorePage())),comingSoon:false,enabled:true),
-      (icon:Icons.fire_truck_rounded,title:'Çekici',subtitle:'Yolda kaldığınızda çekici çağırın ve canlı takip edin.',color:const Color(0xFFFF8A43),tap:onTowing,comingSoon:true,enabled:_ownerServicesTestAccount),
-      (icon:Icons.sos_rounded,title:'Yol Yardım',subtitle:'Akü, lastik, yakıt ve yerinde müdahale desteği.',color:const Color(0xFFFF775F),tap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const RoadsideHelpPage(initialTab:0))),comingSoon:true,enabled:_ownerServicesTestAccount),
-      (icon:Icons.support_agent_rounded,title:'Vale',subtitle:'Aracınızı güvenle teslim edin, zaman kazanın.',color:const Color(0xFF8B36FF),tap:onVale,comingSoon:true,enabled:_ownerServicesTestAccount),
-      (icon:Icons.local_offer_rounded,title:'Fırsatlar',subtitle:'Size özel kampanya ve ayrıcalıkları keşfedin.',color:const Color(0xFF23C976),tap:onOffers,comingSoon:true,enabled:_ownerServicesTestAccount),
-    ];
-    return ColoredBox(
-      color:CepqarTheme.bg,
-      child:SafeArea(bottom:false,child:ListView(padding:const EdgeInsets.fromLTRB(18,10,18,28),children:[
-        Align(
-          alignment:Alignment.centerLeft,
-          child:Image.asset(
-            CepqarTheme.isLight ? 'assets/file_00000000b130820abb8d411e67ab0d25.png' : 'assets/Logoyeni.png',
-            key:ValueKey(CepqarTheme.isLight),
-            height:31,
-            fit:BoxFit.contain,
-          ),
+class _OwnerServicesRedesignState extends State<OwnerServicesRedesign>{
+  final AppUiConfigService _source=AppUiConfigService();
+  AppUiConfig _config=AppUiConfig.defaults();
+  @override void initState(){super.initState();_loadConfig();}
+  Future<void> _loadConfig()async{
+    final cached=await _source.cachedOrDefault();
+    if(mounted)setState(()=>_config=cached);
+    final next=await _source.refresh();
+    if(mounted&&next!=null)setState(()=>_config=next);
+  }
+  @override void didUpdateWidget(covariant OwnerServicesRedesign oldWidget){
+    super.didUpdateWidget(oldWidget);
+    if(widget.active&&!oldWidget.active)_loadConfig();
+  }
+
+  IconData _icon(String id)=>switch(id.toLowerCase()){
+    'towing'=>Icons.local_shipping_outlined,
+    'roadside'=>Icons.home_repair_service_rounded,
+    'valet'=>Icons.airline_seat_recline_normal_rounded,
+    'opportunities'=>Icons.card_giftcard_rounded,
+    'offers'=>Icons.card_giftcard_rounded,
+    _=>Icons.apps_rounded,
+  };
+  void _action(AppUiServiceItem item){
+    if(item.action=='NONE')return;
+    if(widget.onShortcut!=null){
+      AppActionHandler.handle(context,action:item.action,
+        target:item.actionTarget,shortcut:widget.onShortcut!);
+    }else{
+      switch(item.action){
+        case 'OPEN_TOWING':widget.onTowing();break;
+        case 'OPEN_ROADSIDE':widget.onPark();break;
+        case 'OPEN_VALE':widget.onVale();break;
+        case 'OPEN_OPPORTUNITIES':widget.onOffers();break;
+        case 'OPEN_MAINTENANCE':widget.onMaintenance();break;
+        case 'OPEN_INSPECTION':widget.onReminders();break;
+      }
+    }
+  }
+
+  Widget _referenceService(AppUiServiceItem item,int index){
+    final available=!item.testOnly||_ownerServicesTestAccount;
+    final actionEnabled=available&&item.action!='NONE';
+    final isPurple=_config.version<=1&&(item.id=='towing'||item.id=='valet');
+    final t=_config.tokens;
+    final background=_config.version>1?t.token(item.backgroundToken):
+      (isPurple?OwnerReference.purple:OwnerReference.surface);
+    final fg=item.titleTextColor??(isPurple?Colors.white:OwnerReference.foreground);
+    final secondary=item.subtitleTextColor??(isPurple?
+      const Color(0xFFF1E9FF):OwnerReference.subtitle);
+    return InkWell(
+      key:ValueKey('reference-service-${item.id}'),
+      onTap:actionEnabled?()=>_action(item):null,
+      borderRadius:BorderRadius.circular(24),
+      child:Container(
+        height:166,
+        margin:const EdgeInsets.only(bottom:15),
+        clipBehavior:Clip.antiAlias,
+        decoration:BoxDecoration(
+          borderRadius:BorderRadius.circular(24),
+          gradient:_config.version<=1?LinearGradient(
+            begin:Alignment.centerLeft,end:Alignment.bottomRight,
+            colors:isPurple
+              ?[const Color(0xFF4D09CA),const Color(0xFF9A42FC)]
+              :[Colors.white,const Color(0xFFE7D9FF)],
+          ):null,
+          color:_config.version>1?background:null,
+          boxShadow:CepqarTheme.isLight?[
+            BoxShadow(color:OwnerReference.deep.withValues(alpha:.09),
+              blurRadius:20,offset:const Offset(0,8)),
+          ]:null,
         ),
-        const SizedBox(height:14),
-        Text('Hizmetler',style:TextStyle(color:text,fontSize:CepqarTheme.pageTitle,fontWeight:FontWeight.w900)),
-        const SizedBox(height:5),
-        Text('CepQontag ile aracınız için tüm hizmetler tek yerde.',style:TextStyle(color:muted,fontSize:13)),
-        const SizedBox(height:18),
-        ...items.map((x)=>Padding(
-          padding:const EdgeInsets.only(bottom:10),
-          child:InkWell(
-            onTap:x.enabled?x.tap:null,borderRadius:BorderRadius.circular(18),
-            child:Container(
-              padding:const EdgeInsets.all(14),
-              decoration:BoxDecoration(color:panel,borderRadius:BorderRadius.circular(18),border:Border.all(color:line),boxShadow:light&&!kIsWeb?[BoxShadow(color:Colors.black.withValues(alpha:.04),blurRadius:10,offset:const Offset(0,4))]:null),
-              child:Row(children:[
-                Container(width:48,height:48,decoration:BoxDecoration(color:x.color.withValues(alpha:.13),borderRadius:BorderRadius.circular(14)),child:Icon(x.icon,color:x.color,size:26)),
-                const SizedBox(width:12),
-                Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-                  Row(children:[
-                    Flexible(child:Text(x.title,style:TextStyle(color:text,fontSize:15,fontWeight:FontWeight.w900))),
-                    if(x.comingSoon)...[
-                      const SizedBox(width:7),
-                      Container(
-                        padding:const EdgeInsets.symmetric(horizontal:7,vertical:3),
-                        decoration:BoxDecoration(color:const Color(0xFF713BFF).withValues(alpha:.10),borderRadius:BorderRadius.circular(8)),
-                        child:const Text('Yakında',style:TextStyle(color:Color(0xFF713BFF),fontSize:8.5,fontWeight:FontWeight.w900)),
-                      ),
-                    ],
-                  ]),
-                  const SizedBox(height:3),
-                  Text(x.subtitle,style:TextStyle(color:muted,fontSize:CepqarTheme.body)),
-                ])),
-                Icon(x.comingSoon&&!x.enabled?Icons.schedule_rounded:Icons.chevron_right_rounded,color:x.comingSoon&&!x.enabled?const Color(0xFF713BFF):muted),
-              ]),
+        child:Stack(children:[
+          Positioned(
+            right:-5,bottom:0,top:0,
+            width:MediaQuery.sizeOf(context).width*.50,
+            child:IgnorePointer(child:item.imageUrl.isNotEmpty
+              ?Transform.translate(
+                  offset:Offset(item.imageX,item.imageY),
+                  child:Opacity(
+                    opacity:item.imageOpacity,
+                    child:Image.network(item.imageUrl,
+                      fit:BoxFit.contain,
+                      gaplessPlayback:true,
+                      errorBuilder:(_,__,___)=>Icon(_icon(item.id),
+                        color:fg.withValues(alpha:.15),size:92),
+                    ),
+                  ),
+                )
+              :Icon(_icon(item.id),size:104,
+                  color:fg.withValues(alpha:.14)),
             ),
           ),
-        )),
-        const SizedBox(height:8),
-        if(_ownerServicesTestAccount) OwnerValetCard(vehicleId:QrDraft.vehicleId,active:active),
-      ])),
+          Positioned(
+            left:19,top:18,bottom:14,
+            right:MediaQuery.sizeOf(context).width*.35,
+            child:Column(
+              crossAxisAlignment:CrossAxisAlignment.start,
+              children:[
+                Text(item.title,maxLines:2,overflow:TextOverflow.ellipsis,
+                  style:TextStyle(color:fg,fontSize:25,fontWeight:FontWeight.w900,
+                    height:1.10)),
+                const SizedBox(height:9),
+                Expanded(child:Text(item.subtitle,maxLines:3,
+                  overflow:TextOverflow.ellipsis,
+                  style:TextStyle(color:secondary,fontSize:13,height:1.25))),
+                Row(children:[
+                  Container(
+                    height:34,width:34,
+                    decoration:BoxDecoration(
+                      shape:BoxShape.circle,
+                      color:isPurple?Colors.white.withValues(alpha:.9):
+                        OwnerReference.lilac,
+                    ),
+                    child:Icon(
+                      actionEnabled?Icons.arrow_forward_rounded:Icons.lock_clock_rounded,
+                      size:21,color:OwnerReference.purple,
+                    ),
+                  ),
+                  if(!actionEnabled)...[
+                    const SizedBox(width:8),
+                    Text(item.badgeText.isNotEmpty?item.badgeText:'Yakında',
+                      style:TextStyle(color:secondary,fontSize:11,
+                        fontWeight:FontWeight.w800)),
+                  ],
+                ]),
+              ],
+            ),
+          ),
+          if(item.badgeText.isNotEmpty&&actionEnabled)Positioned(
+            top:12,right:12,
+            child:Container(
+              padding:const EdgeInsets.symmetric(horizontal:9,vertical:5),
+              decoration:BoxDecoration(
+                color:Colors.white.withValues(alpha:.86),
+                borderRadius:BorderRadius.circular(12)),
+              child:Text(item.badgeText,style:TextStyle(color:OwnerReference.deep,
+                fontSize:10,fontWeight:FontWeight.w800)),
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  @override Widget build(BuildContext context){
+    final items=_config.services;
+    return ColoredBox(
+      color:OwnerReference.background,
+      child:SafeArea(bottom:false,child:RefreshIndicator(
+        onRefresh:_loadConfig,
+        child:ListView(
+          padding:const EdgeInsets.fromLTRB(18,7,18,30),
+          children:[
+            OwnerReferenceHeader(
+              onNotifications:widget.onNotifications??(){},
+              onSettings:widget.onSettings??(){},
+              unread:widget.unread,
+            ),
+            const SizedBox(height:19),
+            Text('Hizmetlerim',
+              style:TextStyle(color:OwnerReference.foreground,
+                fontSize:29,fontWeight:FontWeight.w900)),
+            const SizedBox(height:7),
+            Text('Araç ve yolculuk ihtiyaçlarınız için tek ekranda tüm hizmetler.',
+              style:TextStyle(color:OwnerReference.subtitle,
+                fontSize:14,height:1.4)),
+            const SizedBox(height:22),
+            for(var i=0;i<items.length;i++)_referenceService(items[i],i),
+            if(!items.any((item)=>item.id=='store'))Padding(
+              padding:const EdgeInsets.only(top:2,bottom:14),
+              child:OutlinedButton.icon(
+                onPressed:()=>Navigator.push(context,MaterialPageRoute(
+                  builder:(_)=>const CepqontagStorePage())),
+                icon:const Icon(Icons.storefront_outlined),
+                label:const Text('CepQontag Mağaza'),
+                style:OutlinedButton.styleFrom(
+                  foregroundColor:OwnerReference.purple,
+                  backgroundColor:OwnerReference.surface,
+                  minimumSize:const Size(double.infinity,44),
+                  shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15)),
+                ),
+              ),
+            ),
+            if(_ownerServicesTestAccount)
+              OwnerValetCard(vehicleId:QrDraft.vehicleId,active:widget.active),
+          ],
+        ),
+      )),
     );
   }
 }
