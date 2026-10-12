@@ -89,7 +89,7 @@ void action(String a){
           onShortcut:action,
           active:tab==2,
         ),
-        OwnerNotificationsPage(key:ValueKey('notifications-$vid'),vehicleId:vid,plate:QrDraft.plate,active:tab==3),
+        OwnerNotificationsPage(key:ValueKey('notifications-$vid'),vehicleId:vid,plate:QrDraft.plate,active:tab==3,onSettings:()=>setState(()=>tab=4)),
         OwnerSettingsPage(onOpenVehicles:()=>setState(()=>tab=1),onOpenQr:_qr,onOpenNotifications:()=>setState(()=>tab=3)),
       ];
       return Scaffold(
