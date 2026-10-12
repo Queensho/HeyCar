@@ -903,19 +903,27 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   // brand-logo images. Local SVG marks keep the lime area visually consistent.
   Widget _premiumCarArtwork(){
     final selectedMake=QrDraft.make.trim();
-    final fallbackMake='${_selectedVehicle?['make']??''}'.trim();
-    final rawLogo=_selectedVehicle?['brandLogo'];
-    final brandLogo=rawLogo is Map
-      ?Map<String,dynamic>.from(rawLogo):<String,dynamic>{};
-    final path='${brandLogo['path']??''}'.trim();
-    // Only fetch the approved brand-logo folder on our own backend. No
-    // arbitrary external URL, query, traversal or opaque user-provided image.
+    final fallbackMake=(_selectedVehicle?['make']??'').toString().trim();
+    final logoData=_selectedVehicle?['brandLogo'];
+    final logo=logoData is Map
+      ?Map<String,dynamic>.from(logoData):<String,dynamic>{};
+    final path=(logo['path']??'').toString().trim();
     final safePath=path.startsWith('/uploads/vehicle-brands/')&&
-      !path.contains('..')&&!path.contains('\\')&&
+      !path.contains('..')&&!path.contains(String.fromCharCode(92))&&
       !path.contains('?')&&!path.contains('#')&&!path.contains('%')&&
       (path.endsWith('.svg')||path.endsWith('.png')||
        path.endsWith('.webp'));
-    final backendRoot=OnboardingBackend.baseUrl.replaceFirst(RegExp(r'/
+    final apiBase=OnboardingBackend.baseUrl;
+    final root=apiBase.endsWith('/')
+      ?apiBase.substring(0,apiBase.length-1):apiBase;
+    final logoUrl=(logo['available']==true&&safePath&&
+      root.startsWith('https://'))?root+path:null;
+    return OwnerVehicleBrandMark(
+      make:selectedMake.isNotEmpty?selectedMake:fallbackMake,
+      isMotorcycle:VehicleKind.isMotorcycle(QrDraft.vehicleType),
+      backendLogoUrl:logoUrl,
+    );
+  }
 
   Widget vehicleQr(){
     final motorcycle=VehicleKind.isMotorcycle(QrDraft.vehicleType);
