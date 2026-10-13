@@ -44,7 +44,7 @@ class OwnerWelcomeOverlay extends StatelessWidget {
                         children: [
                           SizedBox(height: short ? 5 : 12),
                           Image.asset(
-                            'assets/file_00000000b130820abb8d411e67ab0d25.png',
+                            'assets/Logoa.png',
                             height: compact ? 25 : 32,
                             alignment: Alignment.centerLeft,
                             fit: BoxFit.contain,
