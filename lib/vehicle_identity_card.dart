@@ -35,7 +35,9 @@ class VehicleIdentityCard extends StatelessWidget {
   String _number(int value)=>value.toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'),(m)=>'${m[1]}.');
 
   Widget _logo({double size=68,double opacity=1,Color color=Colors.white}) =>
-    Opacity(opacity:opacity,child:OwnerVehicleBrandMark(make:_make,size:size,color:color));
+    Opacity(opacity:opacity,child:SizedBox(width:size,height:size,child:ColorFiltered(
+      colorFilter:ColorFilter.mode(color,BlendMode.srcIn),
+      child:OwnerVehicleBrandMark(make:_make,isMotorcycle:_motorcycle,backendLogoUrl:_logoUrl))));
 
   String _scanLabel(){
     final raw=_s('last_scan_at');
