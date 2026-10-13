@@ -7,11 +7,11 @@ const _bg = Color(0xFFFDFDFF);
 const _panel = Colors.white;
 const _panel2 = Color(0xFFF7F5FC);
 const _line = Color(0xFFE5E7EF);
-const _purple = Color(0xFF5E24F5);
-const _purple2 = Color(0xFF7A35FF);
-const _orange = Color(0xFF5E24F5);
+const _purple = Color(0xFF651FFF);
+const _purple2 = Color(0xFF4810D8);
+const _orange = Color(0xFF651FFF);
 const _muted = Color(0xFF747A8D);
-const _text = Color(0xFF090B18);
+const _text = Color(0xFF101426);
 
 class OwnerVehicleSetupPage extends StatefulWidget {
   const OwnerVehicleSetupPage({super.key, required this.onDone, required this.onBack});
@@ -148,11 +148,7 @@ class _OwnerVehicleSetupPageState extends State<OwnerVehicleSetupPage> {
                   Positioned.fill(
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(24),
-                      child: Image.asset(
-                        'assets/IMG_20261004_191854.png',
-                        fit: BoxFit.cover,
-                        alignment: const Alignment(.18,.55),
-                      ),
+                      child: const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF4810D8), Color(0xFF651FFF), Color(0xFFA77BFF)]))),
                     ),
                   ),
                   Positioned.fill(
@@ -163,16 +159,16 @@ class _OwnerVehicleSetupPageState extends State<OwnerVehicleSetupPage> {
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: [
-                            Colors.white.withValues(alpha:.94),
-                            Colors.white.withValues(alpha:.58),
+                            Colors.transparent,
+                            Color(0x554810D8),
                             Colors.transparent,
                           ],
                         ),
                       ),
                     ),
                   ),
-                  const Positioned(left: 18, top: 18, child: Text.rich(TextSpan(children: [TextSpan(text: 'Aracını ', style: TextStyle(color: _text)), TextSpan(text: 'ekle', style: TextStyle(color: _purple))]), style: TextStyle(fontSize: 25, fontWeight: FontWeight.w900, letterSpacing: -1))),
-                  const Positioned(left: 18, top: 60, width: 215, child: Text('Plakanı yaz, ardından marka ve modelini seç.', style: TextStyle(color: _muted, fontSize: 12, height: 1.35, fontWeight: FontWeight.w500))),
+                  const Positioned(left: 18, top: 18, child: Text.rich(TextSpan(children: [TextSpan(text: 'Aracını ', style: TextStyle(color: Colors.white)), TextSpan(text: 'ekle', style: TextStyle(color: Color(0xFFB9FF43)))]), style: TextStyle(fontSize: 25, fontWeight: FontWeight.w900, letterSpacing: -1))),
+                  const Positioned(left: 18, top: 60, width: 215, child: Text('Plakanı yaz, ardından marka ve modelini seç.', style: TextStyle(color: Colors.white, fontSize: 12, height: 1.35, fontWeight: FontWeight.w500))),
                 ]),
               ),
               const SizedBox(height: 14),

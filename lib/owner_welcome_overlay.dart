@@ -28,7 +28,8 @@ class OwnerWelcomeOverlay extends StatelessWidget {
           builder: (context, constraints) {
             final width = math.min(constraints.maxWidth, 500.0);
             final compact = width < 370;
-            final short = constraints.maxHeight < 740;
+            final short = constraints.maxHeight < 790;
+            final scale = (constraints.maxHeight / 940).clamp(.63, .86);
             return Stack(children: [
               const Positioned.fill(child: CustomPaint(painter: _OrbitalBackdrop())),
               SingleChildScrollView(
@@ -41,27 +42,27 @@ class OwnerWelcomeOverlay extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          SizedBox(height: short ? 13 : 22),
+                          SizedBox(height: short ? 5 : 12),
                           Image.asset(
                             'assets/file_00000000b130820abb8d411e67ab0d25.png',
-                            height: compact ? 36 : 43,
+                            height: compact ? 25 : 32,
                             alignment: Alignment.centerLeft,
                             fit: BoxFit.contain,
                             errorBuilder: (_, __, ___) => const Text(
                               'CepQontag', style: TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w900)),
                           ),
-                          SizedBox(height: short ? 27 : 49),
-                          _NotificationShowcase(compact: compact),
-                          SizedBox(height: short ? 26 : 43),
+                          SizedBox(height: short ? 7 : 17),
+                          _NotificationShowcase(compact: compact, scale: scale),
+                          SizedBox(height: short ? 7 : 17),
                           const Text('C E P Q O N T A G',
                             style: TextStyle(color: Color(0xFFD1BDFF), fontSize: 10, fontWeight: FontWeight.w700)),
-                          const SizedBox(height: 13),
+                          const SizedBox(height: 5),
                           Text('Aracınızla\nilgili her şey',
                             style: TextStyle(
                               color: Colors.white,
                               height: 1.01,
                               letterSpacing: -1.7,
-                              fontSize: compact ? 37 : 44,
+                              fontSize: compact ? 29 : 35,
                               fontWeight: FontWeight.w900,
                             )),
                           Text('anında\nbildirilsin.',
@@ -72,22 +73,22 @@ class OwnerWelcomeOverlay extends StatelessWidget {
                               fontSize: compact ? 37 : 44,
                               fontWeight: FontWeight.w900,
                             )),
-                          const SizedBox(height: 2),
+                          const SizedBox(height: 1),
                           SizedBox(
                             width: compact ? 250 : 305,
-                            height: 15,
+                            height: 7,
                             child: const CustomPaint(painter: _LimeUnderline()),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 6),
                           Text('Aracınızla ilgili önemli durumlarda hızlıca haberdar olun, her zaman kontrol sizde olsun.',
-                            style: TextStyle(color: const Color(0xFFE0D2FF), fontSize: compact ? 15 : 16.5, height: 1.38)),
-                          SizedBox(height: short ? 25 : 35),
+                            style: TextStyle(color: const Color(0xFFE0D2FF), fontSize: compact ? 12.5 : 14, height: 1.38)),
+                          SizedBox(height: short ? 9 : 16),
                           _EntryButton(
                             key: const ValueKey('owner-welcome-login'),
                             label: 'Giriş Yap', icon: Icons.person_rounded,
                             filled: true, onTap: onLogin,
                           ),
-                          const SizedBox(height: 11),
+                          const SizedBox(height: 7),
                           _EntryButton(
                             key: const ValueKey('owner-welcome-register'),
                             label: 'Kayıt Ol', icon: Icons.add_rounded,
@@ -128,7 +129,7 @@ class _EntryButton extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(19),
       child: Container(
-        height: 58,
+        height: 48,
         padding: const EdgeInsets.symmetric(horizontal: 22),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(19),
@@ -138,7 +139,7 @@ class _EntryButton extends StatelessWidget {
         child: Row(children: [
           Icon(icon, color: filled ? Colors.white : _purple, size: 27),
           const Spacer(),
-          Text(label, style: TextStyle(color: filled ? Colors.white : _purple, fontSize: 19, fontWeight: FontWeight.w800)),
+          Text(label, style: TextStyle(color: filled ? Colors.white : _purple, fontSize: 16, fontWeight: FontWeight.w800)),
           const Spacer(),
           Icon(Icons.arrow_forward_rounded, color: filled ? Colors.white : _purple, size: 27),
         ]),
@@ -149,30 +150,31 @@ class _EntryButton extends StatelessWidget {
 
 /// Static onboarding examples; deliberately makes no notification API calls.
 class _NotificationShowcase extends StatelessWidget {
-  const _NotificationShowcase({required this.compact});
+  const _NotificationShowcase({required this.compact, required this.scale});
   final bool compact;
+  final double scale;
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: compact ? 265 : 310,
+      height: 310 * scale,
       child: Stack(clipBehavior: Clip.none, children: [
-        Positioned(top: 11, left: 0, right: 12,
+        Positioned(top: 6, left: 0, right: 12,
           child: Transform.rotate(angle: -0.065,
-            child: const _PreviewNotification(
+            child: _PreviewNotification(scale: scale,
               title: 'Park Uyarısı', message: 'Aracınızın çıkışı\nengelleniyor.',
               time: '2 dk önce', icon: Icons.local_parking_rounded,
               tint: _purple, iconBackground: Color(0xFFEADFFF),
             ))),
-        Positioned(top: compact ? 96 : 112, left: 13, right: 0,
+        Positioned(top: 104 * scale, left: 13, right: 0,
           child: Transform.rotate(angle: -0.045,
-            child: const _PreviewNotification(
+            child: _PreviewNotification(scale: scale,
               title: 'Hasar Bildirimi', message: 'Aracınızda olası bir\nhasar tespit edildi.',
               time: '15 dk önce', icon: Icons.warning_rounded,
               tint: Color(0xFFF41D5D), iconBackground: Color(0xFFFFE5ED),
             ))),
-        Positioned(top: compact ? 183 : 218, left: 5, right: 9,
+        Positioned(top: 211 * scale, left: 5, right: 9,
           child: Transform.rotate(angle: -0.025,
-            child: const _PreviewNotification(
+            child: _PreviewNotification(scale: scale,
               title: 'İletişim Talebi', message: 'Sizinle iletişime\ngeçmek istiyor.',
               time: '1 saat önce', icon: Icons.call_rounded,
               tint: Color(0xFF169B33), iconBackground: Color(0xFFE4FFAC),
@@ -184,9 +186,11 @@ class _NotificationShowcase extends StatelessWidget {
 
 class _PreviewNotification extends StatelessWidget {
   const _PreviewNotification({
+    required this.scale,
     required this.title, required this.message, required this.time,
     required this.icon, required this.tint, required this.iconBackground,
   });
+  final double scale;
   final String title, message, time;
   final IconData icon;
   final Color tint, iconBackground;
@@ -194,8 +198,8 @@ class _PreviewNotification extends StatelessWidget {
   Widget build(BuildContext context) {
     final compact = MediaQuery.sizeOf(context).width < 370;
     return Container(
-      height: compact ? 78 : 91,
-      padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 13, vertical: 9),
+      height: 91 * scale,
+      padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 13, vertical: 4),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: .96),
         borderRadius: BorderRadius.circular(21),
@@ -203,7 +207,7 @@ class _PreviewNotification extends StatelessWidget {
       ),
       child: Row(children: [
         Container(
-          width: compact ? 44 : 53, height: compact ? 44 : 53,
+          width: 43 * scale + 7, height: 43 * scale + 7,
           decoration: BoxDecoration(
             color: iconBackground, borderRadius: BorderRadius.circular(15)),
           child: Icon(icon, color: tint, size: compact ? 25 : 30),
