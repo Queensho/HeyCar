@@ -31,4 +31,22 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+  testWidgets('register action stays anchored near bottom on tall mobile web', (tester) async {
+    tester.view.physicalSize = const Size(390, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    await tester.pumpWidget(MaterialApp(home: OwnerWelcomeOverlay(
+      onLogin: () {},
+      onRegister: () {},
+    )));
+    await tester.pumpAndSettle();
+    final action = tester.getRect(find.byKey(const ValueKey('owner-welcome-register')));
+    expect(action.bottom, greaterThan(870));
+    expect(action.bottom, lessThan(900));
+    expect(tester.takeException(), isNull);
+  });
+
 }
