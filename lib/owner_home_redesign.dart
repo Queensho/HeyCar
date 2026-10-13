@@ -1860,7 +1860,7 @@ class OwnerServicesRedesign extends StatelessWidget{
         Text('CepQontag ile aracınız için tüm hizmetler tek yerde.',style:TextStyle(color:muted,fontSize:13)),
         const SizedBox(height:18),
         FutureBuilder<AppUiConfig>(
-          future:AppUiConfigService().cachedOrDefault(),
+          future:() async{final config=AppUiConfigService();return await config.refresh()??await config.cachedOrDefault();}(),
           builder:(context,snapshot){
             final configured=snapshot.data?.services??const <AppUiServiceItem>[];
             final keys=<String,String>{'CepQontag Mağaza':'store','Çekici':'towing','Yol Yardım':'roadside','Vale':'valet','Fırsatlar':'offers'};
