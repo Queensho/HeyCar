@@ -65,6 +65,10 @@ jobs:
           flutter analyze lib/owner_password_login.dart lib/owner_login.dart lib/qr_activation.dart --no-fatal-infos --no-fatal-warnings
           flutter analyze lib/owner_vehicle_setup.dart lib/driver_invite_page.dart --no-fatal-infos --no-fatal-warnings
           flutter test test/owner_welcome_purple_lime_test.dart
+      - name: Verify reference vehicle identity layout
+        run: |
+          flutter analyze lib/vehicle_center_page.dart lib/vehicle_identity_card.dart test/vehicle_detail_reference_test.dart --no-fatal-infos --no-fatal-warnings
+          flutter test test/vehicle_detail_reference_test.dart
       - name: Verify offline brand SVG marks and vehicle alias matching
         run: flutter test test/owner_vehicle_brand_mark_test.dart
       - name: Analyze vehicle-kind brand picker isolation
