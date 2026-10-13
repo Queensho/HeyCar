@@ -16,7 +16,7 @@ import 'active_driver_card.dart';
 import 'owner_new_vehicle_page.dart';
 import 'vehicle_kind.dart';
 
-const _purple=Color(0xFF8B5CFF),_gold=Color(0xFFFFC857),_green=Color(0xFF38D178);
+const _purple=Color(0xFF651FFF),_gold=Color(0xFFFFC857),_green=Color(0xFF38D178);
 Color get _bg=>CepqarTheme.bg; Color get _panel=>CepqarTheme.panel; Color get _line=>CepqarTheme.line; Color get _muted=>CepqarTheme.muted; Color get _text=>CepqarTheme.text;
 class OwnerVehiclesPage extends StatefulWidget{const OwnerVehiclesPage({super.key,this.onVehicleChanged});final VoidCallback? onVehicleChanged;@override State<OwnerVehiclesPage> createState()=>_S();}
 class _S extends State<OwnerVehiclesPage>{List<Map<String,dynamic>> vehicles=[];bool loading=true,premium=false;int limit=1;String? error;Timer? _logoRetryTimer;int _logoRetryAttempts=0;String get selected=>QrDraft.vehicleId.trim().isNotEmpty?QrDraft.vehicleId.trim():OnboardingDraft.vehicleId.trim();@override void initState(){super.initState();_load();}
@@ -176,15 +176,9 @@ Widget _bottomAction(IconData icon,String title,String subtitle,VoidCallback tap
 @override Widget build(BuildContext context){
   final top=MediaQuery.paddingOf(context).top;
   return Scaffold(
-    backgroundColor:_bg,
+    backgroundColor:Colors.white,
     body:Stack(children:[
-      Positioned(
-        left:0,right:0,top:0,
-        child:SizedBox(
-          height:190,
-          child:CustomPaint(painter:_VehiclesHeaderWavePainter(light:CepqarTheme.isLight)),
-        ),
-      ),
+
       RefreshIndicator(
         onRefresh:_load,
         color:_purple,
@@ -193,63 +187,28 @@ Widget _bottomAction(IconData icon,String title,String subtitle,VoidCallback tap
           children:[
             _brandHeader(),
             const SizedBox(height:13),
-            SizedBox(
-              height:78,
-              child:Stack(children:[
-                Positioned(
-                  left:0,top:0,
-                  child:Text('Araçlarım',style:TextStyle(color:_text,fontSize:CepqarTheme.pageTitle,fontWeight:FontWeight.w900,letterSpacing:-.45)),
-                ),
-                Positioned(
-                  left:0,top:34,right:214,
-                  child:Text(
-                    'Araçlarınızı yönetin, QR etiketlerinizi görüntüleyin ve tüm bilgileri kontrol edin.',
-                    maxLines:3,
-                    overflow:TextOverflow.ellipsis,
-                    style:TextStyle(color:_muted,fontSize:CepqarTheme.bodySmall,height:1.28,fontWeight:FontWeight.w500),
-                  ),
-                ),
-                Positioned(
-                  right:0,top:7,
-                  child:SizedBox(
-                    width:206,height:40,
-                    child:Row(children:[
-                      Expanded(
-                        child:OutlinedButton.icon(
-                          onPressed:loading?null:_add,
-                          style:OutlinedButton.styleFrom(
-                            foregroundColor:Colors.white,
-                            backgroundColor:CepqarTheme.isLight?_purple:const Color(0xFF20123E),
-                            side:BorderSide(color:_purple.withValues(alpha:CepqarTheme.isLight ? 1 : .95),width:1.1),
-                            padding:const EdgeInsets.symmetric(horizontal:7),
-                            shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(13)),
-                            shadowColor:_purple.withValues(alpha:.35),
-                            elevation:CepqarTheme.isLight?0:4,
-                          ),
-                          icon:const Icon(Icons.add_rounded,size:17),
-                          label:const Text('Yeni Araç Ekle',maxLines:1,overflow:TextOverflow.fade,style:TextStyle(fontSize:CepqarTheme.caption,fontWeight:FontWeight.w900)),
-                        ),
-                      ),
-                      const SizedBox(width:6),
-                      Expanded(
-                        child:OutlinedButton.icon(
-                          onPressed:loading?null:_acceptTransfer,
-                          style:OutlinedButton.styleFrom(
-                            foregroundColor:_purple,
-                            backgroundColor:CepqarTheme.isLight?Colors.white:const Color(0xFF0D1324),
-                            side:BorderSide(color:_purple.withValues(alpha:.72),width:1.1),
-                            padding:const EdgeInsets.symmetric(horizontal:7),
-                            shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(13)),
-                          ),
-                          icon:const Icon(Icons.swap_horiz_rounded,size:17),
-                          label:const Text('Araç Devir Al',maxLines:1,overflow:TextOverflow.fade,style:TextStyle(fontSize:CepqarTheme.caption,fontWeight:FontWeight.w900)),
-                        ),
-                      ),
-                    ]),
-                  ),
-                ),
+            LayoutBuilder(builder:(context,c)=>Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+              const Text('Araçlarım',style:TextStyle(color:Color(0xFF10162F),fontSize:28,fontWeight:FontWeight.w900)),
+              const SizedBox(height:7),
+              const Text('Araçlarınızı yönetin, QR etiketlerinizi görüntüleyin ve tüm bilgileri kontrol edin.',
+                style:TextStyle(color:Color(0xFF737B90),fontSize:12.5,height:1.35)),
+              const SizedBox(height:12),
+              Row(children:[
+                Expanded(child:FilledButton.icon(onPressed:loading?null:_add,
+                  style:FilledButton.styleFrom(backgroundColor:const Color(0xFFB9FF45),foregroundColor:const Color(0xFF10162F),
+                    minimumSize:const Size(0,47),padding:const EdgeInsets.symmetric(horizontal:4),
+                    shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15))),
+                  icon:const Icon(Icons.add_rounded,size:18),
+                  label:const Text('Yeni Araç',maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(fontSize:12,fontWeight:FontWeight.w900)))),
+                const SizedBox(width:8),
+                Expanded(child:OutlinedButton.icon(onPressed:loading?null:_acceptTransfer,
+                  style:OutlinedButton.styleFrom(backgroundColor:const Color(0xFF10102C),foregroundColor:const Color(0xFFB784FF),
+                    minimumSize:const Size(0,47),padding:const EdgeInsets.symmetric(horizontal:4),
+                    side:const BorderSide(color:Color(0xFF651FFF)),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15))),
+                  icon:const Icon(Icons.swap_horiz_rounded,size:17),
+                  label:const Text('Araç Devir Al',maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(fontSize:12,fontWeight:FontWeight.w900)))),
               ]),
-            ),
+            ])),
             const SizedBox(height:7),
             if(loading)
               const Padding(padding:EdgeInsets.all(28),child:Center(child:CircularProgressIndicator(color:_purple)))
@@ -364,12 +323,12 @@ class _VehicleReferenceCard extends StatelessWidget{
     return Container(
       // Keep the model/details and "Ana araç yap" row above the action strip.
       // 142 px clips the non-selected card on common Android font metrics.
-      height:162,
-      padding:const EdgeInsets.fromLTRB(11,8,11,8),
+      height:209,
+      padding:const EdgeInsets.fromLTRB(12,12,12,11),
       decoration:BoxDecoration(
-        color:dark?const Color(0xFF090E1D):_panel,
-        borderRadius:BorderRadius.circular(15),
-        border:Border.all(color:borderColor,width:selected?1.15:1),
+        color:Colors.white,
+        borderRadius:BorderRadius.circular(22),
+        border:Border.all(color:selected?const Color(0xFFB18AFF):const Color(0xFFECECF2),width:selected?1.2:1),
         boxShadow:dark
           ?[BoxShadow(color:_purple.withValues(alpha:selected ? .15 : .07),blurRadius:selected?14:8,spreadRadius:-2)]
           :[BoxShadow(color:Colors.black.withValues(alpha:.035),blurRadius:10,offset:const Offset(0,4))],
@@ -389,7 +348,7 @@ class _VehicleReferenceCard extends StatelessWidget{
                     child:Container(
                       padding:const EdgeInsets.symmetric(horizontal:7,vertical:3),
                       decoration:BoxDecoration(
-                        color:dark?const Color(0xFF42159B):_purple,
+                        color:_purple,
                         borderRadius:BorderRadius.circular(8),
                         border:dark?Border.all(color:const Color(0xFF9C62FF).withValues(alpha:.8)):null,
                       ),
@@ -428,7 +387,8 @@ class _VehicleReferenceCard extends StatelessWidget{
                       ),
                     ]),
                     const SizedBox(height:2),
-                    Text(model.isEmpty?make:'$make $model',maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:_text,fontSize:CepqarTheme.body,fontWeight:FontWeight.w800)),
+                    Text(make,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:_text,fontSize:CepqarTheme.body,fontWeight:FontWeight.w800)),
+                    if(model.isNotEmpty)Text(model,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Color(0xFF737B90),fontSize:12)),
                     if(details.isNotEmpty)...[
                       const SizedBox(height:1),
                       Text(details,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:_muted,fontSize:CepqarTheme.bodySmall)),
@@ -505,7 +465,7 @@ class _VehicleBrandLogo extends StatelessWidget{
     final url=safeImagePath?apiBase+imagePath:(logo['url']??'').toString().trim();
     final letter=make.trim().isEmpty?'?':make.trim().characters.first.toUpperCase();
     Widget fallback()=>Container(
-      width:72,height:72,alignment:Alignment.center,
+      width:75,height:75,alignment:Alignment.center,
       decoration:BoxDecoration(color:_purple.withValues(alpha:CepqarTheme.isLight ? .08 : .16),shape:BoxShape.circle,border:Border.all(color:_purple.withValues(alpha:.16))),
       child:VehicleKind.isMotorcycle(vehicle['vehicle_type'])
         ?const Icon(Icons.two_wheeler_rounded,color:_purple,size:36)
@@ -513,8 +473,8 @@ class _VehicleBrandLogo extends StatelessWidget{
     );
     if(!url.toLowerCase().startsWith('https://'))return fallback();
     return SizedBox(
-      width:72,
-      height:72,
+      width:75,
+      height:75,
       child:Image.network(
         url,
         key:ValueKey<String>(url),
@@ -546,13 +506,13 @@ class _VehicleAction extends StatelessWidget{
           padding:const EdgeInsets.symmetric(vertical:1),
           child:Column(children:[
             Container(
-              width:30,height:30,
+              width:36,height:36,
               decoration:BoxDecoration(
-                color:dark?const Color(0xFF17132E):_purple.withValues(alpha:.07),
+                color:const Color(0xFFF2EAFF),
                 borderRadius:BorderRadius.circular(7),
                 border:dark?Border.all(color:_purple.withValues(alpha:.35)):null,
               ),
-              child:Icon(icon,color:dark?const Color(0xFFA06DFF):_purple,size:16),
+              child:Icon(icon,color:_purple,size:19),
             ),
             const SizedBox(height:2),
             Text(label,maxLines:1,overflow:TextOverflow.ellipsis,textAlign:TextAlign.center,style:TextStyle(color:_muted,fontSize:CepqarTheme.caption,fontWeight:FontWeight.w700)),
