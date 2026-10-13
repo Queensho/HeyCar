@@ -46,6 +46,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
+    - assets/images/services/
     - assets/vehicle_brand_logos/
     - assets/Arka2.png
     - assets/Arac.png
