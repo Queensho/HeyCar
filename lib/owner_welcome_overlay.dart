@@ -51,6 +51,7 @@ class OwnerWelcomeOverlay extends StatelessWidget {
                             errorBuilder: (_, __, ___) => const Text(
                               'CepQontag', style: TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w900)),
                           ),
+                          const Spacer(flex: 3),
                           SizedBox(height: short ? 7 : 17),
                           _NotificationShowcase(compact: compact, scale: scale),
                           SizedBox(height: short ? 7 : 17),
@@ -82,7 +83,7 @@ class OwnerWelcomeOverlay extends StatelessWidget {
                           const SizedBox(height: 6),
                           Text('Aracınızla ilgili önemli durumlarda hızlıca haberdar olun, her zaman kontrol sizde olsun.',
                             style: TextStyle(color: const Color(0xFFE0D2FF), fontSize: compact ? 12.5 : 14, height: 1.38)),
-                          const Spacer(),
+                          const Spacer(flex: 1),
                           SizedBox(height: short ? 9 : 16),
                           _EntryButton(
                             key: const ValueKey('owner-welcome-login'),
