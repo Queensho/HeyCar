@@ -33,11 +33,11 @@ class OwnerWelcomeOverlay extends StatelessWidget {
             return Stack(children: [
               const Positioned.fill(child: CustomPaint(painter: _OrbitalBackdrop())),
               SingleChildScrollView(
-                padding: EdgeInsets.only(bottom: math.max(14, MediaQuery.viewInsetsOf(context).bottom)),
+                padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
                 child: Center(
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 500),
-                    child: Padding(
+                    constraints: BoxConstraints(maxWidth: 500, minHeight: constraints.maxHeight - MediaQuery.viewInsetsOf(context).bottom),
+                    child: IntrinsicHeight(child: Padding(
                       padding: EdgeInsets.symmetric(horizontal: compact ? 20 : 27),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -82,6 +82,7 @@ class OwnerWelcomeOverlay extends StatelessWidget {
                           const SizedBox(height: 6),
                           Text('Aracınızla ilgili önemli durumlarda hızlıca haberdar olun, her zaman kontrol sizde olsun.',
                             style: TextStyle(color: const Color(0xFFE0D2FF), fontSize: compact ? 12.5 : 14, height: 1.38)),
+                          const Spacer(),
                           SizedBox(height: short ? 9 : 16),
                           _EntryButton(
                             key: const ValueKey('owner-welcome-login'),
@@ -94,10 +95,10 @@ class OwnerWelcomeOverlay extends StatelessWidget {
                             label: 'Kayıt Ol', icon: Icons.add_rounded,
                             filled: false, onTap: onRegister,
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 12),
                         ],
                       ),
-                    ),
+                    )),
                   ),
                 ),
               ),
