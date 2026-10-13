@@ -45,6 +45,9 @@ void main() {
     await tester.pumpAndSettle();
     final register = find.byKey(const ValueKey('owner-welcome-register'));
     final rect = tester.getRect(register);
+    final description = tester.getRect(find.text('Aracınızla ilgili önemli durumlarda hızlıca haberdar olun, her zaman kontrol sizde olsun.'));
+    final login = tester.getRect(find.byKey(const ValueKey('owner-welcome-login')));
+    expect(login.top - description.bottom, lessThan(95));
     expect(rect.bottom, greaterThan(865));
     expect(rect.bottom, lessThan(915));
     expect(tester.takeException(), isNull);
