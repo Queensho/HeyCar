@@ -23,10 +23,10 @@ const _pink = Color(0xFFFF4D78);
 const _blue = Color(0xFF4AB8FF);
 
 const _driverAuthBg = Color(0xFFFDFDFF);
-const _driverAuthText = Color(0xFF090B18);
+const _driverAuthText = Color(0xFF101426);
 const _driverAuthMuted = Color(0xFF747A8D);
 const _driverAuthLine = Color(0xFFE5E7EF);
-const _driverAuthPurple = Color(0xFF5E24F5);
+const _driverAuthPurple = Color(0xFF651FFF);
 
 InputDecoration _driverAuthInput(String label, IconData icon) => InputDecoration(
   labelText: label,
@@ -80,19 +80,14 @@ class _DriverAuthHero extends StatelessWidget{
       border:Border.all(color:const Color(0xFFE9E3FF)),
     ),
     child:Stack(fit:StackFit.expand,children:[
-      Image.asset(
-        'assets/IMG_20261004_191854.png',
-        fit:BoxFit.cover,
-        alignment:const Alignment(.20,.55),
-        filterQuality:FilterQuality.high,
-      ),
+      const DecoratedBox(decoration:BoxDecoration(gradient:LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:[Color(0xFF4810D8),Color(0xFF651FFF),Color(0xFFA77BFF)]))),
       DecoratedBox(
         decoration:BoxDecoration(
           gradient:LinearGradient(
             begin:Alignment.topLeft,end:Alignment.bottomRight,
             colors:[
-              Colors.white.withValues(alpha:.93),
-              Colors.white.withValues(alpha:.54),
+              Colors.transparent,
+              Color(0x224810D8),
               Colors.transparent,
             ],
           ),
@@ -103,7 +98,7 @@ class _DriverAuthHero extends StatelessWidget{
         child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
           Container(
             padding:const EdgeInsets.symmetric(horizontal:10,vertical:5),
-            decoration:BoxDecoration(color:const Color(0xFFF0E8FF),borderRadius:BorderRadius.circular(18)),
+            decoration:BoxDecoration(color:const Color(0xFFB9FF43),borderRadius:BorderRadius.circular(18)),
             child:Row(mainAxisSize:MainAxisSize.min,children:[
               Icon(icon,color:_driverAuthPurple,size:14),
               const SizedBox(width:6),
@@ -111,9 +106,9 @@ class _DriverAuthHero extends StatelessWidget{
             ]),
           ),
           const SizedBox(height:10),
-          Text(title,style:const TextStyle(color:_driverAuthText,fontSize:23,height:1,fontWeight:FontWeight.w900,letterSpacing:-.8)),
+          Text(title,style:const TextStyle(color:Colors.white,fontSize:23,height:1,fontWeight:FontWeight.w900,letterSpacing:-.8)),
           const SizedBox(height:7),
-          Text(subtitle,style:const TextStyle(color:_driverAuthMuted,fontSize:11.1,height:1.35,fontWeight:FontWeight.w500)),
+          Text(subtitle,style:const TextStyle(color:Colors.white,fontSize:11.1,height:1.35,fontWeight:FontWeight.w500)),
         ]),
       ),
     ]),
