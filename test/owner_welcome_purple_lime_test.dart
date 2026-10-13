@@ -31,4 +31,23 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+  testWidgets('welcome actions align with bottom on tall mobile viewport', (tester) async {
+    tester.view.physicalSize = const Size(390, 915);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    await tester.pumpWidget(MaterialApp(home: OwnerWelcomeOverlay(
+      onLogin: () {},
+      onRegister: () {},
+    )));
+    await tester.pumpAndSettle();
+    final register = find.byKey(const ValueKey('owner-welcome-register'));
+    final rect = tester.getRect(register);
+    expect(rect.bottom, greaterThan(865));
+    expect(rect.bottom, lessThan(915));
+    expect(tester.takeException(), isNull);
+  });
+
 }
