@@ -96,18 +96,31 @@ class OwnerSettingsPage extends StatelessWidget {
       } catch (_) {}
     }
 
+    // Keep access and refresh credentials paired with the current tab.
+    await OwnerAuth.restore();
     final refresh = OwnerAuth.refreshToken;
-    if (refresh.isNotEmpty) {
+    final access = OwnerAuth.accessToken;
+    bool serverLogoutConfirmed = false;
+    if (refresh.isNotEmpty || access.isNotEmpty) {
       try {
-        await http.post(
+        final response = await http.post(
           Uri.parse('${OnboardingBackend.baseUrl}/api/owner/auth/logout'),
-          headers: const {'Content-Type': 'application/json'},
+          headers: {
+            'Content-Type': 'application/json',
+            if (access.isNotEmpty) 'Authorization': 'Bearer $access',
+          },
           body: jsonEncode({'refreshToken': refresh}),
         ).timeout(const Duration(seconds: 8));
+        serverLogoutConfirmed = response.statusCode == 200;
       } catch (_) {}
     }
 
     await OwnerAuth.clear();
+    if (!serverLogoutConfirmed && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cihazdan çıkış yapıldı. Sunucu oturumu iptali doğrulanamadı.')),
+      );
+    }
     try {
       await FirebaseMessaging.instance.deleteToken().timeout(const Duration(seconds: 8));
     } catch (_) {}
