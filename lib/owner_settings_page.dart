@@ -27,11 +27,13 @@ class OwnerSettingsPage extends StatelessWidget {
     this.onOpenVehicles,
     this.onOpenQr,
     this.onOpenNotifications,
+    this.onOpenDrivers,
   });
 
   final VoidCallback? onOpenVehicles;
   final VoidCallback? onOpenQr;
   final VoidCallback? onOpenNotifications;
+  final VoidCallback? onOpenDrivers;
 
   void _push(BuildContext context, Widget page) {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
@@ -197,159 +199,215 @@ class OwnerSettingsPage extends StatelessWidget {
     return value.isEmpty ? 'CQ' : value;
   }
 
+  Future<bool> _fetchPremium() async {
+    try {
+      await OwnerAuth.restore();
+      if (OwnerAuth.accessToken.isEmpty) return false;
+      final response = await http.get(
+        Uri.parse('${OnboardingBackend.baseUrl}/api/owner/vehicles'),
+        headers: {'Authorization': 'Bearer ${OwnerAuth.accessToken}'},
+      ).timeout(const Duration(seconds: 7));
+      if (response.statusCode != 200) return false;
+      final data = jsonDecode(response.body);
+      return data is Map && data['premium'] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final light = CepqarTheme.isLight;
-    final bg = CepqarTheme.bg;
-    final panel = CepqarTheme.panel;
-    final line = CepqarTheme.line;
-    final text = CepqarTheme.text;
-    final muted = CepqarTheme.muted;
-
+    const navy = Color(0xFF10152D);
     return Scaffold(
-      backgroundColor: bg,
+      backgroundColor: const Color(0xFFF8F9FC),
       body: SafeArea(
         bottom: false,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 22),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
           children: [
             _ProfileBrandHeader(
               initials: _initials,
               onNotifications: onOpenNotifications ??
                   () => _push(context, const OwnerNotificationSettingsPage()),
             ),
-            const SizedBox(height: 10),
-            _ProfileIdentityCard(
-              name: _displayName,
-              email: _email,
-              phone: _phone,
-              initials: _initials,
-              onProfile: () => _push(context, const OwnerAccountSettingsPage()),
-              onPremium: () => _showPremium(context),
+            const SizedBox(height: 22),
+            FutureBuilder<bool>(
+              future: _fetchPremium(),
+              builder: (context, snapshot) {
+                final premium = snapshot.data == true;
+                return Column(
+                  children: [
+                    _ReferenceIdentityCard(
+                      name: _displayName,
+                      phone: _phone,
+                      email: _email,
+                      initials: _initials,
+                      premium: premium,
+                      onTap: () => _push(context, const OwnerAccountSettingsPage()),
+                    ),
+                    const SizedBox(height: 12),
+                    InkWell(
+                      onTap: () => _showPremium(context),
+                      borderRadius: BorderRadius.circular(22),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF3EDFF),
+                          borderRadius: BorderRadius.circular(22),
+                          border: Border.all(color: const Color(0xFFE9E0FB)),
+                        ),
+                        child: Row(
+                          children: [
+                            const _ReferenceIcon(Icons.workspace_premium_rounded, size: 56),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Premium Üyelik', style: TextStyle(fontSize: 15, color: navy, fontWeight: FontWeight.w800)),
+                                  const SizedBox(height: 3),
+                                  Text(premium ? 'Üyeliğiniz aktif.' : 'Tüm özelliklerden yararlanın.', style: const TextStyle(color: Color(0xFF778096), fontSize: 11)),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                            Flexible(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                                decoration: BoxDecoration(color: const Color(0xFFB9FF45), borderRadius: BorderRadius.circular(13)),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Flexible(child: Text(premium ? 'Paketim' : 'Paketleri Gör', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11, color: navy))),
+                                    const Icon(Icons.chevron_right_rounded, size: 19, color: navy),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 14),
-            Text(
-              'Hızlı İşlemler',
-              style: TextStyle(
-                color: text,
-                fontSize: 15.5,
-                fontWeight: FontWeight.w900,
+            _ReferenceMenuGroup(children: [
+              _ReferenceMenuItem(icon: Icons.person_outline_rounded, title: 'Hesap Bilgilerim', subtitle: 'Kişisel bilgilerinizi yönetin.', onTap: () => _push(context, const OwnerAccountSettingsPage())),
+              _ReferenceMenuItem(icon: Icons.directions_car_rounded, title: 'Araçlarım', subtitle: 'Araç ekleyin, yönetin.', onTap: onOpenVehicles ?? () => _push(context, const OwnerVehicleSummaryPage())),
+              _ReferenceMenuItem(icon: Icons.groups_rounded, title: 'Sürücülerim', subtitle: 'Yetkili sürücüleri yönetin.', onTap: onOpenDrivers ?? () => _soon(context, 'Sürücü yönetimi')),
+              _ReferenceMenuItem(icon: Icons.verified_user_rounded, title: 'QR Güvenliği', subtitle: 'QR koruma ve güvenlik ayarları.', onTap: () => _push(context, const OwnerPrivacySettingsPage()), last: true),
+            ]),
+            const SizedBox(height: 14),
+            _ReferenceMenuGroup(children: [
+              _ReferenceMenuItem(icon: Icons.notifications_none_rounded, title: 'Bildirim Ayarları', subtitle: 'Bildirim tercihlerinizi yönetin.', onTap: () => _push(context, const OwnerNotificationSettingsPage())),
+              _ReferenceMenuItem(icon: Icons.settings_rounded, title: 'Uygulama Ayarları', subtitle: 'Tema, dil ve diğer ayarlar.', onTap: () => _push(context, const _ReferenceAppSettingsPage())),
+              _ReferenceMenuItem(icon: Icons.help_outline_rounded, title: 'Yardım & Destek', subtitle: 'Sık sorulan sorular ve destek talebi.', onTap: () => _push(context, const SupportTicketPage())),
+              _ReferenceMenuItem(icon: Icons.description_outlined, title: 'Hakkında', subtitle: 'Sürüm bilgisi, gizlilik politikası.', onTap: () => _push(context, const PrivacyKvkkPage()), last: true),
+            ]),
+            const SizedBox(height: 14),
+            InkWell(
+              onTap: () => _logout(context),
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: const Color(0xFFECECF1))),
+                child: const Row(children: [
+                  Icon(Icons.logout_rounded, color: Color(0xFFDB3551)),
+                  SizedBox(width: 12),
+                  Text('Çıkış Yap', style: TextStyle(color: Color(0xFFDB3551), fontSize: 14, fontWeight: FontWeight.w800)),
+                ]),
               ),
             ),
-            const SizedBox(height: 7),
-            Row(
-              children: [
-                _QuickProfileAction(
-                  icon: Icons.directions_car_filled_rounded,
-                  label: 'Araçlarım',
-                  onTap: onOpenVehicles ??
-                      () => _push(context, const OwnerVehicleSummaryPage()),
-                ),
-                const SizedBox(width: 7),
-                _QuickProfileAction(
-                  icon: Icons.qr_code_2_rounded,
-                  label: 'QR Etiketlerim',
-                  onTap: onOpenQr ?? () => showOwnerQrDialog(context),
-                ),
-                const SizedBox(width: 7),
-                _QuickProfileAction(
-                  icon: Icons.storefront_rounded,
-                  label: 'Mağaza',
-                  onTap: () => _push(context, const CepqontagStorePage()),
-                ),
-                const SizedBox(width: 7),
-                _QuickProfileAction(
-                  icon: Icons.history_rounded,
-                  label: 'Geçmişim',
-                  onTap: () => _soon(context, 'Geçmiş'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Container(
-              decoration: BoxDecoration(
-                color: panel,
-                borderRadius: BorderRadius.circular(17),
-                border: Border.all(color: line),
-                boxShadow: light
-                    ? [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: .035),
-                          blurRadius: 16,
-                          offset: const Offset(0, 5),
-                        ),
-                      ]
-                    : null,
-              ),
-              child: Column(
-                children: [
-                  _ProfileMenuRow(
-                    icon: Icons.person_outline_rounded,
-                    title: 'Hesap Bilgileri',
-                    onTap: () => _push(context, const OwnerAccountSettingsPage()),
-                  ),
-                  _ProfileMenuRow(
-                    icon: Icons.phone_outlined,
-                    title: 'İletişim Bilgileri',
-                    onTap: () => _push(context, const OwnerAccountSettingsPage()),
-                  ),
-                  _ProfileMenuRow(
-                    icon: Icons.location_on_outlined,
-                    title: 'Adreslerim',
-                    onTap: () => _soon(context, 'Adresler'),
-                  ),
-                  _ProfileMenuRow(
-                    icon: Icons.credit_card_rounded,
-                    title: 'Ödeme Yöntemleri',
-                    onTap: () => _showPremium(context),
-                  ),
-                  _ProfileMenuRow(
-                    icon: Icons.notifications_none_rounded,
-                    title: 'Bildirim Ayarları',
-                    onTap: () => _push(context, const OwnerNotificationSettingsPage()),
-                  ),
-                  _ProfileMenuRow(
-                    icon: Icons.do_not_disturb_on_outlined,
-                    title: 'Rahatsız Etmeyin',
-                    onTap: () => _push(context, const OwnerDndPage()),
-                  ),
-                  const _ThemeProfileRow(),
-                  _ProfileMenuRow(
-                    icon: Icons.lock_outline_rounded,
-                    title: 'Gizlilik ve Güvenlik',
-                    onTap: () => _push(context, const OwnerPrivacySettingsPage()),
-                  ),
-                  _ProfileMenuRow(
-                    icon: Icons.headset_mic_outlined,
-                    title: 'Destek Talebi',
-                    onTap: () => _push(context, const SupportTicketPage()),
-                  ),
-                  _ProfileMenuRow(
-                    icon: Icons.description_outlined,
-                    title: 'Kullanım Koşulları',
-                    onTap: () => _push(context, const TermsOfUsePage()),
-                  ),
-                  _ProfileMenuRow(
-                    icon: Icons.verified_user_outlined,
-                    title: 'Gizlilik Politikası',
-                    onTap: () => _push(context, const PrivacyKvkkPage()),
-                  ),
-                  _ProfileMenuRow(
-                    icon: Icons.logout_rounded,
-                    title: 'Çıkış Yap',
-                    danger: true,
-                    showDivider: false,
-                    onTap: () => _logout(context),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 18),
           ],
         ),
       ),
     );
   }
+}
+
+class _ReferenceIdentityCard extends StatelessWidget {
+  const _ReferenceIdentityCard({required this.name, required this.phone, required this.email, required this.initials, required this.premium, required this.onTap});
+  final String name, phone, email, initials;
+  final bool premium;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(24),
+    child: Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF7A35FF), Color(0xFF4812CB), Color(0xFF7838F4)]),
+        borderRadius: BorderRadius.all(Radius.circular(24)),
+      ),
+      child: Row(children: [
+        Stack(clipBehavior: Clip.none, children: [
+          CircleAvatar(radius: 37, backgroundColor: const Color(0xFFF2EDFF), child: Text(initials, maxLines: 1, style: const TextStyle(color: Color(0xFF211751), fontSize: 23, fontWeight: FontWeight.w900))),
+          Positioned(right: -3, bottom: -2, child: CircleAvatar(radius: 13, backgroundColor: Colors.white, child: Icon(Icons.edit_rounded, size: 14, color: Color(0xFF651FFF)))),
+        ]),
+        const SizedBox(width: 16),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 7),
+          Text(phone, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+          const SizedBox(height: 5),
+          Row(children: [const Icon(Icons.mail_outline_rounded, color: Colors.white70, size: 15), const SizedBox(width: 5), Expanded(child: Text(email, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70, fontSize: 11)))]),
+        ])),
+        Column(children: [
+          if (premium) Container(padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6), decoration: BoxDecoration(color: const Color(0xFFB9FF45), borderRadius: BorderRadius.circular(11)), child: const Row(children: [Icon(Icons.workspace_premium, size: 15, color: Color(0xFF10152D)), SizedBox(width: 3), Text('PRO', style: TextStyle(color: Color(0xFF10152D), fontSize: 12, fontWeight: FontWeight.w900))])),
+          const SizedBox(height: 16),
+          const Icon(Icons.chevron_right_rounded, color: Colors.white, size: 24),
+        ]),
+      ]),
+    ),
+  );
+}
+
+class _ReferenceIcon extends StatelessWidget {
+  const _ReferenceIcon(this.icon, {this.size = 48});
+  final IconData icon;
+  final double size;
+  @override
+  Widget build(BuildContext context) => Container(
+    width: size, height: size,
+    decoration: BoxDecoration(color: const Color(0xFFF3EDFF), borderRadius: BorderRadius.circular(15)),
+    child: Icon(icon, size: size * .46, color: const Color(0xFF651FFF)),
+  );
+}
+class _ReferenceMenuItem {
+  const _ReferenceMenuItem({required this.icon, required this.title, required this.subtitle, required this.onTap, this.last = false});
+  final IconData icon;
+  final String title, subtitle;
+  final VoidCallback onTap;
+  final bool last;
+}
+class _ReferenceMenuGroup extends StatelessWidget {
+  const _ReferenceMenuGroup({required this.children});
+  final List<_ReferenceMenuItem> children;
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
+    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(23), border: Border.all(color: const Color(0xFFEDEEF3)), boxShadow: [BoxShadow(color: const Color(0xFF10152D).withValues(alpha: .035), blurRadius: 18, offset: const Offset(0, 5))]),
+    child: Column(children: children.map((item) => Column(children: [
+      InkWell(onTap: item.onTap, borderRadius: BorderRadius.circular(12), child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Row(children: [
+          _ReferenceIcon(item.icon),
+          const SizedBox(width: 13),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, color: Color(0xFF10152D), fontWeight: FontWeight.w800)),
+            const SizedBox(height: 4),
+            Text(item.subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11.5, color: Color(0xFF778096))),
+          ])),
+          const Icon(Icons.chevron_right_rounded, color: Color(0xFF737B90)),
+        ]),
+      )),
+      if (!item.last) const Divider(height: 1, indent: 64, color: Color(0xFFE9EAF0)),
+    ])).toList()),
+  );
 }
 
 class _ProfileBrandHeader extends StatelessWidget {
@@ -851,4 +909,18 @@ class _ProfileMenuRow extends StatelessWidget {
       ],
     );
   }
+}
+
+class _ReferenceAppSettingsPage extends StatelessWidget {
+  const _ReferenceAppSettingsPage();
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('Uygulama Ayarları')),
+    body: ListView(padding: const EdgeInsets.all(16), children: [
+      const _ThemeProfileRow(),
+      ListTile(leading: const Icon(Icons.do_not_disturb_on_outlined), title: const Text('Rahatsız Etmeyin'), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OwnerDndPage()))),
+      ListTile(leading: const Icon(Icons.lock_outline_rounded), title: const Text('Gizlilik ve Güvenlik'), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OwnerPrivacySettingsPage()))),
+      ListTile(leading: const Icon(Icons.description_outlined), title: const Text('Kullanım Koşulları'), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsOfUsePage()))),
+    ]),
+  );
 }
