@@ -167,14 +167,14 @@ class _NotificationShowcase extends StatelessWidget {
             ))),
         Positioned(top: 104 * scale, left: 13, right: 0,
           child: Transform.rotate(angle: -0.045,
-            child: const _PreviewNotification(
+            child: _PreviewNotification(scale: scale,
               title: 'Hasar Bildirimi', message: 'Aracınızda olası bir\nhasar tespit edildi.',
               time: '15 dk önce', icon: Icons.warning_rounded,
               tint: Color(0xFFF41D5D), iconBackground: Color(0xFFFFE5ED),
             ))),
         Positioned(top: 211 * scale, left: 5, right: 9,
           child: Transform.rotate(angle: -0.025,
-            child: const _PreviewNotification(
+            child: _PreviewNotification(scale: scale,
               title: 'İletişim Talebi', message: 'Sizinle iletişime\ngeçmek istiyor.',
               time: '1 saat önce', icon: Icons.call_rounded,
               tint: Color(0xFF169B33), iconBackground: Color(0xFFE4FFAC),
