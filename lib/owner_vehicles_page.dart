@@ -18,7 +18,7 @@ import 'vehicle_kind.dart';
 import 'owner_vehicle_brand_mark.dart';
 
 const _purple=Color(0xFF651FFF),_gold=Color(0xFFFFC857),_green=Color(0xFF38D178);
-Color get _bg=>CepqarTheme.bg; Color get _panel=>CepqarTheme.panel; Color get _line=>CepqarTheme.line; Color get _muted=>CepqarTheme.muted; Color get _text=>CepqarTheme.text;
+const Color _bg=Colors.white; const Color _panel=Colors.white; const Color _line=Color(0xFFECECF2); const Color _muted=Color(0xFF737B90); const Color _text=Color(0xFF10162F);
 class OwnerVehiclesPage extends StatefulWidget{const OwnerVehiclesPage({super.key,this.onVehicleChanged});final VoidCallback? onVehicleChanged;@override State<OwnerVehiclesPage> createState()=>_S();}
 class _S extends State<OwnerVehiclesPage>{List<Map<String,dynamic>> vehicles=[];bool loading=true,premium=false;int limit=1;String? error;Timer? _logoRetryTimer;int _logoRetryAttempts=0;String get selected=>QrDraft.vehicleId.trim().isNotEmpty?QrDraft.vehicleId.trim():OnboardingDraft.vehicleId.trim();@override void initState(){super.initState();_load();}
 @override void dispose(){_logoRetryTimer?.cancel();super.dispose();}
@@ -61,8 +61,7 @@ Widget _brandHeader(){
     height:42,
     child:Row(children:[
       Image.asset(
-        CepqarTheme.isLight ? 'assets/file_00000000b130820abb8d411e67ab0d25.png' : 'assets/Logoyeni.png',
-        key:ValueKey(CepqarTheme.isLight),
+        'assets/file_00000000b130820abb8d411e67ab0d25.png',
         height:31,
         fit:BoxFit.contain,
         alignment:Alignment.centerLeft,
@@ -176,7 +175,7 @@ Widget _bottomAction(IconData icon,String title,String subtitle,VoidCallback tap
 
 @override Widget build(BuildContext context){
   final top=MediaQuery.paddingOf(context).top;
-  return Scaffold(
+  return Theme(data:Theme.of(context).copyWith(brightness:Brightness.light,scaffoldBackgroundColor:Colors.white,canvasColor:Colors.white),child:Scaffold(
     backgroundColor:Colors.white,
     body:Stack(children:[
 
@@ -249,7 +248,7 @@ Widget _bottomAction(IconData icon,String title,String subtitle,VoidCallback tap
         ),
       ),
     ]),
-  );
+  ));
 }
 }
 
@@ -318,10 +317,7 @@ class _VehicleReferenceCard extends StatelessWidget{
     final rawActive=v['active']??v['is_active'];
     final isActive=rawActive is bool?rawActive:(rawActive is num?rawActive!=0:hasQr);
     final details=[if(trim.isNotEmpty)trim,if(year.isNotEmpty)year,if(color.isNotEmpty)color].join(' • ');
-    final dark=!CepqarTheme.isLight;
-    final borderColor=selected
-      ?_purple.withValues(alpha:dark ? .82 : .48)
-      :(dark?_purple.withValues(alpha:.38):_line);
+    const dark=false;
 
     return Container(
       // Keep the model/details and "Ana araç yap" row above the action strip.
@@ -474,7 +470,7 @@ class _VehicleAction extends StatelessWidget{
   final VoidCallback onTap;
 
   @override Widget build(BuildContext context){
-    final dark=!CepqarTheme.isLight;
+    const dark=false;
     return Expanded(
       child:InkWell(
         onTap:onTap,
