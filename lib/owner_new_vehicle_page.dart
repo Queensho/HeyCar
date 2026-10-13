@@ -101,8 +101,9 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
         final clean = item.trim();
         if (clean.isNotEmpty) unique.putIfAbsent(clean.toLowerCase(), () => clean);
       }
+      if (vehicleType != VehicleKind.car) return;
       setState(() {
-        if(vehicleType==VehicleKind.car)makes = unique.values.toList();
+        makes = unique.values.toList();
         loadingMakes = false;
       });
     }).catchError((_) {
@@ -135,7 +136,7 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
   }
 
   Future<void> _changeMake(String? value) async {
-    if (value == null) return;
+    if (value == null || !makes.contains(value)) return;
     if(vehicleType==VehicleKind.motorcycle){
       ++_modelRequest;
       setState((){
@@ -155,7 +156,7 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
       loadingModels = true;
     });
     final result = await VehicleApi.getModels(value);
-    if (!mounted || request != _modelRequest || make != value) return;
+    if (!mounted || request != _modelRequest || vehicleType != VehicleKind.car || make != value) return;
     final unique = <String, String>{};
     for (final item in result) {
       final clean = item.trim();
