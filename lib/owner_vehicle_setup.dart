@@ -30,6 +30,7 @@ class _OwnerVehicleSetupPageState extends State<OwnerVehicleSetupPage> {
   List<String> makes = const [];
   List<String> models = const [];
   bool loadingModels = false;
+  int _selectionVersion = 0;
   bool saving = false;
 
   @override
@@ -52,11 +53,12 @@ class _OwnerVehicleSetupPageState extends State<OwnerVehicleSetupPage> {
     final all = await VehicleApi.getMakes();
     if (!mounted) return;
     if(vehicleType==VehicleKind.car)setState(() => makes = all);
-    if(vehicleType==VehicleKind.car)await _loadModels(make);
+    if(vehicleType==VehicleKind.car && make.isNotEmpty)await _loadModels(make);
   }
 
   void _changeType(String next) {
     if(next==vehicleType)return;
+    ++_selectionVersion;
     setState((){
       vehicleType=next;
       make='';
@@ -72,9 +74,10 @@ class _OwnerVehicleSetupPageState extends State<OwnerVehicleSetupPage> {
 
   Future<void> _loadModels(String value) async {
     if(vehicleType==VehicleKind.motorcycle)return;
+    final version = ++_selectionVersion;
     setState(() => loadingModels = true);
     final result = await VehicleApi.getModels(value);
-    if (!mounted) return;
+    if (!mounted || vehicleType!=VehicleKind.car || version!=_selectionVersion || make!=value) return;
     setState(() {
       models = result;
       model = result.isEmpty ? '' : result.firstWhere((m) => value == 'BMW' && m.toLowerCase().contains('3'), orElse: () => result.first);
@@ -253,8 +256,9 @@ class _OwnerVehicleSetupPageState extends State<OwnerVehicleSetupPage> {
 
   Future<void> _showMakes() async {
     final selected = await showModalBottomSheet<String>(context: context, isScrollControlled: true, backgroundColor: Colors.transparent, builder: (_) => _PickerSheet(title: 'Araç markasını seç', values: makes, selected: make, showLogos: vehicleType!=VehicleKind.motorcycle));
-    if (selected == null || selected == make) return;
-    setState(() { make = selected; model = ''; });
+    if (!mounted || selected == null || selected == make || !makes.contains(selected)) return;
+    ++_selectionVersion;
+    setState(() { make = selected; model = ''; models=const []; });
     if(vehicleType==VehicleKind.car)await _loadModels(make);
   }
 
