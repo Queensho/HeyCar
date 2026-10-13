@@ -125,5 +125,35 @@ module.exports = function registerOwnerAuthRoutes(app, pool) {
   app.post('/api/owner/account/recovery-code',async(req,res)=>{try{const ownerId=authenticatedOwnerId(req);if(!ownerId)return res.status(401).json({error:'OWNER_REQUIRED'});const code=await issueRecoveryCode(pool,ownerId);return res.json({ok:true,recoveryCode:code});}catch(e){console.error('owner recovery code error',e);return res.status(500).json({error:'SERVER_ERROR'});}});
   app.delete('/api/owner/account',async(req,res)=>{try{const ownerId=authenticatedOwnerId(req);if(!ownerId)return res.status(401).json({error:'OWNER_REQUIRED'});const password=String(req.body?.password||'');if(password.length<6)return res.status(400).json({error:'PASSWORD_REQUIRED'});if(!await verifyPassword(pool,ownerId,password))return res.status(401).json({error:'PASSWORD_INVALID'});const out=await deleteAccount(pool,ownerId,{mode:'owner'});if(!out.ok)return res.status(out.error==='USER_NOT_FOUND'?404:409).json({error:out.error});return res.json({ok:true});}catch(e){console.error('owner account delete error',e);return res.status(500).json({error:'SERVER_ERROR'});}});
   app.post('/api/owner/auth/refresh',async(req,res)=>{try{const refreshToken=String(req.body?.refreshToken||'');if(!refreshToken)return res.status(400).json({error:'REFRESH_REQUIRED'});const tokens=await rotateRefresh(pool,refreshToken);if(!tokens)return res.status(401).json({error:'REFRESH_INVALID'});return res.json({ok:true,...tokens});}catch(e){console.error('owner refresh error',e);return res.status(500).json({error:'SERVER_ERROR'});}});
-  app.post('/api/owner/auth/logout',async(req,res)=>{try{const ownerId=authenticatedOwnerId(req);await revokeRefresh(pool,String(req.body?.refreshToken||''));if(ownerId){await pool.query('UPDATE owner_push_tokens SET active=FALSE,updated_at=NOW() WHERE owner_id=$1',[ownerId]);await pool.query('UPDATE owner_web_push_subscriptions SET active=FALSE,updated_at=NOW() WHERE owner_id=$1',[ownerId]);}return res.json({ok:true});}catch(e){console.error('owner logout error',e);return res.status(500).json({error:'SERVER_ERROR'});}});
+  app.post('/api/owner/auth/logout',async(req,res)=>{
+    try{
+      const ownerId=authenticatedOwnerId(req);
+      const refresh=String(req.body?.refreshToken||'');
+      let revoked=0;
+      if(ownerId){
+        // Access JWT contains a session ID. Revoke that session even when
+        // another tab has rotated the refresh token before logout.
+        const authorization=String(req.headers.authorization||'');
+        const payload=require('./owner-auth-service').verify(authorization.replace(/^Bearer\s+/i,'').trim());
+        if(payload?.sid){
+          const r=await pool.query(
+            'UPDATE owner_auth_sessions SET revoked_at=NOW() WHERE id::text=$1 AND owner_id::text=$2 AND revoked_at IS NULL',
+            [String(payload.sid),ownerId]);
+          revoked+=r.rowCount;
+        }
+      }
+      if(!ownerId&&refresh){
+        const r=await pool.query(
+          'UPDATE owner_auth_sessions SET revoked_at=NOW() WHERE refresh_token_hash=$1 AND revoked_at IS NULL',
+          [require('crypto').createHash('sha256').update(refresh).digest('hex')]);
+        revoked+=r.rowCount;
+      }
+      if(!revoked)return res.status(401).json({error:'SESSION_NOT_FOUND'});
+      if(ownerId){
+        await pool.query('UPDATE owner_push_tokens SET active=FALSE,updated_at=NOW() WHERE owner_id=$1',[ownerId]);
+        await pool.query('UPDATE owner_web_push_subscriptions SET active=FALSE,updated_at=NOW() WHERE owner_id=$1',[ownerId]);
+      }
+      return res.json({ok:true});
+    }catch(e){console.error('owner logout error',e);return res.status(500).json({error:'SERVER_ERROR'});}
+  });
 };
