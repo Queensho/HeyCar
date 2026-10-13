@@ -79,12 +79,10 @@ class OwnerQuickAccessPanel extends StatelessWidget {
                         alignment:Alignment.center,
                         child:visible[i].iconUrl.isNotEmpty
                           ?Padding(
-                            padding:const EdgeInsets.all(10),
+                            padding:const EdgeInsets.all(4),
                             child:Image.network(
                               visible[i].iconUrl,
                               fit:BoxFit.contain,
-                              color:visible[i].iconColor,
-                              colorBlendMode:BlendMode.srcIn,
                               errorBuilder:(_,__,___)=>Icon(
                                 visible[i].icon,color:visible[i].iconColor,size:24),
                             ),
