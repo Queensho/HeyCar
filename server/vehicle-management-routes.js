@@ -21,21 +21,21 @@ module.exports = function registerVehicleManagementRoutes(app, pool) {
   async function cleanupVehicleDependents(db,vehicleId){
     const removed={};
     for(const table of [
-      'vehicle_maintenance_state',
-      'vehicle_maintenance_records',
       'vehicle_maintenance_shares',
-      'vehicle_reminders',
-      'vehicle_reminder_deliveries',
+      'vehicle_maintenance_records',
+      'vehicle_maintenance_state',
       'vehicle_reminder_delivery_claims',
+      'vehicle_reminder_deliveries',
+      'vehicle_reminders',
       'vehicle_parking_locations',
     ]){
       removed[table]=await deleteVehicleRows(db,table,vehicleId,true);
     }
     for(const table of [
-      'vehicle_active_drivers',
-      'vehicle_drivers',
-      'vehicle_driver_invites',
       'anonymous_calls',
+      'vehicle_active_drivers',
+      'vehicle_driver_invites',
+      'vehicle_drivers',
     ]){
       removed[table]=await deleteVehicleRows(db,table,vehicleId,true);
     }
@@ -260,7 +260,7 @@ module.exports = function registerVehicleManagementRoutes(app, pool) {
     }catch(e){
       await client.query('ROLLBACK').catch(()=>{});
       console.error('vehicle remove',e);
-      return res.status(500).json({error:'SERVER_ERROR'});
+      return res.status(e.code==='23503'?409:500).json({error:e.code==='23503'?'VEHICLE_DEPENDENCY_CONFLICT':'SERVER_ERROR'});
     }finally{
       client.release();
     }
