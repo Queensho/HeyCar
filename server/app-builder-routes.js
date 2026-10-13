@@ -139,7 +139,7 @@ function sanitizeItem(raw,kind){
     out.testOnly=raw.testOnly===true;
   }else if(kind==='quick'){
     out.title=clean(raw.title,60);if(!out.title)throw new Error('TITLE_REQUIRED');
-    out.icon=iconKey(raw.icon);out.iconToken=token(raw.iconToken,'primary');out.backgroundToken=token(raw.backgroundToken,'surface');
+    out.icon=iconKey(raw.icon);out.iconUrl=safeHttpUrl(raw.iconUrl,{assetOnly:true})||'';out.iconToken=token(raw.iconToken,'primary');out.backgroundToken=token(raw.backgroundToken,'surface');
     const a=action(raw.action,raw.actionTarget);if(!a)throw new Error('INVALID_ACTION');out.action=a.type;if(a.target)out.actionTarget=a.target;
   }else if(kind==='banner'){
     out.title=clean(raw.title,100);out.subtitle=clean(raw.subtitle,220);if(!out.title)throw new Error('TITLE_REQUIRED');
