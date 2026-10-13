@@ -1242,11 +1242,28 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
       ),
     );
     if(yes!=true)return;
-    final r=await OwnerHttp.delete(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/vehicles/$vid'),json:false);
-    if(r.statusCode>=200&&r.statusCode<300){
-      if(mounted)Navigator.pop(context,true);
-    }else if(mounted){
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Araç silinemedi.')));
+    try {
+      final r=await OwnerHttp.delete(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/vehicles/$vid'),json:false);
+      if(!mounted)return;
+      if(r.statusCode>=200&&r.statusCode<300){
+        Navigator.pop(context,true);
+        return;
+      }
+      String? error;
+      try {
+        final body=jsonDecode(r.body);
+        if(body is Map)error='${body['error']??''}';
+      }catch(_){}
+      final message=switch(error){
+        'OWNER_REQUIRED'=>'Oturumunuz doğrulanamadı. Yeniden giriş yapın.',
+        'VEHICLE_NOT_FOUND'=>'Araç bulunamadı veya bu hesaba ait değil.',
+        'VEHICLE_DEPENDENCY_CONFLICT'=>'Araca bağlı kayıtlar silmeyi engelliyor. Destek ile iletişime geçin.',
+        _=>'Araç silinemedi (HTTP ${r.statusCode}). Lütfen tekrar deneyin.',
+      };
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(message)));
+    }catch(_){
+      if(mounted)ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content:Text('Araç silinemedi. Bağlantınızı kontrol edip tekrar deneyin.')));
     }
   }
 
