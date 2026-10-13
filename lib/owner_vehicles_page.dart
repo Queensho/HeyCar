@@ -15,6 +15,7 @@ import 'owner_auth.dart';
 import 'active_driver_card.dart';
 import 'owner_new_vehicle_page.dart';
 import 'vehicle_kind.dart';
+import 'owner_vehicle_brand_mark.dart';
 
 const _purple=Color(0xFF651FFF),_gold=Color(0xFFFFC857),_green=Color(0xFF38D178);
 Color get _bg=>CepqarTheme.bg; Color get _panel=>CepqarTheme.panel; Color get _line=>CepqarTheme.line; Color get _muted=>CepqarTheme.muted; Color get _text=>CepqarTheme.text;
@@ -202,7 +203,7 @@ Widget _bottomAction(IconData icon,String title,String subtitle,VoidCallback tap
                   label:const Text('Yeni Araç',maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(fontSize:12,fontWeight:FontWeight.w900)))),
                 const SizedBox(width:8),
                 Expanded(child:OutlinedButton.icon(onPressed:loading?null:_acceptTransfer,
-                  style:OutlinedButton.styleFrom(backgroundColor:const Color(0xFF10102C),foregroundColor:const Color(0xFFB784FF),
+                  style:OutlinedButton.styleFrom(backgroundColor:Colors.white,foregroundColor:const Color(0xFF651FFF),
                     minimumSize:const Size(0,47),padding:const EdgeInsets.symmetric(horizontal:4),
                     side:const BorderSide(color:Color(0xFF651FFF)),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15))),
                   icon:const Icon(Icons.swap_horiz_rounded,size:17),
@@ -314,7 +315,9 @@ class _VehicleReferenceCard extends StatelessWidget{
     final color='${v['color']??''}'.trim();
     final trim='${v['trim']??v['version']??''}'.trim();
     final hasQr='${v['qr_token']??''}'.trim().isNotEmpty;
-    final details=[if(year.isNotEmpty)year,if(trim.isNotEmpty)trim,if(color.isNotEmpty)color].join(' • ');
+    final rawActive=v['active']??v['is_active'];
+    final isActive=rawActive is bool?rawActive:(rawActive is num?rawActive!=0:hasQr);
+    final details=[if(trim.isNotEmpty)trim,if(year.isNotEmpty)year,if(color.isNotEmpty)color].join(' • ');
     final dark=!CepqarTheme.isLight;
     final borderColor=selected
       ?_purple.withValues(alpha:dark ? .82 : .48)
@@ -323,7 +326,7 @@ class _VehicleReferenceCard extends StatelessWidget{
     return Container(
       // Keep the model/details and "Ana araç yap" row above the action strip.
       // 142 px clips the non-selected card on common Android font metrics.
-      height:209,
+      height:200,
       padding:const EdgeInsets.fromLTRB(12,12,12,11),
       decoration:BoxDecoration(
         color:Colors.white,
@@ -373,16 +376,14 @@ class _VehicleReferenceCard extends StatelessWidget{
                       Container(
                         padding:const EdgeInsets.symmetric(horizontal:7,vertical:3),
                         decoration:BoxDecoration(
-                          color:dark
-                            ?(hasQr?const Color(0xFF08281E):const Color(0xFF2A190B))
-                            :(hasQr?const Color(0xFFE3F9EC):const Color(0xFFFFEFE1)),
+                          color:isActive?const Color(0xFFE3F9EC):const Color(0xFFF1F1F5),
                           borderRadius:BorderRadius.circular(13),
-                          border:dark?Border.all(color:(hasQr?const Color(0xFF23D67C):const Color(0xFFFF9A32)).withValues(alpha:.55)):null,
+                          border:dark?Border.all(color:(isActive?const Color(0xFF23D67C):const Color(0xFF8D93A3)).withValues(alpha:.55)):null,
                         ),
                         child:Row(mainAxisSize:MainAxisSize.min,children:[
-                          CircleAvatar(radius:3,backgroundColor:hasQr?const Color(0xFF25D675):const Color(0xFFFF8B35)),
+                          CircleAvatar(radius:3,backgroundColor:isActive?const Color(0xFF25D675):const Color(0xFF8D93A3)),
                           const SizedBox(width:4),
-                          Text(hasQr?'Aktif':'Pasif',style:TextStyle(color:hasQr?const Color(0xFF35D985):const Color(0xFFFF9B36),fontSize:CepqarTheme.caption,fontWeight:FontWeight.w900)),
+                          Text(isActive?'Aktif':'Pasif',style:TextStyle(color:isActive?const Color(0xFF16945B):const Color(0xFF737B90),fontSize:CepqarTheme.caption,fontWeight:FontWeight.w900)),
                         ]),
                       ),
                     ]),
@@ -455,39 +456,15 @@ class _VehicleBrandLogo extends StatelessWidget{
   @override Widget build(BuildContext context){
     final raw=vehicle['brandLogo'];
     final logo=raw is Map?Map<String,dynamic>.from(raw):const <String,dynamic>{};
-    // Use the same API host used to load the vehicles.
-    final imagePath=(logo['path']??'').toString().trim();
-    final safeImagePath=imagePath.startsWith('/uploads/vehicle-brands/')
-        && !imagePath.contains('..')
-        && !imagePath.contains('?')
-        && !imagePath.contains('#');
-    final apiBase=OnboardingBackend.baseUrl.replaceFirst(RegExp(r'/$'),'');
-    final url=safeImagePath?apiBase+imagePath:(logo['url']??'').toString().trim();
-    final letter=make.trim().isEmpty?'?':make.trim().characters.first.toUpperCase();
-    Widget fallback()=>Container(
-      width:75,height:75,alignment:Alignment.center,
-      decoration:BoxDecoration(color:_purple.withValues(alpha:CepqarTheme.isLight ? .08 : .16),shape:BoxShape.circle,border:Border.all(color:_purple.withValues(alpha:.16))),
-      child:VehicleKind.isMotorcycle(vehicle['vehicle_type'])
-        ?const Icon(Icons.two_wheeler_rounded,color:_purple,size:36)
-        :Text(letter,style:const TextStyle(color:_purple,fontSize:28,fontWeight:FontWeight.w900)),
-    );
-    if(!url.toLowerCase().startsWith('https://'))return fallback();
-    return SizedBox(
-      width:75,
-      height:75,
-      child:Image.network(
-        url,
-        key:ValueKey<String>(url),
-        fit:BoxFit.contain,
-        gaplessPlayback:true,
-        filterQuality:FilterQuality.high,
-        frameBuilder:(context,child,frame,wasSynchronouslyLoaded){
-          if(wasSynchronouslyLoaded||frame!=null)return child;
-          return fallback();
-        },
-        errorBuilder:(_,__,___)=>fallback(),
-      ),
-    );
+    final url=OwnerBrandLogoUrl.resolve(logo,OnboardingBackend.baseUrl);
+    final localAsset=VehicleBrandMarkResolver.assetFor(make);
+    Widget localFallback()=>SizedBox(width:78,height:78,child:localAsset==null
+      ?const Icon(Icons.verified_outlined,color:_purple,size:37)
+      :OwnerVehicleBrandMark(make:make,isMotorcycle:VehicleKind.isMotorcycle(vehicle['vehicle_type'])));
+    if(url==null)return localFallback();
+    return SizedBox(width:82,height:82,child:Image.network(url,fit:BoxFit.contain,
+      filterQuality:FilterQuality.high,gaplessPlayback:true,
+      errorBuilder:(_,__,___)=>localFallback()));
   }
 }
 class _VehicleAction extends StatelessWidget{
