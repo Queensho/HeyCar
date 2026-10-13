@@ -11,6 +11,14 @@ module.exports = function registerVehicleManagementRoutes(app, pool) {
 
   async function deleteVehicleRows(db,table,vehicleId,castText=false){
     if(!await tableExists(db,table))return 0;
+    // Some deployed reminder-claim schemas do not expose vehicle_id.
+    // Never issue a DELETE against a column that is absent. The claims table
+    // remains untouched unless it can be scoped to this exact vehicle.
+    const column=await db.query(
+      'SELECT 1 FROM information_schema.columns WHERE table_schema=$1 AND table_name=$2 AND column_name=$3',
+      ['public',table,'vehicle_id']
+    );
+    if(!column.rows.length)return 0;
     const sql=castText
       ? `DELETE FROM ${table} WHERE vehicle_id::text=$1`
       : `DELETE FROM ${table} WHERE vehicle_id=$1`;
