@@ -1,0 +1,31 @@
+name: Extract service icons
+on:
+  push:
+    branches: [feature/service-icons-five-20261013]
+    paths:
+      - tools/split_service_icons.py
+      - assets/file_000000006b808210b2c74a878fdd8cee.png
+      - .github/workflows/extract-service-icons.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/service-icons-five-20261013
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install pillow numpy opencv-python-headless
+      - run: python tools/split_service_icons.py
+      - run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add assets/images/services/*.png
+          if ! git diff --cached --quiet; then
+            git commit -m "Extract five transparent service PNG icons"
+            git push
+          fi
