@@ -207,6 +207,26 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
     }
   }
 
+  void _verifyQuickActionIcons(Map<String,dynamic> requested,Map<String,dynamic> returned){
+    List<Map<String,dynamic>> rows(Map<String,dynamic> config){
+      final value=config['quickActions'];
+      return value is List?value.whereType<Map>().map((x)=>Map<String,dynamic>.from(x)).toList():<Map<String,dynamic>>[];
+    }
+    final persisted={for(final row in rows(returned))'${row['id']}':row};
+    for(final item in rows(requested)){
+      final existing=persisted['${item['id']}'];
+      if(existing==null)throw StateError('Hızlı Erişim kaydı sunucuda bulunamadı.');
+      final wanted='${item['iconUrl']??''}'.trim();
+      final actual='${existing['iconUrl']??''}'.trim();
+      if(wanted!=actual){
+        throw StateError(
+          'Özel Hızlı Erişim ikonu sunucuda korunmadı (${item['title']}). '
+          'VPS app-builder-routes.js güncellenmeli. Yayınlama durduruldu.',
+        );
+      }
+    }
+  }
+
   Future<bool> saveDraft({bool notify=true})async{
     if(draft==null||saving)return false;
     final requested=_cloneConfig();
@@ -218,6 +238,7 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
       final persisted=storedDraft['config'];
       if(persisted is! Map)throw StateError('Sunucu taslak yapılandırmasını döndürmedi.');
       _verifyServiceTextColors(requested,Map<String,dynamic>.from(persisted));
+       _verifyQuickActionIcons(requested,Map<String,dynamic>.from(persisted));
       if(mounted)setState((){draft=storedDraft;dirty=false;});
       if(notify&&mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Taslak ve yazı renkleri sunucuda doğrulandı. Canlı uygulama henüz değişmedi.')));
       return true;
@@ -245,6 +266,7 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
       final publishedConfig=published is Map?published['config']:null;
       if(publishedConfig is! Map)throw StateError('Yayınlanan yapılandırma doğrulanamadı.');
       _verifyServiceTextColors(expected,Map<String,dynamic>.from(publishedConfig));
+       _verifyQuickActionIcons(expected,Map<String,dynamic>.from(publishedConfig));
       await load();
       if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Yeni uygulama config sürümü yazı renkleriyle birlikte yayınlandı.')));
     }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString().replaceFirst('Exception: ',''))));}
