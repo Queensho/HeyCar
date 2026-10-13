@@ -972,7 +972,7 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
         onTap:tap,
         borderRadius:BorderRadius.circular(14),
         child:Container(
-          height:94,
+          height:102,
           padding:const EdgeInsets.fromLTRB(8,9,7,9),
           decoration:_compactCard(),
           child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
@@ -986,9 +986,9 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
               Icon(Icons.chevron_right_rounded,color:_muted,size:17),
             ]),
             const Spacer(),
-            Text(title,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:CepqarTheme.text,fontSize:CepqarTheme.body,fontWeight:FontWeight.w900)),
+            Text(title,maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_detailInk,fontSize:11.2,height:1.06,fontWeight:FontWeight.w900)),
             const SizedBox(height:1),
-            Text(subtitle,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:_muted,fontSize:CepqarTheme.caption,fontWeight:FontWeight.w500)),
+            Text(subtitle,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_detailMuted,fontSize:9.3,fontWeight:FontWeight.w500)),
           ]),
         ),
       ),
@@ -1089,7 +1089,7 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
               Text(
                 value,
                 maxLines:1,
-                style:TextStyle(color:CepqarTheme.text,fontSize:15,fontWeight:FontWeight.w900),
+                style:const TextStyle(color:_detailInk,fontSize:15,fontWeight:FontWeight.w900),
               ),
             ],
           ),
@@ -1101,7 +1101,7 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
             textAlign:TextAlign.center,
             style:TextStyle(
               color:_muted,
-              fontSize:CepqarTheme.caption,
+              fontSize:9.3,
               height:1.05,
               fontWeight:FontWeight.w600,
             ),
@@ -1265,10 +1265,16 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
                 physics:const AlwaysScrollableScrollPhysics(),
                 padding:const EdgeInsets.fromLTRB(16,12,16,30),
                 children:[
-                  _brandBar(),
-                  const SizedBox(height:11),
-                  _titleBar(),
-                  const SizedBox(height:11),
+                  Container(
+                    padding:const EdgeInsets.fromLTRB(0,4,0,13),
+                    color:Colors.white,
+                    child:Column(children:[
+                      _brandBar(),
+                      const SizedBox(height:17),
+                      _titleBar(),
+                    ]),
+                  ),
+                  const SizedBox(height:13),
                   _heroCard(),
                   const SizedBox(height:9),
                   if(_isMotorcycle)...[_motorcyclePanel(),const SizedBox(height:9)],
