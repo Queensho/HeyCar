@@ -30,7 +30,10 @@ Color get _line =>
     CepqarTheme.isLight ? CepqarTheme.line : const Color(0xFF202D47);
 Color get _muted =>
     CepqarTheme.isLight ? CepqarTheme.muted : const Color(0xFF9CA8BE);
-const _purple = Color(0xFF813CFF);
+const _purple = Color(0xFF681FFF);
+const _detailBg = Color(0xFFF8F9FC);
+const _detailInk = Color(0xFF10152D);
+const _detailMuted = Color(0xFF7B8194);
 
 class VehicleCenterPage extends StatefulWidget {
   const VehicleCenterPage({
@@ -843,12 +846,10 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
   }
 
   BoxDecoration _compactCard({Color? color, Color? border}) => BoxDecoration(
-    color: color ?? _panel,
-    borderRadius: BorderRadius.circular(14),
-    border: Border.all(color: border ?? _line),
-    boxShadow: CepqarTheme.isLight
-      ? [BoxShadow(color:Colors.black.withValues(alpha:.025),blurRadius:10,offset:const Offset(0,3))]
-      : null,
+    color: color ?? Colors.white,
+    borderRadius: BorderRadius.circular(19),
+    border: Border.all(color: border ?? const Color(0xFFECECF3)),
+    boxShadow: [BoxShadow(color:const Color(0xFF23224A).withValues(alpha:.055),blurRadius:16,offset:const Offset(0,5))],
   );
 
   Widget _brandBar() => Row(children:[
@@ -896,9 +897,9 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
     ),
     const SizedBox(width:12),
     Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-      Text('Araç Detayı',style:TextStyle(color:CepqarTheme.text,fontSize:CepqarTheme.pageTitle,fontWeight:FontWeight.w900,letterSpacing:-.4)),
+      Text('Araç Detayı',style:TextStyle(color:_detailInk,fontSize:CepqarTheme.pageTitle,fontWeight:FontWeight.w900,letterSpacing:-.4)),
       const SizedBox(height:2),
-      Text('Aracınızla ilgili tüm detayları buradan yönetin.',style:TextStyle(color:_muted,fontSize:CepqarTheme.body,fontWeight:FontWeight.w500)),
+      Text('Aracınızla ilgili tüm detayları buradan yönetin.',style:TextStyle(color:_detailMuted,fontSize:CepqarTheme.body,fontWeight:FontWeight.w500)),
     ])),
   ]);
 
@@ -971,8 +972,8 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
         onTap:tap,
         borderRadius:BorderRadius.circular(14),
         child:Container(
-          height:82,
-          padding:const EdgeInsets.fromLTRB(8,7,7,6),
+          height:94,
+          padding:const EdgeInsets.fromLTRB(8,9,7,9),
           decoration:_compactCard(),
           child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
             Row(children:[
@@ -1066,8 +1067,8 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
 
   Widget _stat(IconData icon,String value,String label,Color color)=>Expanded(
     child:Container(
-      height:70,
-      padding:const EdgeInsets.symmetric(horizontal:6,vertical:7),
+      height:81,
+      padding:const EdgeInsets.symmetric(horizontal:6,vertical:9),
       decoration:_compactCard(),
       child:Column(
         mainAxisAlignment:MainAxisAlignment.center,
@@ -1252,7 +1253,7 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor:_bg,
+      backgroundColor:_detailBg,
       body:SafeArea(
         bottom:false,
         child:loading
@@ -1262,7 +1263,7 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
               color:_purple,
               child:ListView(
                 physics:const AlwaysScrollableScrollPhysics(),
-                padding:const EdgeInsets.fromLTRB(16,8,16,26),
+                padding:const EdgeInsets.fromLTRB(16,12,16,30),
                 children:[
                   _brandBar(),
                   const SizedBox(height:11),
