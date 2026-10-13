@@ -115,7 +115,7 @@ class VehicleIdentityCard extends StatelessWidget {
                 ]),
               )),
               Positioned(left:12,top:20,bottom:12,width:compact?66:82,child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[
-                _logo(size:compact?48:63),
+                _logo(size:compact?56:63),
                 const SizedBox(height:5),
                 Text(_make,maxLines:2,textAlign:TextAlign.center,overflow:TextOverflow.ellipsis,
                   style:const TextStyle(color:Colors.white,fontSize:11,fontWeight:FontWeight.w700)),
