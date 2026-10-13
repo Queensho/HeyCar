@@ -410,8 +410,8 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
                               begin:Alignment.topLeft,
                               end:Alignment.bottomRight,
                               colors:[
-                                Colors.white.withValues(alpha:.92),
-                                Colors.white.withValues(alpha:.50),
+                                Colors.transparent,
+                                const Color(0xFF4810D8).withValues(alpha:.10),
                                 Colors.transparent,
                               ],
                             ),
@@ -425,7 +425,7 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
                               Container(
                                 padding:const EdgeInsets.symmetric(horizontal:10,vertical:5),
                                 decoration:BoxDecoration(
-                                  color:const Color(0xFFF0E8FF),
+                                  color:const Color(0xFFB9FF43),
                                   borderRadius:BorderRadius.circular(18),
                                 ),
                                 child:const Row(
@@ -441,7 +441,7 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
                               Text(
                                 'CepQontag’a katıl',
                                 style:TextStyle(
-                                  color:const Color(0xFF101426),
+                                  color:Colors.white,
                                   fontSize:23,
                                   height:1,
                                   fontWeight:FontWeight.w900,
@@ -451,7 +451,7 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
                               const SizedBox(height:6),
                               Text(
                                 'Aracını ekle, QR etiketini bağla\nve önemli durumlarda anında haberdar ol.',
-                                style:TextStyle(color:const Color(0xFF686F82),fontSize:11.5,height:1.35,fontWeight:FontWeight.w500),
+                                style:TextStyle(color:Colors.white,fontSize:11.5,height:1.35,fontWeight:FontWeight.w500),
                               ),
                             ],
                           ),
