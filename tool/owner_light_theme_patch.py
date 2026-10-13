@@ -43,6 +43,12 @@ TARGETS = {
 }
 
 for filename, replacements in TARGETS.items():
+    # The redesigned Araçlarım page intentionally uses fixed white surfaces and
+    # dark typography even when the global app theme is dark. Do not rewrite it:
+    # the legacy replacement turns const Colors.white into invalid const
+    # CepqarTheme.text and breaks the GitHub Pages production web build.
+    if filename == 'lib/owner_vehicles_page.dart':
+        continue
     p = Path(filename)
     text = p.read_text(encoding='utf-8')
     if "import 'cepqar_theme.dart';" not in text:
