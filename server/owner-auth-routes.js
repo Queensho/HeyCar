@@ -134,7 +134,7 @@ module.exports = function registerOwnerAuthRoutes(app, pool) {
         // Access JWT contains a session ID. Revoke that session even when
         // another tab has rotated the refresh token before logout.
         const authorization=String(req.headers.authorization||'');
-        const payload=require('./owner-auth-service').verify(authorization.replace(/^Bearer\\s+/i,'').trim());
+        const payload=require('./owner-auth-service').verify(authorization.replace(/^Bearer\s+/i,'').trim());
         if(payload?.sid){
           const r=await pool.query(
             'UPDATE owner_auth_sessions SET revoked_at=NOW() WHERE id::text=$1 AND owner_id::text=$2 AND revoked_at IS NULL',
@@ -142,7 +142,7 @@ module.exports = function registerOwnerAuthRoutes(app, pool) {
           revoked+=r.rowCount;
         }
       }
-      if(!revoked&&refresh){
+      if(!ownerId&&refresh){
         const r=await pool.query(
           'UPDATE owner_auth_sessions SET revoked_at=NOW() WHERE refresh_token_hash=$1 AND revoked_at IS NULL',
           [require('crypto').createHash('sha256').update(refresh).digest('hex')]);
