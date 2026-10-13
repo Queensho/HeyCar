@@ -5,6 +5,39 @@ const crypto=require('crypto');
 const {ownerId:authenticatedOwnerId}=require('./owner-auth-service');
 const {writeAdminAudit}=require('./admin-audit');
 
+// Validate declared image type against actual bytes and reject truncated or polyglot payloads.
+function validImageBytes(buf,mime){
+  if(!Buffer.isBuffer(buf))return false;
+  if(mime==='image/png'){
+    if(buf.length<45||!buf.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])))return false;
+    if(buf.toString('ascii',12,16)!=='IHDR'||buf.readUInt32BE(8)!==13)return false;
+    const width=buf.readUInt32BE(16),height=buf.readUInt32BE(20);
+    if(!width||!height||width>8192||height>8192)return false;
+    let off=8,ended=false;
+    while(off+12<=buf.length){
+      const len=buf.readUInt32BE(off),end=off+12+len;
+      if(end>buf.length)return false;
+      if(buf.toString('ascii',off+4,off+8)==='IEND'){
+        if(len!==0||end!==buf.length)return false;
+        ended=true;break;
+      }
+      off=end;
+    }
+    return ended;
+  }
+  if(mime==='image/jpeg'||mime==='image/jpg'){
+    if(buf.length<16||buf[0]!==0xff||buf[1]!==0xd8)return false;
+    if(buf[buf.length-2]!==0xff||buf[buf.length-1]!==0xd9)return false;
+    return true;
+  }
+  if(mime==='image/webp'){
+    if(buf.length<24||buf.toString('ascii',0,4)!=='RIFF'||buf.toString('ascii',8,12)!=='WEBP')return false;
+    if(buf.readUInt32LE(4)+8!==buf.length)return false;
+    return ['VP8 ','VP8L','VP8X'].includes(buf.toString('ascii',12,16));
+  }
+  return false;
+}
+
 const SCHEMA_VERSION=1;
 const COMPONENT_TYPES=new Set([
   'weather_card','vehicle_security','story_carousel','quick_actions','monthly_summary',
@@ -391,6 +424,7 @@ module.exports=function registerAppBuilderRoutes(app,pool,adminGuard){
       if(!ext)return res.status(400).json({error:'INVALID_IMAGE_TYPE'});
       const buf=Buffer.isBuffer(req.body)?req.body:Buffer.alloc(0);
       if(!buf.length||buf.length>5*1024*1024)return res.status(413).json({error:'IMAGE_TOO_LARGE'});
+      if(!validImageBytes(buf,mime))return res.status(400).json({error:'INVALID_IMAGE_CONTENT'});
       const category=clean(req.headers['x-asset-category']||'decorative',30);
       if(!ASSET_CATEGORIES.has(category))return res.status(400).json({error:'INVALID_ASSET_CATEGORY'});
       const name=clean(req.headers['x-asset-name']||'Görsel',120)||'Görsel';
