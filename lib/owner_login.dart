@@ -9,9 +9,9 @@ const _authBg = Color(0xFF06111F);
 const _authPanel = Color(0xFF0E1930);
 const _authPanel2 = Color(0xFF111D37);
 const _authLine = Color(0xFF2C3B67);
-const _authPurple = Color(0xFF8B5CFF);
-const _authPurple2 = Color(0xFF6D3EFF);
-const _authGreen = Color(0xFF7CFF57);
+const _authPurple = Color(0xFF651FFF);
+const _authPurple2 = Color(0xFF4810D8);
+const _authGreen = Color(0xFFB9FF43);
 const _authMuted = Color(0xFFAAB4CF);
 
 class OwnerLoginBackend {
@@ -272,7 +272,7 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
   InputDecoration _regInput(String hint, IconData icon, {Widget? suffix}) => InputDecoration(
         hintText:hint,
         hintStyle:const TextStyle(color:Color(0xFF9AA0AF),fontSize:12.5),
-        prefixIcon:Icon(icon,color:const Color(0xFF5E24F5),size:18),
+        prefixIcon:Icon(icon,color:const Color(0xFF651FFF),size:18),
         suffixIcon:suffix,
         filled:true,
         fillColor:Colors.white,
@@ -284,7 +284,7 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
         ),
         focusedBorder:OutlineInputBorder(
           borderRadius:BorderRadius.circular(15),
-          borderSide:const BorderSide(color:Color(0xFF5E24F5),width:1.5),
+          borderSide:const BorderSide(color:Color(0xFF651FFF),width:1.5),
         ),
       );
 
@@ -299,13 +299,13 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
   }) => Column(
     crossAxisAlignment:CrossAxisAlignment.start,
     children:[
-      Text(label,style:const TextStyle(color:Color(0xFF090B18),fontSize:12.5,fontWeight:FontWeight.w800)),
+      Text(label,style:const TextStyle(color:Color(0xFF101426),fontSize:12.5,fontWeight:FontWeight.w800)),
       const SizedBox(height:6),
       TextField(
         controller:controller,
         keyboardType:keyboardType,
         obscureText:obscureText,
-        style:const TextStyle(color:Color(0xFF090B18),fontSize:13,fontWeight:FontWeight.w600),
+        style:const TextStyle(color:Color(0xFF101426),fontSize:13,fontWeight:FontWeight.w600),
         decoration:_regInput(hint,icon,suffix:suffix),
       ),
     ],
@@ -314,7 +314,7 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
   Widget _phoneRegisterField() => Column(
     crossAxisAlignment:CrossAxisAlignment.start,
     children:[
-      const Text('Telefon Numarası',style:TextStyle(color:Color(0xFF090B18),fontSize:12.5,fontWeight:FontWeight.w800)),
+      const Text('Telefon Numarası',style:TextStyle(color:Color(0xFF101426),fontSize:12.5,fontWeight:FontWeight.w800)),
       const SizedBox(height:6),
       Container(
         height:49,
@@ -325,9 +325,9 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
         ),
         child:Row(children:[
           const SizedBox(width:13),
-          const Icon(Icons.phone_rounded,color:Color(0xFF5E24F5),size:18),
+          const Icon(Icons.phone_rounded,color:Color(0xFF651FFF),size:18),
           const SizedBox(width:9),
-          const Text('+90',style:TextStyle(color:Color(0xFF090B18),fontSize:13,fontWeight:FontWeight.w800)),
+          const Text('+90',style:TextStyle(color:Color(0xFF101426),fontSize:13,fontWeight:FontWeight.w800)),
           const SizedBox(width:8),
           Container(width:1,height:22,color:const Color(0xFFE5E7EF)),
           const SizedBox(width:10),
@@ -335,7 +335,7 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
             child:TextField(
               controller:phone,
               keyboardType:TextInputType.phone,
-              style:const TextStyle(color:Color(0xFF090B18),fontSize:13,fontWeight:FontWeight.w600),
+              style:const TextStyle(color:Color(0xFF101426),fontSize:13,fontWeight:FontWeight.w600),
               decoration:const InputDecoration(
                 hintText:'5XX XXX XX XX',
                 hintStyle:TextStyle(color:Color(0xFF9AA0AF),fontSize:12.5),
@@ -378,7 +378,7 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
                           borderRadius:BorderRadius.circular(14),
                           border:Border.all(color:const Color(0xFFE5E7EF)),
                         ),
-                        child:const Icon(Icons.arrow_back_rounded,color:Color(0xFF090B18),size:20),
+                        child:const Icon(Icons.arrow_back_rounded,color:Color(0xFF101426),size:20),
                       ),
                     ),
                     const Spacer(),
@@ -403,20 +403,15 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
                     child:Stack(
                       fit:StackFit.expand,
                       children:[
-                        Image.asset(
-                          'assets/IMG_20261004_191854.png',
-                          fit:BoxFit.cover,
-                          alignment:const Alignment(.18,.55),
-                          filterQuality:FilterQuality.high,
-                        ),
+                        const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF4810D8), Color(0xFF651FFF), Color(0xFFA77BFF)]))),
                         DecoratedBox(
                           decoration:BoxDecoration(
                             gradient:LinearGradient(
                               begin:Alignment.topLeft,
                               end:Alignment.bottomRight,
                               colors:[
-                                Colors.white.withValues(alpha:.92),
-                                Colors.white.withValues(alpha:.50),
+                                Colors.transparent,
+                                const Color(0xFF4810D8).withValues(alpha:.10),
                                 Colors.transparent,
                               ],
                             ),
@@ -430,15 +425,15 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
                               Container(
                                 padding:const EdgeInsets.symmetric(horizontal:10,vertical:5),
                                 decoration:BoxDecoration(
-                                  color:const Color(0xFFF0E8FF),
+                                  color:const Color(0xFFB9FF43),
                                   borderRadius:BorderRadius.circular(18),
                                 ),
                                 child:const Row(
                                   mainAxisSize:MainAxisSize.min,
                                   children:[
-                                    Icon(Icons.person_add_alt_1_rounded,color:Color(0xFF5E24F5),size:14),
+                                    Icon(Icons.person_add_alt_1_rounded,color:Color(0xFF651FFF),size:14),
                                     SizedBox(width:6),
-                                    Text('YENİ HESAP',style:TextStyle(color:Color(0xFF5E24F5),fontSize:10.5,fontWeight:FontWeight.w900)),
+                                    Text('YENİ HESAP',style:TextStyle(color:Color(0xFF651FFF),fontSize:10.5,fontWeight:FontWeight.w900)),
                                   ],
                                 ),
                               ),
@@ -446,7 +441,7 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
                               Text(
                                 'CepQontag’a katıl',
                                 style:TextStyle(
-                                  color:const Color(0xFF090B18),
+                                  color:Colors.white,
                                   fontSize:23,
                                   height:1,
                                   fontWeight:FontWeight.w900,
@@ -456,7 +451,7 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
                               const SizedBox(height:6),
                               Text(
                                 'Aracını ekle, QR etiketini bağla\nve önemli durumlarda anında haberdar ol.',
-                                style:TextStyle(color:const Color(0xFF686F82),fontSize:11.5,height:1.35,fontWeight:FontWeight.w500),
+                                style:TextStyle(color:Colors.white,fontSize:11.5,height:1.35,fontWeight:FontWeight.w500),
                               ),
                             ],
                           ),
@@ -467,7 +462,7 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
                   SizedBox(height:compact?16:19),
                   Text(
                     'Kayıt Ol',
-                    style:TextStyle(color:const Color(0xFF090B18),fontSize:25,fontWeight:FontWeight.w900,letterSpacing:-.8),
+                    style:TextStyle(color:const Color(0xFF101426),fontSize:25,fontWeight:FontWeight.w900,letterSpacing:-.8),
                   ),
                   const SizedBox(height:3),
                   const Text(
@@ -535,9 +530,9 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
                           Container(
                             width:21,height:21,
                             decoration:BoxDecoration(
-                              color:accepted?const Color(0xFF5E24F5):Colors.white,
+                              color:accepted?const Color(0xFF651FFF):Colors.white,
                               borderRadius:BorderRadius.circular(6),
-                              border:Border.all(color:const Color(0xFF5E24F5),width:1.5),
+                              border:Border.all(color:const Color(0xFF651FFF),width:1.5),
                             ),
                             child:accepted?const Icon(Icons.check_rounded,color:Colors.white,size:15):null,
                           ),
@@ -560,7 +555,7 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
                                         padding:const EdgeInsets.symmetric(horizontal:2),
                                         minimumSize:const Size(0,26),
                                         tapTargetSize:MaterialTapTargetSize.shrinkWrap,
-                                        foregroundColor:const Color(0xFF5E24F5),
+                                        foregroundColor:const Color(0xFF651FFF),
                                       ),
                                       child:const Text('Kullanım Şartları',style:TextStyle(fontSize:10.5,fontWeight:FontWeight.w800)),
                                     ),
@@ -570,7 +565,7 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
                                         padding:const EdgeInsets.symmetric(horizontal:2),
                                         minimumSize:const Size(0,26),
                                         tapTargetSize:MaterialTapTargetSize.shrinkWrap,
-                                        foregroundColor:const Color(0xFF5E24F5),
+                                        foregroundColor:const Color(0xFF651FFF),
                                       ),
                                       child:const Text('Gizlilik / KVKK',style:TextStyle(fontSize:10.5,fontWeight:FontWeight.w800)),
                                     ),
@@ -590,9 +585,9 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
                     child:FilledButton(
                       onPressed:busy?null:submit,
                       style:FilledButton.styleFrom(
-                        backgroundColor:const Color(0xFF5E24F5),
+                        backgroundColor:const Color(0xFF651FFF),
                         foregroundColor:Colors.white,
-                        disabledBackgroundColor:const Color(0xFF5E24F5).withValues(alpha:.55),
+                        disabledBackgroundColor:const Color(0xFF651FFF).withValues(alpha:.55),
                         shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(17)),
                         elevation:0,
                       ),

@@ -9,9 +9,9 @@ import 'account_recovery_page.dart';
 const _bg = Color(0xFFFDFDFF);
 const _panel = Colors.white;
 const _line = Color(0xFFE5E7EF);
-const _purple = Color(0xFF5E24F5);
-const _purple2 = Color(0xFF7A35FF);
-const _text = Color(0xFF090B18);
+const _purple = Color(0xFF651FFF);
+const _purple2 = Color(0xFF4810D8);
+const _text = Color(0xFF101426);
 const _muted = Color(0xFF747A8D);
 
 class PasswordOwnerLoginScreen extends StatefulWidget {
@@ -187,21 +187,16 @@ class _PasswordOwnerLoginScreenState extends State<PasswordOwnerLoginScreen> {
                     child:Stack(
                       fit:StackFit.expand,
                       children:[
-                        Image.asset(
-                          'assets/IMG_20261004_191854.png',
-                          fit:BoxFit.cover,
-                          alignment:const Alignment(.25,.52),
-                          filterQuality:FilterQuality.high,
-                        ),
+                        const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF4810D8), Color(0xFF651FFF), Color(0xFFA77BFF)]))),
                         DecoratedBox(
                           decoration:BoxDecoration(
                             gradient:LinearGradient(
                               begin:Alignment.topLeft,
                               end:Alignment.bottomRight,
                               colors:[
-                                Colors.white.withValues(alpha:.90),
-                                Colors.white.withValues(alpha:.48),
+                                const Color(0xFF651FFF).withValues(alpha:.08),
                                 Colors.transparent,
+                                const Color(0xFF4810D8).withValues(alpha:.15),
                               ],
                             ),
                           ),
@@ -216,7 +211,7 @@ class _PasswordOwnerLoginScreenState extends State<PasswordOwnerLoginScreen> {
                               Container(
                                 padding:const EdgeInsets.symmetric(horizontal:10,vertical:5),
                                 decoration:BoxDecoration(
-                                  color:const Color(0xFFF0E8FF),
+                                  color:const Color(0xFFB9FF43),
                                   borderRadius:BorderRadius.circular(18),
                                 ),
                                 child:const Row(
@@ -232,7 +227,7 @@ class _PasswordOwnerLoginScreenState extends State<PasswordOwnerLoginScreen> {
                               Text(
                                 'Tekrar hoş geldin',
                                 style:TextStyle(
-                                  color:_text,
+                                  color:Colors.white,
                                   fontSize:24,
                                   height:1,
                                   fontWeight:FontWeight.w900,
@@ -242,7 +237,7 @@ class _PasswordOwnerLoginScreenState extends State<PasswordOwnerLoginScreen> {
                               const SizedBox(height:7),
                               Text(
                                 'Aracınla ilgili tüm bildirimlere\nve hizmetlere ulaş.',
-                                style:TextStyle(color:_muted,fontSize:11.5,height:1.35,fontWeight:FontWeight.w500),
+                                style:TextStyle(color:Colors.white,fontSize:11.5,height:1.35,fontWeight:FontWeight.w500),
                               ),
                             ],
                           ),

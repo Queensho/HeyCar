@@ -1,11 +1,14 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
-const _purple = Color(0xFF5E24F5);
-const _purple2 = Color(0xFF7A35FF);
-const _text = Color(0xFF070A18);
-const _muted = Color(0xFF4F5568);
-const _lime = Color(0xFF8CFF00);
+const _purple = Color(0xFF651FFF);
+const _deepPurple = Color(0xFF4810D8);
+const _softPurple = Color(0xFFA77BFF);
+const _lime = Color(0xFFB9FF43);
+const _ink = Color(0xFF101426);
 
+/// Visual-only guest landing page. Authentication and routing stay owned by
+/// ThemeOwnerEntry, which passes the original login/register callbacks.
 class OwnerWelcomeOverlay extends StatelessWidget {
   const OwnerWelcomeOverlay({
     super.key,
@@ -19,224 +22,85 @@ class OwnerWelcomeOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: _deepPurple,
       body: SafeArea(
-        bottom: false,
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final h = constraints.maxHeight;
-            final w = constraints.maxWidth;
-            final compact = h < 700 || w < 370;
-            final heroHeight = (h - (compact ? 122.0 : 132.0))
-                .clamp(compact ? 500.0 : 540.0, 620.0);
-
-            return Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 460),
-                child: Column(
-                  children: [
-                    SizedBox(
-                      height: heroHeight,
-                      child: Stack(
-                        clipBehavior: Clip.none,
+            final width = math.min(constraints.maxWidth, 500.0);
+            final compact = width < 370;
+            final short = constraints.maxHeight < 740;
+            return Stack(children: [
+              const Positioned.fill(child: CustomPaint(painter: _OrbitalBackdrop())),
+              SingleChildScrollView(
+                padding: EdgeInsets.only(bottom: math.max(14, MediaQuery.viewInsetsOf(context).bottom)),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 500),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: compact ? 20 : 27),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Positioned.fill(
-                            child: Image.asset(
-                              'assets/IMG_20261004_191854.png',
-                              fit: BoxFit.cover,
-                              alignment: Alignment.topCenter,
-                              filterQuality: FilterQuality.high,
-                            ),
+                          SizedBox(height: short ? 13 : 22),
+                          Image.asset(
+                            'assets/file_00000000b130820abb8d411e67ab0d25.png',
+                            height: compact ? 36 : 43,
+                            alignment: Alignment.centerLeft,
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, __, ___) => const Text(
+                              'CepQontag', style: TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w900)),
                           ),
-                          Positioned.fill(
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  stops: const [0, .18, .72, 1],
-                                  colors: [
-                                    Colors.white.withValues(alpha: .18),
-                                    Colors.white.withValues(alpha: .02),
-                                    Colors.transparent,
-                                    Colors.white.withValues(alpha: .12),
-                                  ],
-                                ),
-                              ),
-                            ),
+                          SizedBox(height: short ? 27 : 49),
+                          _NotificationShowcase(compact: compact),
+                          SizedBox(height: short ? 26 : 43),
+                          const Text('C E P Q O N T A G',
+                            style: TextStyle(color: Color(0xFFD1BDFF), fontSize: 10, fontWeight: FontWeight.w700)),
+                          const SizedBox(height: 13),
+                          Text('Aracınızla\nilgili her şey',
+                            style: TextStyle(
+                              color: Colors.white,
+                              height: 1.01,
+                              letterSpacing: -1.7,
+                              fontSize: compact ? 37 : 44,
+                              fontWeight: FontWeight.w900,
+                            )),
+                          Text('anında\nbildirilsin.',
+                            style: TextStyle(
+                              color: _lime,
+                              height: 1.01,
+                              letterSpacing: -1.7,
+                              fontSize: compact ? 37 : 44,
+                              fontWeight: FontWeight.w900,
+                            )),
+                          const SizedBox(height: 2),
+                          SizedBox(
+                            width: compact ? 250 : 305,
+                            height: 15,
+                            child: const CustomPaint(painter: _LimeUnderline()),
                           ),
-                          Positioned(
-                            left: 20,
-                            right: 18,
-                            top: compact ? 10 : 12,
-                            child: _TopBar(compact: compact),
+                          const SizedBox(height: 16),
+                          Text('Aracınızla ilgili önemli durumlarda hızlıca haberdar olun, her zaman kontrol sizde olsun.',
+                            style: TextStyle(color: const Color(0xFFE0D2FF), fontSize: compact ? 15 : 16.5, height: 1.38)),
+                          SizedBox(height: short ? 25 : 35),
+                          _EntryButton(
+                            key: const ValueKey('owner-welcome-login'),
+                            label: 'Giriş Yap', icon: Icons.person_rounded,
+                            filled: true, onTap: onLogin,
                           ),
-                          Positioned(
-                            left: 20,
-                            top: compact ? 88 : 94,
-                            child: _OwnerReachBadge(compact: compact),
+                          const SizedBox(height: 11),
+                          _EntryButton(
+                            key: const ValueKey('owner-welcome-register'),
+                            label: 'Kayıt Ol', icon: Icons.add_rounded,
+                            filled: false, onTap: onRegister,
                           ),
-                          Positioned(
-                            left: 20,
-                            right: 18,
-                            top: compact ? 140 : 151,
-                            child: _HeroCopy(compact: compact),
-                          ),
-                          Positioned(
-                            left: 20,
-                            right: 20,
-                            bottom: compact ? 10 : 12,
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: _FeatureCard(
-                                    compact: compact,
-                                    icon: Icons.chat_bubble_outline_rounded,
-                                    line1: 'Anonim',
-                                    line2: 'Mesaj',
-                                  ),
-                                ),
-                                SizedBox(width: compact ? 8 : 10),
-                                Expanded(
-                                  child: _FeatureCard(
-                                    compact: compact,
-                                    icon: Icons.shield_outlined,
-                                    line1: 'Gizlilik',
-                                  ),
-                                ),
-                                SizedBox(width: compact ? 8 : 10),
-                                Expanded(
-                                  child: _FeatureCard(
-                                    compact: compact,
-                                    icon: Icons.location_on_outlined,
-                                    line1: 'Her Yerde',
-                                    line2: 'Ulaşılabilir',
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                          const SizedBox(height: 16),
                         ],
                       ),
                     ),
-                    Expanded(
-                      child: Container(
-                        color: Colors.white,
-                        padding: EdgeInsets.fromLTRB(
-                          20,
-                          compact ? 9 : 11,
-                          20,
-                          10 + MediaQuery.paddingOf(context).bottom,
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          children: [
-                            SizedBox(
-                              width: double.infinity,
-                              height: compact ? 49 : 53,
-                              child: FilledButton(
-                                onPressed: onLogin,
-                                style: FilledButton.styleFrom(
-                                  padding: EdgeInsets.zero,
-                                  foregroundColor: Colors.white,
-                                  backgroundColor: Colors.transparent,
-                                  shadowColor: Colors.transparent,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(17),
-                                  ),
-                                ),
-                                child: Ink(
-                                  decoration: BoxDecoration(
-                                    gradient: const LinearGradient(
-                                      begin: Alignment.centerLeft,
-                                      end: Alignment.centerRight,
-                                      colors: [_purple, _purple2],
-                                    ),
-                                    borderRadius: BorderRadius.circular(17),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: _purple.withValues(alpha: .18),
-                                        blurRadius: 16,
-                                        offset: const Offset(0, 6),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Container(
-                                    alignment: Alignment.center,
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          Icons.person_rounded,
-                                          size: compact ? 20 : 22,
-                                          color: Colors.white,
-                                        ),
-                                        SizedBox(width: compact ? 20 : 25),
-                                        Text(
-                                          'Giriş Yap',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w900,
-                                            letterSpacing: -.2,
-                                          ),
-                                        ),
-                                        SizedBox(width: compact ? 16 : 20),
-                                        Icon(
-                                          Icons.arrow_forward_rounded,
-                                          size: compact ? 22 : 24,
-                                          color: Colors.white,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 9),
-                            SizedBox(
-                              width: double.infinity,
-                              height: compact ? 49 : 53,
-                              child: OutlinedButton(
-                                onPressed: onRegister,
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: _purple,
-                                  side: const BorderSide(
-                                    color: _purple,
-                                    width: 1.8,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(17),
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.add_rounded,
-                                      size: compact ? 22 : 24,
-                                    ),
-                                    SizedBox(width: compact ? 13 : 15),
-                                    Text(
-                                      'Kayıt Ol',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w900,
-                                        letterSpacing: -.2,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
-            );
+            ]);
           },
         ),
       ),
@@ -244,294 +108,175 @@ class OwnerWelcomeOverlay extends StatelessWidget {
   }
 }
 
-class _TopBar extends StatelessWidget {
-  const _TopBar({required this.compact});
-  final bool compact;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Image.asset(
-          'assets/file_00000000b130820abb8d411e67ab0d25.png',
-          height: compact ? 29 : 32,
-          fit: BoxFit.contain,
-          alignment: Alignment.centerLeft,
-          filterQuality: FilterQuality.high,
-        ),
-        const Spacer(),
-        InkWell(
-          onTap: () {},
-          borderRadius: BorderRadius.circular(24),
-          child: Container(
-            height: compact ? 34 : 38,
-            padding: EdgeInsets.symmetric(horizontal: compact ? 12 : 14),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: .94),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: const Color(0xFFE7E9F0)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: .04),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.language_rounded,
-                  size: compact ? 17 : 19,
-                  color: _text,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'TR',
-                  style: TextStyle(
-                    color: _text,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(width: 7),
-                Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  size: compact ? 18 : 20,
-                  color: _text,
-                ),
-              ],
-            ),
-          ),
-        ),
-        SizedBox(width: compact ? 12 : 15),
-        InkWell(
-          onTap: () {},
-          customBorder: const CircleBorder(),
-          child: Icon(
-            Icons.menu_rounded,
-            color: _text,
-            size: compact ? 31 : 34,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _OwnerReachBadge extends StatelessWidget {
-  const _OwnerReachBadge({required this.compact});
-  final bool compact;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: compact ? 33 : 35,
-      padding: EdgeInsets.symmetric(horizontal: compact ? 13 : 15),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF0E8FF).withValues(alpha: .93),
-        borderRadius: BorderRadius.circular(22),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.chat_bubble_outline_rounded,
-            color: _purple,
-            size: compact ? 16 : 18,
-          ),
-          const SizedBox(width: 9),
-          Text(
-            'ARAÇ SAHİBİNE ULAŞ',
-            style: TextStyle(
-              color: _purple,
-              fontSize: 12,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -.1,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HeroCopy extends StatelessWidget {
-  const _HeroCopy({required this.compact});
-  final bool compact;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Araç sahipleri için',
-          style: TextStyle(
-            color: _text,
-            fontSize: compact ? 31 : 34,
-            height: .98,
-            fontWeight: FontWeight.w900,
-            letterSpacing: -1.6,
-          ),
-        ),
-        const SizedBox(height: 5),
-        Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Text(
-              'güvenli iletişim',
-              style: TextStyle(
-                color: _purple,
-                fontSize: compact ? 32 : 35,
-                height: .98,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -1.7,
-              ),
-            ),
-            Positioned(
-              left: 2,
-              bottom: compact ? -11 : -13,
-              child: CustomPaint(
-                size: Size(compact ? 119 : 132, compact ? 12 : 14),
-                painter: const _UnderlinePainter(),
-              ),
-            ),
-          ],
-        ),
-        SizedBox(height: compact ? 43 : 47),
-        Text(
-          'Aracına not bırak, önemli\ndurumlarda anında haber ver.',
-          style: TextStyle(
-            color: _muted,
-            fontSize: 16.5,
-            height: 1.3,
-            fontWeight: FontWeight.w500,
-            letterSpacing: -.2,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _FeatureCard extends StatelessWidget {
-  const _FeatureCard({
-    required this.compact,
+class _EntryButton extends StatelessWidget {
+  const _EntryButton({
+    super.key,
+    required this.label,
     required this.icon,
-    required this.line1,
-    this.line2,
+    required this.filled,
+    required this.onTap,
   });
-
-  final bool compact;
+  final String label;
   final IconData icon;
-  final String line1;
-  final String? line2;
+  final bool filled;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => Material(
+    color: filled ? _purple : Colors.white,
+    borderRadius: BorderRadius.circular(19),
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(19),
+      child: Container(
+        height: 58,
+        padding: const EdgeInsets.symmetric(horizontal: 22),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(19),
+          border: Border.all(color: filled ? const Color(0xFFA47AFF) : _purple, width: 1.7),
+          boxShadow: const [BoxShadow(color: Color(0x330E033E), blurRadius: 14, offset: Offset(0, 6))],
+        ),
+        child: Row(children: [
+          Icon(icon, color: filled ? Colors.white : _purple, size: 27),
+          const Spacer(),
+          Text(label, style: TextStyle(color: filled ? Colors.white : _purple, fontSize: 19, fontWeight: FontWeight.w800)),
+          const Spacer(),
+          Icon(Icons.arrow_forward_rounded, color: filled ? Colors.white : _purple, size: 27),
+        ]),
+      ),
+    ),
+  );
+}
 
+/// Static onboarding examples; deliberately makes no notification API calls.
+class _NotificationShowcase extends StatelessWidget {
+  const _NotificationShowcase({required this.compact});
+  final bool compact;
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: compact ? 86 : 94,
-      padding: EdgeInsets.symmetric(
-        horizontal: compact ? 7 : 8,
-        vertical: compact ? 9 : 10,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: .94),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withValues(alpha: .92)),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF6C36D8).withValues(alpha: .10),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: compact ? 34 : 38,
-            height: compact ? 34 : 38,
-            decoration: const BoxDecoration(
-              color: Color(0xFFF1E9FF),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              icon,
-              color: _purple,
-              size: compact ? 19 : 21,
-            ),
-          ),
-          SizedBox(height: compact ? 6 : 7),
-          Text(
-            line1,
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            style: TextStyle(
-              color: _text,
-              fontSize: 12,
-              height: 1.05,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -.2,
-            ),
-          ),
-          if (line2 != null)
-            Text(
-              line2!,
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              style: TextStyle(
-                color: _text,
-                fontSize: 12,
-                height: 1.05,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -.2,
-              ),
-            ),
-        ],
-      ),
+    return SizedBox(
+      height: compact ? 265 : 310,
+      child: Stack(clipBehavior: Clip.none, children: [
+        Positioned(top: 11, left: 0, right: 12,
+          child: Transform.rotate(angle: -0.065,
+            child: const _PreviewNotification(
+              title: 'Park Uyarısı', message: 'Aracınızın çıkışı\nengelleniyor.',
+              time: '2 dk önce', icon: Icons.local_parking_rounded,
+              tint: _purple, iconBackground: Color(0xFFEADFFF),
+            ))),
+        Positioned(top: compact ? 96 : 112, left: 13, right: 0,
+          child: Transform.rotate(angle: -0.045,
+            child: const _PreviewNotification(
+              title: 'Hasar Bildirimi', message: 'Aracınızda olası bir\nhasar tespit edildi.',
+              time: '15 dk önce', icon: Icons.warning_rounded,
+              tint: Color(0xFFF41D5D), iconBackground: Color(0xFFFFE5ED),
+            ))),
+        Positioned(top: compact ? 183 : 218, left: 5, right: 9,
+          child: Transform.rotate(angle: -0.025,
+            child: const _PreviewNotification(
+              title: 'İletişim Talebi', message: 'Sizinle iletişime\ngeçmek istiyor.',
+              time: '1 saat önce', icon: Icons.call_rounded,
+              tint: Color(0xFF169B33), iconBackground: Color(0xFFE4FFAC),
+            ))),
+      ]),
     );
   }
 }
 
-class _UnderlinePainter extends CustomPainter {
-  const _UnderlinePainter();
+class _PreviewNotification extends StatelessWidget {
+  const _PreviewNotification({
+    required this.title, required this.message, required this.time,
+    required this.icon, required this.tint, required this.iconBackground,
+  });
+  final String title, message, time;
+  final IconData icon;
+  final Color tint, iconBackground;
+  @override
+  Widget build(BuildContext context) {
+    final compact = MediaQuery.sizeOf(context).width < 370;
+    return Container(
+      height: compact ? 78 : 91,
+      padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 13, vertical: 9),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: .96),
+        borderRadius: BorderRadius.circular(21),
+        boxShadow: const [BoxShadow(color: Color(0x4F180060), blurRadius: 23, offset: Offset(0, 13))],
+      ),
+      child: Row(children: [
+        Container(
+          width: compact ? 44 : 53, height: compact ? 44 : 53,
+          decoration: BoxDecoration(
+            color: iconBackground, borderRadius: BorderRadius.circular(15)),
+          child: Icon(icon, color: tint, size: compact ? 25 : 30),
+        ),
+        const SizedBox(width: 10),
+        Expanded(child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: _ink, fontSize: compact ? 12.5 : 14.5, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 3),
+            Text(message, maxLines: 2, overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: const Color(0xFF7773A6), fontSize: compact ? 10.3 : 12, height: 1.2)),
+          ],
+        )),
+        const SizedBox(width: 4),
+        Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Text(time, style: TextStyle(color: _purple, fontSize: compact ? 8 : 9.5)),
+          const SizedBox(height: 8),
+          const CircleAvatar(radius: 14,
+            backgroundColor: Color(0xFFF0E9FF),
+            child: Icon(Icons.chevron_right_rounded, color: _purple, size: 19)),
+        ]),
+      ]),
+    );
+  }
+}
 
+class _OrbitalBackdrop extends CustomPainter {
+  const _OrbitalBackdrop();
   @override
   void paint(Canvas canvas, Size size) {
-    final first = Paint()
-      ..color = _lime
-      ..strokeWidth = 3.8
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-    final second = Paint()
-      ..color = _lime
-      ..strokeWidth = 2.2
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-
-    final p1 = Path()
-      ..moveTo(1, size.height * .46)
-      ..quadraticBezierTo(
-        size.width * .45,
-        size.height * .02,
-        size.width - 1,
-        size.height * .30,
-      );
-    final p2 = Path()
-      ..moveTo(size.width * .24, size.height * .92)
-      ..quadraticBezierTo(
-        size.width * .56,
-        size.height * .54,
-        size.width * .86,
-        size.height * .66,
-      );
-    canvas.drawPath(p1, first);
-    canvas.drawPath(p2, second);
+    final bounds = Offset.zero & size;
+    canvas.drawRect(bounds, Paint()..shader = const LinearGradient(
+      begin: Alignment.topLeft, end: Alignment.bottomRight,
+      colors: [_deepPurple, _purple, _softPurple],
+      stops: [0, .55, 1],
+    ).createShader(bounds));
+    final haze = Paint()..color = const Color(0x555E20EE)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 45);
+    canvas.drawCircle(Offset(size.width * .87, size.height * .3), 125, haze);
+    final ribbons = Paint()
+      ..color = _lime.withValues(alpha: .94)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = math.max(52, size.width * .16)
+      ..strokeCap = StrokeCap.round;
+    final left = Path()
+      ..moveTo(-size.width * .22, size.height * .24)
+      ..cubicTo(size.width * .35, size.height * .16, size.width * .7, size.height * .57, size.width * .1, size.height * .51);
+    canvas.drawPath(left, ribbons);
+    final right = Path()
+      ..moveTo(size.width * 1.23, size.height * .6)
+      ..cubicTo(size.width * .69, size.height * .72, size.width * .69, size.height * .92, size.width * 1.23, size.height * 1.06);
+    canvas.drawPath(right, ribbons..color = _lime.withValues(alpha: .7));
+    final orbit = Paint()..color = Colors.white.withValues(alpha: .67)
+      ..style = PaintingStyle.stroke..strokeWidth = 1.5;
+    canvas.drawArc(Rect.fromLTWH(size.width * .53, size.height * .08,
+      size.width * .77, size.height * .36), math.pi, math.pi, false, orbit);
+    canvas.drawCircle(Offset(size.width * .78, size.height * .12), 11, Paint()..color = _lime);
+    canvas.drawCircle(Offset(size.width * .66, size.height * .57), 10, Paint()..color = _lime);
   }
+  @override bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
 
+class _LimeUnderline extends CustomPainter {
+  const _LimeUnderline();
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = _lime..strokeWidth = 3.8..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+    canvas.drawPath(Path()..moveTo(4, 10)
+      ..quadraticBezierTo(size.width * .48, 0, size.width - 5, 5), paint);
+  }
+  @override bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

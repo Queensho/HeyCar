@@ -6,12 +6,12 @@ import 'qr_backend.dart';
 
 const _bg = Color(0xFFFDFDFF);
 const _panel = Colors.white;
-const _soft = Color(0xFFF7F5FC);
-const _line = Color(0xFFE5E7EF);
-const _purple = Color(0xFF5E24F5);
-const _purple2 = Color(0xFF7A35FF);
-const _text = Color(0xFF090B18);
-const _muted = Color(0xFF747A8D);
+const _soft = Color(0xFFF1EDFF);
+const _line = Color(0xFFE1D6FF);
+const _purple = Color(0xFF651FFF);
+const _purple2 = Color(0xFF4810D8);
+const _text = Color(0xFF101426);
+const _muted = Color(0xFF686486);
 
 class RealQrScanPage extends StatefulWidget {
   const RealQrScanPage({
