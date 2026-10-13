@@ -20,7 +20,7 @@ void main() {
       expect(find.text('Park Uyarısı'), findsOneWidget);
       expect(find.text('Hasar Bildirimi'), findsOneWidget);
       expect(find.text('İletişim Talebi'), findsOneWidget);
-      expect(find.text('anında\\nbildirilsin.'), findsOneWidget);
+      expect(find.text('anında\nbildirilsin.'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.ensureVisible(find.byKey(const ValueKey('owner-welcome-login')));
       await tester.tap(find.byKey(const ValueKey('owner-welcome-login')));
