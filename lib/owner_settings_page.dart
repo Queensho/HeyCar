@@ -27,11 +27,13 @@ class OwnerSettingsPage extends StatelessWidget {
     this.onOpenVehicles,
     this.onOpenQr,
     this.onOpenNotifications,
+    this.onOpenDrivers,
   });
 
   final VoidCallback? onOpenVehicles;
   final VoidCallback? onOpenQr;
   final VoidCallback? onOpenNotifications;
+  final VoidCallback? onOpenDrivers;
 
   void _push(BuildContext context, Widget page) {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
@@ -294,13 +296,13 @@ class OwnerSettingsPage extends StatelessWidget {
             _ReferenceMenuGroup(children: [
               _ReferenceMenuItem(icon: Icons.person_outline_rounded, title: 'Hesap Bilgilerim', subtitle: 'Kişisel bilgilerinizi yönetin.', onTap: () => _push(context, const OwnerAccountSettingsPage())),
               _ReferenceMenuItem(icon: Icons.directions_car_rounded, title: 'Araçlarım', subtitle: 'Araç ekleyin, yönetin.', onTap: onOpenVehicles ?? () => _push(context, const OwnerVehicleSummaryPage())),
-              _ReferenceMenuItem(icon: Icons.groups_rounded, title: 'Sürücülerim', subtitle: 'Yetkili sürücüleri yönetin.', onTap: () => _push(context, const OwnerDriverSettingsPage())),
+              _ReferenceMenuItem(icon: Icons.groups_rounded, title: 'Sürücülerim', subtitle: 'Yetkili sürücüleri yönetin.', onTap: onOpenDrivers ?? () => _soon(context, 'Sürücü yönetimi')),
               _ReferenceMenuItem(icon: Icons.verified_user_rounded, title: 'QR Güvenliği', subtitle: 'QR koruma ve güvenlik ayarları.', onTap: () => _push(context, const OwnerPrivacySettingsPage()), last: true),
             ]),
             const SizedBox(height: 14),
             _ReferenceMenuGroup(children: [
               _ReferenceMenuItem(icon: Icons.notifications_none_rounded, title: 'Bildirim Ayarları', subtitle: 'Bildirim tercihlerinizi yönetin.', onTap: () => _push(context, const OwnerNotificationSettingsPage())),
-              _ReferenceMenuItem(icon: Icons.settings_rounded, title: 'Uygulama Ayarları', subtitle: 'Tema, dil ve diğer ayarlar.', onTap: () => _push(context, const OwnerAppSettingsPage())),
+              _ReferenceMenuItem(icon: Icons.settings_rounded, title: 'Uygulama Ayarları', subtitle: 'Tema, dil ve diğer ayarlar.', onTap: () => _push(context, const _ReferenceAppSettingsPage())),
               _ReferenceMenuItem(icon: Icons.help_outline_rounded, title: 'Yardım & Destek', subtitle: 'Sık sorulan sorular ve destek talebi.', onTap: () => _push(context, const SupportTicketPage())),
               _ReferenceMenuItem(icon: Icons.description_outlined, title: 'Hakkında', subtitle: 'Sürüm bilgisi, gizlilik politikası.', onTap: () => _push(context, const PrivacyKvkkPage()), last: true),
             ]),
@@ -907,4 +909,18 @@ class _ProfileMenuRow extends StatelessWidget {
       ],
     );
   }
+}
+
+class _ReferenceAppSettingsPage extends StatelessWidget {
+  const _ReferenceAppSettingsPage();
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('Uygulama Ayarları')),
+    body: ListView(padding: const EdgeInsets.all(16), children: [
+      const _ThemeProfileRow(),
+      ListTile(leading: const Icon(Icons.do_not_disturb_on_outlined), title: const Text('Rahatsız Etmeyin'), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OwnerDndPage()))),
+      ListTile(leading: const Icon(Icons.lock_outline_rounded), title: const Text('Gizlilik ve Güvenlik'), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OwnerPrivacySettingsPage()))),
+      ListTile(leading: const Icon(Icons.description_outlined), title: const Text('Kullanım Koşulları'), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsOfUsePage()))),
+    ]),
+  );
 }
