@@ -11,10 +11,10 @@ import 'owner_dnd_card.dart';
 import 'cepqar_theme.dart';
 
 const _bg = CepqarTheme.darkBg;
-const _panel = CepqarTheme.darkPanel;
-const _line = CepqarTheme.darkLine;
+const _panel = Color(0xFFFFFFFF);
+const _line = Color(0xFFE8EAF2);
 const _purple = Color(0xFF8B5CFF);
-const _muted = CepqarTheme.darkMuted;
+const _muted = Color(0xFF778096);
 const _baseUrl = 'https://heycar-api-185-165-46-213.nip.io';
 
 Map<String, String> get _ownerHeaders => const {};
@@ -263,7 +263,7 @@ class _OwnerAccountSettingsPageState extends State<OwnerAccountSettingsPage> {
                 child: Text(
                   editing ? 'Bilgilerini düzenle' : 'Kişisel bilgiler',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: const Color(0xFF10152D),
                     fontSize: 16,
                     fontWeight: FontWeight.w900,
                   ),
@@ -408,7 +408,7 @@ class _EditableAccountField extends StatelessWidget {
                 textCapitalization: textCapitalization,
                 autocorrect: false,
                 style: const TextStyle(
-                  color: Colors.white,
+                  color: Color(0xFF10152D),
                   fontSize: 15.5,
                   fontWeight: FontWeight.w800,
                 ),
@@ -1023,10 +1023,10 @@ class _SettingsScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        backgroundColor: CepqarTheme.bg,
+        backgroundColor: const Color(0xFFF8F9FC),
         appBar: AppBar(
-          backgroundColor: CepqarTheme.bg,
-          foregroundColor: CepqarTheme.text,
+          backgroundColor: const Color(0xFFF8F9FC),
+          foregroundColor: const Color(0xFF10152D),
           elevation: 0,
           title: Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
         ),
@@ -1065,7 +1065,7 @@ class _InfoTile extends StatelessWidget {
                   Text(
                     value,
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: Color(0xFF10152D),
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
                     ),
@@ -1170,7 +1170,7 @@ class _ActionTile extends StatelessWidget {
                         Text(
                           title,
                           style: const TextStyle(
-                            color: Colors.white,
+                            color: Color(0xFF10152D),
                             fontSize: 15.5,
                             fontWeight: FontWeight.w800,
                           ),
@@ -1183,7 +1183,7 @@ class _ActionTile extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const Icon(Icons.chevron_right_rounded, color: Colors.white54),
+                  const Icon(Icons.chevron_right_rounded, color: Color(0xFF778096)),
                 ],
               ),
             ),
