@@ -833,79 +833,71 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     _=>const Color(0xFF713BFF),
   };
 
-  Widget _valetVehicleCard(Map<String,dynamic> s){
-    final status='${s['status']??'parked'}';
-    final venue='${s['business_name']??'CepQontag Vale'}'.trim();
-    final accent=_valetAccent(status);
-    final canRequest=status=='parked'||status=='accepted';
-    final showDeliveryCode=(status=='requested'||status=='retrieving'||status=='ready')&&valetDeliveryCode.isNotEmpty;
-    final buttonText=valetRequesting
-      ?'Gönderiliyor...'
-      :showDeliveryCode
-        ?'Teslimat Kodu • $valetDeliveryCode'
-        :status=='ready'
-          ?'Teslime Hazır'
-          :status=='retrieving'||status=='requested'
-            ?'Araç Getiriliyor'
-            :'Araç Çağır';
-
+  Widget _valetVehicleCard(Map<String,dynamic> session){
+    final status='${session['status']??'parked'}';
+    final venue='${session['business_name']??'CepQontag Vale'}'.trim();
+    final canRequest=status=='parked';
+    final title=status=='accepted'?'Aracınız teslim alındı':'Aracınız valede';
+    final buttonText=valetRequesting?'Gönderiliyor...':switch(status){
+      'requested'=>'Talep Gönderildi',
+      'retrieving'=>'Araç Geliyor',
+      'ready'=>'Aracınız Hazır',
+      'accepted'=>'Park ediliyor',
+      _=>'Araç Çağır',
+    };
+    const purple=Color(0xFF651FFF);
+    const lime=Color(0xFFBEFF32);
     return Container(
-      height:140,
-      padding:const EdgeInsets.fromLTRB(11,8,10,7),
+      clipBehavior:Clip.antiAlias,
       decoration:BoxDecoration(
-        color:panel,
-        borderRadius:BorderRadius.circular(18),
-        border:Border.all(color:accent.withValues(alpha:light ? .34 : .48)),
-        boxShadow:light&&!kIsWeb?[BoxShadow(color:accent.withValues(alpha:.06),blurRadius:10,offset:const Offset(0,4))]:null,
+        color:lime,borderRadius:BorderRadius.circular(24),
+        boxShadow:light?[BoxShadow(color:purple.withValues(alpha:.12),blurRadius:16,offset:const Offset(0,5))]:null,
       ),
-      child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-        Row(children:[
-          Container(
-            width:28,height:28,
-            decoration:BoxDecoration(color:accent.withValues(alpha:light ? .10 : .18),borderRadius:BorderRadius.circular(9)),
-            child:Icon(Icons.support_agent_rounded,color:accent,size:17),
-          ),
-          const SizedBox(width:7),
-          Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-            Text('VALE',style:TextStyle(color:accent,fontSize:CepqarTheme.caption,fontWeight:FontWeight.w900,letterSpacing:.6)),
-            Text(venue.isEmpty?'CepQontag Vale':venue,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:text,fontSize:CepqarTheme.bodySmall,fontWeight:FontWeight.w900)),
-          ])),
-          Container(
-            padding:const EdgeInsets.symmetric(horizontal:6,vertical:3),
-            decoration:BoxDecoration(color:accent.withValues(alpha:light ? .10 : .16),borderRadius:BorderRadius.circular(18)),
-            child:Text(_valetBadge(status),style:TextStyle(color:accent,fontSize:CepqarTheme.caption,fontWeight:FontWeight.w900)),
-          ),
-        ]),
-        const SizedBox(height:4),
-        Text(_valetStatusTitle(status),maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:text,fontSize:CepqarTheme.body,fontWeight:FontWeight.w900)),
-        const SizedBox(height:4),
-        _valetTimeline(status,accent),
-        const SizedBox(height:4),
-        SizedBox(
-          width:double.infinity,
-          height:26,
-          child:FilledButton.icon(
-            onPressed:canRequest&&!valetRequesting?_requestValetVehicle:null,
-            style:FilledButton.styleFrom(
-              backgroundColor:accent,
-              disabledBackgroundColor:accent.withValues(alpha:light ? .12 : .18),
-              disabledForegroundColor:light?muted:const Color(0xFFC3CAD8),
-              foregroundColor:Colors.white,
-              padding:const EdgeInsets.symmetric(horizontal:8),
-              shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(10)),
+      child:Stack(children:[
+        Positioned.fill(child:ClipPath(clipper:const _PremiumHomePurpleClip(),child:const ColoredBox(color:purple))),
+        Padding(
+          padding:const EdgeInsets.all(13),
+          child:Column(mainAxisSize:MainAxisSize.min,children:[
+            Row(children:[
+              Container(width:39,height:39,decoration:BoxDecoration(color:Colors.white.withValues(alpha:.19),borderRadius:BorderRadius.circular(12)),
+                child:const Icon(Icons.support_agent_rounded,color:Colors.white,size:23)),
+              const SizedBox(width:9),
+              Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                const Text('VALE',style:TextStyle(color:Colors.white,fontSize:16,fontWeight:FontWeight.w900,letterSpacing:1)),
+                Text(venue.isEmpty?'CepQontag Vale':venue,maxLines:1,overflow:TextOverflow.ellipsis,
+                  style:const TextStyle(color:Colors.white,fontSize:12,fontWeight:FontWeight.w700)),
+              ])),
+              Container(padding:const EdgeInsets.symmetric(horizontal:9,vertical:6),
+                decoration:BoxDecoration(color:Colors.white.withValues(alpha:.87),borderRadius:BorderRadius.circular(18)),
+                child:Text(_valetBadge(status),maxLines:1,style:const TextStyle(color:purple,fontSize:9,fontWeight:FontWeight.w900))),
+              const SizedBox(width:6),
+              const CircleAvatar(radius:15,backgroundColor:purple,child:Icon(Icons.arrow_forward_rounded,color:Colors.white,size:17)),
+            ]),
+            const SizedBox(height:14),
+            Container(
+              width:double.infinity,padding:const EdgeInsets.all(13),
+              decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(18)),
+              child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                Text(title,style:const TextStyle(color:Color(0xFF251A45),fontSize:16,fontWeight:FontWeight.w900)),
+                const SizedBox(height:15),
+                _valetTimeline(status,purple),
+                const SizedBox(height:15),
+                SizedBox(width:double.infinity,height:44,child:FilledButton.icon(
+                  onPressed:canRequest&&!valetRequesting?_requestValetVehicle:null,
+                  style:FilledButton.styleFrom(backgroundColor:purple,foregroundColor:Colors.white,
+                    disabledBackgroundColor:const Color(0xFFECE5FA),disabledForegroundColor:purple,
+                    shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(13))),
+                  icon:valetRequesting?const SizedBox(width:17,height:17,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)):
+                    const Icon(Icons.directions_car_filled_rounded,size:19),
+                  label:Text(buttonText,style:const TextStyle(fontSize:13,fontWeight:FontWeight.w900)),
+                )),
+                if(valetDeliveryCode.isNotEmpty&&['requested','retrieving','ready'].contains(status))...[
+                  const SizedBox(height:9),
+                  Text('Teslimat kodu: $valetDeliveryCode',style:const TextStyle(color:purple,fontSize:12,fontWeight:FontWeight.w800)),
+                ],
+              ]),
             ),
-            icon:Icon(
-              showDeliveryCode
-                ?Icons.password_rounded
-                :status=='ready'
-                  ?Icons.check_circle_rounded
-                  :status=='retrieving'||status=='requested'
-                    ?Icons.directions_car_filled_rounded
-                    :Icons.directions_car_rounded,
-              size:14,
-            ),
-            label:Text(buttonText,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:CepqarTheme.bodySmall,fontWeight:FontWeight.w900)),
-          ),
+          ]),
         ),
       ]),
     );
