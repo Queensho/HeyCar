@@ -218,7 +218,9 @@ class OwnerSettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const navy = Color(0xFF10152D);
-    return Scaffold(
+    return Theme(
+      data: Theme.of(context).copyWith(brightness: Brightness.light, scaffoldBackgroundColor: const Color(0xFFF8F9FC), colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF651FFF), brightness: Brightness.light)),
+      child: Scaffold(
       backgroundColor: const Color(0xFFF8F9FC),
       body: SafeArea(
         bottom: false,
@@ -323,6 +325,7 @@ class OwnerSettingsPage extends StatelessWidget {
           ],
         ),
       ),
+      ),
     );
   }
 }
@@ -421,15 +424,15 @@ class _ProfileBrandHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final light = CepqarTheme.isLight;
-    final text = CepqarTheme.text;
-    final line = CepqarTheme.line;
+    const light = true;
+    const text = Color(0xFF10152D);
+    const line = Color(0xFFEDEEF3);
 
     return Row(
       children: [
         Image.asset(
-          CepqarTheme.isLight ? 'assets/file_00000000b130820abb8d411e67ab0d25.png' : 'assets/Logoyeni.png',
-          key: ValueKey(CepqarTheme.isLight),
+          'assets/file_00000000b130820abb8d411e67ab0d25.png',
+          key: const ValueKey('profile-light-logo'),
           height: 31,
           fit: BoxFit.contain,
           alignment: Alignment.centerLeft,
