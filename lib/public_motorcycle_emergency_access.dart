@@ -50,12 +50,14 @@ class PublicMotorcycleEmergencyAccess extends StatelessWidget {
     required this.loading,
     this.card,
     this.error,
+    this.vehicleType='Motosiklet',
   });
 
   final VoidCallback onReveal;
   final bool loading;
   final Map<String,dynamic>? card;
   final String? error;
+  final String vehicleType;
 
   @override
   Widget build(BuildContext context) {
@@ -63,66 +65,73 @@ class PublicMotorcycleEmergencyAccess extends StatelessWidget {
     return Column(
       crossAxisAlignment:CrossAxisAlignment.stretch,
       children:[
-        if(!available)
-          Container(
-            key:const ValueKey('emergency-access-panel'),
-            padding:const EdgeInsets.all(15),
-            decoration:BoxDecoration(
-              color:const Color(0xFFFFF3F5),
-              borderRadius:BorderRadius.circular(17),
-              border:Border.all(color:const Color(0xFFEDBAC4)),
-            ),
-            child:Column(
-              crossAxisAlignment:CrossAxisAlignment.start,
-              children:[
-                const Row(children:[
-                  Icon(Icons.emergency_rounded,
-                    color:Color(0xFFC52B50),size:25),
-                  SizedBox(width:9),
-                  Expanded(child:Text(
-                    'Motosiklet • Acil Durum Bilgileri',
-                    style:TextStyle(fontWeight:FontWeight.w900,
-                      color:Color(0xFF17213B),fontSize:15),
-                  )),
-                ]),
-                const SizedBox(height:8),
-                const Text(
-                  'Sürücünün paylaşmayı seçtiği acil durum bilgileri, '
-                  'yalnızca geçerli QR taraması doğrulandıktan sonra gösterilir.',
-                  style:TextStyle(color:Color(0xFF576175),
-                    fontSize:12.5,height:1.4),
+        Material(
+          key:const ValueKey('emergency-access-panel'),
+          color:Colors.white,
+          borderRadius:BorderRadius.circular(24),
+          elevation:3,
+          shadowColor:const Color(0x270C034A),
+          child:InkWell(
+            key:const ValueKey('emergency-access-open'),
+            onTap:loading||available?null:onReveal,
+            borderRadius:BorderRadius.circular(24),
+            child:Container(
+              constraints:const BoxConstraints(minHeight:76),
+              padding:const EdgeInsets.symmetric(horizontal:13,vertical:8),
+              child:Row(children:[
+                Container(
+                  width:60,height:60,
+                  decoration:BoxDecoration(
+                    color:const Color(0xFFF3EDFF),
+                    borderRadius:BorderRadius.circular(19)),
+                  child:Stack(alignment:Alignment.center,children:[
+                    const Icon(Icons.shield_rounded,
+                      color:Color(0xFF651FFF),size:39),
+                    const Icon(Icons.add_rounded,
+                      color:Colors.white,size:21),
+                  ]),
                 ),
-                if(error!=null&&error!.isNotEmpty)...[
-                  const SizedBox(height:10),
-                  Text(error!,key:const ValueKey('emergency-access-error'),
-                    style:const TextStyle(color:Color(0xFFA72243),
-                      fontWeight:FontWeight.w700,fontSize:12.5,height:1.4)),
-                ],
-                const SizedBox(height:12),
-                SizedBox(
-                  width:double.infinity,
-                  child:FilledButton.icon(
-                    key:const ValueKey('emergency-access-open'),
-                    onPressed:loading?null:onReveal,
-                    style:FilledButton.styleFrom(
-                      backgroundColor:const Color(0xFFC52B50),
-                      foregroundColor:Colors.white,
-                      padding:const EdgeInsets.symmetric(vertical:13),
-                    ),
-                    icon:loading
-                      ?const SizedBox(width:18,height:18,child:
-                        CircularProgressIndicator(strokeWidth:2,
-                          color:Colors.white))
-                      :const Icon(Icons.health_and_safety_rounded),
-                    label:Text(loading?'Doğrulanıyor...':
-                      'Acil Durum Bilgilerini Göster'),
-                  ),
+                const SizedBox(width:14),
+                Expanded(child:Column(
+                  crossAxisAlignment:CrossAxisAlignment.start,
+                  mainAxisSize:MainAxisSize.min,
+                  children:[
+                    const Text('Acil Durum Bilgileri',
+                      style:TextStyle(color:Color(0xFF10152D),
+                        fontSize:16,height:1.12,fontWeight:FontWeight.w900)),
+                    const SizedBox(height:5),
+                    Text('$vehicleType • Sürücünün paylaştığı bilgiler',
+                      maxLines:2,overflow:TextOverflow.ellipsis,
+                      style:const TextStyle(color:Color(0xFF778096),
+                        fontSize:12,height:1.2,fontWeight:FontWeight.w500)),
+                  ],
+                )),
+                const SizedBox(width:8),
+                CircleAvatar(
+                  radius:21,backgroundColor:const Color(0xFFB9FF45),
+                  child:loading
+                    ?const SizedBox(width:18,height:18,
+                      child:CircularProgressIndicator(strokeWidth:2,
+                        color:Color(0xFF10152D)))
+                    :Icon(available?Icons.check_rounded:Icons.arrow_forward_rounded,
+                      color:const Color(0xFF10152D),size:26),
                 ),
-              ],
+              ]),
             ),
           ),
+        ),
+        if(error!=null&&error!.isNotEmpty)
+          Padding(
+            padding:const EdgeInsets.fromLTRB(10,9,10,0),
+            child:Text(error!,key:const ValueKey('emergency-access-error'),
+              style:const TextStyle(color:Colors.white,fontSize:12.5,
+                fontWeight:FontWeight.w700,height:1.35)),
+          ),
         if(available)
-          PublicMotorcycleEmergencyCard(card:card!),
+          Padding(
+            padding:const EdgeInsets.only(top:10),
+            child:PublicMotorcycleEmergencyCard(card:card!),
+          ),
       ],
     );
   }
