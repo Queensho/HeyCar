@@ -833,6 +833,52 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     _=>const Color(0xFF713BFF),
   };
 
+  bool _valetCodeRefreshing=false;
+
+  Future<void> _refreshValetDeliveryCode()async{
+    final vehicleId=QrDraft.vehicleId.trim();
+    if(vehicleId.isEmpty||_valetCodeRefreshing)return;
+    final status='${valetSession?['status']??''}';
+    if(!['requested','retrieving','ready'].contains(status))return;
+    final confirm=await showDialog<bool>(context:context,builder:(dialogContext)=>AlertDialog(
+      title:const Text('Yeni teslimat kodu'),
+      content:const Text('Yeni kod oluşturulduğunda eski kod geçersiz olacak. Kodu yalnızca aracı teslim alırken valeye söyleyin.'),
+      actions:[
+        TextButton(onPressed:()=>Navigator.pop(dialogContext,false),child:const Text('Vazgeç')),
+        FilledButton(onPressed:()=>Navigator.pop(dialogContext,true),child:const Text('Yeni Kod Oluştur')),
+      ],
+    ));
+    if(confirm!=true||!mounted)return;
+    setState(()=>_valetCodeRefreshing=true);
+    try{
+      final r=await OwnerHttp.post(
+        Uri.parse('${OnboardingBackend.baseUrl}/api/owner/valet/$vehicleId/delivery-code'),
+        body:jsonEncode(<String,dynamic>{}),
+      );
+      final data=r.body.isEmpty?null:jsonDecode(r.body);
+      final code=data is Map?'${data['deliveryCode']??''}':'';
+      final sessionId=data is Map?'${data['sessionId']??''}':'';
+      if(r.statusCode>=200&&r.statusCode<300&&RegExp(r'^\\d{4}$').hasMatch(code)&&sessionId.isNotEmpty){
+        final prefs=await SharedPreferences.getInstance();
+        await prefs.setString('owner_valet_delivery_code_$vehicleId',code);
+        await prefs.setString('owner_valet_delivery_session_$vehicleId',sessionId);
+        if(mounted){
+          setState(()=>valetDeliveryCode=code);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content:Text('Yeni teslimat kodu oluşturuldu. Eski kod geçersiz.')));
+        }
+      }else if(mounted){
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content:Text('Yeni kod oluşturulamadı. Tekrar deneyin.')));
+      }
+    }catch(_){
+      if(mounted)ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content:Text('Bağlantı hatası. Yeni kod oluşturulamadı.')));
+    }finally{
+      if(mounted)setState(()=>_valetCodeRefreshing=false);
+    }
+  }
+
   Widget _valetVehicleCard(Map<String,dynamic> session){
     final status='${session['status']??'parked'}';
     final venue='${session['business_name']??'CepQontag Vale'}'.trim();
@@ -885,8 +931,20 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                 Row(children:[
                   Expanded(child:Text(_valetStatusTitle(status),maxLines:1,overflow:TextOverflow.ellipsis,
                     style:const TextStyle(color:Color(0xFF1C1731),fontSize:11,fontWeight:FontWeight.w900))),
-                  if(valetDeliveryCode.isNotEmpty&&['requested','retrieving','ready'].contains(status))
-                    Text('Kod: $valetDeliveryCode',style:const TextStyle(color:purple,fontSize:9,fontWeight:FontWeight.w900)),
+                  if(['requested','retrieving','ready'].contains(status))
+                    InkWell(
+                      onTap:_valetCodeRefreshing?null:_refreshValetDeliveryCode,
+                      borderRadius:BorderRadius.circular(8),
+                      child:Padding(
+                        padding:const EdgeInsets.symmetric(horizontal:3,vertical:2),
+                        child:Row(mainAxisSize:MainAxisSize.min,children:[
+                          Text(valetDeliveryCode.isEmpty?'Yeni Kod': 'Kod: $valetDeliveryCode',
+                            style:const TextStyle(color:purple,fontSize:9,fontWeight:FontWeight.w900)),
+                          const SizedBox(width:3),
+                          Icon(Icons.refresh_rounded,color:purple,size:14),
+                        ]),
+                      ),
+                    ),
                 ]),
                 const Spacer(),
                 _valetCompactTimeline(status,purple),
