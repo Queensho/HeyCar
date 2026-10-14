@@ -297,7 +297,7 @@ class OwnerSettingsPage extends StatelessWidget {
             const SizedBox(height: 14),
             _ReferenceMenuGroup(children: [
               _ReferenceMenuItem(icon: Icons.person_outline_rounded, title: 'Hesap Bilgilerim', subtitle: 'Kişisel bilgilerinizi yönetin.', onTap: () => _push(context, const OwnerAccountSettingsPage())),
-              _ReferenceMenuItem(icon: Icons.directions_car_rounded, title: 'Araçlarım', subtitle: 'Araç ekleyin, yönetin.', onTap: onOpenVehicles ?? () => _push(context, const OwnerVehicleSummaryPage())),
+              _ReferenceMenuItem(icon: Icons.directions_car_rounded, title: 'Araçlarım', subtitle: 'Araç ekleyin, yönetin.', onTap: onOpenVehicles ?? () => _push(context, OwnerVehicleSummaryPage())),
               _ReferenceMenuItem(icon: Icons.groups_rounded, title: 'Sürücülerim', subtitle: 'Yetkili sürücüleri yönetin.', onTap: onOpenDrivers ?? () => _soon(context, 'Sürücü yönetimi')),
               _ReferenceMenuItem(icon: Icons.verified_user_rounded, title: 'QR Güvenliği', subtitle: 'QR koruma ve güvenlik ayarları.', onTap: () => _push(context, const OwnerPrivacySettingsPage()), last: true),
             ]),
