@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:html' as html;
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'owner_vehicle_brand_mark.dart';
 import 'package:http/http.dart' as http;
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'public_theme_backend.dart';
@@ -452,19 +454,21 @@ class _PublicHomeState extends State<_PublicHome>{
   }
 
   @override
-  Widget build(BuildContext context)
-  {
+  Widget build(BuildContext context){
     final size=MediaQuery.sizeOf(context);
-    final compact=size.width<390||size.height<760;
-    final short=size.height<700;
-    final pagePad=compact?14.0:17.0;
-    final publicMessage=widget.theme.publicMessage.trim().isEmpty
-        ? 'Numaram gizli,\nyolun açık.'
-        : widget.theme.publicMessage.trim();
-
+    final narrow=size.width<360;
+    final pagePad=narrow?14.0:18.0;
+    final make=(widget.vehicle['make']??widget.vehicle['brand']??'').toString().trim();
+    // The public QR API is the only source for displayed identity. Never
+    // substitute a locally cached or owner-side registration number.
+    final hidden=widget.vehicle['hide_plate']==true||
+      widget.vehicle['plate_hidden']==true||
+      widget.vehicle['show_plate']==false;
+    final visiblePlate=hidden?'Gizli Plaka':plate;
+    final logoAsset=VehicleBrandMarkResolver.assetFor(make);
     return Scaffold(
       key:scaffoldKey,
-      backgroundColor:Colors.white,
+      backgroundColor:const Color(0xFF4912C8),
       endDrawer:_VisitorMenu(
         onAbout:()=>_openMenuPage(const HeyCarAboutPage()),
         onHow:()=>_openMenuPage(const HeyCarHowPage()),
@@ -474,222 +478,152 @@ class _PublicHomeState extends State<_PublicHome>{
         onHelp:()=>_openMenuPage(const HeyCarHelpPage()),
         onOwner:()=>_openMenuPage(const HeyCarOwnerPage()),
       ),
-      body:SafeArea(
-        bottom:false,
-        child:Center(
-          child:ConstrainedBox(
-            constraints:const BoxConstraints(maxWidth:430),
-            child:ListView(
-              padding:EdgeInsets.zero,
-              children:[
-                Padding(
-                  padding:EdgeInsets.fromLTRB(pagePad,10,pagePad,12),
-                  child:_PublicHomeTopBar(compact:compact,onMenu:()=>scaffoldKey.currentState?.openEndDrawer()),
-                ),
-                Padding(
-                  padding:EdgeInsets.symmetric(horizontal:pagePad),
-                  child:Container(
-                    width:double.infinity,
-                    padding:EdgeInsets.fromLTRB(compact?16:20,22,compact?16:20,20),
-                    decoration:BoxDecoration(
-                      gradient:const LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,
-                        colors:[Color(0xFF7935FA),Color(0xFF4912C8)]),
-                      borderRadius:BorderRadius.circular(22),
-                    ),
-                    child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-                      const Text('ARAÇ SAHİBİNE ULAŞ',
-                        style:TextStyle(color:Color(0xFFE5D8FF),fontSize:11,fontWeight:FontWeight.w800,letterSpacing:2)),
-                      const SizedBox(height:12),
-                      const Text('Bana ulaşmak',style:TextStyle(color:Colors.white,fontSize:29,fontWeight:FontWeight.w900,height:1.08)),
-                      const Text('çok kolay',style:TextStyle(color:Color(0xFFB9FF45),fontSize:31,fontWeight:FontWeight.w900,height:1.1)),
-                      Container(width:135,height:3,margin:const EdgeInsets.only(top:4),color:const Color(0xFFB9FF45)),
-                      const SizedBox(height:15),
-                      Text(publicMessage,maxLines:3,overflow:TextOverflow.ellipsis,
-                        style:const TextStyle(color:Colors.white,fontSize:14.5,height:1.35)),
-                      const SizedBox(height:18),
-                      Container(
-                        padding:const EdgeInsets.symmetric(horizontal:12,vertical:10),
-                        decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(15)),
-                        child:const Row(children:[
-                          Icon(Icons.chat_bubble_rounded,color:Color(0xFF651FFF),size:22),
-                          SizedBox(width:11),
-                          Expanded(child:Text('Merhaba, aracınızla ilgili bir durum var.',
-                            style:TextStyle(color:Color(0xFF10152D),fontSize:12.5,fontWeight:FontWeight.w700))),
-                        ]),
-                      ),
-                    ]),
-                  ),
-                ),
+      body:Stack(children:[
+        const Positioned.fill(child:DecoratedBox(decoration:BoxDecoration(
+          gradient:LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,
+            colors:[Color(0xFF651FFF),Color(0xFF4912C8),Color(0xFF651FFF)])))),
+        Positioned(left:-155,top:195,child:IgnorePointer(child:
+          Transform.rotate(angle:-.65,child:SizedBox(width:245,height:400,
+            child:DecoratedBox(decoration:BoxDecoration(color:Color(0xFFB9FF45),
+              borderRadius:BorderRadius.all(Radius.circular(130)))))))),
+        const Positioned(right:-185,bottom:-120,child:IgnorePointer(child:
+          SizedBox(width:340,height:500,child:DecoratedBox(decoration:BoxDecoration(
+            border:Border.fromBorderSide(BorderSide(color:Color(0xFFB9FF45),width:52)),
+            borderRadius:BorderRadius.all(Radius.circular(240))))))),
+        const Positioned(right:22,top:250,child:IgnorePointer(child:
+          CircleAvatar(radius:9,backgroundColor:Color(0xFFB9FF45)))),
+        const Positioned(left:28,bottom:170,child:IgnorePointer(child:
+          CircleAvatar(radius:12,backgroundColor:Color(0xFFB9FF45)))),
+        SafeArea(child:Center(child:ConstrainedBox(
+          constraints:const BoxConstraints(maxWidth:460),
+          child:ListView(
+            padding:EdgeInsets.fromLTRB(pagePad,12,pagePad,24),
+            children:[
+              Row(children:[
+                Expanded(child:Align(alignment:Alignment.centerLeft,
+                  child:ColorFiltered(
+                    colorFilter:const ColorFilter.mode(Colors.white,BlendMode.srcIn),
+                    child:Image.asset('assets/file_00000000b130820abb8d411e67ab0d25.png',
+                      height:narrow?28:34,fit:BoxFit.contain)))),
+                const SizedBox(width:7),
+                Container(padding:EdgeInsets.symmetric(horizontal:narrow?9:12,vertical:10),
+                  decoration:BoxDecoration(color:const Color(0xFF7333EF),
+                    borderRadius:BorderRadius.circular(30),
+                    border:Border.all(color:const Color(0xFF9360FF))),
+                  child:Row(mainAxisSize:MainAxisSize.min,children:[
+                    const Icon(Icons.lock_rounded,color:Colors.white,size:17),
+                    const SizedBox(width:6),
+                    Text('Anonim iletişim',style:TextStyle(color:Colors.white,
+                      fontSize:narrow?10:12,fontWeight:FontWeight.w800)),
+                  ])),
+                const SizedBox(width:4),
+                SizedBox(width:28,height:32,child:IconButton(
+                  onPressed:()=>scaffoldKey.currentState?.openEndDrawer(),
+                  padding:EdgeInsets.zero,
+                  icon:const Icon(Icons.menu_rounded,color:Colors.white,size:23))),
+              ]),
+              const SizedBox(height:22),
+              Container(
+                padding:EdgeInsets.all(narrow?12:14),
+                decoration:BoxDecoration(
+                  gradient:const LinearGradient(colors:[Color(0xFF7833F1),Color(0xFF5D1CDD)]),
+                  borderRadius:BorderRadius.circular(25),
+                  border:Border.all(color:const Color(0xFF9463FF),width:1),
+                  boxShadow:const [BoxShadow(color:Color(0x300F0750),blurRadius:16,offset:Offset(0,6))]),
+                child:Row(children:[
+                  Container(width:narrow?65:75,height:narrow?65:75,
+                    padding:const EdgeInsets.all(11),
+                    decoration:BoxDecoration(color:const Color(0xFF5621BD),
+                      borderRadius:BorderRadius.circular(19)),
+                    child:logoAsset==null
+                      ?const Icon(Icons.directions_car_filled_rounded,color:Color(0xFFB9FF45),size:42)
+                      :SvgPicture.asset(logoAsset,fit:BoxFit.contain,
+                        colorFilter:const ColorFilter.mode(Color(0xFFB9FF45),BlendMode.srcIn))),
+                  const SizedBox(width:12),
+                  Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                    Text(visiblePlate,maxLines:1,overflow:TextOverflow.ellipsis,
+                      style:TextStyle(color:Colors.white,fontSize:narrow?18:21,fontWeight:FontWeight.w900)),
+                    const SizedBox(height:3),
+                    Text(make.isEmpty?'Araç':make,maxLines:1,overflow:TextOverflow.ellipsis,
+                      style:TextStyle(color:const Color(0xFFE3D5FF),fontSize:narrow?12:14)),
+                  ])),
+                  const SizedBox(width:4),
+                  const CircleAvatar(radius:14,backgroundColor:Color(0xFFB9FF45),
+                    child:Icon(Icons.check_rounded,color:Color(0xFF4912C8),size:20)),
+                  if(!narrow)...[
+                    const SizedBox(width:6),
+                    const Text('QR doğrulandı',style:TextStyle(color:Colors.white,
+                      fontSize:10,fontWeight:FontWeight.w700)),
+                  ],
+                ]),
+              ),
+              const SizedBox(height:16),
+              _VisitorActionRow(title:'Aracınızı çekebilir misiniz?',
+                icon:Icons.local_parking_rounded,
+                iconColor:const Color(0xFF651FFF),iconBg:const Color(0xFFFFE9DD),
+                onTap:()=>_compose(context,'Aracınızı çekebilir misiniz?')),
+              const SizedBox(height:10),
+              _VisitorActionRow(title:'Aracınızda hasar var.',
+                icon:Icons.warning_rounded,
+                iconColor:const Color(0xFFED1450),iconBg:const Color(0xFFFFE5EF),
+                onTap:()=>_compose(context,'Aracınızda hasar var')),
+              const SizedBox(height:10),
+              _VisitorActionRow(title:'Farlarınız açık kalmış.',
+                icon:Icons.highlight_rounded,
+                iconColor:const Color(0xFF1165EB),iconBg:const Color(0xFFE4EBFF),
+                onTap:()=>_compose(context,'Farlarınız açık')),
+              const SizedBox(height:10),
+              _VisitorActionRow(title:'Diğer mesaj.',
+                icon:Icons.chat_bubble_outline_rounded,
+                iconColor:const Color(0xFF1BA64A),iconBg:const Color(0xFFE2F8E1),
+                onTap:()=>_compose(context,'Diğer mesaj')),
+              if(showEmergencyAccess)...[
                 const SizedBox(height:12),
-                Transform.translate(
-                  offset:Offset.zero,
-                  child:Padding(
-                    padding:EdgeInsets.symmetric(horizontal:pagePad),
-                    child:Column(
-                      children:[
-                        GridView.count(
-                          shrinkWrap:true,
-                          physics:const NeverScrollableScrollPhysics(),
-                          crossAxisCount:2,
-                          mainAxisSpacing:8,
-                          crossAxisSpacing:8,
-                          childAspectRatio:short?1.05:(compact?1.12:1.14),
-                          children:[
-                            _ReferenceActionCard(
-                              title:'Aracınızı\nçekebilir misiniz?',
-                              subtitle:'Acil durumda\nbeni arayın.',
-                              icon:Icons.phone_rounded,
-                              iconColor:const Color(0xFF057B24),
-                              iconBg:const Color(0xFFE9FFD7),
-                              cardColors:const [Color(0xFFF8FFF0),Color(0xFFF3FFE8)],
-                              arrowColor:const Color(0xFF158126),
-                              arrowBg:const Color(0xFFE8FFD2),
-                              onTap:()=>_startCall(context),
-                            ),
-                            _ReferenceActionCard(
-                              title:'Farlarınız açık\nkalmış.',
-                              subtitle:'Önemli bir durumu\nbildirin.',
-                              icon:Icons.lightbulb_rounded,
-                              iconColor:_violet,
-                              iconBg:const Color(0xFFF2E9FF),
-                              cardColors:const [Color(0xFFFCF9FF),Color(0xFFF8F2FF)],
-                              arrowColor:_violet,
-                              arrowBg:const Color(0xFFF0E7FF),
-                              onTap:()=>_compose(context,'Farlarınız açık'),
-                            ),
-                            _ReferenceActionCard(
-                              title:'Aracınızda\nhasar var.',
-                              subtitle:'Size bilgi vermek\nistiyorum.',
-                              icon:Icons.warning_amber_rounded,
-                              iconColor:const Color(0xFFE0152A),
-                              iconBg:const Color(0xFFFFEBEF),
-                              cardColors:const [Color(0xFFFFF8F8),Color(0xFFFFF0F1)],
-                              arrowColor:const Color(0xFFC91A2D),
-                              arrowBg:const Color(0xFFFFE5E9),
-                              onTap:()=>_compose(context,'Aracınızda hasar var'),
-                            ),
-                            _ReferenceActionCard(
-                              title:'Diğer mesaj',
-                              subtitle:'Anonim mesaj\nbırakın.',
-                              icon:Icons.chat_rounded,
-                              iconColor:const Color(0xFF1764E8),
-                              iconBg:const Color(0xFFE8F1FF),
-                              cardColors:const [Color(0xFFF8FCFF),Color(0xFFF0F7FF)],
-                              arrowColor:const Color(0xFF1460E4),
-                              arrowBg:const Color(0xFFE6F0FF),
-                              onTap:()=>_compose(context,'Diğer mesaj'),
-                            ),
-                          ],
-                        ),
-                        if(showEmergencyAccess)...[
-                          const SizedBox(height:10),
-                          PublicMotorcycleEmergencyAccess(
-                            loading:emergencyLoading,
-                            error:emergencyError,
-                            card:emergencyCard,
-                            onReveal:_loadEmergencyCard,
-                          ),
-                        ],
-                        const SizedBox(height:8),
-                        InkWell(
-                          borderRadius:BorderRadius.circular(15),
-                          onTap:()=>_startCall(context),
-                          child:Container(
-                            height:short?46:(compact?50:54),
-                            padding:const EdgeInsets.symmetric(horizontal:11),
-                            decoration:BoxDecoration(
-                              color:const Color(0xFF0B1B3B),
-                              borderRadius:BorderRadius.circular(15),
-                              boxShadow:const [BoxShadow(color:Color(0x18071A3C),blurRadius:16,offset:Offset(0,7))],
-                            ),
-                            child:Row(
-                              children:[
-                                Container(
-                                  width:short?32:36,height:short?32:36,
-                                  decoration:BoxDecoration(
-                                    color:const Color(0xFF192D5D),
-                                    borderRadius:BorderRadius.circular(10),
-                                  ),
-                                  child:Icon(Icons.phone_rounded,color:Colors.white,size:short?18:21),
-                                ),
-                                const SizedBox(width:9),
-                                const Expanded(
-                                  child:Column(
-                                    mainAxisAlignment:MainAxisAlignment.center,
-                                    crossAxisAlignment:CrossAxisAlignment.start,
-                                    children:[
-                                      Text('Gizli arama',style:TextStyle(color:Colors.white,fontSize:13.5,fontWeight:FontWeight.w900)),
-                                      SizedBox(height:2),
-                                      Text('Numaranız karşı tarafa gösterilmez.',maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:Color(0xFFB7C1D8),fontSize:9.4,fontWeight:FontWeight.w500)),
-                                    ],
-                                  ),
-                                ),
-                                const Icon(Icons.chevron_right_rounded,color:Colors.white,size:22),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height:8),
-                        InkWell(
-                          borderRadius:BorderRadius.circular(15),
-                          onTap:()=>html.window.location.href=Uri.base.resolve('app/').toString(),
-                          child:Container(
-                            height:short?50:(compact?54:58),
-                            padding:const EdgeInsets.symmetric(horizontal:11),
-                            decoration:BoxDecoration(
-                              gradient:const LinearGradient(
-                                colors:[Color(0xFFB9FF45),Color(0xFFB9FF45)],
-                              ),
-                              borderRadius:BorderRadius.circular(17),
-                              boxShadow:const [BoxShadow(color:Color(0x2798E915),blurRadius:18,offset:Offset(0,7))],
-                            ),
-                            child:Row(
-                              children:[
-                                Container(
-                                  width:short?34:38,height:short?34:38,
-                                  decoration:BoxDecoration(
-                                    color:Colors.black.withValues(alpha:.08),
-                                    borderRadius:BorderRadius.circular(10),
-                                  ),
-                                  child:Icon(Icons.person_add_alt_1_rounded,color:Colors.black,size:short?19:22),
-                                ),
-                                const SizedBox(width:12),
-                                const Expanded(
-                                  child:Column(
-                                    mainAxisAlignment:MainAxisAlignment.center,
-                                    crossAxisAlignment:CrossAxisAlignment.start,
-                                    children:[
-                                      Text("Sen de CepQontag'a Katıl",style:TextStyle(color:Colors.black,fontSize:13.2,fontWeight:FontWeight.w900)),
-                                      SizedBox(height:2),
-                                      Text('Aracını ekle, sen de bu kolaylığı yaşa.',maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:Color(0xFF3D5712),fontSize:9.2,fontWeight:FontWeight.w600)),
-                                    ],
-                                  ),
-                                ),
-                                const Icon(Icons.chevron_right_rounded,color:Colors.black,size:22),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height:9),
-                        const Row(
-                          mainAxisAlignment:MainAxisAlignment.center,
-                          children:[
-                            Icon(Icons.shield_rounded,color:Color(0xFF677596),size:15),
-                            SizedBox(width:7),
-                            Text('Kişisel bilgileriniz gizli kalır.',style:TextStyle(color:Color(0xFF67718A),fontSize:10,fontWeight:FontWeight.w500)),
-                          ],
-                        ),
-                        const SizedBox(height:10),
-                      ],
-                    ),
-                  ),
-                ),
+                PublicMotorcycleEmergencyAccess(
+                  loading:emergencyLoading,error:emergencyError,
+                  card:emergencyCard,onReveal:_loadEmergencyCard),
               ],
-            ),
+              SizedBox(height:size.height<740?40:76),
+              _visitorPill(
+                label:'Gizli Arama Başlat',
+                icon:Icons.phone_rounded,
+                onTap:()=>_startCall(context),
+                lime:true),
+              const SizedBox(height:10),
+              _visitorPill(
+                label:'Kendi QR Etiketini Al',
+                icon:Icons.add_rounded,
+                onTap:()=>html.window.location.href=Uri.base.resolve('app/').toString(),
+                lime:false),
+            ],
           ),
-        ),
-      ),
+        ))),
+      ]),
     );
+  }
+
+  Widget _visitorPill({required String label,required IconData icon,
+    required VoidCallback onTap,required bool lime}){
+    return Material(color:Colors.transparent,child:InkWell(
+      onTap:onTap,borderRadius:BorderRadius.circular(40),
+      child:Container(height:57,padding:const EdgeInsets.symmetric(horizontal:22),
+        decoration:BoxDecoration(
+          color:lime?const Color(0xFFB9FF45):const Color(0x55491BC8),
+          borderRadius:BorderRadius.circular(40),
+          border:lime?null:Border.all(color:const Color(0xFFB9A0FF),width:1.5)),
+        child:Row(children:[
+          Icon(icon,color:lime?const Color(0xFF10152D):Colors.white,size:25),
+          const SizedBox(width:12),
+          Expanded(child:Text(label,textAlign:TextAlign.center,maxLines:1,
+            overflow:TextOverflow.ellipsis,style:TextStyle(
+              color:lime?const Color(0xFF10152D):Colors.white,
+              fontSize:15,fontWeight:FontWeight.w900))),
+          const SizedBox(width:12),
+          Icon(Icons.arrow_forward_rounded,
+            color:lime?const Color(0xFF10152D):Colors.white,size:24),
+        ]),
+      ),
+    ));
   }
 
   void _compose(BuildContext context,String type){
@@ -872,6 +806,36 @@ class _VisitorMenu extends StatelessWidget{
             const Icon(Icons.chevron_right_rounded,color:Color(0xFF7B8398),size:21),
           ],
         ),
+      ),
+    ),
+  );
+}
+
+class _VisitorActionRow extends StatelessWidget{
+  const _VisitorActionRow({required this.title,required this.icon,
+    required this.iconColor,required this.iconBg,required this.onTap});
+  final String title;
+  final IconData icon;
+  final Color iconColor,iconBg;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context)=>Material(
+    color:Colors.white,borderRadius:BorderRadius.circular(24),
+    elevation:3,shadowColor:const Color(0x270C034A),
+    child:InkWell(onTap:onTap,borderRadius:BorderRadius.circular(24),
+      child:Container(height:76,padding:const EdgeInsets.symmetric(horizontal:13),
+        child:Row(children:[
+          Container(width:60,height:60,
+            decoration:BoxDecoration(color:iconBg,borderRadius:BorderRadius.circular(19)),
+            child:Icon(icon,color:iconColor,size:35)),
+          const SizedBox(width:14),
+          Expanded(child:Text(title,maxLines:2,overflow:TextOverflow.ellipsis,
+            style:const TextStyle(color:Color(0xFF10152D),fontSize:16,
+              height:1.12,fontWeight:FontWeight.w900))),
+          const SizedBox(width:8),
+          const CircleAvatar(radius:21,backgroundColor:Color(0xFFF3EDFF),
+            child:Icon(Icons.chevron_right_rounded,color:Color(0xFF651FFF),size:30)),
+        ]),
       ),
     ),
   );
