@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'public_menu_pages.dart';
 
-const _purple=Color(0xFF6C32F3);
-const _lime=Color(0xFF9CFF1E);
-const _ink=Color(0xFF0D1230);
-const _muted=Color(0xFF697087);
+const _purple=Color(0xFF651FFF);
+const _lime=Color(0xFFB9FF45);
+const _ink=Color(0xFF10152D);
+const _muted=Color(0xFF778096);
 const _line=Color(0xFFE1E4EC);
 
 class PublicQrEntryScreen extends StatefulWidget {
@@ -57,13 +57,12 @@ class _PublicQrEntryScreenState extends State<PublicQrEntryScreen>{
   @override
   Widget build(BuildContext context){
     final size=MediaQuery.sizeOf(context);
-    final compact=size.width<390||size.height<760;
-    final pagePad=compact?15.0:18.0;
-    final heroHeight=compact?350.0:390.0;
-
+    final compact=size.width<390;
+    final pagePad=size.width<360?16.0:22.0;
     return Scaffold(
       key:scaffoldKey,
-      backgroundColor:const Color(0xFFF9FAFF),
+      backgroundColor:_purple,
+      resizeToAvoidBottomInset:true,
       endDrawer:_PublicMenu(
         onAbout:()=>_openPage(const HeyCarAboutPage()),
         onHow:()=>_openPage(const HeyCarHowPage()),
@@ -73,138 +72,53 @@ class _PublicQrEntryScreenState extends State<PublicQrEntryScreen>{
         onHelp:()=>_openPage(const HeyCarHelpPage()),
         onOwner:()=>_openPage(const HeyCarOwnerPage()),
       ),
-      body:SafeArea(
-        bottom:false,
-        child:Center(
-          child:ConstrainedBox(
-            constraints:const BoxConstraints(maxWidth:430),
-            child:SingleChildScrollView(
-              child:Column(
-                children:[
-                  SizedBox(
-                    height:heroHeight,
-                    child:Stack(
-                      fit:StackFit.expand,
-                      children:[
-                        Positioned.fill(
-                          child:Image.asset(
-                            'assets/IMG_20261004_191854.png',
-                            fit:BoxFit.cover,
-                            alignment:Alignment.center,
-                          ),
-                        ),
-                        Positioned.fill(
-                          child:DecoratedBox(
-                            decoration:BoxDecoration(
-                              gradient:LinearGradient(
-                                begin:Alignment.topCenter,
-                                end:Alignment.bottomCenter,
-                                colors:[
-                                  Colors.white.withValues(alpha:.96),
-                                  Colors.white.withValues(alpha:.50),
-                                  Colors.white.withValues(alpha:.07),
-                                ],
-                                stops:const [0,.43,1],
-                              ),
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          left:pagePad,
-                          right:pagePad,
-                          top:10,
-                          child:_TopBar(onMenu:()=>scaffoldKey.currentState?.openEndDrawer(),compact:compact),
-                        ),
-                        Positioned(
-                          left:pagePad,
-                          top:compact?102:116,
-                          width:compact?215:240,
-                          child:Column(
-                            crossAxisAlignment:CrossAxisAlignment.start,
-                            children:[
-                              Text(
-                                'ARAÇ SAHİBİNE ULAŞ',
-                                style:TextStyle(
-                                  color:const Color(0xFF59637E),
-                                  fontSize:compact?9.5:10.5,
-                                  letterSpacing:2.3,
-                                  fontWeight:FontWeight.w800,
-                                ),
-                              ),
-                              SizedBox(height:compact?10:12),
-                              Text(
-                                'Hızlı ve',
-                                style:TextStyle(
-                                  color:_ink,
-                                  fontSize:compact?38:43,
-                                  height:.92,
-                                  fontWeight:FontWeight.w900,
-                                  letterSpacing:-1.7,
-                                ),
-                              ),
-                              Text(
-                                'güvenli.',
-                                style:TextStyle(
-                                  color:_purple,
-                                  fontSize:compact?38:43,
-                                  height:.95,
-                                  fontWeight:FontWeight.w900,
-                                  letterSpacing:-1.7,
-                                ),
-                              ),
-                              const SizedBox(height:3),
-                              Container(
-                                width:compact?130:145,
-                                height:7,
-                                decoration:const BoxDecoration(
-                                  border:Border(top:BorderSide(color:_lime,width:3.5)),
-                                ),
-                                transform:Matrix4.rotationZ(-.075),
-                              ),
-                              SizedBox(height:compact?12:15),
-                              Text(
-                                'QR veya etiket koduyla\naraç sahibine anonim\nmesaj bırak.',
-                                style:TextStyle(
-                                  color:const Color(0xFF4D5772),
-                                  fontSize:compact?12.5:13.5,
-                                  height:1.38,
-                                  fontWeight:FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Transform.translate(
-                    offset:Offset(0,compact?-24:-30),
-                    child:Padding(
-                      padding:EdgeInsets.symmetric(horizontal:pagePad),
-                      child:Column(
-                        children:[
-                          _entryCard(compact),
-                          const SizedBox(height:12),
-                          Row(
-                            children:[
-                              Expanded(child:_feature(Icons.chat_bubble_outline_rounded,'Anonim\nMesaj','Kimliğin gizli kalır.')),
-                              const SizedBox(width:8),
-                              Expanded(child:_feature(Icons.shield_outlined,'Güvenli\nİletişim','Doğrudan araca ulaş.')),
-                              const SizedBox(width:8),
-                              Expanded(child:_feature(Icons.location_on_outlined,'Her Yerde\nUlaşılabilir','Otoparkta, trafikte.')),
-                            ],
-                          ),
-                          const SizedBox(height:18),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+      body:Stack(children:[
+        const Positioned.fill(child:IgnorePointer(child:CustomPaint(painter:_QrEntryBackdrop()))),
+        SafeArea(
+          child:Align(
+            alignment:Alignment.topCenter,
+            child:ConstrainedBox(
+              constraints:const BoxConstraints(maxWidth:540),
+              child:SingleChildScrollView(
+                keyboardDismissBehavior:ScrollViewKeyboardDismissBehavior.onDrag,
+                padding:EdgeInsets.fromLTRB(pagePad,16,pagePad,32),
+                child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+                  _TopBar(onMenu:()=>scaffoldKey.currentState?.openEndDrawer(),compact:compact),
+                  SizedBox(height:compact?56:68),
+                  Text('ARAÇ SAHİBİNE ULAŞ',style:TextStyle(
+                    color:Colors.white.withValues(alpha:.72),fontSize:12,
+                    letterSpacing:3.2,fontWeight:FontWeight.w800)),
+                  const SizedBox(height:15),
+                  Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                    Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                      Text('Hızlı ve',maxLines:1,style:TextStyle(color:Colors.white,
+                        fontSize:compact?42:51,height:1,fontWeight:FontWeight.w900,letterSpacing:-2)),
+                      Text('güvenli.',maxLines:1,style:TextStyle(color:_lime,
+                        fontSize:compact?42:51,height:1.08,fontWeight:FontWeight.w900,letterSpacing:-2)),
+                      Transform.rotate(angle:-.06,child:Container(
+                        margin:const EdgeInsets.only(top:3),height:4,width:compact?164:198,
+                        decoration:BoxDecoration(color:_lime,borderRadius:BorderRadius.circular(8)))),
+                    ])),
+                    if(size.width>=375) Padding(
+                      padding:const EdgeInsets.only(top:42,left:3),
+                      child:_MessageBubble(compact:compact)),
+                  ]),
+                  const SizedBox(height:22),
+                  Text('QR veya etiket koduyla\naraç sahibine anonim\nmesaj bırak.',
+                    style:TextStyle(color:Colors.white.withValues(alpha:.8),
+                      fontSize:compact?15:17,height:1.45,fontWeight:FontWeight.w500)),
+                  if(size.width<375)...[
+                    const SizedBox(height:14),
+                    Align(alignment:Alignment.centerRight,child:_MessageBubble(compact:true)),
+                  ],
+                  const SizedBox(height:28),
+                  _entryCard(compact),
+                ]),
               ),
             ),
           ),
         ),
-      ),
+      ]),
     );
   }
 
@@ -213,8 +127,8 @@ class _PublicQrEntryScreenState extends State<PublicQrEntryScreen>{
     padding:EdgeInsets.fromLTRB(compact?16:18,compact?16:18,compact?16:18,compact?15:17),
     decoration:BoxDecoration(
       color:Colors.white,
-      borderRadius:BorderRadius.circular(22),
-      border:Border.all(color:const Color(0xFFE8E4EF)),
+      borderRadius:BorderRadius.circular(28),
+      border:Border.all(color:Colors.white),
       boxShadow:const [BoxShadow(color:Color(0x15000000),blurRadius:24,offset:Offset(0,10))],
     ),
     child:Column(
@@ -268,9 +182,9 @@ class _PublicQrEntryScreenState extends State<PublicQrEntryScreen>{
                 ),
               ),
               filled:true,
-              fillColor:Colors.white,
+              fillColor:const Color(0xFFF8F5FF),
               contentPadding:const EdgeInsets.symmetric(vertical:14),
-              border:OutlineInputBorder(borderRadius:BorderRadius.circular(15),borderSide:const BorderSide(color:Color(0xFFD8DCE7),width:1.1)),
+              border:OutlineInputBorder(borderRadius:BorderRadius.circular(15),borderSide:const BorderSide(color:_purple,width:1.2)),
               enabledBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(15),borderSide:const BorderSide(color:Color(0xFFD8DCE7),width:1.1)),
               focusedBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(15),borderSide:const BorderSide(color:_purple,width:1.5)),
             ),
@@ -282,7 +196,7 @@ class _PublicQrEntryScreenState extends State<PublicQrEntryScreen>{
           height:compact?49:52,
           child:DecoratedBox(
             decoration:BoxDecoration(
-              gradient:const LinearGradient(colors:[Color(0xFF6C31F5),Color(0xFF7A3FFF),Color(0xFF6A50FF)]),
+              gradient:const LinearGradient(colors:[Color(0xFF651FFF),Color(0xFF7131FF),Color(0xFF651FFF)]),
               borderRadius:BorderRadius.circular(15),
               boxShadow:const [BoxShadow(color:Color(0x336C32F3),blurRadius:17,offset:Offset(0,7))],
             ),
@@ -314,7 +228,7 @@ class _PublicQrEntryScreenState extends State<PublicQrEntryScreen>{
           onTap:()=>setState((){scanning=!scanning;consumed=false;}),
           child:Container(
             padding:EdgeInsets.symmetric(horizontal:13,vertical:compact?11:12),
-            decoration:BoxDecoration(color:const Color(0xFFF7F3FF),borderRadius:BorderRadius.circular(15),border:Border.all(color:const Color(0xFFE2D9F7))),
+            decoration:BoxDecoration(color:const Color(0xFFF3EDFF),borderRadius:BorderRadius.circular(19),border:Border.all(color:const Color(0xFFE2D9F7))),
             child:Row(
               children:[
                 Container(
@@ -466,45 +380,84 @@ class _PublicMenu extends StatelessWidget{
   );
 }
 
+class _MessageBubble extends StatelessWidget {
+  const _MessageBubble({required this.compact});
+  final bool compact;
+  @override
+  Widget build(BuildContext context)=>ConstrainedBox(
+    constraints:BoxConstraints(maxWidth:compact?122:150),
+    child:Container(
+      padding:const EdgeInsets.symmetric(horizontal:9,vertical:11),
+      decoration:BoxDecoration(color:const Color(0xFFF1E9FF),
+        borderRadius:BorderRadius.circular(17),
+        boxShadow:const [BoxShadow(color:Color(0x240E003A),blurRadius:16,offset:Offset(0,6))]),
+      child:Row(mainAxisSize:MainAxisSize.min,children:[
+        const CircleAvatar(radius:15,backgroundColor:_purple,
+          child:Icon(Icons.sms_rounded,color:Colors.white,size:17)),
+        const SizedBox(width:7),
+        Flexible(child:Text('Merhaba, aracınızla ilgili bir durum var.',
+          style:TextStyle(color:const Color(0xFF62657C),
+            fontSize:compact?9.5:11,height:1.3))),
+      ]),
+    ),
+  );
+}
+
+class _QrEntryBackdrop extends CustomPainter {
+  const _QrEntryBackdrop();
+  @override
+  void paint(Canvas canvas,Size size){
+    final base=Paint()..shader=const LinearGradient(
+      begin:Alignment.topLeft,end:Alignment.bottomRight,
+      colors:[Color(0xFF4A11C8),Color(0xFF651FFF),Color(0xFF4912C8)]
+    ).createShader(Offset.zero & size);
+    canvas.drawRect(Offset.zero & size,base);
+    final subtle=Paint()..color=const Color(0xFF8D52FF).withValues(alpha:.20);
+    canvas.drawCircle(Offset(size.width*.88,size.height*.36),size.width*.35,subtle);
+    canvas.drawCircle(Offset(size.width*.07,size.height*.86),size.width*.55,subtle);
+    final lime=Paint()..color=_lime;
+    canvas.drawCircle(Offset(size.width*1.06,size.height*.17),size.width*.15,lime);
+    canvas.drawCircle(Offset(size.width*.79,size.height*.40),9,lime);
+    canvas.drawCircle(Offset(size.width*.62,size.height*.94),11,lime);
+    final arc=Paint()..color=_lime..style=PaintingStyle.stroke..strokeWidth=48;
+    canvas.drawArc(Rect.fromCircle(center:Offset(-size.width*.26,size.height*.55),
+      radius:size.width*.52),-.9,2.15,false,arc);
+    canvas.drawArc(Rect.fromCircle(center:Offset(size.width*1.28,size.height*.76),
+      radius:size.width*.48),1.6,2.35,false,arc);
+    final thin=Paint()..color=Colors.white.withValues(alpha:.15)
+      ..style=PaintingStyle.stroke..strokeWidth=1.5;
+    canvas.drawCircle(Offset(size.width*.83,size.height*.44),size.width*.32,thin);
+  }
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate)=>false;
+}
+
 class _TopBar extends StatelessWidget{
   const _TopBar({required this.onMenu,required this.compact});
   final VoidCallback onMenu;
   final bool compact;
 
   @override
-  Widget build(BuildContext context)=>Row(
-    children:[
-      Image.asset(
-        'assets/file_00000000b130820abb8d411e67ab0d25.png',
-        height:compact?30:33,
-        fit:BoxFit.contain,
-        alignment:Alignment.centerLeft,
-      ),
-      const Spacer(),
-      Container(
-        height:36,
-        padding:const EdgeInsets.symmetric(horizontal:11),
-        decoration:BoxDecoration(
-          color:Colors.white.withValues(alpha:.86),
-          borderRadius:BorderRadius.circular(18),
-          border:Border.all(color:const Color(0xFFDDE2ED)),
-          boxShadow:const [BoxShadow(color:Color(0x0F000000),blurRadius:12,offset:Offset(0,4))],
-        ),
-        child:const Row(children:[
-          Icon(Icons.language_rounded,color:_ink,size:18),
-          SizedBox(width:7),
-          Text('TR',style:TextStyle(color:_ink,fontSize:13,fontWeight:FontWeight.w900)),
-          SizedBox(width:3),
-          Icon(Icons.keyboard_arrow_down_rounded,color:_ink,size:18),
-        ]),
-      ),
-      const SizedBox(width:9),
-      IconButton(
-        onPressed:onMenu,
-        padding:EdgeInsets.zero,
-        constraints:const BoxConstraints(minWidth:36,minHeight:36),
-        icon:const Icon(Icons.menu_rounded,color:_ink,size:29),
-      ),
-    ],
-  );
+  Widget build(BuildContext context)=>Row(children:[
+    Flexible(flex:5,child:Image.asset(
+      'assets/file_00000000b130820abb8d411e67ab0d25.png',
+      height:compact?30:36,fit:BoxFit.contain,
+      alignment:Alignment.centerLeft)),
+    const SizedBox(width:6),
+    Flexible(flex:4,child:Container(
+      padding:const EdgeInsets.symmetric(horizontal:9,vertical:9),
+      decoration:BoxDecoration(color:Colors.white.withValues(alpha:.10),
+        borderRadius:BorderRadius.circular(28),
+        border:Border.all(color:Colors.white.withValues(alpha:.25))),
+      child:const Row(mainAxisSize:MainAxisSize.min,children:[
+        Icon(Icons.lock_rounded,color:Colors.white,size:15),
+        SizedBox(width:5),
+        Flexible(child:Text('Anonim iletişim',maxLines:1,
+          overflow:TextOverflow.ellipsis,
+          style:TextStyle(color:Colors.white,fontSize:11,fontWeight:FontWeight.w600))),
+      ]),
+    )),
+    IconButton(onPressed:onMenu,tooltip:'Menü',
+      icon:const Icon(Icons.menu_rounded,color:Colors.white,size:28)),
+  ]);
 }
