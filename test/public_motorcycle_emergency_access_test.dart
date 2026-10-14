@@ -52,8 +52,9 @@ void main(){
             onReveal:()=>attempts++,
           )),
         )));
-        expect(find.text('Motosiklet • Acil Durum Bilgileri'),findsOneWidget);
-        expect(find.text('Acil Durum Bilgilerini Göster'),findsOneWidget);
+        expect(find.text('Acil Durum Bilgileri'),findsOneWidget);
+        expect(find.text('Motosiklet • Sürücünün paylaştığı bilgiler'),findsOneWidget);
+        expect(find.byKey(const ValueKey('emergency-access-panel')),findsOneWidget);
         expect(find.textContaining('Beyan edilen kan grubu'),findsNothing);
         await tester.tap(find.byKey(const ValueKey('emergency-access-open')));
         expect(attempts,1);
@@ -69,9 +70,9 @@ void main(){
         onReveal:()=>tries++,
       ),
     )));
-    final button=tester.widget<FilledButton>(
+    final row=tester.widget<InkWell>(
       find.byKey(const ValueKey('emergency-access-open')));
-    expect(button.onPressed,isNull);
+    expect(row.onTap,isNull);
     expect(tries,0);
   });
 
