@@ -3,19 +3,17 @@ import 'package:flutter_test/flutter_test.dart';
 import '../lib/public_motorcycle_emergency_access.dart';
 
 void main(){
-  test('published availability controls visitor entry without personal data',(){
+  test('only explicitly published emergency card shows the QR entry',(){
     const bike=<String,dynamic>{'vehicle_type':'motorcycle'};
     const car=<String,dynamic>{'vehicle_type':'car'};
     expect(motorcycleEmergencyEntryVisible(vehicle:bike,published:true),isTrue);
-    expect(motorcycleEmergencyEntryVisible(vehicle:bike,published:false),isTrue);
-    expect(motorcycleEmergencyEntryVisible(vehicle:car,published:true),isTrue);
+    expect(motorcycleEmergencyEntryVisible(vehicle:bike,published:false),isFalse);
+    expect(motorcycleEmergencyEntryVisible(vehicle:bike),isFalse);
     expect(motorcycleEmergencyEntryVisible(vehicle:car,published:false),isFalse);
-    expect(motorcycleEmergencyEntryVisible(vehicle:bike),isTrue);
-    expect(motorcycleEmergencyEntryVisible(vehicle:car),isFalse);
-    expect(motorcycleEmergencyEntryVisible(vehicle:{'make':'QJMotor'},published:false),isTrue);
-    expect(motorcycleEmergencyEntryVisible(vehicle:{'make':'RKS'},published:false),isTrue);
-    expect(motorcycleEmergencyEntryVisible(vehicle:{'vehicleType':'motosiklet'},published:false),isTrue);
-    expect(motorcycleEmergencyEntryVisible(vehicle:{'make':'Chevrolet'},published:false),isFalse);
+    expect(motorcycleEmergencyEntryVisible(vehicle:{'make':'QJMotor'},published:false),isFalse);
+    expect(motorcycleEmergencyEntryVisible(vehicle:{'make':'RKS'}),isFalse);
+    expect(motorcycleEmergencyEntryVisible(vehicle:{'vehicleType':'motosiklet'},published:false),isFalse);
+    expect(motorcycleEmergencyEntryVisible(vehicle:car,published:true),isTrue);
   });
 
   test('scan checks explain failed access without exposing private details',(){
