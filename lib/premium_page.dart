@@ -215,28 +215,21 @@ class _PremiumHero extends StatelessWidget{
  const _PremiumHero({required this.dark});
  final bool dark;
  @override Widget build(BuildContext context)=>Container(
-   height:204,
-   clipBehavior:Clip.antiAlias,
-   decoration:const BoxDecoration(borderRadius:BorderRadius.all(Radius.circular(24)),gradient:LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:[Color(0xFF8040F4),Color(0xFF5415DF),Color(0xFF9736FF)])),
-   child:LayoutBuilder(builder:(context,c){
-     final compact=c.maxWidth<355;
-     return Stack(children:[
-       Positioned(right:-100,bottom:-130,child:Container(width:300,height:220,decoration:BoxDecoration(color:Colors.white.withValues(alpha:.13),shape:BoxShape.circle))),
-       Positioned(right:12,top:35,child:const Icon(Icons.auto_awesome_rounded,color:_lime,size:24)),
-       Positioned(right:115,top:68,child:const Icon(Icons.star_rounded,color:_lime,size:25)),
-       Positioned(right:-12,bottom:-16,width:compact?153:185,height:compact?150:176,child:IgnorePointer(child:Stack(fit:StackFit.expand,children:[
-         Image.asset('assets/Heycar3d.png',fit:BoxFit.contain,errorBuilder:(_,__,___)=>const Icon(Icons.directions_car,color:Colors.white,size:90)),
-         const Positioned(right:50,top:5,child:Icon(Icons.workspace_premium_rounded,size:64,color:Color(0xFFFFD453))),
-       ]))),
-       Padding(padding:EdgeInsets.fromLTRB(compact?13:18,17,8,16),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-         Container(padding:const EdgeInsets.symmetric(horizontal:13,vertical:8),decoration:BoxDecoration(color:const Color(0xFF4912C8),borderRadius:BorderRadius.circular(30)),child:const Row(mainAxisSize:MainAxisSize.min,children:[Icon(Icons.workspace_premium_rounded,color:_lime,size:20),SizedBox(width:7),Text('PREMIUM',style:TextStyle(color:Colors.white,fontSize:12,fontWeight:FontWeight.w900))])),
-         const SizedBox(height:20),
-         SizedBox(width:compact?230:270,child:Text.rich(const TextSpan(children:[TextSpan(text:'Premium paketini ',style:TextStyle(color:Colors.white)),TextSpan(text:'seç.',style:TextStyle(color:_lime))]),style:TextStyle(fontSize:compact?20:23,fontWeight:FontWeight.w900,height:1.05))),
-         const SizedBox(height:12),
-         SizedBox(width:compact?174:205,child:const Text('Bireysel sadece araç sahibine, Aile ise yetkili sürücülere de premium erişim verir.',style:TextStyle(color:Colors.white,fontSize:12.3,height:1.5))),
-       ])),
-     ]);
-   }),
+   width:double.infinity,
+   padding:const EdgeInsets.symmetric(horizontal:20,vertical:25),
+   decoration:const BoxDecoration(
+     borderRadius:BorderRadius.all(Radius.circular(24)),
+     gradient:LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:[Color(0xFF8040F4),Color(0xFF5415DF),Color(0xFF9736FF)]),
+   ),
+   child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+     const Text.rich(TextSpan(children:[
+       TextSpan(text:'Premium paketini ',style:TextStyle(color:Colors.white)),
+       TextSpan(text:'seç.',style:TextStyle(color:_lime)),
+     ]),style:TextStyle(fontSize:25,fontWeight:FontWeight.w900,height:1.15)),
+     const SizedBox(height:15),
+     const Text('Bireysel sadece araç sahibine, Aile ise yetkili sürücülere de premium erişim verir.',
+       style:TextStyle(color:Colors.white,fontSize:14,height:1.45)),
+   ]),
  );
 }
 
