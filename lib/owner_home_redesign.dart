@@ -53,6 +53,9 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   Timer? storyTimer;
   Timer? appConfigTimer;
   bool _valetRefreshing=false;
+  String _valetVehicleId='';
+  bool _valetVerified=false;
+  bool _valetLoadFailed=false;
   bool _appConfigRefreshing=false;
   final AppUiConfigService _appUiConfigService=AppUiConfigService();
   AppUiConfig _appUiConfig=AppUiConfig.defaults();
@@ -150,19 +153,21 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   Future<void> _loadValetStatus()async{
     if(_valetRefreshing||!widget.active||CallActivity.isActive)return;
     final vehicleId=QrDraft.vehicleId.trim();
-    if(vehicleId.isEmpty)return;
+    if(vehicleId.isEmpty){if(mounted)setState((){_valetVehicleId='';valetSession=null;_valetVerified=true;_valetLoadFailed=false;});return;}
+    if(_valetVehicleId!=vehicleId){setState((){_valetVehicleId=vehicleId;valetSession=null;valetDeliveryCode='';_valetVerified=false;_valetLoadFailed=false;});}
     _valetRefreshing=true;
     try{
       final r=await OwnerHttp.get(
         Uri.parse('${OnboardingBackend.baseUrl}/api/owner/valet/$vehicleId'),
         json:false,
       );
-      if(r.statusCode!=200)return;
+      if(r.statusCode!=200){if(mounted&&_valetVehicleId==vehicleId)setState(()=>_valetLoadFailed=true);return;}
       final d=r.body.isEmpty?null:jsonDecode(r.body);
       final next=d is Map&&d['session'] is Map
         ?Map<String,dynamic>.from(d['session'])
         :null;
-      if(!mounted)return;
+      if(!mounted||QrDraft.vehicleId.trim()!=vehicleId)return;
+      if(!_valetVerified||_valetLoadFailed)setState((){_valetVerified=true;_valetLoadFailed=false;});
       final changed=jsonEncode(next)!=jsonEncode(valetSession);
       if(changed){
         setState(()=>valetSession=next);
@@ -175,7 +180,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
           }
         }
       }
-    }catch(_){
+    }catch(_){if(mounted&&_valetVehicleId==vehicleId)setState(()=>_valetLoadFailed=true);
     }finally{
       _valetRefreshing=false;
     }
@@ -930,6 +935,12 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   }
 
   Widget vehicleQr(){
+    final selectedId=QrDraft.vehicleId.trim();
+    if(selectedId.isNotEmpty&&(_valetVehicleId!=selectedId||!_valetVerified||_valetLoadFailed)){
+      if(_valetVehicleId==selectedId&&valetSession!=null)return Padding(padding:const EdgeInsets.fromLTRB(16,7,16,0),child:_valetVehicleCard(valetSession!));
+      return Padding(padding:const EdgeInsets.fromLTRB(16,7,16,0),child:Container(constraints:const BoxConstraints(minHeight:120),padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:panel,borderRadius:BorderRadius.circular(24)),child:Row(children:[const Icon(Icons.sync_rounded,color:Color(0xFF713BFF)),const SizedBox(width:10),Expanded(child:Text(_valetLoadFailed?'Vale durumu doğrulanamadı.':'Araç durumu kontrol ediliyor...',style:TextStyle(color:text))),if(_valetLoadFailed)TextButton(onPressed:_loadValetStatus,child:const Text('Yenile'))])));
+    }
+    if(selectedId.isNotEmpty&&valetSession!=null)return Padding(padding:const EdgeInsets.fromLTRB(16,7,16,0),child:_valetVehicleCard(valetSession!));
     final motorcycle=VehicleKind.isMotorcycle(QrDraft.vehicleType);
     final car='${QrDraft.make} ${QrDraft.model}'.trim();
     final hasQr=QrDraft.token.trim().isNotEmpty;
@@ -1611,13 +1622,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             RepaintBoundary(
               key:ValueKey('sd-ui-${component.id}-${_appUiConfig.version}'),
               child:_managedComponent(component)),
-            if(component.type=='monthly_summary')...[
-              _motorcycleHomePanel(),
-              if(valetSession!=null)
-                Padding(
-                  padding:const EdgeInsets.fromLTRB(16,11,16,0),
-                  child:_valetVehicleCard(valetSession!)),
-            ],
+            if(component.type=='monthly_summary')_motorcycleHomePanel(),
           ],
           const SizedBox(height:22),
         ],
@@ -1908,7 +1913,7 @@ class OwnerServicesRedesign extends StatelessWidget{
           },
         ),
         const SizedBox(height:8),
-        if(_ownerServicesTestAccount) OwnerValetCard(vehicleId:QrDraft.vehicleId,active:active),
+        // Valet is rendered only in the selected vehicle card slot.
       ])),
     );
   }
