@@ -846,74 +846,94 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     };
     const purple=Color(0xFF651FFF);
     const lime=Color(0xFFB7FF3B);
-    return Container(
-      width:double.infinity,
-      clipBehavior:Clip.antiAlias,
-      decoration:BoxDecoration(
-        color:lime,borderRadius:BorderRadius.circular(24),
-        boxShadow:light?[BoxShadow(color:purple.withValues(alpha:.14),blurRadius:18,offset:const Offset(0,6))]:null,
-      ),
-      child:Stack(children:[
-        Positioned.fill(child:ClipPath(
-          clipper:const _ValetReferencePurpleClip(),
-          child:const ColoredBox(color:purple))),
-        Padding(padding:const EdgeInsets.fromLTRB(11,13,11,11),
-          child:Column(mainAxisSize:MainAxisSize.min,children:[
-            Row(children:[
-              Container(width:49,height:49,
-                decoration:BoxDecoration(
-                  color:const Color(0xFF9760FF),
-                  borderRadius:BorderRadius.circular(16)),
-                child:const Icon(Icons.support_agent_rounded,color:Colors.white,size:31)),
-              const SizedBox(width:11),
-              Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-                const Text('VALE',style:TextStyle(color:Colors.white,fontSize:21,fontWeight:FontWeight.w900,letterSpacing:.6)),
-                const SizedBox(height:2),
-                Text(venue.isEmpty?'CepQontag Vale':venue,maxLines:1,overflow:TextOverflow.ellipsis,
-                  style:const TextStyle(color:Colors.white,fontSize:13,fontWeight:FontWeight.w700)),
+    return LayoutBuilder(builder:(context,constraints){
+      final compact=constraints.maxWidth<360;
+      final height=compact?123.0:134.0;
+      return Container(
+        width:double.infinity,height:height,
+        clipBehavior:Clip.antiAlias,
+        decoration:BoxDecoration(color:lime,borderRadius:BorderRadius.circular(24),
+          boxShadow:light?[BoxShadow(color:purple.withValues(alpha:.12),blurRadius:12,offset:const Offset(0,4))]:null),
+        child:Stack(children:[
+          Positioned.fill(child:ClipPath(clipper:const _ValetReferencePurpleClip(),child:const ColoredBox(color:purple))),
+          Padding(padding:const EdgeInsets.fromLTRB(10,9,10,9),
+            child:Column(children:[
+              SizedBox(height:35,child:Row(children:[
+                Container(width:34,height:34,
+                  decoration:BoxDecoration(color:const Color(0xFF9760FF),borderRadius:BorderRadius.circular(10)),
+                  child:const Icon(Icons.support_agent_rounded,color:Colors.white,size:21)),
+                const SizedBox(width:8),
+                Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisAlignment:MainAxisAlignment.center,children:[
+                  const Text('VALE',style:TextStyle(color:Colors.white,fontSize:15,fontWeight:FontWeight.w900,height:1)),
+                  const SizedBox(height:3),
+                  Text(venue.isEmpty?'CepQontag Vale':venue,maxLines:1,overflow:TextOverflow.ellipsis,
+                    style:const TextStyle(color:Colors.white,fontSize:10,fontWeight:FontWeight.w700,height:1)),
+                ])),
+                Flexible(child:Container(padding:const EdgeInsets.symmetric(horizontal:7,vertical:5),
+                  decoration:BoxDecoration(color:Colors.white.withValues(alpha:.94),borderRadius:BorderRadius.circular(14)),
+                  child:Text(_valetBadge(status),maxLines:1,overflow:TextOverflow.ellipsis,
+                    style:const TextStyle(color:purple,fontSize:8,fontWeight:FontWeight.w900)))),
+                const SizedBox(width:5),
+                Container(width:27,height:27,
+                  decoration:BoxDecoration(color:const Color(0xFF799C23).withValues(alpha:.8),shape:BoxShape.circle),
+                  child:const Icon(Icons.chevron_right_rounded,color:Colors.white,size:22)),
               ])),
-              Container(padding:const EdgeInsets.symmetric(horizontal:10,vertical:8),
-                decoration:BoxDecoration(color:Colors.white.withValues(alpha:.90),borderRadius:BorderRadius.circular(22)),
-                child:Text(_valetBadge(status),maxLines:1,style:const TextStyle(color:purple,fontSize:10,fontWeight:FontWeight.w900))),
-              const SizedBox(width:7),
-              Container(width:34,height:34,
-                decoration:BoxDecoration(color:const Color(0xFF799C23).withValues(alpha:.75),shape:BoxShape.circle),
-                child:const Icon(Icons.chevron_right_rounded,color:Colors.white,size:27)),
-            ]),
-            const SizedBox(height:12),
-            Container(width:double.infinity,
-              padding:const EdgeInsets.fromLTRB(13,12,13,12),
-              decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(19)),
-              child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-                Text(_valetStatusTitle(status),style:const TextStyle(color:Color(0xFF1C1731),fontSize:16,fontWeight:FontWeight.w900)),
-                const SizedBox(height:13),
-                _valetTimeline(status,purple),
-                const SizedBox(height:15),
-                SizedBox(width:double.infinity,height:47,child:FilledButton(
-                  onPressed:canRequest&&!valetRequesting?_requestValetVehicle:null,
-                  style:FilledButton.styleFrom(backgroundColor:purple,foregroundColor:Colors.white,
-                    disabledBackgroundColor:const Color(0xFFECE5FA),disabledForegroundColor:purple,
-                    padding:const EdgeInsets.symmetric(horizontal:13),
-                    shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(18))),
-                  child:Stack(alignment:Alignment.center,children:[
-                    Row(mainAxisAlignment:MainAxisAlignment.center,children:[
-                      const Icon(Icons.directions_car_filled_rounded,size:21),
-                      const SizedBox(width:10),
-                      Text(buttonText,style:const TextStyle(fontSize:15,fontWeight:FontWeight.w900)),
-                    ]),
-                    const Positioned(right:0,child:Icon(Icons.arrow_forward_rounded,size:23)),
+              const SizedBox(height:5),
+              Expanded(child:Container(width:double.infinity,
+                padding:const EdgeInsets.fromLTRB(9,5,9,5),
+                decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(15)),
+                child:Column(mainAxisAlignment:MainAxisAlignment.spaceBetween,crossAxisAlignment:CrossAxisAlignment.start,children:[
+                  Row(children:[
+                    Expanded(child:Text(_valetStatusTitle(status),maxLines:1,overflow:TextOverflow.ellipsis,
+                      style:const TextStyle(color:Color(0xFF1C1731),fontSize:11,fontWeight:FontWeight.w900))),
+                    if(valetDeliveryCode.isNotEmpty&&['requested','retrieving','ready'].contains(status))
+                      Text('Kod: $valetDeliveryCode',style:const TextStyle(color:purple,fontSize:10,fontWeight:FontWeight.w900)),
                   ]),
-                )),
-                if(valetDeliveryCode.isNotEmpty&&['requested','retrieving','ready'].contains(status))...[
-                  const SizedBox(height:9),
-                  Text('Teslimat kodu: $valetDeliveryCode',style:const TextStyle(color:purple,fontSize:12,fontWeight:FontWeight.w800)),
-                ],
-              ]),
-            ),
-          ]),
-        ),
-      ]),
-    );
+                  _valetCompactTimeline(status,purple),
+                  SizedBox(width:double.infinity,height:25,child:FilledButton(
+                    onPressed:canRequest&&!valetRequesting?_requestValetVehicle:null,
+                    style:FilledButton.styleFrom(backgroundColor:purple,foregroundColor:Colors.white,
+                      disabledBackgroundColor:const Color(0xFFECE5FA),disabledForegroundColor:purple,
+                      padding:const EdgeInsets.symmetric(horizontal:10),
+                      shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(10))),
+                    child:Row(mainAxisAlignment:MainAxisAlignment.center,children:[
+                      const Icon(Icons.directions_car_filled_rounded,size:14),
+                      const SizedBox(width:7),
+                      Flexible(child:Text(buttonText,maxLines:1,overflow:TextOverflow.ellipsis,
+                        style:const TextStyle(fontSize:10,fontWeight:FontWeight.w900))),
+                      const SizedBox(width:7),
+                      const Icon(Icons.arrow_forward_rounded,size:14),
+                    ]),
+                  )),
+                ]),
+              )),
+            ]),
+          ),
+        ]),
+      );
+    });
+  }
+
+  Widget _valetCompactTimeline(String status,Color accent){
+    const labels=['Alındı','Park','Talep','Geliyor','Hazır'];
+    final current=_valetStep(status);
+    const inactive=Color(0xFF9A9BB4);
+    return Row(children:[
+      for(var i=0;i<labels.length;i++)...[
+        Expanded(child:Column(mainAxisSize:MainAxisSize.min,children:[
+          Container(width:13,height:13,decoration:BoxDecoration(
+            color:i<=current?accent:const Color(0xFFF4F2FA),
+            shape:BoxShape.circle,border:Border.all(color:i<=current?accent:inactive,width:1)),
+            child:Icon(i<=current?Icons.check_rounded:Icons.circle,
+              size:i<=current?10:5,color:i<=current?Colors.white:inactive)),
+          const SizedBox(height:1),
+          Text(labels[i],maxLines:1,overflow:TextOverflow.ellipsis,
+            style:TextStyle(color:i<=current?accent:inactive,fontSize:7,fontWeight:FontWeight.w800)),
+        ])),
+        if(i<labels.length-1)Expanded(child:Padding(padding:const EdgeInsets.only(bottom:9),
+          child:Container(height:1,color:i<current?accent:const Color(0xFFD6D1E4)))),
+      ],
+    ]);
   }
 
 
