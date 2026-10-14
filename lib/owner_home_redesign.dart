@@ -849,66 +849,73 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     return LayoutBuilder(builder:(context,constraints){
       final compact=constraints.maxWidth<360;
       final height=compact?123.0:134.0;
-      return Container(
-        width:double.infinity,height:height,
+      return Container(width:double.infinity,height:height,
         clipBehavior:Clip.antiAlias,
         decoration:BoxDecoration(color:lime,borderRadius:BorderRadius.circular(24),
           boxShadow:light?[BoxShadow(color:purple.withValues(alpha:.12),blurRadius:12,offset:const Offset(0,4))]:null),
         child:Stack(children:[
           Positioned.fill(child:ClipPath(clipper:const _ValetReferencePurpleClip(),child:const ColoredBox(color:purple))),
-          Padding(padding:const EdgeInsets.fromLTRB(10,9,10,9),
-            child:Column(children:[
-              SizedBox(height:35,child:Row(children:[
-                Container(width:34,height:34,
-                  decoration:BoxDecoration(color:const Color(0xFF9760FF),borderRadius:BorderRadius.circular(10)),
-                  child:const Icon(Icons.support_agent_rounded,color:Colors.white,size:21)),
-                const SizedBox(width:8),
-                Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisAlignment:MainAxisAlignment.center,children:[
-                  const Text('VALE',style:TextStyle(color:Colors.white,fontSize:15,fontWeight:FontWeight.w900,height:1)),
-                  const SizedBox(height:3),
-                  Text(venue.isEmpty?'CepQontag Vale':venue,maxLines:1,overflow:TextOverflow.ellipsis,
-                    style:const TextStyle(color:Colors.white,fontSize:10,fontWeight:FontWeight.w700,height:1)),
-                ])),
-                Flexible(child:Container(padding:const EdgeInsets.symmetric(horizontal:7,vertical:5),
-                  decoration:BoxDecoration(color:Colors.white.withValues(alpha:.94),borderRadius:BorderRadius.circular(14)),
-                  child:Text(_valetBadge(status),maxLines:1,overflow:TextOverflow.ellipsis,
-                    style:const TextStyle(color:purple,fontSize:8,fontWeight:FontWeight.w900)))),
-                const SizedBox(width:5),
-                Container(width:27,height:27,
-                  decoration:BoxDecoration(color:const Color(0xFF799C23).withValues(alpha:.8),shape:BoxShape.circle),
-                  child:const Icon(Icons.chevron_right_rounded,color:Colors.white,size:22)),
+          Padding(padding:const EdgeInsets.fromLTRB(10,8,10,8),child:Column(children:[
+            SizedBox(height:37,child:Row(children:[
+              Container(width:35,height:35,
+                decoration:BoxDecoration(color:const Color(0xFF9760FF),borderRadius:BorderRadius.circular(10)),
+                child:const Icon(Icons.support_agent_rounded,color:Colors.white,size:22)),
+              const SizedBox(width:9),
+              Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisAlignment:MainAxisAlignment.center,children:[
+                const Text('VALE',style:TextStyle(color:Colors.white,fontSize:15,fontWeight:FontWeight.w900,height:1)),
+                const SizedBox(height:4),
+                Text(venue.isEmpty?'CepQontag Vale':venue,maxLines:1,overflow:TextOverflow.ellipsis,
+                  style:const TextStyle(color:Colors.white,fontSize:10,fontWeight:FontWeight.w700,height:1)),
               ])),
-              const SizedBox(height:5),
-              Expanded(child:Container(width:double.infinity,
-                padding:const EdgeInsets.fromLTRB(9,5,9,5),
-                decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(15)),
-                child:Column(mainAxisAlignment:MainAxisAlignment.spaceBetween,crossAxisAlignment:CrossAxisAlignment.start,children:[
-                  Row(children:[
-                    Expanded(child:Text(_valetStatusTitle(status),maxLines:1,overflow:TextOverflow.ellipsis,
-                      style:const TextStyle(color:Color(0xFF1C1731),fontSize:11,fontWeight:FontWeight.w900))),
-                    if(valetDeliveryCode.isNotEmpty&&['requested','retrieving','ready'].contains(status))
-                      Text('Kod: $valetDeliveryCode',style:const TextStyle(color:purple,fontSize:10,fontWeight:FontWeight.w900)),
-                  ]),
-                  _valetCompactTimeline(status,purple),
-                  SizedBox(width:double.infinity,height:25,child:FilledButton(
-                    onPressed:canRequest&&!valetRequesting?_requestValetVehicle:null,
+              Container(constraints:BoxConstraints(maxWidth:compact?100:125),
+                padding:const EdgeInsets.symmetric(horizontal:8,vertical:6),
+                decoration:BoxDecoration(color:Colors.white.withValues(alpha:.95),borderRadius:BorderRadius.circular(15)),
+                child:Text(_valetBadge(status),maxLines:1,overflow:TextOverflow.ellipsis,
+                  style:const TextStyle(color:purple,fontSize:8,fontWeight:FontWeight.w900))),
+              const SizedBox(width:6),
+              Container(width:28,height:28,
+                decoration:BoxDecoration(color:const Color(0xFF799C23).withValues(alpha:.8),shape:BoxShape.circle),
+                child:const Icon(Icons.chevron_right_rounded,color:Colors.white,size:22)),
+            ])),
+            const SizedBox(height:6),
+            Expanded(child:Container(width:double.infinity,
+              padding:const EdgeInsets.fromLTRB(10,6,10,6),
+              decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(15)),
+              child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                Row(children:[
+                  Expanded(child:Text(_valetStatusTitle(status),maxLines:1,overflow:TextOverflow.ellipsis,
+                    style:const TextStyle(color:Color(0xFF1C1731),fontSize:11,fontWeight:FontWeight.w900))),
+                  if(valetDeliveryCode.isNotEmpty&&['requested','retrieving','ready'].contains(status))
+                    Text('Kod: $valetDeliveryCode',style:const TextStyle(color:purple,fontSize:9,fontWeight:FontWeight.w900)),
+                ]),
+                const Spacer(),
+                _valetCompactTimeline(status,purple),
+                const Spacer(),
+                if(canRequest)
+                  SizedBox(width:double.infinity,height:26,child:FilledButton(
+                    onPressed:valetRequesting?null:_requestValetVehicle,
                     style:FilledButton.styleFrom(backgroundColor:purple,foregroundColor:Colors.white,
-                      disabledBackgroundColor:const Color(0xFFECE5FA),disabledForegroundColor:purple,
                       padding:const EdgeInsets.symmetric(horizontal:10),
                       shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(10))),
                     child:Row(mainAxisAlignment:MainAxisAlignment.center,children:[
                       const Icon(Icons.directions_car_filled_rounded,size:14),
                       const SizedBox(width:7),
-                      Flexible(child:Text(buttonText,maxLines:1,overflow:TextOverflow.ellipsis,
-                        style:const TextStyle(fontSize:10,fontWeight:FontWeight.w900))),
+                      Text(buttonText,style:const TextStyle(fontSize:10,fontWeight:FontWeight.w900)),
                       const SizedBox(width:7),
                       const Icon(Icons.arrow_forward_rounded,size:14),
                     ]),
-                  )),
-                ]),
-              )),
-            ]),
-          ),
+                  ))
+                else Container(width:double.infinity,height:24,
+                  alignment:Alignment.center,
+                  decoration:BoxDecoration(color:const Color(0xFFF1EBFC),borderRadius:BorderRadius.circular(9)),
+                  child:Row(mainAxisAlignment:MainAxisAlignment.center,children:[
+                    const Icon(Icons.directions_car_filled_rounded,color:purple,size:13),
+                    const SizedBox(width:7),
+                    Text(buttonText,style:const TextStyle(color:purple,fontSize:10,fontWeight:FontWeight.w800)),
+                  ])),
+              ]),
+            )),
+          ])),
         ]),
       );
     });
@@ -918,20 +925,20 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     const labels=['Alındı','Park','Talep','Geliyor','Hazır'];
     final current=_valetStep(status);
     const inactive=Color(0xFF9A9BB4);
-    return Row(children:[
+    return Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
       for(var i=0;i<labels.length;i++)...[
-        Expanded(child:Column(mainAxisSize:MainAxisSize.min,children:[
-          Container(width:13,height:13,decoration:BoxDecoration(
+        Expanded(flex:2,child:Column(mainAxisSize:MainAxisSize.min,children:[
+          Container(width:15,height:15,decoration:BoxDecoration(
             color:i<=current?accent:const Color(0xFFF4F2FA),
-            shape:BoxShape.circle,border:Border.all(color:i<=current?accent:inactive,width:1)),
+            shape:BoxShape.circle,border:Border.all(color:i<=current?accent:inactive,width:1.3)),
             child:Icon(i<=current?Icons.check_rounded:Icons.circle,
-              size:i<=current?10:5,color:i<=current?Colors.white:inactive)),
-          const SizedBox(height:1),
+              size:i<=current?11:6,color:i<=current?Colors.white:inactive)),
+          const SizedBox(height:2),
           Text(labels[i],maxLines:1,overflow:TextOverflow.ellipsis,
-            style:TextStyle(color:i<=current?accent:inactive,fontSize:7,fontWeight:FontWeight.w800)),
+            style:TextStyle(color:i<=current?accent:inactive,fontSize:8,fontWeight:FontWeight.w800)),
         ])),
-        if(i<labels.length-1)Expanded(child:Padding(padding:const EdgeInsets.only(bottom:9),
-          child:Container(height:1,color:i<current?accent:const Color(0xFFD6D1E4)))),
+        if(i<labels.length-1)Expanded(flex:1,child:Padding(padding:const EdgeInsets.only(top:7),
+          child:Container(height:1.2,color:i<current?accent:const Color(0xFFD6D1E4)))),
       ],
     ]);
   }
