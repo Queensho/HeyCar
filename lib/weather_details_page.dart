@@ -25,13 +25,13 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
   WeatherSnapshot? weather;
   bool loading = false;
 
-  Color get bg => CepqarTheme.isLight ? const Color(0xFFF8F7FC) : CepqarTheme.bg;
-  Color get panel => CepqarTheme.panel;
-  Color get line => CepqarTheme.line;
-  Color get text => CepqarTheme.text;
-  Color get muted => CepqarTheme.muted;
-  Color get purple => CepqarTheme.purple;
-  Color get lime => CepqarTheme.lime;
+  Color get bg => Colors.white;
+  Color get panel => Colors.white;
+  Color get line => const Color(0xFFE8EAF1);
+  Color get text => const Color(0xFF10152D);
+  Color get muted => const Color(0xFF778096);
+  Color get purple => const Color(0xFF651FFF);
+  Color get lime => const Color(0xFFB9FF45);
 
   @override
   void initState() {
@@ -70,7 +70,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
   }
 
   String _wind(double? value) =>
-      value == null ? '--' : '${value.round()} km/s';
+      value == null ? '--' : '${value.round()} km/sa';
 
   String _percent(double? value) =>
       value == null ? '--' : '%${value.round()}';
@@ -217,7 +217,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
             if (_unavailable)
               _errorCard()
             else ...[
-              _drivingCard(guidance),
+              if (guidance.title != 'Sürüş için uygun hava koşulları') _drivingCard(guidance),
               _forecastCard(
                 title: 'Saatlik Tahmin',
                 child: _hourly(w),
@@ -237,142 +237,57 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
   }
 
   Widget _hero(WeatherSnapshot w) {
-    final dark = w.condition == WeatherCondition.rain ||
-        w.condition == WeatherCondition.thunderstorm ||
-        w.condition == WeatherCondition.night;
-    final foreground = CepqarTheme.isLight ? const Color(0xFF10112D) : Colors.white;
-    final secondary = CepqarTheme.isLight
-        ? const Color(0xFF625A85)
-        : Colors.white.withValues(alpha: .80);
-    return SizedBox(
-      height: 385,
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: CustomPaint(
-              painter: _WeatherHeroPainter(
-                condition: w.condition,
-                lime: lime,
-                purple: purple,
-              ),
-            ),
-          ),
-          SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(18, 10, 18, 0),
-              child: Column(
-                children: [
-                  SizedBox(
-                    height: 42,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: IconButton(
-                            onPressed: () => Navigator.pop(context),
-                            icon: Icon(
-                              Icons.arrow_back_ios_new_rounded,
-                              color: foreground,
-                              size: 21,
-                            ),
-                          ),
-                        ),
-                        Image.asset(
-                          CepqarTheme.isLight
-                              ? 'assets/file_00000000b130820abb8d411e67ab0d25.png'
-                              : 'assets/Logoyeni.png',
-                          height: 30,
-                          fit: BoxFit.contain,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.location_on_rounded,
-                          color: CepqarTheme.isLight ? purple : const Color(0xFFC5A4FF),
-                          size: 22,
-                        ),
-                        const SizedBox(width: 4),
-                        Flexible(
-                          child: Text(
-                            w.location.isEmpty ? 'Konum' : w.location,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: foreground,
-                              fontSize: 19,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      _dateLabel(DateTime.now()),
-                      style: TextStyle(
-                        color: secondary,
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      _degree(w.temperature),
-                      style: TextStyle(
-                        color: foreground,
-                        fontSize: 72,
-                        height: .92,
-                        letterSpacing: -3,
-                        fontWeight: FontWeight.w900,
-                        shadows: dark
-                            ? const [
-                                Shadow(
-                                  color: Color(0x40000000),
-                                  blurRadius: 8,
-                                  offset: Offset(0, 2),
-                                ),
-                              ]
-                            : null,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      w.description,
-                      style: TextStyle(
-                        color: foreground,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                  const Spacer(),
-                  _metrics(w, foreground, secondary),
-                  const SizedBox(height: 13),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+    return Column(children: [
+      SafeArea(bottom: false, child: Container(
+        height: 64,
+        color: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Stack(alignment: Alignment.center, children: [
+          Align(alignment: Alignment.centerLeft, child: IconButton.filledTonal(
+            onPressed: () => Navigator.maybePop(context),
+            style: IconButton.styleFrom(backgroundColor: const Color(0xFFF3EDFF)),
+            icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF4912C8)),
+          )),
+          Image.asset('assets/file_00000000b130820abb8d411e67ab0d25.png', height: 33, fit: BoxFit.contain),
+        ]),
+      )),
+      Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 0), child: Container(
+        height: 315,
+        clipBehavior: Clip.antiAlias,
+        decoration: const BoxDecoration(
+          borderRadius: BorderRadius.all(Radius.circular(24)),
+          gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
+            colors: [Color(0xFF8139F8), Color(0xFF4912C8), Color(0xFF651FFF)]),
+        ),
+        child: Stack(children: [
+          Positioned(right: -95, bottom: -105, child: Container(width: 340, height: 300,
+            decoration: BoxDecoration(color: Colors.white.withValues(alpha: .08), shape: BoxShape.circle))),
+          Positioned(right: 8, top: 36, width: 175, height: 180, child: IgnorePointer(child: _WeatherGlyph(
+            condition: w.condition, size: 166,
+          ))),
+          Padding(padding: const EdgeInsets.fromLTRB(17, 21, 17, 14), child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                const Icon(Icons.location_on_rounded, color: Color(0xFFB9FF45), size: 25),
+                const SizedBox(width: 5),
+                Expanded(child: Text(w.location.isEmpty ? 'Konum' : w.location,
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900))),
+              ]),
+              const SizedBox(height: 5),
+              Text(_dateLabel(DateTime.now()), style: const TextStyle(color: Colors.white70, fontSize: 12)),
+              const SizedBox(height: 12),
+              Text(_degree(w.temperature), style: const TextStyle(
+                color: Colors.white, fontSize: 72, height: 1, fontWeight: FontWeight.w900)),
+              Text(w.description, maxLines: 2, overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
+              const Spacer(),
+              _metrics(w, Colors.white, Colors.white70),
+            ],
+          )),
+        ]),
+      )),
+    ]);
   }
 
   Widget _metrics(
@@ -381,10 +296,10 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
     Color secondary,
   ) {
     return Container(
-      height: 68,
+      height: 69,
       padding: const EdgeInsets.symmetric(vertical: 6),
       decoration: BoxDecoration(
-        color: CepqarTheme.isLight ? const Color(0xFFEDE0FC).withValues(alpha: .74) : const Color(0xFF312250).withValues(alpha: .65),
+        color: Colors.white.withValues(alpha: .16),
         borderRadius: BorderRadius.circular(15),
       ),
       child: Row(
@@ -450,7 +365,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
   Widget _divider() => Container(
         width: 1,
         height: 42,
-        color: Colors.black.withValues(alpha: .08),
+        color: Colors.white.withValues(alpha: .24),
       );
 
   Widget _metric({
@@ -477,7 +392,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: foreground,
-                    fontSize: 10.8,
+                    fontSize: 10.4,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -510,7 +425,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
               colors: [
                 guidance.accent.withValues(alpha: .10),
                 const Color(0xFFF1E6FF),
-                CepqarTheme.isLight ? const Color(0xFFF9F3FF) : panel,
+                const Color(0xFFF9F3FF),
               ],
             ),
             borderRadius: BorderRadius.circular(20),
@@ -567,14 +482,14 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
                 width: 34,
                 height: 34,
                 decoration: BoxDecoration(
-                  color: guidance.accent,
+                  color: const Color(0xFFB9FF45),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   guidance.title.startsWith('Sürüş')
                       ? Icons.check_rounded
                       : Icons.priority_high_rounded,
-                  color: Colors.white,
+                  color: const Color(0xFF10152D),
                   size: 22,
                 ),
               ),
@@ -594,7 +509,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
           decoration: BoxDecoration(
             color: panel,
             borderRadius: BorderRadius.circular(23),
-            border: Border.all(color: CepqarTheme.isLight ? const Color(0xFFE8D9FB) : line),
+            border: Border.all(color: line),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: .03),
@@ -668,11 +583,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
             width: 58,
             padding: const EdgeInsets.symmetric(vertical: 7),
             decoration: BoxDecoration(
-              color: now
-                  ? purple.withValues(alpha: .09)
-                  : CepqarTheme.isLight
-                      ? const Color(0xFFFAF5FF)
-                      : const Color(0xFF151D2D),
+              color: now ? const Color(0xFFF3EDFF) : const Color(0xFFF8F9FC),
               borderRadius: BorderRadius.circular(16),
               border: now
                   ? Border.all(color: purple.withValues(alpha: .12))
@@ -734,11 +645,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
             width: 69,
             padding: const EdgeInsets.fromLTRB(5, 7, 5, 6),
             decoration: BoxDecoration(
-              color: index == 0
-                  ? purple.withValues(alpha: .06)
-                  : CepqarTheme.isLight
-                      ? const Color(0xFFFAF5FF)
-                      : const Color(0xFF151D2D),
+              color: index == 0 ? const Color(0xFFF3EDFF) : const Color(0xFFF8F9FC),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Column(
