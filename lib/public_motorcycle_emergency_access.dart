@@ -7,8 +7,10 @@ bool motorcycleEmergencyEntryVisible({
   required Map<String,dynamic> vehicle,
   bool? published,
 }){
-  if(published!=null)return published;
-  return vehicle['vehicle_type']?.toString().trim().toLowerCase()=='motorcycle';
+  final motorcycle=vehicle['vehicle_type']?.toString().trim().toLowerCase()=='motorcycle';
+  // Always show an entry point on motorcycles, even if older VPS deployments
+  // have stale availability metadata. The gated API still controls disclosure.
+  return motorcycle || published==true;
 }
 
 /// Visitor-facing emergency access never contains private data until the
