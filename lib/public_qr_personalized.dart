@@ -457,7 +457,6 @@ class _PublicHomeState extends State<_PublicHome>{
     final size=MediaQuery.sizeOf(context);
     final compact=size.width<390||size.height<760;
     final short=size.height<700;
-    final heroHeight=short?278.0:(compact?300.0:330.0);
     final pagePad=compact?14.0:17.0;
     final publicMessage=widget.theme.publicMessage.trim().isEmpty
         ? 'Numaram gizli,\nyolun açık.'
@@ -465,7 +464,7 @@ class _PublicHomeState extends State<_PublicHome>{
 
     return Scaffold(
       key:scaffoldKey,
-      backgroundColor:const Color(0xFFF8FAFF),
+      backgroundColor:Colors.white,
       endDrawer:_VisitorMenu(
         onAbout:()=>_openMenuPage(const HeyCarAboutPage()),
         onHow:()=>_openMenuPage(const HeyCarHowPage()),
@@ -483,108 +482,47 @@ class _PublicHomeState extends State<_PublicHome>{
             child:ListView(
               padding:EdgeInsets.zero,
               children:[
-                SizedBox(
-                  height:heroHeight,
-                  child:Stack(
-                    fit:StackFit.expand,
-                    children:[
-                      Positioned.fill(
-                        child:Image.asset(
-                          'assets/IMG_20261004_191854.png',
-                          fit:BoxFit.cover,
-                          alignment:Alignment.center,
-                        ),
+                Padding(
+                  padding:EdgeInsets.fromLTRB(pagePad,10,pagePad,12),
+                  child:_PublicHomeTopBar(compact:compact,onMenu:()=>scaffoldKey.currentState?.openEndDrawer()),
+                ),
+                Padding(
+                  padding:EdgeInsets.symmetric(horizontal:pagePad),
+                  child:Container(
+                    width:double.infinity,
+                    padding:EdgeInsets.fromLTRB(compact?16:20,22,compact?16:20,20),
+                    decoration:BoxDecoration(
+                      gradient:const LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,
+                        colors:[Color(0xFF7935FA),Color(0xFF4912C8)]),
+                      borderRadius:BorderRadius.circular(22),
+                    ),
+                    child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                      const Text('ARAÇ SAHİBİNE ULAŞ',
+                        style:TextStyle(color:Color(0xFFE5D8FF),fontSize:11,fontWeight:FontWeight.w800,letterSpacing:2)),
+                      const SizedBox(height:12),
+                      const Text('Bana ulaşmak',style:TextStyle(color:Colors.white,fontSize:29,fontWeight:FontWeight.w900,height:1.08)),
+                      const Text('çok kolay',style:TextStyle(color:Color(0xFFB9FF45),fontSize:31,fontWeight:FontWeight.w900,height:1.1)),
+                      Container(width:135,height:3,margin:const EdgeInsets.only(top:4),color:const Color(0xFFB9FF45)),
+                      const SizedBox(height:15),
+                      Text(publicMessage,maxLines:3,overflow:TextOverflow.ellipsis,
+                        style:const TextStyle(color:Colors.white,fontSize:14.5,height:1.35)),
+                      const SizedBox(height:18),
+                      Container(
+                        padding:const EdgeInsets.symmetric(horizontal:12,vertical:10),
+                        decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(15)),
+                        child:const Row(children:[
+                          Icon(Icons.chat_bubble_rounded,color:Color(0xFF651FFF),size:22),
+                          SizedBox(width:11),
+                          Expanded(child:Text('Merhaba, aracınızla ilgili bir durum var.',
+                            style:TextStyle(color:Color(0xFF10152D),fontSize:12.5,fontWeight:FontWeight.w700))),
+                        ]),
                       ),
-                      Positioned.fill(
-                        child:DecoratedBox(
-                          decoration:BoxDecoration(
-                            gradient:LinearGradient(
-                              begin:Alignment.topCenter,
-                              end:Alignment.bottomCenter,
-                              colors:[
-                                Colors.white.withValues(alpha:.93),
-                                Colors.white.withValues(alpha:.30),
-                                Colors.white.withValues(alpha:.06),
-                              ],
-                              stops:const [0,.40,1],
-                            ),
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        left:pagePad,
-                        right:pagePad,
-                        top:8,
-                        child:_PublicHomeTopBar(compact:compact,onMenu:()=>scaffoldKey.currentState?.openEndDrawer()),
-                      ),
-                      Positioned(
-                        left:pagePad,
-                        top:short?68:(compact?76:84),
-                        width:short?178:(compact?190:215),
-                        child:Column(
-                          crossAxisAlignment:CrossAxisAlignment.start,
-                          children:[
-                            Text(
-                              'ARAÇ SAHİBİNE ULAŞ',
-                              style:TextStyle(
-                                color:const Color(0xFF4D5877),
-                                fontSize:short?8.7:(compact?9.4:10.5),
-                                letterSpacing:2.2,
-                                fontWeight:FontWeight.w800,
-                              ),
-                            ),
-                            SizedBox(height:short?7:(compact?8:10)),
-                            Text(
-                              'Bana\nulaşmak',
-                              style:TextStyle(
-                                color:_ink,
-                                fontSize:short?31:(compact?34:38),
-                                height:.90,
-                                fontWeight:FontWeight.w900,
-                                letterSpacing:-1.8,
-                              ),
-                            ),
-                            Text(
-                              'çok kolay.',
-                              style:TextStyle(
-                                color:_violet,
-                                fontSize:short?31:(compact?34:38),
-                                height:.94,
-                                fontWeight:FontWeight.w900,
-                                letterSpacing:-1.8,
-                              ),
-                            ),
-                            const SizedBox(height:3),
-                            Container(
-                              width:short?122:(compact?136:150),
-                              height:7,
-                              decoration:const BoxDecoration(
-                                border:Border(
-                                  top:BorderSide(color:Color(0xFF9AFF20),width:3),
-                                ),
-                              ),
-                              transform:Matrix4.rotationZ(-.08),
-                            ),
-                            SizedBox(height:short?7:(compact?9:11)),
-                            Text(
-                              publicMessage,
-                              maxLines:2,
-                              overflow:TextOverflow.ellipsis,
-                              style:TextStyle(
-                                color:const Color(0xFF404A68),
-                                fontSize:short?12.5:(compact?13.5:15),
-                                height:1.28,
-                                fontWeight:FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                    ]),
                   ),
                 ),
+                const SizedBox(height:12),
                 Transform.translate(
-                  offset:Offset(0,short?-12:(compact?-16:-20)),
+                  offset:Offset.zero,
                   child:Padding(
                     padding:EdgeInsets.symmetric(horizontal:pagePad),
                     child:Column(
@@ -595,7 +533,7 @@ class _PublicHomeState extends State<_PublicHome>{
                           crossAxisCount:2,
                           mainAxisSpacing:8,
                           crossAxisSpacing:8,
-                          childAspectRatio:short?1.48:(compact?1.46:1.38),
+                          childAspectRatio:short?1.05:(compact?1.12:1.14),
                           children:[
                             _ReferenceActionCard(
                               title:'Aracınızı\nçekebilir misiniz?',
@@ -606,7 +544,7 @@ class _PublicHomeState extends State<_PublicHome>{
                               cardColors:const [Color(0xFFF8FFF0),Color(0xFFF3FFE8)],
                               arrowColor:const Color(0xFF158126),
                               arrowBg:const Color(0xFFE8FFD2),
-                              onTap:()=>_compose(context,'Aracınızı çekebilir misiniz?'),
+                              onTap:()=>_startCall(context),
                             ),
                             _ReferenceActionCard(
                               title:'Farlarınız açık\nkalmış.',
@@ -632,7 +570,7 @@ class _PublicHomeState extends State<_PublicHome>{
                             ),
                             _ReferenceActionCard(
                               title:'Diğer mesaj',
-                              subtitle:'Size anonim\nmesaj bırakın.',
+                              subtitle:'Anonim mesaj\nbırakın.',
                               icon:Icons.chat_rounded,
                               iconColor:const Color(0xFF1764E8),
                               iconBg:const Color(0xFFE8F1FF),
@@ -660,7 +598,7 @@ class _PublicHomeState extends State<_PublicHome>{
                             height:short?46:(compact?50:54),
                             padding:const EdgeInsets.symmetric(horizontal:11),
                             decoration:BoxDecoration(
-                              color:_navy,
+                              color:const Color(0xFF0B1B3B),
                               borderRadius:BorderRadius.circular(15),
                               boxShadow:const [BoxShadow(color:Color(0x18071A3C),blurRadius:16,offset:Offset(0,7))],
                             ),
@@ -700,7 +638,7 @@ class _PublicHomeState extends State<_PublicHome>{
                             padding:const EdgeInsets.symmetric(horizontal:11),
                             decoration:BoxDecoration(
                               gradient:const LinearGradient(
-                                colors:[Color(0xFFB9FF2B),Color(0xFFA6F719)],
+                                colors:[Color(0xFFB9FF45),Color(0xFFB9FF45)],
                               ),
                               borderRadius:BorderRadius.circular(17),
                               boxShadow:const [BoxShadow(color:Color(0x2798E915),blurRadius:18,offset:Offset(0,7))],
@@ -967,7 +905,7 @@ class _ReferenceActionCard extends StatelessWidget{
       child:Ink(
         padding:const EdgeInsets.fromLTRB(10,9,9,8),
         decoration:BoxDecoration(
-          gradient:LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:cardColors),
+          color:cardColors.first,
           borderRadius:BorderRadius.circular(18),
           border:Border.all(color:Colors.white.withValues(alpha:.95)),
           boxShadow:const [BoxShadow(color:Color(0x100A1530),blurRadius:16,offset:Offset(0,6))],
