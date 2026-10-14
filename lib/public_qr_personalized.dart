@@ -457,7 +457,6 @@ class _PublicHomeState extends State<_PublicHome>{
     final size=MediaQuery.sizeOf(context);
     final compact=size.width<390||size.height<760;
     final short=size.height<700;
-    final heroHeight=short?278.0:(compact?300.0:330.0);
     final pagePad=compact?14.0:17.0;
     final publicMessage=widget.theme.publicMessage.trim().isEmpty
         ? 'Numaram gizli,\nyolun açık.'
@@ -906,7 +905,7 @@ class _ReferenceActionCard extends StatelessWidget{
       child:Ink(
         padding:const EdgeInsets.fromLTRB(10,9,9,8),
         decoration:BoxDecoration(
-          gradient:LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:cardColors),
+          color:cardColors.first,
           borderRadius:BorderRadius.circular(18),
           border:Border.all(color:Colors.white.withValues(alpha:.95)),
           boxShadow:const [BoxShadow(color:Color(0x100A1530),blurRadius:16,offset:Offset(0,6))],
