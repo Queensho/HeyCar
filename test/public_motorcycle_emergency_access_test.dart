@@ -7,14 +7,14 @@ void main(){
     const bike=<String,dynamic>{'vehicle_type':'motorcycle'};
     const car=<String,dynamic>{'vehicle_type':'car'};
     expect(motorcycleEmergencyEntryVisible(vehicle:bike,published:true),isTrue);
-    expect(motorcycleEmergencyEntryVisible(vehicle:bike,published:false),isTrue);
+    expect(motorcycleEmergencyEntryVisible(vehicle:bike,published:false),isFalse);
     expect(motorcycleEmergencyEntryVisible(vehicle:car,published:true),isTrue);
     expect(motorcycleEmergencyEntryVisible(vehicle:car,published:false),isFalse);
-    expect(motorcycleEmergencyEntryVisible(vehicle:bike),isTrue);
+    expect(motorcycleEmergencyEntryVisible(vehicle:bike),isFalse);
     expect(motorcycleEmergencyEntryVisible(vehicle:car),isFalse);
-    expect(motorcycleEmergencyEntryVisible(vehicle:{'make':'QJMotor'},published:false),isTrue);
-    expect(motorcycleEmergencyEntryVisible(vehicle:{'make':'RKS'},published:false),isTrue);
-    expect(motorcycleEmergencyEntryVisible(vehicle:{'vehicleType':'motosiklet'},published:false),isTrue);
+    expect(motorcycleEmergencyEntryVisible(vehicle:{'make':'QJMotor'},published:false),isFalse);
+    expect(motorcycleEmergencyEntryVisible(vehicle:{'make':'RKS'},published:false),isFalse);
+    expect(motorcycleEmergencyEntryVisible(vehicle:{'vehicleType':'motosiklet'},published:false),isFalse);
     expect(motorcycleEmergencyEntryVisible(vehicle:{'make':'Chevrolet'},published:false),isFalse);
   });
 
