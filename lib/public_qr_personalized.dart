@@ -482,7 +482,7 @@ class _PublicHomeState extends State<_PublicHome>{
         const Positioned.fill(child:DecoratedBox(decoration:BoxDecoration(
           gradient:LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,
             colors:[Color(0xFF651FFF),Color(0xFF4912C8),Color(0xFF651FFF)])))),
-        const Positioned(left:-155,top:195,child:IgnorePointer(child:
+        Positioned(left:-155,top:195,child:IgnorePointer(child:
           Transform.rotate(angle:-.65,child:SizedBox(width:245,height:400,
             child:DecoratedBox(decoration:BoxDecoration(color:Color(0xFFB9FF45),
               borderRadius:BorderRadius.all(Radius.circular(130)))))))),
