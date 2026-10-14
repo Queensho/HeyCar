@@ -1,24 +1,13 @@
 import 'package:flutter/material.dart';
 import 'public_motorcycle_emergency_card.dart';
 
-// The server flag is consent-aware and has no personal information.
-// Retain the legacy motorcycle fallback until the VPS publishes this flag.
+// Fail closed: the QR resolver's explicit consent-aware boolean is the
+// only authority for displaying the entire visitor emergency section.
+// Never infer publication from the vehicle type or make.
 bool motorcycleEmergencyEntryVisible({
   required Map<String,dynamic> vehicle,
   bool? published,
-}){
-  final kind=(vehicle['vehicle_type']??vehicle['vehicleType']??vehicle['type']??'').toString().trim().toLowerCase();
-  final motorcycle=kind=='motorcycle'||kind=='motorbike'||kind=='motosiklet'||kind=='motor';
-  // Older deployments omit vehicle_type from the public QR response. This
-  // fallback only exposes the *button*, never private emergency details;
-  // the scan-gated API still enforces motorcycle, consent and proximity.
-  final make=(vehicle['make']??'').toString().trim().toLowerCase();
-  const motorcycleMakes={'qjmotor','qj motor','rks','motolux','mondial','kuba','arora','bajaj','keeway','benelli','sym','kymco','cfmoto','yamaha motor','honda motor'};
-  final legacyMotorcycle=kind.isEmpty&&motorcycleMakes.contains(make);
-  // Always show an entry point on motorcycles, even if older VPS deployments
-  // have stale availability metadata. The gated API still controls disclosure.
-  return motorcycle || legacyMotorcycle || published==true;
-}
+}) => published == true;
 
 /// Visitor-facing emergency access never contains private data until the
 /// server verifies a matching, unexpired physical QR scan session.
