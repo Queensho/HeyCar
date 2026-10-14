@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'app_runtime_config.dart';
 import 'cepqar_theme.dart';
 
-const _purple=Color(0xFF7028EA);
-const _bright=Color(0xFF8138F5);
+const _purple=Color(0xFF651FFF);
+const _bright=Color(0xFF8337F6);
 const _lavender=Color(0xFFF2EAFE);
 const _ink=Color(0xFF10162F);
-const _lime=Color(0xFF1BBF95);
+const _lime=Color(0xFFB9FF45);
 const _gold=Color(0xFFFFC857);
 
 enum _PremiumKind{individual,family}
@@ -21,7 +21,7 @@ class _PremiumPageState extends State<PremiumPage>{
   _PremiumKind kind=_PremiumKind.individual;
   RuntimeAppConfig? runtimeConfig;
   bool _pressed=false;
-  bool get _dark=>CepqarTheme.isLight==false;
+  bool get _dark=>false;
   Color get _surface=>_dark?const Color(0xFF201A39):Colors.white;
   Color get _foreground=>_dark?Colors.white:_ink;
   Color get _secondary=>_dark?const Color(0xFFC9BFE0):const Color(0xFF656C84);
@@ -89,13 +89,15 @@ class _PremiumPageState extends State<PremiumPage>{
   Widget build(BuildContext context){
     final features=kind==_PremiumKind.family?familyFeatures:individualFeatures;
     return Scaffold(
-      backgroundColor:_dark?const Color(0xFF10162F):const Color(0xFFF8F7FC),
+      backgroundColor:_dark?const Color(0xFF10162F):const Color(0xFFF8F9FC),
       appBar:AppBar(
         backgroundColor:_dark?const Color(0xFF10162F):const Color(0xFFF8F7FC),
         surfaceTintColor:Colors.transparent,
         foregroundColor:_foreground,
         elevation:0,
-        title:const Text('CepQontag Premium',style:TextStyle(fontSize:19,fontWeight:FontWeight.w900)),
+        centerTitle:true,
+        leading:Padding(padding:const EdgeInsets.only(left:10),child:IconButton.filledTonal(onPressed:()=>Navigator.maybePop(context),style:IconButton.styleFrom(backgroundColor:_lavender),icon:const Icon(Icons.arrow_back_rounded,color:Color(0xFF4912C8)))),
+        title:const Text('CepQontag Premium',style:TextStyle(fontSize:20,fontWeight:FontWeight.w900)),
       ),
       body:SafeArea(
         top:false,
@@ -108,7 +110,7 @@ class _PremiumPageState extends State<PremiumPage>{
               Expanded(child:_KindCard(
                 dark:_dark,
                 selected:kind==_PremiumKind.individual,
-                icon:Icons.person_rounded,
+                icon:Icons.directions_car_rounded,
                 title:'Bireysel',
                 subtitle:'Sadece araç sahibi',
                 onTap:()=>setState(()=>kind=_PremiumKind.individual),
@@ -120,7 +122,6 @@ class _PremiumPageState extends State<PremiumPage>{
                 icon:Icons.family_restroom_rounded,
                 title:'Aile',
                 subtitle:'Araç sahibi + sürücüler',
-                badge:'AİLE',
                 onTap:()=>setState(()=>kind=_PremiumKind.family),
               )),
             ]),
@@ -188,15 +189,15 @@ class _PremiumPageState extends State<PremiumPage>{
                 duration:const Duration(milliseconds:160),
                 child:Container(
                   height:56,
-                  decoration:BoxDecoration(gradient:const LinearGradient(colors:[_purple,_bright,Color(0xFFC578F8)]),borderRadius:BorderRadius.circular(21)),
+                  decoration:BoxDecoration(color:_lime,borderRadius:BorderRadius.circular(21)),
                   child:TextButton.icon(
                     onPressed:runtimeConfig?.featureEnabled('premium')==false?null:()=>ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(
                       kind==_PremiumKind.family
                         ?'Aile Premium seçildi. Ödeme entegrasyonu bağlandığında satın alma araç sahibi hesabından tamamlanacak.'
                         :'Bireysel Premium seçildi. Ödeme entegrasyonu sonraki adımda bağlanacak.',
                     ))),
-                    icon:const Icon(Icons.arrow_forward_rounded,color:Colors.white),
-                    label:Text(runtimeConfig?.featureEnabled('premium')==false?'Premium geçici olarak kapalı':'Devam Et',style:const TextStyle(color:Colors.white,fontSize:17,fontWeight:FontWeight.w900)),
+                    icon:const Icon(Icons.workspace_premium_rounded,color:_purple),
+                    label:Text(runtimeConfig?.featureEnabled('premium')==false?'Premium geçici olarak kapalı':'Premium’a Devam Et  →',style:const TextStyle(color:_ink,fontSize:16,fontWeight:FontWeight.w900)),
                   ),
                 ),
               ),
@@ -214,23 +215,28 @@ class _PremiumHero extends StatelessWidget{
  const _PremiumHero({required this.dark});
  final bool dark;
  @override Widget build(BuildContext context)=>Container(
-   height:186,
+   height:204,
    clipBehavior:Clip.antiAlias,
-   decoration:BoxDecoration(borderRadius:BorderRadius.circular(24),gradient:LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:dark?[const Color(0xFF332253),_purple,_bright]:[const Color(0xFFF0E9FF),const Color(0xFFBA8AF7),_bright])),
-   child:Stack(children:[
-     Positioned(right:-55,bottom:-85,child:Container(width:245,height:190,decoration:BoxDecoration(color:Colors.white.withValues(alpha:.14),shape:BoxShape.circle))),
-     Positioned(right:5,top:34,child:Opacity(opacity:.26,child:Icon(Icons.auto_awesome_rounded,color:Colors.white,size:95))),
-     Padding(padding:const EdgeInsets.fromLTRB(18,18,12,15),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-       Container(padding:const EdgeInsets.symmetric(horizontal:12,vertical:7),decoration:BoxDecoration(gradient:const LinearGradient(colors:[_purple,_bright]),borderRadius:BorderRadius.circular(30)),child:const Row(mainAxisSize:MainAxisSize.min,children:[Icon(Icons.workspace_premium_rounded,color:Colors.white,size:20),SizedBox(width:6),Text('PREMIUM',style:TextStyle(color:Colors.white,fontSize:12,fontWeight:FontWeight.w900))])),
-       const Spacer(),
-       Text.rich(TextSpan(children:[TextSpan(text:'Premium paketini ',style:TextStyle(color:dark?Colors.white:_ink)),const TextSpan(text:'seç.',style:TextStyle(color:_purple))]),style:const TextStyle(fontSize:20,fontWeight:FontWeight.w900)),
-       const SizedBox(height:6),
-       SizedBox(width:195,child:Text('Bireysel sadece araç sahibine, Aile ise yetkili sürücülere de premium erişim verir.',style:TextStyle(color:dark?const Color(0xFFF2EAFE):const Color(0xFF4F536D),fontSize:12.3,height:1.3))),
-       const SizedBox(height:6),
-     ])),
-     // Max artwork is intentionally a placeholder until an approved project asset exists.
-     Positioned(right:13,bottom:16,child:IgnorePointer(child:Icon(Icons.smart_toy_rounded,color:Colors.white.withValues(alpha:.5),size:65))),
-   ]),
+   decoration:const BoxDecoration(borderRadius:BorderRadius.all(Radius.circular(24)),gradient:LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:[Color(0xFF8040F4),Color(0xFF5415DF),Color(0xFF9736FF)])),
+   child:LayoutBuilder(builder:(context,c){
+     final compact=c.maxWidth<355;
+     return Stack(children:[
+       Positioned(right:-100,bottom:-130,child:Container(width:300,height:220,decoration:BoxDecoration(color:Colors.white.withValues(alpha:.13),shape:BoxShape.circle))),
+       Positioned(right:12,top:35,child:const Icon(Icons.auto_awesome_rounded,color:_lime,size:24)),
+       Positioned(right:115,top:68,child:const Icon(Icons.star_rounded,color:_lime,size:25)),
+       Positioned(right:-12,bottom:-16,width:compact?153:185,height:compact?150:176,child:IgnorePointer(child:Stack(fit:StackFit.expand,children:[
+         Image.asset('assets/Heycar3d.png',fit:BoxFit.contain,errorBuilder:(_,__,___)=>const Icon(Icons.directions_car,color:Colors.white,size:90)),
+         const Positioned(right:50,top:5,child:Icon(Icons.workspace_premium_rounded,size:64,color:Color(0xFFFFD453))),
+       ]))),
+       Padding(padding:EdgeInsets.fromLTRB(compact?13:18,17,8,16),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+         Container(padding:const EdgeInsets.symmetric(horizontal:13,vertical:8),decoration:BoxDecoration(color:const Color(0xFF4912C8),borderRadius:BorderRadius.circular(30)),child:const Row(mainAxisSize:MainAxisSize.min,children:[Icon(Icons.workspace_premium_rounded,color:_lime,size:20),SizedBox(width:7),Text('PREMIUM',style:TextStyle(color:Colors.white,fontSize:12,fontWeight:FontWeight.w900))])),
+         const SizedBox(height:20),
+         SizedBox(width:compact?230:270,child:Text.rich(const TextSpan(children:[TextSpan(text:'Premium paketini ',style:TextStyle(color:Colors.white)),TextSpan(text:'seç.',style:TextStyle(color:_lime))]),style:TextStyle(fontSize:compact?20:23,fontWeight:FontWeight.w900,height:1.05))),
+         const SizedBox(height:12),
+         SizedBox(width:compact?174:205,child:const Text('Bireysel sadece araç sahibine, Aile ise yetkili sürücülere de premium erişim verir.',style:TextStyle(color:Colors.white,fontSize:12.3,height:1.5))),
+       ])),
+     ]);
+   }),
  );
 }
 
@@ -243,8 +249,8 @@ class _KindCard extends StatelessWidget{
  final String? badge;
  @override Widget build(BuildContext context)=>InkWell(
    onTap:onTap,borderRadius:BorderRadius.circular(22),
-   child:AnimatedContainer(duration:const Duration(milliseconds:200),height:120,padding:const EdgeInsets.all(12),
-     decoration:BoxDecoration(gradient:selected?const LinearGradient(colors:[Color(0xFF321177),_purple,_bright]):null,color:selected?null:dark?const Color(0xFF201A39):Colors.white,borderRadius:BorderRadius.circular(22),border:Border.all(color:selected?_bright:dark?const Color(0xFF4D3A70):const Color(0xFFE8DFF5))),
+   child:AnimatedContainer(duration:const Duration(milliseconds:200),height:116,padding:const EdgeInsets.all(11),
+     decoration:BoxDecoration(gradient:selected?const LinearGradient(colors:[Color(0xFF321177),_purple,_bright]):null,color:selected?null:Colors.white,borderRadius:BorderRadius.circular(22),border:Border.all(color:selected?_bright:dark?const Color(0xFF4D3A70):const Color(0xFFE8DFF5))),
      child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
        Row(children:[Container(padding:const EdgeInsets.all(8),decoration:BoxDecoration(color:selected?Colors.white.withValues(alpha:.18):_lavender,borderRadius:BorderRadius.circular(11)),child:Icon(icon,color:selected?Colors.white:_purple,size:21)),const Spacer(),if(badge!=null&&!selected)Text(badge!,style:const TextStyle(color:Color(0xFFDB9A19),fontSize:10,fontWeight:FontWeight.w900)),const SizedBox(width:5),Icon(selected?Icons.check_circle_rounded:Icons.radio_button_unchecked_rounded,color:selected?Colors.white:const Color(0xFFA6A9BE),size:22)]),
        const Spacer(),
