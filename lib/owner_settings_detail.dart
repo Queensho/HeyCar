@@ -276,7 +276,7 @@ class _OwnerAccountSettingsPageState extends State<OwnerAccountSettingsPage> {
                   CircleAvatar(
                     radius: 64,
                     backgroundColor: const Color(0xFFF3EDFF),
-                    child: Text(_nameValue.trim().split(RegExp(r'\\s+')).where((x) => x.isNotEmpty).take(2).map((x) => x[0].toUpperCase()).join(),
+                    child: Text(_nameValue.trim().split(RegExp(r'\s+')).where((x) => x.isNotEmpty).take(2).map((x) => x[0].toUpperCase()).join(),
                       style: const TextStyle(fontSize: 37, color: Color(0xFF651FFF), fontWeight: FontWeight.w800)),
                   ),
                   Positioned(
