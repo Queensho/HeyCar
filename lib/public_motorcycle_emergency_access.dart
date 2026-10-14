@@ -7,10 +7,17 @@ bool motorcycleEmergencyEntryVisible({
   required Map<String,dynamic> vehicle,
   bool? published,
 }){
-  final motorcycle=vehicle['vehicle_type']?.toString().trim().toLowerCase()=='motorcycle';
+  final kind=(vehicle['vehicle_type']??vehicle['vehicleType']??vehicle['type']??'').toString().trim().toLowerCase();
+  final motorcycle=kind=='motorcycle'||kind=='motorbike'||kind=='motosiklet'||kind=='motor';
+  // Older deployments omit vehicle_type from the public QR response. This
+  // fallback only exposes the *button*, never private emergency details;
+  // the scan-gated API still enforces motorcycle, consent and proximity.
+  final make=(vehicle['make']??'').toString().trim().toLowerCase();
+  const motorcycleMakes={'qjmotor','qj motor','rks','motolux','mondial','kuba','arora','bajaj','keeway','benelli','sym','kymco','cfmoto','yamaha motor','honda motor'};
+  final legacyMotorcycle=kind.isEmpty&&motorcycleMakes.contains(make);
   // Always show an entry point on motorcycles, even if older VPS deployments
   // have stale availability metadata. The gated API still controls disclosure.
-  return motorcycle || published==true;
+  return motorcycle || legacyMotorcycle || published==true;
 }
 
 /// Visitor-facing emergency access never contains private data until the

@@ -12,6 +12,10 @@ void main(){
     expect(motorcycleEmergencyEntryVisible(vehicle:car,published:false),isFalse);
     expect(motorcycleEmergencyEntryVisible(vehicle:bike),isTrue);
     expect(motorcycleEmergencyEntryVisible(vehicle:car),isFalse);
+    expect(motorcycleEmergencyEntryVisible(vehicle:{'make':'QJMotor'},published:false),isTrue);
+    expect(motorcycleEmergencyEntryVisible(vehicle:{'make':'RKS'},published:false),isTrue);
+    expect(motorcycleEmergencyEntryVisible(vehicle:{'vehicleType':'motosiklet'},published:false),isTrue);
+    expect(motorcycleEmergencyEntryVisible(vehicle:{'make':'Chevrolet'},published:false),isFalse);
   });
 
   test('scan checks explain failed access without exposing private details',(){
