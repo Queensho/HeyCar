@@ -243,131 +243,142 @@ class _OwnerAccountSettingsPageState extends State<OwnerAccountSettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return _SettingsScaffold(
-      title: 'Hesap bilgilerim',
-      child: Column(
-        children: [
-          CircleAvatar(
-            radius: 38,
-            backgroundColor: CepqarTheme.panel,
-            child: Icon(
-              editing ? Icons.edit_rounded : Icons.person_rounded,
-              color: _purple,
-              size: 36,
+    const dark = Color(0xFF10152D);
+    return Theme(
+      data: Theme.of(context).copyWith(
+        brightness: Brightness.light,
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF651FFF), brightness: Brightness.light),
+      ),
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF8F9FC),
+        appBar: AppBar(
+          backgroundColor: const Color(0xFFF8F9FC),
+          surfaceTintColor: Colors.transparent,
+          centerTitle: true,
+          title: const Text('Hesap Bilgilerim', style: TextStyle(color: dark, fontWeight: FontWeight.w900, fontSize: 21)),
+          leadingWidth: 66,
+          leading: Padding(
+            padding: const EdgeInsets.only(left: 15, top: 6, bottom: 6),
+            child: IconButton.filledTonal(
+              onPressed: () => Navigator.maybePop(context),
+              style: IconButton.styleFrom(backgroundColor: const Color(0xFFF3EDFF)),
+              icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF4912C8)),
             ),
           ),
-          const SizedBox(height: 14),
-          Row(
+        ),
+        body: SafeArea(
+          top: false,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(18, 12, 18, 32),
             children: [
-              Expanded(
-                child: Text(
-                  editing ? 'Bilgilerini düzenle' : 'Kişisel bilgiler',
-                  style: TextStyle(
-                    color: const Color(0xFF10152D),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
+              Center(
+                child: Stack(clipBehavior: Clip.none, children: [
+                  CircleAvatar(
+                    radius: 64,
+                    backgroundColor: const Color(0xFFF3EDFF),
+                    child: Text(_nameValue.trim().split(RegExp(r'\s+')).where((x) => x.isNotEmpty).take(2).map((x) => x[0].toUpperCase()).join(),
+                      style: const TextStyle(fontSize: 37, color: Color(0xFF651FFF), fontWeight: FontWeight.w800)),
+                  ),
+                  Positioned(
+                    right: -3, bottom: 0,
+                    child: IconButton.filled(
+                      onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Profil fotoğrafı yükleme henüz desteklenmiyor.')),
+                      ),
+                      style: IconButton.styleFrom(backgroundColor: const Color(0xFF651FFF), foregroundColor: Colors.white),
+                      icon: const Icon(Icons.camera_alt_rounded, size: 20),
+                    ),
+                  ),
+                ]),
+              ),
+              const SizedBox(height: 12),
+              Center(child: Text(_nameValue, maxLines: 2, textAlign: TextAlign.center, overflow: TextOverflow.ellipsis, style: const TextStyle(color: dark, fontWeight: FontWeight.w900, fontSize: 22))),
+              const SizedBox(height: 3),
+              Center(child: Text(_phoneValue, style: const TextStyle(color: Color(0xFF778096), fontSize: 15))),
+              const SizedBox(height: 24),
+              Row(children: [
+                Expanded(child: Text(editing ? 'Bilgilerini düzenle' : 'Kişisel bilgiler', style: const TextStyle(color: dark, fontSize: 22, fontWeight: FontWeight.w900))),
+                TextButton.icon(
+                  onPressed: saving ? null : () => editing ? _cancelEdit() : setState(() => editing = true),
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFF651FFF),
+                    backgroundColor: const Color(0xFFF3EDFF),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  ),
+                  icon: Icon(editing ? Icons.close_rounded : Icons.edit_rounded, size: 18),
+                  label: Text(editing ? 'Vazgeç' : 'Düzenle', style: const TextStyle(fontWeight: FontWeight.w800)),
+                ),
+              ]),
+              const SizedBox(height: 12),
+              if (!editing) ...[
+                _ReferenceAccountTile(icon: Icons.person_outline_rounded, title: 'Ad Soyad', subtitle: _nameValue, onTap: () => setState(() => editing = true)),
+                _ReferenceAccountTile(icon: Icons.phone_rounded, title: 'Telefon', subtitle: _phoneValue, onTap: () => setState(() => editing = true)),
+                _ReferenceAccountTile(icon: Icons.mail_outline_rounded, title: 'E-posta', subtitle: _emailValue, onTap: () => setState(() => editing = true)),
+              ] else ...[
+                _EditableAccountField(controller: name, icon: Icons.person_outline_rounded, label: 'Ad Soyad', textCapitalization: TextCapitalization.words, enabled: !saving),
+                _EditableAccountField(controller: phone, icon: Icons.phone_outlined, label: 'Telefon', keyboardType: TextInputType.phone, enabled: !saving),
+                _EditableAccountField(controller: email, icon: Icons.mail_outline_rounded, label: 'E-posta', keyboardType: TextInputType.emailAddress, enabled: !saving),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: saving ? null : _saveProfile,
+                    style: FilledButton.styleFrom(backgroundColor: const Color(0xFF651FFF), foregroundColor: Colors.white),
+                    icon: const Icon(Icons.check_rounded),
+                    label: Text(saving ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'),
                   ),
                 ),
-              ),
-              if (!editing)
-                TextButton.icon(
-                  onPressed: () => setState(() => editing = true),
-                  icon: const Icon(Icons.edit_outlined, size: 18),
-                  label: const Text('Düzenle'),
-                )
-              else
-                TextButton(
-                  onPressed: saving ? null : _cancelEdit,
-                  child: const Text('Vazgeç'),
-                ),
+                const SizedBox(height: 10),
+              ],
+              _ReferenceAccountTile(icon: Icons.key_rounded, title: 'Hesap kurtarma kodu', subtitle: 'Şifreni unutursan kullanacağın kodu oluştur.', onTap: () => _showOwnerRecoveryCode(context)),
+              _ReferenceAccountTile(icon: Icons.delete_outline_rounded, title: 'Hesabı sil', subtitle: 'Hesabını ve bağlı verilerini kalıcı olarak sil.', onTap: () => _deleteOwnerAccount(context)),
             ],
           ),
-          const SizedBox(height: 8),
-          if (!editing) ...[
-            _InfoTile(
-              icon: Icons.person_outline_rounded,
-              label: 'Ad Soyad',
-              value: _nameValue,
-            ),
-            _InfoTile(
-              icon: Icons.phone_outlined,
-              label: 'Telefon',
-              value: _phoneValue,
-            ),
-            _InfoTile(
-              icon: Icons.mail_outline_rounded,
-              label: 'E-posta',
-              value: _emailValue,
-            ),
-          ] else ...[
-            _EditableAccountField(
-              controller: name,
-              icon: Icons.person_outline_rounded,
-              label: 'Ad Soyad',
-              textCapitalization: TextCapitalization.words,
-              enabled: !saving,
-            ),
-            _EditableAccountField(
-              controller: phone,
-              icon: Icons.phone_outlined,
-              label: 'Telefon',
-              keyboardType: TextInputType.phone,
-              enabled: !saving,
-            ),
-            _EditableAccountField(
-              controller: email,
-              icon: Icons.mail_outline_rounded,
-              label: 'E-posta',
-              keyboardType: TextInputType.emailAddress,
-              enabled: !saving,
-            ),
-            const SizedBox(height: 2),
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: FilledButton.icon(
-                onPressed: saving ? null : _saveProfile,
-                style: FilledButton.styleFrom(
-                  backgroundColor: _purple,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                ),
-                icon: saving
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.check_rounded, size: 20),
-                label: Text(
-                  saving ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet',
-                  style: const TextStyle(fontWeight: FontWeight.w900),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-          ],
-          _ActionTile(
-            icon: Icons.vpn_key_outlined,
-            title: 'Hesap kurtarma kodu',
-            subtitle: 'Şifreni unutursan kullanacağın kodu oluştur',
-            onTap: () => _showOwnerRecoveryCode(context),
-          ),
-          _ActionTile(
-            icon: Icons.delete_forever_outlined,
-            title: 'Hesabı sil',
-            subtitle: 'Hesabını ve bağlı verilerini kalıcı olarak sil',
-            onTap: () => _deleteOwnerAccount(context),
-          ),
-        ],
+        ),
       ),
     );
   }
+}
+
+class _ReferenceAccountTile extends StatelessWidget {
+  const _ReferenceAccountTile({required this.icon, required this.title, required this.subtitle, required this.onTap});
+  final IconData icon;
+  final String title, subtitle;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(21),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(21),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          decoration: BoxDecoration(
+            border: Border.all(color: const Color(0xFFE8EAF1)),
+            borderRadius: BorderRadius.circular(21),
+            boxShadow: [BoxShadow(color: const Color(0xFF10152D).withValues(alpha: .025), blurRadius: 12, offset: const Offset(0, 4))],
+          ),
+          child: Row(children: [
+            Container(
+              width: 52, height: 52,
+              decoration: BoxDecoration(color: const Color(0xFFF3EDFF), borderRadius: BorderRadius.circular(14)),
+              child: Icon(icon, color: const Color(0xFF651FFF), size: 27),
+            ),
+            const SizedBox(width: 15),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(title, style: const TextStyle(color: Color(0xFF10152D), fontSize: 16, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 3),
+              Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF778096), fontSize: 13)),
+            ])),
+            const SizedBox(width: 5),
+            const Icon(Icons.chevron_right_rounded, size: 24, color: Color(0xFF778096)),
+          ]),
+        ),
+      ),
+    ),
+  );
 }
 
 class _EditableAccountField extends StatelessWidget {
