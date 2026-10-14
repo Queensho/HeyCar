@@ -98,10 +98,10 @@ void action(String a){
             margin:const EdgeInsets.fromLTRB(14,0,14,8),
             padding:const EdgeInsets.symmetric(horizontal:5,vertical:5),
             decoration:BoxDecoration(
-              color:CepqarTheme.isLight?Colors.white:const Color(0xFF090F1D),
+              color:(tab==4||CepqarTheme.isLight)?Colors.white:const Color(0xFF090F1D),
               borderRadius:BorderRadius.circular(25),
-              border:Border.all(color:CepqarTheme.isLight?const Color(0xFFE6E6F0):const Color(0xFF1B2540)),
-              boxShadow:[BoxShadow(color:Colors.black.withValues(alpha:CepqarTheme.isLight ? 0.08 : 0.30),blurRadius:22,offset:const Offset(0,8))],
+              border:Border.all(color:(tab==4||CepqarTheme.isLight)?const Color(0xFFE6E6F0):const Color(0xFF1B2540)),
+              boxShadow:[BoxShadow(color:Colors.black.withValues(alpha:(tab==4||CepqarTheme.isLight) ? 0.08 : 0.30),blurRadius:22,offset:const Offset(0,8))],
             ),
             child:Row(children:List.generate(5,(i){
               final active=tab==i;
@@ -112,12 +112,12 @@ void action(String a){
                   child:AnimatedContainer(
                     duration:const Duration(milliseconds:180),
                     decoration:BoxDecoration(
-                      color:active?CepqarTheme.purple.withValues(alpha:CepqarTheme.isLight ? 0.10 : 0.18):Colors.transparent,
+                      color:active?CepqarTheme.purple.withValues(alpha:(tab==4||CepqarTheme.isLight) ? 0.10 : 0.18):Colors.transparent,
                       borderRadius:BorderRadius.circular(20),
                     ),
                     child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[
                       Stack(clipBehavior:Clip.none,children:[
-                        Icon(icons[i],size:22,color:active?CepqarTheme.purple:CepqarTheme.muted),
+                        Icon(icons[i],size:22,color:active?const Color(0xFF651FFF):(tab==4?const Color(0xFF778096):CepqarTheme.muted)),
                         if(i==3&&unread>0)const Positioned(right:-4,top:-3,child:CircleAvatar(radius:4,backgroundColor:Color(0xFFFF4158))),
                       ]),
                       const SizedBox(height:3),
