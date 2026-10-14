@@ -363,6 +363,18 @@ class _PublicHomeState extends State<_PublicHome>{
   Map<String,dynamic>? emergencyCard;
   String? emergencyError;
   bool emergencyLoading=false;
+  String get emergencyVehicleType {
+    final raw=(widget.vehicle['vehicle_type']??
+      widget.vehicle['type']??
+      widget.vehicle['category']??'').toString().trim().toLowerCase();
+    if(raw.contains('moto')||raw.contains('scooter'))return 'Motosiklet';
+    if(raw.contains('car')||raw.contains('auto')||
+       raw.contains('otomobil'))return 'Otomobil';
+    if(raw.contains('truck')||raw.contains('kamyon'))return 'Kamyon';
+    if(raw.contains('van')||raw.contains('minib'))return 'Minibüs';
+    if(raw.isEmpty)return 'Araç';
+    return raw[0].toUpperCase()+raw.substring(1);
+  }
   bool get showEmergencyAccess=>motorcycleEmergencyEntryVisible(
     vehicle:widget.vehicle,published:widget.emergencyAvailable);
   String get plate => widget.vehicle['plate']?.toString() ?? 'Araç';
@@ -581,9 +593,10 @@ class _PublicHomeState extends State<_PublicHome>{
                 const SizedBox(height:12),
                 PublicMotorcycleEmergencyAccess(
                   loading:emergencyLoading,error:emergencyError,
-                  card:emergencyCard,onReveal:_loadEmergencyCard),
+                  card:emergencyCard,onReveal:_loadEmergencyCard,
+                  vehicleType:emergencyVehicleType),
               ],
-              SizedBox(height:size.height<740?40:76),
+              SizedBox(height:showEmergencyAccess?14:(size.height<740?40:76)),
               _visitorPill(
                 label:'Gizli Arama Başlat',
                 icon:Icons.phone_rounded,
