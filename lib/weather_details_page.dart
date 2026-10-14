@@ -25,13 +25,13 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
   WeatherSnapshot? weather;
   bool loading = false;
 
-  Color get bg => CepqarTheme.isLight ? const Color(0xFFF8F7FC) : CepqarTheme.bg;
-  Color get panel => CepqarTheme.panel;
-  Color get line => CepqarTheme.line;
-  Color get text => CepqarTheme.text;
-  Color get muted => CepqarTheme.muted;
-  Color get purple => CepqarTheme.purple;
-  Color get lime => CepqarTheme.lime;
+  Color get bg => Colors.white;
+  Color get panel => Colors.white;
+  Color get line => const Color(0xFFE8EAF1);
+  Color get text => const Color(0xFF10152D);
+  Color get muted => const Color(0xFF778096);
+  Color get purple => const Color(0xFF651FFF);
+  Color get lime => const Color(0xFFB9FF45);
 
   @override
   void initState() {
@@ -70,7 +70,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
   }
 
   String _wind(double? value) =>
-      value == null ? '--' : '${value.round()} km/s';
+      value == null ? '--' : '${value.round()} km/sa';
 
   String _percent(double? value) =>
       value == null ? '--' : '%${value.round()}';
@@ -204,7 +204,9 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
           isFallback: true,
         );
     final guidance = _guidance(w);
-    return Scaffold(
+    return Theme(
+      data: Theme.of(context).copyWith(brightness: Brightness.light, colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF651FFF), brightness: Brightness.light)),
+      child: Scaffold(
       backgroundColor: bg,
       body: RefreshIndicator(
         color: purple,
@@ -233,144 +235,57 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
           ],
         ),
       ),
+    ),
     );
   }
 
   Widget _hero(WeatherSnapshot w) {
-    final dark = w.condition == WeatherCondition.rain ||
-        w.condition == WeatherCondition.thunderstorm ||
-        w.condition == WeatherCondition.night;
-    final foreground = CepqarTheme.isLight ? const Color(0xFF10112D) : Colors.white;
-    final secondary = CepqarTheme.isLight
-        ? const Color(0xFF625A85)
-        : Colors.white.withValues(alpha: .80);
-    return SizedBox(
-      height: 385,
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: CustomPaint(
-              painter: _WeatherHeroPainter(
-                condition: w.condition,
-                lime: lime,
-                purple: purple,
-              ),
+    const foreground = Colors.white;
+    final secondary = Colors.white.withValues(alpha: .85);
+    return SafeArea(
+      bottom:false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+        child: Column(children: [
+          SizedBox(height: 48, child: Stack(alignment: Alignment.center, children: [
+            Align(alignment: Alignment.centerLeft, child: IconButton.filledTonal(
+              style: IconButton.styleFrom(backgroundColor: const Color(0xFFF3EDFF), foregroundColor: const Color(0xFF4912C8)),
+              icon: const Icon(Icons.arrow_back_rounded), onPressed: () => Navigator.maybePop(context),
+            )),
+            Image.asset('assets/file_00000000b130820abb8d411e67ab0d25.png', height: 31, fit: BoxFit.contain),
+          ])),
+          const SizedBox(height: 10),
+          Container(
+            height: 300,
+            clipBehavior: Clip.antiAlias,
+            decoration: const BoxDecoration(
+              borderRadius: BorderRadius.all(Radius.circular(24)),
+              gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF863BF5),Color(0xFF4D16D9),Color(0xFF7627F9)]),
             ),
-          ),
-          SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(18, 10, 18, 0),
-              child: Column(
-                children: [
-                  SizedBox(
-                    height: 42,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: IconButton(
-                            onPressed: () => Navigator.pop(context),
-                            icon: Icon(
-                              Icons.arrow_back_ios_new_rounded,
-                              color: foreground,
-                              size: 21,
-                            ),
-                          ),
-                        ),
-                        Image.asset(
-                          CepqarTheme.isLight
-                              ? 'assets/file_00000000b130820abb8d411e67ab0d25.png'
-                              : 'assets/Logoyeni.png',
-                          height: 30,
-                          fit: BoxFit.contain,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.location_on_rounded,
-                          color: CepqarTheme.isLight ? purple : const Color(0xFFC5A4FF),
-                          size: 22,
-                        ),
-                        const SizedBox(width: 4),
-                        Flexible(
-                          child: Text(
-                            w.location.isEmpty ? 'Konum' : w.location,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: foreground,
-                              fontSize: 19,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      _dateLabel(DateTime.now()),
-                      style: TextStyle(
-                        color: secondary,
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      _degree(w.temperature),
-                      style: TextStyle(
-                        color: foreground,
-                        fontSize: 72,
-                        height: .92,
-                        letterSpacing: -3,
-                        fontWeight: FontWeight.w900,
-                        shadows: dark
-                            ? const [
-                                Shadow(
-                                  color: Color(0x40000000),
-                                  blurRadius: 8,
-                                  offset: Offset(0, 2),
-                                ),
-                              ]
-                            : null,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      w.description,
-                      style: TextStyle(
-                        color: foreground,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
+            child: LayoutBuilder(builder: (context, constraints) => Stack(children: [
+              Positioned(right:-80, top:-100, child: Container(width:300,height:265,decoration:BoxDecoration(shape:BoxShape.circle,color:Colors.white.withValues(alpha:.08)))),
+              Positioned(right:8, top:45, child: IgnorePointer(child: _WeatherGlyph(condition: w.condition, size:constraints.maxWidth < 355 ? 114 : 153))),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 18, 10, 0),
+                child: Column(crossAxisAlignment:CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    const Icon(Icons.location_on_rounded,color:Color(0xFFB9FF45),size:25),
+                    const SizedBox(width:5),
+                    Expanded(child:Text(w.location.isEmpty?'Konum':w.location,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:foreground,fontWeight:FontWeight.w900,fontSize:20))),
+                  ]),
+                  const SizedBox(height:6),
+                  Text(_dateLabel(DateTime.now()),style:TextStyle(color:secondary,fontSize:12)),
+                  const SizedBox(height:13),
+                  Text(_degree(w.temperature),style:const TextStyle(color:foreground,fontSize:71,height:1,fontWeight:FontWeight.w900)),
+                  Text(w.description,maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:foreground,fontSize:20,fontWeight:FontWeight.w800)),
                   const Spacer(),
-                  _metrics(w, foreground, secondary),
-                  const SizedBox(height: 13),
-                ],
+                  _metrics(w,foreground,secondary),
+                  const SizedBox(height:12),
+                ]),
               ),
-            ),
+            ])),
           ),
-        ],
+        ]),
       ),
     );
   }
@@ -384,7 +299,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
       height: 68,
       padding: const EdgeInsets.symmetric(vertical: 6),
       decoration: BoxDecoration(
-        color: CepqarTheme.isLight ? const Color(0xFFEDE0FC).withValues(alpha: .74) : const Color(0xFF312250).withValues(alpha: .65),
+        color: Colors.white.withValues(alpha: .18),
         borderRadius: BorderRadius.circular(15),
       ),
       child: Row(
@@ -450,7 +365,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
   Widget _divider() => Container(
         width: 1,
         height: 42,
-        color: Colors.black.withValues(alpha: .08),
+        color: Colors.white.withValues(alpha: .22),
       );
 
   Widget _metric({
@@ -510,7 +425,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
               colors: [
                 guidance.accent.withValues(alpha: .10),
                 const Color(0xFFF1E6FF),
-                CepqarTheme.isLight ? const Color(0xFFF9F3FF) : panel,
+                const Color(0xFFF9F3FF),
               ],
             ),
             borderRadius: BorderRadius.circular(20),
@@ -594,7 +509,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
           decoration: BoxDecoration(
             color: panel,
             borderRadius: BorderRadius.circular(23),
-            border: Border.all(color: CepqarTheme.isLight ? const Color(0xFFE8D9FB) : line),
+            border: Border.all(color: line),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: .03),
@@ -670,9 +585,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
             decoration: BoxDecoration(
               color: now
                   ? purple.withValues(alpha: .09)
-                  : CepqarTheme.isLight
-                      ? const Color(0xFFFAF5FF)
-                      : const Color(0xFF151D2D),
+                  : const Color(0xFFF8F7FD),
               borderRadius: BorderRadius.circular(16),
               border: now
                   ? Border.all(color: purple.withValues(alpha: .12))
@@ -734,11 +647,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
             width: 69,
             padding: const EdgeInsets.fromLTRB(5, 7, 5, 6),
             decoration: BoxDecoration(
-              color: index == 0
-                  ? purple.withValues(alpha: .06)
-                  : CepqarTheme.isLight
-                      ? const Color(0xFFFAF5FF)
-                      : const Color(0xFF151D2D),
+              color: index == 0 ? const Color(0xFFF3EDFF) : const Color(0xFFF8F7FD),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Column(
