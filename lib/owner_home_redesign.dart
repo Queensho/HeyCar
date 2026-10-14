@@ -785,27 +785,27 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   Widget _valetTimeline(String status,Color accent){
     const labels=['Alındı','Park','Talep','Geliyor','Hazır'];
     final current=_valetStep(status);
-    return Row(children:List.generate(labels.length,(i){
-      final done=i<=current;
-      return Expanded(
-        child:Row(children:[
-          Expanded(child:Column(children:[
-            Container(
-              width:16,height:16,
-              decoration:BoxDecoration(
-                shape:BoxShape.circle,
-                color:done?accent:accent.withValues(alpha:light ? .08 : .12),
-                border:Border.all(color:accent.withValues(alpha:done?1:.35),width:1),
-              ),
-              child:Icon(done?Icons.check_rounded:Icons.circle_outlined,color:done?Colors.white:accent,size:10),
-            ),
-            const SizedBox(height:1),
-            Text(labels[i],maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:done?text:muted,fontSize:8.2,fontWeight:done?FontWeight.w800:FontWeight.w600)),
-          ])),
-          if(i<labels.length-1)Container(width:4,height:1,color:accent.withValues(alpha:i<current ? .75 : .24)),
-        ]),
-      );
-    }));
+    const inactive=Color(0xFF9A9BB4);
+    return Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      for(var i=0;i<labels.length;i++)...[
+        Expanded(child:Column(mainAxisSize:MainAxisSize.min,children:[
+          Container(width:26,height:26,
+            decoration:BoxDecoration(shape:BoxShape.circle,
+              color:i<=current?accent:const Color(0xFFF4F2FA),
+              border:Border.all(color:i<=current?accent:inactive,width:2)),
+            child:Icon(i<=current?Icons.check_rounded:Icons.circle,
+              color:i<=current?Colors.white:inactive,size:i<=current?17:10)),
+          const SizedBox(height:5),
+          Text(labels[i],maxLines:1,overflow:TextOverflow.ellipsis,
+            style:TextStyle(color:i<=current?accent:inactive,fontSize:10,fontWeight:FontWeight.w800)),
+        ])),
+        if(i<labels.length-1)Expanded(child:Padding(
+          padding:const EdgeInsets.only(top:12),
+          child:Row(children:List.generate(6,(j)=>Expanded(child:Container(
+            margin:const EdgeInsets.symmetric(horizontal:2),height:2,
+            color:i<current?accent:(j.isEven?const Color(0xFFD6D1E4):Colors.transparent))))))),
+      ],
+    ]);
   }
 
   String _valetStatusTitle(String status)=>switch(status){
@@ -837,7 +837,6 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     final status='${session['status']??'parked'}';
     final venue='${session['business_name']??'CepQontag Vale'}'.trim();
     final canRequest=status=='parked';
-    final title=status=='accepted'?'Aracınız teslim alındı':'Aracınız valede';
     final buttonText=valetRequesting?'Gönderiliyor...':switch(status){
       'requested'=>'Talep Gönderildi',
       'retrieving'=>'Araç Geliyor',
@@ -846,50 +845,64 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       _=>'Araç Çağır',
     };
     const purple=Color(0xFF651FFF);
-    const lime=Color(0xFFBEFF32);
+    const lime=Color(0xFFB7FF3B);
     return Container(
+      width:double.infinity,
       clipBehavior:Clip.antiAlias,
       decoration:BoxDecoration(
         color:lime,borderRadius:BorderRadius.circular(24),
-        boxShadow:light?[BoxShadow(color:purple.withValues(alpha:.12),blurRadius:16,offset:const Offset(0,5))]:null,
+        boxShadow:light?[BoxShadow(color:purple.withValues(alpha:.14),blurRadius:18,offset:const Offset(0,6))]:null,
       ),
       child:Stack(children:[
-        Positioned.fill(child:ClipPath(clipper:const _PremiumHomePurpleClip(),child:const ColoredBox(color:purple))),
-        Padding(
-          padding:const EdgeInsets.all(13),
+        Positioned.fill(child:ClipPath(
+          clipper:const _ValetReferencePurpleClip(),
+          child:const ColoredBox(color:purple))),
+        Padding(padding:const EdgeInsets.fromLTRB(11,13,11,11),
           child:Column(mainAxisSize:MainAxisSize.min,children:[
             Row(children:[
-              Container(width:39,height:39,decoration:BoxDecoration(color:Colors.white.withValues(alpha:.19),borderRadius:BorderRadius.circular(12)),
-                child:const Icon(Icons.support_agent_rounded,color:Colors.white,size:23)),
-              const SizedBox(width:9),
+              Container(width:49,height:49,
+                decoration:BoxDecoration(
+                  color:const Color(0xFF9760FF),
+                  borderRadius:BorderRadius.circular(16)),
+                child:const Icon(Icons.support_agent_rounded,color:Colors.white,size:31)),
+              const SizedBox(width:11),
               Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-                const Text('VALE',style:TextStyle(color:Colors.white,fontSize:16,fontWeight:FontWeight.w900,letterSpacing:1)),
+                const Text('VALE',style:TextStyle(color:Colors.white,fontSize:21,fontWeight:FontWeight.w900,letterSpacing:.6)),
+                const SizedBox(height:2),
                 Text(venue.isEmpty?'CepQontag Vale':venue,maxLines:1,overflow:TextOverflow.ellipsis,
-                  style:const TextStyle(color:Colors.white,fontSize:12,fontWeight:FontWeight.w700)),
+                  style:const TextStyle(color:Colors.white,fontSize:13,fontWeight:FontWeight.w700)),
               ])),
-              Container(padding:const EdgeInsets.symmetric(horizontal:9,vertical:6),
-                decoration:BoxDecoration(color:Colors.white.withValues(alpha:.87),borderRadius:BorderRadius.circular(18)),
-                child:Text(_valetBadge(status),maxLines:1,style:const TextStyle(color:purple,fontSize:9,fontWeight:FontWeight.w900))),
-              const SizedBox(width:6),
-              const CircleAvatar(radius:15,backgroundColor:purple,child:Icon(Icons.arrow_forward_rounded,color:Colors.white,size:17)),
+              Container(padding:const EdgeInsets.symmetric(horizontal:10,vertical:8),
+                decoration:BoxDecoration(color:Colors.white.withValues(alpha:.90),borderRadius:BorderRadius.circular(22)),
+                child:Text(_valetBadge(status),maxLines:1,style:const TextStyle(color:purple,fontSize:10,fontWeight:FontWeight.w900))),
+              const SizedBox(width:7),
+              Container(width:34,height:34,
+                decoration:BoxDecoration(color:const Color(0xFF799C23).withValues(alpha:.75),shape:BoxShape.circle),
+                child:const Icon(Icons.chevron_right_rounded,color:Colors.white,size:27)),
             ]),
-            const SizedBox(height:14),
-            Container(
-              width:double.infinity,padding:const EdgeInsets.all(13),
-              decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(18)),
+            const SizedBox(height:12),
+            Container(width:double.infinity,
+              padding:const EdgeInsets.fromLTRB(13,12,13,12),
+              decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(19)),
               child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-                Text(title,style:const TextStyle(color:Color(0xFF251A45),fontSize:16,fontWeight:FontWeight.w900)),
-                const SizedBox(height:15),
+                Text(_valetStatusTitle(status),style:const TextStyle(color:Color(0xFF1C1731),fontSize:16,fontWeight:FontWeight.w900)),
+                const SizedBox(height:13),
                 _valetTimeline(status,purple),
                 const SizedBox(height:15),
-                SizedBox(width:double.infinity,height:44,child:FilledButton.icon(
+                SizedBox(width:double.infinity,height:47,child:FilledButton(
                   onPressed:canRequest&&!valetRequesting?_requestValetVehicle:null,
                   style:FilledButton.styleFrom(backgroundColor:purple,foregroundColor:Colors.white,
                     disabledBackgroundColor:const Color(0xFFECE5FA),disabledForegroundColor:purple,
-                    shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(13))),
-                  icon:valetRequesting?const SizedBox(width:17,height:17,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)):
-                    const Icon(Icons.directions_car_filled_rounded,size:19),
-                  label:Text(buttonText,style:const TextStyle(fontSize:13,fontWeight:FontWeight.w900)),
+                    padding:const EdgeInsets.symmetric(horizontal:13),
+                    shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(18))),
+                  child:Stack(alignment:Alignment.center,children:[
+                    Row(mainAxisAlignment:MainAxisAlignment.center,children:[
+                      const Icon(Icons.directions_car_filled_rounded,size:21),
+                      const SizedBox(width:10),
+                      Text(buttonText,style:const TextStyle(fontSize:15,fontWeight:FontWeight.w900)),
+                    ]),
+                    const Positioned(right:0,child:Icon(Icons.arrow_forward_rounded,size:23)),
+                  ]),
                 )),
                 if(valetDeliveryCode.isNotEmpty&&['requested','retrieving','ready'].contains(status))...[
                   const SizedBox(height:9),
@@ -1621,6 +1634,18 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       ),
     ),
   );
+}
+
+class _ValetReferencePurpleClip extends CustomClipper<Path>{
+  const _ValetReferencePurpleClip();
+  @override Path getClip(Size s)=>Path()
+    ..moveTo(0,0)
+    ..lineTo(s.width*.69,0)
+    ..cubicTo(s.width*.61,s.height*.12,s.width*.55,s.height*.26,s.width*.52,s.height*.42)
+    ..cubicTo(s.width*.72,s.height*.72,s.width*.78,s.height*.92,s.width*.84,s.height)
+    ..lineTo(0,s.height)
+    ..close();
+  @override bool shouldReclip(covariant CustomClipper<Path> oldClipper)=>false;
 }
 
 class _PremiumHomePurpleClip extends CustomClipper<Path>{
