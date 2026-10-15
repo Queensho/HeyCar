@@ -1503,51 +1503,55 @@ class _SentScreenState extends State<_SentScreen>{
   @override
   Widget build(BuildContext context)=>Scaffold(
     backgroundColor:const Color(0xFF651FFF),
-    body:Stack(children:[
+    body:LayoutBuilder(builder:(context,viewport){
+      final compact=viewport.maxHeight<850;
+      final tight=viewport.maxHeight<700;
+      return Stack(children:[
       const Positioned.fill(child:IgnorePointer(child:CustomPaint(painter:_SentBackdrop()))),
       SafeArea(child:Center(child:ConstrainedBox(
         constraints:const BoxConstraints(maxWidth:540),
-        child:ListView(padding:const EdgeInsets.fromLTRB(22,20,22,38),children:[
+        child:ListView(padding:EdgeInsets.fromLTRB(18,tight?6:12,18,tight?12:22),children:[
           Row(children:[
             Material(color:Colors.white.withValues(alpha:.12),shape:const CircleBorder(),
               child:IconButton(onPressed:()=>Navigator.pop(context),
                 icon:const Icon(Icons.arrow_back_rounded,color:Colors.white,size:26))),
-            Expanded(child:Center(child:Image.asset(
-              'assets/file_00000000b130820abb8d411e67ab0d25.png',
-              height:36,fit:BoxFit.contain))),
+            Expanded(child:Center(child:ColorFiltered(
+              colorFilter:const ColorFilter.mode(Colors.white,BlendMode.srcIn),
+              child:Image.asset('assets/file_00000000b130820abb8d411e67ab0d25.png',
+                height:compact?26:32,fit:BoxFit.contain)))),
             const SizedBox(width:48),
           ]),
-          const SizedBox(height:62),
+          SizedBox(height:tight?10:compact?18:30),
           Center(child:Container(
-            width:178,height:178,
+            width:tight?90:compact?112:138,height:tight?90:compact?112:138,
             alignment:Alignment.center,
             decoration:BoxDecoration(shape:BoxShape.circle,
               border:Border.all(color:Colors.white.withValues(alpha:.16),width:2),
               boxShadow:[BoxShadow(color:Colors.white.withValues(alpha:.10),blurRadius:24,spreadRadius:6)]),
-            child:Container(width:136,height:136,
+            child:Container(width:tight?72:compact?88:108,height:tight?72:compact?88:108,
               decoration:const BoxDecoration(shape:BoxShape.circle,color:Color(0xFFB9FF45)),
               child:const Icon(Icons.notifications_active_rounded,
-                color:Color(0xFF4912C8),size:74)),
+                color:Color(0xFF4912C8),size:tight?39:compact?46:56)),
           )),
-          const SizedBox(height:28),
+          SizedBox(height:tight?10:compact?14:20),
           Text(headline,textAlign:TextAlign.center,
-            style:TextStyle(color:Colors.white,fontSize:MediaQuery.sizeOf(context).width<360?30:36,
+            style:TextStyle(color:Colors.white,fontSize:MediaQuery.sizeOf(context).width<360?25:compact?27:32,
               height:1.12,fontWeight:FontWeight.w900)),
-          const SizedBox(height:12),
+          SizedBox(height:tight?5:9),
           Text(description,textAlign:TextAlign.center,
-            style:TextStyle(color:Colors.white.withValues(alpha:.83),fontSize:16,height:1.4)),
+            style:TextStyle(color:Colors.white.withValues(alpha:.83),fontSize:compact?13:15,height:1.3)),
           if(statusError!=null)...[
-            const SizedBox(height:12),
+            const SizedBox(height:4),
             TextButton.icon(onPressed:_poll,
               icon:const Icon(Icons.refresh_rounded,color:Colors.white),
               label:Text(statusError!,textAlign:TextAlign.center,
                 style:const TextStyle(color:Colors.white,fontSize:13))),
           ],
-          const SizedBox(height:32),
+          SizedBox(height:tight?10:compact?14:22),
           Container(
-            padding:const EdgeInsets.fromLTRB(23,30,18,30),
+            padding:EdgeInsets.fromLTRB(16,tight?12:compact?16:22,14,tight?4:10),
             decoration:BoxDecoration(color:Colors.white,
-              borderRadius:BorderRadius.circular(29),
+              borderRadius:BorderRadius.circular(24),
               boxShadow:const [BoxShadow(color:Color(0x280B0033),blurRadius:24,offset:Offset(0,12))]),
             child:Column(children:[
               _SentTimelineItem(done:true,first:true,last:false,
@@ -1561,8 +1565,8 @@ class _SentScreenState extends State<_SentScreen>{
                 subtitle:hasArriving?'Geliyorum onayı ${_time(arrivingAt)}':'Bekleniyor'),
             ]),
           ),
-          const SizedBox(height:26),
-          SizedBox(height:64,child:FilledButton.icon(
+          SizedBox(height:tight?10:16),
+          SizedBox(height:tight?48:56,child:FilledButton.icon(
             onPressed:()=>Navigator.pop(context),
             style:FilledButton.styleFrom(
               backgroundColor:const Color(0xFFB9FF45),
@@ -1586,24 +1590,24 @@ class _SentTimelineItem extends StatelessWidget{
   @override
   Widget build(BuildContext context)=>IntrinsicHeight(child:Row(
     crossAxisAlignment:CrossAxisAlignment.start,children:[
-      SizedBox(width:48,child:Column(children:[
-        Container(width:36,height:36,
+      SizedBox(width:38,child:Column(children:[
+        Container(width:30,height:30,
           decoration:BoxDecoration(shape:BoxShape.circle,
             color:done?const Color(0xFFB9FF45):const Color(0xFFF3EDFF)),
           child:Icon(done?Icons.check_rounded:Icons.circle_outlined,
-            color:done?const Color(0xFF10152D):const Color(0xFF651FFF),size:26)),
-        if(!last)Container(width:2,height:56,
+            color:done?const Color(0xFF10152D):const Color(0xFF651FFF),size:22)),
+        if(!last)Container(width:2,height:22,
           margin:const EdgeInsets.symmetric(vertical:4),
           color:done?const Color(0xFFB9FF45):const Color(0xFFD9C7FF)),
       ])),
-      const SizedBox(width:13),
-      Expanded(child:Padding(padding:const EdgeInsets.only(top:1,bottom:20),
+      const SizedBox(width:9),
+      Expanded(child:Padding(padding:const EdgeInsets.only(top:1,bottom:8),
         child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
           Text(title,style:const TextStyle(color:Color(0xFF10152D),
-            fontSize:19,fontWeight:FontWeight.w900)),
+            fontSize:16,fontWeight:FontWeight.w900)),
           const SizedBox(height:5),
           Text(subtitle,style:const TextStyle(color:Color(0xFF778096),
-            fontSize:14,height:1.4)),
+            fontSize:12,height:1.3)),
         ]))),
     ],
   ));
