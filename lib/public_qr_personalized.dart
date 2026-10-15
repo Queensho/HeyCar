@@ -1450,32 +1450,173 @@ class _SentScreen extends StatefulWidget {
   @override State<_SentScreen> createState()=>_SentScreenState();
 }
 class _SentScreenState extends State<_SentScreen>{
-  Timer? timer;String status='new';
-  @override void initState(){super.initState();_poll();timer=Timer.periodic(const Duration(seconds:2),(_)=>_poll());}
-  @override void dispose(){timer?.cancel();super.dispose();}
-  Future<void> _poll()async{if(widget.notificationId.isEmpty||widget.statusToken.isEmpty)return;try{final n=await PublicNotificationApi.fetchNotificationStatus(widget.notificationId,widget.statusToken);final s='${n['status']??'new'}';if(mounted&&s!=status)setState(()=>status=s);if(const {'resolved'}.contains(s))timer?.cancel();}catch(_){}}
-  String get headline=>status=='arriving'?'Araç sahibi geliyor':status=='resolved'?'İşlem tamamlandı':status=='read'?'Araç sahibi gördü':'Bildirim ulaştı';
-  IconData get stateIcon=>status=='arriving'?Icons.directions_walk_rounded:status=='resolved'?Icons.task_alt_rounded:status=='read'?Icons.visibility_rounded:Icons.notifications_active_rounded;
-  Color get stateColor=>status=='arriving'?_lime:status=='resolved'?Colors.green:status=='read'?_purple:Colors.green;
-  @override Widget build(BuildContext context)=>_Shell(
-    child:Scaffold(backgroundColor:Colors.transparent,appBar:_appBar(''),body:ListView(
-      padding:const EdgeInsets.fromLTRB(18,8,18,24),children:[
-        CircleAvatar(radius:39,backgroundColor:const Color(0xFF1B263F),child:Icon(stateIcon,color:stateColor,size:40)),
-        const SizedBox(height:16),
-        Text(headline,textAlign:TextAlign.center,style:const TextStyle(color:Colors.white,fontSize:25,fontWeight:FontWeight.w900)),
-        const SizedBox(height:8),
-        Text(status=='new'?'Bildiriminiz araç sahibine ulaştı.':status=='read'?'Araç sahibi bildiriminizi açtı.':status=='arriving'?'Araç sahibi “Geliyorum” dedi. Boşuna beklemiyorsunuz.':'Araç sahibi bildirimi tamamlandı olarak işaretledi.',textAlign:TextAlign.center,style:const TextStyle(color:_muted,height:1.45)),
-        const SizedBox(height:18),
-        _glass(child:Column(children:[
-          const _TimelineRow(Icons.check_circle,Colors.green,'Bildirim ulaştı','Araç sahibinin gelen kutusuna gönderildi'),
-          const SizedBox(height:16),
-          _TimelineRow(status=='read'||status=='arriving'||status=='resolved'?Icons.check_circle:Icons.circle_outlined,status=='read'||status=='arriving'||status=='resolved'?_purple:_muted,'Araç sahibi gördü',status=='new'?'Bekleniyor':'Bildirim açıldı'),
-          const SizedBox(height:16),
-          _TimelineRow(status=='arriving'||status=='resolved'?Icons.check_circle:Icons.circle_outlined,status=='arriving'||status=='resolved'?_lime:_muted,'Araç sahibi geliyor',status=='arriving'||status=='resolved'?'Geliyorum yanıtı verildi':'Bekleniyor'),
-        ])),
-        const SizedBox(height:14),
-        OutlinedButton.icon(onPressed:()=>Navigator.pop(context),icon:const Icon(Icons.arrow_back_rounded),label:const Text('Araca geri dön')),
-      ])));
+  Timer? timer;
+  String status='new';
+  DateTime? readAt,arrivingAt;
+  bool polling=false;
+  int failures=0;
+  @override
+  void initState(){
+    super.initState();
+    _poll();
+    timer=Timer.periodic(const Duration(seconds:8),(_)=>_poll());
+  }
+  @override
+  void dispose(){timer?.cancel();super.dispose();}
+  Future<void> _poll()async{
+    if(polling||widget.notificationId.isEmpty||widget.statusToken.isEmpty)return;
+    polling=true;
+    try{
+      final n=await PublicNotificationApi.fetchNotificationStatus(widget.notificationId,widget.statusToken);
+      if(!mounted)return;
+      final next='${n['status']??'new'}';
+      final read=DateTime.tryParse('${n['read_at']??''}');
+      final arriving=DateTime.tryParse('${n['arriving_at']??''}');
+      failures=0;
+      if(next!=status||read!=readAt||arriving!=arrivingAt){
+        setState((){status=next;readAt=read;arrivingAt=arriving;});
+      }
+      if(next=='resolved')timer?.cancel();
+    }catch(_){
+      failures++;
+      if(failures>=6)timer?.cancel();
+    }finally{polling=false;}
+  }
+  bool get hasRead=>readAt!=null;
+  bool get hasArriving=>arrivingAt!=null;
+  String get headline=>hasArriving?'Araç sahibi geliyor!':hasRead?'Araç sahibi gördü!':'Bildirim gönderildi!';
+  String get description=>hasArriving?'Araç sahibi gelmek üzere olduğunu bildirdi.':
+    hasRead?'Araç sahibi bildiriminizi açtı.':
+    'Mesajınız kaydedildi. Araç sahibine iletilmesi bekleniyor.';
+  String _time(DateTime? value){
+    if(value==null)return '';
+    final local=value.toLocal();
+    return '${local.hour.toString().padLeft(2,'0')}:${local.minute.toString().padLeft(2,'0')}';
+  }
+  @override
+  Widget build(BuildContext context)=>Scaffold(
+    backgroundColor:const Color(0xFF651FFF),
+    body:Stack(children:[
+      const Positioned.fill(child:IgnorePointer(child:CustomPaint(painter:_SentBackdrop()))),
+      SafeArea(child:Center(child:ConstrainedBox(
+        constraints:const BoxConstraints(maxWidth:540),
+        child:ListView(padding:const EdgeInsets.fromLTRB(22,20,22,38),children:[
+          Row(children:[
+            Material(color:Colors.white.withValues(alpha:.12),shape:const CircleBorder(),
+              child:IconButton(onPressed:()=>Navigator.pop(context),
+                icon:const Icon(Icons.arrow_back_rounded,color:Colors.white,size:26))),
+            Expanded(child:Center(child:Image.asset(
+              'assets/file_00000000b130820abb8d411e67ab0d25.png',
+              height:36,fit:BoxFit.contain))),
+            const SizedBox(width:48),
+          ]),
+          const SizedBox(height:62),
+          Center(child:Container(
+            width:178,height:178,
+            alignment:Alignment.center,
+            decoration:BoxDecoration(shape:BoxShape.circle,
+              border:Border.all(color:Colors.white.withValues(alpha:.16),width:2),
+              boxShadow:[BoxShadow(color:Colors.white.withValues(alpha:.10),blurRadius:24,spreadRadius:6)]),
+            child:Container(width:136,height:136,
+              decoration:const BoxDecoration(shape:BoxShape.circle,color:Color(0xFFB9FF45)),
+              child:const Icon(Icons.notifications_active_rounded,
+                color:Color(0xFF4912C8),size:74)),
+          )),
+          const SizedBox(height:28),
+          Text(headline,textAlign:TextAlign.center,
+            style:TextStyle(color:Colors.white,fontSize:MediaQuery.sizeOf(context).width<360?30:36,
+              height:1.12,fontWeight:FontWeight.w900)),
+          const SizedBox(height:12),
+          Text(description,textAlign:TextAlign.center,
+            style:TextStyle(color:Colors.white.withValues(alpha:.83),fontSize:16,height:1.4)),
+          const SizedBox(height:32),
+          Container(
+            padding:const EdgeInsets.fromLTRB(23,30,18,30),
+            decoration:BoxDecoration(color:Colors.white,
+              borderRadius:BorderRadius.circular(29),
+              boxShadow:const [BoxShadow(color:Color(0x280B0033),blurRadius:24,offset:Offset(0,12))]),
+            child:Column(children:[
+              _SentTimelineItem(done:true,first:true,last:false,
+                title:'Bildirim gönderildi',
+                subtitle:'Mesajınız sunucu tarafından kaydedildi.'),
+              _SentTimelineItem(done:hasRead,first:false,last:false,
+                title:'Araç sahibi gördü',
+                subtitle:hasRead?'Görüldü ${_time(readAt)}':'Bekleniyor'),
+              _SentTimelineItem(done:hasArriving,first:false,last:true,
+                title:'Araç sahibi geliyor',
+                subtitle:hasArriving?'Geliyorum onayı ${_time(arrivingAt)}':'Bekleniyor'),
+            ]),
+          ),
+          const SizedBox(height:26),
+          SizedBox(height:64,child:FilledButton.icon(
+            onPressed:()=>Navigator.pop(context),
+            style:FilledButton.styleFrom(
+              backgroundColor:const Color(0xFFB9FF45),
+              foregroundColor:const Color(0xFF10152D),
+              shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(36))),
+            icon:const Icon(Icons.arrow_back_rounded,size:27),
+            label:const Text('Araca Geri Dön',
+              style:TextStyle(fontSize:18,fontWeight:FontWeight.w900)),
+          )),
+        ]),
+      ))),
+    ]),
+  );
+}
+
+class _SentTimelineItem extends StatelessWidget{
+  const _SentTimelineItem({required this.done,required this.first,required this.last,
+    required this.title,required this.subtitle});
+  final bool done,first,last;
+  final String title,subtitle;
+  @override
+  Widget build(BuildContext context)=>IntrinsicHeight(child:Row(
+    crossAxisAlignment:CrossAxisAlignment.start,children:[
+      SizedBox(width:48,child:Column(children:[
+        Container(width:36,height:36,
+          decoration:BoxDecoration(shape:BoxShape.circle,
+            color:done?const Color(0xFFB9FF45):const Color(0xFFF3EDFF)),
+          child:Icon(done?Icons.check_rounded:Icons.circle_outlined,
+            color:done?const Color(0xFF10152D):const Color(0xFF651FFF),size:26)),
+        if(!last)Container(width:2,height:56,
+          margin:const EdgeInsets.symmetric(vertical:4),
+          color:done?const Color(0xFFB9FF45):const Color(0xFFD9C7FF)),
+      ])),
+      const SizedBox(width:13),
+      Expanded(child:Padding(padding:const EdgeInsets.only(top:1,bottom:20),
+        child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          Text(title,style:const TextStyle(color:Color(0xFF10152D),
+            fontSize:19,fontWeight:FontWeight.w900)),
+          const SizedBox(height:5),
+          Text(subtitle,style:const TextStyle(color:Color(0xFF778096),
+            fontSize:14,height:1.4)),
+        ]))),
+    ],
+  ));
+}
+
+class _SentBackdrop extends CustomPainter{
+  const _SentBackdrop();
+  @override
+  void paint(Canvas canvas,Size size){
+    canvas.drawRect(Offset.zero & size,Paint()..shader=const LinearGradient(
+      begin:Alignment.topLeft,end:Alignment.bottomRight,
+      colors:[Color(0xFF4912C8),Color(0xFF651FFF),Color(0xFF4912C8)]
+    ).createShader(Offset.zero & size));
+    final circle=Paint()..color=const Color(0xFFB9FF45);
+    canvas.drawCircle(Offset(size.width*.16,size.height*.19),12,circle);
+    canvas.drawCircle(Offset(size.width*.93,size.height*.38),13,circle);
+    canvas.drawCircle(Offset(size.width*.82,size.height*.95),10,circle);
+    final ring=Paint()..color=const Color(0xFFB9FF45)
+      ..style=PaintingStyle.stroke..strokeWidth=52;
+    canvas.drawCircle(Offset(-size.width*.30,size.height*.28),size.width*.38,ring);
+    canvas.drawCircle(Offset(size.width*1.24,size.height*.75),size.width*.39,ring);
+    final thin=Paint()..color=Colors.white.withValues(alpha:.15)
+      ..style=PaintingStyle.stroke..strokeWidth=2;
+    canvas.drawCircle(Offset(size.width*.92,size.height*.45),size.width*.35,thin);
+  }
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate)=>false;
 }
 
 class _HiddenCall extends StatelessWidget {
