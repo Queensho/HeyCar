@@ -134,7 +134,7 @@ Widget _timelineRecord(Map<String,dynamic> r,int index,int total){
             ]
           ]))
       ))
-    )))
+    ))
   ]));
 }
 Widget _chip(String label)=>Container(padding:const EdgeInsets.symmetric(horizontal:9,vertical:6),
