@@ -1,3 +1,4 @@
+const {parseImage}=require('./private-image-validation');
 const {issueTokens,rotateRefresh,revokeRefresh,ownerId:authenticatedOwnerId}=require('./owner-auth-service');
 const {issueRecoveryCode,recoverPassword,verifyPassword,deleteAccount}=require('./account-lifecycle-service');
 const {logSecurityEvent}=require('./security-event-log');
@@ -83,6 +84,27 @@ module.exports = function registerOwnerAuthRoutes(app, pool) {
     }
     return res.json({ok:true});
   }catch(e){console.error('account recovery error',e);return res.status(500).json({error:'SERVER_ERROR'});}});
+  app.put('/api/owner/account/avatar',require('express').json({limit:'3mb'}),async(req,res)=>{
+    const id=authenticatedOwnerId(req);
+    if(!id)return res.status(401).json({error:'OWNER_REQUIRED'});
+    const img=parseImage(req.body);
+    if(!img)return res.status(400).json({error:'INVALID_IMAGE',maxBytes:2097152});
+    try{
+      const r=await pool.query('UPDATE users SET avatar_image=$2,avatar_mime=$3 WHERE id::text=$1 AND status=\'active\' RETURNING id',[id,img.bytes,img.mime]);
+      if(!r.rowCount)return res.status(404).json({error:'USER_NOT_FOUND'});
+      return res.json({ok:true});
+    }catch(e){console.error('avatar upload',e);return res.status(500).json({error:'SERVER_ERROR'});}
+  });
+  app.get('/api/owner/account/avatar',async(req,res)=>{
+    const id=authenticatedOwnerId(req);
+    if(!id)return res.status(401).json({error:'OWNER_REQUIRED'});
+    try{
+      const r=await pool.query('SELECT avatar_image,avatar_mime FROM users WHERE id::text=$1',[id]);
+      if(!r.rows.length||!r.rows[0].avatar_image)return res.status(404).json({error:'NOT_FOUND'});
+      res.set('Cache-Control','private, no-store');
+      res.type(r.rows[0].avatar_mime).send(r.rows[0].avatar_image);
+    }catch(e){console.error('avatar read',e);res.status(500).json({error:'SERVER_ERROR'});}
+  });
   app.patch('/api/owner/account/profile',async(req,res)=>{
     const ownerId=authenticatedOwnerId(req);
     if(!ownerId)return res.status(401).json({error:'OWNER_REQUIRED'});
