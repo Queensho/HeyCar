@@ -72,7 +72,7 @@ void _viewPhoto(String url)=>showDialog<void>(context:context,builder:(_)=>Dialo
        child:Image.network(photos[index],width:78,height:78,fit:BoxFit.cover,
         errorBuilder:(_,__,___)=>Container(width:78,color:_pale,child:const Icon(Icons.broken_image_outlined,color:_brand))))))))]
   ]))
- ])));
+ ]))));
 }
 Widget _header()=>SizedBox(height:56,child:Row(children:[
  const SizedBox(width:16),
