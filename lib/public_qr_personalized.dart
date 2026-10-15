@@ -1531,7 +1531,7 @@ class _SentScreenState extends State<_SentScreen>{
             child:Container(width:tight?72:compact?88:108,height:tight?72:compact?88:108,
               decoration:const BoxDecoration(shape:BoxShape.circle,color:Color(0xFFB9FF45)),
               child:Icon(Icons.notifications_active_rounded,
-                color:const Color(0xFF4912C8),size:tight?39:compact?46:56)),
+                color:Color(0xFF4912C8),size:tight?39:compact?46:56)),
           )),
           SizedBox(height:tight?10:compact?14:20),
           Text(headline,textAlign:TextAlign.center,
