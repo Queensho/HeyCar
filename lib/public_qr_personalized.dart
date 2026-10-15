@@ -1455,6 +1455,7 @@ class _SentScreenState extends State<_SentScreen>{
   DateTime? readAt,arrivingAt;
   bool polling=false;
   int failures=0;
+  String? statusError;
   @override
   void initState(){
     super.initState();
@@ -1464,26 +1465,32 @@ class _SentScreenState extends State<_SentScreen>{
   @override
   void dispose(){timer?.cancel();super.dispose();}
   Future<void> _poll()async{
-    if(polling||widget.notificationId.isEmpty||widget.statusToken.isEmpty)return;
+    if(polling)return;
+    if(widget.notificationId.isEmpty||widget.statusToken.isEmpty){
+      if(mounted&&statusError==null)setState(()=>statusError='Takip bilgisi eksik. Bildirim durumunu doğrulayamıyoruz.');
+      return;
+    }
     polling=true;
     try{
       final n=await PublicNotificationApi.fetchNotificationStatus(widget.notificationId,widget.statusToken);
       if(!mounted)return;
       final next='${n['status']??'new'}';
-      final read=DateTime.tryParse('${n['read_at']??''}');
-      final arriving=DateTime.tryParse('${n['arriving_at']??''}');
+      final read=DateTime.tryParse('${n['read_at']??''}') ??
+        (const {'read','arriving','resolved'}.contains(next)?readAt:null);
+      final arriving=DateTime.tryParse('${n['arriving_at']??''}') ??
+        (next=='arriving'?arrivingAt:null);
       failures=0;
-      if(next!=status||read!=readAt||arriving!=arrivingAt){
-        setState((){status=next;readAt=read;arrivingAt=arriving;});
+      if(next!=status||read!=readAt||arriving!=arrivingAt||statusError!=null){
+        setState((){status=next;readAt=read;arrivingAt=arriving;statusError=null;});
       }
       if(next=='resolved')timer?.cancel();
     }catch(_){
       failures++;
-      if(failures>=6)timer?.cancel();
+      if(mounted&&statusError==null)setState(()=>statusError='Durum bilgisi güncellenemiyor. Bağlantıyı kontrol edip tekrar deneyin.');
     }finally{polling=false;}
   }
-  bool get hasRead=>readAt!=null;
-  bool get hasArriving=>arrivingAt!=null;
+  bool get hasRead=>readAt!=null||const {'read','arriving','resolved'}.contains(status);
+  bool get hasArriving=>arrivingAt!=null||status=='arriving';
   String get headline=>hasArriving?'Araç sahibi geliyor!':hasRead?'Araç sahibi gördü!':'Bildirim gönderildi!';
   String get description=>hasArriving?'Araç sahibi gelmek üzere olduğunu bildirdi.':
     hasRead?'Araç sahibi bildiriminizi açtı.':
@@ -1529,6 +1536,13 @@ class _SentScreenState extends State<_SentScreen>{
           const SizedBox(height:12),
           Text(description,textAlign:TextAlign.center,
             style:TextStyle(color:Colors.white.withValues(alpha:.83),fontSize:16,height:1.4)),
+          if(statusError!=null)...[
+            const SizedBox(height:12),
+            TextButton.icon(onPressed:_poll,
+              icon:const Icon(Icons.refresh_rounded,color:Colors.white),
+              label:Text(statusError!,textAlign:TextAlign.center,
+                style:const TextStyle(color:Colors.white,fontSize:13))),
+          ],
           const SizedBox(height:32),
           Container(
             padding:const EdgeInsets.fromLTRB(23,30,18,30),
