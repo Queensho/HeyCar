@@ -1578,7 +1578,8 @@ class _SentScreenState extends State<_SentScreen>{
           )),
         ]),
       ))),
-    ]),
+    ]);
+    }),
   );
 }
 
