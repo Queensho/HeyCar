@@ -528,6 +528,24 @@ module.exports = function registerNotificationRoutes(app, pool) {
     } catch (e) { console.error(e); return res.status(500).json({ error: 'SERVER_ERROR' }); }
   });
 
+  // Atomically mark the authenticated owner's notifications as read.
+  // Optional vehicleId scopes the action to the currently selected vehicle.
+  app.patch('/api/owner/notifications/read-all', async (req, res) => {
+    const ownerId = authenticatedOwnerId(req);
+    if (!ownerId) return res.status(401).json({ error: 'OWNER_REQUIRED' });
+    const vehicleId = String(req.body?.vehicleId || '').trim();
+    try {
+      const result = await pool.query(
+        `UPDATE vehicle_notifications n SET status='read', read_at=COALESCE(n.read_at,NOW())
+         FROM vehicles v WHERE v.id=n.vehicle_id AND v.owner_id=$1
+         AND ($2::text='' OR v.id::text=$2)
+         AND n.status='new' RETURNING n.id`,
+        [ownerId, vehicleId]
+      );
+      return res.json({ ok: true, updated: result.rowCount });
+    } catch (e) { console.error(e); return res.status(500).json({ error: 'SERVER_ERROR' }); }
+  });
+
   app.patch('/api/owner/notifications/:id', async (req, res) => {
     const ownerId = authenticatedOwnerId(req);
     const id = String(req.params.id || '').trim();
