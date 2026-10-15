@@ -364,15 +364,15 @@ jobs:
       - name: Upload Android test APK
         uses: actions/upload-artifact@v4
         with:
-          name: heycar-android-test
+          name: cepqontag-owner-android-debug-apk
           path: build/app/outputs/flutter-apk/app-debug.apk
-          retention-days: 7
+          retention-days: 14
       - name: Build Android optimized release test APK
         run: flutter build apk --release --target lib/entry_theme_live.dart
       - name: Upload Android optimized release test APK
         uses: actions/upload-artifact@v4
         with:
-          name: cepqontag-android-release-test
+          name: cepqontag-owner-android-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
-          retention-days: 7
+          retention-days: 14
 
