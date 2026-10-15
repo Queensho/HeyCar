@@ -436,28 +436,32 @@ class _TopBar extends StatelessWidget{
   const _TopBar({required this.onMenu,required this.compact});
   final VoidCallback onMenu;
   final bool compact;
-
   @override
-  Widget build(BuildContext context)=>Row(children:[
-    Flexible(flex:5,child:Image.asset(
-      'assets/file_00000000b130820abb8d411e67ab0d25.png',
-      height:compact?30:36,fit:BoxFit.contain,
-      alignment:Alignment.centerLeft)),
-    const SizedBox(width:6),
-    Flexible(flex:4,child:Container(
-      padding:const EdgeInsets.symmetric(horizontal:9,vertical:9),
-      decoration:BoxDecoration(color:Colors.white.withValues(alpha:.10),
-        borderRadius:BorderRadius.circular(28),
-        border:Border.all(color:Colors.white.withValues(alpha:.25))),
-      child:const Row(mainAxisSize:MainAxisSize.min,children:[
-        Icon(Icons.lock_rounded,color:Colors.white,size:15),
-        SizedBox(width:5),
-        Flexible(child:Text('Anonim iletişim',maxLines:1,
-          overflow:TextOverflow.ellipsis,
-          style:TextStyle(color:Colors.white,fontSize:11,fontWeight:FontWeight.w600))),
+  Widget build(BuildContext context)=>Column(
+    crossAxisAlignment:CrossAxisAlignment.start,children:[
+      Row(children:[
+        Expanded(child:Align(alignment:Alignment.centerLeft,
+          child:ColorFiltered(
+            colorFilter:const ColorFilter.mode(Colors.white,BlendMode.srcIn),
+            child:Image.asset(
+              'assets/file_00000000b130820abb8d411e67ab0d25.png',
+              height:compact?30:34,fit:BoxFit.contain)))),
+        IconButton(onPressed:onMenu,tooltip:'Menü',
+          icon:const Icon(Icons.menu_rounded,color:Colors.white,size:29)),
       ]),
-    )),
-    IconButton(onPressed:onMenu,tooltip:'Menü',
-      icon:const Icon(Icons.menu_rounded,color:Colors.white,size:28)),
-  ]);
+      const SizedBox(height:12),
+      Container(
+        padding:const EdgeInsets.symmetric(horizontal:12,vertical:8),
+        decoration:BoxDecoration(color:Colors.white.withValues(alpha:.10),
+          borderRadius:BorderRadius.circular(24),
+          border:Border.all(color:Colors.white.withValues(alpha:.25))),
+        child:const Row(mainAxisSize:MainAxisSize.min,children:[
+          Icon(Icons.lock_rounded,color:Colors.white,size:15),
+          SizedBox(width:6),
+          Text('Anonim iletişim',style:TextStyle(
+            color:Colors.white,fontSize:12,fontWeight:FontWeight.w700)),
+        ]),
+      ),
+    ],
+  );
 }
