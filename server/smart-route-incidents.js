@@ -45,6 +45,6 @@ async function incidents(route,db){
     from:String(x.properties?.from||'').slice(0,150),to:String(x.properties?.to||'').slice(0,150),
     delaySeconds:Number.isFinite(x.properties?.delay)?x.properties.delay:null,
     geometry:x.geometry||null}))};
- }catch(e){console.error('TomTom incident lookup failed',e.message);return {available:false,reason:e.message==='HTTP_429'?'PROVIDER_RATE_LIMIT':'PROVIDER_UNAVAILABLE',incidents:[]};}
+ }catch(e){console.error('TomTom incident lookup failed (provider request rejected)');return {available:false,reason:e.message==='HTTP_429'?'PROVIDER_RATE_LIMIT':'PROVIDER_UNAVAILABLE',incidents:[]};}
 }
 module.exports={incidents};
