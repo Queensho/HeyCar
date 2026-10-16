@@ -532,8 +532,13 @@ class _SmartRouteAddPageState extends State<SmartRouteAddPage>{
  final url=Uri.parse(OnboardingBackend.baseUrl+'/api/owner/smart-routes/address-search').replace(queryParameters:{'q':value.trim()});
  final r=await OwnerHttp.get(url).timeout(const Duration(seconds:10));
  if(!mounted||id!=requestId)return;
- setState(()=>matches=r.statusCode==200?(jsonDecode(r.body)['results'] as List? ??[]):[]);
- }catch(_){if(mounted&&id==requestId)setState(()=>error='Adres araması kullanılamıyor.');}
+ if(r.statusCode!=200){
+  setState((){matches=[];error=r.statusCode==401?'Oturum süreniz doldu. Tekrar giriş yapın.':r.statusCode==404?'Adres arama servisi sunucuda bulunamadı. VPS güncellemesi gerekli.':r.statusCode==503?'Adres arama servisi kullanılamıyor. TomTom yapılandırmasını kontrol edin.':'Adres arama hatası (HTTP '+r.statusCode.toString()+').';});
+  return;
+ }
+ final found=(jsonDecode(r.body)['results'] as List? ??[]);
+ setState((){matches=found;error=found.isEmpty?'Adres bulunamadı. Daha kısa bir adres veya ilçe adı deneyin.':null;});
+ }catch(_){if(mounted&&id==requestId)setState(()=>error='Adres aramasına bağlanılamıyor. İnternet veya VPS bağlantısını kontrol edin.');}
  });
  }
  void moveToSelected(){
