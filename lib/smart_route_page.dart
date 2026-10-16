@@ -177,6 +177,19 @@ class _SmartRouteDetailPageState extends State<SmartRouteDetailPage>{
    const SizedBox(height:12),
    Text('Rotaya yakın olaylar: ${(events?['incidents'] as List?)?.length??0}'),
    const Text('Olay eşleşmesi yaklaşık konuma göredir; yol yönü doğrulanmamıştır.',style:TextStyle(fontSize:12)),
+   if(events?['available']==true && (events?['incidents'] as List?)?.isNotEmpty==true)
+    ...((events!['incidents'] as List).take(20).map((item){
+     final incident=item is Map?item:<String,dynamic>{};
+     final category='${incident['category']??'Trafik olayı'}';
+     final description='${incident['description']??'Konum bilgisi mevcut'}';
+     return Card(child:ListTile(
+      leading:const Icon(Icons.warning_amber_rounded,color:Color(0xFFFFB020)),
+      title:Text(category),
+      subtitle:Text(description,maxLines:3,overflow:TextOverflow.ellipsis),
+     ));
+    })),
+   if(events?['available']==false && events?['reason']!='NO_SAVED_ROUTE_GEOMETRY')
+    const Text('Trafik olayları şu anda doğrulanamıyor.',style:TextStyle(color:Colors.grey)),
    const SizedBox(height:12),
    if(events?['reason']=='NO_SAVED_ROUTE_GEOMETRY')const Text('Olayları eşleştirmek için rota çizgisini kaydedin.'),
    OutlinedButton.icon(onPressed:busy||geometryBusy?null:saveGeometry,icon:const Icon(Icons.route),label:Text(geometryBusy?'Kaydediliyor...':'Rota çizgisini kaydet / güncelle')),
