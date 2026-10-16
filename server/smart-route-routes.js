@@ -4,6 +4,7 @@ const {flowAt}=require('./smart-route-tomtom');
 const {preview}=require('./smart-route-routing');
 const {incidents}=require('./smart-route-incidents');
 const {matchIncidents}=require('./smart-route-geometry');
+const {eligible}=require('./smart-route-alert-schedule');
 
 function point(p){
  if(!p||typeof p!=='object'||Array.isArray(p))return null;
@@ -153,6 +154,20 @@ module.exports=function registerSmartRouteRoutes(app,db){
    const {geometry,...details}=result;
    res.json({routeId:route.id,geometryPoints:geometry.length,...details,updatedAt:updated.rows[0].updated_at});
   }catch(e){console.error('smart route geometry refresh',e);res.status(500).json({error:'SERVER_ERROR'});}
+ });
+ app.get('/api/owner/smart-routes/:routeId/notification-window',async(req,res)=>{
+  const id=await auth(req,res);if(!id)return;
+  try{
+   const route=await owned(id,req.params.routeId);
+   if(!route)return res.status(404).json({error:'NOT_FOUND'});
+   const result=await db.query('SELECT * FROM smart_route_settings WHERE route_id=$1',[route.id]);
+   if(!result.rowCount)return res.status(404).json({error:'NOT_FOUND'});
+   const settings=result.rows[0];
+   res.json({routeId:route.id,withinWindow:eligible(settings,new Date()),
+    timezone:settings.timezone,notificationDays:settings.notification_days,
+    notificationStart:settings.notification_start,notificationEnd:settings.notification_end,
+    notificationsActive:false,checkedAt:new Date().toISOString()});
+  }catch(e){console.error('smart route notification window',e);res.status(500).json({error:'SERVER_ERROR'});}
  });
  app.get('/api/owner/smart-routes/:routeId/alert-status',async(req,res)=>{
   const id=await auth(req,res);if(!id)return;
