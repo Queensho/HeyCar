@@ -26,8 +26,9 @@ async function flowAt(point,db){
  if(!validPoint(point))return {available:false,reason:'INVALID_COORDINATE'};
  const lat=Number(point.lat).toFixed(5),lon=Number(point.lon).toFixed(5),id=lat+','+lon;
  const now=Date.now(),entry=cache.get(id);
- if(inFlight.has(id))return inFlight.get(id);
  if(entry&&entry.expires>now)return entry.value;
+ if(inFlight.has(id))return inFlight.get(id);
+ const task=(async()=>{
  // Reserve budget atomically across workers and restarts before contacting provider.
  const cap=Math.max(0,Math.min(1000,Number(process.env.TOMTOM_MONTHLY_FLOW_BUDGET||300)||0));
  if(!db||!cap)return {available:false,reason:'BUDGET_UNAVAILABLE'};
@@ -43,7 +44,7 @@ async function flowAt(point,db){
  const url=new URL('https://api.tomtom.com/traffic/services/4/flowSegmentData/absolute/10/json');
  url.searchParams.set('point',id);
  url.searchParams.set('key',key);
- const task=(async()=>{try{
+ try{
   const response=await request(url);
   const f=response.flowSegmentData||{};
   const speed=Number(f.currentSpeed),free=Number(f.freeFlowSpeed),confidence=Number(f.confidence);
