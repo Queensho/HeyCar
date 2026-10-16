@@ -57,7 +57,7 @@ async function preview(route, db) {
       geometry, checkedAt: new Date().toISOString(), trafficAware: true,
       travelModeUsed: 'car' };
   } catch (e) {
-    console.error('TomTom routing failed:', e.message);
+    console.error('TomTom routing failed (provider request rejected)');
     return { available: false, reason: e.message === 'PROVIDER_HTTP_429' ? 'PROVIDER_RATE_LIMIT' : 'PROVIDER_UNAVAILABLE' };
   }
 }
