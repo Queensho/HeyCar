@@ -127,7 +127,7 @@ class SmartRouteDetailPage extends StatefulWidget{
 }
 class _SmartRouteDetailPageState extends State<SmartRouteDetailPage>{
  Map<String,dynamic>? preview,events;
- bool busy=false;
+ bool busy=false,geometryBusy=false;
  String? error;
  @override void initState(){super.initState();load();}
  Future<void> load()async{
@@ -144,6 +144,19 @@ class _SmartRouteDetailPageState extends State<SmartRouteDetailPage>{
    });
   }catch(e){if(mounted)setState(()=>error='Bağlantı hatası: $e');}
   finally{if(mounted)setState(()=>busy=false);}
+ }
+ Future<void> saveGeometry()async{
+  if(geometryBusy)return;
+  setState(()=>geometryBusy=true);
+  try{
+   final id=Uri.encodeComponent('${widget.route['id']}');
+   final url=Uri.parse('${OnboardingBackend.baseUrl}/api/owner/smart-routes/$id/refresh-geometry');
+   final r=await OwnerHttp.post(url,body:'{}').timeout(const Duration(seconds:20));
+   if(r.statusCode!=200)throw Exception('Rota çizgisi kaydedilemedi (HTTP ${r.statusCode})');
+   await load();
+   if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Rota çizgisi kaydedildi. Yakın trafik olayları güncellendi.')));
+  }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('$e')));}
+  finally{if(mounted)setState(()=>geometryBusy=false);}
  }
  @override Widget build(BuildContext context){
   final p=preview;
@@ -164,6 +177,9 @@ class _SmartRouteDetailPageState extends State<SmartRouteDetailPage>{
    const SizedBox(height:12),
    Text('Rotaya yakın olaylar: ${(events?['incidents'] as List?)?.length??0}'),
    const Text('Olay eşleşmesi yaklaşık konuma göredir; yol yönü doğrulanmamıştır.',style:TextStyle(fontSize:12)),
+   const SizedBox(height:12),
+   if(events?['reason']=='NO_SAVED_ROUTE_GEOMETRY')const Text('Olayları eşleştirmek için rota çizgisini kaydedin.'),
+   OutlinedButton.icon(onPressed:busy||geometryBusy?null:saveGeometry,icon:const Icon(Icons.route),label:Text(geometryBusy?'Kaydediliyor...':'Rota çizgisini kaydet / güncelle')),
    const SizedBox(height:12),OutlinedButton.icon(onPressed:busy?null:load,icon:const Icon(Icons.refresh),label:const Text('Trafiği yenile')),
    const SizedBox(height:8),OutlinedButton.icon(onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>SmartRouteSettingsPage(routeId:'${widget.route['id']}'))),icon:const Icon(Icons.settings_outlined),label:const Text('Rota bildirim ayarları')),
   ]));
