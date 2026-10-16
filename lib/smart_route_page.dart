@@ -161,3 +161,64 @@ class _SmartRouteDetailPageState extends State<SmartRouteDetailPage>{
   ]));
  }
 }
+
+class SmartRouteSettingsPage extends StatefulWidget {
+ const SmartRouteSettingsPage({super.key,required this.routeId});
+ final String routeId;
+ @override State<SmartRouteSettingsPage> createState()=>_SmartRouteSettingsPageState();
+}
+class _SmartRouteSettingsPageState extends State<SmartRouteSettingsPage> {
+ bool loading=true,saving=false;
+ String? error;
+ Map<String,dynamic> settings={};
+ Uri get endpoint=>Uri.parse('${OnboardingBackend.baseUrl}/api/owner/smart-routes/${Uri.encodeComponent(widget.routeId)}/settings');
+ static const fields={
+  'trafficAlertEnabled':'traffic_alert_enabled',
+  'accidentAlertEnabled':'accident_alert_enabled',
+  'closureAlertEnabled':'closure_alert_enabled',
+  'alternativeRouteEnabled':'alternative_route_enabled',
+  'departureAlertEnabled':'departure_alert_enabled',
+  'recoveryAlertEnabled':'recovery_alert_enabled',
+ };
+ static const labels={
+  'trafficAlertEnabled':'Trafik',
+  'accidentAlertEnabled':'Kaza',
+  'closureAlertEnabled':'Yol kapanması',
+  'alternativeRouteEnabled':'Alternatif rota',
+  'departureAlertEnabled':'Çıkış zamanı',
+  'recoveryAlertEnabled':'Trafik normale döndü',
+ };
+ @override void initState(){super.initState();load();}
+ Future<void> load()async{
+  setState((){loading=true;error=null;});
+  try{
+   final r=await OwnerHttp.get(endpoint);
+   if(r.statusCode!=200)throw Exception('HTTP ${r.statusCode}');
+   if(mounted)setState(()=>settings=Map<String,dynamic>.from(jsonDecode(r.body)['settings'] as Map));
+  }catch(e){if(mounted)setState(()=>error='Ayarlar yüklenemedi: $e');}
+  finally{if(mounted)setState(()=>loading=false);}
+ }
+ Future<void> update(String key,bool value)async{
+  if(saving)return;
+  setState(()=>saving=true);
+  try{
+   final r=await OwnerHttp.patch(endpoint,body:jsonEncode({key:value}));
+   if(r.statusCode!=200)throw Exception('HTTP ${r.statusCode}');
+   if(mounted)setState(()=>settings=Map<String,dynamic>.from(jsonDecode(r.body)['settings'] as Map));
+  }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('Kaydedilemedi: $e')));}
+  finally{if(mounted)setState(()=>saving=false);}
+ }
+ @override Widget build(BuildContext context)=>Scaffold(
+  appBar:AppBar(title:const Text('Bildirim tercihleri')),
+  body:loading?const Center(child:CircularProgressIndicator()):
+   error!=null?Center(child:TextButton(onPressed:load,child:Text(error!))):
+   ListView(children:[
+    const Padding(padding:EdgeInsets.all(16),child:Text('Tercihleriniz kaydedilir. Otomatik bildirim servisi henüz etkin değildir.',style:TextStyle(fontSize:13))),
+    for(final key in fields.keys)SwitchListTile(
+     title:Text(labels[key]!),
+     value:settings[fields[key]]==true,
+     onChanged:saving?null:(value)=>update(key,value),
+    ),
+   ]),
+ );
+}
