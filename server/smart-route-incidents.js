@@ -14,8 +14,9 @@ function valid(p){return p&&typeof p.lat==='number'&&typeof p.lon==='number'&&Nu
 async function incidents(route,db){
  const key=String(process.env.TOMTOM_API_KEY||'').trim();
  if(!key)return {available:false,reason:'NOT_CONFIGURED',incidents:[]};
- const pts=[route.origin,...(Array.isArray(route.waypoints)?route.waypoints:[]),route.destination];
- if(pts.length>10||pts.some(p=>!valid(p)))return {available:false,reason:'INVALID_COORDINATES',incidents:[]};
+ const saved=Array.isArray(route.route_geometry)?route.route_geometry:[];
+ const pts=saved.length>=2?saved:[route.origin,...(Array.isArray(route.waypoints)?route.waypoints:[]),route.destination];
+ if(pts.length>12000||pts.some(p=>!valid(p)))return {available:false,reason:'INVALID_COORDINATES',incidents:[]};
  const lats=pts.map(p=>p.lat),lons=pts.map(p=>p.lon);
  const west=Math.max(-180,Math.min(...lons)-0.01),east=Math.min(180,Math.max(...lons)+0.01);
  const south=Math.max(-90,Math.min(...lats)-0.01),north=Math.min(90,Math.max(...lats)+0.01);
