@@ -12,11 +12,15 @@ class SmartRoutePage extends StatefulWidget{
  @override State<SmartRoutePage> createState()=>_SmartRoutePageState();
 }
 class _SmartRoutePageState extends State<SmartRoutePage>{
+ static const ink=Color(0xFF10152D),muted=Color(0xFF778096),soft=Color(0xFFF3EDFF),lime=Color(0xFFB9FF45),line=Color(0xFFE8EAF2);
+ final search=TextEditingController();
  bool loading=true;
  String? error;
+ String filter='all';
  List<dynamic> routes=[];
  Uri endpoint([String suffix=''])=>Uri.parse('${OnboardingBackend.baseUrl}/api/owner/smart-routes$suffix');
  @override void initState(){super.initState();reload();}
+ @override void dispose(){search.dispose();super.dispose();}
  Future<void> reload()async{
   setState((){loading=true;error=null;});
   try{
@@ -24,79 +28,182 @@ class _SmartRoutePageState extends State<SmartRoutePage>{
    if(r.statusCode!=200)throw Exception('Rotalar yüklenemedi (HTTP ${r.statusCode})');
    final d=jsonDecode(r.body) as Map<String,dynamic>;
    if(mounted)setState(()=>routes=(d['routes'] as List?)??[]);
-  }catch(e){if(mounted)setState(()=>error='$e');}
+  }catch(_){if(mounted)setState(()=>error='Rotalar yüklenemedi. Bağlantınızı kontrol edip tekrar deneyin.');}
   finally{if(mounted)setState(()=>loading=false);}
  }
  Future<void> add()async{
   final saved=await Navigator.push<bool>(context,MaterialPageRoute(builder:(_)=>const SmartRouteAddPage()));
   if(saved==true&&mounted)await reload();
  }
+ Future<void> detail(Map<String,dynamic> route)async{
+  await Navigator.push(context,MaterialPageRoute(builder:(_)=>SmartRouteDetailPage(route:route)));
+  if(mounted)reload();
+ }
+ Future<void> settings(Map<String,dynamic> route)async{
+  await Navigator.push(context,MaterialPageRoute(builder:(_)=>SmartRouteSettingsPage(routeId:'${route['id']}')));
+ }
+ Future<void> deleteRoute(Map<String,dynamic> route)async{
+  final yes=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(
+   title:const Text('Rotayı sil?'),content:Text('${route['name']??'Bu rota'} kalıcı olarak silinecek.'),
+   actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('Vazgeç')),TextButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('Sil'))]));
+  if(yes!=true||!mounted)return;
+  try{
+   final id=Uri.encodeComponent('${route['id']}');
+   final r=await OwnerHttp.delete(endpoint('/$id')).timeout(const Duration(seconds:20));
+   if(r.statusCode!=200)throw Exception();
+   await reload();
+  }catch(_){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Rota silinemedi. Tekrar deneyin.')));}
+ }
  LatLng? point(dynamic value){
   if(value is! Map)return null;
   final lat=(value['lat'] as num?)?.toDouble(),lon=(value['lon'] as num?)?.toDouble();
   return lat==null||lon==null?null:LatLng(lat,lon);
  }
- @override
- Widget build(BuildContext context) {
-  Widget content;
-  if(loading){
-   content=const Center(child:CircularProgressIndicator());
-  }else if(error!=null){
-   content=Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
-    Text(error!),TextButton(onPressed:reload,child:const Text('Tekrar dene')),
-   ]));
-  }else if(routes.isEmpty){
-   content=RefreshIndicator(onRefresh:reload,child:ListView(children:const [
-    SizedBox(height:130),Center(child:Icon(Icons.route,size:60,color:_purple)),
-    SizedBox(height:16),Center(child:Text('Henüz kayıtlı rota yok')),
-    SizedBox(height:8),Center(child:Text('Yeni Rota ile ilk güzergâhınızı ekleyin.')),
-   ]));
-  }else{
-   content=RefreshIndicator(onRefresh:reload,child:ListView.builder(
-    padding:const EdgeInsets.fromLTRB(16,16,16,100),
-    itemCount:routes.length,
-    itemBuilder:(context,i){
-     final route=routes[i] as Map<String,dynamic>;
-     final start=point(route['origin']);
-     final end=point(route['destination']);
-     return Card(color:Colors.white,child:InkWell(
-      onTap:()async{await Navigator.push(context,MaterialPageRoute(builder:(_)=>SmartRouteDetailPage(route:route)));if(mounted)reload();},
-      child:Padding(padding:const EdgeInsets.all(14),child:Column(
-       crossAxisAlignment:CrossAxisAlignment.start,
-       children:[
-        Text('${route['name']??'Rota'}',style:const TextStyle(fontSize:17,fontWeight:FontWeight.bold)),
-        const SizedBox(height:10),
-        if(start!=null&&end!=null)
-         SizedBox(height:150,child:FlutterMap(
-          options:MapOptions(initialCenter:start,initialZoom:10,interactionOptions:const InteractionOptions(flags:InteractiveFlag.none)),
-          children:[
-           TileLayer(urlTemplate:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',userAgentPackageName:'com.cepqontag.app'),
-           MarkerLayer(markers:[
-            Marker(point:start,width:32,height:32,child:const Icon(Icons.trip_origin,color:_purple)),
-            Marker(point:end,width:32,height:32,child:const Icon(Icons.location_on,color:Colors.red)),
-           ]),
-          ],
-         )),
-        const SizedBox(height:8),
-        const Text('Rota detayını görüntüle  ›',style:TextStyle(color:_purple)),
-       ],
-      )),
-     ));
-    },
-   ));
-  }
-  return Scaffold(
-   backgroundColor:const Color(0xFFF8F9FC),
-   appBar:AppBar(title:const Text('Akıllı Rota'),backgroundColor:Colors.white,foregroundColor:const Color(0xFF10152D)),
-   floatingActionButton:FloatingActionButton.extended(
-    backgroundColor:_purple,foregroundColor:Colors.white,onPressed:add,
-    icon:const Icon(Icons.add),label:const Text('Yeni Rota'),
-   ),
-   body:content,
+ String label(dynamic value){
+  if(value is Map){final name='${value['label']??''}'.trim();if(name.isNotEmpty)return name;}
+  return 'Konum belirtilmedi';
+ }
+ String km(dynamic meters){
+  if(meters is! num)return '—';
+  return '${(meters/1000).toStringAsFixed(1).replaceAll('.',',')} km';
+ }
+ String minutes(dynamic seconds){
+  if(seconds is! num)return '—';
+  return '${(seconds/60).round()} dk';
+ }
+ List<LatLng> geometry(dynamic value){
+  if(value is! List)return [];
+  return value.map(point).whereType<LatLng>().toList();
+ }
+ Widget routeMap(Map<String,dynamic> route){
+  final start=point(route['origin']),end=point(route['destination']);
+  final coords=geometry(route['route_geometry']);
+  if(start==null||end==null)return const SizedBox(height:154,child:Center(child:Text('Konum bilgisi bulunamadı')));
+  final all=coords.isNotEmpty?coords:[start,end];
+  final latMin=all.map((e)=>e.latitude).reduce((a,b)=>a<b?a:b);
+  final latMax=all.map((e)=>e.latitude).reduce((a,b)=>a>b?a:b);
+  final lonMin=all.map((e)=>e.longitude).reduce((a,b)=>a<b?a:b);
+  final lonMax=all.map((e)=>e.longitude).reduce((a,b)=>a>b?a:b);
+  final center=LatLng((latMin+latMax)/2,(lonMin+lonMax)/2);
+  final span=(latMax-latMin)>(lonMax-lonMin)?latMax-latMin:lonMax-lonMin;
+  final zoom=span>2?6.0:span>0.8?8.0:span>0.3?9.0:span>0.12?10.0:span>0.05?11.0:span>0.02?12.0:13.0;
+  return Column(children:[
+   SizedBox(height:166,child:ClipRRect(borderRadius:BorderRadius.circular(12),child:FlutterMap(
+    options:MapOptions(initialCenter:center,initialZoom:zoom,interactionOptions:const InteractionOptions(flags:InteractiveFlag.none)),
+    children:[
+     TileLayer(urlTemplate:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',userAgentPackageName:'com.cepqontag.app'),
+     if(coords.length>=2)PolylineLayer(polylines:[Polyline(points:coords,strokeWidth:4,color:_purple)]),
+     MarkerLayer(markers:[
+      Marker(point:start,width:32,height:36,child:const Icon(Icons.location_on,color:_purple,size:32)),
+      Marker(point:end,width:32,height:36,child:const Icon(Icons.location_on,color:lime,size:32)),
+     ]),
+    ],
+   ))),
+   if(coords.length<2)Padding(padding:const EdgeInsets.only(top:7),child:Row(children:[
+    const Expanded(child:Text('Rota çizgisi oluşturulmadı',style:TextStyle(color:muted,fontSize:11))),
+    TextButton(onPressed:()=>detail(route),child:const Text('Rota detayına git',style:TextStyle(fontSize:11))),
+   ])),
+  ]);
+ }
+ Widget metric(IconData icon,String value,String title,{Color color=_purple}){
+  return Expanded(child:Row(mainAxisAlignment:MainAxisAlignment.center,children:[
+   Icon(icon,color:color,size:19),const SizedBox(width:6),
+   Flexible(child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisSize:MainAxisSize.min,children:[
+    Text(value,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:13,fontWeight:FontWeight.bold,color:ink)),
+    Text(title,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:10,color:muted)),
+   ])),
+  ]));
+ }
+ Widget routeCard(Map<String,dynamic> route){
+  final active=route['is_active']!=false;
+  final title='${route['name']??'Rota'}';
+  return Container(
+   margin:const EdgeInsets.only(bottom:12),padding:const EdgeInsets.all(12),
+   decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(16),border:Border.all(color:line)),
+   child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+    Row(children:[
+     Container(width:42,height:42,decoration:BoxDecoration(color:soft,borderRadius:BorderRadius.circular(12)),child:const Icon(Icons.route,color:_purple)),
+     const SizedBox(width:10),
+     Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      Text(title,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:ink,fontSize:16,fontWeight:FontWeight.bold)),
+      Text('${label(route['origin'])} → ${label(route['destination'])}',maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:muted,fontSize:11)),
+     ])),
+     Container(padding:const EdgeInsets.symmetric(horizontal:8,vertical:5),decoration:BoxDecoration(color:active?const Color(0xFFEFFFE4):soft,borderRadius:BorderRadius.circular(20)),child:Text(active?'● Aktif':'Pasif',style:TextStyle(fontSize:11,color:active?const Color(0xFF16842A):muted))),
+     PopupMenuButton<String>(padding:EdgeInsets.zero,icon:const Icon(Icons.more_vert,color:muted),onSelected:(v){
+      if(v=='detail')detail(route);
+      if(v=='edit')detail(route);
+      if(v=='settings')settings(route);
+      if(v=='delete')deleteRoute(route);
+     },itemBuilder:(_)=>const [
+      PopupMenuItem(value:'detail',child:Text('Rota detayını aç')),
+      PopupMenuItem(value:'edit',child:Text('Rotayı düzenle')),
+      PopupMenuItem(value:'settings',child:Text('Bildirim ayarları')),
+      PopupMenuItem(value:'delete',child:Text('Rotayı sil')),
+     ]),
+    ]),
+    const SizedBox(height:10),routeMap(route),const SizedBox(height:10),
+    Container(height:60,decoration:BoxDecoration(color:soft,borderRadius:BorderRadius.circular(12)),
+     child:Row(children:[
+      metric(Icons.alt_route,km(route['distanceMeters']),'Mesafe'),
+      Container(height:28,width:1,color:line),
+      metric(Icons.schedule,minutes(route['travelTimeSeconds']),'Tahmini süre'),
+      Container(height:28,width:1,color:line),
+      metric(Icons.warning_amber_rounded,'—','Yakın olay',color:const Color(0xFFE84365)),
+     ])),
+    const SizedBox(height:10),
+    SizedBox(height:46,child:TextButton(onPressed:()=>detail(route),style:TextButton.styleFrom(backgroundColor:soft,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(12))),child:const Row(mainAxisAlignment:MainAxisAlignment.spaceBetween,children:[
+     Text('Rota detayını görüntüle',style:TextStyle(color:_purple,fontSize:13,fontWeight:FontWeight.w600)),
+     Icon(Icons.chevron_right,color:_purple),
+    ]))),
+   ]),
+  );
+ }
+ @override Widget build(BuildContext context){
+  final query=search.text.trim().toLowerCase();
+  final filtered=routes.where((r){
+   if(r is! Map)return false;
+   if(filter=='active'&&r['is_active']==false)return false;
+   if(filter=='inactive'&&r['is_active']!=false)return false;
+   return '${r['name']??''}'.toLowerCase().contains(query);
+  }).cast<Map<String,dynamic>>().toList();
+  return Scaffold(backgroundColor:Colors.white,
+   body:SafeArea(child:Column(children:[
+    Padding(padding:const EdgeInsets.fromLTRB(16,8,16,0),child:Row(children:[
+     IconButton(onPressed:()=>Navigator.maybePop(context),style:IconButton.styleFrom(backgroundColor:soft),icon:const Icon(Icons.arrow_back_ios_new,color:_purple,size:20)),
+     const Expanded(child:Center(child:Text('CepQontag',style:TextStyle(fontSize:22,fontWeight:FontWeight.w800,color:_purple)))),
+     PopupMenuButton<String>(icon:const Icon(Icons.more_horiz,color:_purple),onSelected:(v){if(v=='refresh')reload();},itemBuilder:(_)=>const [PopupMenuItem(value:'refresh',child:Text('Yenile'))]),
+    ])),
+    Expanded(child:RefreshIndicator(onRefresh:reload,child:ListView(padding:const EdgeInsets.fromLTRB(16,16,16,96),children:[
+     const Text.rich(TextSpan(children:[TextSpan(text:'Akıllı ',style:TextStyle(color:ink)),TextSpan(text:'Rota',style:TextStyle(color:_purple))]),style:TextStyle(fontSize:26,fontWeight:FontWeight.bold)),
+     const SizedBox(height:4),
+     const Text('Kayıtlı rotalarınızı yönetin, trafik durumunu takip edin.',style:TextStyle(color:muted,fontSize:12)),
+     const SizedBox(height:16),
+     Row(children:[
+      Expanded(child:SizedBox(height:48,child:TextField(controller:search,onChanged:(_)=>setState((){}),decoration:InputDecoration(hintText:'Rota ara...',prefixIcon:const Icon(Icons.search,color:muted),filled:true,fillColor:soft,contentPadding:const EdgeInsets.symmetric(vertical:10),border:OutlineInputBorder(borderSide:BorderSide.none,borderRadius:BorderRadius.circular(14)))))),
+      const SizedBox(width:8),
+      PopupMenuButton<String>(tooltip:'Rotaları filtrele',initialValue:filter,onSelected:(v)=>setState(()=>filter=v),itemBuilder:(_)=>const [
+       PopupMenuItem(value:'all',child:Text('Tüm rotalar')),
+       PopupMenuItem(value:'active',child:Text('Aktif rotalar')),
+       PopupMenuItem(value:'inactive',child:Text('Pasif rotalar')),
+      ],child:Container(height:48,width:48,decoration:BoxDecoration(color:soft,borderRadius:BorderRadius.circular(14)),child:const Icon(Icons.filter_list,color:_purple))),
+     ]),
+     const SizedBox(height:16),
+     if(loading)const Padding(padding:EdgeInsets.only(top:80),child:Center(child:CircularProgressIndicator()))
+     else if(error!=null)Column(children:[const SizedBox(height:80),Text(error!,textAlign:TextAlign.center),TextButton(onPressed:reload,child:const Text('Tekrar dene'))])
+     else if(routes.isEmpty)Column(children:[
+      const SizedBox(height:75),const Icon(Icons.route,size:48,color:_purple),
+      const SizedBox(height:12),const Text('Henüz kayıtlı rotanız yok.',style:TextStyle(fontWeight:FontWeight.bold,color:ink)),
+      const SizedBox(height:8),const Text('Sık kullandığınız güzergâhları ekleyerek trafik bildirimleri alabilirsiniz.',textAlign:TextAlign.center,style:TextStyle(color:muted)),
+      const SizedBox(height:14),ElevatedButton(onPressed:add,child:const Text('İlk Rotanı Ekle')),
+     ])
+     else if(filtered.isEmpty)const Padding(padding:EdgeInsets.only(top:65),child:Center(child:Text('Aramanıza uygun rota bulunamadı.')))
+     else ...filtered.map(routeCard),
+    ]))),
+   ])),
+   floatingActionButton:SafeArea(child:SizedBox(height:52,child:FloatingActionButton.extended(onPressed:add,backgroundColor:_purple,foregroundColor:Colors.white,icon:const Icon(Icons.add),label:const Text('Yeni Rota')))),
   );
  }
 }
-
 class SmartRouteDetailPage extends StatefulWidget{
  const SmartRouteDetailPage({super.key,required this.route});
  final Map<String,dynamic> route;
