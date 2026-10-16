@@ -154,46 +154,129 @@ class _SmartRouteDetailPageState extends State<SmartRouteDetailPage>{
   }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('$e')));}
   finally{if(mounted)setState(()=>geometryBusy=false);}
  }
+
+ static const _ink=Color(0xFF10152D),_muted=Color(0xFF778096),_line=Color(0xFFE8EAF2),_soft=Color(0xFFF3EDFF);
+ Widget action(String title,IconData icon,VoidCallback? onTap,{bool primary=false,bool danger=false,bool loading=false})=>SizedBox(height:50,width:double.infinity,child:OutlinedButton(
+  onPressed:onTap,style:OutlinedButton.styleFrom(
+   backgroundColor:primary?_purple:danger?const Color(0xFFFFF0F3):Colors.white,
+   foregroundColor:primary?Colors.white:danger?const Color(0xFFFF4560):_ink,
+   side:BorderSide(color:primary?_purple:danger?const Color(0xFFFFF0F3):_line),
+   padding:const EdgeInsets.symmetric(horizontal:14),
+   shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(16))),
+  child:Row(children:[
+   if(loading)const SizedBox(width:19,height:19,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white))
+   else Icon(icon,size:20,color:primary?Colors.white:danger?const Color(0xFFFF4560):_purple),
+   const SizedBox(width:12),
+   Expanded(child:Text(title,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:13,fontWeight:FontWeight.w600))),
+   if(!danger)Icon(Icons.chevron_right,size:20,color:primary?Colors.white:_purple),
+  ])));
+ void openSettings()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>SmartRouteSettingsPage(routeId:'\u0024{widget.route['id']}')));
+ Future<void> editName()async{
+  final controller=TextEditingController(text:'\u0024{widget.route['name']??''}');
+  final name=await showDialog<String>(context:context,builder:(ctx)=>AlertDialog(
+   title:const Text('Rota adını düzenle'),content:TextField(controller:controller,maxLength:80,autofocus:true,decoration:const InputDecoration(labelText:'Rota adı')),
+   actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Vazgeç')),TextButton(onPressed:()=>Navigator.pop(ctx,controller.text.trim()),child:const Text('Kaydet'))]));
+  controller.dispose();
+  if(name==null||name.isEmpty||!mounted)return;
+  setState(()=>busy=true);
+  try{
+   final id=Uri.encodeComponent('\u0024{widget.route['id']}');
+   final r=await OwnerHttp.patch(Uri.parse('\u0024{OnboardingBackend.baseUrl}/api/owner/smart-routes/\u0024id'),body:jsonEncode({'name':name})).timeout(const Duration(seconds:20));
+   if(r.statusCode!=200)throw Exception('Rota adı değiştirilemedi (HTTP \u0024{r.statusCode})');
+   widget.route['name']=name;
+   if(mounted)setState((){});
+  }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('\u0024e')));}
+  finally{if(mounted)setState(()=>busy=false);}
+ }
  @override Widget build(BuildContext context){
   final p=preview;
   final geometry=(p?['geometry'] as List?)??(widget.route['route_geometry'] as List?)??[];
   final points=geometry.whereType<Map>().map((x){final a=(x['lat'] as num?)?.toDouble(),b=(x['lon'] as num?)?.toDouble();return a==null||b==null?null:LatLng(a,b);}).whereType<LatLng>().toList();
-  return Scaffold(appBar:AppBar(title:Text('${widget.route['name']??'Rota'}')),body:ListView(padding:const EdgeInsets.all(16),children:[
-   if(busy)const LinearProgressIndicator(),
-   if(points.length>=2)SizedBox(height:260,child:FlutterMap(options:MapOptions(initialCenter:points[points.length~/2],initialZoom:11),children:[
-    TileLayer(urlTemplate:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',userAgentPackageName:'com.cepqontag.app'),
-    PolylineLayer(polylines:[Polyline(points:points,strokeWidth:5,color:_purple)]),
-   ])),
-   const SizedBox(height:16),
-   if(error!=null)Text(error!,style:const TextStyle(color:Colors.red)),
-   if(p?['available']==true)...[
-    Text('Mesafe: ${((p?['distanceMeters'] as num?)??0)/1000} km'),
-    Text('Trafik gecikmesi: ${((p?['trafficDelaySeconds'] as num?)??0)/60} dakika'),
-   ]else const Text('Canlı rota verisi henüz mevcut değil.'),
-   const SizedBox(height:12),
-   Text('Rotaya yakın olaylar: ${(events?['incidents'] as List?)?.length??0}'),
-   const Text('Olay eşleşmesi yaklaşık konuma göredir; yol yönü doğrulanmamıştır.',style:TextStyle(fontSize:12)),
-   if(events?['available']==true && (events?['incidents'] as List?)?.isNotEmpty==true)
-    ...((events!['incidents'] as List).take(20).map((item){
-     final incident=item is Map?item:<String,dynamic>{};
-     final category='${incident['category']??'Trafik olayı'}';
-     final description='${incident['description']??'Konum bilgisi mevcut'}';
-     return Card(child:ListTile(
-      leading:const Icon(Icons.warning_amber_rounded,color:Color(0xFFFFB020)),
-      title:Text(category),
-      subtitle:Text(description,maxLines:3,overflow:TextOverflow.ellipsis),
-     ));
-    })),
-   if(events?['available']==false && events?['reason']!='NO_SAVED_ROUTE_GEOMETRY')
-    const Text('Trafik olayları şu anda doğrulanamıyor.',style:TextStyle(color:Colors.grey)),
-   const SizedBox(height:12),
-   if(events?['reason']=='NO_SAVED_ROUTE_GEOMETRY')const Text('Olayları eşleştirmek için rota çizgisini kaydedin.'),
-   OutlinedButton.icon(onPressed:busy||geometryBusy?null:saveGeometry,icon:const Icon(Icons.route),label:Text(geometryBusy?'Kaydediliyor...':'Rota çizgisini kaydet / güncelle')),
-   const SizedBox(height:12),OutlinedButton.icon(onPressed:busy?null:load,icon:const Icon(Icons.refresh),label:const Text('Trafiği yenile')),
-   const SizedBox(height:8),OutlinedButton.icon(onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>SmartRouteSettingsPage(routeId:'${widget.route['id']}'))),icon:const Icon(Icons.settings_outlined),label:const Text('Rota bildirim ayarları')),
-   const SizedBox(height:8),TextButton.icon(onPressed:busy?null:deleteRoute,icon:const Icon(Icons.delete_outline,color:Colors.red),label:const Text('Rotayı sil',style:TextStyle(color:Colors.red))),
-  ]));
+  final hasTraffic=p?['available']==true;
+  final incidents=events?['available']==true?events?['incidents'] as List?:null;
+  final hasGeometry=points.length>=2;
+  final delay=(p?['trafficDelaySeconds'] as num?)?.toInt();
+  final duration=(p?['travelTimeSeconds'] as num?)?.toInt();
+  final name='\u0024{widget.route['name']??'Rota'}';
+  final active=widget.route['is_active']==true||widget.route['isActive']==true||widget.route['active']==true;
+  return Scaffold(backgroundColor:Colors.white,body:SafeArea(child:Column(children:[
+   SizedBox(height:56,child:Padding(padding:const EdgeInsets.symmetric(horizontal:16),child:Row(children:[
+    SizedBox(width:40,height:40,child:IconButton(onPressed:()=>Navigator.pop(context),padding:EdgeInsets.zero,style:IconButton.styleFrom(backgroundColor:_soft),icon:const Icon(Icons.arrow_back_ios_new,size:19,color:_purple))),
+    Expanded(child:Center(child:Image.asset('assets/Logoa.png',height:34,fit:BoxFit.contain))),
+    SizedBox(width:40,height:40,child:PopupMenuButton<String>(tooltip:'Rota işlemleri',icon:const Icon(Icons.more_horiz,color:_purple),
+     color:Colors.white,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(14)),
+     onSelected:(v){if(v=='edit')editName();if(v=='settings')openSettings();if(v=='delete')deleteRoute();},
+     itemBuilder:(_)=>const [PopupMenuItem(value:'edit',child:Text('Rotayı düzenle')),PopupMenuItem(value:'settings',child:Text('Bildirim ayarları')),PopupMenuItem(value:'delete',child:Text('Rotayı sil'))])),
+   ]))),
+   Expanded(child:RefreshIndicator(onRefresh:load,child:ListView(padding:const EdgeInsets.fromLTRB(16,10,16,24),children:[
+    Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
+     Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      Row(children:[Flexible(child:Text(name,maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_ink,fontSize:25,fontWeight:FontWeight.w800))),
+       IconButton(onPressed:busy?null:editName,visualDensity:VisualDensity.compact,icon:const Icon(Icons.edit_outlined,size:18,color:_purple))]),
+      const Text('Kaydedilen rota',style:TextStyle(color:_muted,fontSize:12)),
+     ])),
+     const SizedBox(width:8),
+     Container(padding:const EdgeInsets.symmetric(horizontal:12,vertical:7),decoration:BoxDecoration(color:active?const Color(0xFFE9FFC6):_soft,borderRadius:BorderRadius.circular(20)),
+      child:Text(active?'Aktif':'Pasif',style:const TextStyle(fontSize:12,fontWeight:FontWeight.w600,color:_ink))),
+    ]),
+    const SizedBox(height:14),
+    Container(width:double.infinity,padding:const EdgeInsets.all(13),decoration:BoxDecoration(color:const Color(0xFFF8F5FF),border:Border.all(color:_line),borderRadius:BorderRadius.circular(16)),
+     child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      Row(children:[
+       Container(width:38,height:38,decoration:const BoxDecoration(color:_soft,shape:BoxShape.circle),child:const Icon(Icons.route_outlined,color:_purple,size:20)),
+       const SizedBox(width:10),
+       Expanded(child:Text(hasTraffic?'Güncel rota durumu':'Canlı rota verisi henüz mevcut değil.',style:const TextStyle(fontSize:16,fontWeight:FontWeight.w700,color:_ink))),
+      ]),
+      const SizedBox(height:12),
+      if(hasTraffic)...[
+       if(duration!=null)Text('Tahmini yolculuk: \u0024{(duration/60).round()} dakika',style:const TextStyle(fontSize:13,color:_ink)),
+       if(delay!=null)Text(delay>0?'Trafik gecikmesi: \u0024{(delay/60).round()} dakika':'Normal trafik',style:TextStyle(fontSize:13,color:delay>0?const Color(0xFFFF4560):const Color(0xFF26803A))),
+       if(p?['checkedAt']!=null)Text('Son kontrol: \u0024{p!['checkedAt']}',style:const TextStyle(fontSize:11,color:_muted)),
+      ],
+      const SizedBox(height:8),
+      Text(incidents==null?'Güncel olay bilgisi alınamadı.':'Rotaya yakın olaylar: \u0024{incidents.length}',style:const TextStyle(color:_ink,fontSize:13)),
+      if(incidents!=null)...[
+       const SizedBox(height:5),
+       const Text('Olay eşleşmesi yaklaşık konuma göredir; yol yönü doğrulanmamıştır.',style:TextStyle(fontSize:12,color:_muted)),
+       for(final item in incidents.take(8))if(item is Map)
+        Padding(padding:const EdgeInsets.only(top:8),child:Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
+         const Icon(Icons.warning_amber_rounded,color:Color(0xFFFF4560),size:18),
+         const SizedBox(width:7),
+         Expanded(child:Text('\u0024{item['category']??'Trafik olayı'}: \u0024{item['description']??'Açıklama yok'}',style:const TextStyle(fontSize:12,color:_ink))),
+        ])),
+      ],
+      if(!hasGeometry)...[
+       const SizedBox(height:12),
+       Container(padding:const EdgeInsets.all(12),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(14),border:Border.all(color:_line)),
+        child:const Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
+         Icon(Icons.info_outline,color:_purple,size:20),SizedBox(width:10),
+         Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          Text('Olayları eşleştirmek için rota çizgisini kaydedin.',style:TextStyle(fontSize:12,fontWeight:FontWeight.w600,color:_ink)),
+          SizedBox(height:4),Text('Rota çizgisi kaydedildikten sonra uygun trafik ve olay bilgileri burada görüntülenebilir.',style:TextStyle(fontSize:11,color:_muted)),
+         ])),
+        ])),
+      ],
+     ])),
+    if(hasGeometry)...[
+     const SizedBox(height:10),
+     ClipRRect(borderRadius:BorderRadius.circular(16),child:SizedBox(height:165,child:FlutterMap(
+      options:MapOptions(initialCenter:points[points.length~/2],initialZoom:11),
+      children:[TileLayer(urlTemplate:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',userAgentPackageName:'com.cepqontag.app'),
+       PolylineLayer(polylines:[Polyline(points:points,strokeWidth:4,color:_purple)])]))),
+    ],
+    if(error!=null)...[const SizedBox(height:10),Text(error!,style:const TextStyle(color:Color(0xFFFF4560),fontSize:12))],
+    const SizedBox(height:12),
+    action(geometryBusy?'Rota hesaplanıyor...':hasGeometry?'Rotayı Güncelle':'Rota çizgisini kaydet / güncelle',Icons.route_outlined,busy||geometryBusy?null:saveGeometry,primary:true,loading:geometryBusy),
+    const SizedBox(height:10),
+    action(busy?'Trafik sorgulanıyor...':'Trafiği Yenile',Icons.refresh,busy||geometryBusy?null:load,loading:false),
+    const SizedBox(height:10),
+    action('Rota Bildirim Ayarları',Icons.settings_outlined,busy?null:openSettings),
+    const SizedBox(height:10),
+    action('Rotayı Sil',Icons.delete_outline,busy||geometryBusy?null:deleteRoute,danger:true),
+   ]))),
+  ])));
  }
+
 }
 
 class SmartRouteSettingsPage extends StatefulWidget {
