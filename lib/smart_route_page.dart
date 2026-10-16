@@ -157,6 +157,7 @@ class _SmartRouteDetailPageState extends State<SmartRouteDetailPage>{
    Text('Rotaya yakın olaylar: ${(events?['incidents'] as List?)?.length??0}'),
    const Text('Olay eşleşmesi yaklaşık konuma göredir; yol yönü doğrulanmamıştır.',style:TextStyle(fontSize:12)),
    const SizedBox(height:12),OutlinedButton.icon(onPressed:busy?null:load,icon:const Icon(Icons.refresh),label:const Text('Trafiği yenile')),
+   const SizedBox(height:8),OutlinedButton.icon(onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>SmartRouteSettingsPage(routeId:'${widget.route['id']}'))),icon:const Icon(Icons.settings_outlined),label:const Text('Rota bildirim ayarları')),
   ]));
  }
 }
