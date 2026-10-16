@@ -30,6 +30,7 @@ async function scanCandidates(db,{now=new Date(),limit=10}={}){
    if(!enabled)continue;
    const hash=fingerprint(route.id,incident);
    if(!hash)continue;
+   if(!incident.id)continue;
    const existing=await db.query('SELECT 1 FROM smart_route_alert_events WHERE route_id=$1 AND event_hash=$2 LIMIT 1',[route.id,hash]);
    if(existing.rowCount)continue;
    summary.candidates.push({userId:route.user_id,routeId:route.id,incidentId:incident.id,category,description:incident.description,eventHash:hash});
