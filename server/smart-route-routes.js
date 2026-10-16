@@ -100,10 +100,16 @@ module.exports=function registerSmartRouteRoutes(app,db){
  app.patch('/api/owner/smart-routes/:routeId/settings',async(req,res)=>{
   const id=await auth(req,res);if(!id)return;
   const b=req.body;
-  const columns={trafficAlertEnabled:'traffic_alert_enabled',accidentAlertEnabled:'accident_alert_enabled',closureAlertEnabled:'closure_alert_enabled',alternativeRouteEnabled:'alternative_route_enabled',departureAlertEnabled:'departure_alert_enabled',recoveryAlertEnabled:'recovery_alert_enabled'};
+  const columns={trafficAlertEnabled:'traffic_alert_enabled',accidentAlertEnabled:'accident_alert_enabled',closureAlertEnabled:'closure_alert_enabled',alternativeRouteEnabled:'alternative_route_enabled',departureAlertEnabled:'departure_alert_enabled',recoveryAlertEnabled:'recovery_alert_enabled',notificationDays:'notification_days',notificationStart:'notification_start',notificationEnd:'notification_end'};
   if(!b||typeof b!=='object'||Array.isArray(b))return res.status(400).json({error:'INVALID_SETTINGS'});
   const keys=Object.keys(b);
-  if(!keys.length||keys.some(k=>!Object.hasOwn(columns,k)||typeof b[k]!=='boolean'))return res.status(400).json({error:'INVALID_SETTINGS'});
+  const valid=(k,v)=>{
+   if(!Object.hasOwn(columns,k))return false;
+   if(k==='notificationDays')return Array.isArray(v)&&v.length>0&&v.length<=7&&new Set(v).size===v.length&&v.every(day=>Number.isInteger(day)&&day>=1&&day<=7);
+   if(k==='notificationStart'||k==='notificationEnd')return typeof v==='string'&&/^([01]\\d|2[0-3]):[0-5]\\d$/.test(v);
+   return typeof v==='boolean';
+  };
+  if(!keys.length||keys.some(k=>!valid(k,b[k])))return res.status(400).json({error:'INVALID_SETTINGS'});
   try{
    const route=await owned(id,req.params.routeId);
    if(!route)return res.status(404).json({error:'NOT_FOUND'});
