@@ -18,6 +18,9 @@ class _SmartRoutePageState extends State<SmartRoutePage>{
  String? error;
  String filter='all';
  List<dynamic> routes=[];
+ final Map<String,Map<String,dynamic>> routePreviews={};
+ final Map<String,Map<String,dynamic>> routeIncidents={};
+ final Set<String> pendingMetrics={};
  Uri endpoint([String suffix=''])=>Uri.parse('${OnboardingBackend.baseUrl}/api/owner/smart-routes$suffix');
  @override void initState(){super.initState();reload();}
  @override void dispose(){search.dispose();super.dispose();}
@@ -27,9 +30,43 @@ class _SmartRoutePageState extends State<SmartRoutePage>{
    final r=await OwnerHttp.get(endpoint()).timeout(const Duration(seconds:20));
    if(r.statusCode!=200)throw Exception('Rotalar yüklenemedi (HTTP ${r.statusCode})');
    final d=jsonDecode(r.body) as Map<String,dynamic>;
-   if(mounted)setState(()=>routes=(d['routes'] as List?)??[]);
+   if(mounted){setState(()=>routes=(d['routes'] as List?)??[]);for(final item in routes){if(item is Map<String,dynamic>)fetchMetrics(item);}}
   }catch(_){if(mounted)setState(()=>error='Rotalar yüklenemedi. Bağlantınızı kontrol edip tekrar deneyin.');}
   finally{if(mounted)setState(()=>loading=false);}
+ }
+ Future<void> fetchMetrics(Map<String,dynamic> route)async{
+  final id='${route['id']}';
+  if(id=='null'||pendingMetrics.contains(id)||routePreviews.containsKey(id))return;
+  pendingMetrics.add(id);
+  try{
+   final encoded=Uri.encodeComponent(id);
+   final responses=await Future.wait([
+    OwnerHttp.get(endpoint('/$encoded/preview')).timeout(const Duration(seconds:20)),
+    OwnerHttp.get(endpoint('/$encoded/route-incidents')).timeout(const Duration(seconds:20)),
+   ]);
+   if(!mounted)return;
+   setState((){
+    routePreviews[id]=responses[0].statusCode==200?jsonDecode(responses[0].body) as Map<String,dynamic>:<String,dynamic>{};
+    routeIncidents[id]=responses[1].statusCode==200?jsonDecode(responses[1].body) as Map<String,dynamic>:<String,dynamic>{};
+   });
+  }catch(_){if(mounted)setState((){routePreviews[id]={};routeIncidents[id]={};});}
+  finally{pendingMetrics.remove(id);}
+ }
+ Future<void> editRoute(Map<String,dynamic> route)async{
+  final controller=TextEditingController(text='${route['name']??''}');
+  final name=await showDialog<String>(context:context,builder:(ctx)=>AlertDialog(
+   title:const Text('Rota adını düzenle'),
+   content:TextField(controller:controller,maxLength:80,autofocus:true,decoration:const InputDecoration(labelText:'Rota adı')),
+   actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Vazgeç')),
+    TextButton(onPressed:()=>Navigator.pop(ctx,controller.text.trim()),child:const Text('Kaydet'))]));
+  controller.dispose();
+  if(name==null||name.isEmpty||!mounted)return;
+  try{
+   final id=Uri.encodeComponent('${route['id']}');
+   final r=await OwnerHttp.patch(endpoint('/$id'),body:jsonEncode({'name':name})).timeout(const Duration(seconds:20));
+   if(r.statusCode!=200)throw Exception();
+   await reload();
+  }catch(_){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Rota adı güncellenemedi.')));}
  }
  Future<void> add()async{
   final saved=await Navigator.push<bool>(context,MaterialPageRoute(builder:(_)=>const SmartRouteAddPage()));
@@ -116,6 +153,11 @@ class _SmartRoutePageState extends State<SmartRoutePage>{
  }
  Widget routeCard(Map<String,dynamic> route){
   final active=route['is_active']!=false;
+  final id='${'${route['id']}'}';
+  final preview=routePreviews[id];
+  final incidents=routeIncidents[id];
+  final validPreview=preview?['available']==true;
+  final incidentCount=incidents?['available']==true && incidents?['incidents'] is List?(incidents!['incidents'] as List).length:null;
   final title='${route['name']??'Rota'}';
   return Container(
    margin:const EdgeInsets.only(bottom:12),padding:const EdgeInsets.all(12),
@@ -131,7 +173,7 @@ class _SmartRoutePageState extends State<SmartRoutePage>{
      Container(padding:const EdgeInsets.symmetric(horizontal:8,vertical:5),decoration:BoxDecoration(color:active?const Color(0xFFEFFFE4):soft,borderRadius:BorderRadius.circular(20)),child:Text(active?'● Aktif':'Pasif',style:TextStyle(fontSize:11,color:active?const Color(0xFF16842A):muted))),
      PopupMenuButton<String>(padding:EdgeInsets.zero,icon:const Icon(Icons.more_vert,color:muted),onSelected:(v){
       if(v=='detail')detail(route);
-      if(v=='edit')detail(route);
+      if(v=='edit')editRoute(route);
       if(v=='settings')settings(route);
       if(v=='delete')deleteRoute(route);
      },itemBuilder:(_)=>const [
@@ -144,11 +186,11 @@ class _SmartRoutePageState extends State<SmartRoutePage>{
     const SizedBox(height:10),routeMap(route),const SizedBox(height:10),
     Container(height:60,decoration:BoxDecoration(color:soft,borderRadius:BorderRadius.circular(12)),
      child:Row(children:[
-      metric(Icons.alt_route,km(route['distanceMeters']),'Mesafe'),
+      metric(Icons.alt_route,km(validPreview?preview?['distanceMeters']:null),'Mesafe'),
       Container(height:28,width:1,color:line),
-      metric(Icons.schedule,minutes(route['travelTimeSeconds']),'Tahmini süre'),
+      metric(Icons.schedule,minutes(validPreview?preview?['travelTimeSeconds']:null),'Tahmini süre'),
       Container(height:28,width:1,color:line),
-      metric(Icons.warning_amber_rounded,'—','Yakın olay',color:const Color(0xFFE84365)),
+      metric(Icons.warning_amber_rounded,incidentCount==null?'—':'$incidentCount','Yakın olay',color:const Color(0xFFE84365)),
      ])),
     const SizedBox(height:10),
     SizedBox(height:46,child:TextButton(onPressed:()=>detail(route),style:TextButton.styleFrom(backgroundColor:soft,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(12))),child:const Row(mainAxisAlignment:MainAxisAlignment.spaceBetween,children:[
@@ -170,7 +212,7 @@ class _SmartRoutePageState extends State<SmartRoutePage>{
    body:SafeArea(child:Column(children:[
     Padding(padding:const EdgeInsets.fromLTRB(16,8,16,0),child:Row(children:[
      IconButton(onPressed:()=>Navigator.maybePop(context),style:IconButton.styleFrom(backgroundColor:soft),icon:const Icon(Icons.arrow_back_ios_new,color:_purple,size:20)),
-     const Expanded(child:Center(child:Text('CepQontag',style:TextStyle(fontSize:22,fontWeight:FontWeight.w800,color:_purple)))),
+     Expanded(child:Center(child:Image.asset('assets/Logoa.png',height:35,fit:BoxFit.contain))),
      PopupMenuButton<String>(icon:const Icon(Icons.more_horiz,color:_purple),onSelected:(v){if(v=='refresh')reload();},itemBuilder:(_)=>const [PopupMenuItem(value:'refresh',child:Text('Yenile'))]),
     ])),
     Expanded(child:RefreshIndicator(onRefresh:reload,child:ListView(padding:const EdgeInsets.fromLTRB(16,16,16,96),children:[
