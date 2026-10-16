@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:geolocator/geolocator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -357,12 +359,13 @@ class _SmartRouteAddPageState extends State<SmartRouteAddPage>{
  bool google=true,busy=false;
  String? error;
  @override void dispose(){name.dispose();link.dispose();super.dispose();}
- void parseGoogle(){
+ Future<void> parseGoogle()async{
   final uri=Uri.tryParse(link.text.trim());
-  if(uri==null||uri.scheme!='https'||!{'google.com','www.google.com','maps.google.com'}.contains(uri.host.toLowerCase())){
+  if(uri==null||uri.scheme!='https'||!{'google.com','www.google.com','maps.google.com'}.contains(uri.host.toLowerCase())||!uri.path.startsWith('/maps')){
    setState(()=>error='Geçerli bir Google Haritalar bağlantısı girin.');return;
   }
-  final a=uri.queryParameters['origin'],b=uri.queryParameters['destination'];
+  String? a=uri.queryParameters['origin'],b=uri.queryParameters['destination'];
+  if((a==null||b==null)&&uri.pathSegments.contains('dir')){final parts=uri.pathSegments;final i=parts.indexOf('dir');if(parts.length>i+2){a=parts[i+1];b=parts[i+2];}}
   final pattern=RegExp(r'^(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)$');
   final m=a==null?null:pattern.firstMatch(a),n=b==null?null:pattern.firstMatch(b);
   if(m==null||n==null){
@@ -373,15 +376,37 @@ class _SmartRouteAddPageState extends State<SmartRouteAddPage>{
   if(x.abs()>90||z.abs()>90||y.abs()>180||w.abs()>180){
    setState(()=>error='Bağlantıdaki koordinatlar geçersiz.');return;
   }
-  setState((){start=LatLng(x,y);end=LatLng(z,w);error=null;});
+  final confirmed=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(title:const Text('Rota noktalarını doğrula'),content:Text('Başlangıç: $x, $y\nVarış: $z, $w'),actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('İptal')),FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('Kullan'))]));
+  if(confirmed==true&&mounted)setState((){start=LatLng(x,y);end=LatLng(z,w);error=null;});
  }
  Future<void> pick()async{
   final result=await Navigator.push<List<LatLng>>(context,MaterialPageRoute(builder:(_)=>const SmartRouteMapPicker()));
   if(result!=null&&result.length==2&&mounted)setState((){start=result[0];end=result[1];error=null;});
  }
+ Future<void> choosePoint(bool origin)async{
+  final action=await showModalBottomSheet<String>(context:context,builder:(ctx)=>SafeArea(child:Column(mainAxisSize:MainAxisSize.min,children:[
+   ListTile(leading:const Icon(Icons.search),title:const Text('Adres ara'),onTap:()=>Navigator.pop(ctx,'search')),
+   ListTile(leading:const Icon(Icons.map_outlined),title:const Text('Haritadan seç'),onTap:()=>Navigator.pop(ctx,'map')),
+   ListTile(leading:const Icon(Icons.my_location),title:const Text('Mevcut konumumu kullan'),onTap:()=>Navigator.pop(ctx,'gps')),
+  ])));
+  if(!mounted||action==null)return;
+  LatLng? point;
+  if(action=='search')point=await Navigator.push<LatLng>(context,MaterialPageRoute(builder:(_)=>const _RouteAddressSearch()));
+  if(action=='map')point=await Navigator.push<LatLng>(context,MaterialPageRoute(builder:(_)=>const _RoutePointPicker()));
+  if(action=='gps'){
+   try{
+    var permission=await Geolocator.checkPermission();
+    if(permission==LocationPermission.denied)permission=await Geolocator.requestPermission();
+    if(permission==LocationPermission.denied||permission==LocationPermission.deniedForever)throw Exception('Konum izni verilmedi');
+    final position=await Geolocator.getCurrentPosition(locationSettings:const LocationSettings(accuracy:LocationAccuracy.high,timeLimit:Duration(seconds:15)));
+    point=LatLng(position.latitude,position.longitude);
+   }catch(e){if(mounted)setState(()=>error='Konum alınamadı: $e');return;}
+  }
+  if(point!=null&&mounted)setState((){if(origin){start=point;}else{end=point;}error=null;});
+ }
  Future<void> save()async{
   if(busy)return;
-  if(name.text.trim().isEmpty||start==null||end==null){setState(()=>error='Rota adı, başlangıç ve varış noktası gerekli.');return;}
+  if(name.text.trim().isEmpty||start==null||end==null||start!.latitude.abs()>90||end!.latitude.abs()>90||start!.longitude.abs()>180||end!.longitude.abs()>180||start==end){setState(()=>error='Rota adı, başlangıç ve varış noktası gerekli.');return;}
   setState((){busy=true;error=null;});
   try{
    final uri=Uri.parse('${OnboardingBackend.baseUrl}/api/owner/smart-routes');
@@ -404,7 +429,7 @@ class _SmartRouteAddPageState extends State<SmartRouteAddPage>{
   }catch(e){if(mounted)setState(()=>error='$e');}
   finally{if(mounted)setState(()=>busy=false);}
  }
- Widget tab(String text,bool selected,IconData icon)=>Expanded(child:SizedBox(height:46,child:FilledButton.icon(
+ Widget tab(String text,bool selected,IconData icon)=>Expanded(child:SizedBox(height:44,child:FilledButton.icon(
   onPressed:()=>setState((){google=selected;error=null;}),
   style:FilledButton.styleFrom(backgroundColor:google==selected?_purple:const Color(0xFFF3EDFF),
    foregroundColor:google==selected?Colors.white:const Color(0xFF10152D),
@@ -412,20 +437,20 @@ class _SmartRouteAddPageState extends State<SmartRouteAddPage>{
   icon:Icon(icon,size:18),label:Text(text,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:12)))));
  @override Widget build(BuildContext context)=>Scaffold(backgroundColor:Colors.white,
   body:SafeArea(child:Column(children:[
-   Expanded(child:ListView(padding:const EdgeInsets.symmetric(horizontal:16),children:[
-    SizedBox(height:56,child:Stack(alignment:Alignment.center,children:[
-     Image.asset('assets/Logoa.png',height:38,fit:BoxFit.contain),
+   Expanded(child:ListView(keyboardDismissBehavior:ScrollViewKeyboardDismissBehavior.onDrag,padding:const EdgeInsets.symmetric(horizontal:16),children:[
+    SizedBox(height:54,child:Stack(alignment:Alignment.center,children:[
+     Image.asset('assets/Logoa.png',height:36,fit:BoxFit.contain),
      Align(alignment:Alignment.centerLeft,child:IconButton(onPressed:()=>Navigator.pop(context),
-      icon:const Icon(Icons.arrow_back_ios_new,color:_purple,size:20),style:IconButton.styleFrom(backgroundColor:const Color(0xFFF3EDFF))))])),
-    const SizedBox(height:18),
+      icon:const Icon(Icons.arrow_back,color:_purple,size:23),style:IconButton.styleFrom(backgroundColor:const Color(0xFFF3EDFF))))])),
+    const SizedBox(height:7),
     const Text.rich(TextSpan(children:[TextSpan(text:'Yeni Rota ',style:TextStyle(color:Color(0xFF10152D))),
      TextSpan(text:'Ekle',style:TextStyle(color:_purple))]),style:TextStyle(fontSize:25,fontWeight:FontWeight.w800)),
     const SizedBox(height:6),
     const Text('Güzergâhınızı Google Haritalar veya manuel olarak kaydedin.',
      style:TextStyle(fontSize:13,color:Color(0xFF778096))),
-    const SizedBox(height:22),
+    const SizedBox(height:13),
     Row(children:[tab('Google Haritalar’dan',true,Icons.map_outlined),const SizedBox(width:10),tab('Manuel',false,Icons.location_on_outlined)]),
-    const SizedBox(height:18),
+    const SizedBox(height:11),
     if(google)Container(padding:const EdgeInsets.all(12),decoration:BoxDecoration(
      border:Border.all(color:const Color(0xFFE8EAF2)),borderRadius:BorderRadius.circular(16)),child:Column(
      crossAxisAlignment:CrossAxisAlignment.start,children:[
@@ -444,7 +469,7 @@ class _SmartRouteAddPageState extends State<SmartRouteAddPage>{
      const Text('Manuel olarak ekle',style:TextStyle(fontSize:15,fontWeight:FontWeight.bold)),
      const SizedBox(height:12),
      for(final item in [('Başlangıç noktası',start),('Varış noktası',end)])...[
-      InkWell(onTap:pick,child:Container(height:60,padding:const EdgeInsets.symmetric(horizontal:12),
+      InkWell(onTap:()=>choosePoint(item.$1=='Başlangıç noktası'),child:Container(height:60,padding:const EdgeInsets.symmetric(horizontal:12),
        decoration:BoxDecoration(border:Border.all(color:const Color(0xFFE8EAF2)),borderRadius:BorderRadius.circular(16)),
        child:Row(children:[const Icon(Icons.location_on_outlined,color:_purple,size:22),const SizedBox(width:12),
         Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisAlignment:MainAxisAlignment.center,children:[
@@ -455,8 +480,8 @@ class _SmartRouteAddPageState extends State<SmartRouteAddPage>{
      ],
      OutlinedButton.icon(onPressed:pick,icon:const Icon(Icons.map_outlined),label:const Text('Haritadan iki nokta seç')),
     ]),
-    const SizedBox(height:14),
-    TextField(controller:name,maxLength:80,decoration:InputDecoration(labelText:'Rota adı',hintText:'Örn: Sabah rotası',
+    const SizedBox(height:11),
+    TextField(controller:name,maxLength:80,decoration:InputDecoration(labelText:'Rota adı',hintText:'Örn: Ev → İş',
      prefixIcon:const Icon(Icons.edit_note,color:_purple),counterText:'',
      border:OutlineInputBorder(borderRadius:BorderRadius.circular(16)))),
     if(start!=null&&end!=null)...[
@@ -469,11 +494,72 @@ class _SmartRouteAddPageState extends State<SmartRouteAddPage>{
      const Text('Noktalar gösteriliyor. Gerçek yol çizgisi kayıt sonrası hesaplanır.',style:TextStyle(fontSize:11,color:Color(0xFF778096))),
     ],
     if(error!=null)Padding(padding:const EdgeInsets.only(top:12),child:Text(error!,style:const TextStyle(color:Colors.red,fontSize:12))),
-    const SizedBox(height:24),
+    const SizedBox(height:16),
    ])),
-   Padding(padding:const EdgeInsets.fromLTRB(16,8,16,16),child:SizedBox(width:double.infinity,height:52,child:FilledButton.icon(
+   Padding(padding:const EdgeInsets.fromLTRB(16,6,16,8),child:SizedBox(width:double.infinity,height:52,child:FilledButton.icon(
     onPressed:busy?null:save,icon:busy?const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)):const Icon(Icons.save_outlined,size:20),
     label:const Text('Rotayı Kaydet'),style:FilledButton.styleFrom(backgroundColor:_purple,foregroundColor:Colors.white,
      shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(16)))))),
   ])));
+}
+
+
+class _RoutePointPicker extends StatefulWidget{
+ const _RoutePointPicker();
+ @override State<_RoutePointPicker> createState()=>_RoutePointPickerState();
+}
+class _RoutePointPickerState extends State<_RoutePointPicker>{
+ LatLng? selected;
+ @override Widget build(BuildContext context)=>Scaffold(appBar:AppBar(title:const Text('Haritadan konum seç')),
+  body:Column(children:[
+   const Padding(padding:EdgeInsets.all(10),child:Text('Bir nokta seçmek için haritaya dokunun.')),
+   Expanded(child:FlutterMap(options:MapOptions(initialCenter:const LatLng(41.0082,28.9784),initialZoom:11,onTap:(_,p)=>setState(()=>selected=p)),
+    children:[TileLayer(urlTemplate:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',userAgentPackageName:'com.cepqontag.app'),
+     if(selected!=null)MarkerLayer(markers:[Marker(point:selected!,child:const Icon(Icons.location_on,color:_purple,size:36))])])),
+   const Text('© OpenStreetMap contributors',style:TextStyle(fontSize:11)),
+   Padding(padding:const EdgeInsets.all(12),child:SizedBox(width:double.infinity,height:48,child:FilledButton(
+    onPressed:selected==null?null:()=>Navigator.pop(context,selected),child:const Text('Bu konumu kullan')))),
+  ]));
+}
+
+class _RouteAddressSearch extends StatefulWidget{
+ const _RouteAddressSearch();
+ @override State<_RouteAddressSearch> createState()=>_RouteAddressSearchState();
+}
+class _RouteAddressSearchState extends State<_RouteAddressSearch>{
+ final query=TextEditingController();
+ List<dynamic> results=[];
+ bool loading=false;
+ String? error;
+ int requestId=0;
+ @override void dispose(){requestId++;query.dispose();super.dispose();}
+ Future<void> search()async{
+  final q=query.text.trim();
+  if(q.length<3){setState(()=>error='En az 3 karakter girin.');return;}
+  final id=++requestId;
+  setState((){loading=true;error=null;results=[];});
+  try{
+   final uri=Uri.https('nominatim.openstreetmap.org','/search',{'q':q,'format':'jsonv2','limit':'6'});
+   final r=await http.get(uri,headers:{'Accept':'application/json','User-Agent':'CepQontag/1.0 (https://www.cepqontag.com)'}).timeout(const Duration(seconds:12));
+   if(r.statusCode!=200)throw Exception('HTTP ${r.statusCode}');
+   final data=jsonDecode(r.body);
+   if(mounted&&id==requestId)setState(()=>results=data is List?data:[]);
+  }catch(e){if(mounted&&id==requestId)setState(()=>error='Adres aranamadı. İnternet bağlantınızı kontrol edin veya haritadan seçin.');}
+  finally{if(mounted&&id==requestId)setState(()=>loading=false);}
+ }
+ @override Widget build(BuildContext context)=>Scaffold(appBar:AppBar(title:const Text('Adres ara')),
+  body:Column(children:[
+   Padding(padding:const EdgeInsets.all(12),child:Row(children:[
+    Expanded(child:TextField(controller:query,autofocus:true,textInputAction:TextInputAction.search,onSubmitted:(_)=>search(),
+     decoration:const InputDecoration(hintText:'Mahalle, cadde veya adres',border:OutlineInputBorder()))),
+    IconButton(onPressed:loading?null:search,icon:const Icon(Icons.search,color:_purple))])),
+   if(loading)const LinearProgressIndicator(),
+   if(error!=null)Padding(padding:const EdgeInsets.all(12),child:Text(error!,style:const TextStyle(color:Colors.red))),
+   Expanded(child:ListView.builder(itemCount:results.length,itemBuilder:(ctx,i){
+    final item=results[i] as Map;
+    final lat=double.tryParse('${item['lat']}'),lon=double.tryParse('${item['lon']}');
+    return ListTile(leading:const Icon(Icons.place_outlined,color:_purple),title:Text('${item['display_name']??'Adres'}',maxLines:3,overflow:TextOverflow.ellipsis),
+     onTap:lat==null||lon==null?null:()=>Navigator.pop(context,LatLng(lat,lon)));
+   })),
+  ]));
 }
