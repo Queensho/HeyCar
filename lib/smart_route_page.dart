@@ -109,6 +109,7 @@ class _SmartRouteDetailPageState extends State<SmartRouteDetailPage>{
  String? error;
  @override void initState(){super.initState();load();}
  Future<void> load()async{
+  if(!google&&road.length<2){setState(()=>error='Gerçek yol güzergâhı hesaplanmadan kaydedilemez.');return;}
   setState((){busy=true;error=null;});
   try{
    final id=Uri.encodeComponent('${widget.route['id']}');
@@ -481,6 +482,10 @@ class _SmartRouteAddPageState extends State<SmartRouteAddPage>{
  Timer? debounce;
  int requestId=0,activeField=-1;
  List<dynamic> matches=[];
+ List<LatLng> road=[];
+ double? roadMeters,roadSeconds;
+ bool routeLoading=false;
+ int routeRequest=0;
  LatLng? start,end;
  bool google=true,busy=false;
  String? error;
@@ -515,12 +520,12 @@ class _SmartRouteAddPageState extends State<SmartRouteAddPage>{
  final p=LatLng((m['lat'] as num).toDouble(),(m['lon'] as num).toDouble());
  if(index==0){start=p;originText.text=m['address'].toString();}else{end=p;destinationText.text=m['address'].toString();}
  matches=[];activeField=-1;
- });}),
+ });calculateRoute();}),
  const SizedBox(height:10)
  ]);
  void searchAddress(int index,String value){
  debounce?.cancel();final id=++requestId;
- setState((){activeField=index;matches=[];if(index==0)start=null;else end=null;});
+ setState((){activeField=index;matches=[];road=[];roadMeters=null;roadSeconds=null;if(index==0)start=null;else end=null;});
  if(value.trim().length<3)return;
  debounce=Timer(const Duration(milliseconds:450),()async{
  try{
@@ -531,9 +536,24 @@ class _SmartRouteAddPageState extends State<SmartRouteAddPage>{
  }catch(_){if(mounted&&id==requestId)setState(()=>error='Adres araması kullanılamıyor.');}
  });
  }
+ Future<void> calculateRoute()async{
+ final a=start,b=end,id=++routeRequest;
+ setState((){road=[];roadMeters=null;roadSeconds=null;routeLoading=a!=null&&b!=null;});
+ if(a==null||b==null)return;
+ try{
+ final url=Uri.parse(OnboardingBackend.baseUrl+'/api/owner/smart-routes/preview-points');
+ final r=await OwnerHttp.post(url,body:jsonEncode({'origin':{'lat':a.latitude,'lon':a.longitude},'destination':{'lat':b.latitude,'lon':b.longitude}})).timeout(const Duration(seconds:20));
+ if(!mounted||id!=routeRequest)return;
+ final data=jsonDecode(r.body);
+ if(r.statusCode!=200||data['available']!=true)throw Exception('Gerçek güzergâh hesaplanamadı.');
+ final points=(data['geometry'] as List).map((p)=>LatLng((p['lat'] as num).toDouble(),(p['lon'] as num).toDouble())).toList();
+ if(points.length<2)throw Exception('Yol geometrisi eksik.');
+ setState((){road=points;roadMeters=(data['distanceMeters'] as num?)?.toDouble();roadSeconds=(data['travelTimeSeconds'] as num?)?.toDouble();routeLoading=false;error=null;});
+ }catch(_){if(mounted&&id==routeRequest)setState((){routeLoading=false;error='Gerçek yol güzergâhı hesaplanamadı. Daha sonra tekrar deneyin.';});}
+ }
  Future<void> pick()async{
   final result=await Navigator.push<List<LatLng>>(context,MaterialPageRoute(builder:(_)=>const SmartRouteMapPicker()));
-  if(result!=null&&result.length==2&&mounted)setState((){start=result[0];end=result[1];error=null;});
+  if(result!=null&&result.length==2&&mounted){setState((){start=result[0];end=result[1];error=null;originText.text=start.toString();destinationText.text=end.toString();});calculateRoute();}
  }
  Future<void> save()async{
   if(busy)return;
@@ -605,14 +625,16 @@ class _SmartRouteAddPageState extends State<SmartRouteAddPage>{
     TextField(controller:name,maxLength:80,decoration:InputDecoration(labelText:'Rota adı',hintText:'Örn: Sabah rotası',
      prefixIcon:const Icon(Icons.edit_note,color:_purple),counterText:'',
      border:OutlineInputBorder(borderRadius:BorderRadius.circular(16)))),
-    if(start!=null&&end!=null)...[
+    if(!google||start!=null&&end!=null)...[
      const SizedBox(height:12),
      SizedBox(height:190,child:ClipRRect(borderRadius:BorderRadius.circular(16),child:FlutterMap(
-      options:MapOptions(initialCenter:start!,initialZoom:10,interactionOptions:const InteractionOptions(flags:InteractiveFlag.none)),
+      options:MapOptions(initialCenter:start??end??const LatLng(41.0082,28.9784),initialZoom:10,interactionOptions:const InteractionOptions(flags:InteractiveFlag.none)),
       children:[TileLayer(urlTemplate:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',userAgentPackageName:'com.cepqontag.app'),
-       MarkerLayer(markers:[Marker(point:start!,child:const Icon(Icons.location_on,color:_purple)),
-        Marker(point:end!,child:const Icon(Icons.location_on,color:Color(0xFFB9FF45)))])]))),
-     const Text('Noktalar gösteriliyor. Gerçek yol çizgisi kayıt sonrası hesaplanır.',style:TextStyle(fontSize:11,color:Color(0xFF778096))),
+       if(road.length>=2)PolylineLayer(polylines:[Polyline(points:road,color:_purple,strokeWidth:5)]),
+       MarkerLayer(markers:[if(start!=null)Marker(point:start!,child:const Icon(Icons.location_on,color:_purple)),
+        if(end!=null)Marker(point:end!,child:const Icon(Icons.location_on,color:Color(0xFFB9FF45)))])]))),
+     if(routeLoading)const Text('Gerçek yol güzergâhı hesaplanıyor…'),
+     if(road.length>=2)Text('Mesafe: '+(roadMeters==null?'—':(roadMeters!/1000).toStringAsFixed(1))+' km • Süre: '+(roadSeconds==null?'—':(roadSeconds!/60).round().toString())+' dk'),
     ],
     if(error!=null)Padding(padding:const EdgeInsets.only(top:12),child:Text(error!,style:const TextStyle(color:Colors.red,fontSize:12))),
     const SizedBox(height:24),
