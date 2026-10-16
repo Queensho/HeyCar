@@ -1,6 +1,7 @@
 const {ownerId}=require('./owner-auth-service');
 const {ownerPremiumPlan}=require('./premium-entitlements');
 const {flowAt}=require('./smart-route-tomtom');
+const {preview}=require('./smart-route-routing');
 
 function point(p){
  if(!p||typeof p!=='object'||Array.isArray(p))return null;
@@ -57,6 +58,15 @@ module.exports=function registerSmartRouteRoutes(app,db){
   const id=await auth(req,res);if(!id)return;
   try{const r=await owned(id,req.params.routeId);if(!r)return res.status(404).json({error:'NOT_FOUND'});res.json({route:r,trafficAvailable:false});}
   catch(e){console.error('smart route detail',e);res.status(500).json({error:'SERVER_ERROR'});}
+ });
+ app.get('/api/owner/smart-routes/:routeId/preview',async(req,res)=>{
+  const id=await auth(req,res);if(!id)return;
+  try{
+   const route=await owned(id,req.params.routeId);
+   if(!route)return res.status(404).json({error:'NOT_FOUND'});
+   const result=await preview(route,db);
+   res.json({routeId:route.id,...result});
+  }catch(e){console.error('smart route preview error',e);res.status(500).json({error:'SERVER_ERROR'});}
  });
  app.get('/api/owner/smart-routes/:routeId/traffic-sample',async(req,res)=>{
   const id=await auth(req,res);if(!id)return;
