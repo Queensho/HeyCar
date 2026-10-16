@@ -153,11 +153,11 @@ class _SmartRoutePageState extends State<SmartRoutePage>{
  }
  Widget routeCard(Map<String,dynamic> route){
   final active=route['is_active']!=false;
-  final id='${'${route['id']}'}';
+  final id='${route['id']}';
   final preview=routePreviews[id];
   final incidents=routeIncidents[id];
   final validPreview=preview?['available']==true;
-  final incidentCount=incidents?['available']==true && incidents?['incidents'] is List?(incidents!['incidents'] as List).length:null;
+  final incidentCount=(incidents?['available']==true && incidents?['incidents'] is List) ? (incidents!['incidents'] as List).length : null;
   final title='${route['name']??'Rota'}';
   return Container(
    margin:const EdgeInsets.only(bottom:12),padding:const EdgeInsets.all(12),
