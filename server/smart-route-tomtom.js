@@ -3,6 +3,7 @@ const https=require('https');
 const cache=new Map();
 const TTL_MS=5*60*1000;
 const MAX_CACHE=256;
+const inFlight=new Map();
 let period='',used=0;
 function validPoint(p){return p&&Number.isFinite(Number(p.lat))&&Number.isFinite(Number(p.lon))&&Math.abs(Number(p.lat))<=90&&Math.abs(Number(p.lon))<=180;}
 function request(url){
@@ -25,6 +26,7 @@ async function flowAt(point){
  if(!validPoint(point))return {available:false,reason:'INVALID_COORDINATE'};
  const lat=Number(point.lat).toFixed(5),lon=Number(point.lon).toFixed(5),id=lat+','+lon;
  const now=Date.now(),entry=cache.get(id);
+ if(inFlight.has(id))return inFlight.get(id);
  if(entry&&entry.expires>now)return entry.value;
  const month=new Date().toISOString().slice(0,7);
  if(month!==period){period=month;used=0;}
@@ -35,7 +37,7 @@ async function flowAt(point){
  const url=new URL('https://api.tomtom.com/traffic/services/4/flowSegmentData/absolute/10/json');
  url.searchParams.set('point',id);
  url.searchParams.set('key',key);
- try{
+ const task=(async()=>{try{
   const response=await request(url);
   const f=response.flowSegmentData||{};
   const speed=Number(f.currentSpeed),free=Number(f.freeFlowSpeed),confidence=Number(f.confidence);
@@ -48,6 +50,8 @@ async function flowAt(point){
   // Never log URLs, as they contain the provider key.
   console.error('TomTom flow error',e.message);
   return {available:false,reason:/^TOMTOM_HTTP_429$/.test(e.message)?'PROVIDER_RATE_LIMIT':'PROVIDER_UNAVAILABLE'};
- }
+ }})();
+ inFlight.set(id,task);
+ try{return await task;}finally{inFlight.delete(id);}
 }
 module.exports={flowAt};
