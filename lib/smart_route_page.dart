@@ -27,32 +27,8 @@ class _SmartRoutePageState extends State<SmartRoutePage>{
   finally{if(mounted)setState(()=>loading=false);}
  }
  Future<void> add()async{
-  final name=TextEditingController(),a=TextEditingController(),b=TextEditingController(),c=TextEditingController(),d=TextEditingController();
-  final submitted=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(
-   title:const Text('Yeni rota ekle'),content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
-    TextField(controller:name,decoration:const InputDecoration(labelText:'Rota adı')),
-    for(final item in <(TextEditingController,String)>[(a,'Başlangıç enlemi'),(b,'Başlangıç boylamı'),(c,'Varış enlemi'),(d,'Varış boylamı')])
-     TextField(controller:item.$1,keyboardType:const TextInputType.numberWithOptions(decimal:true,signed:true),decoration:InputDecoration(labelText:item.$2)),
-     OutlinedButton.icon(icon:const Icon(Icons.map_outlined),label:const Text('Haritadan nokta seç'),onPressed:()async{
-      final selected=await Navigator.of(ctx).push<List<LatLng>>(MaterialPageRoute(builder:(_)=>const SmartRouteMapPicker()));
-      if(selected==null||selected.length!=2)return;
-      a.text=selected[0].latitude.toStringAsFixed(6);
-      b.text=selected[0].longitude.toStringAsFixed(6);
-      c.text=selected[1].latitude.toStringAsFixed(6);
-      d.text=selected[1].longitude.toStringAsFixed(6);
-     }),
-     const Text('Haritadan iki nokta seçin veya koordinatları girin.',style:TextStyle(fontSize:12)),
-   ])),actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('Vazgeç')),FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('Kaydet'))]));
-  if(submitted!=true||!mounted)return;
-  final coords=[a,b,c,d].map((x)=>double.tryParse(x.text.trim().replaceAll(',','.'))).toList();
-  if(name.text.trim().isEmpty||coords.any((x)=>x==null)||coords[0]!.abs()>90||coords[2]!.abs()>90||coords[1]!.abs()>180||coords[3]!.abs()>180){
-   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Geçerli isim ve koordinatlar girin.')));return;
-  }
-  try{
-   final r=await OwnerHttp.post(endpoint(),body:jsonEncode({'name':name.text.trim(),'origin':{'lat':coords[0],'lon':coords[1]},'destination':{'lat':coords[2],'lon':coords[3]},'travelMode':'car'})).timeout(const Duration(seconds:20));
-   if(r.statusCode!=201)throw Exception(r.statusCode==403?'Rota limitine ulaştınız':'Rota kaydedilemedi (HTTP ${r.statusCode})');
-   await reload();
-  }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('$e')));}
+  final saved=await Navigator.push<bool>(context,MaterialPageRoute(builder:(_)=>const SmartRouteAddPage()));
+  if(saved==true&&mounted)await reload();
  }
  LatLng? point(dynamic value){
   if(value is! Map)return null;
@@ -369,4 +345,135 @@ class _SmartRouteMapPickerState extends State<SmartRouteMapPicker>{
    ])),
   ]),
  );
+}
+
+class SmartRouteAddPage extends StatefulWidget{
+ const SmartRouteAddPage({super.key});
+ @override State<SmartRouteAddPage> createState()=>_SmartRouteAddPageState();
+}
+class _SmartRouteAddPageState extends State<SmartRouteAddPage>{
+ final name=TextEditingController(),link=TextEditingController();
+ LatLng? start,end;
+ bool google=true,busy=false;
+ String? error;
+ @override void dispose(){name.dispose();link.dispose();super.dispose();}
+ void parseGoogle(){
+  final uri=Uri.tryParse(link.text.trim());
+  if(uri==null||uri.scheme!='https'||!{'google.com','www.google.com','maps.google.com'}.contains(uri.host.toLowerCase())){
+   setState(()=>error='Geçerli bir Google Haritalar bağlantısı girin.');return;
+  }
+  final a=uri.queryParameters['origin'],b=uri.queryParameters['destination'];
+  final pattern=RegExp(r'^(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)$');
+  final m=a==null?null:pattern.firstMatch(a),n=b==null?null:pattern.firstMatch(b);
+  if(m==null||n==null){
+   setState(()=>error='Bu bağlantıdaki rota noktaları çözümlenemedi. Manuel sekmesinden haritadan seçin.');return;
+  }
+  final x=double.parse(m.group(1)!),y=double.parse(m.group(2)!);
+  final z=double.parse(n.group(1)!),w=double.parse(n.group(2)!);
+  if(x.abs()>90||z.abs()>90||y.abs()>180||w.abs()>180){
+   setState(()=>error='Bağlantıdaki koordinatlar geçersiz.');return;
+  }
+  setState((){start=LatLng(x,y);end=LatLng(z,w);error=null;});
+ }
+ Future<void> pick()async{
+  final result=await Navigator.push<List<LatLng>>(context,MaterialPageRoute(builder:(_)=>const SmartRouteMapPicker()));
+  if(result!=null&&result.length==2&&mounted)setState((){start=result[0];end=result[1];error=null;});
+ }
+ Future<void> save()async{
+  if(busy)return;
+  if(name.text.trim().isEmpty||start==null||end==null){setState(()=>error='Rota adı, başlangıç ve varış noktası gerekli.');return;}
+  setState((){busy=true;error=null;});
+  try{
+   final uri=Uri.parse('${OnboardingBackend.baseUrl}/api/owner/smart-routes');
+   final r=await OwnerHttp.post(uri,body:jsonEncode({'name':name.text.trim(),
+    'origin':{'lat':start!.latitude,'lon':start!.longitude},
+    'destination':{'lat':end!.latitude,'lon':end!.longitude},'travelMode':'car'})).timeout(const Duration(seconds:20));
+   if(r.statusCode!=201)throw Exception(r.statusCode==403?'Rota limitine ulaştınız.':'Kayıt başarısız: HTTP ${r.statusCode}');
+   if(!mounted)return;
+   final configure=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(title:const Text('Rota kaydedildi'),
+    content:const Text('Trafik bildirimlerini ayarlamak ister misiniz?'),
+    actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('Daha Sonra')),
+     FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('Bildirimleri Ayarla'))]));
+   if(!mounted)return;
+   if(configure==true){
+    final body=jsonDecode(r.body);
+    final id=body is Map?(body['route'] is Map?body['route']['id']:body['id']):null;
+    if(id!=null)await Navigator.push(context,MaterialPageRoute(builder:(_)=>SmartRouteSettingsPage(routeId:'$id')));
+   }
+   if(mounted)Navigator.pop(context,true);
+  }catch(e){if(mounted)setState(()=>error='$e');}
+  finally{if(mounted)setState(()=>busy=false);}
+ }
+ Widget tab(String text,bool selected,IconData icon)=>Expanded(child:SizedBox(height:46,child:FilledButton.icon(
+  onPressed:()=>setState((){google=selected;error=null;}),
+  style:FilledButton.styleFrom(backgroundColor:google==selected?_purple:const Color(0xFFF3EDFF),
+   foregroundColor:google==selected?Colors.white:const Color(0xFF10152D),
+   padding:const EdgeInsets.symmetric(horizontal:5),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(14))),
+  icon:Icon(icon,size:18),label:Text(text,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:12)))));
+ @override Widget build(BuildContext context)=>Scaffold(backgroundColor:Colors.white,
+  body:SafeArea(child:Column(children:[
+   Expanded(child:ListView(padding:const EdgeInsets.symmetric(horizontal:16),children:[
+    SizedBox(height:56,child:Stack(alignment:Alignment.center,children:[
+     Image.asset('assets/Logoa.png',height:38,fit:BoxFit.contain),
+     Align(alignment:Alignment.centerLeft,child:IconButton(onPressed:()=>Navigator.pop(context),
+      icon:const Icon(Icons.arrow_back_ios_new,color:_purple,size:20),style:IconButton.styleFrom(backgroundColor:const Color(0xFFF3EDFF))))])),
+    const SizedBox(height:18),
+    const Text.rich(TextSpan(children:[TextSpan(text:'Yeni Rota ',style:TextStyle(color:Color(0xFF10152D))),
+     TextSpan(text:'Ekle',style:TextStyle(color:_purple))]),style:TextStyle(fontSize:25,fontWeight:FontWeight.w800)),
+    const SizedBox(height:6),
+    const Text('Güzergâhınızı Google Haritalar veya manuel olarak kaydedin.',
+     style:TextStyle(fontSize:13,color:Color(0xFF778096))),
+    const SizedBox(height:22),
+    Row(children:[tab('Google Haritalar’dan',true,Icons.map_outlined),const SizedBox(width:10),tab('Manuel',false,Icons.location_on_outlined)]),
+    const SizedBox(height:18),
+    if(google)Container(padding:const EdgeInsets.all(12),decoration:BoxDecoration(
+     border:Border.all(color:const Color(0xFFE8EAF2)),borderRadius:BorderRadius.circular(16)),child:Column(
+     crossAxisAlignment:CrossAxisAlignment.start,children:[
+      const Row(children:[Icon(Icons.map_outlined,color:_purple,size:24),SizedBox(width:10),
+       Expanded(child:Text('Google Haritalar’dan rota ekle',style:TextStyle(fontSize:14,fontWeight:FontWeight.bold)))]),
+      const SizedBox(height:10),const Text('Google Haritalar’daki güzergâh bağlantısını yapıştırın.',
+       style:TextStyle(fontSize:12,color:Color(0xFF778096))),
+      const SizedBox(height:10),TextField(controller:link,keyboardType:TextInputType.url,
+       decoration:InputDecoration(hintText:'Google Maps rota bağlantısı',isDense:true,
+        border:OutlineInputBorder(borderRadius:BorderRadius.circular(12)))),
+      const SizedBox(height:10),SizedBox(width:double.infinity,height:46,child:OutlinedButton.icon(
+       onPressed:parseGoogle,icon:const Icon(Icons.link,size:19),label:const Text('Bağlantıyı Kullan'),
+       style:OutlinedButton.styleFrom(foregroundColor:_purple,side:const BorderSide(color:_purple)))),
+     ]))
+    else Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+     const Text('Manuel olarak ekle',style:TextStyle(fontSize:15,fontWeight:FontWeight.bold)),
+     const SizedBox(height:12),
+     for(final item in [('Başlangıç noktası',start),('Varış noktası',end)])...[
+      InkWell(onTap:pick,child:Container(height:60,padding:const EdgeInsets.symmetric(horizontal:12),
+       decoration:BoxDecoration(border:Border.all(color:const Color(0xFFE8EAF2)),borderRadius:BorderRadius.circular(16)),
+       child:Row(children:[const Icon(Icons.location_on_outlined,color:_purple,size:22),const SizedBox(width:12),
+        Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisAlignment:MainAxisAlignment.center,children:[
+         Text(item.$1,style:const TextStyle(fontSize:11,color:Color(0xFF778096))),
+         Text(item.$2==null?'Haritadan konum seçin':'${item.$2!.latitude.toStringAsFixed(5)}, ${item.$2!.longitude.toStringAsFixed(5)}',
+          maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:13))]))]))),
+      const SizedBox(height:10),
+     ],
+     OutlinedButton.icon(onPressed:pick,icon:const Icon(Icons.map_outlined),label:const Text('Haritadan iki nokta seç')),
+    ]),
+    const SizedBox(height:14),
+    TextField(controller:name,maxLength:80,decoration:InputDecoration(labelText:'Rota adı',hintText:'Örn: Sabah rotası',
+     prefixIcon:const Icon(Icons.edit_note,color:_purple),counterText:'',
+     border:OutlineInputBorder(borderRadius:BorderRadius.circular(16)))),
+    if(start!=null&&end!=null)...[
+     const SizedBox(height:12),
+     SizedBox(height:190,child:ClipRRect(borderRadius:BorderRadius.circular(16),child:FlutterMap(
+      options:MapOptions(initialCenter:start!,initialZoom:10,interactionOptions:const InteractionOptions(flags:InteractiveFlag.none)),
+      children:[TileLayer(urlTemplate:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',userAgentPackageName:'com.cepqontag.app'),
+       MarkerLayer(markers:[Marker(point:start!,child:const Icon(Icons.location_on,color:_purple)),
+        Marker(point:end!,child:const Icon(Icons.location_on,color:Color(0xFFB9FF45)))])]))),
+     const Text('Noktalar gösteriliyor. Gerçek yol çizgisi kayıt sonrası hesaplanır.',style:TextStyle(fontSize:11,color:Color(0xFF778096))),
+    ],
+    if(error!=null)Padding(padding:const EdgeInsets.only(top:12),child:Text(error!,style:const TextStyle(color:Colors.red,fontSize:12))),
+    const SizedBox(height:24),
+   ])),
+   Padding(padding:const EdgeInsets.fromLTRB(16,8,16,16),child:SizedBox(width:double.infinity,height:52,child:FilledButton.icon(
+    onPressed:busy?null:save,icon:busy?const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)):const Icon(Icons.save_outlined,size:20),
+    label:const Text('Rotayı Kaydet'),style:FilledButton.styleFrom(backgroundColor:_purple,foregroundColor:Colors.white,
+     shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(16)))))),
+  ])));
 }
