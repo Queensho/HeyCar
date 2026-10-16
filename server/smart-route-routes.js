@@ -3,6 +3,7 @@ const {ownerPremiumPlan}=require('./premium-entitlements');
 const {flowAt}=require('./smart-route-tomtom');
 const {preview}=require('./smart-route-routing');
 const {incidents}=require('./smart-route-incidents');
+const {matchIncidents}=require('./smart-route-geometry');
 
 function point(p){
  if(!p||typeof p!=='object'||Array.isArray(p))return null;
@@ -120,6 +121,19 @@ module.exports=function registerSmartRouteRoutes(app,db){
    const result=await incidents(route,db);
    res.json({routeId:route.id,...result});
   }catch(e){console.error('smart route incident lookup',e);res.status(500).json({error:'SERVER_ERROR'});}
+ });
+ app.get('/api/owner/smart-routes/:routeId/route-incidents',async(req,res)=>{
+  const id=await auth(req,res);if(!id)return;
+  try{
+   const route=await owned(id,req.params.routeId);
+   if(!route)return res.status(404).json({error:'NOT_FOUND'});
+   const geometry=Array.isArray(route.route_geometry)?route.route_geometry:null;
+   if(!geometry||geometry.length<2)return res.json({routeId:route.id,available:false,reason:'NO_SAVED_ROUTE_GEOMETRY',incidents:[]});
+   const result=await incidents(route,db);
+   if(!result.available)return res.json({routeId:route.id,...result});
+   const matched=matchIncidents(result.incidents,geometry);
+   res.json({routeId:route.id,...matched,checkedAt:result.checkedAt,source:'tomtom'});
+  }catch(e){console.error('smart route incident match',e);res.status(500).json({error:'SERVER_ERROR'});}
  });
 
 };
