@@ -186,9 +186,9 @@ class _SmartRoutePageState extends State<SmartRoutePage>{
     const SizedBox(height:10),routeMap(route),const SizedBox(height:10),
     Container(height:60,decoration:BoxDecoration(color:soft,borderRadius:BorderRadius.circular(12)),
      child:Row(children:[
-      metric(Icons.alt_route,km(validPreview ? preview?['distanceMeters'] : null),'Mesafe'),
+      metric(Icons.alt_route,km(validPreview ? preview!['distanceMeters'] : null),'Mesafe'),
       Container(height:28,width:1,color:line),
-      metric(Icons.schedule,minutes(validPreview ? preview?['travelTimeSeconds'] : null),'Tahmini süre'),
+      metric(Icons.schedule,minutes(validPreview ? preview!['travelTimeSeconds'] : null),'Tahmini süre'),
       Container(height:28,width:1,color:line),
       metric(Icons.warning_amber_rounded,incidentCount==null?'—':'$incidentCount','Yakın olay',color:const Color(0xFFE84365)),
      ])),
