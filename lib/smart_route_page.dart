@@ -189,90 +189,129 @@ class _SmartRouteDetailPageState extends State<SmartRouteDetailPage>{
   }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('$e')));}
   finally{if(mounted)setState(()=>busy=false);}
  }
+
+ String km(num meters)=>'${(meters/1000).toStringAsFixed(1).replaceAll('.',',')} km';
+ String mins(num seconds)=>'${(seconds/60).round()} dk';
+ String eventLabel(dynamic code){
+  switch(int.tryParse('$code')){
+   case 1:return 'Kaza';
+   case 6:return 'Trafik sıkışıklığı';
+   case 7:return 'Şerit kapanması';
+   case 8:return 'Yol kapanması';
+   case 9:return 'Yol çalışması';
+   case 14:return 'Araç arızası';
+   default:return 'Trafik olayı';
+  }
+ }
+ void eventDetail(Map item)=>showModalBottomSheet<void>(context:context,showDragHandle:true,builder:(ctx)=>SafeArea(child:Padding(
+  padding:const EdgeInsets.all(20),child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
+   Text(eventLabel(item['category']),style:const TextStyle(fontSize:20,fontWeight:FontWeight.bold)),
+   const SizedBox(height:10),
+   if('${item['description']??''}'.isNotEmpty)Text('${item['description']}'),
+   if('${item['from']??''}'.isNotEmpty)Text('Başlangıç: ${item['from']}'),
+   if('${item['to']??''}'.isNotEmpty)Text('Bitiş: ${item['to']}'),
+   if(item['distanceToRouteMeters'] is num)Text('Rota çizgisine yaklaşık ${item['distanceToRouteMeters']} metre'),
+   const SizedBox(height:10),
+   const Text('Yakınlık geometriktir; yol yönü doğrulanmamıştır.',style:TextStyle(color:_muted,fontSize:12)),
+  ]))));
+ Widget metric(IconData icon,String value,String label,{Color color=_purple})=>Expanded(child:Container(
+  height:101,padding:const EdgeInsets.symmetric(horizontal:3,vertical:9),
+  decoration:BoxDecoration(color:Colors.white,border:Border.all(color:_line),borderRadius:BorderRadius.circular(15)),
+  child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[
+   Icon(icon,color:color,size:20),const SizedBox(height:6),
+   Text(value,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:18,fontWeight:FontWeight.w800,color:_ink)),
+   Text(label,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:10,color:_muted)),
+  ])));
  @override Widget build(BuildContext context){
   final p=preview;
-  final geometry=(p?['geometry'] as List?)??(widget.route['route_geometry'] as List?)??[];
+  final geometry=(widget.route['route_geometry'] as List?)??(p?['geometry'] as List?)??[];
   final points=geometry.whereType<Map>().map((x){final a=(x['lat'] as num?)?.toDouble(),b=(x['lon'] as num?)?.toDouble();return a==null||b==null?null:LatLng(a,b);}).whereType<LatLng>().toList();
-  final hasTraffic=p?['available']==true;
-  final incidents=events?['available']==true?events?['incidents'] as List?:null;
   final hasGeometry=points.length>=2;
-  final delay=(p?['trafficDelaySeconds'] as num?)?.toInt();
-  final duration=(p?['travelTimeSeconds'] as num?)?.toInt();
-  final name='${widget.route['name']??'Rota'}';
-  final active=widget.route['is_active']==true||widget.route['isActive']==true||widget.route['active']==true;
+  final hasTraffic=p?['available']==true;
+  final distance=hasTraffic?p?['distanceMeters'] as num?:null;
+  final delay=hasTraffic?p?['trafficDelaySeconds'] as num?:null;
+  final availableEvents=events?['available']==true;
+  final raw=availableEvents?(events?['incidents'] as List? ??[]):<dynamic>[];
+  final unique=<Map>[],seen=<String>{};
+  for(final x in raw){if(x is! Map)continue;final id='${x['id']??''}';final key=id.isNotEmpty?'id:$id':'${x['category']}|${x['description']}|${x['from']}|${x['to']}';if(seen.add(key))unique.add(x);}
+  final grouped=<String,List<Map>>{};
+  for(final x in unique){final label=eventLabel(x['category']);grouped.putIfAbsent(label,()=>[]).add(x);}
+  final active=widget.route['is_active']==true;
+  final known=hasTraffic&&delay!=null;
+  final heavy=known&&delay>300;
   return Scaffold(backgroundColor:Colors.white,body:SafeArea(child:Column(children:[
    SizedBox(height:56,child:Padding(padding:const EdgeInsets.symmetric(horizontal:16),child:Row(children:[
     SizedBox(width:40,height:40,child:IconButton(onPressed:()=>Navigator.pop(context),padding:EdgeInsets.zero,style:IconButton.styleFrom(backgroundColor:_soft),icon:const Icon(Icons.arrow_back_ios_new,size:19,color:_purple))),
-    Expanded(child:Center(child:Image.asset('assets/Logoa.png',height:34,fit:BoxFit.contain))),
-    SizedBox(width:40,height:40,child:PopupMenuButton<String>(tooltip:'Rota işlemleri',icon:const Icon(Icons.more_horiz,color:_purple),
-     color:Colors.white,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(14)),
-     onSelected:(v){if(v=='edit')editName();if(v=='settings')openSettings();if(v=='delete')deleteRoute();},
-     itemBuilder:(_)=>const [PopupMenuItem(value:'edit',child:Text('Rotayı düzenle')),PopupMenuItem(value:'settings',child:Text('Bildirim ayarları')),PopupMenuItem(value:'delete',child:Text('Rotayı sil'))])),
+    Expanded(child:Center(child:Image.asset('assets/Logoa.png',height:35,fit:BoxFit.contain))),
+    SizedBox(width:40,height:40,child:PopupMenuButton<String>(icon:const Icon(Icons.more_horiz,color:_purple),tooltip:'Rota işlemleri',
+     onSelected:(v){if(v=='edit')editName();if(v=='geometry')saveGeometry();if(v=='settings')openSettings();if(v=='delete')deleteRoute();},
+     itemBuilder:(_)=>const [PopupMenuItem(value:'edit',child:Text('Rotayı düzenle')),PopupMenuItem(value:'geometry',child:Text('Rota çizgisini güncelle')),PopupMenuItem(value:'settings',child:Text('Bildirim ayarları')),PopupMenuItem(value:'delete',child:Text('Rotayı sil'))])),
    ]))),
    Expanded(child:RefreshIndicator(onRefresh:load,child:ListView(padding:const EdgeInsets.fromLTRB(16,10,16,24),children:[
-    Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
+    Row(children:[
      Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-      Row(children:[Flexible(child:Text(name,maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_ink,fontSize:25,fontWeight:FontWeight.w800))),
-       IconButton(onPressed:busy?null:editName,visualDensity:VisualDensity.compact,icon:const Icon(Icons.edit_outlined,size:18,color:_purple))]),
-      const Text('Kaydedilen rota',style:TextStyle(color:_muted,fontSize:12)),
+      Row(children:[Flexible(child:Text('${widget.route['name']??'Rota'}',maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_ink,fontSize:25,fontWeight:FontWeight.w800))),
+       IconButton(onPressed:busy?null:editName,icon:const Icon(Icons.edit_outlined,color:_purple,size:18))]),
+      const Text('Kaydedilen rota',style:TextStyle(fontSize:12,color:_muted)),
      ])),
-     const SizedBox(width:8),
-     Container(padding:const EdgeInsets.symmetric(horizontal:12,vertical:7),decoration:BoxDecoration(color:active?const Color(0xFFE9FFC6):_soft,borderRadius:BorderRadius.circular(20)),
-      child:Text(active?'Aktif':'Pasif',style:const TextStyle(fontSize:12,fontWeight:FontWeight.w600,color:_ink))),
+     Container(padding:const EdgeInsets.symmetric(horizontal:12,vertical:7),decoration:BoxDecoration(color:active?const Color(0xFFE9FFC6):const Color(0xFFF0F1F5),borderRadius:BorderRadius.circular(20)),
+      child:Text(active?'Aktif':'Pasif',style:TextStyle(fontSize:12,fontWeight:FontWeight.w700,color:active?const Color(0xFF238044):_muted))),
     ]),
     const SizedBox(height:14),
-    Container(width:double.infinity,padding:const EdgeInsets.all(13),decoration:BoxDecoration(color:const Color(0xFFF8F5FF),border:Border.all(color:_line),borderRadius:BorderRadius.circular(16)),
-     child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-      Row(children:[
-       Container(width:38,height:38,decoration:const BoxDecoration(color:_soft,shape:BoxShape.circle),child:const Icon(Icons.route_outlined,color:_purple,size:20)),
-       const SizedBox(width:10),
-       Expanded(child:Text(hasTraffic?'Güncel rota durumu':'Canlı rota verisi henüz mevcut değil.',style:const TextStyle(fontSize:16,fontWeight:FontWeight.w700,color:_ink))),
-      ]),
-      const SizedBox(height:12),
-      if(hasTraffic)...[
-       if(duration!=null)Text('Tahmini yolculuk: ${(duration/60).round()} dakika',style:const TextStyle(fontSize:13,color:_ink)),
-       if(delay!=null)Text(delay>0?'Trafik gecikmesi: ${(delay/60).round()} dakika':'Normal trafik',style:TextStyle(fontSize:13,color:delay>0?const Color(0xFFFF4560):const Color(0xFF26803A))),
-       if(p?['checkedAt']!=null)Text('Son kontrol: ${p!['checkedAt']}',style:const TextStyle(fontSize:11,color:_muted)),
-      ],
-      const SizedBox(height:8),
-      Text(incidents==null?'Güncel olay bilgisi alınamadı.':'Rotaya yakın olaylar: ${incidents.length}',style:const TextStyle(color:_ink,fontSize:13)),
-      if(incidents!=null)...[
-       const SizedBox(height:5),
-       const Text('Olay eşleşmesi yaklaşık konuma göredir; yol yönü doğrulanmamıştır.',style:TextStyle(fontSize:12,color:_muted)),
-       for(final item in incidents.take(8))if(item is Map)
-        Padding(padding:const EdgeInsets.only(top:8),child:Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
-         const Icon(Icons.warning_amber_rounded,color:Color(0xFFFF4560),size:18),
-         const SizedBox(width:7),
-         Expanded(child:Text('${item['category']??'Trafik olayı'}: ${item['description']??'Açıklama yok'}',style:const TextStyle(fontSize:12,color:_ink))),
-        ])),
-      ],
-      if(!hasGeometry)...[
-       const SizedBox(height:12),
-       Container(padding:const EdgeInsets.all(12),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(14),border:Border.all(color:_line)),
-        child:const Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
-         Icon(Icons.info_outline,color:_purple,size:20),SizedBox(width:10),
-         Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-          Text('Olayları eşleştirmek için rota çizgisini kaydedin.',style:TextStyle(fontSize:12,fontWeight:FontWeight.w600,color:_ink)),
-          SizedBox(height:4),Text('Rota çizgisi kaydedildikten sonra uygun trafik ve olay bilgileri burada görüntülenebilir.',style:TextStyle(fontSize:11,color:_muted)),
-         ])),
-        ])),
-      ],
-     ])),
-    if(hasGeometry)...[
-     const SizedBox(height:10),
-     ClipRRect(borderRadius:BorderRadius.circular(16),child:SizedBox(height:165,child:FlutterMap(
-      options:MapOptions(initialCenter:points[points.length~/2],initialZoom:11),
-      children:[TileLayer(urlTemplate:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',userAgentPackageName:'com.cepqontag.app'),
-       PolylineLayer(polylines:[Polyline(points:points,strokeWidth:4,color:_purple)])]))),
-    ],
-    if(error!=null)...[const SizedBox(height:10),Text(error!,style:const TextStyle(color:Color(0xFFFF4560),fontSize:12))],
-    const SizedBox(height:12),
-    action(geometryBusy?'Rota hesaplanıyor...':hasGeometry?'Rotayı Güncelle':'Rota çizgisini kaydet / güncelle',Icons.route_outlined,busy||geometryBusy?null:saveGeometry,primary:true,loading:geometryBusy),
+    ClipRRect(borderRadius:BorderRadius.circular(16),child:Container(height:226,color:_soft,child:hasGeometry?
+     FlutterMap(options:MapOptions(initialCenter:points[points.length~/2],initialZoom:11),children:[
+      TileLayer(urlTemplate:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',userAgentPackageName:'com.cepqontag.app'),
+      PolylineLayer(polylines:[Polyline(points:points,strokeWidth:5,color:_purple)]),
+      MarkerLayer(markers:[Marker(point:points.first,width:32,height:32,child:const Icon(Icons.location_on,color:_purple,size:29)),
+       Marker(point:points.last,width:32,height:32,child:const Icon(Icons.flag,color:Color(0xFF23B26D),size:29))]),
+      const RichAttributionWidget(attributions:[TextSourceAttribution('© OpenStreetMap contributors')]),
+     ]):Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
+      const Icon(Icons.route_outlined,size:34,color:_purple),
+      const SizedBox(height:8),const Text('Rota çizgisi henüz oluşturulmadı.',style:TextStyle(fontSize:12,color:_ink)),
+      TextButton.icon(onPressed:geometryBusy?null:saveGeometry,icon:const Icon(Icons.add_road),label:const Text('Rota Çizgisini Kaydet')),
+     ])))),
     const SizedBox(height:10),
-    action(busy?'Trafik sorgulanıyor...':'Trafiği Yenile',Icons.refresh,busy||geometryBusy?null:load,loading:false),
+    Row(children:[metric(Icons.route_outlined,distance==null?'—':km(distance),'Mesafe'),const SizedBox(width:8),
+     metric(Icons.access_time_outlined,delay==null?'—':mins(delay),'Gecikme'),const SizedBox(width:8),
+     metric(Icons.warning_amber_rounded,availableEvents?'${unique.length}':'—','Yakın olay',color:const Color(0xFFFF4560))]),
     const SizedBox(height:10),
-    action('Rota Bildirim Ayarları',Icons.settings_outlined,busy?null:openSettings),
+    Container(padding:const EdgeInsets.all(12),decoration:BoxDecoration(color:!known?_soft:heavy?const Color(0xFFFFEDF2):const Color(0xFFE9F9EF),borderRadius:BorderRadius.circular(16)),
+     child:Row(children:[Icon(!known?Icons.info_outline:heavy?Icons.warning_amber_rounded:Icons.check_circle_outline,
+      color:!known?_purple:heavy?const Color(0xFFFF4560):const Color(0xFF23B26D),size:23),
+      const SizedBox(width:10),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+       Text(!known?'Güncel trafik bilgisi alınamadı.':heavy?'Rotanızda yoğun trafik var.':'Trafik akışı normal.',
+        style:const TextStyle(fontSize:13,fontWeight:FontWeight.w700,color:_ink)),
+       if(known)Text('Tahmini gecikme ${mins(delay)}.',style:const TextStyle(fontSize:11,color:_muted)),
+      ]))])),
+    if(error!=null)Padding(padding:const EdgeInsets.only(top:8),child:Text(error!,style:const TextStyle(color:Color(0xFFFF4560),fontSize:12))),
+    const SizedBox(height:14),
+    Row(children:[const Expanded(child:Text('Trafik Olayları',style:TextStyle(fontSize:19,fontWeight:FontWeight.w800,color:_ink))),
+     if(unique.isNotEmpty)TextButton(onPressed:()=>showModalBottomSheet<void>(context:context,isScrollControlled:true,showDragHandle:true,
+      builder:(ctx)=>SafeArea(child:ListView(shrinkWrap:true,padding:const EdgeInsets.all(16),children:[
+       const Text('Yakın Trafik Olayları',style:TextStyle(fontSize:18,fontWeight:FontWeight.bold)),
+       for(final item in unique)ListTile(title:Text(eventLabel(item['category'])),subtitle:Text('${item['description']??''}'),
+        onTap:(){Navigator.pop(ctx);eventDetail(item);}),
+      ]))),child:const Text('Tümünü Gör ›',style:TextStyle(fontSize:12,color:_muted))),
+    ]),
+    if(!availableEvents)const Padding(padding:EdgeInsets.symmetric(vertical:12),child:Text('Güncel olay bilgisi alınamadı.',style:TextStyle(color:_muted,fontSize:12)))
+    else if(unique.isEmpty)const Padding(padding:EdgeInsets.symmetric(vertical:12),child:Text('Rotaya yakın bildirilen olay bulunamadı.',style:TextStyle(color:_muted,fontSize:12)))
+    else ...grouped.entries.map((entry)=>Padding(padding:const EdgeInsets.only(bottom:8),child:Material(color:Colors.white,
+     shape:RoundedRectangleBorder(side:const BorderSide(color:_line),borderRadius:BorderRadius.circular(15)),
+     child:InkWell(borderRadius:BorderRadius.circular(15),onTap:()=>eventDetail(entry.value.first),
+      child:Padding(padding:const EdgeInsets.all(11),child:Row(children:[
+       Container(width:38,height:38,decoration:BoxDecoration(color:const Color(0xFFFFF3E2),borderRadius:BorderRadius.circular(12)),
+        child:const Icon(Icons.warning_amber_rounded,color:Color(0xFFFFB020),size:20)),
+       const SizedBox(width:10),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        Text(entry.key,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:13,fontWeight:FontWeight.w700,color:_ink)),
+        Text('${entry.value.length} yakın olay',style:const TextStyle(fontSize:11,color:_muted)),
+       ])),const Icon(Icons.chevron_right,color:_muted,size:20),
+      ])))))),
+    if(unique.isNotEmpty)const Padding(padding:EdgeInsets.only(bottom:8),child:Text('Olaylar rota çizgisine yakınlığa göre eşleşir; yol yönü doğrulanmamıştır.',style:TextStyle(fontSize:11,color:_muted))),
     const SizedBox(height:10),
+    action(busy?'Trafik yenileniyor...':'Trafiği Yenile',Icons.refresh,busy||geometryBusy?null:load,primary:true),
+    const SizedBox(height:9),
+    action('Rota bildirim ayarları',Icons.settings_outlined,busy?null:openSettings),
+    const SizedBox(height:9),
     action('Rotayı Sil',Icons.delete_outline,busy||geometryBusy?null:deleteRoute,danger:true),
    ]))),
   ])));
