@@ -230,3 +230,48 @@ class _SmartRouteSettingsPageState extends State<SmartRouteSettingsPage> {
    ]),
  );
 }
+
+class SmartRouteMapPicker extends StatefulWidget{
+ const SmartRouteMapPicker({super.key});
+ @override State<SmartRouteMapPicker> createState()=>_SmartRouteMapPickerState();
+}
+class _SmartRouteMapPickerState extends State<SmartRouteMapPicker>{
+ LatLng? start,end;
+ void choose(LatLng point){
+  setState((){
+   if(start==null||end!=null){start=point;end=null;}
+   else{end=point;}
+  });
+ }
+ @override Widget build(BuildContext context)=>Scaffold(
+  appBar:AppBar(title:const Text('Rota noktalarını seç')),
+  body:Column(children:[
+   Padding(padding:const EdgeInsets.all(12),child:Text(
+    start==null?'Haritada başlangıç noktasına dokunun':end==null?'Şimdi varış noktasına dokunun':'İki nokta seçildi. Onaylayabilir veya yeniden seçebilirsiniz.',
+   )),
+   Expanded(child:FlutterMap(
+    options:MapOptions(
+     initialCenter:const LatLng(41.0082,28.9784),
+     initialZoom:10,
+     onTap:(_,point)=>choose(point),
+    ),
+    children:[
+     TileLayer(urlTemplate:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',userAgentPackageName:'com.cepqontag.app'),
+     MarkerLayer(markers:[
+      if(start!=null)Marker(point:start!,width:40,height:40,child:const Icon(Icons.trip_origin,color:_purple,size:36)),
+      if(end!=null)Marker(point:end!,width:40,height:40,child:const Icon(Icons.location_on,color:Colors.red,size:36)),
+     ]),
+    ],
+   )),
+   const Padding(padding:EdgeInsets.all(8),child:Text('© OpenStreetMap contributors',style:TextStyle(fontSize:11))),
+   Padding(padding:const EdgeInsets.all(16),child:Row(children:[
+    Expanded(child:OutlinedButton(onPressed:()=>setState((){start=null;end=null;}),child:const Text('Sıfırla'))),
+    const SizedBox(width:12),
+    Expanded(child:FilledButton(
+     onPressed:start!=null&&end!=null?()=>Navigator.pop(context,[start!,end!]):null,
+     child:const Text('Noktaları kullan'),
+    )),
+   ])),
+  ]),
+ );
+}
