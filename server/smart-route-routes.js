@@ -80,6 +80,31 @@ module.exports=function registerSmartRouteRoutes(app,db){
    res.json({routeId:route.id,...data});
   }catch(e){console.error('smart route traffic sample',e);res.status(500).json({error:'SERVER_ERROR'});}
  });
+ app.patch('/api/owner/smart-routes/:routeId/settings',async(req,res)=>{
+  const id=await auth(req,res);if(!id)return;
+  const b=req.body;
+  if(!b||typeof b!=='object'||Array.isArray(b))return res.status(400).json({error:'INVALID_SETTINGS'});
+  const allowed=['trafficAlertEnabled','accidentAlertEnabled','closureAlertEnabled','alternativeRouteEnabled','departureAlertEnabled','recoveryAlertEnabled'];
+  const columns={trafficAlertEnabled:'traffic_alert_enabled',accidentAlertEnabled:'accident_alert_enabled',closureAlertEnabled:'closure_alert_enabled',alternativeRouteEnabled:'alternative_route_enabled',departureAlertEnabled:'departure_alert_enabled',recoveryAlertEnabled:'recovery_alert_enabled'};
+  const keys=Object.keys(b);
+  if(!keys.length||keys.some(k=>!allowed.includes(k)||typeof b[k]!=='boolean'))return res.status(400).json({error:'INVALID_SETTINGS'});
+  try{
+   const route=await owned(id,req.params.routeId);
+   if(!route)return res.status(404).json({error:'NOT_FOUND'});
+   const values=keys.map(k=>b[k]);
+   const fields=keys.map((k,i)=>columns[k]+'=async(req,res)=>{
+  const id=await auth(req,res);if(!id)return;
+  try{const r=await db.query('DELETE FROM smart_routes WHERE id::text=$1 AND user_id::text=$2 RETURNING id',[req.params.routeId,id]);if(!r.rowCount)return res.status(404).json({error:'NOT_FOUND'});res.json({ok:true});}
+  catch(e){console.error('smart route delete',e);res.status(500).json({error:'SERVER_ERROR'});}
+ });
+};
++(i+2)).join(',');
+   const q='UPDATE smart_route_settings SET '+fields+' WHERE route_id=$1 RETURNING *';
+   const updated=await db.query(q,[route.id,...values]);
+   if(!updated.rowCount)return res.status(404).json({error:'NOT_FOUND'});
+   res.json({settings:updated.rows[0],notificationsActive:false});
+  }catch(e){console.error('smart route settings',e);res.status(500).json({error:'SERVER_ERROR'});}
+ });
  app.delete('/api/owner/smart-routes/:routeId',async(req,res)=>{
   const id=await auth(req,res);if(!id)return;
   try{const r=await db.query('DELETE FROM smart_routes WHERE id::text=$1 AND user_id::text=$2 RETURNING id',[req.params.routeId,id]);if(!r.rowCount)return res.status(404).json({error:'NOT_FOUND'});res.json({ok:true});}
