@@ -17,6 +17,8 @@ const registerTowingProviderRoutes=require('./towing-provider-routes');
 const registerAdminManagementRoutes=require('./admin-management-routes');
 const registerStoryRoutes=require('./story-routes');
 const registerAppBuilderRoutes=require('./app-builder-routes');
+const registerSmartRouteRoutes=require('./smart-route-routes');
+const {startSmartRouteScan}=require('./smart-route-scheduler');
 const registerVehicleBrandRoutes=require('./vehicle-brand-routes');
 const registerMotorcycleProfileRoutes=require('./motorcycle-profile-routes');
 const registerMotorcycleEmergencyRoutes=require('./motorcycle-emergency-routes');
@@ -150,6 +152,8 @@ registerTowingProviderRoutes(app,pool);
 registerAdminManagementRoutes(app,pool,adminAuth);
 registerStoryRoutes(app,pool,adminAuth);
 registerAppBuilderRoutes(app,pool,adminAuth);
+registerSmartRouteRoutes(app,pool);
+const stopSmartRouteScan=startSmartRouteScan(app,pool);
 registerVehicleBrandRoutes(app,pool,adminAuth);
 registerMotorcycleProfileRoutes(app,pool);
 registerMotorcycleEmergencyRoutes(app,pool);
@@ -167,6 +171,7 @@ const server=app.listen(port,'127.0.0.1',4096,()=>{
 });
 
 async function shutdown(signal){
+  stopSmartRouteScan?.();
   console.log(`${signal} received, shutting down HeyCar API`);
   server.close(async()=>{
     try{await pool.end();}catch(_){}
