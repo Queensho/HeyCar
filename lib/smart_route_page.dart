@@ -170,9 +170,9 @@ class _SmartRouteDetailPageState extends State<SmartRouteDetailPage>{
    Expanded(child:Text(title,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:13,fontWeight:FontWeight.w600))),
    if(!danger)Icon(Icons.chevron_right,size:20,color:primary?Colors.white:_purple),
   ])));
- void openSettings()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>SmartRouteSettingsPage(routeId:'\u0024{widget.route['id']}')));
+ void openSettings()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>SmartRouteSettingsPage(routeId:'${widget.route['id']}')));
  Future<void> editName()async{
-  final controller=TextEditingController(text:'\u0024{widget.route['name']??''}');
+  final controller=TextEditingController(text:'${widget.route['name']??''}');
   final name=await showDialog<String>(context:context,builder:(ctx)=>AlertDialog(
    title:const Text('Rota adını düzenle'),content:TextField(controller:controller,maxLength:80,autofocus:true,decoration:const InputDecoration(labelText:'Rota adı')),
    actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Vazgeç')),TextButton(onPressed:()=>Navigator.pop(ctx,controller.text.trim()),child:const Text('Kaydet'))]));
@@ -180,12 +180,12 @@ class _SmartRouteDetailPageState extends State<SmartRouteDetailPage>{
   if(name==null||name.isEmpty||!mounted)return;
   setState(()=>busy=true);
   try{
-   final id=Uri.encodeComponent('\u0024{widget.route['id']}');
-   final r=await OwnerHttp.patch(Uri.parse('\u0024{OnboardingBackend.baseUrl}/api/owner/smart-routes/\u0024id'),body:jsonEncode({'name':name})).timeout(const Duration(seconds:20));
-   if(r.statusCode!=200)throw Exception('Rota adı değiştirilemedi (HTTP \u0024{r.statusCode})');
+   final id=Uri.encodeComponent('${widget.route['id']}');
+   final r=await OwnerHttp.patch(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/smart-routes/$id'),body:jsonEncode({'name':name})).timeout(const Duration(seconds:20));
+   if(r.statusCode!=200)throw Exception('Rota adı değiştirilemedi (HTTP ${r.statusCode})');
    widget.route['name']=name;
    if(mounted)setState((){});
-  }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('\u0024e')));}
+  }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('$e')));}
   finally{if(mounted)setState(()=>busy=false);}
  }
  @override Widget build(BuildContext context){
@@ -197,7 +197,7 @@ class _SmartRouteDetailPageState extends State<SmartRouteDetailPage>{
   final hasGeometry=points.length>=2;
   final delay=(p?['trafficDelaySeconds'] as num?)?.toInt();
   final duration=(p?['travelTimeSeconds'] as num?)?.toInt();
-  final name='\u0024{widget.route['name']??'Rota'}';
+  final name='${widget.route['name']??'Rota'}';
   final active=widget.route['is_active']==true||widget.route['isActive']==true||widget.route['active']==true;
   return Scaffold(backgroundColor:Colors.white,body:SafeArea(child:Column(children:[
    SizedBox(height:56,child:Padding(padding:const EdgeInsets.symmetric(horizontal:16),child:Row(children:[
@@ -229,12 +229,12 @@ class _SmartRouteDetailPageState extends State<SmartRouteDetailPage>{
       ]),
       const SizedBox(height:12),
       if(hasTraffic)...[
-       if(duration!=null)Text('Tahmini yolculuk: \u0024{(duration/60).round()} dakika',style:const TextStyle(fontSize:13,color:_ink)),
-       if(delay!=null)Text(delay>0?'Trafik gecikmesi: \u0024{(delay/60).round()} dakika':'Normal trafik',style:TextStyle(fontSize:13,color:delay>0?const Color(0xFFFF4560):const Color(0xFF26803A))),
-       if(p?['checkedAt']!=null)Text('Son kontrol: \u0024{p!['checkedAt']}',style:const TextStyle(fontSize:11,color:_muted)),
+       if(duration!=null)Text('Tahmini yolculuk: ${(duration/60).round()} dakika',style:const TextStyle(fontSize:13,color:_ink)),
+       if(delay!=null)Text(delay>0?'Trafik gecikmesi: ${(delay/60).round()} dakika':'Normal trafik',style:TextStyle(fontSize:13,color:delay>0?const Color(0xFFFF4560):const Color(0xFF26803A))),
+       if(p?['checkedAt']!=null)Text('Son kontrol: ${p!['checkedAt']}',style:const TextStyle(fontSize:11,color:_muted)),
       ],
       const SizedBox(height:8),
-      Text(incidents==null?'Güncel olay bilgisi alınamadı.':'Rotaya yakın olaylar: \u0024{incidents.length}',style:const TextStyle(color:_ink,fontSize:13)),
+      Text(incidents==null?'Güncel olay bilgisi alınamadı.':'Rotaya yakın olaylar: ${incidents.length}',style:const TextStyle(color:_ink,fontSize:13)),
       if(incidents!=null)...[
        const SizedBox(height:5),
        const Text('Olay eşleşmesi yaklaşık konuma göredir; yol yönü doğrulanmamıştır.',style:TextStyle(fontSize:12,color:_muted)),
@@ -242,7 +242,7 @@ class _SmartRouteDetailPageState extends State<SmartRouteDetailPage>{
         Padding(padding:const EdgeInsets.only(top:8),child:Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
          const Icon(Icons.warning_amber_rounded,color:Color(0xFFFF4560),size:18),
          const SizedBox(width:7),
-         Expanded(child:Text('\u0024{item['category']??'Trafik olayı'}: \u0024{item['description']??'Açıklama yok'}',style:const TextStyle(fontSize:12,color:_ink))),
+         Expanded(child:Text('${item['category']??'Trafik olayı'}: ${item['description']??'Açıklama yok'}',style:const TextStyle(fontSize:12,color:_ink))),
         ])),
       ],
       if(!hasGeometry)...[
