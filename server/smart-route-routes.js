@@ -80,6 +80,16 @@ module.exports=function registerSmartRouteRoutes(app,db){
    res.json({routeId:route.id,...data});
   }catch(e){console.error('smart route traffic sample',e);res.status(500).json({error:'SERVER_ERROR'});}
  });
+ app.get('/api/owner/smart-routes/:routeId/settings',async(req,res)=>{
+  const id=await auth(req,res);if(!id)return;
+  try{
+   const route=await owned(id,req.params.routeId);
+   if(!route)return res.status(404).json({error:'NOT_FOUND'});
+   const r=await db.query('SELECT * FROM smart_route_settings WHERE route_id=$1',[route.id]);
+   if(!r.rowCount)return res.status(404).json({error:'NOT_FOUND'});
+   res.json({settings:r.rows[0],notificationsActive:false});
+  }catch(e){console.error('smart route settings read',e);res.status(500).json({error:'SERVER_ERROR'});}
+ });
  app.patch('/api/owner/smart-routes/:routeId/settings',async(req,res)=>{
   const id=await auth(req,res);if(!id)return;
   const b=req.body;
