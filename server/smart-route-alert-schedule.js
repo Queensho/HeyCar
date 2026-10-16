@@ -10,7 +10,9 @@ function eligible(settings,now=new Date()){
  const weekday=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(read('weekday'));
  if(weekday<0)return false;
  const days=settings.notification_days;
- if(!Array.isArray(days)||!days.includes(weekday===0?7:weekday))return false;
+ if(!Array.isArray(days)||days.some(day=>!Number.isInteger(day)||day<1||day>7))return false;
+ const isoDay=weekday===0?7:weekday;
+ const previousDay=isoDay===1?7:isoDay-1;
  const time=Number(read('hour'))*60+Number(read('minute'));
  const parse=v=>{
   const match=String(v||'').match(/^(\d{1,2}):(\d{2})/);
@@ -20,6 +22,8 @@ function eligible(settings,now=new Date()){
  };
  const start=parse(settings.notification_start),end=parse(settings.notification_end);
  if(start===null||end===null)return false;
- return start<=end?time>=start&&time<=end:time>=start||time<=end;
+ if(start<=end)return days.includes(isoDay)&&time>=start&&time<=end;
+ // After midnight, the overnight window belongs to the preceding selected day.
+ return (days.includes(isoDay)&&time>=start)||(days.includes(previousDay)&&time<=end);
 }
 module.exports={eligible};
