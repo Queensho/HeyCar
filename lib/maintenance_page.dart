@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:typed_data';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'onboarding_backend.dart';
@@ -169,6 +171,21 @@ class _MaintenanceAddPageState extends State<MaintenanceAddPage>{
  late final TextEditingController mileage=TextEditingController(text:widget.currentKm.toString()),cost=TextEditingController(),notes=TextEditingController(),interval=TextEditingController(text:'5000');
  final choices=['Motor yağı','Yağ filtresi','Hava filtresi','Fren balatası','Buji','Kayış / Varyatör','Genel bakım','Diğer'];
  final selected=<String>{};bool saving=false;DateTime serviceDate=DateTime.now();
+ Uint8List? photoBytes;String? photoMime;bool pickingPhoto=false;
+ Future<void> pickPhoto()async{
+  if(pickingPhoto)return;
+  try{
+   setState(()=>pickingPhoto=true);
+   final x=await ImagePicker().pickImage(source:ImageSource.gallery,maxWidth:1400,maxHeight:1400,imageQuality:75);
+   if(x==null)return;
+   final b=await x.readAsBytes();
+   if(b.length>2*1024*1024)throw Exception('Fotoğraf 2 MB sınırını aşıyor.');
+   final ext=x.name.toLowerCase().split('.').last;
+   if(mounted)setState((){photoBytes=b;photoMime=ext=='png'?'image/png':ext=='webp'?'image/webp':'image/jpeg';});
+  }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString().replaceFirst('Exception: ',''))));}
+  finally{if(mounted)setState(()=>pickingPhoto=false);}
+ }
+
  @override void dispose(){mileage.dispose();cost.dispose();notes.dispose();interval.dispose();super.dispose();}
  String get formattedDate=>'${serviceDate.day} ${const ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'][serviceDate.month-1]} ${serviceDate.year}';
  Future<void> pickDate()async{final d=await showDatePicker(context:context,initialDate:serviceDate,firstDate:DateTime(2000),lastDate:DateTime.now().add(const Duration(days:365)),builder:(ctx,child)=>Theme(data:Theme.of(ctx).copyWith(colorScheme:const ColorScheme.light(primary:purple)),child:child!));if(d!=null&&mounted)setState(()=>serviceDate=d);}
@@ -207,7 +224,11 @@ class _MaintenanceAddPageState extends State<MaintenanceAddPage>{
     const SizedBox(height:9),
     _inputCard(Icons.speed_outlined,'Sonraki bakım aralığı',interval,'km'),
     const SizedBox(height:9),
-    _panel(Icons.image_outlined,'Fotoğraflar (isteğe bağlı)',const Text('Fotoğraf yükleme bu sürümde desteklenmiyor.',style:TextStyle(color:muted,fontSize:12))),
+    _panel(Icons.image_outlined,'Fotoğraf (isteğe bağlı)',Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+     if(photoBytes!=null)...[ClipRRect(borderRadius:BorderRadius.circular(12),child:Image.memory(photoBytes!,height:110,width:160,fit:BoxFit.cover)),const SizedBox(height:8)],
+     TextButton.icon(onPressed:pickingPhoto?null:pickPhoto,icon:const Icon(Icons.add_photo_alternate_outlined),label:Text(photoBytes==null?'Galeriden Fotoğraf Seç':'Fotoğrafı Değiştir')),
+     if(photoBytes!=null)TextButton(onPressed:()=>setState((){photoBytes=null;photoMime=null;}),child:const Text('Kaldır'))
+    ])),
     const SizedBox(height:17),
     SizedBox(height:52,child:FilledButton.icon(onPressed:saving?null:save,
      style:FilledButton.styleFrom(backgroundColor:purple,foregroundColor:Colors.white,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(16))),
@@ -255,8 +276,21 @@ class _MaintenanceAddPageState extends State<MaintenanceAddPage>{
     'mileage':km,'items':selected.toList(),'notes':notes.text,'totalCost':price,'intervalKm':iv});
    final r=widget.driverMode?await DriverHttp.post(uri,body:body):await OwnerHttp.post(uri,body:body);
    if(!mounted)return;
-   if(r.statusCode==201){final again=await showDialog<bool>(context:context,barrierDismissible:false,builder:(_)=>const _MaintenanceSuccessDialog());
-    if(!mounted)return;if(again==true){cost.clear();notes.clear();selected.clear();setState((){});}else{Navigator.pop(context,true);}}
+   if(r.statusCode==201){
+    if(photoBytes!=null){
+     final record=jsonDecode(r.body)['record'];
+     final recordId='${record['id']}';
+     final photoUri=Uri.parse('${QrBackend.baseUrl}/api/vehicles/${widget.vehicleId}/maintenance/$recordId/photo');
+     final payload=jsonEncode({'mime':photoMime,'data':base64Encode(photoBytes!)});
+     final uploaded=widget.driverMode?await DriverHttp.put(photoUri,body:payload):await OwnerHttp.put(photoUri,body:payload);
+     if(uploaded.statusCode!=200){
+      if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Bakım kaydı eklendi fakat fotoğraf yüklenemedi.')));
+      if(mounted)Navigator.pop(context,true);
+      return;
+     }
+    }
+    final again=await showDialog<bool>(context:context,barrierDismissible:false,builder:(_)=>const _MaintenanceSuccessDialog());
+    if(!mounted)return;if(again==true){cost.clear();notes.clear();selected.clear();setState((){photoBytes=null;photoMime=null;});}else{Navigator.pop(context,true);}}
    else{ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('Bakım kaydı eklenemedi (${r.statusCode}).')));}
   }catch(_){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Bağlantı hatası. Tekrar deneyin.')));}
   finally{if(mounted)setState(()=>saving=false);}
