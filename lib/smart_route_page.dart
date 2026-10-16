@@ -409,7 +409,7 @@ class _SmartRouteAddPageState extends State<SmartRouteAddPage>{
   style:FilledButton.styleFrom(backgroundColor:google==selected?_purple:const Color(0xFFF3EDFF),
    foregroundColor:google==selected?Colors.white:const Color(0xFF10152D),
    padding:const EdgeInsets.symmetric(horizontal:5),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(14))),
-  icon:Icon(icon,size:18),label:Text(text,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:12))))));
+  icon:Icon(icon,size:18),label:Text(text,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:12)))));
  @override Widget build(BuildContext context)=>Scaffold(backgroundColor:Colors.white,
   body:SafeArea(child:Column(children:[
    Expanded(child:ListView(padding:const EdgeInsets.symmetric(horizontal:16),children:[
