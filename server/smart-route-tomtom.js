@@ -4,7 +4,7 @@ const cache=new Map();
 const TTL_MS=5*60*1000;
 const MAX_CACHE=256;
 const inFlight=new Map();
-let period='',used=0;
+
 function validPoint(p){return p&&Number.isFinite(Number(p.lat))&&Number.isFinite(Number(p.lon))&&Math.abs(Number(p.lat))<=90&&Math.abs(Number(p.lon))<=180;}
 function request(url){
  return new Promise((resolve,reject)=>{
@@ -20,7 +20,7 @@ function request(url){
   req.on('error',reject);
  });
 }
-async function flowAt(point){
+async function flowAt(point,db){
  const key=String(process.env.TOMTOM_API_KEY||'').trim();
  if(!key)return {available:false,reason:'NOT_CONFIGURED'};
  if(!validPoint(point))return {available:false,reason:'INVALID_COORDINATE'};
@@ -28,12 +28,18 @@ async function flowAt(point){
  const now=Date.now(),entry=cache.get(id);
  if(inFlight.has(id))return inFlight.get(id);
  if(entry&&entry.expires>now)return entry.value;
- const month=new Date().toISOString().slice(0,7);
- if(month!==period){period=month;used=0;}
- // Conservative safety budget, not a provider-reported quota.
+ // Reserve budget atomically across workers and restarts before contacting provider.
  const cap=Math.max(0,Math.min(1000,Number(process.env.TOMTOM_MONTHLY_FLOW_BUDGET||300)||0));
- if(used>=cap)return {available:false,reason:'LOCAL_BUDGET_EXHAUSTED'};
- used++;
+ if(!db||!cap)return {available:false,reason:'BUDGET_UNAVAILABLE'};
+ const month=new Date().toISOString().slice(0,7);
+ try{
+  const budget=await db.query(`INSERT INTO smart_route_provider_usage(provider,service,month_utc,requests)
+   VALUES('tomtom','flow', $1,1)
+   ON CONFLICT(provider,service,month_utc) DO UPDATE SET requests=smart_route_provider_usage.requests+1,updated_at=NOW()
+   WHERE smart_route_provider_usage.requests < $2
+   RETURNING requests`,[month,cap]);
+  if(!budget.rowCount)return {available:false,reason:'LOCAL_BUDGET_EXHAUSTED'};
+ }catch(_){return {available:false,reason:'BUDGET_UNAVAILABLE'};}
  const url=new URL('https://api.tomtom.com/traffic/services/4/flowSegmentData/absolute/10/json');
  url.searchParams.set('point',id);
  url.searchParams.set('key',key);
