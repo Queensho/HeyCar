@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -476,10 +477,14 @@ class SmartRouteAddPage extends StatefulWidget{
 }
 class _SmartRouteAddPageState extends State<SmartRouteAddPage>{
  final name=TextEditingController(),link=TextEditingController();
+ final originText=TextEditingController(),destinationText=TextEditingController();
+ Timer? debounce;
+ int requestId=0,activeField=-1;
+ List<dynamic> matches=[];
  LatLng? start,end;
  bool google=true,busy=false;
  String? error;
- @override void dispose(){name.dispose();link.dispose();super.dispose();}
+ @override void dispose(){debounce?.cancel();name.dispose();link.dispose();originText.dispose();destinationText.dispose();super.dispose();}
  void parseGoogle(){
   final uri=Uri.tryParse(link.text.trim());
   if(uri==null||uri.scheme!='https'||!{'google.com','www.google.com','maps.google.com'}.contains(uri.host.toLowerCase())){
@@ -497,6 +502,34 @@ class _SmartRouteAddPageState extends State<SmartRouteAddPage>{
    setState(()=>error='Bağlantıdaki koordinatlar geçersiz.');return;
   }
   setState((){start=LatLng(x,y);end=LatLng(z,w);error=null;});
+ }
+ Widget addressInput(int index)=>Column(children:[
+ TextField(controller:index==0?originText:destinationText,onChanged:(value)=>searchAddress(index,value),
+ decoration:InputDecoration(labelText:index==0?'Başlangıç noktası':'Varış noktası',
+ prefixIcon:Icon(Icons.location_on,color:index==0?_purple:const Color(0xFFB9FF45)),
+ suffixIcon:IconButton(icon:const Icon(Icons.map_outlined),onPressed:pick),
+ border:OutlineInputBorder(borderRadius:BorderRadius.circular(15)))),
+ if(activeField==index)for(final m in matches)ListTile(
+ title:Text(m['name'].toString()),subtitle:Text(m['address'].toString()),
+ onTap:(){setState((){
+ final p=LatLng((m['lat'] as num).toDouble(),(m['lon'] as num).toDouble());
+ if(index==0){start=p;originText.text=m['address'].toString();}else{end=p;destinationText.text=m['address'].toString();}
+ matches=[];activeField=-1;
+ });}),
+ const SizedBox(height:10)
+ ]);
+ void searchAddress(int index,String value){
+ debounce?.cancel();final id=++requestId;
+ setState((){activeField=index;matches=[];if(index==0)start=null;else end=null;});
+ if(value.trim().length<3)return;
+ debounce=Timer(const Duration(milliseconds:450),()async{
+ try{
+ final url=Uri.parse(OnboardingBackend.baseUrl+'/api/owner/smart-routes/address-search').replace(queryParameters:{'q':value.trim()});
+ final r=await OwnerHttp.get(url).timeout(const Duration(seconds:10));
+ if(!mounted||id!=requestId)return;
+ setState(()=>matches=r.statusCode==200?(jsonDecode(r.body)['results'] as List? ??[]):[]);
+ }catch(_){if(mounted&&id==requestId)setState(()=>error='Adres araması kullanılamıyor.');}
+ });
  }
  Future<void> pick()async{
   final result=await Navigator.push<List<LatLng>>(context,MaterialPageRoute(builder:(_)=>const SmartRouteMapPicker()));
@@ -566,17 +599,7 @@ class _SmartRouteAddPageState extends State<SmartRouteAddPage>{
     else Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
      const Text('Manuel olarak ekle',style:TextStyle(fontSize:15,fontWeight:FontWeight.bold)),
      const SizedBox(height:12),
-     for(final item in [('Başlangıç noktası',start),('Varış noktası',end)])...[
-      InkWell(onTap:pick,child:Container(height:60,padding:const EdgeInsets.symmetric(horizontal:12),
-       decoration:BoxDecoration(border:Border.all(color:const Color(0xFFE8EAF2)),borderRadius:BorderRadius.circular(16)),
-       child:Row(children:[const Icon(Icons.location_on_outlined,color:_purple,size:22),const SizedBox(width:12),
-        Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisAlignment:MainAxisAlignment.center,children:[
-         Text(item.$1,style:const TextStyle(fontSize:11,color:Color(0xFF778096))),
-         Text(item.$2==null?'Haritadan konum seçin':'${item.$2!.latitude.toStringAsFixed(5)}, ${item.$2!.longitude.toStringAsFixed(5)}',
-          maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:13))]))]))),
-      const SizedBox(height:10),
-     ],
-     OutlinedButton.icon(onPressed:pick,icon:const Icon(Icons.map_outlined),label:const Text('Haritadan iki nokta seç')),
+     addressInput(0),addressInput(1),
     ]),
     const SizedBox(height:14),
     TextField(controller:name,maxLength:80,decoration:InputDecoration(labelText:'Rota adı',hintText:'Örn: Sabah rotası',
