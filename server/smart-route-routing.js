@@ -21,7 +21,7 @@ function valid(p) {
   return p && Number.isFinite(Number(p.lat)) && Number.isFinite(Number(p.lon))
     && Math.abs(Number(p.lat)) <= 90 && Math.abs(Number(p.lon)) <= 180;
 }
-async function preview(route) {
+async function preview(route, db) {
   const key = String(process.env.TOMTOM_API_KEY || '').trim();
   if (!key) return { available: false, reason: 'NOT_CONFIGURED' };
   const points = [route.origin, ...(Array.isArray(route.waypoints) ? route.waypoints : []), route.destination];
@@ -32,6 +32,15 @@ async function preview(route) {
   url.searchParams.set('traffic', 'true');
   url.searchParams.set('routeType', 'fastest');
   url.searchParams.set('travelMode', 'car');
+  const cap = Math.max(0, Math.min(1000, Number(process.env.TOMTOM_MONTHLY_ROUTING_BUDGET || 100) || 0));
+  if (!db || !cap) return { available: false, reason: 'BUDGET_UNAVAILABLE' };
+  try {
+    const budget = await db.query(`INSERT INTO smart_route_provider_usage(provider,service,month_utc,requests)
+      VALUES('tomtom','routing',$1,1)
+      ON CONFLICT(provider,service,month_utc) DO UPDATE SET requests=smart_route_provider_usage.requests+1,updated_at=NOW()
+      WHERE smart_route_provider_usage.requests < $2 RETURNING requests`, [new Date().toISOString().slice(0,7), cap]);
+    if (!budget.rowCount) return { available: false, reason: 'LOCAL_BUDGET_EXHAUSTED' };
+  } catch (_) { return { available: false, reason: 'BUDGET_UNAVAILABLE' }; }
   try {
     const data = await getJson(url);
     const routeData = data.routes && data.routes[0];
