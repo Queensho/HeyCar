@@ -66,7 +66,7 @@ module.exports=function registerSmartRouteRoutes(app,db){
    const plan=await ownerPremiumPlan(db,id);
    if(!plan.premium)return res.status(402).json({error:'PREMIUM_REQUIRED'});
    // This is a single nearest-road sample at the origin, NOT a whole-route traffic estimate.
-   const data=await flowAt(route.origin);
+   const data=await flowAt(route.origin,db);
    res.json({routeId:route.id,...data});
   }catch(e){console.error('smart route traffic sample',e);res.status(500).json({error:'SERVER_ERROR'});}
  });
