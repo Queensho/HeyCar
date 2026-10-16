@@ -1,6 +1,7 @@
 // Optional, read-only background candidate scanner. Push delivery is deliberately disabled.
 // Enable only after database migrations, provider budgets and operations review.
 const {scanCandidates}=require('./smart-route-alert-scanner');
+const {enqueue}=require('./smart-route-alert-outbox');
 function startSmartRouteScan(app,db){
  if(process.env.SMART_ROUTE_SCAN_ENABLED!=='true')return null;
  const minutes=Number(process.env.SMART_ROUTE_SCAN_INTERVAL_MINUTES||30);
@@ -13,9 +14,13 @@ function startSmartRouteScan(app,db){
   busy=true;
   try{
    const result=await scanCandidates(db,{limit:10});
+   let queued=0;
+   if(process.env.SMART_ROUTE_QUEUE_ENABLED==='true'&&result.candidates.length){
+    queued=await enqueue(db,result.candidates);
+   }
    // No incident details, route coordinates, user IDs or notification tokens in logs.
    console.info('Smart route scan',{checked:result.routesChecked,eligible:result.routesEligible,
-    candidates:result.candidates.length,unavailable:result.unavailable,pushEnabled:false});
+    candidates:result.candidates.length,queued,unavailable:result.unavailable,pushEnabled:false});
   }catch(e){console.warn('Smart route scan failed',{code:String(e.code||'SCAN_ERROR').slice(0,40)});}
   finally{busy=false;}
  };
