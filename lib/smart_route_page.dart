@@ -238,7 +238,7 @@ class _SmartRouteDetailPageState extends State<SmartRouteDetailPage>{
   for(final x in unique){final label=eventLabel(x['category']);grouped.putIfAbsent(label,()=>[]).add(x);}
   final active=widget.route['is_active']==true;
   final known=hasTraffic&&delay!=null;
-  final heavy=known&&delay>300;
+  final heavy=delay!=null&&delay>300;
   return Scaffold(backgroundColor:Colors.white,body:SafeArea(child:Column(children:[
    SizedBox(height:56,child:Padding(padding:const EdgeInsets.symmetric(horizontal:16),child:Row(children:[
     SizedBox(width:40,height:40,child:IconButton(onPressed:()=>Navigator.pop(context),padding:EdgeInsets.zero,style:IconButton.styleFrom(backgroundColor:_soft),icon:const Icon(Icons.arrow_back_ios_new,size:19,color:_purple))),
@@ -281,7 +281,7 @@ class _SmartRouteDetailPageState extends State<SmartRouteDetailPage>{
       const SizedBox(width:10),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
        Text(!known?'Güncel trafik bilgisi alınamadı.':heavy?'Rotanızda yoğun trafik var.':'Trafik akışı normal.',
         style:const TextStyle(fontSize:13,fontWeight:FontWeight.w700,color:_ink)),
-       if(known)Text('Tahmini gecikme ${mins(delay)}.',style:const TextStyle(fontSize:11,color:_muted)),
+       if(known)Text('Tahmini gecikme ${mins(delay!)}.',style:const TextStyle(fontSize:11,color:_muted)),
       ]))])),
     if(error!=null)Padding(padding:const EdgeInsets.only(top:8),child:Text(error!,style:const TextStyle(color:Color(0xFFFF4560),fontSize:12))),
     const SizedBox(height:14),
