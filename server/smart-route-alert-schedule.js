@@ -20,6 +20,13 @@ function eligible(settings,now=new Date()){
   const n=Number(match[1])*60+Number(match[2]);
   return n>=0&&n<1440?n:null;
  };
+ // Explicit two-time configuration supersedes the old window; do not auto-migrate.
+ if(settings.notification_time_1!==undefined||settings.notification_time_2!==undefined){
+  if(!days.includes(isoDay))return false;
+  const a=settings.notification_time_1_enabled?parse(settings.notification_time_1):null;
+  const b=settings.notification_time_2_enabled?parse(settings.notification_time_2):null;
+  return time===a||time===b;
+ }
  const start=parse(settings.notification_start),end=parse(settings.notification_end);
  if(start===null||end===null)return false;
  if(start<=end)return days.includes(isoDay)&&time>=start&&time<=end;
