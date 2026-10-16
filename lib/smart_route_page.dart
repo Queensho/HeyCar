@@ -104,6 +104,7 @@ class SmartRouteDetailPage extends StatefulWidget{
 class _SmartRouteDetailPageState extends State<SmartRouteDetailPage>{
  Map<String,dynamic>? preview,events;
  bool busy=false,geometryBusy=false;
+ static const _ink=Color(0xFF10152D),_muted=Color(0xFF778096),_border=Color(0xFFE8EAF2),_danger=Color(0xFFFF4560);
  String? error;
  @override void initState(){super.initState();load();}
  Future<void> load()async{
