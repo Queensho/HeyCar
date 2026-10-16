@@ -48,6 +48,8 @@ async function preview(route, db) {
     const summary = routeData.summary;
     const geometry = (routeData.legs || []).flatMap(leg => leg.points || [])
       .map(p => ({ lat: p.latitude, lon: p.longitude }));
+    if (!Number.isFinite(Number(summary.lengthInMeters)) || !Number.isFinite(Number(summary.travelTimeInSeconds)) ||
+        geometry.length < 2 || geometry.some(p => !valid(p))) return { available: false, reason: 'INVALID_PROVIDER_RESPONSE' };
     if (geometry.length > 12000) return { available: false, reason: 'ROUTE_TOO_LARGE' };
     return { available: true, provider: 'tomtom', distanceMeters: summary.lengthInMeters,
       travelTimeSeconds: summary.travelTimeInSeconds,
