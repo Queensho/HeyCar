@@ -5,8 +5,8 @@ const {enqueue}=require('./smart-route-alert-outbox');
 const {deliverPending}=require('./smart-route-alert-delivery');
 function startSmartRouteScan(app,db){
  if(process.env.SMART_ROUTE_SCAN_ENABLED!=='true')return null;
- const minutes=Number(process.env.SMART_ROUTE_SCAN_INTERVAL_MINUTES||30);
- if(!Number.isFinite(minutes)||minutes<15||minutes>1440){
+ const minutes=Number(process.env.SMART_ROUTE_SCAN_INTERVAL_MINUTES||1);
+ if(!Number.isFinite(minutes)||minutes<1||minutes>1440){
   console.warn('Smart route scanner disabled: invalid interval');return null;
  }
  let busy=false;
