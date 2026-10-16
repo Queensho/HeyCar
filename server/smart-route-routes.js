@@ -19,9 +19,13 @@ function input(body){
  if(!name||name.length>100||!origin||!destination||!Array.isArray(waypoints)||waypoints.length>8)return null;
  const stops=waypoints.map(point);
  if(stops.some(p=>!p))return null;
+ const geometry=body?.routeGeometry;
+ if(geometry!==undefined&&(!Array.isArray(geometry)||geometry.length<2||geometry.length>12000))return null;
+ const validatedGeometry=geometry===undefined?null:geometry.map(point);
+ if(validatedGeometry&&validatedGeometry.some(p=>!p))return null;
  const travelMode=body?.travelMode||'car';
  if(!['car','motorcycle'].includes(travelMode))return null;
- return {name,origin,destination,waypoints:stops,travelMode};
+ return {name,origin,destination,waypoints:stops,travelMode,routeGeometry:validatedGeometry};
 }
 module.exports=function registerSmartRouteRoutes(app,db){
  async function auth(req,res){
@@ -105,7 +109,7 @@ module.exports=function registerSmartRouteRoutes(app,db){
     await c.query('SELECT id FROM users WHERE id::text=$1 FOR UPDATE',[id]);
     const n=await c.query('SELECT COUNT(*)::int AS n FROM smart_routes WHERE user_id::text=$1',[id]);
     if(n.rows[0].n>=limit){await c.query('ROLLBACK');return res.status(403).json({error:'ROUTE_LIMIT',limit});}
-    const r=await c.query('INSERT INTO smart_routes(user_id,name,origin,destination,waypoints,travel_mode) VALUES($1,$2,$3::jsonb,$4::jsonb,$5::jsonb,$6) RETURNING id,name,origin,destination,waypoints,travel_mode,is_active',[id,v.name,JSON.stringify(v.origin),JSON.stringify(v.destination),JSON.stringify(v.waypoints),v.travelMode]);
+    const r=await c.query('INSERT INTO smart_routes(user_id,name,origin,destination,waypoints,travel_mode,route_geometry) VALUES($1,$2,$3::jsonb,$4::jsonb,$5::jsonb,$6,$7::jsonb) RETURNING id,name,origin,destination,waypoints,travel_mode,is_active',[id,v.name,JSON.stringify(v.origin),JSON.stringify(v.destination),JSON.stringify(v.waypoints),v.travelMode,v.routeGeometry==null?null:JSON.stringify(v.routeGeometry)]);
     await c.query('INSERT INTO smart_route_settings(route_id) VALUES($1)',[r.rows[0].id]);
     await c.query('COMMIT');res.status(201).json({route:r.rows[0],trafficAvailable:false});
    }catch(e){await c.query('ROLLBACK');throw e;}finally{c.release();}

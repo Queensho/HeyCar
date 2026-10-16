@@ -591,7 +591,8 @@ class _SmartRouteAddPageState extends State<SmartRouteAddPage>{
    final uri=Uri.parse('${OnboardingBackend.baseUrl}/api/owner/smart-routes');
    final r=await OwnerHttp.post(uri,body:jsonEncode({'name':name.text.trim(),
     'origin':{'lat':start!.latitude,'lon':start!.longitude},
-    'destination':{'lat':end!.latitude,'lon':end!.longitude},'travelMode':'car'})).timeout(const Duration(seconds:20));
+    'destination':{'lat':end!.latitude,'lon':end!.longitude},'travelMode':'car',
+    if(!google)'routeGeometry':road.map((p)=>{'lat':p.latitude,'lon':p.longitude}).toList()})).timeout(const Duration(seconds:20));
    if(r.statusCode!=201)throw Exception(r.statusCode==403?'Rota limitine ulaştınız.':'Kayıt başarısız: HTTP ${r.statusCode}');
    if(!mounted)return;
    final configure=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(title:const Text('Rota kaydedildi'),
