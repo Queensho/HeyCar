@@ -51,27 +51,67 @@ class _SmartRoutePageState extends State<SmartRoutePage>{
   final lat=(value['lat'] as num?)?.toDouble(),lon=(value['lon'] as num?)?.toDouble();
   return lat==null||lon==null?null:LatLng(lat,lon);
  }
- @override Widget build(BuildContext context)=>Scaffold(
-  backgroundColor:const Color(0xFFF8F9FC),
-  appBar:AppBar(title:const Text('Akıllı Rota'),backgroundColor:Colors.white,foregroundColor:const Color(0xFF10152D)),
-  floatingActionButton:FloatingActionButton.extended(backgroundColor:_purple,foregroundColor:Colors.white,onPressed:add,icon:const Icon(Icons.add),label:const Text('Yeni Rota')),
-  body:loading?const Center(child:CircularProgressIndicator()):error!=null?Center(child:Column(mainAxisSize:MainAxisSize.min,children:[Text(error!),TextButton(onPressed:reload,child:const Text('Tekrar dene'))])):
-  RefreshIndicator(onRefresh:reload,child:routes.isEmpty?ListView(children:const [SizedBox(height:130),Center(child:Icon(Icons.route,size:60,color:_purple)),SizedBox(height:16),Center(child:Text('Henüz kayıtlı rota yok')),SizedBox(height:8),Center(child:Text('Yeni Rota ile ilk güzergâhınızı ekleyin.'))]):
-   ListView.builder(padding:const EdgeInsets.fromLTRB(16,16,16,100),itemCount:routes.length,itemBuilder:(context,i){
-    final route=routes[i] as Map<String,dynamic>;
-    final start=point(route['origin']),end=point(route['destination']);
-    return Card(color:Colors.white,child:InkWell(onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>SmartRouteDetailPage(route:route))),child:Padding(padding:const EdgeInsets.all(14),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-     Text('${route['name']??'Rota'}',style:const TextStyle(fontSize:17,fontWeight:FontWeight.bold)),
-     const SizedBox(height:10),
-     if(start!=null&&end!=null)SizedBox(height:150,child:FlutterMap(options:MapOptions(initialCenter:start,initialZoom:10,interactionOptions:const InteractionOptions(flags:InteractiveFlag.none)),children:[
-      TileLayer(urlTemplate:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',userAgentPackageName:'com.cepqontag.app'),
-      MarkerLayer(markers:[Marker(point:start,width:32,height:32,child:const Icon(Icons.trip_origin,color:_purple)),Marker(point:end,width:32,height:32,child:const Icon(Icons.location_on,color:Colors.red))]),
-     ])),
-     const SizedBox(height:8),const Text('Rota detayını görüntüle  ›',style:TextStyle(color:_purple)),
-    ]))));
-   }))),
- );
+ @override
+ Widget build(BuildContext context) {
+  Widget content;
+  if(loading){
+   content=const Center(child:CircularProgressIndicator());
+  }else if(error!=null){
+   content=Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
+    Text(error!),TextButton(onPressed:reload,child:const Text('Tekrar dene')),
+   ]));
+  }else if(routes.isEmpty){
+   content=RefreshIndicator(onRefresh:reload,child:ListView(children:const [
+    SizedBox(height:130),Center(child:Icon(Icons.route,size:60,color:_purple)),
+    SizedBox(height:16),Center(child:Text('Henüz kayıtlı rota yok')),
+    SizedBox(height:8),Center(child:Text('Yeni Rota ile ilk güzergâhınızı ekleyin.')),
+   ]));
+  }else{
+   content=RefreshIndicator(onRefresh:reload,child:ListView.builder(
+    padding:const EdgeInsets.fromLTRB(16,16,16,100),
+    itemCount:routes.length,
+    itemBuilder:(context,i){
+     final route=routes[i] as Map<String,dynamic>;
+     final start=point(route['origin']);
+     final end=point(route['destination']);
+     return Card(color:Colors.white,child:InkWell(
+      onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>SmartRouteDetailPage(route:route))),
+      child:Padding(padding:const EdgeInsets.all(14),child:Column(
+       crossAxisAlignment:CrossAxisAlignment.start,
+       children:[
+        Text('${route['name']??'Rota'}',style:const TextStyle(fontSize:17,fontWeight:FontWeight.bold)),
+        const SizedBox(height:10),
+        if(start!=null&&end!=null)
+         SizedBox(height:150,child:FlutterMap(
+          options:MapOptions(initialCenter:start,initialZoom:10,interactionOptions:const InteractionOptions(flags:InteractiveFlag.none)),
+          children:[
+           TileLayer(urlTemplate:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',userAgentPackageName:'com.cepqontag.app'),
+           MarkerLayer(markers:[
+            Marker(point:start,width:32,height:32,child:const Icon(Icons.trip_origin,color:_purple)),
+            Marker(point:end,width:32,height:32,child:const Icon(Icons.location_on,color:Colors.red)),
+           ]),
+          ],
+         )),
+        const SizedBox(height:8),
+        const Text('Rota detayını görüntüle  ›',style:TextStyle(color:_purple)),
+       ],
+      )),
+     ));
+    },
+   ));
+  }
+  return Scaffold(
+   backgroundColor:const Color(0xFFF8F9FC),
+   appBar:AppBar(title:const Text('Akıllı Rota'),backgroundColor:Colors.white,foregroundColor:const Color(0xFF10152D)),
+   floatingActionButton:FloatingActionButton.extended(
+    backgroundColor:_purple,foregroundColor:Colors.white,onPressed:add,
+    icon:const Icon(Icons.add),label:const Text('Yeni Rota'),
+   ),
+   body:content,
+  );
+ }
 }
+
 class SmartRouteDetailPage extends StatefulWidget{
  const SmartRouteDetailPage({super.key,required this.route});
  final Map<String,dynamic> route;
