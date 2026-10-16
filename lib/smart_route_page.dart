@@ -33,7 +33,15 @@ class _SmartRoutePageState extends State<SmartRoutePage>{
     TextField(controller:name,decoration:const InputDecoration(labelText:'Rota adı')),
     for(final item in <(TextEditingController,String)>[(a,'Başlangıç enlemi'),(b,'Başlangıç boylamı'),(c,'Varış enlemi'),(d,'Varış boylamı')])
      TextField(controller:item.$1,keyboardType:const TextInputType.numberWithOptions(decimal:true,signed:true),decoration:InputDecoration(labelText:item.$2)),
-    const SizedBox(height:8),const Text('Şimdilik koordinat girerek rota ekleyebilirsiniz. Haritadan nokta seçimi geliştiriliyor.',style:TextStyle(fontSize:12)),
+     OutlinedButton.icon(icon:const Icon(Icons.map_outlined),label:const Text('Haritadan nokta seç'),onPressed:()async{
+      final selected=await Navigator.of(ctx).push<List<LatLng>>(MaterialPageRoute(builder:(_)=>const SmartRouteMapPicker()));
+      if(selected==null||selected.length!=2)return;
+      a.text=selected[0].latitude.toStringAsFixed(6);
+      b.text=selected[0].longitude.toStringAsFixed(6);
+      c.text=selected[1].latitude.toStringAsFixed(6);
+      d.text=selected[1].longitude.toStringAsFixed(6);
+     }),
+     const Text('Haritadan iki nokta seçin veya koordinatları girin.',style:TextStyle(fontSize:12)),
    ])),actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('Vazgeç')),FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('Kaydet'))]));
   if(submitted!=true||!mounted)return;
   final coords=[a,b,c,d].map((x)=>double.tryParse(x.text.trim().replaceAll(',','.'))).toList();
