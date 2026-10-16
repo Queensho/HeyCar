@@ -135,5 +135,18 @@ module.exports=function registerSmartRouteRoutes(app,db){
    res.json({routeId:route.id,...matched,checkedAt:result.checkedAt,source:'tomtom'});
   }catch(e){console.error('smart route incident match',e);res.status(500).json({error:'SERVER_ERROR'});}
  });
+ app.post('/api/owner/smart-routes/:routeId/refresh-geometry',async(req,res)=>{
+  const id=await auth(req,res);if(!id)return;
+  try{
+   const route=await owned(id,req.params.routeId);
+   if(!route)return res.status(404).json({error:'NOT_FOUND'});
+   const result=await preview(route,db);
+   if(!result.available)return res.status(503).json({routeId:route.id,...result});
+   const updated=await db.query('UPDATE smart_routes SET route_geometry=$1::jsonb,updated_at=NOW() WHERE id=$2 AND user_id::text=$3 RETURNING id,updated_at',[JSON.stringify(result.geometry),route.id,id]);
+   if(!updated.rowCount)return res.status(404).json({error:'NOT_FOUND'});
+   const {geometry,...details}=result;
+   res.json({routeId:route.id,geometryPoints:geometry.length,...details,updatedAt:updated.rows[0].updated_at});
+  }catch(e){console.error('smart route geometry refresh',e);res.status(500).json({error:'SERVER_ERROR'});}
+ });
 
 };
