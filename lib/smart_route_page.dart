@@ -104,7 +104,7 @@ class SmartRouteDetailPage extends StatefulWidget{
 class _SmartRouteDetailPageState extends State<SmartRouteDetailPage>{
  Map<String,dynamic>? preview,events;
  bool busy=false,geometryBusy=false;
- static const _ink=Color(0xFF10152D),_muted=Color(0xFF778096),_border=Color(0xFFE8EAF2),_danger=Color(0xFFFF4560);
+ static const _border=Color(0xFFE8EAF2),_danger=Color(0xFFFF4560);
  String? error;
  @override void initState(){super.initState();load();}
  Future<void> load()async{
@@ -228,8 +228,8 @@ class _SmartRouteDetailPageState extends State<SmartRouteDetailPage>{
   final points=geometry.whereType<Map>().map((x){final a=(x['lat'] as num?)?.toDouble(),b=(x['lon'] as num?)?.toDouble();return a==null||b==null?null:LatLng(a,b);}).whereType<LatLng>().toList();
   final hasGeometry=points.length>=2;
   final hasTraffic=p?['available']==true;
-  final distance=hasTraffic?p?['distanceMeters'] as num?:null;
-  final delay=hasTraffic?p?['trafficDelaySeconds'] as num?:null;
+  final distance=hasTraffic?(p?['distanceMeters'] as num?):null;
+  final delay=hasTraffic?(p?['trafficDelaySeconds'] as num?):null;
   final availableEvents=events?['available']==true;
   final raw=availableEvents?(events?['incidents'] as List? ??[]):<dynamic>[];
   final unique=<Map>[],seen=<String>{};
