@@ -1,5 +1,6 @@
 const {ownerId}=require('./owner-auth-service');
 const {ownerPremiumPlan}=require('./premium-entitlements');
+const {flowAt}=require('./smart-route-tomtom');
 
 function point(p){
  if(!p||typeof p!=='object'||Array.isArray(p))return null;
@@ -56,6 +57,18 @@ module.exports=function registerSmartRouteRoutes(app,db){
   const id=await auth(req,res);if(!id)return;
   try{const r=await owned(id,req.params.routeId);if(!r)return res.status(404).json({error:'NOT_FOUND'});res.json({route:r,trafficAvailable:false});}
   catch(e){console.error('smart route detail',e);res.status(500).json({error:'SERVER_ERROR'});}
+ });
+ app.get('/api/owner/smart-routes/:routeId/traffic-sample',async(req,res)=>{
+  const id=await auth(req,res);if(!id)return;
+  try{
+   const route=await owned(id,req.params.routeId);
+   if(!route)return res.status(404).json({error:'NOT_FOUND'});
+   const plan=await ownerPremiumPlan(db,id);
+   if(!plan.premium)return res.status(402).json({error:'PREMIUM_REQUIRED'});
+   // This is a single nearest-road sample at the origin, NOT a whole-route traffic estimate.
+   const data=await flowAt(route.origin);
+   res.json({routeId:route.id,...data});
+  }catch(e){console.error('smart route traffic sample',e);res.status(500).json({error:'SERVER_ERROR'});}
  });
  app.delete('/api/owner/smart-routes/:routeId',async(req,res)=>{
   const id=await auth(req,res);if(!id)return;
