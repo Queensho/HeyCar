@@ -238,6 +238,37 @@ class _SmartRouteSettingsPageState extends State<SmartRouteSettingsPage> {
   'departureAlertEnabled':'departure_alert_enabled',
   'recoveryAlertEnabled':'recovery_alert_enabled',
  };
+ static const dayLabels=['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'];
+ Future<void> changeDays(int day,bool enabled)async{
+  if(saving)return;
+  final days=List<int>.from((settings['notification_days'] as List?)?.map((x)=>(x as num).toInt())??<int>[1,2,3,4,5]);
+  if(enabled&&!days.contains(day))days.add(day);
+  if(!enabled)days.remove(day);
+  days.sort();
+  if(days.isEmpty){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('En az bir gün seçilmeli.')));return;}
+  await savePreference({'notificationDays':days});
+ }
+ Future<void> changeTime(String key)async{
+  if(saving)return;
+  final raw='${settings[key=='notificationStart'?'notification_start':'notification_end']??'07:00'}';
+  final parts=raw.split(':');
+  final hour=int.tryParse(parts.first)??7;
+  final minute=parts.length>1?int.tryParse(parts[1])??0:0;
+  final selected=await showTimePicker(context:context,initialTime:TimeOfDay(hour:hour,minute:minute));
+  if(selected==null||!mounted)return;
+  final value='${selected.hour.toString().padLeft(2,'0')}:${selected.minute.toString().padLeft(2,'0')}';
+  await savePreference({key:value});
+ }
+ Future<void> savePreference(Map<String,dynamic> values)async{
+  if(saving)return;
+  setState(()=>saving=true);
+  try{
+   final r=await OwnerHttp.patch(endpoint,body:jsonEncode(values));
+   if(r.statusCode!=200)throw Exception('HTTP ${r.statusCode}');
+   if(mounted)setState(()=>settings=Map<String,dynamic>.from(jsonDecode(r.body)['settings'] as Map));
+  }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('Kaydedilemedi: $e')));}
+  finally{if(mounted)setState(()=>saving=false);}
+ }
  static const labels={
   'trafficAlertEnabled':'Trafik',
   'accidentAlertEnabled':'Kaza',
@@ -277,6 +308,20 @@ class _SmartRouteSettingsPageState extends State<SmartRouteSettingsPage> {
      value:settings[fields[key]]==true,
      onChanged:saving?null:(value)=>update(key,value),
     ),
+    const Divider(),
+    const Padding(padding:EdgeInsets.fromLTRB(16,12,16,8),child:Text('Bildirim günleri',style:TextStyle(fontWeight:FontWeight.bold))),
+    Padding(padding:const EdgeInsets.symmetric(horizontal:12),child:Wrap(spacing:6,runSpacing:4,children:[
+     for(var i=0;i<7;i++)FilterChip(
+      label:Text(dayLabels[i]),
+      selected:(settings['notification_days'] as List?)?.contains(i+1)??false,
+      onSelected:saving?null:(value)=>changeDays(i+1,value),
+     ),
+    ])),
+    ListTile(title:const Text('Başlangıç saati'),subtitle:Text('${settings['notification_start']??'07:00'}'.substring(0,5)),
+     trailing:const Icon(Icons.access_time),onTap:saving?null:()=>changeTime('notificationStart')),
+    ListTile(title:const Text('Bitiş saati'),subtitle:Text('${settings['notification_end']??'10:00'}'.substring(0,5)),
+     trailing:const Icon(Icons.access_time),onTap:saving?null:()=>changeTime('notificationEnd')),
+
    ]),
  );
 }
