@@ -83,7 +83,7 @@ class _SmartRoutePageState extends State<SmartRoutePage>{
      final start=point(route['origin']);
      final end=point(route['destination']);
      return Card(color:Colors.white,child:InkWell(
-      onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>SmartRouteDetailPage(route:route))),
+      onTap:()async{await Navigator.push(context,MaterialPageRoute(builder:(_)=>SmartRouteDetailPage(route:route)));if(mounted)reload();},
       child:Padding(padding:const EdgeInsets.all(14),child:Column(
        crossAxisAlignment:CrossAxisAlignment.start,
        children:[
@@ -145,6 +145,26 @@ class _SmartRouteDetailPageState extends State<SmartRouteDetailPage>{
   }catch(e){if(mounted)setState(()=>error='Bağlantı hatası: $e');}
   finally{if(mounted)setState(()=>busy=false);}
  }
+ Future<void> deleteRoute()async{
+  final confirmed=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(
+   title:const Text('Rotayı sil?'),
+   content:const Text('Kayıtlı rota ve bildirim tercihleri kalıcı olarak silinecek.'),
+   actions:[
+    TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('Vazgeç')),
+    TextButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('Rotayı sil')),
+   ],
+  ));
+  if(confirmed!=true||!mounted)return;
+  setState(()=>busy=true);
+  try{
+   final id=Uri.encodeComponent('${widget.route['id']}');
+   final uri=Uri.parse('${OnboardingBackend.baseUrl}/api/owner/smart-routes/$id');
+   final response=await OwnerHttp.delete(uri).timeout(const Duration(seconds:20));
+   if(response.statusCode!=200)throw Exception('Rota silinemedi (HTTP ${response.statusCode})');
+   if(mounted)Navigator.pop(context,true);
+  }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('$e')));}
+  finally{if(mounted)setState(()=>busy=false);}
+ }
  Future<void> saveGeometry()async{
   if(geometryBusy)return;
   setState(()=>geometryBusy=true);
@@ -195,6 +215,7 @@ class _SmartRouteDetailPageState extends State<SmartRouteDetailPage>{
    OutlinedButton.icon(onPressed:busy||geometryBusy?null:saveGeometry,icon:const Icon(Icons.route),label:Text(geometryBusy?'Kaydediliyor...':'Rota çizgisini kaydet / güncelle')),
    const SizedBox(height:12),OutlinedButton.icon(onPressed:busy?null:load,icon:const Icon(Icons.refresh),label:const Text('Trafiği yenile')),
    const SizedBox(height:8),OutlinedButton.icon(onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>SmartRouteSettingsPage(routeId:'${widget.route['id']}'))),icon:const Icon(Icons.settings_outlined),label:const Text('Rota bildirim ayarları')),
+   const SizedBox(height:8),TextButton.icon(onPressed:busy?null:deleteRoute,icon:const Icon(Icons.delete_outline,color:Colors.red),label:const Text('Rotayı sil',style:TextStyle(color:Colors.red))),
   ]));
  }
 }
