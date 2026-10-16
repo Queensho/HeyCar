@@ -148,5 +148,14 @@ module.exports=function registerSmartRouteRoutes(app,db){
    res.json({routeId:route.id,geometryPoints:geometry.length,...details,updatedAt:updated.rows[0].updated_at});
   }catch(e){console.error('smart route geometry refresh',e);res.status(500).json({error:'SERVER_ERROR'});}
  });
+ app.get('/api/owner/smart-routes/:routeId/alert-status',async(req,res)=>{
+  const id=await auth(req,res);if(!id)return;
+  try{
+   const route=await owned(id,req.params.routeId);
+   if(!route)return res.status(404).json({error:'NOT_FOUND'});
+   const r=await db.query('SELECT COUNT(*)::int AS count,MAX(created_at) AS last_event_at FROM smart_route_alert_events WHERE route_id=$1 AND user_id::text=$2',[route.id,id]);
+   res.json({routeId:route.id,notificationsActive:false,eventsRecorded:r.rows[0]?.count||0,lastEventAt:r.rows[0]?.last_event_at||null});
+  }catch(e){console.error('smart route alert status',e);res.status(500).json({error:'SERVER_ERROR'});}
+ });
 
 };
