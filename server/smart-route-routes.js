@@ -33,6 +33,60 @@ module.exports=function registerSmartRouteRoutes(app,db){
   const r=await db.query('SELECT r.*,s.traffic_alert_enabled,s.accident_alert_enabled,s.closure_alert_enabled,s.notification_days,s.notification_start,s.notification_end FROM smart_routes r LEFT JOIN smart_route_settings s ON s.route_id=r.id WHERE r.id::text=$1 AND r.user_id::text=$2',[routeId,id]);
   return r.rows[0]||null;
  }
+ const https=require('https');
+ const geoCache=new Map();
+ function providerJson(url){
+  return new Promise((resolve,reject)=>{
+   const req=https.get(url,{timeout:7000},res=>{
+    let body='';res.on('data',chunk=>{body+=chunk;if(body.length>150000)req.destroy(new Error('RESPONSE_TOO_LARGE'));});
+    res.on('end',()=>{if(res.statusCode!==200)return reject(new Error('PROVIDER_UNAVAILABLE'));try{resolve(JSON.parse(body));}catch(_){reject(new Error('INVALID_RESPONSE'));}});
+   });req.on('timeout',()=>req.destroy(new Error('TIMEOUT')));req.on('error',reject);
+  });
+ }
+ app.get('/api/owner/smart-routes/address-search',async(req,res)=>{
+  if(!await auth(req,res))return;
+  const q=String(req.query.q||'').trim().slice(0,120);
+  if(q.length<3)return res.json({results:[]});
+  const key=String(process.env.TOMTOM_API_KEY||'').trim();
+  if(!key)return res.status(503).json({error:'GEOCODER_NOT_CONFIGURED'});
+  const cacheKey='s:'+q.toLocaleLowerCase('tr-TR');
+  const cached=geoCache.get(cacheKey);
+  if(cached&&Date.now()-cached.at<300000)return res.json(cached.value);
+  try{
+   const url=new URL('https://api.tomtom.com/search/2/search/'+encodeURIComponent(q)+'.json');
+   url.searchParams.set('key',key);url.searchParams.set('countrySet','TR');url.searchParams.set('language','tr-TR');url.searchParams.set('limit','6');url.searchParams.set('typeahead','true');
+   const data=await providerJson(url);
+   const results=(data.results||[]).filter(x=>x.position&&Number.isFinite(x.position.lat)&&Number.isFinite(x.position.lon)).map(x=>({
+    name:String(x.poi?.name||x.address?.streetName||x.address?.municipalitySubdivision||x.address?.municipality||q).slice(0,150),
+    address:String(x.address?.freeformAddress||'').slice(0,220),
+    district:String(x.address?.municipalitySubdivision||x.address?.municipality||'').slice(0,100),
+    city:String(x.address?.countrySubdivision||'').slice(0,100),
+    lat:x.position.lat,lon:x.position.lon
+   }));
+   const value={results};if(geoCache.size>150)geoCache.delete(geoCache.keys().next().value);geoCache.set(cacheKey,{at:Date.now(),value});
+   res.json(value);
+  }catch(_){res.status(503).json({error:'ADDRESS_SEARCH_UNAVAILABLE'});}
+ });
+ app.get('/api/owner/smart-routes/reverse-geocode',async(req,res)=>{
+  if(!await auth(req,res))return;
+  const lat=Number(req.query.lat),lon=Number(req.query.lon);
+  if(!Number.isFinite(lat)||!Number.isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180)return res.status(400).json({error:'INVALID_COORDINATES'});
+  const key=String(process.env.TOMTOM_API_KEY||'').trim();
+  if(!key)return res.status(503).json({error:'GEOCODER_NOT_CONFIGURED'});
+  try{
+   const url=new URL('https://api.tomtom.com/search/2/reverseGeocode/'+lat+','+lon+'.json');
+   url.searchParams.set('key',key);url.searchParams.set('language','tr-TR');
+   const data=await providerJson(url);
+   res.json({address:String(data.addresses?.[0]?.address?.freeformAddress||'').slice(0,220)});
+  }catch(_){res.status(503).json({error:'REVERSE_GEOCODE_UNAVAILABLE'});}
+ });
+ app.post('/api/owner/smart-routes/preview-points',async(req,res)=>{
+  if(!await auth(req,res))return;
+  const origin=point(req.body?.origin),destination=point(req.body?.destination);
+  if(!origin||!destination)return res.status(400).json({error:'INVALID_COORDINATES'});
+  try{res.json(await preview({origin,destination,waypoints:[]},db));}
+  catch(_){res.status(503).json({available:false,reason:'ROUTING_UNAVAILABLE'});}
+ });
  app.get('/api/owner/smart-routes',async(req,res)=>{
   const id=await auth(req,res);if(!id)return;
   try{
