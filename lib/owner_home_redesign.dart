@@ -29,6 +29,7 @@ import 'owner_monthly_summary_panel.dart';
 import 'owner_home_services_promo.dart';
 import 'motorcycle_profile_page.dart';
 import 'call_activity.dart';
+import 'smart_route_page.dart';
 
 class OwnerHomeRedesign extends StatefulWidget{
   const OwnerHomeRedesign({
@@ -1656,6 +1657,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
               child:_managedComponent(component)),
             if(component.type=='monthly_summary')_motorcycleHomePanel(),
           ],
+          Padding(padding:const EdgeInsets.fromLTRB(16,6,16,8),child:OutlinedButton.icon(onPressed:()=>Navigator.of(context).push(MaterialPageRoute(builder:(_)=>const SmartRoutePage())),icon:const Icon(Icons.route,color:Color(0xFF651FFF)),label:const Text('Akıllı Rota',style:TextStyle(color:Color(0xFF651FFF))),style:OutlinedButton.styleFrom(backgroundColor:Colors.white,minimumSize:const Size.fromHeight(48)))),
           const SizedBox(height:22),
         ],
       ),
