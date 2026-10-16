@@ -476,6 +476,7 @@ class SmartRouteAddPage extends StatefulWidget{
  @override State<SmartRouteAddPage> createState()=>_SmartRouteAddPageState();
 }
 class _SmartRouteAddPageState extends State<SmartRouteAddPage>{
+ final previewController=MapController();
  final name=TextEditingController(),link=TextEditingController();
  final originText=TextEditingController(),destinationText=TextEditingController();
  Timer? debounce;
@@ -488,7 +489,7 @@ class _SmartRouteAddPageState extends State<SmartRouteAddPage>{
  LatLng? start,end;
  bool google=true,busy=false;
  String? error;
- @override void dispose(){debounce?.cancel();name.dispose();link.dispose();originText.dispose();destinationText.dispose();super.dispose();}
+ @override void dispose(){debounce?.cancel();name.dispose();link.dispose();originText.dispose();destinationText.dispose();previewController.dispose();super.dispose();}
  void parseGoogle(){
   final uri=Uri.tryParse(link.text.trim());
   if(uri==null||uri.scheme!='https'||!{'google.com','www.google.com','maps.google.com'}.contains(uri.host.toLowerCase())){
@@ -511,7 +512,7 @@ class _SmartRouteAddPageState extends State<SmartRouteAddPage>{
  TextField(controller:index==0?originText:destinationText,onChanged:(value)=>searchAddress(index,value),
  decoration:InputDecoration(labelText:index==0?'Başlangıç noktası':'Varış noktası',
  prefixIcon:Icon(Icons.location_on,color:index==0?_purple:const Color(0xFFB9FF45)),
- suffixIcon:IconButton(icon:const Icon(Icons.map_outlined),onPressed:pick),
+ suffixIcon:IconButton(icon:const Icon(Icons.map_outlined),onPressed:()=>pickOne(index)),
  border:OutlineInputBorder(borderRadius:BorderRadius.circular(15)))),
  if(activeField==index)for(final m in matches)ListTile(
  title:Text(m['name'].toString()),subtitle:Text(m['address'].toString()),
@@ -519,7 +520,7 @@ class _SmartRouteAddPageState extends State<SmartRouteAddPage>{
  final p=LatLng((m['lat'] as num).toDouble(),(m['lon'] as num).toDouble());
  if(index==0){start=p;originText.text=m['address'].toString();}else{end=p;destinationText.text=m['address'].toString();}
  matches=[];activeField=-1;
- });calculateRoute();}),
+ });moveToSelected();calculateRoute();}),
  const SizedBox(height:10)
  ]);
  void searchAddress(int index,String value){
@@ -535,6 +536,32 @@ class _SmartRouteAddPageState extends State<SmartRouteAddPage>{
  }catch(_){if(mounted&&id==requestId)setState(()=>error='Adres araması kullanılamıyor.');}
  });
  }
+ void moveToSelected(){
+  final p=start??end;
+  if(p==null)return;
+  WidgetsBinding.instance.addPostFrameCallback((_){
+   if(!mounted)return;
+   try{previewController.move(p,12);}catch(_){}
+  });
+ }
+ Future<void> pickOne(int index)async{
+  final initial=index==0?start:end;
+  final p=await Navigator.push<LatLng>(context,MaterialPageRoute(builder:(_)=>_RouteSinglePicker(initial:initial,startPoint:index==0)));
+  if(p==null||!mounted)return;
+  final label=p.latitude.toStringAsFixed(5)+', '+p.longitude.toStringAsFixed(5);
+  setState((){
+   if(index==0){start=p;originText.text=label;}else{end=p;destinationText.text=label;}
+   matches=[];activeField=-1;error=null;
+  });
+  moveToSelected();calculateRoute();
+  try{
+   final url=Uri.parse(OnboardingBackend.baseUrl+'/api/owner/smart-routes/reverse-geocode').replace(queryParameters:{'lat':p.latitude.toString(),'lon':p.longitude.toString()});
+   final r=await OwnerHttp.get(url).timeout(const Duration(seconds:8));
+   if(!mounted||r.statusCode!=200)return;
+   final address=(jsonDecode(r.body)['address']??'').toString().trim();
+   if(address.isNotEmpty&&(index==0?start:end)==p)setState((){if(index==0){originText.text=address;}else{destinationText.text=address;}});
+  }catch(_){}
+ }
  Future<void> calculateRoute()async{
  final a=start,b=end,id=++routeRequest;
  setState((){road=[];roadMeters=null;roadSeconds=null;routeLoading=a!=null&&b!=null;});
@@ -548,6 +575,7 @@ class _SmartRouteAddPageState extends State<SmartRouteAddPage>{
  final points=(data['geometry'] as List).map((p)=>LatLng((p['lat'] as num).toDouble(),(p['lon'] as num).toDouble())).toList();
  if(points.length<2)throw Exception('Yol geometrisi eksik.');
  setState((){road=points;roadMeters=(data['distanceMeters'] as num?)?.toDouble();roadSeconds=(data['travelTimeSeconds'] as num?)?.toDouble();routeLoading=false;error=null;});
+ WidgetsBinding.instance.addPostFrameCallback((_){if(mounted){try{previewController.fitCamera(CameraFit.coordinates(coordinates:points,padding:const EdgeInsets.all(30)));}catch(_){}}});
  }catch(_){if(mounted&&id==routeRequest)setState((){routeLoading=false;error='Gerçek yol güzergâhı hesaplanamadı. Daha sonra tekrar deneyin.';});}
  }
  Future<void> pick()async{
@@ -557,6 +585,7 @@ class _SmartRouteAddPageState extends State<SmartRouteAddPage>{
  Future<void> save()async{
   if(busy)return;
   if(name.text.trim().isEmpty||start==null||end==null){setState(()=>error='Rota adı, başlangıç ve varış noktası gerekli.');return;}
+  if(!google&&road.length<2){setState(()=>error='Gerçek yol güzergâhı hesaplanmadan kaydedilemez.');return;}
   setState((){busy=true;error=null;});
   try{
    final uri=Uri.parse('${OnboardingBackend.baseUrl}/api/owner/smart-routes');
@@ -627,6 +656,7 @@ class _SmartRouteAddPageState extends State<SmartRouteAddPage>{
     if(!google||start!=null&&end!=null)...[
      const SizedBox(height:12),
      SizedBox(height:190,child:ClipRRect(borderRadius:BorderRadius.circular(16),child:FlutterMap(
+      mapController:previewController,
       options:MapOptions(initialCenter:start??end??const LatLng(41.0082,28.9784),initialZoom:10,interactionOptions:const InteractionOptions(flags:InteractiveFlag.none)),
       children:[TileLayer(urlTemplate:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',userAgentPackageName:'com.cepqontag.app'),
        if(road.length>=2)PolylineLayer(polylines:[Polyline(points:road,color:_purple,strokeWidth:5)]),
@@ -643,4 +673,25 @@ class _SmartRouteAddPageState extends State<SmartRouteAddPage>{
     label:const Text('Rotayı Kaydet'),style:FilledButton.styleFrom(backgroundColor:_purple,foregroundColor:Colors.white,
      shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(16)))))),
   ])));
+}
+
+class _RouteSinglePicker extends StatefulWidget{
+ const _RouteSinglePicker({required this.initial,required this.startPoint});
+ final LatLng? initial;
+ final bool startPoint;
+ @override State<_RouteSinglePicker> createState()=>_RouteSinglePickerState();
+}
+class _RouteSinglePickerState extends State<_RouteSinglePicker>{
+ LatLng? selected;
+ @override void initState(){super.initState();selected=widget.initial;}
+ @override Widget build(BuildContext context)=>Scaffold(
+ appBar:AppBar(title:Text(widget.startPoint?'Başlangıç seç':'Varış seç')),
+ body:Column(children:[
+ Expanded(child:FlutterMap(options:MapOptions(initialCenter:selected??const LatLng(41.0082,28.9784),initialZoom:11,onTap:(_,p)=>setState(()=>selected=p)),
+ children:[TileLayer(urlTemplate:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',userAgentPackageName:'com.cepqontag.app'),
+ if(selected!=null)MarkerLayer(markers:[Marker(point:selected!,child:Icon(Icons.location_on,color:widget.startPoint?_purple:const Color(0xFFB9FF45),size:38))])])),
+ const Padding(padding:EdgeInsets.all(10),child:Text('Haritada bir noktaya dokunun.')),
+ Padding(padding:const EdgeInsets.all(16),child:SizedBox(width:double.infinity,height:52,child:FilledButton(
+ onPressed:selected==null?null:()=>Navigator.pop(context,selected),child:const Text('Konumu onayla'))))
+ ]));
 }
