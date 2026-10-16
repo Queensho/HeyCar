@@ -41,12 +41,12 @@ function validImageBytes(buf,mime){
 const SCHEMA_VERSION=1;
 const COMPONENT_TYPES=new Set([
   'weather_card','vehicle_security','story_carousel','quick_actions','monthly_summary',
-  'services_grid','promo_banner','recent_notifications','image_banner','text_banner','spacer'
+  'services_grid','promo_banner','recent_notifications','image_banner','text_banner','spacer','smart_route_card'
 ]);
 const ACTIONS=new Set([
   'NONE','OPEN_TOWING','OPEN_ROADSIDE','OPEN_VALE','OPEN_OPPORTUNITIES','OPEN_PARKING',
   'OPEN_MAINTENANCE','OPEN_DRIVERS','OPEN_INSPECTION','OPEN_WEATHER','OPEN_PREMIUM',
-  'OPEN_NOTIFICATIONS','OPEN_VEHICLES','EXTERNAL_URL'
+  'OPEN_NOTIFICATIONS','OPEN_VEHICLES','OPEN_SMART_ROUTE','EXTERNAL_URL'
 ]);
 const AUDIENCES=new Set(['all','pro','non_pro','qr_active','qr_inactive']);
 const TOKENS=new Set(['primary','accent','surface','success','warning','danger','info']);
