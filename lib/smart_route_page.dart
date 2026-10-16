@@ -109,7 +109,6 @@ class _SmartRouteDetailPageState extends State<SmartRouteDetailPage>{
  String? error;
  @override void initState(){super.initState();load();}
  Future<void> load()async{
-  if(!google&&road.length<2){setState(()=>error='Gerçek yol güzergâhı hesaplanmadan kaydedilemez.');return;}
   setState((){busy=true;error=null;});
   try{
    final id=Uri.encodeComponent('${widget.route['id']}');
