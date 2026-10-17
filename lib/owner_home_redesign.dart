@@ -1122,8 +1122,30 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
 
   Widget _quickAccessPanel(List<OwnerQuickPanelItem> items)=>Padding(
     padding:const EdgeInsets.symmetric(horizontal:16),
-    child:OwnerQuickAccessPanel(items:items),
+    child:items.length<=4?OwnerQuickAccessPanel(items:items):
+      SizedBox(height:116,child:PageView.builder(
+        key:const ValueKey('owner-quick-access-pages'),
+        itemCount:(items.length+3)~/4,
+        itemBuilder:(_,page)=>OwnerQuickAccessPanel(
+          items:items.skip(page*4).take(4).toList()),
+      )),
   );
+
+  List<OwnerQuickPanelItem> _remainingQuickShortcuts(Iterable<String> shownIds){
+    final shown=shownIds.toSet();
+    return [
+      for(final item in _quickAccessCatalog)
+        if(!shown.contains(item.id))OwnerQuickPanelItem(
+          id:item.id,
+          title:item.title,
+          icon:_quickPanelIcon(item.id,item.icon),
+          iconColor:_quickPanelTint(item.id),
+          iconBackground:_quickPanelBackground(item.id),
+          onTap:()=>widget.shortcut(item.action),
+          onLongPress:_editQuickAccess,
+        ),
+    ];
+  }
 
   Color _managedQuickTint(AppUiQuickAction item){
     final defaultToken=switch(item.id){
@@ -1186,6 +1208,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
           onTap:()=>widget.shortcut(item.action),
           onLongPress:_editQuickAccess,
         ),
+        ..._remainingQuickShortcuts(items.map((item)=>item.id)),
       ]),
     ]);
   }
@@ -1416,7 +1439,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
 
 
   Widget _managedQuickActions(){
-    final items=_appUiConfig.quickActions.take(4).toList();
+    final items=_appUiConfig.quickActions.toList();
     if(items.isEmpty)return const SizedBox.shrink();
     return Column(children:[
       _homeSectionHeading('Hızlı Erişim',_editQuickAccess,top:11),
@@ -1431,6 +1454,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
           onTap:()=>_runManagedAction(item),
           onLongPress:_editQuickAccess,
         ),
+        ..._remainingQuickShortcuts(items.map((item)=>item.id)),
       ]),
     ]);
   }
