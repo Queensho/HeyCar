@@ -9,7 +9,8 @@ async function scanCandidates(db,{now=new Date(),limit=10}={}){
  const max=Math.max(1,Math.min(20,Math.floor(limit)||10));
  const result=await db.query(`SELECT r.id,r.user_id,r.route_geometry,r.origin,r.destination,r.waypoints,
  s.traffic_alert_enabled,s.accident_alert_enabled,s.closure_alert_enabled,
- s.notification_days,s.notification_time_1,s.notification_time_1_enabled,\n s.notification_time_2,s.notification_time_2_enabled,s.timezone
+ s.notification_days,s.notification_time_1,s.notification_time_1_enabled,
+ s.notification_time_2,s.notification_time_2_enabled,s.timezone
  FROM smart_routes r JOIN smart_route_settings s ON s.route_id=r.id
  WHERE r.is_active=TRUE AND r.route_geometry IS NOT NULL
  ORDER BY r.updated_at ASC LIMIT $1`,[max]);
