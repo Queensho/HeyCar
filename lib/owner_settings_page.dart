@@ -10,6 +10,7 @@ import 'cepqontag_store_page.dart';
 import 'legal_pages.dart';
 import 'onboarding_backend.dart';
 import 'owner_auth.dart';
+import 'owner_avatar.dart';
 import 'owner_dnd_card.dart';
 import 'owner_qr_dialog.dart';
 import 'owner_settings_detail.dart';
@@ -348,7 +349,7 @@ class _ReferenceIdentityCard extends StatelessWidget {
       ),
       child: Row(children: [
         Stack(clipBehavior: Clip.none, children: [
-          CircleAvatar(radius: 37, backgroundColor: const Color(0xFFF2EDFF), child: Text(initials, maxLines: 1, style: const TextStyle(color: Color(0xFF211751), fontSize: 23, fontWeight: FontWeight.w900))),
+          OwnerAvatar(initials: initials, radius: 37, background: const Color(0xFFF2EDFF), foreground: const Color(0xFF211751)),
           Positioned(right: -3, bottom: -2, child: CircleAvatar(radius: 13, backgroundColor: Colors.white, child: Icon(Icons.edit_rounded, size: 14, color: Color(0xFF651FFF)))),
         ]),
         const SizedBox(width: 16),
@@ -479,14 +480,7 @@ class _ProfileBrandHeader extends StatelessWidget {
               colors: [Color(0xFF4D17D3), Color(0xFF8A36FF)],
             ),
           ),
-          child: Text(
-            initials,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 12.5,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
+          child: OwnerAvatar(initials: initials, radius: 19),
         ),
       ],
     );

@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'onboarding_backend.dart';
 import 'qr_backend.dart';
 import 'owner_auth.dart';
+import 'owner_avatar.dart';
 import 'owner_dnd_card.dart';
 import 'cepqar_theme.dart';
 
@@ -120,7 +121,8 @@ class _OwnerAccountSettingsPageState extends State<OwnerAccountSettingsPage> {
   Future<void> _loadAvatar()async{
     try{
       final r=await OwnerHttp.get(Uri.parse('$_baseUrl/api/owner/account/avatar'),json:false);
-      if(r.statusCode==200&&mounted)setState(()=>avatarBytes=r.bodyBytes);
+      await OwnerAvatarStore.load(force:true);
+      if(mounted)setState(()=>avatarBytes=OwnerAvatarStore.image.value);
     }catch(_){}
   }
   Future<void> _pickAvatar()async{
@@ -135,6 +137,7 @@ class _OwnerAccountSettingsPageState extends State<OwnerAccountSettingsPage> {
       if(mounted)setState(()=>avatarBusy=true);
       final r=await OwnerHttp.put(Uri.parse('$_baseUrl/api/owner/account/avatar'),body:jsonEncode({'mime':mime,'data':base64Encode(bytes)})).timeout(const Duration(seconds:30));
       if(r.statusCode!=200)throw Exception('Fotoğraf yüklenemedi (${r.statusCode}).');
+      OwnerAvatarStore.setUploaded(bytes);
       if(mounted)setState(()=>avatarBytes=bytes);
     }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString().replaceFirst('Exception: ',''))));}
     finally{if(mounted)setState(()=>avatarBusy=false);}
