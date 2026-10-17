@@ -321,15 +321,11 @@ class _SmartRouteDetailPageState extends State<SmartRouteDetailPage>{
    Expanded(child:Text(title,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:13,fontWeight:FontWeight.w600))),
    if(!danger)Icon(Icons.chevron_right,size:20,color:primary?Colors.white:_purple),
   ])));
- Future<void> openSettings()async{
-  if(settingsOpen)return;
-  settingsOpen=true;
-  final routeId='${widget.route['id']}';
-  // Replace the detail route rather than retaining its live FlutterMap,
-  // tile images and large incident list behind the settings screen.
-  // This reduces simultaneous rendering pressure on mobile Chrome.
-  Navigator.of(context).pushReplacement(MaterialPageRoute<void>(
-   builder:(_)=>SmartRouteSettingsPage(routeId:routeId)));
+ void openSettings(){
+  if(settingsOpen||!mounted)return;
+  // Switch the existing route's widget tree directly. No Navigator animation
+  // and no simultaneous FlutterMap + settings route during the transition.
+  setState(()=>settingsOpen=true);
  }
  Future<void> editName()async{
   final controller=TextEditingController(text:'${widget.route['name']??''}');
@@ -382,6 +378,11 @@ class _SmartRouteDetailPageState extends State<SmartRouteDetailPage>{
    Text(label,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:10,color:_muted)),
   ])));
  @override Widget build(BuildContext context){
+  // Return before building geometry, incident widgets or tile layers.
+  // The settings page replaces the entire detail subtree in this frame.
+  if(settingsOpen)return SmartRouteSettingsPage(
+    key:ValueKey('smart-route-settings-${widget.route['id']}'),
+    routeId:'${widget.route['id']}');
   final p=preview;
   final geometry=(widget.route['route_geometry'] as List?)??(p?['geometry'] as List?)??[];
   final points=geometry.whereType<Map>().map((x){final a=(x['lat'] as num?)?.toDouble(),b=(x['lon'] as num?)?.toDouble();return a==null||b==null?null:LatLng(a,b);}).whereType<LatLng>().toList();
