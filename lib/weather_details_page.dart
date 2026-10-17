@@ -252,7 +252,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
         ]),
       )),
       Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 0), child: Container(
-        height: 270,
+        height: 300,
         clipBehavior: Clip.antiAlias,
         decoration: const BoxDecoration(
           borderRadius: BorderRadius.all(Radius.circular(24)),
@@ -265,7 +265,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
           Positioned(right: 8, top: 22, width: 155, height: 155, child: IgnorePointer(child: _WeatherGlyph(
             condition: w.condition, size: 145,
           ))),
-          Padding(padding: const EdgeInsets.fromLTRB(17, 16, 17, 12), child: Column(
+          Padding(padding: const EdgeInsets.all(16), child: Column(
             crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
                 const Icon(Icons.location_on_rounded, color: Color(0xFFB9FF45), size: 25),
@@ -296,7 +296,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
     Color secondary,
   ) {
     return Container(
-      height: 69,
+      height: 64,
       padding: const EdgeInsets.symmetric(vertical: 6),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: .16),
