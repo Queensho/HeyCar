@@ -323,16 +323,13 @@ class _SmartRouteDetailPageState extends State<SmartRouteDetailPage>{
   ])));
  Future<void> openSettings()async{
   if(settingsOpen)return;
-  // Unmount the live tile map before opening a second Flutter route on mobile web.
-  setState(()=>settingsOpen=true);
-  await WidgetsBinding.instance.endOfFrame;
-  if(!mounted)return;
-  try{
-   await Navigator.push(context,MaterialPageRoute(
-    builder:(_)=>SmartRouteSettingsPage(routeId:'${widget.route['id']}')));
-  }finally{
-   if(mounted)setState(()=>settingsOpen=false);
-  }
+  settingsOpen=true;
+  final routeId='${widget.route['id']}';
+  // Replace the detail route rather than retaining its live FlutterMap,
+  // tile images and large incident list behind the settings screen.
+  // This reduces simultaneous rendering pressure on mobile Chrome.
+  Navigator.of(context).pushReplacement(MaterialPageRoute<void>(
+   builder:(_)=>SmartRouteSettingsPage(routeId:routeId)));
  }
  Future<void> editName()async{
   final controller=TextEditingController(text:'${widget.route['name']??''}');
