@@ -499,7 +499,7 @@ class _SmartRouteSettingsPageState extends State<SmartRouteSettingsPage> {
  }
  Future<void> changeTime(String key)async{
   if(saving||loading||error!=null)return;
-  final raw='${settings[key=='notificationStart'?'notification_start':'notification_end']??'07:00'}';
+  final raw=_displayTime(settings[key=='notificationStart'?'notification_start':'notification_end'],fallback:'07:00');
   final parts=raw.split(':');
   final hour=int.tryParse(parts.first)??7;
   final minute=parts.length>1?int.tryParse(parts[1])??0:0;
@@ -512,11 +512,20 @@ class _SmartRouteSettingsPageState extends State<SmartRouteSettingsPage> {
   if(saving||loading||error!=null)return;
   setState(()=>saving=true);
   try{
-   final r=await OwnerHttp.patch(endpoint,body:jsonEncode(values));
+   final r=await OwnerHttp.patch(endpoint,body:jsonEncode(values)).timeout(const Duration(seconds:15));
    if(r.statusCode!=200)throw Exception('HTTP ${r.statusCode}');
    if(mounted)setState(()=>settings=Map<String,dynamic>.from(jsonDecode(r.body)['settings'] as Map));
   }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('Kaydedilemedi: $e')));}
   finally{if(mounted)setState(()=>saving=false);}
+ }
+ String _displayTime(dynamic value,{required String fallback}){
+  final raw=value?.toString()??'';
+  final match=RegExp(r'^(\\d{1,2}):(\\d{2})').firstMatch(raw);
+  if(match==null)return fallback;
+  final hour=int.tryParse(match.group(1)!)??-1;
+  final minute=int.tryParse(match.group(2)!)??-1;
+  if(hour<0||hour>23||minute<0||minute>59)return fallback;
+  return '${hour.toString().padLeft(2,'0')}:${minute.toString().padLeft(2,'0')}';
  }
  static const labels={
   'trafficAlertEnabled':'Trafik',
@@ -547,7 +556,7 @@ class _SmartRouteSettingsPageState extends State<SmartRouteSettingsPage> {
   if(saving||loading||error!=null)return;
   setState(()=>saving=true);
   try{
-   final r=await OwnerHttp.patch(endpoint,body:jsonEncode({key:value}));
+   final r=await OwnerHttp.patch(endpoint,body:jsonEncode({key:value})).timeout(const Duration(seconds:15));
    if(r.statusCode!=200)throw Exception('HTTP ${r.statusCode}');
    if(mounted)setState(()=>settings=Map<String,dynamic>.from(jsonDecode(r.body)['settings'] as Map));
   }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('Kaydedilemedi: $e')));}
@@ -595,7 +604,7 @@ class _SmartRouteSettingsPageState extends State<SmartRouteSettingsPage> {
  Row(children:[const Icon(Icons.access_time,color:_purple,size:19),const SizedBox(width:6),
  Expanded(child:Text(key=='notificationStart'?'1. Bildirim':'2. Bildirim',style:const TextStyle(fontSize:12,fontWeight:FontWeight.bold)))]),
  const SizedBox(height:12),
- Text((settings[key=='notificationStart'?'notification_start':'notification_end']??(loading||error!=null?'--:--':(key=='notificationStart'?'07:00':'10:00'))).toString().substring(0,5),
+ Text(_displayTime(settings[key=='notificationStart'?'notification_start':'notification_end'],fallback:loading||error!=null?'--:--':(key=='notificationStart'?'07:00':'10:00')),
  style:const TextStyle(fontSize:25,fontWeight:FontWeight.w800,color:_purple)),
  const SizedBox(height:4),
  Text(key=='notificationStart'?'İlk bildirim saati':'İkinci bildirim saati',style:const TextStyle(fontSize:10,color:Color(0xFF778096))),
