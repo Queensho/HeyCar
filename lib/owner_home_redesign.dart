@@ -1585,16 +1585,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       'recent_notifications':(_)=>Column(children:[section('Son Bildirimler',widget.notifications),latestCard()]),
       'image_banner':(x)=>_directBanner(x),
       'text_banner':(x)=>_directBanner(x),
-       'smart_route_card':(_)=>Padding(
-         padding:const EdgeInsets.symmetric(horizontal:16,vertical:6),
-         child:Card(child:ListTile(
-           leading:const Icon(Icons.route,color:Color(0xFF651FFF)),
-           title:const Text('Akıllı Rota'),
-           subtitle:const Text('Kayıtlı rotalarınızı ve trafik durumunu görüntüleyin'),
-           trailing:const Icon(Icons.chevron_right),
-           onTap:()=>Navigator.of(context).push(MaterialPageRoute(builder:(_)=>const SmartRoutePage())),
-         )),
-       ),
+       'smart_route_card':(_)=>const SizedBox.shrink(),
       'spacer':(x)=>SizedBox(height:((x.config['height'] is num?(x.config['height'] as num).toDouble():0).clamp(0,64)).toDouble()),
     });
     return registry.build(component)??const SizedBox.shrink();
@@ -1667,7 +1658,6 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
               child:_managedComponent(component)),
             if(component.type=='monthly_summary')_motorcycleHomePanel(),
           ],
-          Padding(padding:const EdgeInsets.fromLTRB(16,6,16,8),child:OutlinedButton.icon(onPressed:()=>Navigator.of(context).push(MaterialPageRoute(builder:(_)=>const SmartRoutePage())),icon:const Icon(Icons.route,color:Color(0xFF651FFF)),label:const Text('Akıllı Rota',style:TextStyle(color:Color(0xFF651FFF))),style:OutlinedButton.styleFrom(backgroundColor:Colors.white,minimumSize:const Size.fromHeight(48)))),
           const SizedBox(height:22),
         ],
       ),
