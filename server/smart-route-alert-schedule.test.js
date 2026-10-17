@@ -36,3 +36,19 @@ test('ordinary daytime window respects weekday',()=>{
  assert.equal(eligible(day,at('2026-10-12T05:00:00Z')),true);
  assert.equal(eligible(day,at('2026-10-13T05:00:00Z')),false);
 });
+
+test('independent notification slots trigger only at selected local minutes',()=>{
+ const slots={...settings,notification_time_1:'07:00:00',notification_time_1_enabled:true,notification_time_2:'18:00:00',notification_time_2_enabled:true};
+ assert.equal(eligible(slots,at('2026-10-12T04:00:00Z')),true);
+ assert.equal(eligible(slots,at('2026-10-12T15:00:00Z')),true);
+ assert.equal(eligible(slots,at('2026-10-12T05:00:00Z')),false);
+ assert.equal(eligible(slots,at('2026-10-13T04:00:00Z')),false);
+});
+test('disabled slots do not inherit legacy window behavior',()=>{
+ const slots={...settings,notification_time_1:'07:00:00',notification_time_1_enabled:false,notification_time_2:'18:00:00',notification_time_2_enabled:false};
+ assert.equal(eligible(slots,at('2026-10-12T20:30:00Z')),false);
+});
+test('identical enabled slots produce a single eligibility decision',()=>{
+ const slots={...settings,notification_time_1:'07:00:00',notification_time_1_enabled:true,notification_time_2:'07:00:00',notification_time_2_enabled:true};
+ assert.equal(eligible(slots,at('2026-10-12T04:00:00Z')),true);
+});
