@@ -486,7 +486,6 @@ class SmartRouteSettingsPage extends StatefulWidget {
 }
 class _SmartRouteSettingsPageState extends State<SmartRouteSettingsPage> {
  bool loading=true,saving=false;
- bool screenReady=false;
  String? error;
  Map<String,dynamic> settings={};
  Uri get endpoint=>Uri.parse('${OnboardingBackend.baseUrl}/api/owner/smart-routes/${Uri.encodeComponent(widget.routeId)}/settings');
@@ -550,7 +549,6 @@ class _SmartRouteSettingsPageState extends State<SmartRouteSettingsPage> {
   super.initState();
   WidgetsBinding.instance.addPostFrameCallback((_) {
    if(!mounted)return;
-   setState(()=>screenReady=true);
    // Defer the network call until the route transition has rendered.
    Future<void>.delayed(const Duration(milliseconds:250),(){if(mounted)load();});
   });
@@ -585,7 +583,7 @@ class _SmartRouteSettingsPageState extends State<SmartRouteSettingsPage> {
  backgroundColor:const Color(0xFFF8F9FC),
  appBar:AppBar(backgroundColor:const Color(0xFFF8F9FC),surfaceTintColor:Colors.transparent,
  title:const Text('Rota Bildirim Tercihleri',style:TextStyle(fontSize:17,fontWeight:FontWeight.w800,color:Color(0xFF10152D)))),
- body:!screenReady?const SizedBox.expand():ListView(padding:const EdgeInsets.all(16),children:[
+ body:ListView(padding:const EdgeInsets.all(16),children:[
  if(loading)const Padding(padding:EdgeInsets.only(bottom:12),child:Row(children:[
  SizedBox(width:16,height:16,child:CircularProgressIndicator(strokeWidth:2,color:_purple)),
  SizedBox(width:10),Expanded(child:Text('Kayıtlı tercihler yükleniyor. Ekranı kullanabilirsiniz.',style:TextStyle(fontSize:12)))])),
