@@ -252,7 +252,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
         ]),
       )),
       Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 0), child: Container(
-        height: 315,
+        height: 270,
         clipBehavior: Clip.antiAlias,
         decoration: const BoxDecoration(
           borderRadius: BorderRadius.all(Radius.circular(24)),
@@ -262,10 +262,10 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
         child: Stack(children: [
           Positioned(right: -95, bottom: -105, child: Container(width: 340, height: 300,
             decoration: BoxDecoration(color: Colors.white.withValues(alpha: .08), shape: BoxShape.circle))),
-          Positioned(right: 8, top: 36, width: 175, height: 180, child: IgnorePointer(child: _WeatherGlyph(
-            condition: w.condition, size: 166,
+          Positioned(right: 8, top: 22, width: 155, height: 155, child: IgnorePointer(child: _WeatherGlyph(
+            condition: w.condition, size: 145,
           ))),
-          Padding(padding: const EdgeInsets.fromLTRB(17, 21, 17, 14), child: Column(
+          Padding(padding: const EdgeInsets.fromLTRB(17, 16, 17, 12), child: Column(
             crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
                 const Icon(Icons.location_on_rounded, color: Color(0xFFB9FF45), size: 25),
@@ -276,9 +276,9 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
               ]),
               const SizedBox(height: 5),
               Text(_dateLabel(DateTime.now()), style: const TextStyle(color: Colors.white70, fontSize: 12)),
-              const SizedBox(height: 12),
+              const SizedBox(height: 7),
               Text(_degree(w.temperature), style: const TextStyle(
-                color: Colors.white, fontSize: 72, height: 1, fontWeight: FontWeight.w900)),
+                color: Colors.white, fontSize: 65, height: 1, fontWeight: FontWeight.w900)),
               Text(w.description, maxLines: 2, overflow: TextOverflow.ellipsis,
                 style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
               const Spacer(),
