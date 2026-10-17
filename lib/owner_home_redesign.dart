@@ -10,6 +10,7 @@ import 'onboarding_backend.dart';
 import 'qr_backend.dart';
 import 'public_qr_link.dart';
 import 'owner_auth.dart';
+import 'owner_avatar.dart';
 import 'owner_valet_card.dart';
 import 'owner_shortcuts.dart';
 import 'roadside_help_page.dart';
@@ -642,10 +643,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
           child:InkWell(
             onTap:()=>widget.shortcut('settings'),
             customBorder:const CircleBorder(),
-            child:SizedBox(width:43,height:43,child:Center(child:
-              Text(initials,style:const TextStyle(color:Colors.white,fontSize:15,
-                fontWeight:FontWeight.w800)),
-            )),
+            child:SizedBox(width:43,height:43,child:OwnerAvatar(initials:initials,radius:21.5)),
           ),
         ),
       ])),
