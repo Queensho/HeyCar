@@ -674,10 +674,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             ),
           ])),
           const SizedBox(width:7),
-          InkWell(
-            onTap:_openWeatherDetails,
-            borderRadius:BorderRadius.circular(16),
-            child:SizedBox(
+          SizedBox(
               width:_narrowHome?112:125,
               child:Column(crossAxisAlignment:CrossAxisAlignment.center,children:[
                 Row(mainAxisAlignment:MainAxisAlignment.center,children:[
@@ -717,7 +714,6 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                     style:TextStyle(color:_homeText,fontSize:10.5)),
                 ]),
               ]),
-            ),
           ),
         ]),
       ),
