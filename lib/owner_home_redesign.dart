@@ -29,7 +29,6 @@ import 'owner_monthly_summary_panel.dart';
 import 'owner_home_services_promo.dart';
 import 'motorcycle_profile_page.dart';
 import 'call_activity.dart';
-import 'smart_route_page.dart';
 
 class OwnerHomeRedesign extends StatefulWidget{
   const OwnerHomeRedesign({
