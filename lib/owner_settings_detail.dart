@@ -1257,3 +1257,48 @@ class _EmptyBox extends StatelessWidget {
         ),
       );
 }
+
+
+/// Loads the authenticated owner's photo for home and profile headers.
+/// Falls back to initials when no image has been uploaded.
+class OwnerAvatar extends StatefulWidget {
+  const OwnerAvatar({super.key, required this.initials, required this.radius,
+    this.backgroundColor = const Color(0xFFF2EDFF),
+    this.foregroundColor = const Color(0xFF211751)});
+  final String initials;
+  final double radius;
+  final Color backgroundColor, foregroundColor;
+
+  @override
+  State<OwnerAvatar> createState() => _OwnerAvatarState();
+}
+
+class _OwnerAvatarState extends State<OwnerAvatar> {
+  Uint8List? _bytes;
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+  Future<void> _load() async {
+    try {
+      final response = await OwnerHttp.get(
+        Uri.parse('$_baseUrl/api/owner/account/avatar'), json: false,
+      ).timeout(const Duration(seconds: 8));
+      if (mounted && response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
+        setState(() => _bytes = response.bodyBytes);
+      }
+    } catch (_) {
+      // A missing photo or a temporary network error keeps the initials visible.
+    }
+  }
+  @override
+  Widget build(BuildContext context) => CircleAvatar(
+    radius: widget.radius,
+    backgroundColor: widget.backgroundColor,
+    foregroundImage: _bytes == null ? null : MemoryImage(_bytes!),
+    child: _bytes == null ? Text(widget.initials, maxLines: 1,
+      style: TextStyle(color: widget.foregroundColor,
+        fontSize: widget.radius * .62, fontWeight: FontWeight.w800)) : null,
+  );
+}

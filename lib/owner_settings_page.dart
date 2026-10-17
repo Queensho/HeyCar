@@ -348,7 +348,7 @@ class _ReferenceIdentityCard extends StatelessWidget {
       ),
       child: Row(children: [
         Stack(clipBehavior: Clip.none, children: [
-          CircleAvatar(radius: 37, backgroundColor: const Color(0xFFF2EDFF), child: Text(initials, maxLines: 1, style: const TextStyle(color: Color(0xFF211751), fontSize: 23, fontWeight: FontWeight.w900))),
+          OwnerAvatar(radius: 37, initials: initials),
           Positioned(right: -3, bottom: -2, child: CircleAvatar(radius: 13, backgroundColor: Colors.white, child: Icon(Icons.edit_rounded, size: 14, color: Color(0xFF651FFF)))),
         ]),
         const SizedBox(width: 16),
