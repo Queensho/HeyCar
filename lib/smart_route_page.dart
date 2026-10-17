@@ -253,7 +253,7 @@ class SmartRouteDetailPage extends StatefulWidget{
 }
 class _SmartRouteDetailPageState extends State<SmartRouteDetailPage>{
  Map<String,dynamic>? preview,events;
- bool busy=false,geometryBusy=false;
+ bool busy=false,geometryBusy=false,settingsOpen=false;
  static const _border=Color(0xFFE8EAF2),_danger=Color(0xFFFF4560);
  String? error;
  @override void initState(){super.initState();load();}
@@ -321,7 +321,19 @@ class _SmartRouteDetailPageState extends State<SmartRouteDetailPage>{
    Expanded(child:Text(title,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:13,fontWeight:FontWeight.w600))),
    if(!danger)Icon(Icons.chevron_right,size:20,color:primary?Colors.white:_purple),
   ])));
- void openSettings()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>SmartRouteSettingsPage(routeId:'${widget.route['id']}')));
+ Future<void> openSettings()async{
+  if(settingsOpen)return;
+  // Unmount the live tile map before opening a second Flutter route on mobile web.
+  setState(()=>settingsOpen=true);
+  await WidgetsBinding.instance.endOfFrame;
+  if(!mounted)return;
+  try{
+   await Navigator.push(context,MaterialPageRoute(
+    builder:(_)=>SmartRouteSettingsPage(routeId:'${widget.route['id']}')));
+  }finally{
+   if(mounted)setState(()=>settingsOpen=false);
+  }
+ }
  Future<void> editName()async{
   final controller=TextEditingController(text:'${widget.route['name']??''}');
   final name=await showDialog<String>(context:context,builder:(ctx)=>AlertDialog(
@@ -408,7 +420,7 @@ class _SmartRouteDetailPageState extends State<SmartRouteDetailPage>{
       child:Text(active?'Aktif':'Pasif',style:TextStyle(fontSize:12,fontWeight:FontWeight.w700,color:active?const Color(0xFF238044):_muted))),
     ]),
     const SizedBox(height:14),
-    ClipRRect(borderRadius:BorderRadius.circular(16),child:Container(height:226,color:_soft,child:hasGeometry?
+    ClipRRect(borderRadius:BorderRadius.circular(16),child:Container(height:226,color:_soft,child:hasGeometry&&!settingsOpen?
      FlutterMap(options:MapOptions(initialCenter:points[points.length~/2],initialZoom:11),children:[
       TileLayer(urlTemplate:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',userAgentPackageName:'com.cepqontag.app'),
       PolylineLayer(polylines:[Polyline(points:points,strokeWidth:5,color:_purple)]),
