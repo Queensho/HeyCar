@@ -25,11 +25,11 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
   WeatherSnapshot? weather;
   bool loading = false;
 
-  Color get bg => Colors.white;
-  Color get panel => Colors.white;
-  Color get line => const Color(0xFFE8EAF1);
-  Color get text => const Color(0xFF10152D);
-  Color get muted => const Color(0xFF778096);
+  Color get bg => const Color(0xFF390AAE);
+  Color get panel => Colors.white.withValues(alpha: .10);
+  Color get line => Colors.white.withValues(alpha: .10);
+  Color get text => Colors.white;
+  Color get muted => Colors.white70;
   Color get purple => const Color(0xFF651FFF);
   Color get lime => const Color(0xFFB9FF45);
 
@@ -206,8 +206,10 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
     final guidance = _guidance(w);
     return Scaffold(
       backgroundColor: bg,
-      body: RefreshIndicator(
-        color: purple,
+      body: Container(
+        decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF4912C8), Color(0xFF390AAE), Color(0xFF651FFF)])),
+        child: RefreshIndicator(
+        color: lime,
         onRefresh: () => _refresh(force: true),
         child: ListView(
           padding: EdgeInsets.zero,
@@ -232,7 +234,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
             const SizedBox(height: 28),
           ],
         ),
-      ),
+      )),
     );
   }
 
@@ -240,7 +242,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
     return Column(children: [
       SafeArea(bottom: false, child: Container(
         height: 64,
-        color: Colors.white,
+        color: Colors.transparent,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Stack(alignment: Alignment.center, children: [
           Align(alignment: Alignment.centerLeft, child: IconButton.filledTonal(
@@ -251,19 +253,17 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
           Image.asset('assets/file_00000000b130820abb8d411e67ab0d25.png', height: 33, fit: BoxFit.contain),
         ]),
       )),
-      Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 0), child: Container(
+      Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 0), child: SizedBox(
         height: 300,
-        clipBehavior: Clip.antiAlias,
-        decoration: const BoxDecoration(
-          borderRadius: BorderRadius.all(Radius.circular(24)),
-          gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
-            colors: [Color(0xFF8139F8), Color(0xFF4912C8), Color(0xFF651FFF)]),
-        ),
         child: Stack(children: [
-          Positioned(right: -95, bottom: -105, child: Container(width: 340, height: 300,
-            decoration: BoxDecoration(color: Colors.white.withValues(alpha: .08), shape: BoxShape.circle))),
-          Positioned(right: 8, top: 22, width: 155, height: 155, child: IgnorePointer(child: _WeatherGlyph(
-            condition: w.condition, size: 145,
+          Positioned(right: -135, top: -65, child: IgnorePointer(child: Container(
+            width: 260, height: 260,
+            decoration: const BoxDecoration(color: Color(0xFFB9FF45), shape: BoxShape.circle),
+          ))),
+          
+
+          Positioned(right: 8, top: 48, width: 145, height: 145, child: IgnorePointer(child: _WeatherGlyph(
+            condition: w.condition, size: 130,
           ))),
           Padding(padding: const EdgeInsets.all(16), child: Column(
             crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -278,7 +278,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
               Text(_dateLabel(DateTime.now()), style: const TextStyle(color: Colors.white70, fontSize: 12)),
               const SizedBox(height: 7),
               Text(_degree(w.temperature), style: const TextStyle(
-                color: Colors.white, fontSize: 65, height: 1, fontWeight: FontWeight.w900)),
+                color: Colors.white, fontSize: 76, height: 1, fontWeight: FontWeight.w900)),
               Text(w.description, maxLines: 2, overflow: TextOverflow.ellipsis,
                 style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
               const Spacer(),
@@ -424,11 +424,11 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
             gradient: LinearGradient(
               colors: [
                 guidance.accent.withValues(alpha: .10),
-                const Color(0xFFF1E6FF),
-                const Color(0xFFF9F3FF),
+                Colors.white.withValues(alpha: .13),
+                Colors.white.withValues(alpha: .08),
               ],
             ),
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(color: guidance.accent.withValues(alpha: .16)),
             boxShadow: [
               BoxShadow(
@@ -461,7 +461,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
                     Text(
                       guidance.title,
                       style: const TextStyle(
-                        color: Color(0xFF0B1530),
+                        color: Colors.white,
                         fontSize: 14.5,
                         fontWeight: FontWeight.w900,
                       ),
@@ -470,7 +470,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
                     Text(
                       guidance.subtitle,
                       style: const TextStyle(
-                        color: Color(0xFF727A8D),
+                        color: Colors.white70,
                         fontSize: 11.2,
                         fontWeight: FontWeight.w600,
                       ),
@@ -505,18 +505,12 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
         child: Container(
-          padding: const EdgeInsets.fromLTRB(12, 14, 12, 13),
+          padding: const EdgeInsets.fromLTRB(0, 2, 0, 0),
           decoration: BoxDecoration(
             color: panel,
-            borderRadius: BorderRadius.circular(23),
-            border: Border.all(color: line),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: .03),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
+            borderRadius: BorderRadius.circular(0),
+            border: Border.all(color: Colors.transparent),
+            
           ),
           child: Column(
             children: [
@@ -535,7 +529,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
                   Text(
                     'Tümünü Gör',
                     style: TextStyle(
-                      color: purple,
+                      color: Colors.white,
                       fontSize: 11,
                       fontWeight: FontWeight.w900,
                     ),
@@ -543,7 +537,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
                   const SizedBox(width: 2),
                   Icon(
                     Icons.chevron_right_rounded,
-                    color: purple,
+                    color: Colors.white,
                     size: 18,
                   ),
                 ],
@@ -559,7 +553,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
     final items = w.hourlyForecast;
     if (items.isEmpty) {
       return SizedBox(
-        height: 94,
+        height: 112,
         child: Center(
           child: Text(
             'Saatlik tahmin alınamıyor.',
@@ -569,7 +563,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
       );
     }
     return SizedBox(
-      height: 94,
+      height: 108,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: items.length,
@@ -580,10 +574,10 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
           final time =
               '${item.time.hour.toString().padLeft(2, '0')}:00';
           return Container(
-            width: 58,
+            width: 68,
             padding: const EdgeInsets.symmetric(vertical: 7),
             decoration: BoxDecoration(
-              color: now ? const Color(0xFFF3EDFF) : const Color(0xFFF8F9FC),
+              color: now ? const Color(0xFF651FFF) : Colors.white.withValues(alpha: .10),
               borderRadius: BorderRadius.circular(16),
               border: now
                   ? Border.all(color: purple.withValues(alpha: .12))
@@ -595,7 +589,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
                 Text(
                   now ? 'Şu an' : time,
                   style: TextStyle(
-                    color: now ? purple : muted,
+                    color: now ? Colors.white : muted,
                     fontSize: 9.5,
                     fontWeight: now ? FontWeight.w900 : FontWeight.w600,
                   ),
@@ -642,10 +636,10 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
         itemBuilder: (_, index) {
           final item = items[index];
           return Container(
-            width: 69,
+            width: 60,
             padding: const EdgeInsets.fromLTRB(5, 7, 5, 6),
             decoration: BoxDecoration(
-              color: index == 0 ? const Color(0xFFF3EDFF) : const Color(0xFFF8F9FC),
+              color: index == 0 ? const Color(0xFF651FFF) : Colors.white.withValues(alpha: .10),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Column(
