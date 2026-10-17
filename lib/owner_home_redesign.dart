@@ -1667,7 +1667,6 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
               child:_managedComponent(component)),
             if(component.type=='monthly_summary')_motorcycleHomePanel(),
           ],
-          Padding(padding:const EdgeInsets.fromLTRB(16,6,16,8),child:OutlinedButton.icon(onPressed:()=>Navigator.of(context).push(MaterialPageRoute(builder:(_)=>const SmartRoutePage())),icon:const Icon(Icons.route,color:Color(0xFF651FFF)),label:const Text('Akıllı Rota',style:TextStyle(color:Color(0xFF651FFF))),style:OutlinedButton.styleFrom(backgroundColor:Colors.white,minimumSize:const Size.fromHeight(48)))),
           const SizedBox(height:22),
         ],
       ),
