@@ -20,6 +20,13 @@ function eligible(settings,now=new Date()){
   const n=Number(match[1])*60+Number(match[2]);
   return n>=0&&n<1440?n:null;
  };
+ if(settings.notification_time_1!==undefined || settings.notification_time_2!==undefined){
+  if(!days.includes(isoDay))return false;
+  const first=settings.notification_time_1_enabled===true?parse(settings.notification_time_1):null;
+  const second=settings.notification_time_2_enabled===true?parse(settings.notification_time_2):null;
+  // One scan per minute; identical slots still yield a single eligibility result.
+  return (first!==null&&time===first)||(second!==null&&time===second);
+ }
  const start=parse(settings.notification_start),end=parse(settings.notification_end);
  if(start===null||end===null)return false;
  if(start<=end)return days.includes(isoDay)&&time>=start&&time<=end;
