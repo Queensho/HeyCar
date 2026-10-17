@@ -530,11 +530,18 @@ class _SmartRouteSettingsPageState extends State<SmartRouteSettingsPage> {
  Future<void> load()async{
   setState((){loading=true;error=null;});
   try{
-   final r=await OwnerHttp.get(endpoint);
+   final r=await OwnerHttp.get(endpoint).timeout(const Duration(seconds:15));
    if(r.statusCode!=200)throw Exception('HTTP ${r.statusCode}');
-   if(mounted)setState(()=>settings=Map<String,dynamic>.from(jsonDecode(r.body)['settings'] as Map));
-  }catch(e){if(mounted)setState(()=>error='Ayarlar yüklenemedi: $e');}
-  finally{if(mounted)setState(()=>loading=false);}
+   final data=jsonDecode(r.body) as Map<String,dynamic>;
+   final loaded=Map<String,dynamic>.from(data['settings'] as Map);
+   if(mounted)setState(()=>settings=loaded);
+  }on TimeoutException{
+   if(mounted)setState(()=>error='Sunucu yanıt vermedi. Tekrar deneyin.');
+  }catch(e){
+   if(mounted)setState(()=>error='Ayarlar yüklenemedi: $e');
+  }finally{
+   if(mounted)setState(()=>loading=false);
+  }
  }
  Future<void> update(String key,bool value)async{
   if(saving)return;
@@ -550,7 +557,7 @@ class _SmartRouteSettingsPageState extends State<SmartRouteSettingsPage> {
  backgroundColor:const Color(0xFFF8F9FC),
  appBar:AppBar(backgroundColor:const Color(0xFFF8F9FC),surfaceTintColor:Colors.transparent,
  title:const Text('Rota Bildirim Tercihleri',style:TextStyle(fontSize:17,fontWeight:FontWeight.w800,color:Color(0xFF10152D)))),
- body:loading?const Center(child:CircularProgressIndicator(color:_purple)):
+ body:loading?const Center(child:Column(mainAxisSize:MainAxisSize.min,children:[CircularProgressIndicator(color:_purple),SizedBox(height:12),Text('Bildirim tercihleri yükleniyor...')])):
  error!=null?Center(child:TextButton(onPressed:load,child:Text(error!))):
  ListView(padding:const EdgeInsets.all(16),children:[
  Container(padding:const EdgeInsets.all(17),decoration:BoxDecoration(color:_purple,borderRadius:BorderRadius.circular(18)),
