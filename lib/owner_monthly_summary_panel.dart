@@ -134,7 +134,7 @@ class _MonthlyMetricTile extends StatelessWidget{
       onTap:metric.onTap,
       borderRadius:BorderRadius.circular(16),
       child:Container(
-        height:120,
+        height:96,
         clipBehavior:Clip.antiAlias,
         decoration:BoxDecoration(color:metric.background,
           borderRadius:BorderRadius.circular(16)),
@@ -144,14 +144,14 @@ class _MonthlyMetricTile extends StatelessWidget{
               decoration:BoxDecoration(color:accent,
                 borderRadius:BorderRadius.circular(15))))),
           Padding(
-            padding:EdgeInsets.fromLTRB(narrow?5:7,8,narrow?4:6,6),
+            padding:EdgeInsets.fromLTRB(narrow?5:7,6,narrow?4:6,5),
             child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-              Container(width:32,height:32,
+              Container(width:29,height:29,
                 decoration:BoxDecoration(
                   color:metric.tint.withValues(alpha:.09),
                   borderRadius:BorderRadius.circular(11)),
                 child:Icon(metric.icon,color:metric.tint,size:iconSize)),
-              const SizedBox(height:5),
+              const SizedBox(height:3),
               FittedBox(fit:BoxFit.scaleDown,
                 alignment:Alignment.centerLeft,
                 child:Text(metric.count==null?'—':metric.count.toString(),
@@ -159,7 +159,7 @@ class _MonthlyMetricTile extends StatelessWidget{
                   maxLines:1,style:const TextStyle(
                     color:Color(0xFF10152D),fontSize:24,
                     fontWeight:FontWeight.w800,height:1))),
-              const SizedBox(height:3),
+              const SizedBox(height:2),
               Text(metric.label,maxLines:2,overflow:TextOverflow.ellipsis,
                 style:TextStyle(color:const Color(0xFF778096),
                   fontSize:narrow?9:10,fontWeight:FontWeight.w600,height:1.08)),
