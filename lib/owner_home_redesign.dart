@@ -1178,7 +1178,14 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       child:Row(children:[
         Expanded(child:Text(title,style:TextStyle(
           color:_homeText,fontSize:17,fontWeight:FontWeight.w900))),
-        InkWell(
+        if(title=='Hızlı Erişim')
+          Row(mainAxisSize:MainAxisSize.min,children:[
+            Icon(Icons.swipe_left_rounded,color:_homeSecondary,size:17),
+            const SizedBox(width:4),
+            Text('Sola kaydır',style:TextStyle(color:_homeSecondary,
+              fontSize:11,fontWeight:FontWeight.w700)),
+          ])
+        else InkWell(
           onTap:tap,borderRadius:BorderRadius.circular(10),
           child:Padding(
             padding:const EdgeInsets.symmetric(vertical:4,horizontal:3),
