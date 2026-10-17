@@ -16,7 +16,6 @@ import 'owner_settings_detail.dart';
 import 'premium_page.dart';
 import 'qr_backend.dart';
 import 'support_ticket_page.dart';
-import 'smart_route_page.dart';
 
 const _purple = Color(0xFF7A35F5);
 const _gold = Color(0xFFFFB51B);
@@ -304,7 +303,6 @@ class OwnerSettingsPage extends StatelessWidget {
             ]),
             const SizedBox(height: 14),
             _ReferenceMenuGroup(children: [
-              _ReferenceMenuItem(icon: Icons.route_rounded, title: 'Akıllı Rota', subtitle: 'Kayıtlı rotalar ve trafik bildirimleri.', onTap: () => _push(context, const SmartRoutePage())),
               _ReferenceMenuItem(icon: Icons.notifications_none_rounded, title: 'Bildirim Ayarları', subtitle: 'Bildirim tercihlerinizi yönetin.', onTap: () => _push(context, const OwnerNotificationSettingsPage())),
               _ReferenceMenuItem(icon: Icons.settings_rounded, title: 'Uygulama Ayarları', subtitle: 'Tema, dil ve diğer ayarlar.', onTap: () => _push(context, const _ReferenceAppSettingsPage())),
               _ReferenceMenuItem(icon: Icons.help_outline_rounded, title: 'Yardım & Destek', subtitle: 'Sık sorulan sorular ve destek talebi.', onTap: () => _push(context, const SupportTicketPage())),
