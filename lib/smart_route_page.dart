@@ -547,34 +547,52 @@ class _SmartRouteSettingsPageState extends State<SmartRouteSettingsPage> {
   finally{if(mounted)setState(()=>saving=false);}
  }
  @override Widget build(BuildContext context)=>Scaffold(
-  appBar:AppBar(title:const Text('Bildirim tercihleri')),
-  body:loading?const Center(child:CircularProgressIndicator()):
-   error!=null?Center(child:TextButton(onPressed:load,child:Text(error!))):
-   ListView(children:[
-    const Padding(padding:EdgeInsets.all(16),child:Text('Tercihleriniz kaydedilir. Otomatik bildirim servisi henüz etkin değildir.',style:TextStyle(fontSize:13))),
-    for(final key in fields.keys)SwitchListTile(
-     title:Text(labels[key]!),
-     value:settings[fields[key]]==true,
-     onChanged:saving?null:(value)=>update(key,value),
-    ),
-    const Divider(),
-    const Padding(padding:EdgeInsets.fromLTRB(16,12,16,8),child:Text('Bildirim günleri',style:TextStyle(fontWeight:FontWeight.bold))),
-    Padding(padding:const EdgeInsets.symmetric(horizontal:12),child:Wrap(spacing:6,runSpacing:4,children:[
-     for(var i=0;i<7;i++)FilterChip(
-      label:Text(dayLabels[i]),
-      selected:(settings['notification_days'] as List?)?.contains(i+1)??false,
-      onSelected:saving?null:(value)=>changeDays(i+1,value),
-     ),
-    ])),
-    ListTile(title:const Text('Başlangıç saati'),subtitle:Text('${settings['notification_start']??'07:00'}'.substring(0,5)),
-     trailing:const Icon(Icons.access_time),onTap:saving?null:()=>changeTime('notificationStart')),
-    ListTile(title:const Text('Bitiş saati'),subtitle:Text('${settings['notification_end']??'10:00'}'.substring(0,5)),
-     trailing:const Icon(Icons.access_time),onTap:saving?null:()=>changeTime('notificationEnd')),
-
-   ]),
- );
+ backgroundColor:const Color(0xFFF8F9FC),
+ appBar:AppBar(backgroundColor:const Color(0xFFF8F9FC),surfaceTintColor:Colors.transparent,
+ title:const Text('Rota Bildirim Tercihleri',style:TextStyle(fontSize:17,fontWeight:FontWeight.w800,color:Color(0xFF10152D)))),
+ body:loading?const Center(child:CircularProgressIndicator(color:_purple)):
+ error!=null?Center(child:TextButton(onPressed:load,child:Text(error!))):
+ ListView(padding:const EdgeInsets.all(16),children:[
+ Container(padding:const EdgeInsets.all(17),decoration:BoxDecoration(color:_purple,borderRadius:BorderRadius.circular(18)),
+ child:const Row(children:[Icon(Icons.notifications_active,color:Color(0xFFB9FF45),size:30),SizedBox(width:12),
+ Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+ Text('Rotanı takip et',style:TextStyle(color:Colors.white,fontSize:17,fontWeight:FontWeight.bold)),
+ SizedBox(height:5),Text('Bildirim türlerini, günlerini ve saatlerini kişiselleştir.',style:TextStyle(color:Colors.white,fontSize:11)),
+ ]))])),
+ const Padding(padding:EdgeInsets.fromLTRB(2,20,2,10),child:Text('Bildirim türleri',style:TextStyle(fontWeight:FontWeight.w800,fontSize:15))),
+ for(final key in fields.keys)Container(margin:const EdgeInsets.only(bottom:8),
+ decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(14),border:Border.all(color:const Color(0xFFE8EAF2))),
+ child:SwitchListTile(title:Text(labels[key]!,style:const TextStyle(fontSize:13,fontWeight:FontWeight.w600)),
+ activeThumbColor:_purple,value:settings[fields[key]]==true,onChanged:saving?null:(value)=>update(key,value))),
+ const Padding(padding:EdgeInsets.fromLTRB(2,18,2,10),child:Text('Bildirim günleri',style:TextStyle(fontWeight:FontWeight.w800,fontSize:15))),
+ Container(padding:const EdgeInsets.all(12),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(15)),
+ child:Wrap(spacing:7,runSpacing:6,children:[for(var i=0;i<7;i)FilterChip(
+ label:Text(dayLabels[i],style:const TextStyle(fontSize:11)),
+ selected:(settings['notification_days'] as List?)?.contains(i+1)??false,
+ selectedColor:const Color(0xFFB9FF45),checkmarkColor:const Color(0xFF10152D),
+ onSelected:saving?null:(value)=>changeDays(i+1,value))])),
+ const Padding(padding:EdgeInsets.fromLTRB(2,20,2,10),child:Text('Bildirim saatleri',style:TextStyle(fontWeight:FontWeight.w800,fontSize:15))),
+ Row(children:[
+ for(final key in ['notificationStart','notificationEnd'])Expanded(child:Padding(
+ padding:EdgeInsets.only(right:key=='notificationStart'?5:0,left:key=='notificationEnd'?5:0),
+ child:InkWell(onTap:saving?null:()=>changeTime(key),borderRadius:BorderRadius.circular(16),
+ child:Container(padding:const EdgeInsets.all(14),
+ decoration:BoxDecoration(color:const Color(0xFFF3EDFF),borderRadius:BorderRadius.circular(16),border:Border.all(color:const Color(0xFFE5D9FF))),
+ child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+ Row(children:[const Icon(Icons.access_time,color:_purple,size:19),const SizedBox(width:6),
+ Expanded(child:Text(key=='notificationStart'?'1. Bildirim':'2. Bildirim',style:const TextStyle(fontSize:12,fontWeight:FontWeight.bold)))]),
+ const SizedBox(height:12),
+ Text(('\u0024{settings[key=='notificationStart'?'notification_start':'notification_end']??(key=='notificationStart'?'07:00':'10:00')}').substring(0,5),
+ style:const TextStyle(fontSize:25,fontWeight:FontWeight.w800,color:_purple)),
+ const SizedBox(height:4),
+ Text(key=='notificationStart'?'İlk bildirim saati':'İkinci bildirim saati',style:const TextStyle(fontSize:10,color:Color(0xFF778096))),
+ ]))))),
+ ]),
+ const SizedBox(height:12),
+ const Text('Saatler ayrı kaydedilir. Push gönderimi sunucu servisinin etkin olmasına bağlıdır.',style:TextStyle(fontSize:11,color:Color(0xFF778096))),
+ if(saving)const Padding(padding:EdgeInsets.only(top:12),child:LinearProgressIndicator(color:_purple)),
+ ]));
 }
-
 class SmartRouteMapPicker extends StatefulWidget{
  const SmartRouteMapPicker({super.key});
  @override State<SmartRouteMapPicker> createState()=>_SmartRouteMapPickerState();
