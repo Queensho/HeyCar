@@ -582,7 +582,7 @@ class _SmartRouteSettingsPageState extends State<SmartRouteSettingsPage> {
  Row(children:[const Icon(Icons.access_time,color:_purple,size:19),const SizedBox(width:6),
  Expanded(child:Text(key=='notificationStart'?'1. Bildirim':'2. Bildirim',style:const TextStyle(fontSize:12,fontWeight:FontWeight.bold)))]),
  const SizedBox(height:12),
- Text(('\u0024{settings[key=='notificationStart'?'notification_start':'notification_end']??(key=='notificationStart'?'07:00':'10:00')}').substring(0,5),
+ Text((settings[key=='notificationStart'?'notification_start':'notification_end']??(key=='notificationStart'?'07:00':'10:00')).toString().substring(0,5),
  style:const TextStyle(fontSize:25,fontWeight:FontWeight.w800,color:_purple)),
  const SizedBox(height:4),
  Text(key=='notificationStart'?'İlk bildirim saati':'İkinci bildirim saati',style:const TextStyle(fontSize:10,color:Color(0xFF778096))),
