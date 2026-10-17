@@ -268,7 +268,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
           Padding(padding: const EdgeInsets.fromLTRB(17, 21, 17, 14), child: Column(
             crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
-                Image.asset('assets/images/services/konum.png', width: 25, height: 25, errorBuilder: (_, __, ___) => const Icon(Icons.location_on_rounded, color: Color(0xFFB9FF45), size: 25)),
+                const Icon(Icons.location_on_rounded, color: Color(0xFFB9FF45), size: 25),
                 const SizedBox(width: 5),
                 Expanded(child: Text(w.location.isEmpty ? 'Konum' : w.location,
                   maxLines: 1, overflow: TextOverflow.ellipsis,
@@ -305,7 +305,6 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
       child: Row(
         children: [
           _metric(
-            assetIcon: 'en_yuksek.png',
             icon: Icons.arrow_upward_rounded,
             iconColor: const Color(0xFFFF3E48),
             value: _degree(w.maxTemperature),
@@ -315,7 +314,6 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
           ),
           _divider(),
           _metric(
-            assetIcon: 'en_dusuk.png',
             icon: Icons.arrow_downward_rounded,
             iconColor: const Color(0xFF1976FF),
             value: _degree(w.minTemperature),
@@ -325,7 +323,6 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
           ),
           _divider(),
           _metric(
-            assetIcon: 'hissedilen.png',
             icon: Icons.thermostat_rounded,
             iconColor: purple,
             value: _degree(w.feelsLike),
@@ -335,7 +332,6 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
           ),
           _divider(),
           _metric(
-            assetIcon: 'nem.png',
             icon: Icons.water_drop_outlined,
             iconColor: purple,
             value: _percent(w.humidity),
@@ -345,7 +341,6 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
           ),
           _divider(),
           _metric(
-            assetIcon: 'ruzgar.png',
             icon: Icons.air_rounded,
             iconColor: purple,
             value: _wind(w.windSpeed),
@@ -355,7 +350,6 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
           ),
           _divider(),
           _metric(
-            assetIcon: 'gorus.png',
             icon: Icons.visibility_outlined,
             iconColor: purple,
             value: _visibility(w.visibility),
@@ -377,7 +371,6 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
   Widget _metric({
     required IconData icon,
     required Color iconColor,
-    String? assetIcon,
     required String value,
     required String label,
     required Color foreground,
@@ -390,7 +383,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              assetIcon == null ? Icon(icon, size: 14, color: iconColor) : Image.asset('assets/images/services/$assetIcon', width: 17, height: 17, errorBuilder: (_, __, ___) => Icon(icon, size: 14, color: iconColor)),
+              Icon(icon, size: 14, color: iconColor),
               const SizedBox(width: 2),
               Flexible(
                 child: Text(
@@ -1012,34 +1005,12 @@ class _WeatherGlyph extends StatelessWidget {
   final WeatherCondition condition;
   final double size;
 
-  static String assetFor(WeatherCondition condition) {
-    switch (condition) {
-      case WeatherCondition.clear:
-        return 'gunesli.png';
-      case WeatherCondition.partlyCloudy:
-        return 'parcali_bulutlu.png';
-      case WeatherCondition.cloudy:
-        return 'bulutlu.png';
-      case WeatherCondition.rain:
-      case WeatherCondition.thunderstorm:
-        return 'yagmurlu.png';
-      case WeatherCondition.snow:
-        return 'bulutlu.png';
-      case WeatherCondition.night:
-        return 'acik_gece.png';
-    }
-  }
-
   @override
   Widget build(BuildContext context) => SizedBox(
     width: size * 1.28,
     height: size,
-    child: Image.asset(
-      'assets/images/services/${assetFor(condition)}',
-      fit: BoxFit.contain,
-      errorBuilder: (_, __, ___) => CustomPaint(
-        painter: _WeatherGlyphPainter(condition: condition),
-      ),
+    child: CustomPaint(
+      painter: _WeatherGlyphPainter(condition: condition),
     ),
   );
 }
