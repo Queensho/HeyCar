@@ -474,107 +474,109 @@ class SmartRouteSettingsPage extends StatefulWidget {
  final String routeId;
  @override State<SmartRouteSettingsPage> createState()=>_SmartRouteSettingsPageState();
 }
-class _SmartRouteSettingsPageState extends State<SmartRouteSettingsPage> {
- bool loading=true,saving=false;
+class _SmartRouteSettingsPageState extends State<SmartRouteSettingsPage>{
+ static const ink=Color(0xFF10152D),muted=Color(0xFF778096),soft=Color(0xFFF3EDFF),line=Color(0xFFE8EAF2);
+ static const days=['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'];
+ static const kinds=[
+  ['trafficAlertEnabled','traffic_alert_enabled','Trafik','Yoğun trafik, yavaşlama ve kuyruklar.'],
+  ['accidentAlertEnabled','accident_alert_enabled','Kaza','Rotanızla ilişkili kaza bildirimleri.'],
+  ['closureAlertEnabled','closure_alert_enabled','Yol kapanması','Rotanızdaki yol kapanmaları.'],
+  ['alternativeRouteEnabled','alternative_route_enabled','Alternatif rota','Daha hızlı alternatif güzergâhlar.'],
+  ['departureAlertEnabled','departure_alert_enabled','Çıkış zamanı','Seçtiğiniz saatte yolculuk hatırlatması.'],
+  ['recoveryAlertEnabled','recovery_alert_enabled','Trafik normale döndü','Yoğunluk sona erdiğinde bilgilendirme.'],
+ ];
+ bool loading=true,saving=false,notificationsActive=false,saved=false;
  String? error;
  Map<String,dynamic> settings={};
  Uri get endpoint=>Uri.parse('${OnboardingBackend.baseUrl}/api/owner/smart-routes/${Uri.encodeComponent(widget.routeId)}/settings');
- static const fields={
-  'trafficAlertEnabled':'traffic_alert_enabled',
-  'accidentAlertEnabled':'accident_alert_enabled',
-  'closureAlertEnabled':'closure_alert_enabled',
-  'alternativeRouteEnabled':'alternative_route_enabled',
-  'departureAlertEnabled':'departure_alert_enabled',
-  'recoveryAlertEnabled':'recovery_alert_enabled',
- };
- static const dayLabels=['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'];
- Future<void> changeDays(int day,bool enabled)async{
-  if(saving)return;
-  final days=List<int>.from((settings['notification_days'] as List?)?.map((x)=>(x as num).toInt())??<int>[1,2,3,4,5]);
-  if(enabled&&!days.contains(day))days.add(day);
-  if(!enabled)days.remove(day);
-  days.sort();
-  if(days.isEmpty){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('En az bir gün seçilmeli.')));return;}
-  await savePreference({'notificationDays':days});
- }
- Future<void> changeTime(String key)async{
-  if(saving)return;
-  final raw='${settings[key=='notificationStart'?'notification_start':'notification_end']??'07:00'}';
-  final parts=raw.split(':');
-  final hour=int.tryParse(parts.first)??7;
-  final minute=parts.length>1?int.tryParse(parts[1])??0:0;
-  final selected=await showTimePicker(context:context,initialTime:TimeOfDay(hour:hour,minute:minute));
-  if(selected==null||!mounted)return;
-  final value='${selected.hour.toString().padLeft(2,'0')}:${selected.minute.toString().padLeft(2,'0')}';
-  await savePreference({key:value});
- }
- Future<void> savePreference(Map<String,dynamic> values)async{
-  if(saving)return;
-  setState(()=>saving=true);
-  try{
-   final r=await OwnerHttp.patch(endpoint,body:jsonEncode(values));
-   if(r.statusCode!=200)throw Exception('HTTP ${r.statusCode}');
-   if(mounted)setState(()=>settings=Map<String,dynamic>.from(jsonDecode(r.body)['settings'] as Map));
-  }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('Kaydedilemedi: $e')));}
-  finally{if(mounted)setState(()=>saving=false);}
- }
- static const labels={
-  'trafficAlertEnabled':'Trafik',
-  'accidentAlertEnabled':'Kaza',
-  'closureAlertEnabled':'Yol kapanması',
-  'alternativeRouteEnabled':'Alternatif rota',
-  'departureAlertEnabled':'Çıkış zamanı',
-  'recoveryAlertEnabled':'Trafik normale döndü',
- };
  @override void initState(){super.initState();load();}
  Future<void> load()async{
-  setState((){loading=true;error=null;});
+  setState((){loading=true;error=null;saved=false;});
   try{
-   final r=await OwnerHttp.get(endpoint);
+   final r=await OwnerHttp.get(endpoint).timeout(const Duration(seconds:20));
    if(r.statusCode!=200)throw Exception('HTTP ${r.statusCode}');
-   if(mounted)setState(()=>settings=Map<String,dynamic>.from(jsonDecode(r.body)['settings'] as Map));
-  }catch(e){if(mounted)setState(()=>error='Ayarlar yüklenemedi: $e');}
+   final data=jsonDecode(r.body) as Map<String,dynamic>;
+   if(mounted)setState((){settings=Map<String,dynamic>.from(data['settings'] as Map);notificationsActive=data['notificationsActive']==true;});
+  }catch(_){if(mounted)setState(()=>error='Bildirim tercihleri yüklenemedi.');}
   finally{if(mounted)setState(()=>loading=false);}
  }
- Future<void> update(String key,bool value)async{
+ void change(String key,dynamic value){if(saving)return;setState((){settings[key]=value;saved=false;});}
+ List<int> get selectedDays=>(settings['notification_days'] as List? ??[]).map((x)=>(x as num).toInt()).toList();
+ Future<void> selectTime(int slot)async{
+  final key='notification_time_$slot';
+  final raw='${settings[key]??(slot==1?'07:00':'18:00')}';
+  final parts=raw.split(':');
+  final selected=await showTimePicker(context:context,initialTime:TimeOfDay(hour:int.tryParse(parts[0])??7,minute:parts.length>1?int.tryParse(parts[1])??0:0),builder:(ctx,child)=>MediaQuery(data:MediaQuery.of(ctx).copyWith(alwaysUse24HourFormat:true),child:child!));
+  if(selected!=null&&mounted)change(key,'${selected.hour.toString().padLeft(2,'0')}:${selected.minute.toString().padLeft(2,'0')}');
+ }
+ Future<void> save()async{
   if(saving)return;
-  setState(()=>saving=true);
+  if(selectedDays.isEmpty){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('En az bir bildirim günü seçin.')));return;}
+  setState((){saving=true;saved=false;});
+  final payload=<String,dynamic>{};
+  for(final kind in kinds)payload[kind[0]]=settings[kind[1]]==true;
+  payload['notificationDays']=selectedDays;
+  for(var i=1;i<=2;i++){
+   payload['notificationTime$i']='${settings['notification_time_$i']??(i==1?'07:00':'18:00')}'.substring(0,5);
+   payload['notificationTime${i}Enabled']=settings['notification_time_${i}_enabled']==true;
+  }
   try{
-   final r=await OwnerHttp.patch(endpoint,body:jsonEncode({key:value}));
+   final r=await OwnerHttp.patch(endpoint,body:jsonEncode(payload)).timeout(const Duration(seconds:20));
    if(r.statusCode!=200)throw Exception('HTTP ${r.statusCode}');
-   if(mounted)setState(()=>settings=Map<String,dynamic>.from(jsonDecode(r.body)['settings'] as Map));
-  }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('Kaydedilemedi: $e')));}
+   final data=jsonDecode(r.body) as Map<String,dynamic>;
+   if(mounted){setState((){settings=Map<String,dynamic>.from(data['settings'] as Map);notificationsActive=data['notificationsActive']==true;saved=true;});ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Bildirim tercihleriniz kaydedildi.')));}
+  }catch(_){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Tercihler kaydedilemedi. Tekrar deneyin.')));}
   finally{if(mounted)setState(()=>saving=false);}
  }
- @override Widget build(BuildContext context)=>Scaffold(
-  appBar:AppBar(title:const Text('Bildirim tercihleri')),
-  body:loading?const Center(child:CircularProgressIndicator()):
-   error!=null?Center(child:TextButton(onPressed:load,child:Text(error!))):
-   ListView(children:[
-    const Padding(padding:EdgeInsets.all(16),child:Text('Tercihleriniz kaydedilir. Otomatik bildirim servisi henüz etkin değildir.',style:TextStyle(fontSize:13))),
-    for(final key in fields.keys)SwitchListTile(
-     title:Text(labels[key]!),
-     value:settings[fields[key]]==true,
-     onChanged:saving?null:(value)=>update(key,value),
-    ),
-    const Divider(),
-    const Padding(padding:EdgeInsets.fromLTRB(16,12,16,8),child:Text('Bildirim günleri',style:TextStyle(fontWeight:FontWeight.bold))),
-    Padding(padding:const EdgeInsets.symmetric(horizontal:12),child:Wrap(spacing:6,runSpacing:4,children:[
-     for(var i=0;i<7;i++)FilterChip(
-      label:Text(dayLabels[i]),
-      selected:(settings['notification_days'] as List?)?.contains(i+1)??false,
-      onSelected:saving?null:(value)=>changeDays(i+1,value),
-     ),
+ Widget panel(Widget child)=>Container(margin:const EdgeInsets.only(bottom:10),padding:const EdgeInsets.all(12),decoration:BoxDecoration(color:Colors.white,border:Border.all(color:line),borderRadius:BorderRadius.circular(16)),child:child);
+ Widget heading(IconData icon,String title,String subtitle)=>Row(children:[
+  Container(width:38,height:38,decoration:BoxDecoration(color:soft,borderRadius:BorderRadius.circular(11)),child:Icon(icon,color:_purple,size:20)),
+  const SizedBox(width:10),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(title,style:const TextStyle(fontSize:16,fontWeight:FontWeight.w700,color:ink)),Text(subtitle,style:const TextStyle(fontSize:11,color:muted))])),
+ ]);
+ Widget kindRow(int i){
+  final item=kinds[i];
+  final icons=[Icons.directions_car,Icons.car_crash,Icons.do_not_disturb_on,Icons.alt_route,Icons.exit_to_app,Icons.check_circle_outline];
+  final colors=[const Color(0xFFFFB020),const Color(0xFFFF4560),const Color(0xFFFF4560),const Color(0xFF23B26D),const Color(0xFF2765DD),const Color(0xFF23B26D)];
+  return Column(children:[
+   if(i>0)const Divider(height:1,color:line),
+   SizedBox(height:58,child:Row(children:[
+    Container(width:38,height:38,decoration:BoxDecoration(color:colors[i].withValues(alpha:.10),borderRadius:BorderRadius.circular(11)),child:Icon(icons[i],color:colors[i],size:20)),
+    const SizedBox(width:10),
+    Expanded(child:Column(mainAxisAlignment:MainAxisAlignment.center,crossAxisAlignment:CrossAxisAlignment.start,children:[
+     Text(item[2],maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:13,fontWeight:FontWeight.w600,color:ink)),
+     Text(item[3],maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:10,color:muted)),
     ])),
-    ListTile(title:const Text('Başlangıç saati'),subtitle:Text('${settings['notification_start']??'07:00'}'.substring(0,5)),
-     trailing:const Icon(Icons.access_time),onTap:saving?null:()=>changeTime('notificationStart')),
-    ListTile(title:const Text('Bitiş saati'),subtitle:Text('${settings['notification_end']??'10:00'}'.substring(0,5)),
-     trailing:const Icon(Icons.access_time),onTap:saving?null:()=>changeTime('notificationEnd')),
-
-   ]),
+    Transform.scale(scale:.82,child:Switch(value:settings[item[1]]==true,activeTrackColor:_purple,onChanged:saving?null:(v)=>change(item[1],v))),
+   ])),
+  ]);
+ }
+ Widget timeCard(int i)=>Expanded(child:Container(
+  padding:const EdgeInsets.symmetric(horizontal:8,vertical:8),decoration:BoxDecoration(border:Border.all(color:line),borderRadius:BorderRadius.circular(14)),
+  child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+   Row(children:[Expanded(child:Text('$i. Bildirim Saati',maxLines:1,style:const TextStyle(fontSize:12,fontWeight:FontWeight.w600,color:ink))),
+    SizedBox(height:28,width:34,child:Switch(value:settings['notification_time_${i}_enabled']==true,activeTrackColor:_purple,onChanged:saving?null:(v)=>change('notification_time_${i}_enabled',v)))].map((w)=>w).toList()),
+   InkWell(onTap:saving?null:()=>selectTime(i),child:Padding(padding:const EdgeInsets.only(top:8,bottom:3),child:Row(children:[const Icon(Icons.access_time,color:_purple,size:20),const SizedBox(width:8),Text('${settings['notification_time_$i']??(i==1?'07:00':'18:00')}'.substring(0,5),style:const TextStyle(fontSize:19,fontWeight:FontWeight.bold,color:ink))]))),
+  ])));
+ }
+ @override Widget build(BuildContext context)=>Scaffold(
+  backgroundColor:Colors.white,
+  bottomNavigationBar:SafeArea(top:false,child:Padding(padding:const EdgeInsets.fromLTRB(16,8,16,12),child:SizedBox(height:52,child:ElevatedButton.icon(
+   onPressed:loading||saving||error!=null?null:save,icon:saving?const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)):const Icon(Icons.save_outlined),
+   label:Text(saving?'Kaydediliyor...':'Tercihleri Kaydet'),
+   style:ElevatedButton.styleFrom(backgroundColor:_purple,foregroundColor:Colors.white,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(16))))))),
+  body:SafeArea(child:loading?const Center(child:CircularProgressIndicator()):error!=null?Center(child:TextButton(onPressed:load,child:Text(error!))):ListView(padding:const EdgeInsets.fromLTRB(16,8,16,12),children:[
+   SizedBox(height:54,child:Row(children:[IconButton(onPressed:()=>Navigator.maybePop(context),style:IconButton.styleFrom(backgroundColor:soft),icon:const Icon(Icons.arrow_back_ios_new,color:_purple)),Expanded(child:Center(child:Image.asset('assets/Logoa.png',height:35))),const SizedBox(width:48)])),
+   const SizedBox(height:12),
+   const Text.rich(TextSpan(children:[TextSpan(text:'Bildirim ',style:TextStyle(color:ink)),TextSpan(text:'Tercihleri',style:TextStyle(color:_purple))]),style:TextStyle(fontSize:25,fontWeight:FontWeight.bold)),
+   const SizedBox(height:4),const Text('Hangi durumlarda bildirim almak istediğinizi seçin.',style:TextStyle(color:muted,fontSize:12)),
+   const SizedBox(height:14),
+   if(!notificationsActive)Container(margin:const EdgeInsets.only(bottom:10),padding:const EdgeInsets.all(14),decoration:BoxDecoration(color:soft,borderRadius:BorderRadius.circular(15)),child:const Row(children:[Icon(Icons.info_outline,color:_purple,size:25),SizedBox(width:12),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('Bildirim servisi henüz etkin değil.',style:TextStyle(fontWeight:FontWeight.bold,fontSize:13,color:ink)),Text('Tercihleriniz kaydedilir. Otomatik bildirimler etkinleştirildiğinde kullanılacaktır.',style:TextStyle(fontSize:11,color:muted))]))])),
+   panel(Column(children:[heading(Icons.notifications_outlined,'Bildirim türleri','Hangi trafik durumlarında bildirim almak istiyorsunuz?'),const SizedBox(height:8),for(var i=0;i<kinds.length;i++)kindRow(i)])),
+   panel(Column(crossAxisAlignment:CrossAxisAlignment.start,children:[heading(Icons.calendar_month_outlined,'Bildirim günleri','Bildirim almak istediğiniz günleri seçin.'),const SizedBox(height:12),LayoutBuilder(builder:(ctx,c)=>Wrap(spacing:6,runSpacing:6,children:[for(var i=0;i<7;i++)SizedBox(width:(c.maxWidth-18)/4,child:InkWell(onTap:saving?null:(){final d=selectedDays;if(d.contains(i+1)){d.remove(i+1);}else{d.add(i+1);}d.sort();change('notification_days',d);},child:Container(height:40,alignment:Alignment.center,decoration:BoxDecoration(color:selectedDays.contains(i+1)?soft:Colors.white,border:Border.all(color:selectedDays.contains(i+1)?_purple.withValues(alpha:.12):line),borderRadius:BorderRadius.circular(11)),child:Row(mainAxisAlignment:MainAxisAlignment.center,children:[if(selectedDays.contains(i+1))const Icon(Icons.check,color:_purple,size:14),Text(days[i],style:TextStyle(fontSize:12,color:selectedDays.contains(i+1)?_purple:ink))]))))]))])),
+   panel(Column(crossAxisAlignment:CrossAxisAlignment.start,children:[heading(Icons.access_time,'Bildirim Saatleri','Rotanızın kontrol edilmesini istediğiniz iki saati belirleyin.'),const SizedBox(height:12),Row(children:[timeCard(1),const SizedBox(width:8),timeCard(2)])])),
+  ])),
  );
 }
-
 class SmartRouteMapPicker extends StatefulWidget{
  const SmartRouteMapPicker({super.key});
  @override State<SmartRouteMapPicker> createState()=>_SmartRouteMapPickerState();
