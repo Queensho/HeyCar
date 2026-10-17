@@ -250,20 +250,20 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
             style: IconButton.styleFrom(backgroundColor: const Color(0xFFF3EDFF)),
             icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF4912C8)),
           )),
-          Image.asset('assets/file_00000000b130820abb8d411e67ab0d25.png', height: 33, fit: BoxFit.contain),
+          ColorFiltered(colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn), child: Image.asset('assets/file_00000000b130820abb8d411e67ab0d25.png', height: 33, fit: BoxFit.contain)),
         ]),
       )),
       Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 0), child: SizedBox(
         height: 300,
         child: Stack(children: [
-          Positioned(right: -135, top: -65, child: IgnorePointer(child: Container(
-            width: 260, height: 260,
+          Positioned(right: -112, top: -62, child: IgnorePointer(child: Container(
+            width: 245, height: 245,
             decoration: const BoxDecoration(color: Color(0xFFB9FF45), shape: BoxShape.circle),
           ))),
           
 
-          Positioned(right: 8, top: 48, width: 145, height: 145, child: IgnorePointer(child: _WeatherGlyph(
-            condition: w.condition, size: 130,
+          Positioned(right: 1, top: 18, width: 180, height: 180, child: IgnorePointer(child: _WeatherGlyph(
+            condition: w.condition, size: 165,
           ))),
           Padding(padding: const EdgeInsets.all(16), child: Column(
             crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -324,7 +324,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
           _divider(),
           _metric(
             icon: Icons.thermostat_rounded,
-            iconColor: purple,
+            iconColor: const Color(0xFFB9A2FF),
             value: _degree(w.feelsLike),
             label: 'Hissedilen',
             foreground: foreground,
@@ -392,7 +392,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: foreground,
-                    fontSize: 10.4,
+                    fontSize: 9.6,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -503,13 +503,12 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
     required Widget child,
   }) =>
       Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
         child: Container(
           padding: const EdgeInsets.fromLTRB(0, 2, 0, 0),
           decoration: BoxDecoration(
-            color: panel,
+            color: Colors.transparent,
             borderRadius: BorderRadius.circular(0),
-            border: Border.all(color: Colors.transparent),
             
           ),
           child: Column(
@@ -577,7 +576,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
             width: 68,
             padding: const EdgeInsets.symmetric(vertical: 7),
             decoration: BoxDecoration(
-              color: now ? const Color(0xFF651FFF) : Colors.white.withValues(alpha: .10),
+              color: now ? const Color(0xFF651FFF) : Colors.white.withValues(alpha: .07),
               borderRadius: BorderRadius.circular(16),
               border: now
                   ? Border.all(color: purple.withValues(alpha: .12))
@@ -639,7 +638,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
             width: 60,
             padding: const EdgeInsets.fromLTRB(5, 7, 5, 6),
             decoration: BoxDecoration(
-              color: index == 0 ? const Color(0xFF651FFF) : Colors.white.withValues(alpha: .10),
+              color: index == 0 ? const Color(0xFF651FFF) : Colors.white.withValues(alpha: .07),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Column(
@@ -660,7 +659,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
                     Text(
                       _degree(item.maxTemperature),
                       style: const TextStyle(
-                        color: Color(0xFFFF4E5B),
+                        color: Colors.white,
                         fontSize: 12.5,
                         fontWeight: FontWeight.w900,
                       ),
@@ -668,7 +667,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
                     Text(
                       _degree(item.minTemperature),
                       style: const TextStyle(
-                        color: Color(0xFF1976FF),
+                        color: Colors.white70,
                         fontSize: 12.5,
                         fontWeight: FontWeight.w900,
                       ),
