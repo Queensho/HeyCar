@@ -30,6 +30,12 @@ class OwnerQuickPanelItem {
 class OwnerQuickAccessPanel extends StatelessWidget {
   const OwnerQuickAccessPanel({super.key,required this.items});
   final List<OwnerQuickPanelItem> items;
+  static const _assetIcons=<String,String>{
+    'qr':'assets/images/services/QR_Kodum.png',
+    'qr_security':'assets/images/services/QR_Guvenligi.png',
+    'vehicle':'assets/images/services/Arac_Bilgilerim.png',
+    'notifications':'assets/images/services/Bildirimler.png',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -77,18 +83,25 @@ class OwnerQuickAccessPanel extends StatelessWidget {
                           borderRadius:BorderRadius.circular(16),
                         ),
                         alignment:Alignment.center,
-                        child:visible[i].iconUrl.isNotEmpty
-                          ?Padding(
-                            padding:const EdgeInsets.all(4),
-                            child:Image.network(
-                              visible[i].iconUrl,
-                              fit:BoxFit.contain,
-                              errorBuilder:(_,__,___)=>Icon(
-                                visible[i].icon,color:visible[i].iconColor,size:24),
-                            ),
+                        child:_assetIcons.containsKey(visible[i].id)
+                          ?Image.asset(
+                            _assetIcons[visible[i].id]!,
+                            fit:BoxFit.contain,
+                            errorBuilder:(_,__,___)=>Icon(
+                              visible[i].icon,color:visible[i].iconColor,size:24),
                           )
-                          :Icon(visible[i].icon,
-                              color:visible[i].iconColor,size:24),
+                          :visible[i].iconUrl.isNotEmpty
+                            ?Padding(
+                              padding:const EdgeInsets.all(4),
+                              child:Image.network(
+                                visible[i].iconUrl,
+                                fit:BoxFit.contain,
+                                errorBuilder:(_,__,___)=>Icon(
+                                  visible[i].icon,color:visible[i].iconColor,size:24),
+                              ),
+                            )
+                            :Icon(visible[i].icon,
+                                color:visible[i].iconColor,size:24),
                       ),
                       const SizedBox(height:8),
                       Flexible(child:Text(
