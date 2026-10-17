@@ -10,6 +10,7 @@ import 'onboarding_backend.dart';
 import 'qr_backend.dart';
 import 'public_qr_link.dart';
 import 'owner_auth.dart';
+import 'owner_settings_detail.dart' show OwnerAvatar;
 import 'owner_valet_card.dart';
 import 'owner_shortcuts.dart';
 import 'roadside_help_page.dart';
@@ -643,8 +644,8 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             onTap:()=>widget.shortcut('settings'),
             customBorder:const CircleBorder(),
             child:SizedBox(width:43,height:43,child:Center(child:
-              Text(initials,style:const TextStyle(color:Colors.white,fontSize:15,
-                fontWeight:FontWeight.w800)),
+              OwnerAvatar(initials:initials,radius:21.5,
+                backgroundColor:_homePurple,foregroundColor:Colors.white),
             )),
           ),
         ),
