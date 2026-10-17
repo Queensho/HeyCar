@@ -476,6 +476,7 @@ class SmartRouteSettingsPage extends StatefulWidget {
 }
 class _SmartRouteSettingsPageState extends State<SmartRouteSettingsPage> {
  bool loading=true,saving=false;
+ bool screenReady=false;
  String? error;
  Map<String,dynamic> settings={};
  Uri get endpoint=>Uri.parse('${OnboardingBackend.baseUrl}/api/owner/smart-routes/${Uri.encodeComponent(widget.routeId)}/settings');
@@ -535,7 +536,15 @@ class _SmartRouteSettingsPageState extends State<SmartRouteSettingsPage> {
   'departureAlertEnabled':'Çıkış zamanı',
   'recoveryAlertEnabled':'Trafik normale döndü',
  };
- @override void initState(){super.initState();load();}
+ @override void initState(){
+  super.initState();
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+   if(!mounted)return;
+   setState(()=>screenReady=true);
+   // Defer the network call until the route transition has rendered.
+   Future<void>.delayed(const Duration(milliseconds:250),(){if(mounted)load();});
+  });
+ }
  Future<void> load()async{
   setState((){loading=true;error=null;});
   try{
@@ -566,7 +575,7 @@ class _SmartRouteSettingsPageState extends State<SmartRouteSettingsPage> {
  backgroundColor:const Color(0xFFF8F9FC),
  appBar:AppBar(backgroundColor:const Color(0xFFF8F9FC),surfaceTintColor:Colors.transparent,
  title:const Text('Rota Bildirim Tercihleri',style:TextStyle(fontSize:17,fontWeight:FontWeight.w800,color:Color(0xFF10152D)))),
- body:ListView(padding:const EdgeInsets.all(16),children:[
+ body:!screenReady?const SizedBox.expand():ListView(padding:const EdgeInsets.all(16),children:[
  if(loading)const Padding(padding:EdgeInsets.only(bottom:12),child:Row(children:[
  SizedBox(width:16,height:16,child:CircularProgressIndicator(strokeWidth:2,color:_purple)),
  SizedBox(width:10),Expanded(child:Text('Kayıtlı tercihler yükleniyor. Ekranı kullanabilirsiniz.',style:TextStyle(fontSize:12)))])),
@@ -590,7 +599,7 @@ class _SmartRouteSettingsPageState extends State<SmartRouteSettingsPage> {
  Container(padding:const EdgeInsets.all(12),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(15)),
  child:Wrap(spacing:7,runSpacing:6,children:[for(var i=0;i<7;i)FilterChip(
  label:Text(dayLabels[i],style:const TextStyle(fontSize:11)),
- selected:(settings['notification_days'] as List?)?.contains(i+1)??false,
+ selected:(settings['notification_days'] is List)?(settings['notification_days'] as List).any((day)=>int.tryParse('$day')==i+1):false,
  selectedColor:const Color(0xFFB9FF45),checkmarkColor:const Color(0xFF10152D),
  onSelected:saving||loading||error!=null?null:(value)=>changeDays(i+1,value))])),
  const Padding(padding:EdgeInsets.fromLTRB(2,20,2,10),child:Text('Bildirim saatleri',style:TextStyle(fontWeight:FontWeight.w800,fontSize:15))),
