@@ -153,19 +153,19 @@ module.exports=function registerSmartRouteRoutes(app,db){
    if(!route)return res.status(404).json({error:'NOT_FOUND'});
    const r=await db.query('SELECT * FROM smart_route_settings WHERE route_id=$1',[route.id]);
    if(!r.rowCount)return res.status(404).json({error:'NOT_FOUND'});
-   res.json({settings:r.rows[0],notificationsActive:false});
+   res.json({settings:r.rows[0],notificationsActive:process.env.SMART_ROUTE_SCAN_ENABLED==='true'&&process.env.SMART_ROUTE_QUEUE_ENABLED==='true'&&process.env.SMART_ROUTE_PUSH_ENABLED==='true'});
   }catch(e){console.error('smart route settings read',e);res.status(500).json({error:'SERVER_ERROR'});}
  });
  app.patch('/api/owner/smart-routes/:routeId/settings',async(req,res)=>{
   const id=await auth(req,res);if(!id)return;
   const b=req.body;
-  const columns={trafficAlertEnabled:'traffic_alert_enabled',accidentAlertEnabled:'accident_alert_enabled',closureAlertEnabled:'closure_alert_enabled',alternativeRouteEnabled:'alternative_route_enabled',departureAlertEnabled:'departure_alert_enabled',recoveryAlertEnabled:'recovery_alert_enabled',notificationDays:'notification_days',notificationStart:'notification_start',notificationEnd:'notification_end'};
+  const columns={trafficAlertEnabled:'traffic_alert_enabled',accidentAlertEnabled:'accident_alert_enabled',closureAlertEnabled:'closure_alert_enabled',alternativeRouteEnabled:'alternative_route_enabled',departureAlertEnabled:'departure_alert_enabled',recoveryAlertEnabled:'recovery_alert_enabled',notificationDays:'notification_days',notificationStart:'notification_start',notificationEnd:'notification_end',notificationTime1:'notification_time_1',notificationTime1Enabled:'notification_time_1_enabled',notificationTime2:'notification_time_2',notificationTime2Enabled:'notification_time_2_enabled'};
   if(!b||typeof b!=='object'||Array.isArray(b))return res.status(400).json({error:'INVALID_SETTINGS'});
   const keys=Object.keys(b);
   const valid=(k,v)=>{
    if(!Object.hasOwn(columns,k))return false;
    if(k==='notificationDays')return Array.isArray(v)&&v.length>0&&v.length<=7&&new Set(v).size===v.length&&v.every(day=>Number.isInteger(day)&&day>=1&&day<=7);
-   if(k==='notificationStart'||k==='notificationEnd')return typeof v==='string'&&/^([01]\\d|2[0-3]):[0-5]\\d$/.test(v);
+   if(k==='notificationStart'||k==='notificationEnd'||k==='notificationTime1'||k==='notificationTime2')return typeof v==='string'&&/^([01]\\d|2[0-3]):[0-5]\\d$/.test(v);
    return typeof v==='boolean';
   };
   if(!keys.length||keys.some(k=>!valid(k,b[k])))return res.status(400).json({error:'INVALID_SETTINGS'});
@@ -223,7 +223,7 @@ module.exports=function registerSmartRouteRoutes(app,db){
    const settings=result.rows[0];
    res.json({routeId:route.id,withinWindow:eligible(settings,new Date()),
     timezone:settings.timezone,notificationDays:settings.notification_days,
-    notificationStart:settings.notification_start,notificationEnd:settings.notification_end,
+    notificationTime1:settings.notification_time_1,notificationTime1Enabled:settings.notification_time_1_enabled,notificationTime2:settings.notification_time_2,notificationTime2Enabled:settings.notification_time_2_enabled,
     notificationsActive:false,checkedAt:new Date().toISOString()});
   }catch(e){console.error('smart route notification window',e);res.status(500).json({error:'SERVER_ERROR'});}
  });
