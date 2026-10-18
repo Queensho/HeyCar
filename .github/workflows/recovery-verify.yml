@@ -1,0 +1,53 @@
+name: CepQontag recovery verification
+
+on:
+  push:
+    branches:
+      - recovery/pr42-working-apk-source-candidate-20261018
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check recovered APK source fingerprints
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '3b674714b4ea2c6ea815f5ef84d1e60f9e9f8fbf  lib/owner_home_redesign.dart\n' | git hash-object --stdin >/dev/null
+          test "$(git hash-object lib/owner_home_redesign.dart)" = "3b674714b4ea2c6ea815f5ef84d1e60f9e9f8fbf"
+          test "$(git hash-object lib/weather_card.dart)" = "79df7512b3f34824c470596a915f6ce373e99837"
+          test -f pubspec.yaml
+      - name: Inspect Android project availability
+        id: android
+        shell: bash
+        run: |
+          if [ -d android ] && [ -f android/gradlew ] && [ -d android/app ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::No complete Android Gradle project in this branch; cannot build APK from this checkout"
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: subosito/flutter-action@v2
+        if: steps.android.outputs.available == 'true'
+        with:
+          channel: stable
+          flutter-version: '3.47.7'
+          cache: true
+      - name: Flutter dependencies
+        if: steps.android.outputs.available == 'true'
+        run: flutter pub get
+      - name: Build recovery debug APK
+        if: steps.android.outputs.available == 'true'
+        run: flutter build apk --debug
+      - uses: actions/upload-artifact@v4
+        if: steps.android.outputs.available == 'true' && success()
+        with:
+          name: cepqontag-recovery-debug-unverified
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 7
