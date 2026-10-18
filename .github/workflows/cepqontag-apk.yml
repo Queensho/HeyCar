@@ -46,6 +46,28 @@ jobs:
               tree.write(manifest, encoding="utf-8", xml_declaration=True)
           print("Verified Android POST_NOTIFICATIONS permission")
           PY
+      - name: Install native Android settings navigation bridge
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          manifest = Path("android/app/src/main/AndroidManifest.xml")
+          if not manifest.exists():
+              raise SystemExit("Android manifest missing")
+          import xml.etree.ElementTree as ET
+          root = ET.parse(manifest).getroot()
+          ns = "{http://schemas.android.com/apk/res/android}"
+          activity = root.find("./application/activity")
+          name = activity.get(ns + "name", "") if activity is not None else ""
+          if name not in (".MainActivity", "MainActivity", "com.example.heycar_app.MainActivity"):
+              raise SystemExit(f"Unexpected launch activity: {name}")
+          src = Path("ci/android/MainActivity.kt")
+          if not src.exists():
+              raise SystemExit("Native settings bridge source missing")
+          dst = Path("android/app/src/main/kotlin/com/example/heycar_app/MainActivity.kt")
+          dst.parent.mkdir(parents=True, exist_ok=True)
+          dst.write_bytes(src.read_bytes())
+          print("Installed native settings bridge:", dst)
+          PY
       - name: Enable core library desugaring for notifications
         run: |
           python3 - <<'PY'
