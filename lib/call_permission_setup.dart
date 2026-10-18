@@ -19,7 +19,6 @@ class _CallPermissionSetupPageState extends State<CallPermissionSetupPage> with 
   bool _opening=false;
   bool _leftApp=false;
   bool _readyForNext=false;
-  bool _finishing=false;
 
   @override void initState(){super.initState();WidgetsBinding.instance.addObserver(this);}
   @override void dispose(){WidgetsBinding.instance.removeObserver(this);super.dispose();}
@@ -41,7 +40,7 @@ class _CallPermissionSetupPageState extends State<CallPermissionSetupPage> with 
   }
 
   Future<void> _next()async{
-    if(!mounted||_opening||_finishing)return;
+    if(!mounted||_opening)return;
     if(_step>=3){await _finish();return;}
     setState((){_step++;_readyForNext=false;});
   }
@@ -51,9 +50,7 @@ class _CallPermissionSetupPageState extends State<CallPermissionSetupPage> with 
     _opening=true;
     try{
       if(_step==0){
-        // The permission wizard must not be blocked by Firebase initialization.
-        // Android notification permission is independent from FCM registration.
-        await PushNotifications.ensureChannels(requestPermissions:true).timeout(const Duration(seconds:12));
+        await PushNotifications.prepareCallPermissions();
         if(mounted&&!_leftApp){
           _opening=false;
           setState(()=>_readyForNext=true);
@@ -70,31 +67,17 @@ class _CallPermissionSetupPageState extends State<CallPermissionSetupPage> with 
       }else{
         await _finish();
       }
-    }catch(error){
-      debugPrint('Permission wizard settings unavailable at step $_step: $error');
-      // Generated Android scaffolds may not contain the OEM settings channel.
-      // Allow users to continue instead of trapping them on this screen.
-      if(mounted)setState(()=>_readyForNext=true);
+    }catch(_){
+      try{await _channel.invokeMethod('openAppDetails');}catch(_){}
     }finally{
-      _opening=false;
+      if(_step!=0)_opening=false;
     }
   }
 
   Future<void> _finish()async{
-    if(!mounted||_finishing)return;
-    setState(()=>_finishing=true);
-    try{
-      final p=await SharedPreferences.getInstance().timeout(const Duration(seconds:5));
-      await p.setBool('call_permission_setup_done',true).timeout(const Duration(seconds:5));
-    }catch(error){
-      debugPrint('Call permission setup persistence failed: $error');
-    }finally{
-      // Never trap the user on the final permission step if local storage fails.
-      if(mounted){
-        widget.onDone();
-        if(mounted)setState(()=>_finishing=false);
-      }
-    }
+    final p=await SharedPreferences.getInstance();
+    await p.setBool('call_permission_setup_done',true);
+    if(mounted)widget.onDone();
   }
 
   String get _status=>switch(_step){
@@ -146,9 +129,9 @@ class _CallPermissionSetupPageState extends State<CallPermissionSetupPage> with 
               ))
             else ...[
               SizedBox(width:double.infinity,child:FilledButton(
-                onPressed:(_opening||_finishing)?null:(_readyForNext?_next:_openCurrent),
+                onPressed:_opening?null:(_readyForNext?_next:_openCurrent),
                 style:FilledButton.styleFrom(minimumSize:const Size.fromHeight(56),backgroundColor:CepqarTheme.purple),
-                child:Text(_finishing?'Tamamlanıyor…':(_readyForNext?(_step>=3?'Kurulumu tamamla':'Sonraki izin'):'İzin ver'),style:const TextStyle(fontWeight:FontWeight.w800)),
+                child:Text(_readyForNext?(_step>=3?'Kurulumu tamamla':'Sonraki izin'):'İzin ver',style:const TextStyle(fontWeight:FontWeight.w800)),
               )),
               const SizedBox(height:10),
               Text(_readyForNext?'Bu adım tamamlandı.':'Önce açıklamayı okuyun, sonra “İzin ver”e basın.',textAlign:TextAlign.center,style:const TextStyle(fontSize:13,fontWeight:FontWeight.w600)),
