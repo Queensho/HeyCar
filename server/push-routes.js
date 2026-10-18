@@ -176,7 +176,7 @@ module.exports=function registerPushRoutes(app,pool){
           const tag=String(data.notificationId||data.messageId||data.eventId||Date.now());
           message.notification={title,body};
           message.android.notification={
-            channel_id:'cepqontag_notifications_v11',
+            channel_id:'cepqontag_notifications_v12',
             sound:'bildirim',
             tag:'cepqar_'+tag,
             notification_priority:'PRIORITY_MAX',
