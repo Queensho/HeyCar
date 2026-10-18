@@ -93,7 +93,7 @@ jobs:
         run: python3 -m unittest discover -s tool -p test_callkit_flutter_route_patch.py
 
   build:
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' || github.head_ref == 'rollback/owner-app-15oct-keep-backend-20261018'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
