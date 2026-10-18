@@ -21,11 +21,10 @@ jobs:
         with:
           channel: stable
           cache: true
-      - name: Generate missing Android platform files
+      - name: Check Android project files
         run: |
-          if [ ! -f android/app/build.gradle ] && [ ! -f android/app/build.gradle.kts ]; then
-            flutter create --platforms=android --project-name=heycar_app .
-          fi
+          test -f android/app/build.gradle || test -f android/app/build.gradle.kts || { echo 'Android project missing; generating a temporary build scaffold.'; flutter create --platforms=android --project-name=heycar_app .; }
+          test -f android/app/build.gradle || test -f android/app/build.gradle.kts
       - run: flutter pub get
       - run: flutter build apk --debug
       - uses: actions/upload-artifact@v4
