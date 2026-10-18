@@ -359,6 +359,12 @@ jobs:
           name: cepqar-business-web
           path: business-site
           retention-days: 7
+      - name: Clean Android build and regenerate plugin registration
+        run: |
+          flutter clean
+          flutter pub get
+          flutter pub deps --style=compact | grep -E 'shared_preferences(_android|_platform_interface)? ' || true
+          test -f .flutter-plugins-dependencies
       - name: Build Android test APK
         run: flutter build apk --debug --target lib/entry_theme_live.dart
       - name: Upload Android test APK
