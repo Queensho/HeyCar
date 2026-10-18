@@ -34,20 +34,22 @@ jobs:
             echo "available=false" >> "$GITHUB_OUTPUT"
           fi
       - uses: subosito/flutter-action@v2
-        if: steps.android.outputs.available == 'true'
         with:
           channel: stable
           flutter-version: '3.47.7'
           cache: true
+      - name: Generate temporary Android scaffolding for build diagnostic
+        if: steps.android.outputs.available == 'false'
+        run: |
+          flutter create --platforms=android --project-name heycar_app .
+          echo '::warning::Android scaffolding generated temporarily. APK package ID, signing, manifest and native setup DO NOT match the known-good APK and must NOT be distributed.'
       - name: Flutter dependencies
-        if: steps.android.outputs.available == 'true'
         run: flutter pub get
       - name: Build recovery debug APK
-        if: steps.android.outputs.available == 'true'
         run: flutter build apk --debug
       - uses: actions/upload-artifact@v4
-        if: steps.android.outputs.available == 'true' && success()
+        if: success()
         with:
-          name: cepqontag-recovery-debug-unverified
+          name: cepqontag-diagnostic-debug-DO-NOT-INSTALL
           path: build/app/outputs/flutter-apk/app-debug.apk
           retention-days: 7
