@@ -51,7 +51,9 @@ class _CallPermissionSetupPageState extends State<CallPermissionSetupPage> with 
     _opening=true;
     try{
       if(_step==0){
-        await PushNotifications.prepareCallPermissions();
+        // The permission wizard must not be blocked by Firebase initialization.
+        // Android notification permission is independent from FCM registration.
+        await PushNotifications.ensureChannels(requestPermissions:true).timeout(const Duration(seconds:12));
         if(mounted&&!_leftApp){
           _opening=false;
           setState(()=>_readyForNext=true);
@@ -68,10 +70,13 @@ class _CallPermissionSetupPageState extends State<CallPermissionSetupPage> with 
       }else{
         await _finish();
       }
-    }catch(_){
-      try{await _channel.invokeMethod('openAppDetails');}catch(_){}
+    }catch(error){
+      debugPrint('Permission wizard settings unavailable at step $_step: $error');
+      // Generated Android scaffolds may not contain the OEM settings channel.
+      // Allow users to continue instead of trapping them on this screen.
+      if(mounted)setState(()=>_readyForNext=true);
     }finally{
-      if(_step!=0)_opening=false;
+      _opening=false;
     }
   }
 
