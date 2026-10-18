@@ -22,6 +22,8 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: recovery/pr42-working-apk-source-candidate-20261018
       - name: Check recovered APK source fingerprints
         shell: bash
         run: |
