@@ -10,7 +10,6 @@ import 'onboarding_backend.dart';
 import 'qr_backend.dart';
 import 'public_qr_link.dart';
 import 'owner_auth.dart';
-import 'owner_settings_detail.dart' show OwnerAvatar;
 import 'owner_valet_card.dart';
 import 'owner_shortcuts.dart';
 import 'roadside_help_page.dart';
@@ -644,8 +643,8 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             onTap:()=>widget.shortcut('settings'),
             customBorder:const CircleBorder(),
             child:SizedBox(width:43,height:43,child:Center(child:
-              OwnerAvatar(initials:initials,radius:21.5,
-                backgroundColor:_homePurple,foregroundColor:Colors.white),
+              Text(initials,style:const TextStyle(color:Colors.white,fontSize:15,
+                fontWeight:FontWeight.w800)),
             )),
           ),
         ),
@@ -675,7 +674,10 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             ),
           ])),
           const SizedBox(width:7),
-          SizedBox(
+          InkWell(
+            onTap:_openWeatherDetails,
+            borderRadius:BorderRadius.circular(16),
+            child:SizedBox(
               width:_narrowHome?112:125,
               child:Column(crossAxisAlignment:CrossAxisAlignment.center,children:[
                 Row(mainAxisAlignment:MainAxisAlignment.center,children:[
@@ -715,6 +717,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                     style:TextStyle(color:_homeText,fontSize:10.5)),
                 ]),
               ]),
+            ),
           ),
         ]),
       ),
@@ -1118,30 +1121,8 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
 
   Widget _quickAccessPanel(List<OwnerQuickPanelItem> items)=>Padding(
     padding:const EdgeInsets.symmetric(horizontal:16),
-    child:items.length<=4?OwnerQuickAccessPanel(items:items):
-      SizedBox(height:116,child:PageView.builder(
-        key:const ValueKey('owner-quick-access-pages'),
-        itemCount:(items.length+3)~/4,
-        itemBuilder:(_,page)=>OwnerQuickAccessPanel(
-          items:items.skip(page*4).take(4).toList()),
-      )),
+    child:OwnerQuickAccessPanel(items:items),
   );
-
-  List<OwnerQuickPanelItem> _remainingQuickShortcuts(Iterable<String> shownIds){
-    final shown=shownIds.toSet();
-    return [
-      for(final item in _quickAccessCatalog)
-        if(!shown.contains(item.id))OwnerQuickPanelItem(
-          id:item.id,
-          title:item.title,
-          icon:_quickPanelIcon(item.id,item.icon),
-          iconColor:_quickPanelTint(item.id),
-          iconBackground:_quickPanelBackground(item.id),
-          onTap:()=>widget.shortcut(item.action),
-          onLongPress:_editQuickAccess,
-        ),
-    ];
-  }
 
   Color _managedQuickTint(AppUiQuickAction item){
     final defaultToken=switch(item.id){
@@ -1174,14 +1155,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       child:Row(children:[
         Expanded(child:Text(title,style:TextStyle(
           color:_homeText,fontSize:17,fontWeight:FontWeight.w900))),
-        if(title=='Hızlı Erişim')
-          Row(mainAxisSize:MainAxisSize.min,children:[
-            Icon(Icons.swipe_left_rounded,color:_homeSecondary,size:17),
-            const SizedBox(width:4),
-            Text('Sola kaydır',style:TextStyle(color:_homeSecondary,
-              fontSize:11,fontWeight:FontWeight.w700)),
-          ])
-        else InkWell(
+        InkWell(
           onTap:tap,borderRadius:BorderRadius.circular(10),
           child:Padding(
             padding:const EdgeInsets.symmetric(vertical:4,horizontal:3),
@@ -1211,7 +1185,6 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
           onTap:()=>widget.shortcut(item.action),
           onLongPress:_editQuickAccess,
         ),
-        ..._remainingQuickShortcuts(items.map((item)=>item.id)),
       ]),
     ]);
   }
@@ -1442,7 +1415,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
 
 
   Widget _managedQuickActions(){
-    final items=_appUiConfig.quickActions.toList();
+    final items=_appUiConfig.quickActions.take(4).toList();
     if(items.isEmpty)return const SizedBox.shrink();
     return Column(children:[
       _homeSectionHeading('Hızlı Erişim',_editQuickAccess,top:11),
@@ -1457,7 +1430,6 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
           onTap:()=>_runManagedAction(item),
           onLongPress:_editQuickAccess,
         ),
-        ..._remainingQuickShortcuts(items.map((item)=>item.id)),
       ]),
     ]);
   }
@@ -1612,7 +1584,6 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       'recent_notifications':(_)=>Column(children:[section('Son Bildirimler',widget.notifications),latestCard()]),
       'image_banner':(x)=>_directBanner(x),
       'text_banner':(x)=>_directBanner(x),
-       'smart_route_card':(_)=>const SizedBox.shrink(),
       'spacer':(x)=>SizedBox(height:((x.config['height'] is num?(x.config['height'] as num).toDouble():0).clamp(0,64)).toDouble()),
     });
     return registry.build(component)??const SizedBox.shrink();

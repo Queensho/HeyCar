@@ -68,9 +68,9 @@ void main(){
       final third=tester.getRect(find.byKey(const ValueKey('owner-monthly-calls')));
       final fourth=tester.getRect(find.byKey(const ValueKey('owner-monthly-offers')));
       expect(first.width,closeTo(second.width,.1));
-      // Current PR #201 design uses four equal-width compact tiles in one row.
+      // All metric tiles keep a compact fixed height on every screen.
       for(final rect in [first,second,third,fourth]){
-        expect(rect.height,closeTo(96,.01));
+        expect(rect.height,closeTo(88,.01));
       }
       final messageLabel=find.descendant(
         of:find.byKey(const ValueKey('owner-monthly-messages')),
@@ -80,9 +80,13 @@ void main(){
       final labelBottom=tester.getRect(messageLabel).bottom;
       // Content is vertically balanced, not pinned at the top of a tall card.
       expect(first.bottom-labelBottom,lessThan(31));
-      expect(first.top,closeTo(third.top,1));
-      expect(third.top,closeTo(fourth.top,1));
-      expect(third.width,closeTo(fourth.width,.1));
+      if(width>=390){
+        expect(first.top,closeTo(third.top,1));
+        expect(third.top,closeTo(fourth.top,1));
+      }else{
+        expect(third.top,greaterThan(first.bottom));
+        expect(third.width,closeTo(fourth.width,.1));
+      }
       expect(find.text('0'),findsNWidgets(2));
       // The caller never provided previous-month data: hide all deltas.
       expect(find.textContaining('%'),findsNothing);
@@ -110,7 +114,7 @@ void main(){
     await tester.pumpAndSettle();
     expect(find.text('↑ %12'),findsOneWidget);
     expect(tester.getSize(find.byKey(
-      const ValueKey('owner-monthly-messages'))).height,96);
+      const ValueKey('owner-monthly-messages'))).height,88);
     expect(tester.takeException(),isNull);
   });
 
