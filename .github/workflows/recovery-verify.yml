@@ -51,6 +51,23 @@ jobs:
         if: steps.android.outputs.available == 'false'
         run: |
           flutter create --platforms=android --project-name heycar_app .
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('android/app/build.gradle.kts')
+          if not p.exists():
+              raise SystemExit('Expected generated android/app/build.gradle.kts missing')
+          s=p.read_text()
+          needle='    compileOptions {'
+          assert needle in s
+          s=s.replace(needle, '    compileOptions {\n        isCoreLibraryDesugaringEnabled = true', 1)
+          anchor='dependencies {'
+          if anchor in s:
+              s=s.replace(anchor, 'dependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")', 1)
+          else:
+              s += '\n\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n'
+          p.write_text(s)
+          print('Enabled Android core library desugaring for flutter_local_notifications')
+          PY
           echo '::warning::Android scaffolding generated temporarily. APK package ID, signing, manifest and native setup DO NOT match the known-good APK and must NOT be distributed.'
       - name: Flutter dependencies
         run: flutter pub get
