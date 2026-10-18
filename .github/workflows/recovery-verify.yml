@@ -56,10 +56,10 @@ jobs:
           gradle = Path("android/app/build.gradle.kts")
           s = gradle.read_text()
           s = s.replace("isCoreLibraryDesugaringEnabled = true", "")
-          s = s.replace("compileOptions {", "compileOptions {\\n        isCoreLibraryDesugaringEnabled = true", 1)
+          s = s.replace("compileOptions {", "compileOptions {\n        isCoreLibraryDesugaringEnabled = true", 1)
           s = s.replace('applicationId = "com.example.heycar_app"', 'applicationId = "com.cepqar.app"')
           s = s.replace('namespace = "com.example.heycar_app"', 'namespace = "com.cepqar.app"')
-          s += '\\ndependencies {\\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\\n}\\n'
+          s += '\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n'
           gradle.write_text(s)
           manifest = Path("android/app/src/main/AndroidManifest.xml")
           m = manifest.read_text()
