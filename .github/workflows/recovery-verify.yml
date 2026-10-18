@@ -53,6 +53,17 @@ jobs:
           flutter create --platforms=android --project-name heycar_app .
           python3 - <<'PY'
           from pathlib import Path
+          p = Path("android/app/build.gradle.kts")
+          s = p.read_text()
+          assert "compileOptions {" in s
+          s = s.replace("compileOptions {", "compileOptions {\n        isCoreLibraryDesugaringEnabled = true", 1)
+          s += '\n' if not s.endswith('\n') else ''
+          s += '\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n'
+          p.write_text(s)
+          print("Enabled core library desugaring for temporary diagnostic Android scaffold")
+          PY
+          python3 - <<'PY'
+          from pathlib import Path
           p=Path('android/app/build.gradle.kts')
           if not p.exists():
               raise SystemExit('Expected generated android/app/build.gradle.kts missing')
