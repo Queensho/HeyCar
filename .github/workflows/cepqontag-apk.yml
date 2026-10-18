@@ -27,6 +27,38 @@ jobs:
             flutter create --platforms=android --project-name=heycar_app .
           fi
           test -f android/app/build.gradle || test -f android/app/build.gradle.kts
+      - name: Enable core library desugaring for notifications
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          kts = Path("android/app/build.gradle.kts")
+          groovy = Path("android/app/build.gradle")
+          target = kts if kts.exists() else groovy
+          if not target.exists():
+              raise SystemExit("Android app Gradle configuration missing")
+          text = target.read_text()
+          is_kts = target.suffix == ".kts"
+          setting = "isCoreLibraryDesugaringEnabled = true" if is_kts else "coreLibraryDesugaringEnabled true"
+          if not re.search(r"(?:isCoreLibraryDesugaringEnabled|coreLibraryDesugaringEnabled)\s*(?:=|\s)\s*true", text):
+              match = re.search(r"compileOptions\s*\{", text)
+              if match:
+                  text = text[:match.end()] + "\n        " + setting + text[match.end():]
+              else:
+                  match = re.search(r"android\s*\{", text)
+                  if not match:
+                      raise SystemExit("android Gradle block not found")
+                  text = text[:match.end()] + "\n    compileOptions {\n        " + setting + "\n    }" + text[match.end():]
+          if not re.search(r"coreLibraryDesugaring\s*\(", text):
+              dep = 'coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")' if is_kts else "coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'"
+              match = re.search(r"dependencies\s*\{", text)
+              if match:
+                  text = text[:match.end()] + "\n    " + dep + text[match.end():]
+              else:
+                  text += "\ndependencies {\n    " + dep + "\n}\n"
+          target.write_text(text)
+          print("Enabled desugaring in", target)
+          PY
       - run: flutter pub get
       - run: flutter build apk --debug
       - uses: actions/upload-artifact@v4
