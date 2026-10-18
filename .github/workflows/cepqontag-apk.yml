@@ -65,7 +65,7 @@ jobs:
           from pathlib import Path
           p = Path("lib/parking_location_card.dart")
           t = p.read_text()
-          t = t.replace("const Text(widget.driverMode ? 'Aile' : 'Premium'", "Text(widget.driverMode ? 'Aile' : 'Premium'")
+          t = t.replace("const Text(\n              widget.driverMode ? 'Aile' : 'Premium'", "Text(\n              widget.driverMode ? 'Aile' : 'Premium'")
           p.write_text(t)
           p = Path("lib/owner_chat_page.dart")
           t = p.read_text()
