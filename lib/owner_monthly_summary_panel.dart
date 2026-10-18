@@ -16,7 +16,7 @@ class OwnerMonthlyMetric {
   final double? changePercent;
 }
 
-/// Responsive monthly overview: four equal-width cards on every mobile width.
+/// Single white card, four columns when legible; 2x2 on narrow screens.
 class OwnerMonthlySummaryPanel extends StatelessWidget {
   const OwnerMonthlySummaryPanel({
     super.key,required this.metrics,required this.onViewAll,
@@ -31,9 +31,9 @@ class OwnerMonthlySummaryPanel extends StatelessWidget {
   Widget build(BuildContext context){
     return Container(
       key:const ValueKey('owner-monthly-summary-panel'),
-      padding:const EdgeInsets.all(12),
+      padding:const EdgeInsets.fromLTRB(13,13,13,14),
       decoration:BoxDecoration(
-        color:Colors.white,borderRadius:BorderRadius.circular(21),
+        color:Colors.white,borderRadius:BorderRadius.circular(24),
         border:Border.all(color:const Color(0xFFECECF3)),
         boxShadow:const [
           BoxShadow(color:Color(0x0C101426),blurRadius:17,offset:Offset(0,5)),
@@ -41,16 +41,16 @@ class OwnerMonthlySummaryPanel extends StatelessWidget {
       ),
       child:Column(mainAxisSize:MainAxisSize.min,children:[
         Row(children:[
-          const _SummaryBarsIcon(),
+          const Icon(Icons.bar_chart_rounded,color:Color(0xFF651FFF),size:24),
           const SizedBox(width:7),
           const Expanded(child:Text('Bu Ayki Özetim',
             maxLines:1,overflow:TextOverflow.ellipsis,
-            style:TextStyle(color:Color(0xFF101426),fontSize:17,
+            style:TextStyle(color:Color(0xFF101426),fontSize:16,
               fontWeight:FontWeight.w800))),
           InkWell(
             key:const ValueKey('owner-monthly-view-all'),onTap:onViewAll,
-            borderRadius:BorderRadius.circular(18),
-            child:const Padding(padding:EdgeInsets.symmetric(vertical:7,horizontal:9),
+            borderRadius:BorderRadius.circular(10),
+            child:const Padding(padding:EdgeInsets.symmetric(vertical:7,horizontal:2),
               child:Row(mainAxisSize:MainAxisSize.min,children:[
                 Text('Tümünü Gör',style:TextStyle(color:Color(0xFF651FFF),
                   fontSize:11,fontWeight:FontWeight.w700)),
@@ -59,7 +59,7 @@ class OwnerMonthlySummaryPanel extends StatelessWidget {
             ),
           ),
         ]),
-        const SizedBox(height:10),
+        const SizedBox(height:12),
         if(isLoading)
           const SizedBox(height:64,child:Center(child:SizedBox(
             width:28,height:28,child:CircularProgressIndicator(
@@ -80,15 +80,20 @@ class OwnerMonthlySummaryPanel extends StatelessWidget {
             style:TextStyle(color:Color(0xFF737B94),fontSize:12),
           )))
         else LayoutBuilder(builder:(context,box){
-          const gap=6.0;
+          final columns=box.maxWidth>=320?4:2;
+          const gap=7.0;
           final count=metrics.length>4?4:metrics.length;
-          // The parent already applies the 16 px page gutters.
-          // Equal Expanded tiles keep all four metrics in one row even at 320 px.
-          return Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
-            for(var i=0;i<count;i++)...[
-              if(i>0)const SizedBox(width:gap),
-              Expanded(child:_MonthlyMetricTile(metric:metrics[i],
-                availableWidth:(box.maxWidth-gap*(count-1))/count)),
+          return Column(children:[
+            for(var start=0;start<count;start+=columns)...[
+              if(start>0)const SizedBox(height:7),
+              Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                for(var i=start;i<start+columns;i++)...[
+                  if(i>start)const SizedBox(width:gap),
+                  Expanded(child:i<count
+                    ?_MonthlyMetricTile(metric:metrics[i],compact:columns==4)
+                    :const SizedBox.shrink()),
+                ],
+              ]),
             ],
           ]);
         }),
@@ -97,86 +102,64 @@ class OwnerMonthlySummaryPanel extends StatelessWidget {
   }
 }
 
-class _SummaryBarsIcon extends StatelessWidget {
-  const _SummaryBarsIcon();
-  @override Widget build(BuildContext context)=>SizedBox(
-    width:23,height:23,
-    child:Row(crossAxisAlignment:CrossAxisAlignment.end,children:[
-      Container(width:6,height:12,decoration:BoxDecoration(
-        color:const Color(0xFF651FFF),borderRadius:BorderRadius.circular(4))),
-      const SizedBox(width:2),
-      Container(width:6,height:22,decoration:BoxDecoration(
-        color:const Color(0xFF651FFF),borderRadius:BorderRadius.circular(4))),
-      const SizedBox(width:2),
-      Container(width:6,height:9,decoration:BoxDecoration(
-        color:const Color(0xFFB9FF45),borderRadius:BorderRadius.circular(4))),
-    ]),
-  );
-}
-
 class _MonthlyMetricTile extends StatelessWidget{
-  const _MonthlyMetricTile({required this.metric,required this.availableWidth});
+  const _MonthlyMetricTile({required this.metric,required this.compact});
   final OwnerMonthlyMetric metric;
-  final double availableWidth;
+  final bool compact;
 
   @override
   Widget build(BuildContext context){
     final change=metric.changePercent;
     final showChange=change!=null&&change.isFinite;
-    final narrow=availableWidth<68;
-    final iconSize=narrow?19.0:22.0;
-    final accent=metric.id=='messages'?const Color(0xFF9D58FF):
-      metric.id=='park'?const Color(0xFFFF7191):
-      metric.id=='calls'?const Color(0xFFBEC8F7):
-      const Color(0xFFB9FF45);
+    final side=compact?30.0:34.0;
     return Material(color:Colors.transparent,child:InkWell(
       key:ValueKey('owner-monthly-'+metric.id),
       onTap:metric.onTap,
-      borderRadius:BorderRadius.circular(16),
+      borderRadius:BorderRadius.circular(17),
       child:Container(
-        height:96,
-        clipBehavior:Clip.antiAlias,
-        decoration:BoxDecoration(color:metric.background,
-          borderRadius:BorderRadius.circular(16)),
-        child:Stack(children:[
-          Positioned(top:-19,right:-17,child:Transform.rotate(
-            angle:-0.65,child:Container(width:53,height:42,
-              decoration:BoxDecoration(color:accent,
-                borderRadius:BorderRadius.circular(15))))),
-          Padding(
-            padding:EdgeInsets.fromLTRB(narrow?5:7,6,narrow?4:6,5),
-            child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-              Container(width:29,height:29,
-                decoration:BoxDecoration(
-                  color:metric.tint.withValues(alpha:.09),
-                  borderRadius:BorderRadius.circular(11)),
-                child:Icon(metric.icon,color:metric.tint,size:iconSize)),
-              const SizedBox(height:3),
-              FittedBox(fit:BoxFit.scaleDown,
-                alignment:Alignment.centerLeft,
-                child:Text(metric.count==null?'—':metric.count.toString(),
-                  key:ValueKey('owner-monthly-value-'+metric.id),
-                  maxLines:1,style:const TextStyle(
-                    color:Color(0xFF10152D),fontSize:24,
-                    fontWeight:FontWeight.w800,height:1))),
-              const SizedBox(height:2),
-              Text(metric.label,maxLines:2,overflow:TextOverflow.ellipsis,
-                style:TextStyle(color:const Color(0xFF778096),
-                  fontSize:narrow?9:10,fontWeight:FontWeight.w600,height:1.08)),
-              if(showChange)...[
-                const Spacer(),
-                FittedBox(fit:BoxFit.scaleDown,
-                  alignment:Alignment.centerLeft,
-                  child:Text(change>0?'↑ %${change.abs().toStringAsFixed(0)}':
-                    change<0?'↓ %${change.abs().toStringAsFixed(0)}':'– %0',
-                    maxLines:1,style:TextStyle(fontSize:9,
-                      fontWeight:FontWeight.w700,
-                      color:change>0?const Color(0xFF29964B):
-                        change<0?const Color(0xFFD84D63):
-                        const Color(0xFF778096)))),
-              ],
-            ]),
-          ),
+        height:88,
+        padding:EdgeInsets.symmetric(horizontal:compact?4:10,vertical:6),
+        decoration:BoxDecoration(
+          color:metric.background,borderRadius:BorderRadius.circular(17),
+        ),
+        child:Column(
+          mainAxisAlignment:MainAxisAlignment.center,
+          crossAxisAlignment:CrossAxisAlignment.start,
+          children:[
+          Row(children:[
+            Container(
+              height:side,width:side,
+              decoration:BoxDecoration(
+                color:Colors.white.withValues(alpha:.69),
+                borderRadius:BorderRadius.circular(compact?10:12),
+              ),
+              child:Icon(metric.icon,color:metric.tint,size:compact?20:23),
+            ),
+            const SizedBox(width:4),
+            Expanded(child:FittedBox(
+              fit:BoxFit.scaleDown,alignment:Alignment.centerLeft,
+              child:Text(metric.count==null?'—':metric.count.toString(),
+                key:ValueKey('owner-monthly-value-'+metric.id),
+                maxLines:1,style:TextStyle(color:const Color(0xFF101426),
+                  fontSize:24,fontWeight:FontWeight.w800,height:1)),
+            )),
+          ]),
+          const SizedBox(height:5),
+          Text(metric.label,maxLines:2,overflow:TextOverflow.ellipsis,
+            style:TextStyle(color:const Color(0xFF737B94),
+              fontSize:compact?10:11,fontWeight:FontWeight.w600,height:1.07)),
+          if(showChange)...[
+            const SizedBox(height:2),
+            Align(alignment:Alignment.centerRight,child:Text(
+              change>0?'↑ %'+change.abs().toStringAsFixed(0):
+                change<0?'↓ %'+change.abs().toStringAsFixed(0):'– %0',
+              maxLines:1,overflow:TextOverflow.ellipsis,
+              style:TextStyle(fontSize:compact?8:9,fontWeight:FontWeight.w700,height:1,
+                color:change>0?const Color(0xFF29964B):
+                  change<0?const Color(0xFFD84D63):
+                  const Color(0xFF737B94)),
+            )),
+          ],
         ]),
       ),
     ));

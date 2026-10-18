@@ -1,6 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
-import 'package:image_picker/image_picker.dart';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -115,35 +113,10 @@ class _OwnerAccountSettingsPageState extends State<OwnerAccountSettingsPage> {
   late final TextEditingController email;
   bool editing = false;
   bool saving = false;
-  Uint8List? avatarBytes;
-  bool avatarBusy = false;
-  Future<void> _loadAvatar()async{
-    try{
-      final r=await OwnerHttp.get(Uri.parse('$_baseUrl/api/owner/account/avatar'),json:false);
-      if(r.statusCode==200&&mounted)setState(()=>avatarBytes=r.bodyBytes);
-    }catch(_){}
-  }
-  Future<void> _pickAvatar()async{
-    if(avatarBusy)return;
-    try{
-      final x=await ImagePicker().pickImage(source:ImageSource.gallery,maxWidth:900,maxHeight:900,imageQuality:75);
-      if(x==null)return;
-      final bytes=await x.readAsBytes();
-      if(bytes.length>2*1024*1024)throw Exception('Fotoğraf 2 MB sınırını aşıyor.');
-      final ext=x.name.toLowerCase().split('.').last;
-      final mime=ext=='png'?'image/png':ext=='webp'?'image/webp':'image/jpeg';
-      if(mounted)setState(()=>avatarBusy=true);
-      final r=await OwnerHttp.put(Uri.parse('$_baseUrl/api/owner/account/avatar'),body:jsonEncode({'mime':mime,'data':base64Encode(bytes)})).timeout(const Duration(seconds:30));
-      if(r.statusCode!=200)throw Exception('Fotoğraf yüklenemedi (${r.statusCode}).');
-      if(mounted)setState(()=>avatarBytes=bytes);
-    }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString().replaceFirst('Exception: ',''))));}
-    finally{if(mounted)setState(()=>avatarBusy=false);}
-  }
 
   @override
   void initState() {
     super.initState();
-    _loadAvatar();
     name = TextEditingController(text: OnboardingDraft.displayName.trim());
     phone = TextEditingController(text: OnboardingDraft.phone.trim());
     email = TextEditingController(text: OnboardingDraft.email.trim());
@@ -303,14 +276,15 @@ class _OwnerAccountSettingsPageState extends State<OwnerAccountSettingsPage> {
                   CircleAvatar(
                     radius: 64,
                     backgroundColor: const Color(0xFFF3EDFF),
-                    foregroundImage: avatarBytes==null?null:MemoryImage(avatarBytes!),
-                    child: avatarBytes!=null?null:Text(_nameValue.trim().split(RegExp(r'\s+')).where((x) => x.isNotEmpty).take(2).map((x) => x[0].toUpperCase()).join(),
+                    child: Text(_nameValue.trim().split(RegExp(r'\s+')).where((x) => x.isNotEmpty).take(2).map((x) => x[0].toUpperCase()).join(),
                       style: const TextStyle(fontSize: 37, color: Color(0xFF651FFF), fontWeight: FontWeight.w800)),
                   ),
                   Positioned(
                     right: -3, bottom: 0,
                     child: IconButton.filled(
-                      onPressed: avatarBusy?null:_pickAvatar,
+                      onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Profil fotoğrafı yükleme henüz desteklenmiyor.')),
+                      ),
                       style: IconButton.styleFrom(backgroundColor: const Color(0xFF651FFF), foregroundColor: Colors.white),
                       icon: const Icon(Icons.camera_alt_rounded, size: 20),
                     ),
@@ -1256,49 +1230,4 @@ class _EmptyBox extends StatelessWidget {
           ],
         ),
       );
-}
-
-
-/// Loads the authenticated owner's photo for home and profile headers.
-/// Falls back to initials when no image has been uploaded.
-class OwnerAvatar extends StatefulWidget {
-  const OwnerAvatar({super.key, required this.initials, required this.radius,
-    this.backgroundColor = const Color(0xFFF2EDFF),
-    this.foregroundColor = const Color(0xFF211751)});
-  final String initials;
-  final double radius;
-  final Color backgroundColor, foregroundColor;
-
-  @override
-  State<OwnerAvatar> createState() => _OwnerAvatarState();
-}
-
-class _OwnerAvatarState extends State<OwnerAvatar> {
-  Uint8List? _bytes;
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-  Future<void> _load() async {
-    try {
-      final response = await OwnerHttp.get(
-        Uri.parse('$_baseUrl/api/owner/account/avatar'), json: false,
-      ).timeout(const Duration(seconds: 8));
-      if (mounted && response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
-        setState(() => _bytes = response.bodyBytes);
-      }
-    } catch (_) {
-      // A missing photo or a temporary network error keeps the initials visible.
-    }
-  }
-  @override
-  Widget build(BuildContext context) => CircleAvatar(
-    radius: widget.radius,
-    backgroundColor: widget.backgroundColor,
-    foregroundImage: _bytes == null ? null : MemoryImage(_bytes!),
-    child: _bytes == null ? Text(widget.initials, maxLines: 1,
-      style: TextStyle(color: widget.foregroundColor,
-        fontSize: widget.radius * .62, fontWeight: FontWeight.w800)) : null,
-  );
 }
