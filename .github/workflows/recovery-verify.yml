@@ -5,6 +5,13 @@ on:
     branches:
       - recovery/pr42-working-apk-source-candidate-20261018
   workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/recovery-verify.yml'
+      - 'lib/**'
+      - 'pubspec.yaml'
 
 permissions:
   contents: read
