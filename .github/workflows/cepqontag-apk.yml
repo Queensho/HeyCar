@@ -27,6 +27,25 @@ jobs:
             flutter create --platforms=android --project-name=heycar_app .
           fi
           test -f android/app/build.gradle || test -f android/app/build.gradle.kts
+      - name: Ensure Android notification permission in generated manifest
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          manifest = Path("android/app/src/main/AndroidManifest.xml")
+          if not manifest.exists():
+              raise SystemExit("AndroidManifest.xml missing after flutter create")
+          ET.register_namespace("android", "http://schemas.android.com/apk/res/android")
+          tree = ET.parse(manifest)
+          root = tree.getroot()
+          key = "{http://schemas.android.com/apk/res/android}name"
+          permission = "android.permission.POST_NOTIFICATIONS"
+          if not any(e.get(key) == permission for e in root.findall("uses-permission")):
+              element = ET.Element("uses-permission", {key: permission})
+              root.insert(0, element)
+              tree.write(manifest, encoding="utf-8", xml_declaration=True)
+          print("Verified Android POST_NOTIFICATIONS permission")
+          PY
       - name: Enable core library desugaring for notifications
         run: |
           python3 - <<'PY'
