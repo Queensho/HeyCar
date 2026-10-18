@@ -43,14 +43,6 @@ Future<void> main()async{
   Future<void>(() async{
     try{
       if(!kIsWeb){
-        // Request Android notification permission independently of Firebase
-        // initialization, which may fail on installations without valid
-        // Firebase configuration.
-        try{
-          await PushNotifications.ensureChannels(requestPermissions:true);
-        }catch(e){
-          debugPrint('Android notification permission setup failed: $e');
-        }
         try{
           await PushNotifications.bootstrap();
         }catch(e){
