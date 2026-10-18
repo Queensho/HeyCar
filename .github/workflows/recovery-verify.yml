@@ -53,31 +53,23 @@ jobs:
           flutter create --platforms=android --project-name heycar_app .
           python3 - <<'PY'
           from pathlib import Path
-          p = Path("android/app/build.gradle.kts")
-          s = p.read_text()
-          assert "compileOptions {" in s
-          s = s.replace("compileOptions {", "compileOptions {\n        isCoreLibraryDesugaringEnabled = true", 1)
-          s += '\n' if not s.endswith('\n') else ''
-          s += '\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n'
-          p.write_text(s)
-          print("Enabled core library desugaring for temporary diagnostic Android scaffold")
-          PY
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path('android/app/build.gradle.kts')
-          if not p.exists():
-              raise SystemExit('Expected generated android/app/build.gradle.kts missing')
-          s=p.read_text()
-          needle='    compileOptions {'
-          assert needle in s
-          s=s.replace(needle, '    compileOptions {\n        isCoreLibraryDesugaringEnabled = true', 1)
-          anchor='dependencies {'
-          if anchor in s:
-              s=s.replace(anchor, 'dependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")', 1)
-          else:
-              s += '\n\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n'
-          p.write_text(s)
-          print('Enabled Android core library desugaring for flutter_local_notifications')
+          gradle = Path("android/app/build.gradle.kts")
+          s = gradle.read_text()
+          s = s.replace("isCoreLibraryDesugaringEnabled = true", "")
+          s = s.replace("compileOptions {", "compileOptions {\\n        isCoreLibraryDesugaringEnabled = true", 1)
+          s = s.replace('applicationId = "com.example.heycar_app"', 'applicationId = "com.cepqar.app"')
+          s = s.replace('namespace = "com.example.heycar_app"', 'namespace = "com.cepqar.app"')
+          s += '\\ndependencies {\\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\\n}\\n'
+          gradle.write_text(s)
+          manifest = Path("android/app/src/main/AndroidManifest.xml")
+          m = manifest.read_text()
+          m = m.replace("<manifest xmlns:android=", "<manifest xmlns:android=")
+          pos = m.index(">")
+          permissions = ["INTERNET","POST_NOTIFICATIONS","RECEIVE_BOOT_COMPLETED","WAKE_LOCK","VIBRATE","RECORD_AUDIO","CAMERA","FOREGROUND_SERVICE","FOREGROUND_SERVICE_MICROPHONE","FOREGROUND_SERVICE_PHONE_CALL","USE_FULL_SCREEN_INTENT","MANAGE_OWN_CALLS"]
+          m = m[:pos+1] + "".join('\\n    <uses-permission android:name="android.permission.%s" />'%p for p in permissions) + m[pos+1:]
+          m = m.replace('android:label="heycar_app"', 'android:label="CepQontag"')
+          manifest.write_text(m)
+          print("Restored known package name and essential manifest permissions for diagnostic only")
           PY
           echo '::warning::Android scaffolding generated temporarily. APK package ID, signing, manifest and native setup DO NOT match the known-good APK and must NOT be distributed.'
       - name: Flutter dependencies
