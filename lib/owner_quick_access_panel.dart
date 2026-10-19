@@ -27,6 +27,15 @@ class OwnerQuickPanelItem {
 /// A compact, horizontally scrollable shortcut strip in admin-published order.
 /// Swipe left to reveal additional shortcuts without changing their actions.
 class OwnerQuickAccessPanel extends StatelessWidget {
+  static const _localIcons=<String,String>{
+    'insurance':'assets/images/services/Sigorta_Kasko.png',
+    'settings':'assets/images/services/Ayarlar.png',
+    'qr':'assets/images/services/QR_Kodum.png',
+    'qr_security':'assets/images/services/QR_Guvenligi.png',
+    'vehicle':'assets/images/services/Arac_Bilgilerim.png',
+    'notifications':'assets/images/services/Bildirimler.png',
+  };
+
   const OwnerQuickAccessPanel({super.key,required this.items});
   final List<OwnerQuickPanelItem> items;
 
@@ -82,7 +91,17 @@ class OwnerQuickAccessPanel extends StatelessWidget {
                           borderRadius:BorderRadius.circular(16),
                         ),
                         alignment:Alignment.center,
-                        child:visible[i].iconUrl.isNotEmpty
+                        child:_localIcons.containsKey(visible[i].id)
+                          ?Padding(
+                            padding:const EdgeInsets.all(2),
+                            child:Image.asset(
+                              _localIcons[visible[i].id]!,
+                              fit:BoxFit.contain,
+                              errorBuilder:(_,__,___)=>Icon(
+                                visible[i].icon,color:visible[i].iconColor,size:24),
+                            ),
+                          )
+                          :visible[i].iconUrl.isNotEmpty
                           ?Padding(
                             padding:const EdgeInsets.all(4),
                             child:Image.network(
