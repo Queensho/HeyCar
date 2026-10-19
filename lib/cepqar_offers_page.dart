@@ -20,6 +20,8 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
   bool loading=true;
   String? error;
   List<_Offer> liveOffers=[];
+  List<Map<String,dynamic>> editorial=[];
+  bool editorialLoading=true;
   static const apiBase='https://heycar-api-185-165-46-213.nip.io';
   final categories=const ['Tümü','Oto Yıkama','Detailing','Lastik','Otopark','Servis','Akaryakıt'];
   final offers=const [
@@ -30,7 +32,14 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
     _Offer('Akaryakıt','Akaryakıt Fırsatı','Tüm yakıt türlerinde litre indirimi','₺1,5 İndirim','4.2 km','4.5','520',Icons.local_gas_station_rounded,['Market']),
     _Offer('Servis','AutoServis','Periyodik bakımda CepQontag indirimi','%20 İndirim','5.6 km','4.7','98',Icons.build_rounded,['Periyodik Bakım']),
   ];
-  @override void initState(){super.initState();_loadOffers();}
+  @override void initState(){super.initState();_loadOffers();_loadEditorial();}
+  Future<void> _loadEditorial()async{
+    try{final r=await http.get(Uri.parse('$apiBase/api/offers/editorial')).timeout(const Duration(seconds:12));
+      if(r.statusCode!=200)throw Exception('Vitrin yüklenemedi');
+      final d=jsonDecode(r.body) as Map<String,dynamic>;
+      if(mounted)setState(()=>editorial=(d['offers'] as List? ?? []).whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).toList());
+    }catch(_){if(mounted)setState(()=>editorial=[]);}finally{if(mounted)setState(()=>editorialLoading=false);}
+  }
   Future<void> _loadOffers() async{
     if(mounted)setState((){loading=true;error=null;});
     try{
@@ -136,6 +145,76 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
     )),
   ]);
 
+
+  Widget _emptyOfferCard({bool featured=false}){
+    return Container(
+      width:featured?248:158,height:featured?128:196,
+      margin:const EdgeInsets.only(right:10),
+      decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(17),
+        border:Border.all(color:const Color(0xFFE8E3F1))),
+      clipBehavior:Clip.antiAlias,
+      child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        Container(height:featured?78:103,width:double.infinity,color:const Color(0xFFF3EDFF),
+          child:const Icon(Icons.local_offer_outlined,color:Color(0xFFB6A0E9),size:29)),
+        Padding(padding:const EdgeInsets.all(10),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          const Text('Yakında',style:TextStyle(color:ink,fontSize:12,fontWeight:FontWeight.w800)),
+          const SizedBox(height:4),
+          Text(featured?'Yeni kampanyalar burada':'Size özel fırsatlar burada',
+            maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:muted,fontSize:10)),
+        ])),
+      ]),
+    );
+  }
+  Widget _editorialCard(Map<String,dynamic> item,{bool featured=false}){
+    final image=(item['image_url']??'').toString();
+    final title=(item['title']??'').toString();
+    final subtitle=(item['description']??'').toString();
+    final badge=(item['badge']??'').toString();
+    final url=(item['target_url']??'').toString();
+    return InkWell(
+      onTap:(){
+        if(url.isEmpty)return;
+        final parsed=Uri.tryParse(url);
+        if(parsed==null||parsed.scheme!='https')return;
+        // Editorial cards must not claim an in-app redemption code.
+        showDialog<void>(context:context,builder:(ctx)=>AlertDialog(
+          title:Text(title),content:Text(subtitle),
+          actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Kapat'))],
+        ));
+      },
+      borderRadius:BorderRadius.circular(17),
+      child:Container(
+        width:featured?248:158,margin:const EdgeInsets.only(right:10),
+        decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(17),
+          border:Border.all(color:const Color(0xFFE8E3F1))),
+        clipBehavior:Clip.antiAlias,
+        child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          SizedBox(height:featured?78:103,width:double.infinity,
+            child:Stack(fit:StackFit.expand,children:[
+              Container(color:const Color(0xFFF3EDFF),
+                child:image.startsWith('https://')?Image.network(image,fit:BoxFit.cover,
+                  errorBuilder:(_,__,___)=>const Icon(Icons.local_offer_rounded,color:purple,size:32))
+                  :const Icon(Icons.local_offer_rounded,color:purple,size:32)),
+              if(badge.isNotEmpty)Positioned(left:7,bottom:7,child:Container(
+                padding:const EdgeInsets.symmetric(horizontal:7,vertical:4),
+                decoration:BoxDecoration(color:purple,borderRadius:BorderRadius.circular(9)),
+                child:Text(badge,maxLines:1,style:const TextStyle(color:Colors.white,fontSize:9,fontWeight:FontWeight.w700)))),
+            ])),
+          Padding(padding:const EdgeInsets.all(10),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+            Text(title,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:ink,fontSize:12,fontWeight:FontWeight.w800)),
+            const SizedBox(height:4),
+            Text(subtitle,maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:muted,fontSize:10)),
+          ])),
+        ]),
+      ),
+    );
+  }
+  Widget _editorialStrip(String placement,{bool featured=false}){
+    final items=editorial.where((x)=>x['placement']==placement).toList();
+    return SizedBox(height:featured?135:192,child:ListView.builder(scrollDirection:Axis.horizontal,
+      itemCount:items.isEmpty?3:items.length,
+      itemBuilder:(_,i)=>items.isEmpty?_emptyOfferCard(featured:featured):_editorialCard(items[i],featured:featured)));
+  }
   @override Widget build(BuildContext context){
     final source=liveOffers.where((o){
       final q=searchText.trim().toLowerCase();
@@ -155,7 +234,7 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
               Row(children:[
                 IconButton(onPressed:()=>Navigator.maybePop(context),icon:const Icon(Icons.arrow_back_ios_new_rounded,color:Colors.white)),
                 const Expanded(child:Center(child:Text('cepqontag',style:TextStyle(color:Colors.white,fontSize:25,fontWeight:FontWeight.w900,letterSpacing:-1.2)))),
-                IconButton(onPressed:_loadOffers,tooltip:'Yenile',icon:const Icon(Icons.refresh_rounded,color:Colors.white)),
+                IconButton(onPressed:(){_loadOffers();_loadEditorial();},tooltip:'Yenile',icon:const Icon(Icons.refresh_rounded,color:Colors.white)),
               ]),
               const SizedBox(height:16),
               const Text('Fırsatlar',style:TextStyle(fontSize:29,color:Colors.white,fontWeight:FontWeight.w900)),
@@ -182,7 +261,7 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
                       const SizedBox(width:5),Text(c),
                     ]),
                     onSelected:(_)=>setState(()=>category=c),
-                    backgroundColor:Colors.white.withValues(alpha:.14),selectedColor:lime,
+                    backgroundColor:const Color(0xFF7138DF),selectedColor:lime,showCheckmark:false,
                     side:BorderSide.none,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(24)),
                     labelStyle:TextStyle(color:selected?ink:Colors.white,fontWeight:FontWeight.w700,fontSize:12),
                   );
@@ -208,29 +287,22 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
               ])),
             ]),
           ),
-          const SizedBox(height:22),
+          const SizedBox(height:18),
           _sectionHeading('Sana Özel Fırsatlar'),
-          if(loading)const Padding(padding:EdgeInsets.symmetric(vertical:45),child:Center(child:CircularProgressIndicator(color:purple)))
-          else if(error!=null)Padding(padding:const EdgeInsets.symmetric(vertical:24),child:Column(children:[
-            Text(error!,textAlign:TextAlign.center,style:const TextStyle(color:muted)),
-            TextButton.icon(onPressed:_loadOffers,icon:const Icon(Icons.refresh_rounded),label:const Text('Tekrar Dene')),
-          ]))
-          else if(visible.isEmpty)const Padding(padding:EdgeInsets.symmetric(vertical:25),child:Center(
-            child:Text('Şu anda bu kategoride aktif fırsat bulunamadı.',style:TextStyle(color:muted))))
-          else SizedBox(height:244,child:ListView.builder(scrollDirection:Axis.horizontal,itemCount:visible.length,
-            itemBuilder:(_,i)=>_offerTile(visible[i],compact:true))),
-          const SizedBox(height:22),
+          _editorialStrip('personal'),
+          const SizedBox(height:18),
           _sectionHeading('Öne Çıkanlar'),
-          if(!loading&&error==null&&visible.isNotEmpty)
-            ...visible.take(2).map((o)=>_offerTile(o)),
-          if(!loading&&error==null&&visible.isEmpty)
-            const Text('Aktif kampanyalar burada görünecek.',style:TextStyle(color:muted,fontSize:12)),
-          const SizedBox(height:15),
+          _editorialStrip('featured',featured:true),
+          const SizedBox(height:18),
           _sectionHeading('Yakınımdaki Fırsatlar'),
-          if(!loading&&error==null)
-            ...nearby.take(5).map((o)=>_offerTile(o)),
-          if(!loading&&error==null&&nearby.isEmpty)
-            const Text('Yakınınızda listelenen fırsat bulunmuyor.',style:TextStyle(color:muted,fontSize:12)),
+          if(loading)const Padding(padding:EdgeInsets.symmetric(vertical:20),child:Center(child:CircularProgressIndicator(color:purple)))
+          else if(error!=null)Padding(padding:const EdgeInsets.all(12),child:Text(error!,style:const TextStyle(color:muted,fontSize:12)))
+          else if(nearby.isEmpty)SizedBox(height:108,child:ListView(scrollDirection:Axis.horizontal,
+            children:List.generate(2,(_)=>Container(width:210,margin:const EdgeInsets.only(right:10),
+              padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(16)),
+              child:const Row(children:[Icon(Icons.storefront_outlined,color:purple),SizedBox(width:12),
+                Expanded(child:Text('Yakında yeni işletme fırsatları',style:TextStyle(color:muted,fontSize:11)))])))))
+          else ...nearby.take(5).map((o)=>_offerTile(o)),
           const SizedBox(height:18),
           const Text('Kampanyalar işletmeler tarafından sağlanır. Fiyat ve koşullar işletmeye göre değişebilir.',
             textAlign:TextAlign.center,style:TextStyle(color:muted,fontSize:10)),
