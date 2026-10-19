@@ -148,13 +148,13 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
 
   Widget _emptyOfferCard({bool featured=false}){
     return Container(
-      width:featured?248:158,height:featured?128:196,
+      width:featured?184:132,height:featured?116:168,
       margin:const EdgeInsets.only(right:10),
       decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(17),
         border:Border.all(color:const Color(0xFFE8E3F1))),
       clipBehavior:Clip.antiAlias,
       child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-        Container(height:featured?78:103,width:double.infinity,color:const Color(0xFFF3EDFF),
+        Container(height:featured?116:92,width:double.infinity,color:const Color(0xFFF3EDFF),
           child:const Icon(Icons.local_offer_outlined,color:Color(0xFFB6A0E9),size:29)),
         Padding(padding:const EdgeInsets.all(10),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
           const Text('Yakında',style:TextStyle(color:ink,fontSize:12,fontWeight:FontWeight.w800)),
@@ -184,7 +184,7 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
         },
         borderRadius:BorderRadius.circular(17),
         child:Container(
-          width:248,height:150,margin:const EdgeInsets.only(right:10),
+          width:184,height:116,margin:const EdgeInsets.only(right:10),
           clipBehavior:Clip.antiAlias,
           decoration:BoxDecoration(
             color:deepPurple,borderRadius:BorderRadius.circular(17)),
@@ -197,15 +197,15 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
               gradient:LinearGradient(begin:Alignment.centerLeft,end:Alignment.centerRight,
                 colors:[Color(0xD9001025),Color(0x66001025),Colors.transparent],
                 stops:[0,.62,1]))),
-            Padding(padding:const EdgeInsets.all(14),child:Column(
+            Padding(padding:const EdgeInsets.all(10),child:Column(
               crossAxisAlignment:CrossAxisAlignment.start,children:[
                 if(badge.isNotEmpty)Text(badge,maxLines:1,overflow:TextOverflow.ellipsis,
                   style:const TextStyle(color:lime,fontSize:10,fontWeight:FontWeight.w800)),
                 const SizedBox(height:5),
-                SizedBox(width:155,child:Text(title,maxLines:2,overflow:TextOverflow.ellipsis,
-                  style:const TextStyle(color:Colors.white,fontSize:17,height:1.05,fontWeight:FontWeight.w900))),
+                SizedBox(width:135,child:Text(title,maxLines:2,overflow:TextOverflow.ellipsis,
+                  style:const TextStyle(color:Colors.white,fontSize:13,height:1.05,fontWeight:FontWeight.w900))),
                 const SizedBox(height:5),
-                SizedBox(width:155,child:Text(subtitle,maxLines:2,overflow:TextOverflow.ellipsis,
+                SizedBox(width:135,child:Text(subtitle,maxLines:2,overflow:TextOverflow.ellipsis,
                   style:const TextStyle(color:Colors.white,fontSize:10,height:1.15))),
                 const Spacer(),
                 Container(
@@ -233,12 +233,12 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
       },
       borderRadius:BorderRadius.circular(17),
       child:Container(
-        width:featured?248:158,margin:const EdgeInsets.only(right:10),
+        width:featured?184:132,margin:const EdgeInsets.only(right:10),
         decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(17),
           border:Border.all(color:const Color(0xFFE8E3F1))),
         clipBehavior:Clip.antiAlias,
         child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-          SizedBox(height:featured?78:103,width:double.infinity,
+          SizedBox(height:featured?78:92,width:double.infinity,
             child:Stack(fit:StackFit.expand,children:[
               Container(color:const Color(0xFFF3EDFF),
                 child:image.startsWith('https://')?Image.network(image,fit:BoxFit.cover,
@@ -260,7 +260,7 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
   }
   Widget _editorialStrip(String placement,{bool featured=false}){
     final items=editorial.where((x)=>x['placement']==placement).toList();
-    return SizedBox(height:featured?150:192,child:ListView.builder(scrollDirection:Axis.horizontal,
+    return SizedBox(height:featured?116:168,child:ListView.builder(scrollDirection:Axis.horizontal,
       itemCount:items.isEmpty?3:items.length,
       itemBuilder:(_,i)=>items.isEmpty?_emptyOfferCard(featured:featured):_editorialCard(items[i],featured:featured)));
   }
