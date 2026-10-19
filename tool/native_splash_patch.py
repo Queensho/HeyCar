@@ -28,7 +28,7 @@ launch = """<?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item>
         <shape android:shape="rectangle">
-            <solid android:color="#B9FF45" />
+            <solid android:color="#4912C8" />
         </shape>
     </item>
     <item>
@@ -45,9 +45,9 @@ launch = """<?xml version="1.0" encoding="utf-8"?>
 v31 = """<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="LaunchTheme" parent="@android:style/Theme.Light.NoTitleBar">
-        <item name="android:windowSplashScreenBackground">#B9FF45</item>
+        <item name="android:windowSplashScreenBackground">#4912C8</item>
         <item name="android:windowSplashScreenAnimatedIcon">@drawable/cepqar_splash_icon</item>
-        <item name="android:windowSplashScreenAnimationDuration">0</item>\n        <item name="android:statusBarColor">#B9FF45</item>\n        <item name="android:navigationBarColor">#B9FF45</item>
+        <item name="android:windowSplashScreenAnimationDuration">0</item>\n        <item name="android:statusBarColor">#4912C8</item>\n        <item name="android:navigationBarColor">#4912C8</item>
         <item name="android:forceDarkAllowed">false</item>
         <item name="android:windowNoTitle">true</item>
     </style>
@@ -55,4 +55,4 @@ v31 = """<?xml version="1.0" encoding="utf-8"?>
 """
 (res / "values-v31" / "styles.xml").write_text(v31)
 
-print("CepQontag lime native splash with Splashlogo applied")
+print("CepQontag purple native startup aligned with Flutter splash")
