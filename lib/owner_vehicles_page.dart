@@ -68,19 +68,6 @@ Widget _brandHeader(){
       ),
       const Spacer(),
       Container(
-        width:36,height:36,
-        decoration:BoxDecoration(
-          shape:BoxShape.circle,
-          color:_panel,
-          border:Border.all(color:_line),
-        ),
-        child:Stack(clipBehavior:Clip.none,alignment:Alignment.center,children:[
-          Icon(Icons.notifications_rounded,color:_text,size:19),
-          const Positioned(right:2,top:1,child:CircleAvatar(radius:3.5,backgroundColor:Color(0xFF8B5CFF))),
-        ]),
-      ),
-      const SizedBox(width:8),
-      Container(
         width:36,height:36,alignment:Alignment.center,
         decoration:BoxDecoration(
           shape:BoxShape.circle,
