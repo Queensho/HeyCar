@@ -48,59 +48,197 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
       if(mounted)setState((){liveOffers=parsed;loading=false;});
     }catch(e){if(mounted)setState((){loading=false;error=e.toString().replaceFirst('Exception: ','');});}
   }
-  @override Widget build(BuildContext context){
-    final source=liveOffers;
-    final visible=category=='Tümü'?source:source.where((o)=>o.categories.any((x)=>x.toLowerCase()==category.toLowerCase())).toList();
-    return Scaffold(
-      backgroundColor:CepqarTheme.bg,
-      appBar:AppBar(
-        backgroundColor:CepqarTheme.bg,
-        foregroundColor:CepqarTheme.text,
-        elevation:0,
-        titleSpacing:0,
-        title:Row(
-          mainAxisSize:MainAxisSize.min,
-          children:[
-            Image.asset(CepqarTheme.isLight?'assets/file_00000000b130820abb8d411e67ab0d25.png':'assets/Logoyeni.png',height:25),
-            const SizedBox(width:5),
-            Flexible(child:Text('Fırsatlar',maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:CepqarTheme.text,fontSize:19,fontWeight:FontWeight.w900))),
-          ],
-        ),
-        actions:[
-          ConstrainedBox(
-            constraints:const BoxConstraints(maxWidth:116),
-            child:Container(
-              margin:const EdgeInsets.only(right:8,top:8,bottom:8),
-              padding:const EdgeInsets.symmetric(horizontal:8),
-              decoration:BoxDecoration(
-                border:Border.all(color:CepqarTheme.purple.withValues(alpha:.45)),
-                borderRadius:BorderRadius.circular(20),
-              ),
-              child:const Row(
-                mainAxisSize:MainAxisSize.min,
-                children:[
-                  Icon(Icons.location_on_rounded,color:CepqarTheme.purple,size:16),
-                  SizedBox(width:3),
-                  Flexible(child:Text('İstanbul',maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(fontSize:12,fontWeight:FontWeight.w800))),
-                  Icon(Icons.keyboard_arrow_down_rounded,size:17),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-      body:ListView(padding:const EdgeInsets.fromLTRB(16,4,16,30),children:[
-      Text('Yakınındaki araç fırsatlarını keşfet',textAlign:TextAlign.center,style:TextStyle(color:CepqarTheme.muted,fontSize:13)),const SizedBox(height:4),
-      Text('Oto yıkama • Detailing • Lastik • Otopark • Servis • Akaryakıt',textAlign:TextAlign.center,style:TextStyle(color:CepqarTheme.muted,fontSize:10.5)),const SizedBox(height:16),
-      SizedBox(height:68,child:ListView.separated(scrollDirection:Axis.horizontal,itemCount:categories.length,separatorBuilder:(_,__)=>const SizedBox(width:8),itemBuilder:(_,i){final x=categories[i],a=x==category;final icon=x=='Tümü'?Icons.grid_view_rounded:offers.firstWhere((o)=>o.category==x).icon;return InkWell(onTap:()=>setState(()=>category=x),borderRadius:BorderRadius.circular(18),child:AnimatedContainer(duration:const Duration(milliseconds:180),width:78,padding:const EdgeInsets.all(6),decoration:BoxDecoration(gradient:a?const LinearGradient(colors:[Color(0xFF713BFF),Color(0xFF8A45FF)]):null,color:a?null:CepqarTheme.panel,borderRadius:BorderRadius.circular(16),border:Border.all(color:a?CepqarTheme.purple:CepqarTheme.line)),child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[Icon(icon,color:a?Colors.white:CepqarTheme.purple,size:21),const SizedBox(height:4),Text(x,textAlign:TextAlign.center,maxLines:1,style:TextStyle(color:a?Colors.white:CepqarTheme.text,fontSize:9,fontWeight:FontWeight.w800))]))); })),const SizedBox(height:16),
-      Container(height:112,padding:const EdgeInsets.all(15),decoration:BoxDecoration(gradient:const LinearGradient(colors:[Color(0xFF351078),Color(0xFF713BFF),Color(0xFF171B56)]),borderRadius:BorderRadius.circular(22),border:Border.all(color:CepqarTheme.purple.withValues(alpha:.6))),child:Row(children:[Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisAlignment:MainAxisAlignment.center,children:[const Text('Aracına iyi bak,\ndaha fazlasını keşfet',style:TextStyle(color:Colors.white,fontSize:17,fontWeight:FontWeight.w900,height:1.08)),const SizedBox(height:7),Text('Sana özel fırsatlar, şimdi cebinde.',style:TextStyle(color:Colors.white.withValues(alpha:.78),fontSize:10.5))])),const Icon(Icons.local_offer_rounded,color:Colors.white,size:50)])),const SizedBox(height:16),
-      if(loading) const Padding(padding:EdgeInsets.symmetric(vertical:30),child:Center(child:CircularProgressIndicator(color:CepqarTheme.purple)))
-      else if(error!=null) Padding(padding:const EdgeInsets.symmetric(vertical:18),child:Column(children:[Text(error!,textAlign:TextAlign.center,style:TextStyle(color:CepqarTheme.muted,fontSize:12)),const SizedBox(height:10),OutlinedButton.icon(onPressed:_loadOffers,icon:const Icon(Icons.refresh_rounded),label:const Text('Tekrar Dene'))]))
-      else if(visible.isEmpty) Padding(padding:const EdgeInsets.symmetric(vertical:26),child:Text('Yakınında aktif CepQontag fırsatı bulunamadı.',textAlign:TextAlign.center,style:TextStyle(color:CepqarTheme.muted,fontSize:12)))
-      else ...visible.map((o)=>_OfferCard(o:o,driverMode:widget.driverMode,vehiclePlate:widget.vehiclePlate)),
-      Text('Kampanyalar işletmeler tarafından sağlanır. Fiyat ve koşullar işletmeye göre değişebilir.',style:TextStyle(color:CepqarTheme.muted,fontSize:9.5),textAlign:TextAlign.center),
-    ]));
+
+  String searchText='';
+  final TextEditingController searchController=TextEditingController();
+  static const purple=Color(0xFF651FFF);
+  static const deepPurple=Color(0xFF4912C8);
+  static const lime=Color(0xFFB9FF45);
+  static const ink=Color(0xFF10152D);
+  static const muted=Color(0xFF778096);
+
+  @override void dispose(){searchController.dispose();super.dispose();}
+
+  IconData _categoryIcon(String c){
+    switch(c){
+      case 'Oto Yıkama':return Icons.local_car_wash_rounded;
+      case 'Detailing':return Icons.auto_awesome_rounded;
+      case 'Lastik':return Icons.tire_repair_rounded;
+      case 'Otopark':return Icons.local_parking_rounded;
+      case 'Servis':return Icons.build_rounded;
+      case 'Akaryakıt':return Icons.local_gas_station_rounded;
+      default:return Icons.grid_view_rounded;
+    }
   }
+
+  Widget _sectionHeading(String label,{VoidCallback? onAll})=>Padding(
+    padding:const EdgeInsets.only(bottom:12),
+    child:Row(children:[
+      Expanded(child:Text(label,style:const TextStyle(fontSize:20,fontWeight:FontWeight.w900,color:ink,letterSpacing:-.5))),
+      if(onAll!=null)TextButton(onPressed:onAll,child:const Row(mainAxisSize:MainAxisSize.min,children:[
+        Text('Tümünü Gör',style:TextStyle(color:purple,fontWeight:FontWeight.w700,fontSize:12)),
+        Icon(Icons.chevron_right_rounded,color:purple,size:18),
+      ])),
+    ]),
+  );
+
+  void _showOffer(_Offer o)=>Navigator.push(context,MaterialPageRoute(
+    builder:(_)=>_OfferDetailPage(o:o,driverMode:widget.driverMode,vehiclePlate:widget.vehiclePlate),
+  ));
+
+  Widget _offerTile(_Offer o,{bool compact=false}){
+    final image=o.imageUrl.trim();
+    return InkWell(
+      onTap:()=>_showOffer(o),borderRadius:BorderRadius.circular(20),
+      child:Container(
+        width:compact?214:null,
+        margin:EdgeInsets.only(right:compact?12:0,bottom:compact?0:12),
+        decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(20),
+          boxShadow:[BoxShadow(color:deepPurple.withValues(alpha:.07),blurRadius:16,offset:const Offset(0,5))]),
+        clipBehavior:Clip.antiAlias,
+        child:compact?Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          SizedBox(height:116,width:double.infinity,child:_offerPicture(o,image)),
+          Padding(padding:const EdgeInsets.all(12),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+            Text(o.name,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:ink,fontSize:14,fontWeight:FontWeight.w900)),
+            const SizedBox(height:5),
+            Text(o.description,maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:muted,fontSize:11,height:1.25)),
+            const SizedBox(height:12),
+            Row(children:[Icon(o.icon,color:purple,size:15),const SizedBox(width:4),
+              Expanded(child:Text(o.category,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:10,color:ink,fontWeight:FontWeight.w700))),
+              const Icon(Icons.location_on_rounded,size:13,color:muted),
+              Text(o.distance,style:const TextStyle(fontSize:10,color:muted)),
+            ]),
+          ])),
+        ]):Row(children:[
+          SizedBox(width:106,height:110,child:_offerPicture(o,image)),
+          Expanded(child:Padding(padding:const EdgeInsets.all(12),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+            Text(o.name,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:ink,fontSize:14,fontWeight:FontWeight.w900)),
+            const SizedBox(height:5),
+            Text(o.description,maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:muted,fontSize:11)),
+            const SizedBox(height:8),
+            Row(children:[const Icon(Icons.location_on_rounded,color:purple,size:15),
+              Text(o.distance,style:const TextStyle(fontSize:11,color:muted)),
+              const Spacer(),const Icon(Icons.chevron_right_rounded,color:purple)]),
+          ]))),
+        ]),
+      ),
+    );
+  }
+
+  Widget _offerPicture(_Offer o,String image)=>Stack(fit:StackFit.expand,children:[
+    Container(color:const Color(0xFFF3EDFF),child:image.isNotEmpty
+      ?Image.network(image,fit:BoxFit.cover,errorBuilder:(_,__,___)=>Icon(o.icon,size:45,color:purple))
+      :Icon(o.icon,size:45,color:purple)),
+    Positioned(left:8,bottom:8,child:Container(
+      padding:const EdgeInsets.symmetric(horizontal:9,vertical:5),
+      decoration:BoxDecoration(color:purple,borderRadius:BorderRadius.circular(12)),
+      child:Text(o.badge,style:const TextStyle(color:Colors.white,fontSize:10,fontWeight:FontWeight.w800)),
+    )),
+  ]);
+
+  @override Widget build(BuildContext context){
+    final source=liveOffers.where((o){
+      final q=searchText.trim().toLowerCase();
+      return q.isEmpty||o.name.toLowerCase().contains(q)||o.description.toLowerCase().contains(q)||o.category.toLowerCase().contains(q);
+    }).toList();
+    final visible=category=='Tümü'?source:source.where((o)=>o.categories.any((x)=>x.toLowerCase()==category.toLowerCase())).toList();
+    final nearby=visible.where((o)=>o.distance.isNotEmpty).toList();
+    return Scaffold(
+      backgroundColor:const Color(0xFFF8F9FC),
+      body:CustomScrollView(slivers:[
+        SliverToBoxAdapter(child:Container(
+          decoration:const BoxDecoration(gradient:LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,
+            colors:[Color(0xFF651FFF),Color(0xFF4912C8)])),
+          child:SafeArea(bottom:false,child:Padding(
+            padding:const EdgeInsets.fromLTRB(16,8,16,22),
+            child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+              Row(children:[
+                IconButton(onPressed:()=>Navigator.maybePop(context),icon:const Icon(Icons.arrow_back_ios_new_rounded,color:Colors.white)),
+                const Expanded(child:Center(child:Text('cepqontag',style:TextStyle(color:Colors.white,fontSize:25,fontWeight:FontWeight.w900,letterSpacing:-1.2)))),
+                IconButton(onPressed:_loadOffers,tooltip:'Yenile',icon:const Icon(Icons.refresh_rounded,color:Colors.white)),
+              ]),
+              const SizedBox(height:16),
+              const Text('Fırsatlar',style:TextStyle(fontSize:29,color:Colors.white,fontWeight:FontWeight.w900)),
+              const SizedBox(height:4),
+              const Text('Size özel avantajlar ve kampanyalar',style:TextStyle(color:Colors.white70,fontSize:13)),
+              const SizedBox(height:18),
+              TextField(controller:searchController,onChanged:(v)=>setState(()=>searchText=v),
+                style:const TextStyle(color:Colors.white),
+                decoration:InputDecoration(
+                  hintText:'Fırsat ara...',hintStyle:const TextStyle(color:Colors.white70),
+                  prefixIcon:const Icon(Icons.search_rounded,color:Colors.white),
+                  suffixIcon:searchText.isNotEmpty?IconButton(icon:const Icon(Icons.close_rounded,color:Colors.white),onPressed:(){searchController.clear();setState(()=>searchText='');}):null,
+                  filled:true,fillColor:Colors.white.withValues(alpha:.17),
+                  border:OutlineInputBorder(borderSide:BorderSide.none,borderRadius:BorderRadius.circular(28)),
+                  contentPadding:const EdgeInsets.symmetric(vertical:13),
+                )),
+              const SizedBox(height:16),
+              SizedBox(height:43,child:ListView.separated(scrollDirection:Axis.horizontal,itemCount:categories.length,
+                separatorBuilder:(_,__)=>const SizedBox(width:8),itemBuilder:(_,i){
+                  final c=categories[i],selected=c==category;
+                  return ChoiceChip(
+                    selected:selected,label:Row(mainAxisSize:MainAxisSize.min,children:[
+                      Icon(_categoryIcon(c),size:16,color:selected?ink:Colors.white),
+                      const SizedBox(width:5),Text(c),
+                    ]),
+                    onSelected:(_)=>setState(()=>category=c),
+                    backgroundColor:Colors.white.withValues(alpha:.14),selectedColor:lime,
+                    side:BorderSide.none,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(24)),
+                    labelStyle:TextStyle(color:selected?ink:Colors.white,fontWeight:FontWeight.w700,fontSize:12),
+                  );
+                })),
+            ]),
+          )),
+        )),
+        SliverPadding(padding:const EdgeInsets.fromLTRB(16,18,16,28),sliver:SliverList(delegate:SliverChildListDelegate([
+          Container(height:170,decoration:BoxDecoration(
+            gradient:const LinearGradient(colors:[Color(0xFF241052),Color(0xFF651FFF)]),
+            borderRadius:BorderRadius.circular(22)),
+            child:Stack(children:[
+              Positioned(right:-12,bottom:-15,child:Icon(Icons.directions_car_filled_rounded,color:lime.withValues(alpha:.65),size:170)),
+              Padding(padding:const EdgeInsets.all(19),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                const Text('QR\'ınız aktif olsun',style:TextStyle(color:Colors.white,fontSize:20,fontWeight:FontWeight.w900)),
+                const Text('İlk 3 ay Premium ücretsiz!',style:TextStyle(color:lime,fontSize:21,fontWeight:FontWeight.w900)),
+                const SizedBox(height:6),
+                const Text('Aracınız da, siz de daha güvendesiniz.',style:TextStyle(color:Colors.white70,fontSize:11)),
+                const Spacer(),
+                Container(padding:const EdgeInsets.symmetric(horizontal:15,vertical:9),
+                  decoration:BoxDecoration(color:lime,borderRadius:BorderRadius.circular(20)),
+                  child:const Text('CepQontag Premium',style:TextStyle(color:ink,fontSize:11,fontWeight:FontWeight.w800))),
+              ])),
+            ]),
+          ),
+          const SizedBox(height:22),
+          _sectionHeading('Sana Özel Fırsatlar'),
+          if(loading)const Padding(padding:EdgeInsets.symmetric(vertical:45),child:Center(child:CircularProgressIndicator(color:purple)))
+          else if(error!=null)Padding(padding:const EdgeInsets.symmetric(vertical:24),child:Column(children:[
+            Text(error!,textAlign:TextAlign.center,style:const TextStyle(color:muted)),
+            TextButton.icon(onPressed:_loadOffers,icon:const Icon(Icons.refresh_rounded),label:const Text('Tekrar Dene')),
+          ]))
+          else if(visible.isEmpty)const Padding(padding:EdgeInsets.symmetric(vertical:25),child:Center(
+            child:Text('Şu anda bu kategoride aktif fırsat bulunamadı.',style:TextStyle(color:muted))))
+          else SizedBox(height:244,child:ListView.builder(scrollDirection:Axis.horizontal,itemCount:visible.length,
+            itemBuilder:(_,i)=>_offerTile(visible[i],compact:true))),
+          const SizedBox(height:22),
+          _sectionHeading('Öne Çıkanlar'),
+          if(!loading&&error==null&&visible.isNotEmpty)
+            ...visible.take(2).map((o)=>_offerTile(o)),
+          if(!loading&&error==null&&visible.isEmpty)
+            const Text('Aktif kampanyalar burada görünecek.',style:TextStyle(color:muted,fontSize:12)),
+          const SizedBox(height:15),
+          _sectionHeading('Yakınımdaki Fırsatlar'),
+          if(!loading&&error==null)
+            ...nearby.take(5).map((o)=>_offerTile(o)),
+          if(!loading&&error==null&&nearby.isEmpty)
+            const Text('Yakınınızda listelenen fırsat bulunmuyor.',style:TextStyle(color:muted,fontSize:12)),
+          const SizedBox(height:18),
+          const Text('Kampanyalar işletmeler tarafından sağlanır. Fiyat ve koşullar işletmeye göre değişebilir.',
+            textAlign:TextAlign.center,style:TextStyle(color:muted,fontSize:10)),
+        ]))),
+      ]),
+    );
+  }
+
 }
 class _Offer{const _Offer(this.category,this.name,this.description,this.badge,this.distance,this.rating,this.reviews,this.icon,this.tags,{this.id='',this.address='',this.couponCode='',this.openingHours='',this.imageUrl='',this.logoUrl=''});final String category,name,description,badge,distance,rating,reviews,id,address,couponCode,openingHours,imageUrl,logoUrl; List<String> get categories=>category.split(',').map((x)=>x.trim()).where((x)=>x.isNotEmpty).toList();final IconData icon;final List<String> tags;
  factory _Offer.fromApi(Map<String,dynamic> x){final cat=(x['category']??'Servis').toString();final meters=double.tryParse('${x['distance_m']}')??0;final d=meters<1000?'${meters.round()} m':'${(meters/1000).toStringAsFixed(1)} km';IconData icon=Icons.build_rounded;if(cat.toLowerCase().contains('yıkama'))icon=Icons.local_car_wash_rounded;else if(cat.toLowerCase().contains('lastik'))icon=Icons.tire_repair_rounded;else if(cat.toLowerCase().contains('otopark'))icon=Icons.local_parking_rounded;else if(cat.toLowerCase().contains('akaryakıt'))icon=Icons.local_gas_station_rounded;else if(cat.toLowerCase().contains('detail'))icon=Icons.auto_awesome_rounded;return _Offer(cat,(x['name']??'CepQontag İşletmesi').toString(),(x['description']??'').toString(),(x['badge']??'Fırsat').toString(),d,(x['rating']??'—').toString(),(x['review_count']??0).toString(),icon,const [],imageUrl:(x['image_url']??'').toString(),logoUrl:(x['logo_url']??'').toString(),address:(x['address']??'').toString(),couponCode:(x['coupon_code']??'').toString(),openingHours:(x['opening_hours']??'').toString(),id:(x['id']??'').toString());}
