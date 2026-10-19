@@ -28,7 +28,7 @@ launch = """<?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item>
         <shape android:shape="rectangle">
-            <solid android:color="#07111F" />
+            <solid android:color="#651FFF" />
         </shape>
     </item>
     <item>
@@ -45,9 +45,9 @@ launch = """<?xml version="1.0" encoding="utf-8"?>
 v31 = """<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="LaunchTheme" parent="@android:style/Theme.Light.NoTitleBar">
-        <item name="android:windowSplashScreenBackground">#07111F</item>
+        <item name="android:windowSplashScreenBackground">#651FFF</item>
         <item name="android:windowSplashScreenAnimatedIcon">@drawable/cepqar_splash_icon</item>
-        <item name="android:windowSplashScreenAnimationDuration">0</item>
+        <item name="android:windowSplashScreenAnimationDuration">0</item>\n        <item name="android:statusBarColor">#651FFF</item>\n        <item name="android:navigationBarColor">#651FFF</item>
         <item name="android:forceDarkAllowed">false</item>
         <item name="android:windowNoTitle">true</item>
     </style>
@@ -55,4 +55,4 @@ v31 = """<?xml version="1.0" encoding="utf-8"?>
 """
 (res / "values-v31" / "styles.xml").write_text(v31)
 
-print("Cepqar native wordmark splash applied")
+print("CepQontag purple native wordmark splash applied")
