@@ -6,7 +6,7 @@ class CepqontagSplash extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    backgroundColor: const Color(0xFFB9FF45),
+    backgroundColor: const Color(0xFF4912C8),
     body: LayoutBuilder(builder: (context, constraints) {
       final size = Size(constraints.maxWidth, constraints.maxHeight);
       return Stack(fit: StackFit.expand, children: [
