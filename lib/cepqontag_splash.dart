@@ -6,7 +6,7 @@ class CepqontagSplash extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    backgroundColor: const Color(0xFF651FFF),
+    backgroundColor: const Color(0xFFB9FF45),
     body: LayoutBuilder(builder: (context, constraints) {
       final size = Size(constraints.maxWidth, constraints.maxHeight);
       return Stack(fit: StackFit.expand, children: [
@@ -20,7 +20,7 @@ class CepqontagSplash extends StatelessWidget {
         SafeArea(child: Center(child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Image.asset('assets/Logoyeni.png',
+            Image.asset('assets/Splashlogo.png',
               width: size.width * .64,
               fit: BoxFit.contain,
               errorBuilder: (_, __, ___) => const SizedBox.shrink()),
