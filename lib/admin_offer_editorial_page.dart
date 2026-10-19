@@ -30,11 +30,11 @@ class _AdminOfferEditorialPageState extends State<AdminOfferEditorialPage>{
   await load();
  }
  Future<void> edit([Map<String,dynamic>? existing])async{
-  final title=TextEditingController(text='${existing?['title']??''}');
-  final description=TextEditingController(text='${existing?['description']??''}');
-  final badge=TextEditingController(text='${existing?['badge']??''}');
-  final image=TextEditingController(text='${existing?['image_url']??''}');
-  final url=TextEditingController(text='${existing?['target_url']??''}');
+  final title=TextEditingController(text:'${existing?['title']??''}');
+  final description=TextEditingController(text:'${existing?['description']??''}');
+  final badge=TextEditingController(text:'${existing?['badge']??''}');
+  final image=TextEditingController(text:'${existing?['image_url']??''}');
+  final url=TextEditingController(text:'${existing?['target_url']??''}');
   var placement='${existing?['placement']??'personal'}',active=existing?['is_active']==true;
   final result=await showDialog<Map<String,dynamic>>(context:context,builder:(ctx)=>StatefulBuilder(builder:(ctx,change)=>AlertDialog(
    title:Text(existing==null?'Yeni vitrin fırsatı':'Vitrin fırsatını düzenle'),
