@@ -229,8 +229,6 @@ class OwnerSettingsPage extends StatelessWidget {
           children: [
             _ProfileBrandHeader(
               initials: _initials,
-              onNotifications: onOpenNotifications ??
-                  () => _push(context, const OwnerNotificationSettingsPage()),
             ),
             const SizedBox(height: 22),
             FutureBuilder<bool>(
@@ -416,18 +414,12 @@ class _ReferenceMenuGroup extends StatelessWidget {
 class _ProfileBrandHeader extends StatelessWidget {
   const _ProfileBrandHeader({
     required this.initials,
-    required this.onNotifications,
   });
 
   final String initials;
-  final VoidCallback onNotifications;
 
   @override
   Widget build(BuildContext context) {
-    const light = true;
-    const text = Color(0xFF10152D);
-    const line = Color(0xFFEDEEF3);
-
     return Row(
       children: [
         Image.asset(
@@ -438,35 +430,6 @@ class _ProfileBrandHeader extends StatelessWidget {
           alignment: Alignment.centerLeft,
         ),
         const Spacer(),
-        Stack(
-          clipBehavior: Clip.none,
-          children: [
-            InkWell(
-              onTap: onNotifications,
-              customBorder: const CircleBorder(),
-              child: Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: light ? Colors.white : const Color(0xFF0B1220),
-                  border: Border.all(color: line),
-                ),
-                child: Icon(
-                  Icons.notifications_none_rounded,
-                  color: text,
-                  size: 21,
-                ),
-              ),
-            ),
-            const Positioned(
-              right: 1,
-              top: 0,
-              child: CircleAvatar(radius: 4.5, backgroundColor: _danger),
-            ),
-          ],
-        ),
-        const SizedBox(width: 8),
         Container(
           width: 38,
           height: 38,
