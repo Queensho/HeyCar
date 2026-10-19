@@ -86,8 +86,9 @@ void action(String a){
         OwnerNotificationsPage(key:ValueKey('notifications-$vid'),vehicleId:vid,plate:QrDraft.plate,active:tab==3),
         OwnerSettingsPage(onOpenVehicles:()=>setState(()=>tab=1),onOpenQr:_qr),
       ];
-      const labels=['Anasayfa','Araçlarım','Hizmetler','Bildirimler','Profil'];
-      const icons=[Icons.home_rounded,Icons.directions_car_outlined,Icons.grid_view_rounded,Icons.receipt_long_outlined,Icons.person_outline_rounded];
+      const labels=['Anasayfa','Araçlarım','Hizmetler','Profil'];
+      const icons=[Icons.home_rounded,Icons.directions_car_outlined,Icons.grid_view_rounded,Icons.person_outline_rounded];
+      const navTabs=[0,1,2,4];
       return Scaffold(
         backgroundColor:CepqarTheme.bg,
         body:IndexedStack(index:tab,children:pages),
@@ -103,11 +104,11 @@ void action(String a){
               border:Border.all(color:(tab==4||CepqarTheme.isLight)?const Color(0xFFE6E6F0):const Color(0xFF1B2540)),
               boxShadow:[BoxShadow(color:Colors.black.withValues(alpha:(tab==4||CepqarTheme.isLight) ? 0.08 : 0.30),blurRadius:22,offset:const Offset(0,8))],
             ),
-            child:Row(children:List.generate(5,(i){
-              final active=tab==i;
+            child:Row(children:List.generate(navTabs.length,(i){
+              final active=tab==navTabs[i];
               return Expanded(
                 child:InkWell(
-                  onTap:()=>setState(()=>tab=i),
+                  onTap:()=>setState(()=>tab=navTabs[i]),
                   borderRadius:BorderRadius.circular(18),
                   child:AnimatedContainer(
                     duration:const Duration(milliseconds:180),
@@ -118,7 +119,7 @@ void action(String a){
                     child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[
                       Stack(clipBehavior:Clip.none,children:[
                         Icon(icons[i],size:22,color:active?const Color(0xFF651FFF):(tab==4?const Color(0xFF778096):CepqarTheme.muted)),
-                        if(i==3&&unread>0)const Positioned(right:-4,top:-3,child:CircleAvatar(radius:4,backgroundColor:Color(0xFFFF4158))),
+                        
                       ]),
                       const SizedBox(height:3),
                       Text(labels[i],maxLines:1,style:TextStyle(fontSize:CepqarTheme.navText,fontWeight:active?FontWeight.w800:FontWeight.w600,color:active?CepqarTheme.purple:CepqarTheme.muted)),
