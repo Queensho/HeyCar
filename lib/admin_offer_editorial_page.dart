@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 
 class AdminOfferEditorialPage extends StatefulWidget{
  const AdminOfferEditorialPage({super.key,required this.token});
@@ -29,11 +30,34 @@ class _AdminOfferEditorialPageState extends State<AdminOfferEditorialPage>{
   if(r.statusCode<200||r.statusCode>=300)throw Exception('Kaydedilemedi (${r.statusCode})');
   await load();
  }
+ Future<String> uploadImage(XFile file)async{
+  final name=file.name.toLowerCase();
+  if(!name.endsWith('.jpg')&&!name.endsWith('.jpeg')&&!name.endsWith('.png')&&!name.endsWith('.webp')){
+   throw Exception('Yalnızca JPG, PNG veya WEBP seçebilirsin.');
+  }
+  final bytes=await file.readAsBytes();
+  if(bytes.length>3*1024*1024)throw Exception('Görsel en fazla 3 MB olabilir.');
+  final mime=name.endsWith('.png')?'image/png':name.endsWith('.webp')?'image/webp':'image/jpeg';
+  final uploadHeaders=Map<String,String>.from(headers)
+   ..['Content-Type']='application/octet-stream'
+   ..['X-File-Type']=mime
+   ..['X-File-Name']=file.name;
+  // Reuse the existing authenticated admin media storage used by Stories.
+  final r=await http.put(Uri.parse('$base/api/admin/manage/stories/media/content'),
+   headers:uploadHeaders,body:bytes).timeout(const Duration(seconds:45));
+  if(r.statusCode<200||r.statusCode>=300)throw Exception('Fotoğraf yüklenemedi (${r.statusCode})');
+  final data=jsonDecode(r.body) as Map;
+  final url=(data['url']??'').toString();
+  if(!url.startsWith('https://'))throw Exception('Görsel adresi alınamadı.');
+  return url;
+ }
  Future<void> edit([Map<String,dynamic>? existing])async{
   final title=TextEditingController(text:'${existing?['title']??''}');
   final description=TextEditingController(text:'${existing?['description']??''}');
   final badge=TextEditingController(text:'${existing?['badge']??''}');
-  final image=TextEditingController(text:'${existing?['image_url']??''}');
+  var imageUrl=(existing?['image_url']??'').toString();
+  var uploading=false;
+  String? uploadError;
   final url=TextEditingController(text:'${existing?['target_url']??''}');
   var placement='${existing?['placement']??'personal'}',active=existing?['is_active']==true;
   final result=await showDialog<Map<String,dynamic>>(context:context,builder:(ctx)=>StatefulBuilder(builder:(ctx,change)=>AlertDialog(
@@ -45,18 +69,39 @@ class _AdminOfferEditorialPageState extends State<AdminOfferEditorialPage>{
     TextField(controller:title,maxLength:120,decoration:const InputDecoration(labelText:'Başlık *')),
     TextField(controller:description,maxLength:500,decoration:const InputDecoration(labelText:'Açıklama')),
     TextField(controller:badge,maxLength:60,decoration:const InputDecoration(labelText:'İndirim etiketi')),
-    TextField(controller:image,decoration:const InputDecoration(labelText:'Görsel URL (https)')),
+    if(imageUrl.isNotEmpty)Padding(padding:const EdgeInsets.only(bottom:8),child:
+      SizedBox(height:130,width:double.infinity,child:ClipRRect(
+       borderRadius:BorderRadius.circular(12),
+       child:Image.network(imageUrl,fit:BoxFit.cover,
+        errorBuilder:(_,__,___)=>const Center(child:Icon(Icons.broken_image_outlined))))),
+    if(uploadError!=null)Text(uploadError!,style:const TextStyle(color:Colors.red,fontSize:12)),
+    if(uploading)const LinearProgressIndicator(),
+    OutlinedButton.icon(
+      onPressed:uploading?null:()async{
+        final picked=await ImagePicker().pickImage(source:ImageSource.gallery,
+          imageQuality:82,maxWidth:1800);
+        if(picked==null)return;
+        change((){uploading=true;uploadError=null;});
+        try{
+          final url=await uploadImage(picked);
+          if(ctx.mounted)change(()=>imageUrl=url);
+        }catch(e){if(ctx.mounted)change(()=>uploadError=e.toString().replaceFirst('Exception: ',''));}
+        finally{if(ctx.mounted)change(()=>uploading=false);}
+      },
+      icon:const Icon(Icons.photo_library_outlined),
+      label:Text(imageUrl.isEmpty?'Galeriden Fotoğraf Seç':'Fotoğrafı Değiştir')),
+    const Text('JPG / PNG / WEBP • En fazla 3 MB',style:TextStyle(fontSize:11,color:Colors.grey)),
     TextField(controller:url,decoration:const InputDecoration(labelText:'Detay bağlantısı (https)')),
     SwitchListTile(value:active,onChanged:(v)=>change(()=>active=v),title:const Text('Yayında')),
    ]))),
    actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Vazgeç')),
-    FilledButton(onPressed:()=>Navigator.pop(ctx,{
+    FilledButton(onPressed:uploading?null:()=>Navigator.pop(ctx,{
      'id':existing?['id'],'placement':placement,'title':title.text.trim(),'description':description.text.trim(),
-     'badge':badge.text.trim(),'image_url':image.text.trim(),'target_url':url.text.trim(),
+     'badge':badge.text.trim(),'image_url':imageUrl,'target_url':url.text.trim(),
      'is_active':active,'sort_order':existing?['sort_order']??0,
     }),child:const Text('Kaydet'))],
   )));
-  title.dispose();description.dispose();badge.dispose();image.dispose();url.dispose();
+  title.dispose();description.dispose();badge.dispose();url.dispose();
   if(result==null)return;
   if((result['title'] as String).isEmpty){message('Başlık zorunlu');return;}
   try{await save(result,create:existing==null);message('Kaydedildi');}catch(e){message(e.toString());}
