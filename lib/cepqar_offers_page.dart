@@ -171,6 +171,55 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
     final subtitle=(item['description']??'').toString();
     final badge=(item['badge']??'').toString();
     final url=(item['target_url']??'').toString();
+    if(featured){
+      return InkWell(
+        onTap:(){
+          if(url.isEmpty)return;
+          final parsed=Uri.tryParse(url);
+          if(parsed==null||parsed.scheme!='https')return;
+          showDialog<void>(context:context,builder:(ctx)=>AlertDialog(
+            title:Text(title),content:Text(subtitle),
+            actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Kapat'))],
+          ));
+        },
+        borderRadius:BorderRadius.circular(17),
+        child:Container(
+          width:248,height:150,margin:const EdgeInsets.only(right:10),
+          clipBehavior:Clip.antiAlias,
+          decoration:BoxDecoration(
+            color:deepPurple,borderRadius:BorderRadius.circular(17)),
+          child:Stack(fit:StackFit.expand,children:[
+            if(image.startsWith('https://'))
+              Image.network(image,fit:BoxFit.cover,
+                errorBuilder:(_,__,___)=>const Icon(Icons.local_offer_rounded,color:lime,size:48))
+            else const Icon(Icons.local_offer_rounded,color:lime,size:48),
+            const DecoratedBox(decoration:BoxDecoration(
+              gradient:LinearGradient(begin:Alignment.centerLeft,end:Alignment.centerRight,
+                colors:[Color(0xD9001025),Color(0x66001025),Colors.transparent],
+                stops:[0,.62,1]))),
+            Padding(padding:const EdgeInsets.all(14),child:Column(
+              crossAxisAlignment:CrossAxisAlignment.start,children:[
+                if(badge.isNotEmpty)Text(badge,maxLines:1,overflow:TextOverflow.ellipsis,
+                  style:const TextStyle(color:lime,fontSize:10,fontWeight:FontWeight.w800)),
+                const SizedBox(height:5),
+                SizedBox(width:155,child:Text(title,maxLines:2,overflow:TextOverflow.ellipsis,
+                  style:const TextStyle(color:Colors.white,fontSize:17,height:1.05,fontWeight:FontWeight.w900))),
+                const SizedBox(height:5),
+                SizedBox(width:155,child:Text(subtitle,maxLines:2,overflow:TextOverflow.ellipsis,
+                  style:const TextStyle(color:Colors.white,fontSize:10,height:1.15))),
+                const Spacer(),
+                Container(
+                  padding:const EdgeInsets.symmetric(horizontal:12,vertical:7),
+                  decoration:BoxDecoration(color:lime,borderRadius:BorderRadius.circular(18)),
+                  child:const Row(mainAxisSize:MainAxisSize.min,children:[
+                    Text('Fırsatı İncele',style:TextStyle(color:ink,fontSize:10,fontWeight:FontWeight.w800)),
+                    SizedBox(width:5),Icon(Icons.chevron_right_rounded,color:ink,size:15),
+                  ])),
+              ])),
+          ]),
+        ),
+      );
+    }
     return InkWell(
       onTap:(){
         if(url.isEmpty)return;
@@ -211,7 +260,7 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
   }
   Widget _editorialStrip(String placement,{bool featured=false}){
     final items=editorial.where((x)=>x['placement']==placement).toList();
-    return SizedBox(height:featured?135:192,child:ListView.builder(scrollDirection:Axis.horizontal,
+    return SizedBox(height:featured?150:192,child:ListView.builder(scrollDirection:Axis.horizontal,
       itemCount:items.isEmpty?3:items.length,
       itemBuilder:(_,i)=>items.isEmpty?_emptyOfferCard(featured:featured):_editorialCard(items[i],featured:featured)));
   }
