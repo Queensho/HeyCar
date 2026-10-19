@@ -1149,7 +1149,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       :configured;
   }
 
-  Widget _homeSectionHeading(String title,VoidCallback tap,{double top=12})=>
+  Widget _homeSectionHeading(String title,VoidCallback tap,{double top=12,bool swipeHint=false})=>
     Padding(
       padding:EdgeInsets.fromLTRB(16,top,16,7),
       child:Row(children:[
@@ -1160,9 +1160,9 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
           child:Padding(
             padding:const EdgeInsets.symmetric(vertical:4,horizontal:3),
             child:Row(mainAxisSize:MainAxisSize.min,children:[
-              Text('Tümünü Gör',style:TextStyle(color:_homeSecondary,
+              Text(swipeHint?'← Sola Kaydır':'Tümünü Gör',style:TextStyle(color:_homeSecondary,
                 fontSize:10.5,fontWeight:FontWeight.w700)),
-              Icon(Icons.chevron_right_rounded,color:_homeSecondary,size:18),
+              if(!swipeHint)Icon(Icons.chevron_right_rounded,color:_homeSecondary,size:18),
             ]),
           ),
         ),
@@ -1170,11 +1170,12 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     );
 
   Widget quickRow(){
-    final items=quickAccessIds.map(_quickDef)
-      .whereType<OwnerShortcutDefinition>().take(maxOwnerShortcuts).toList();
+    final ids=[...quickAccessIds,...ownerShortcutCatalog.map((item)=>item.id).where((id)=>!quickAccessIds.contains(id))];
+    final items=ids.map(_quickDef)
+      .whereType<OwnerShortcutDefinition>().toList();
     if(items.isEmpty)return const SizedBox.shrink();
     return Column(children:[
-      _homeSectionHeading('Hızlı Erişim',_editQuickAccess,top:11),
+      _homeSectionHeading('Hızlı Erişim',_editQuickAccess,top:11,swipeHint:true),
       _quickAccessPanel([
         for(final item in items)OwnerQuickPanelItem(
           id:item.id,
@@ -1418,7 +1419,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     final items=_appUiConfig.quickActions.toList();
     if(items.isEmpty)return const SizedBox.shrink();
     return Column(children:[
-      _homeSectionHeading('Hızlı Erişim',_editQuickAccess,top:11),
+      _homeSectionHeading('Hızlı Erişim',_editQuickAccess,top:11,swipeHint:true),
       _quickAccessPanel([
         for(final item in items)OwnerQuickPanelItem(
           id:item.id,
@@ -1430,6 +1431,16 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
           onTap:()=>_runManagedAction(item),
           onLongPress:_editQuickAccess,
         ),
+        for(final shortcut in ownerShortcutCatalog.where((shortcut)=>!items.any((item)=>item.id==shortcut.id)))
+          OwnerQuickPanelItem(
+            id:shortcut.id,
+            title:shortcut.title,
+            icon:_quickPanelIcon(shortcut.id,shortcut.icon),
+            iconColor:_quickPanelTint(shortcut.id),
+            iconBackground:_quickPanelBackground(shortcut.id),
+            onTap:()=>widget.shortcut(shortcut.action),
+            onLongPress:_editQuickAccess,
+          ),
       ]),
     ]);
   }
