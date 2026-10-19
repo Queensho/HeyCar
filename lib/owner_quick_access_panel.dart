@@ -34,6 +34,8 @@ class OwnerQuickAccessPanel extends StatelessWidget {
     'qr_security':'assets/images/services/QR_Guvenligi.png',
     'vehicle':'assets/images/services/Arac_Bilgilerim.png',
     'notifications':'assets/images/services/Bildirimler.png',
+    'offers':'assets/images/services/firsatlar.png',
+    'roadside_help':'assets/images/services/yol_yardim.png',
   };
 
   const OwnerQuickAccessPanel({super.key,required this.items});
