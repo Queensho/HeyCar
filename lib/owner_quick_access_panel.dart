@@ -24,9 +24,8 @@ class OwnerQuickPanelItem {
   final VoidCallback? onLongPress;
 }
 
-/// One compact panel, not four separate elevated cards. The list is supplied
-/// by the existing admin config in its published order and may contain 1–4
-/// enabled entries; every visible entry receives the same available width.
+/// A compact, horizontally scrollable shortcut strip in admin-published order.
+/// Swipe left to reveal additional shortcuts without changing their actions.
 class OwnerQuickAccessPanel extends StatelessWidget {
   const OwnerQuickAccessPanel({super.key,required this.items});
   final List<OwnerQuickPanelItem> items;
@@ -34,7 +33,7 @@ class OwnerQuickAccessPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if(items.isEmpty)return const SizedBox.shrink();
-    final visible=items.take(4).toList(growable:false);
+    final visible=items;
     return LayoutBuilder(builder:(context,c){
       final compact=c.maxWidth<348;
       final side=compact?42.0:48.0;
@@ -52,15 +51,21 @@ class OwnerQuickAccessPanel extends StatelessWidget {
           )],
         ),
         padding:EdgeInsets.symmetric(horizontal:compact?6:10,vertical:10),
-        child:Row(children:[
-          for(var i=0;i<visible.length;i++)...[
-            if(i>0)Container(
-              key:ValueKey('owner-quick-divider-'+i.toString()),
-              width:1,height:58,
-              color:const Color(0xFFE7E7EF),
-            ),
-            Expanded(
-              child:InkWell(
+        child:ListView.separated(
+          key:const ValueKey('owner-quick-horizontal-list'),
+          scrollDirection:Axis.horizontal,
+          physics:const BouncingScrollPhysics(),
+          itemCount:visible.length,
+          separatorBuilder:(_,i)=>Container(
+            key:ValueKey('owner-quick-divider-${i+1}'),
+            width:1,height:58,
+            margin:const EdgeInsets.symmetric(vertical:18),
+            color:const Color(0xFFE7E7EF),
+          ),
+          itemBuilder:(context,i)=>SizedBox(
+            width:compact?82:90,
+            child:
+              InkWell(
                 key:ValueKey('owner-quick-'+visible[i].id),
                 onTap:visible[i].onTap,
                 onLongPress:visible[i].onLongPress,
@@ -107,9 +112,8 @@ class OwnerQuickAccessPanel extends StatelessWidget {
                   ),
                 ),
               ),
-            ),
-          ],
-        ]),
+          ),
+        ),
       );
     });
   }
