@@ -34,35 +34,55 @@ Future<void> _markAllRead()async{
   final unread=items.where((e)=>e['status']=='new').toList();
   if(unread.isEmpty||markingAll)return;
   setState(()=>markingAll=true);
-  var succeeded=false;
+  var bulkSucceeded=false;
   try{
-   final payload=<String,dynamic>{if(widget.vehicleId.isNotEmpty)'vehicleId':widget.vehicleId};
-   final r=await OwnerHttp.patch(Uri.parse('$base/api/owner/notifications/read-all'),body:jsonEncode(payload)).timeout(const Duration(seconds:20));
-   if(r.statusCode>=200&&r.statusCode<300){
-    final response=jsonDecode(r.body);
-    if(response is! Map||response['ok']!=true)throw const FormatException('Invalid read-all response');
-    succeeded=true;
-   }else if(r.statusCode==404||r.statusCode==405||r.statusCode==501){
-    // Older servers can lack the bulk endpoint; use the existing per-item API.
-    var failures=0;
-    for(final n in unread){
-     final id='${n['id']??''}'.trim();
-     if(id.isEmpty){failures++;continue;}
-     try{
-      final single=await OwnerHttp.patch(Uri.parse('$base/api/owner/notifications/${Uri.encodeComponent(id)}'),body:jsonEncode({'status':'read'})).timeout(const Duration(seconds:10));
-      if(single.statusCode<200||single.statusCode>=300)failures++;
-     }catch(_){failures++;}
+    final payload=<String,dynamic>{if(widget.vehicleId.isNotEmpty)'vehicleId':widget.vehicleId};
+    try{
+      final r=await OwnerHttp.patch(
+        Uri.parse('$base/api/owner/notifications/read-all'),
+        body:jsonEncode(payload),
+      ).timeout(const Duration(seconds:8));
+      if(r.statusCode>=200&&r.statusCode<300){
+        final response=jsonDecode(r.body);
+        bulkSucceeded=response is Map&&response['ok']==true;
+      }else{
+        debugPrint('Notification read-all failed: HTTP ${r.statusCode}');
+      }
+    }catch(e){
+      debugPrint('Notification read-all unavailable: $e');
     }
-    succeeded=failures==0;
-   }
-  }catch(_){
-   // Reload authoritative server state instead of showing false success.
+
+    // The bulk route may return 500 on an outdated DB schema, or fail
+    // before reaching the server. Retry through the existing single-item API.
+    if(!bulkSucceeded){
+      var succeeded=0;
+      for(final n in unread){
+        final id='${n['id']??''}'.trim();
+        if(id.isEmpty)continue;
+        try{
+          final single=await OwnerHttp.patch(
+            Uri.parse('$base/api/owner/notifications/${Uri.encodeComponent(id)}'),
+            body:jsonEncode({'status':'read'}),
+          ).timeout(const Duration(seconds:8));
+          if(single.statusCode>=200&&single.statusCode<300)succeeded++;
+          else debugPrint('Notification read failed: HTTP ${single.statusCode}');
+        }catch(e){
+          debugPrint('Notification read failed: $e');
+        }
+      }
+      debugPrint('Notification read fallback updated $succeeded/${unread.length}');
+    }
   }finally{
-   await _load(silent:true);
-   if(mounted){
-    setState(()=>markingAll=false);
-    if(!succeeded)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Bazı bildirimler okundu olarak işaretlenemedi. Lütfen tekrar deneyin.')));
-   }
+    await _load(silent:true);
+    if(mounted){
+      setState(()=>markingAll=false);
+      final remaining=items.where((e)=>e['status']=='new').length;
+      if(remaining>0){
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content:Text('$remaining bildirim hâlâ okunmadı. Lütfen tekrar deneyin.'),
+        ));
+      }
+    }
   }
  }
  @override Widget build(BuildContext c){final list=filtered,unread=items.where((e)=>e['status']=='new').length;final groups=<String,List<Map<String,dynamic>>>{'Bugün':[],'Dün':[],'Daha Önce':[]};for(final n in list)groups[_group(n)]!.add(n);return Scaffold(backgroundColor:_bg,body:SafeArea(bottom:false,child:RefreshIndicator(onRefresh:_load,color:_purple,child:ListView(physics:const AlwaysScrollableScrollPhysics(),padding:const EdgeInsets.fromLTRB(16,8,16,22),children:[_header(unread),const SizedBox(height:7),_filters(),const SizedBox(height:7),if(loading)const Padding(padding:EdgeInsets.all(48),child:Center(child:CircularProgressIndicator(color:_purple)))else if(error!=null)_state(Icons.error_outline_rounded,error!)else if(list.isEmpty)_state(Icons.notifications_none_rounded,tab==0?'Henüz bildiriminiz yok.':'Bu kategoride bildirim yok.')else ...[for(final g in ['Bugün','Dün','Daha Önce'])if(groups[g]!.isNotEmpty)_section(g,groups[g]!)]]))));}
