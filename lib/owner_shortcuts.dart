@@ -24,4 +24,4 @@ const ownerShortcutCatalog=<OwnerShortcutDefinition>[
 
 const fixedOwnerShortcutIds=['qr','qr_security'];
 const defaultOwnerShortcutIds=['qr','qr_security','vehicle','roadside_help'];
-const maxOwnerShortcuts=4;
+const maxOwnerShortcuts=ownerShortcutCatalog.length;
