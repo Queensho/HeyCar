@@ -65,7 +65,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   static const Set<String> _quickAccessAllowed={
     'parking','maintenance','drivers','inspection','insurance','qr','qr_security','vehicle','notifications','settings'
   };
-  List<String> quickAccessIds=const ['parking','maintenance','drivers','inspection'];
+  List<String> quickAccessIds=const ['parking','maintenance','drivers','inspection','qr','qr_security','vehicle','notifications','insurance','roadside_help','offers','settings'];
   bool valetRequesting=false;
   bool loading=true;
   bool _monthlyFetchFailed=false;
@@ -1415,7 +1415,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
 
 
   Widget _managedQuickActions(){
-    final items=_appUiConfig.quickActions.take(4).toList();
+    final items=_appUiConfig.quickActions.toList();
     if(items.isEmpty)return const SizedBox.shrink();
     return Column(children:[
       _homeSectionHeading('Hızlı Erişim',_editQuickAccess,top:11),
