@@ -22,6 +22,22 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
   List<_Offer> liveOffers=[];
   List<Map<String,dynamic>> editorial=[];
   bool editorialLoading=true;
+  Map<String,dynamic> pageDesign={};
+  String designText(String key,String fallback)=>(pageDesign[key] is String)?pageDesign[key] as String:fallback;
+  bool designVisible(String key)=>pageDesign[key]!=false;
+  Color get headerColor {
+   final hex=designText('header_color','#651FFF');
+   return Color(int.tryParse(hex.replaceFirst('#','0xFF'))??0xFF651FFF);
+  }
+  Future<void> _loadPageDesign()async{
+   try{
+    final r=await http.get(Uri.parse('$apiBase/api/offers/page-design')).timeout(const Duration(seconds:10));
+    if(r.statusCode!=200)return;
+    final data=jsonDecode(r.body) as Map;
+    if(mounted&&data['design'] is Map)setState(()=>pageDesign=Map<String,dynamic>.from(data['design'] as Map));
+   }catch(_){}
+  }
+
   static const apiBase='https://heycar-api-185-165-46-213.nip.io';
   final categories=const ['Tümü','Oto Yıkama','Detailing','Lastik','Otopark','Servis','Akaryakıt'];
   final offers=const [
@@ -32,7 +48,7 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
     _Offer('Akaryakıt','Akaryakıt Fırsatı','Tüm yakıt türlerinde litre indirimi','₺1,5 İndirim','4.2 km','4.5','520',Icons.local_gas_station_rounded,['Market']),
     _Offer('Servis','AutoServis','Periyodik bakımda CepQontag indirimi','%20 İndirim','5.6 km','4.7','98',Icons.build_rounded,['Periyodik Bakım']),
   ];
-  @override void initState(){super.initState();_loadOffers();_loadEditorial();}
+  @override void initState(){super.initState();_loadOffers();_loadEditorial();_loadPageDesign();}
   Future<void> _loadEditorial()async{
     try{final r=await http.get(Uri.parse('$apiBase/api/offers/editorial')).timeout(const Duration(seconds:12));
       if(r.statusCode!=200)throw Exception('Vitrin yüklenemedi');
@@ -275,8 +291,7 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
       backgroundColor:const Color(0xFFF8F9FC),
       body:CustomScrollView(slivers:[
         SliverToBoxAdapter(child:Container(
-          decoration:const BoxDecoration(gradient:LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,
-            colors:[Color(0xFF651FFF),Color(0xFF4912C8)])),
+          decoration:BoxDecoration(color:headerColor,image:designText('header_image_url','').startsWith('https://')?DecorationImage(image:NetworkImage(designText('header_image_url','')),fit:BoxFit.cover,colorFilter:ColorFilter.mode(Colors.black.withValues(alpha:.35),BlendMode.darken)):null),
           child:SafeArea(bottom:false,child:Padding(
             padding:const EdgeInsets.fromLTRB(16,8,16,22),
             child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
@@ -286,11 +301,11 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
                 IconButton(onPressed:(){_loadOffers();_loadEditorial();},tooltip:'Yenile',icon:const Icon(Icons.refresh_rounded,color:Colors.white)),
               ]),
               const SizedBox(height:16),
-              const Text('Fırsatlar',style:TextStyle(fontSize:29,color:Colors.white,fontWeight:FontWeight.w900)),
+              Text(designText('header_title','Fırsatlar'),style:const TextStyle(fontSize:29,color:Colors.white,fontWeight:FontWeight.w900)),
               const SizedBox(height:4),
-              const Text('Size özel avantajlar ve kampanyalar',style:TextStyle(color:Colors.white70,fontSize:13)),
+              Text(designText('header_subtitle','Size özel avantajlar ve kampanyalar'),style:const TextStyle(color:Colors.white70,fontSize:13)),
               const SizedBox(height:18),
-              TextField(controller:searchController,onChanged:(v)=>setState(()=>searchText=v),
+              if(designVisible('show_search'))TextField(controller:searchController,onChanged:(v)=>setState(()=>searchText=v),
                 style:const TextStyle(color:Colors.white),
                 decoration:InputDecoration(
                   hintText:'Fırsat ara...',hintStyle:const TextStyle(color:Colors.white70),
@@ -301,7 +316,7 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
                   contentPadding:const EdgeInsets.symmetric(vertical:13),
                 )),
               const SizedBox(height:16),
-              SizedBox(height:43,child:ListView.separated(scrollDirection:Axis.horizontal,itemCount:categories.length,
+              if(designVisible('show_categories'))SizedBox(height:43,child:ListView.separated(scrollDirection:Axis.horizontal,itemCount:categories.length,
                 separatorBuilder:(_,__)=>const SizedBox(width:8),itemBuilder:(_,i){
                   final c=categories[i],selected=c==category;
                   return ChoiceChip(
@@ -320,19 +335,20 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
         )),
         SliverPadding(padding:const EdgeInsets.fromLTRB(16,18,16,28),sliver:SliverList(delegate:SliverChildListDelegate([
           Container(height:170,decoration:BoxDecoration(
-            gradient:const LinearGradient(colors:[Color(0xFF241052),Color(0xFF651FFF)]),
+            color:deepPurple,
+            image:designText('banner_image_url','').startsWith('https://')?DecorationImage(image:NetworkImage(designText('banner_image_url','')),fit:BoxFit.cover):null,
             borderRadius:BorderRadius.circular(22)),
             child:Stack(children:[
-              Positioned(right:-12,bottom:-15,child:Icon(Icons.directions_car_filled_rounded,color:lime.withValues(alpha:.65),size:170)),
+              if(designText('banner_image_url','').isEmpty)Positioned(right:-12,bottom:-15,child:Icon(Icons.directions_car_filled_rounded,color:lime.withValues(alpha:.65),size:170)),
               Padding(padding:const EdgeInsets.all(19),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
                 const Text('QR\'ınız aktif olsun',style:TextStyle(color:Colors.white,fontSize:20,fontWeight:FontWeight.w900)),
-                const Text('İlk 3 ay Premium ücretsiz!',style:TextStyle(color:lime,fontSize:21,fontWeight:FontWeight.w900)),
+                Text(designText('banner_highlight','İlk 3 ay Premium ücretsiz!'),style:const TextStyle(color:lime,fontSize:21,fontWeight:FontWeight.w900)),
                 const SizedBox(height:6),
-                const Text('Aracınız da, siz de daha güvendesiniz.',style:TextStyle(color:Colors.white70,fontSize:11)),
+                Text(designText('banner_subtitle','Aracınız da, siz de daha güvendesiniz.'),style:const TextStyle(color:Colors.white70,fontSize:11)),
                 const Spacer(),
                 Container(padding:const EdgeInsets.symmetric(horizontal:15,vertical:9),
                   decoration:BoxDecoration(color:lime,borderRadius:BorderRadius.circular(20)),
-                  child:const Text('CepQontag Premium',style:TextStyle(color:ink,fontSize:11,fontWeight:FontWeight.w800))),
+                  child:Text(designText('banner_button','CepQontag Premium'),style:const TextStyle(color:ink,fontSize:11,fontWeight:FontWeight.w800))),
               ])),
             ]),
           ),
