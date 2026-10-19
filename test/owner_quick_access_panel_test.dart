@@ -21,7 +21,7 @@ void main(){
   setUp(()=>actions.clear());
 
   for(final width in <double>[320,360,393,430]){
-    testWidgets('one panel with four equal touch targets at $width dp',(tester)async{
+    testWidgets('one panel with horizontally swipeable touch targets at $width dp',(tester)async{
       tester.view.physicalSize=Size(width,760);
       tester.view.devicePixelRatio=1;
       addTearDown((){
@@ -52,16 +52,18 @@ void main(){
       }
       expect(find.byKey(const ValueKey('owner-quick-divider-1')),findsOneWidget);
       expect(find.byKey(const ValueKey('owner-quick-divider-2')),findsOneWidget);
-      expect(find.byKey(const ValueKey('owner-quick-divider-3')),findsOneWidget);
+      expect(find.byKey(const ValueKey('owner-quick-horizontal-list')),findsOneWidget);
       for(final rect in tiles.skip(1)){
         expect(rect.width,closeTo(tiles.first.width,0.1));
         expect(rect.left,greaterThan(tiles.first.left));
       }
       expect(tester.takeException(),isNull);
-      for(final id in ['parking','maintenance','drivers','inspection']){
-        await tester.tap(find.byKey(ValueKey('owner-quick-$id')));
-        await tester.pump();
-      }
+      await tester.tap(find.byKey(const ValueKey('owner-quick-parking')));
+      await tester.tap(find.byKey(const ValueKey('owner-quick-maintenance')));
+      await tester.drag(find.byKey(const ValueKey('owner-quick-horizontal-list')),const Offset(-250,0));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('owner-quick-drivers')));
+      await tester.tap(find.byKey(const ValueKey('owner-quick-inspection')));
       expect(actions,['parking','maintenance','drivers','inspection']);
     });
   }
@@ -87,8 +89,7 @@ void main(){
     await tester.pumpAndSettle();
     expect(find.text('Kapalı öğe'),findsNothing);
     expect(find.byKey(const ValueKey('owner-quick-parking')),findsNothing);
-    expect(find.byKey(const ValueKey('owner-quick-divider-1')),findsOneWidget);
-    expect(find.byKey(const ValueKey('owner-quick-divider-2')),findsNothing);
+    expect(find.byKey(const ValueKey('owner-quick-horizontal-list')),findsOneWidget);
     final first=tester.getRect(find.byKey(const ValueKey('owner-quick-inspection')));
     final second=tester.getRect(find.byKey(const ValueKey('owner-quick-drivers')));
     expect(first.width,closeTo(second.width,0.1));
