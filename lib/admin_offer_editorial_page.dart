@@ -73,7 +73,7 @@ class _AdminOfferEditorialPageState extends State<AdminOfferEditorialPage>{
       SizedBox(height:130,width:double.infinity,child:ClipRRect(
        borderRadius:BorderRadius.circular(12),
        child:Image.network(imageUrl,fit:BoxFit.cover,
-        errorBuilder:(_,__,___)=>const Center(child:Icon(Icons.broken_image_outlined))))),
+        errorBuilder:(_,__,___)=>const Center(child:Icon(Icons.broken_image_outlined)))))),
     if(uploadError!=null)Text(uploadError!,style:const TextStyle(color:Colors.red,fontSize:12)),
     if(uploading)const LinearProgressIndicator(),
     OutlinedButton.icon(
