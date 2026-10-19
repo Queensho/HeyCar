@@ -215,6 +215,13 @@ jobs:
           test -f deploy/vale/index.html
           test -f deploy/vale/main.dart.js
 
+      - name: Verify editorial offers source included in web builds
+        run: |
+          test -f lib/cepqar_offers_page.dart
+          test -f lib/admin_offer_editorial_page.dart
+          grep -q 'AdminOfferEditorialPage' lib/admin_v3.dart
+          grep -q 'offers/editorial' lib/cepqar_offers_page.dart
+
       - name: Build admin panel
         run: |
           flutter build web --release --target lib/admin_v3.dart --base-href "/HeyCar/admin/" --pwa-strategy=none
