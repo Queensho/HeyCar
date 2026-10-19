@@ -7,7 +7,7 @@ res = Path("android/app/src/main/res")
 (res / "drawable-nodpi").mkdir(parents=True, exist_ok=True)
 (res / "values-v31").mkdir(parents=True, exist_ok=True)
 
-source = Image.open("assets/Logoyeni.png").convert("RGBA")
+source = Image.open("assets/Splashlogo.png").convert("RGBA")
 
 # Pre-Android 12: full Cepqar wordmark, centered with comfortable breathing room.
 wordmark = Image.new("RGBA", (600, 220), (0, 0, 0, 0))
@@ -28,7 +28,7 @@ launch = """<?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item>
         <shape android:shape="rectangle">
-            <solid android:color="#651FFF" />
+            <solid android:color="#B9FF45" />
         </shape>
     </item>
     <item>
@@ -45,9 +45,9 @@ launch = """<?xml version="1.0" encoding="utf-8"?>
 v31 = """<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="LaunchTheme" parent="@android:style/Theme.Light.NoTitleBar">
-        <item name="android:windowSplashScreenBackground">#651FFF</item>
+        <item name="android:windowSplashScreenBackground">#B9FF45</item>
         <item name="android:windowSplashScreenAnimatedIcon">@drawable/cepqar_splash_icon</item>
-        <item name="android:windowSplashScreenAnimationDuration">0</item>\n        <item name="android:statusBarColor">#651FFF</item>\n        <item name="android:navigationBarColor">#651FFF</item>
+        <item name="android:windowSplashScreenAnimationDuration">0</item>\n        <item name="android:statusBarColor">#B9FF45</item>\n        <item name="android:navigationBarColor">#B9FF45</item>
         <item name="android:forceDarkAllowed">false</item>
         <item name="android:windowNoTitle">true</item>
     </style>
@@ -55,4 +55,4 @@ v31 = """<?xml version="1.0" encoding="utf-8"?>
 """
 (res / "values-v31" / "styles.xml").write_text(v31)
 
-print("CepQontag purple native wordmark splash applied")
+print("CepQontag lime native splash with Splashlogo applied")
