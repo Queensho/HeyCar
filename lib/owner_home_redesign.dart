@@ -63,9 +63,9 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   Map<String,dynamic>? valetSession;
   String valetDeliveryCode='';
   static const Set<String> _quickAccessAllowed={
-    'parking','maintenance','drivers','inspection','insurance','qr','qr_security','vehicle','notifications','settings'
+    'parking','maintenance','drivers','inspection','insurance','qr','qr_security','vehicle','settings'
   };
-  List<String> quickAccessIds=const ['parking','maintenance','drivers','inspection','qr','qr_security','vehicle','notifications','insurance','roadside_help','offers','settings'];
+  List<String> quickAccessIds=const ['parking','maintenance','drivers','inspection','qr','qr_security','vehicle','insurance','roadside_help','offers','settings'];
   bool valetRequesting=false;
   bool loading=true;
   bool _monthlyFetchFailed=false;
@@ -635,7 +635,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       SizedBox(height:42,child:Row(children:[
         Expanded(child:Align(alignment:Alignment.centerLeft,child:brand())),
         _homeCircleButton(Icons.notifications_none_rounded,
-          widget.notifications,unread:unread>0),
+          widget.notifications,unreadCount:unread),
         const SizedBox(width:8),
         Material(
           color:_homePurple,shape:const CircleBorder(),
@@ -724,13 +724,17 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     ]),
   );
 
-  Widget _homeCircleButton(IconData icon,VoidCallback action,{bool unread=false})=>
+  Widget _homeCircleButton(IconData icon,VoidCallback action,{int unreadCount=0})=>
     Material(color:_homeCardBackground,shape:const CircleBorder(),
       child:InkWell(onTap:action,customBorder:const CircleBorder(),
         child:SizedBox(width:43,height:43,child:Stack(children:[
           Center(child:Icon(icon,color:_homeText,size:24)),
-          if(unread)const Positioned(top:6,right:6,
-            child:CircleAvatar(radius:3.8,backgroundColor:Color(0xFFFF3C53))),
+          if(unreadCount>0)Positioned(top:1,right:0,
+            child:Container(padding:const EdgeInsets.symmetric(horizontal:4,vertical:1),
+              constraints:const BoxConstraints(minWidth:16,minHeight:16),
+              decoration:BoxDecoration(color:const Color(0xFFFF3C53),borderRadius:BorderRadius.circular(10)),
+              child:Text(unreadCount>99?'99+':'$unreadCount',textAlign:TextAlign.center,
+                style:const TextStyle(color:Colors.white,fontSize:9,fontWeight:FontWeight.w800)))),
         ])),
       ),
     );
