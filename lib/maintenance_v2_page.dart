@@ -133,7 +133,7 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
                 final now = DateTime.now();
                 final endpoint = Uri.parse('${QrBackend.baseUrl}/api/owner/vehicles/${Uri.encodeComponent(widget.vehicleId)}/fuel-v2${existing == null ? '' : '/${existing['id']}'}');
                 final payload = jsonEncode({
-                  'filledAt': now.toUtc().toIso8601String(),
+                  'filledAt': existing == null ? now.toUtc().toIso8601String() : '${existing['filled_at']}',
                   'odometerKm': distance, 'liters': volume,
                   'totalCost': roundedCost, 'station': station.text.trim(),
                 });
