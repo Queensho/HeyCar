@@ -31,6 +31,14 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
   List<Map<String, dynamic>> filtered(List<dynamic> source, bool fuel) => source.whereType<Map<String, dynamic>>().where((e) => inPeriod(entryDate(e, fuel))).toList();
   double sumEntries(List<dynamic> source, bool fuel) => filtered(source, fuel).fold<double>(0, (sum, e) => sum + (double.tryParse('${e[fuel ? 'total_cost' : 'amount']}') ?? 0));
   String money(double amount) => '${amount.toStringAsFixed(2).replaceAll('.', ',')} TL';
+  List<Map<String, dynamic>> get history {
+    final all = <Map<String, dynamic>>[
+      ...filtered(fuelEntries, true).map((e) => {...e, '_fuel': true}),
+      ...filtered(expenseEntries, false).map((e) => {...e, '_fuel': false}),
+    ];
+    all.sort((a, b) => (entryDate(b, b['_fuel'] == true) ?? DateTime(1970)).compareTo(entryDate(a, a['_fuel'] == true) ?? DateTime(1970)));
+    return all;
+  }
   String dateLabel(Map<String, dynamic> e, bool fuel) { final d = entryDate(e, fuel); return d == null ? 'Tarih yok' : '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}'; }
   static const periods = ['Bu Hafta', 'Geçen Hafta', 'Bu Ay', 'Tüm Zamanlar'];
   bool loading = false;
@@ -185,13 +193,14 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
                   onRefresh: load,
                   child: ListView.builder(
                     physics: const AlwaysScrollableScrollPhysics(),
-                    itemCount: filtered(entries, section == 0).length,
+                    itemCount: history.length,
                     itemBuilder: (context, index) {
-                      final entry = filtered(entries, section == 0)[index];
+                      final entry = history[index];
+                      final isFuel = entry['_fuel'] == true;
                       return ListTile(
-                        leading: Icon(section == 0 ? Icons.local_gas_station : Icons.receipt_long, color: purple),
-                        title: Text(section == 0 ? '${entry['liters']} L • ${money(double.tryParse('${entry['total_cost']}') ?? 0)}' : '${categories['${entry['category']}'] ?? 'Diğer'} • ${money(double.tryParse('${entry['amount']}') ?? 0)}'),
-                        subtitle: Text(section == 0 ? '${entry['odometer_km']} km • ${dateLabel(entry, true)}' : dateLabel(entry, false)),
+                        leading: Icon(isFuel ? Icons.local_gas_station : Icons.receipt_long, color: purple),
+                        title: Text(isFuel ? '${entry['liters']} L • ${money(double.tryParse('${entry['total_cost']}') ?? 0)}' : '${categories['${entry['category']}'] ?? 'Diğer'} • ${money(double.tryParse('${entry['amount']}') ?? 0)}'),
+                        subtitle: Text(isFuel ? '${entry['odometer_km']} km • ${dateLabel(entry, true)}' : dateLabel(entry, false)),
                       );
                     },
                   ),
