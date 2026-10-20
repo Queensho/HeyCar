@@ -318,7 +318,7 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
               spendingCard(),
               const SizedBox(height: 24),
               Row(children: [
-                const Expanded(child: Text('Harcama Geçmişi', style: TextStyle(fontSize: 21, fontWeight.w800, color: Color(0xFF10152D)))),
+                const Expanded(child: Text('Harcama Geçmişi', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800, color: Color(0xFF10152D)))),
                 PopupMenuButton<String>(
                   tooltip: 'Filtrele',
                   initialValue: categoryFilter,
