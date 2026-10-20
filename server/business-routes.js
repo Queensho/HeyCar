@@ -125,9 +125,20 @@ module.exports=function registerBusinessRoutes(app,pool){
  app.post('/api/marketplace/appointments',async(req,res)=>{const owner=authenticatedOwnerId(req);if(!owner)return res.status(401).json({error:'AUTH_REQUIRED'});try{
   const {serviceId,plate,requestedAt}=req.body||{};const date=new Date(requestedAt);
   if(!/^[a-f0-9-]{36}$/i.test(String(serviceId||''))||!Number.isFinite(date.getTime())||date.getTime()<=Date.now()||date.getTime()>Date.now()+90*86400000||!/^([0-9]{2})[A-Z0-9 ]{3,12}$/.test(String(plate||'').trim().toUpperCase()))return res.status(400).json({error:'INVALID_APPOINTMENT'});
-  const owned=await pool.query('SELECT 1 FROM vehicles WHERE owner_id=$1 AND upper(replace(plate,\' \',\'\'))=upper(replace($2,\' \',\'\')) LIMIT 1',[String(owner),String(plate).trim()]);if(!owned.rowCount)return res.status(403).json({error:'VEHICLE_NOT_OWNED'});
-  const q=await pool.query("INSERT INTO marketplace_appointments(service_id,owner_id,plate,requested_at) SELECT s.id,$2,$3,$4 FROM marketplace_services s JOIN businesses b ON b.id=s.business_id WHERE s.id=$1 AND s.active AND b.is_active AND b.approval_status='approved' RETURNING *",[serviceId,String(owner),String(plate).trim().toUpperCase(),date.toISOString()]);
-  if(!q.rowCount)return res.status(404).json({error:'SERVICE_NOT_FOUND'});res.status(201).json({ok:true,appointment:q.rows[0]});
+  const normalizedPlate=String(plate).trim().toUpperCase().replace(/\\s+/g,'');
+  const owned=await pool.query("SELECT 1 FROM vehicles WHERE owner_id::text=$1 AND upper(replace(plate,' ',''))=$2 LIMIT 1",[String(owner),normalizedPlate]);
+  if(!owned.rowCount)return res.status(403).json({error:'VEHICLE_NOT_OWNED'});
+  const client=await pool.connect();try{
+   await client.query('BEGIN');
+   const service=await client.query("SELECT s.id,s.business_id,s.duration_minutes FROM marketplace_services s JOIN businesses b ON b.id=s.business_id WHERE s.id=$1 AND s.active AND b.is_active AND b.approval_status='approved' FOR UPDATE OF s",[serviceId]);
+   if(!service.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'SERVICE_NOT_FOUND'});}
+   const duration=service.rows[0].duration_minutes||60;
+   const conflict=await client.query("SELECT 1 FROM marketplace_appointments a JOIN marketplace_services s ON s.id=a.service_id WHERE s.business_id=$1 AND a.status IN ('pending','confirmed') AND a.requested_at < $3::timestamptz + ($4::int * interval '1 minute') AND a.requested_at + (COALESCE(s.duration_minutes,60) * interval '1 minute') > $3::timestamptz LIMIT 1",[service.rows[0].business_id,serviceId,date.toISOString(),duration]);
+   if(conflict.rowCount){await client.query('ROLLBACK');return res.status(409).json({error:'SLOT_UNAVAILABLE'});}
+   const q=await client.query('INSERT INTO marketplace_appointments(service_id,owner_id,plate,requested_at) VALUES($1,$2,$3,$4) RETURNING *',[serviceId,String(owner),normalizedPlate,date.toISOString()]);
+   await client.query('COMMIT');res.status(201).json({ok:true,appointment:q.rows[0]});
+  }catch(e){await client.query('ROLLBACK');throw e;}finally{client.release();}
+
  }catch(e){console.error('marketplace appointment',e);res.status(500).json({error:'APPOINTMENT_FAILED'});}});
  app.get('/api/marketplace/appointments',async(req,res)=>{const owner=authenticatedOwnerId(req);if(!owner)return res.status(401).json({error:'AUTH_REQUIRED'});try{
   const q=await pool.query('SELECT a.*,s.title AS service_title,b.name AS business_name FROM marketplace_appointments a JOIN marketplace_services s ON s.id=a.service_id JOIN businesses b ON b.id=s.business_id WHERE a.owner_id=$1 ORDER BY a.created_at DESC LIMIT 100',[String(owner)]);res.json({ok:true,appointments:q.rows});
