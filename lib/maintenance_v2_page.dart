@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'owner_auth.dart';
 import 'qr_backend.dart';
@@ -13,10 +14,11 @@ class MaintenanceV2Page extends StatefulWidget {
 class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
   static const purple = Color(0xFF651FFF);
   int section = 0;
+  String categoryFilter = 'all';
   int period = 0; // 0: this week, 1: last week, 2: this month, 3: all
   List<dynamic> fuelEntries = [];
   List<dynamic> expenseEntries = [];
-  DateTime? entryDate(Map<String, dynamic> e, bool fuel) => DateTime.tryParse('${e[fuel ? 'filled_at' : 'spent_at'] ?? ''}')?.toLocal();
+  DateTime? entryDate(Map<String, dynamic> e, bool fuel) => fuel ? DateTime.tryParse('${e['filled_at'] ?? ''}')?.toLocal() : DateTime.tryParse('${e['spent_at'] ?? ''}');
   DateTime weekStart(DateTime d) => DateTime(d.year, d.month, d.day).subtract(Duration(days: d.weekday - 1));
   bool inPeriod(DateTime? date) {
     if (date == null) return false;
@@ -30,14 +32,21 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
   }
   List<Map<String, dynamic>> filtered(List<dynamic> source, bool fuel) => source.whereType<Map<String, dynamic>>().where((e) => inPeriod(entryDate(e, fuel))).toList();
   double sumEntries(List<dynamic> source, bool fuel) => filtered(source, fuel).fold<double>(0, (sum, e) => sum + (double.tryParse('${e[fuel ? 'total_cost' : 'amount']}') ?? 0));
-  String money(double amount) => '${amount.toStringAsFixed(2).replaceAll('.', ',')} TL';
+  String money(double amount) {
+    final cents = (amount * 100).round();
+    final whole = (cents.abs() ~/ 100).toString();
+    final grouped = whole.replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => '.');
+    return '${cents < 0 ? '-' : ''}$grouped,${(cents.abs() % 100).toString().padLeft(2, '0')} TL';
+  }
+  int cents(List<dynamic> source, bool fuel) => filtered(source, fuel).fold<int>(0, (total, e) => total + ((double.tryParse('${e[fuel ? 'total_cost' : 'amount']}') ?? 0) * 100).round());
+  String moneyCents(int value) => money(value / 100);
   List<Map<String, dynamic>> get history {
     final all = <Map<String, dynamic>>[
       ...filtered(fuelEntries, true).map((e) => {...e, '_fuel': true}),
       ...filtered(expenseEntries, false).map((e) => {...e, '_fuel': false}),
     ];
     all.sort((a, b) => (entryDate(b, b['_fuel'] == true) ?? DateTime(1970)).compareTo(entryDate(a, a['_fuel'] == true) ?? DateTime(1970)));
-    return all;
+    return all.where((e) => categoryFilter == 'all' || (categoryFilter == 'fuel' ? e['_fuel'] == true : e['_fuel'] != true && (categoryFilter == 'other' ? !['tax','insurance','repair'].contains(e['category']) : categoryFilter == 'repair' ? e['category'] == 'repair' : e['category'] == categoryFilter))).toList();
   }
   String dateLabel(Map<String, dynamic> e, bool fuel) { final d = entryDate(e, fuel); return d == null ? 'Tarih yok' : '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}'; }
   static const periods = ['Bu Hafta', 'Geçen Hafta', 'Bu Ay', 'Tüm Zamanlar'];
@@ -148,63 +157,198 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
     if (saved == true && mounted) await load();
   }
 
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: Colors.white,
-    appBar: AppBar(title: const Text('Araç Giderleri'), backgroundColor: Colors.white),
-    floatingActionButton: FloatingActionButton.extended(
-      backgroundColor: const Color(0xFFB9FF45),
-      onPressed: add,
-      icon: const Icon(Icons.add),
-      label: Text(section == 0 ? 'Yakıt Ekle' : 'Masraf Ekle'),
+
+  Widget categoryIcon(bool fuel, String category) {
+    final icon = fuel ? Icons.local_gas_station_rounded : category == 'insurance' ? Icons.verified_user_rounded : category == 'tax' ? Icons.receipt_long_rounded : category == 'repair' ? Icons.build_rounded : Icons.receipt_rounded;
+    return Container(width: 48, height: 48, decoration: BoxDecoration(color: const Color(0xFFF3EDFF), borderRadius: BorderRadius.circular(14)), child: Icon(icon, color: purple, size: 25));
+  }
+
+  Widget pill(String label, bool selected, VoidCallback onTap) => InkWell(
+    borderRadius: BorderRadius.circular(14), onTap: onTap,
+    child: Container(height: 40, padding: const EdgeInsets.symmetric(horizontal: 13), alignment: Alignment.center,
+      decoration: BoxDecoration(color: selected ? const Color(0xFFF3EDFF) : Colors.white, borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: selected ? purple : const Color(0xFFE4E2EB))),
+      child: Text(label, maxLines: 1, style: TextStyle(color: selected ? purple : const Color(0xFF10152D), fontSize: 12, fontWeight: selected ? FontWeight.w700 : FontWeight.w500)),
     ),
-    body: Column(children: [
-      Row(children: [
-        for (var index = 0; index < 2; index++)
-          Expanded(child: Padding(
-            padding: const EdgeInsets.all(8),
-            child: FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: section == index ? purple : const Color(0xFFF3EDFF), foregroundColor: section == index ? Colors.white : purple),
-              onPressed: () { if (section != index) { setState(() { section = index; entries = section == 0 ? fuelEntries : expenseEntries; }); } },
-              child: Text(index == 0 ? 'Yakıt' : 'Masraflar'),
-            ),
-          )),
-      ]),
-      Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('Harcama Özeti', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 10),
-        Wrap(spacing: 8, runSpacing: 8, children: [for (var i = 0; i < periods.length; i++) ChoiceChip(label: Text(periods[i]), selected: period == i, selectedColor: const Color(0xFFF3EDFF), onSelected: (_) => setState(() => period = i))]),
-        const SizedBox(height: 12),
-        Container(width: double.infinity, padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: const Color(0xFFF3EDFF), borderRadius: BorderRadius.circular(16)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Toplam Harcama', style: TextStyle(color: purple, fontWeight: FontWeight.w600)),
-          Text(money(sumEntries(fuelEntries, true) + sumEntries(expenseEntries, false)), style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: purple)),
-          const SizedBox(height: 8),
-          Text('Yakıt: ${money(sumEntries(fuelEntries, true))}   •   Diğer: ${money(sumEntries(expenseEntries, false))}', style: const TextStyle(fontSize: 12)),
-        ])),
-        const SizedBox(height: 14),
-        const Text('Harcama Geçmişi', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-      ])),
-      if (section == 0 && averageConsumption != null) Padding(padding:const EdgeInsets.all(12),child:Text('Ortalama tüketim: ${averageConsumption!.toStringAsFixed(1)} L/100 km',style:const TextStyle(color:purple,fontWeight:FontWeight.bold))),
-      Expanded(child: loading
-          ? const Center(child: CircularProgressIndicator())
-          : error != null
-              ? Center(child: TextButton(onPressed: load, child: Text(error!)))
-              : RefreshIndicator(
-                  onRefresh: load,
-                  child: ListView.builder(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    itemCount: history.length,
-                    itemBuilder: (context, index) {
-                      final entry = history[index];
-                      final isFuel = entry['_fuel'] == true;
-                      return ListTile(
-                        leading: Icon(isFuel ? Icons.local_gas_station : Icons.receipt_long, color: purple),
-                        title: Text(isFuel ? '${entry['liters']} L • ${money(double.tryParse('${entry['total_cost']}') ?? 0)}' : '${categories['${entry['category']}'] ?? 'Diğer'} • ${money(double.tryParse('${entry['amount']}') ?? 0)}'),
-                        subtitle: Text(isFuel ? '${entry['odometer_km']} km • ${dateLabel(entry, true)}' : dateLabel(entry, false)),
-                      );
-                    },
-                  ),
-                )),
-    ]),
   );
+
+  Widget spendingCard() {
+    final fuel = cents(fuelEntries, true);
+    final other = cents(expenseEntries, false);
+    final total = section == 0 ? fuel + other : other;
+    return Container(
+      constraints: const BoxConstraints(minHeight: 122), width: double.infinity,
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(color: const Color(0xFFF3EDFF), borderRadius: BorderRadius.circular(18)),
+      child: Row(children: [
+        Container(width: 46, height: 46, decoration: BoxDecoration(color: const Color(0xFFE9DDFF), borderRadius: BorderRadius.circular(13)),
+          child: const Icon(Icons.bar_chart_rounded, color: purple, size: 27)),
+        const SizedBox(width: 12),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
+          const Text('Toplam Harcama', style: TextStyle(color: purple, fontSize: 13, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 3),
+          FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft,
+            child: Text(moneyCents(total), style: const TextStyle(color: purple, fontSize: 27, fontWeight: FontWeight.w800))),
+          const SizedBox(height: 7),
+          Text('Yakıt: ${moneyCents(section == 0 ? fuel : 0)}  •  Diğer: ${moneyCents(other)}',
+            maxLines: 2, style: const TextStyle(color: Color(0xFF778096), fontSize: 11)),
+        ])),
+        const SizedBox(width: 6),
+        const Icon(Icons.receipt_long_rounded, color: Color(0xFFAD86F9), size: 42),
+      ]),
+    );
+  }
+
+  Widget historyCard(Map<String, dynamic> entry) {
+    final fuel = entry['_fuel'] == true;
+    final category = '${entry['category'] ?? 'other'}';
+    final name = fuel ? '${entry['liters']} L' : (categories[category] ?? 'Diğer');
+    final amount = ((double.tryParse('${entry[fuel ? 'total_cost' : 'amount']}') ?? 0) * 100).round();
+    final date = dateLabel(entry, fuel);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 9),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFF0EEF6)),
+        boxShadow: const [BoxShadow(color: Color(0x09000000), blurRadius: 12, offset: Offset(0, 3))]),
+      child: InkWell(borderRadius: BorderRadius.circular(16),
+        onTap: () => showModalBottomSheet<void>(context: context, showDragHandle: true, builder: (context) =>
+          SafeArea(child: Padding(padding: const EdgeInsets.all(20), child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10), Text('Tutar: ${moneyCents(amount)}'),
+            Text('Tarih: $date'),
+            if (fuel) Text('Kilometre: ${entry['odometer_km']} km'),
+            if (!fuel && '${entry['description'] ?? ''}'.isNotEmpty) Text('Açıklama: ${entry['description']}'),
+            if (fuel && '${entry['station'] ?? ''}'.isNotEmpty) Text('İstasyon: ${entry['station']}'),
+            const SizedBox(height: 12),
+          ])))),
+        child: Padding(padding: const EdgeInsets.all(12), child: Row(children: [
+          categoryIcon(fuel, category), const SizedBox(width: 12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF10152D))),
+            const SizedBox(height: 3),
+            Text(fuel ? '${entry['odometer_km']} km  •  $date' : date,
+              style: const TextStyle(color: Color(0xFF778096), fontSize: 12)),
+            const SizedBox(height: 6),
+            Container(padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+              decoration: BoxDecoration(color: const Color(0xFFF3EDFF), borderRadius: BorderRadius.circular(12)),
+              child: Text(fuel ? 'Yakıt' : (categories[category] ?? 'Diğer'),
+                style: const TextStyle(color: purple, fontSize: 11))),
+          ])),
+          const SizedBox(width: 6),
+          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            Text(moneyCents(amount), style: const TextStyle(color: purple, fontSize: 14, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 8),
+            const Icon(Icons.chevron_right_rounded, color: Color(0xFF778096)),
+          ]),
+        ]))),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final allHistory = history;
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FC),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: SafeArea(child: Container(
+        height: 54,
+        decoration: BoxDecoration(color: const Color(0xFFB9FF45), borderRadius: BorderRadius.circular(20),
+          boxShadow: const [BoxShadow(color: Color(0x30000000), blurRadius: 14, offset: Offset(0, 5))]),
+        child: TextButton.icon(onPressed: add, icon: const Icon(Icons.add, color: Color(0xFF10152D), size: 26),
+          label: Text(section == 0 ? 'Yakıt Ekle' : 'Masraf Ekle',
+            style: const TextStyle(color: Color(0xFF10152D), fontWeight: FontWeight.bold)),
+          style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 21))),
+      )),
+      body: Column(children: [
+        Container(
+          width: double.infinity, height: 210,
+          decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xFF651FFF), Color(0xFF4912C8)],
+            begin: Alignment.topLeft, end: Alignment.bottomRight)),
+          child: SafeArea(bottom: false, child: Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                IconButton(onPressed: () => Navigator.maybePop(context),
+                  style: IconButton.styleFrom(backgroundColor: const Color(0x33FFFFFF)),
+                  icon: const Icon(Icons.arrow_back, color: Colors.white)),
+                const Icon(Icons.directions_car_filled_rounded, color: Colors.white, size: 26),
+              ]),
+              const SizedBox(height: 12),
+              const Text.rich(TextSpan(children: [
+                TextSpan(text: 'Araç ', style: TextStyle(color: Colors.white)),
+                TextSpan(text: 'Giderleri', style: TextStyle(color: Color(0xFFB9FF45))),
+              ]), style: TextStyle(fontSize: 29, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 6),
+              const Text('Yakıt, bakım, sigorta ve diğer tüm araç\nmasraflarınızı takip edin.',
+                style: TextStyle(fontSize: 12, color: Colors.white, height: 1.45)),
+            ]))),
+        ),
+        Expanded(child: Container(
+          transform: Matrix4.translationValues(0, -1, 0),
+          decoration: const BoxDecoration(color: Color(0xFFF8F9FC),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+          child: RefreshIndicator(onRefresh: load, child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 20, 16, 95),
+            children: [
+              Row(children: [
+                for (var i = 0; i < 2; i++) ...[
+                  if (i == 1) const SizedBox(width: 10),
+                  Expanded(child: SizedBox(height: 48, child: FilledButton.icon(
+                    onPressed: () => setState(() { section = i; categoryFilter = 'all'; entries = i == 0 ? fuelEntries : expenseEntries; }),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: section == i ? purple : const Color(0xFFF3EDFF),
+                      foregroundColor: section == i ? Colors.white : purple,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+                      padding: EdgeInsets.zero),
+                    icon: Icon(i == 0 ? Icons.local_gas_station_rounded : Icons.receipt_long_rounded, size: 20),
+                    label: Text(i == 0 ? 'Yakıt' : 'Masraflar'),
+                  ))),
+                ],
+              ]),
+              const SizedBox(height: 25),
+              const Text('Harcama Özeti', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800, color: Color(0xFF10152D))),
+              const SizedBox(height: 12),
+              SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(children: [
+                for (var i = 0; i < periods.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 8),
+                  pill(periods[i], period == i, () => setState(() => period = i)),
+                ],
+              ])),
+              const SizedBox(height: 16),
+              spendingCard(),
+              const SizedBox(height: 24),
+              Row(children: [
+                const Expanded(child: Text('Harcama Geçmişi', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800, color: Color(0xFF10152D)))),
+                PopupMenuButton<String>(
+                  tooltip: 'Filtrele',
+                  initialValue: categoryFilter,
+                  onSelected: (value) => setState(() => categoryFilter = value),
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(value: 'all', child: Text('Tümü')),
+                    const PopupMenuItem(value: 'fuel', child: Text('Yakıt')),
+                    const PopupMenuItem(value: 'tax', child: Text('Vergi')),
+                    const PopupMenuItem(value: 'insurance', child: Text('Sigorta')),
+                    const PopupMenuItem(value: 'repair', child: Text('Bakım / Tamir')),
+                    const PopupMenuItem(value: 'other', child: Text('Diğer')),
+                  ],
+                  child: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                    decoration: BoxDecoration(border: Border.all(color: const Color(0xFFE4E2EB)),
+                      borderRadius: BorderRadius.circular(22)),
+                    child: const Row(children: [Icon(Icons.filter_alt_outlined, color: purple, size: 19),
+                      SizedBox(width: 5), Text('Filtrele', style: TextStyle(color: purple, fontSize: 12)),
+                      Icon(Icons.keyboard_arrow_down_rounded, color: purple)])),
+                ),
+              ]),
+              const SizedBox(height: 14),
+              if (loading) const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator())),
+              if (error != null) Center(child: TextButton(onPressed: load, child: Text(error!))),
+              if (!loading && error == null && allHistory.isEmpty)
+                const Padding(padding: EdgeInsets.all(30), child: Center(child: Text('Bu filtrede harcama bulunamadı.', style: TextStyle(color: Color(0xFF778096))))),
+              if (!loading && error == null) for (final e in allHistory) historyCard(e),
+            ],
+          )),
+        )),
+      ]),
+    );
+  }
 }
