@@ -44,7 +44,7 @@ class _MarketplaceServicePageState extends State<MarketplaceServicePage> {
       final response=await OwnerHttp.post(Uri.parse('${OnboardingBackend.baseUrl}/api/marketplace/appointments'),body:jsonEncode({'serviceId':widget.service['id'],'plate':plate.text.trim().toUpperCase(),'requestedAt':when.toUtc().toIso8601String()})).timeout(const Duration(seconds:15));
       if(response.statusCode<200||response.statusCode>=300){
         String message='Randevu oluşturulamadı.';
-        try{final body=jsonDecode(response.body);switch(body['error']){case 'SLOT_UNAVAILABLE':message='Bu saat dolu. Başka bir saat seç.';break;case 'VEHICLE_NOT_OWNED':message='Plaka hesabındaki araçlarla eşleşmiyor.';break;case 'OUTSIDE_BUSINESS_HOURS':message='İşletme bu saatte hizmet vermiyor.';break;case 'AUTH_REQUIRED':message='Randevu için araç sahibi hesabına giriş yap.';break;}}catch(_){}
+        try{final body=jsonDecode(response.body);switch(body['error']){case 'SLOT_UNAVAILABLE':message='Bu saat dolu. Başka bir saat seç.';break;case 'TOO_MANY_BOOKING_REQUESTS':message='Çok fazla randevu isteği gönderildi. 15 dakika sonra tekrar dene.';break;case 'VEHICLE_NOT_OWNED':message='Plaka hesabındaki araçlarla eşleşmiyor.';break;case 'OUTSIDE_BUSINESS_HOURS':message='İşletme bu saatte hizmet vermiyor.';break;case 'AUTH_REQUIRED':message='Randevu için araç sahibi hesabına giriş yap.';break;}}catch(_){}
         throw Exception(message);
       }
       if(!mounted)return;
