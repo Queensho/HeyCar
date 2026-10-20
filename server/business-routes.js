@@ -136,7 +136,7 @@ module.exports=function registerBusinessRoutes(app,pool){
   if(!q.rowCount)return res.status(404).json({error:'SERVICE_NOT_FOUND'});
   res.json({ok:true,service:q.rows[0]});
  }catch(e){console.error('marketplace update',e);res.status(500).json({error:'SERVICE_UPDATE_FAILED'});}});
- const validWeeklyHours=hours=>hours&&typeof hours==='object'&&!Array.isArray(hours)&&Object.keys(hours).length===7&&[1,2,3,4,5,6,7].every(day=>{const v=hours[String(day)];if(v===null)return true;if(!v||typeof v!=='object'||Array.isArray(v))return false;const re=/^(?:[01]\\d|2[0-3]):[0-5]\\d$/;return re.test(v.open)&&re.test(v.close)&&v.open<v.close;});
+ const validWeeklyHours=hours=>hours&&typeof hours==='object'&&!Array.isArray(hours)&&Object.keys(hours).length===7&&[1,2,3,4,5,6,7].every(day=>{const v=hours[String(day)];if(v===null)return true;if(!v||typeof v!=='object'||Array.isArray(v))return false;const re=/^(?:[01]\d|2[0-3]):[0-5]\d$/;return re.test(v.open)&&re.test(v.close)&&v.open<v.close;});
  const localBookingParts=(date,tz)=>{const parts=new Intl.DateTimeFormat('en-GB',{timeZone:tz,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(date);const v=Object.fromEntries(parts.map(p=>[p.type,p.value]));const weekday=new Date(Date.UTC(Number(v.year),Number(v.month)-1,Number(v.day))).getUTCDay()||7;return {weekday,clock:v.hour+':'+v.minute,ymd:v.year+'-'+v.month+'-'+v.day};};
  app.patch('/api/business/marketplace/services/:id/hours',async(req,res)=>{const account=await auth(req,res);if(!account)return;try{
   const {weeklyHours,timezone='Europe/Istanbul'}=req.body||{};
