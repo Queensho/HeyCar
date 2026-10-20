@@ -24,7 +24,10 @@ class _MarketplaceServicePageState extends State<MarketplaceServicePage> {
 
   Future<void> _chooseDate()async{
     final now=DateTime.now();
-    final selected=await showDatePicker(context:context,initialDate:day??now.add(const Duration(days:1)),firstDate:now,lastDate:now.add(const Duration(days:90)),helpText:'Randevu tarihi');
+    final first=DateTime(now.year,now.month,now.day);
+    final last=first.add(const Duration(days:89));
+    final initial=day!=null&&!day!.isBefore(first)&&!day!.isAfter(last)?day!:first.add(const Duration(days:1));
+    final selected=await showDatePicker(context:context,initialDate:initial,firstDate:first,lastDate:last,helpText:'Randevu tarihi');
     if(selected!=null&&mounted)setState(()=>day=selected);
   }
   Future<void> _chooseTime()async{
@@ -35,6 +38,7 @@ class _MarketplaceServicePageState extends State<MarketplaceServicePage> {
     if(day==null||time==null||plate.text.trim().isEmpty){setState(()=>error='Tarih, saat ve araç plakası gerekli.');return;}
     final when=DateTime(day!.year,day!.month,day!.day,time!.hour,time!.minute);
     if(!when.isAfter(DateTime.now())){setState(()=>error='Gelecekte bir saat seçmelisin.');return;}
+    if(when.isAfter(DateTime.now().add(const Duration(days:90)))){setState(()=>error='En fazla 90 gün sonrası için randevu alınabilir.');return;}
     setState((){sending=true;error=null;});
     try{
       final response=await OwnerHttp.post(Uri.parse('${OnboardingBackend.baseUrl}/api/marketplace/appointments'),body:jsonEncode({'serviceId':widget.service['id'],'plate':plate.text.trim().toUpperCase(),'requestedAt':when.toUtc().toIso8601String()})).timeout(const Duration(seconds:15));
