@@ -122,6 +122,13 @@ module.exports=function registerBusinessRoutes(app,pool){
   const q=await pool.query("INSERT INTO marketplace_services(business_id,title,description,category,price_cents,duration_minutes) SELECT id,$2,$3,$4,$5,$6 FROM businesses WHERE account_id=$1 AND approval_status='approved' RETURNING *",[account,title.trim(),String(description||'').slice(0,2000),category.trim().slice(0,80),priceCents,durationMinutes]);
   if(!q.rowCount)return res.status(403).json({error:'BUSINESS_NOT_APPROVED'});res.status(201).json({ok:true,service:q.rows[0]});
  }catch(e){console.error('marketplace create',e);res.status(500).json({error:'SERVICE_CREATE_FAILED'});}});
+ app.patch('/api/business/marketplace/services/:id',async(req,res)=>{const account=await auth(req,res);if(!account)return;try{
+  const {title,description,category,priceCents,durationMinutes,active}=req.body||{};
+  if(typeof title!=='string'||title.trim().length<2||title.trim().length>120||typeof category!=='string'||!category.trim()||category.length>80||typeof description!=='string'||description.length>2000||!Number.isSafeInteger(priceCents)||priceCents<0||!Number.isInteger(durationMinutes)||durationMinutes<15||durationMinutes>1440||typeof active!=='boolean')return res.status(400).json({error:'INVALID_SERVICE'});
+  const q=await pool.query('UPDATE marketplace_services s SET title=$3,description=$4,category=$5,price_cents=$6,duration_minutes=$7,active=$8 FROM businesses b WHERE s.id=$1 AND s.business_id=b.id AND b.account_id=$2 AND b.approval_status=\'approved\' RETURNING s.*',[req.params.id,account,title.trim(),description.trim(),category.trim(),priceCents,durationMinutes,active]);
+  if(!q.rowCount)return res.status(404).json({error:'SERVICE_NOT_FOUND'});
+  res.json({ok:true,service:q.rows[0]});
+ }catch(e){console.error('marketplace update',e);res.status(500).json({error:'SERVICE_UPDATE_FAILED'});}});
  app.post('/api/marketplace/appointments',async(req,res)=>{const owner=authenticatedOwnerId(req);if(!owner)return res.status(401).json({error:'AUTH_REQUIRED'});try{
   const {serviceId,plate,requestedAt}=req.body||{};const date=new Date(requestedAt);
   if(!/^[a-f0-9-]{36}$/i.test(String(serviceId||''))||!Number.isFinite(date.getTime())||date.getTime()<=Date.now()||date.getTime()>Date.now()+90*86400000||!/^([0-9]{2})[A-Z0-9 ]{3,12}$/.test(String(plate||'').trim().toUpperCase()))return res.status(400).json({error:'INVALID_APPOINTMENT'});
