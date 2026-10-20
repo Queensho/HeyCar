@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'owner_auth.dart';
 import 'qr_backend.dart';
@@ -98,7 +97,63 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
     }
   }
 
+  Future<void> showFuelModal() async {
+    final amount = TextEditingController();
+    final km = TextEditingController();
+    final liters = TextEditingController();
+    final station = TextEditingController();
+    final saved = await showDialog<bool>(
+      context: context,
+      barrierColor: const Color(0xB3000016),
+      builder: (dialogContext) => _FuelEntryDialog(
+            amount: amount, km: km, liters: liters, station: station,
+            onSave: (setSaving, showError) async {
+              final cost = double.tryParse(amount.text.trim().replaceAll(',', '.'));
+              final distance = int.tryParse(km.text.trim());
+              final volume = double.tryParse(liters.text.trim().replaceAll(',', '.'));
+              if (cost == null || !cost.isFinite || cost <= 0 ||
+                  distance == null || distance < 0 ||
+                  volume == null || !volume.isFinite || volume <= 0) {
+                showError('Tutar ve litre sıfırdan büyük, kilometre sıfır veya daha büyük olmalı.');
+                return;
+              }
+              final roundedCost = (cost * 100).round() / 100;
+              if (roundedCost <= 0 || roundedCost > 999999999 || volume > 10000 || distance > 9999999) {
+                showError('Girilen değerler izin verilen aralığın dışında.');
+                return;
+              }
+              setSaving(true);
+              try {
+                final now = DateTime.now();
+                final endpoint = Uri.parse('${QrBackend.baseUrl}/api/owner/vehicles/${Uri.encodeComponent(widget.vehicleId)}/fuel-v2');
+                final response = await OwnerHttp.post(endpoint, body: jsonEncode({
+                  'filledAt': now.toUtc().toIso8601String(),
+                  'odometerKm': distance, 'liters': volume,
+                  'totalCost': roundedCost, 'station': station.text.trim(),
+                })).timeout(const Duration(seconds: 12));
+                if (!dialogContext.mounted) return;
+                if (response.statusCode == 201) {
+                  Navigator.of(dialogContext).pop(true);
+                } else {
+                  showError('Yakıt kaydı oluşturulamadı (HTTP ${response.statusCode}).');
+                }
+              } catch (_) {
+                if (dialogContext.mounted) showError('Bağlantı hatası. Tekrar deneyin.');
+              } finally {
+                if (dialogContext.mounted) setSaving(false);
+              }
+            },
+          ),
+    );
+    amount.dispose();
+    km.dispose();
+    liters.dispose();
+    station.dispose();
+    if (saved == true && mounted) await load();
+  }
+
   Future<void> add() async {
+    if (section == 0) return showFuelModal();
     final amount = TextEditingController();
     final km = TextEditingController();
     final liters = TextEditingController();
@@ -351,6 +406,153 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
           )),
         )),
       ]),
+    );
+  }
+}
+
+typedef _FuelSaveCallback = Future<void> Function(
+  void Function(bool) setSaving, void Function(String) showError);
+
+class _FuelEntryDialog extends StatefulWidget {
+  const _FuelEntryDialog({required this.amount, required this.km,
+    required this.liters, required this.station, required this.onSave});
+  final TextEditingController amount, km, liters, station;
+  final _FuelSaveCallback onSave;
+  @override
+  State<_FuelEntryDialog> createState() => _FuelEntryDialogState();
+}
+
+class _FuelEntryDialogState extends State<_FuelEntryDialog> {
+  static const purple = Color(0xFF651FFF);
+  bool saving = false;
+  String? error;
+  void showError(String message) { if (mounted) setState(() => error = message); }
+  void setSaving(bool value) { if (mounted) setState(() => saving = value); }
+
+  Widget field(String title, IconData icon, TextEditingController controller,
+      String hint, String unit, TextInputType keyboard) {
+    return LayoutBuilder(builder: (context, constraints) {
+      final compact = constraints.maxWidth < 355;
+      final input = TextField(
+        controller: controller, keyboardType: keyboard,
+        enabled: !saving,
+        style: const TextStyle(fontSize: 14, color: Color(0xFF10152D)),
+        decoration: InputDecoration(
+          hintText: hint, hintStyle: const TextStyle(color: Color(0xFF778096), fontSize: 13),
+          suffixIcon: unit.isEmpty ? null : Container(
+            constraints: const BoxConstraints(minWidth: 45),
+            margin: const EdgeInsets.all(3),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(color: const Color(0xFFF3EDFF), borderRadius: BorderRadius.circular(10)),
+            child: Center(widthFactor: 1, child: Text(unit, style: const TextStyle(fontSize: 13, color: Color(0xFF10152D)))),
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          isDense: true,
+          filled: true, fillColor: Colors.white,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(13),
+            borderSide: const BorderSide(color: Color(0xFFE4E2EB))),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13),
+            borderSide: const BorderSide(color: Color(0xFFE4E2EB))),
+        ),
+      );
+      final label = Row(mainAxisSize: MainAxisSize.min, children: [
+        Container(width: 44, height: 44, decoration: BoxDecoration(
+          color: const Color(0xFFF3EDFF), borderRadius: BorderRadius.circular(13)),
+          child: Icon(icon, color: purple, size: 23)),
+        const SizedBox(width: 10),
+        Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF10152D))),
+      ]);
+      return Padding(padding: const EdgeInsets.only(bottom: 11),
+        child: compact ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          label, const SizedBox(height: 7), SizedBox(height: 48, child: input),
+        ]) : Row(children: [
+          SizedBox(width: 158, child: label), const SizedBox(width: 8),
+          Expanded(child: SizedBox(height: 48, child: input)),
+        ]));
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom;
+    return Dialog(
+      insetPadding: EdgeInsets.fromLTRB(16, 16, 16, keyboard > 0 ? 8 : 16),
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      clipBehavior: Clip.antiAlias,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: 420, maxHeight: size.height - keyboard - 32),
+        child: SingleChildScrollView(
+          padding: EdgeInsets.zero,
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(
+              height: 128, width: double.infinity,
+              decoration: const BoxDecoration(gradient: LinearGradient(
+                colors: [Color(0xFF651FFF), Color(0xFF4912C8)])),
+              child: Stack(children: [
+                Positioned(left: 18, top: 24, right: 95, child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    const Text.rich(TextSpan(children: [
+                      TextSpan(text: 'Yakıt ', style: TextStyle(color: Colors.white)),
+                      TextSpan(text: 'Ekle', style: TextStyle(color: Color(0xFFB9FF45))),
+                    ]), style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 5),
+                    const Text('Aracınıza yaptığınız yakıt alımını kaydedin.',
+                      style: TextStyle(color: Colors.white, fontSize: 12, height: 1.4)),
+                  ])),
+                const Positioned(right: 21, bottom: 9,
+                  child: Icon(Icons.local_gas_station_rounded, color: Color(0xFFB9FF45), size: 64)),
+                Positioned(right: 8, top: 8, child: IconButton(
+                  tooltip: 'Kapat', onPressed: saving ? null : () => Navigator.pop(context, false),
+                  icon: const Icon(Icons.close, color: Colors.white))),
+              ]),
+            ),
+            Padding(padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                field('Tutar (TL)', Icons.payments_outlined, widget.amount, '0,00', 'TL',
+                  const TextInputType.numberWithOptions(decimal: true)),
+                field('Kilometre', Icons.speed_rounded, widget.km, 'Örn. 22500', 'km',
+                  TextInputType.number),
+                field('Litre', Icons.water_drop_outlined, widget.liters, 'Örn. 45,3', 'L',
+                  const TextInputType.numberWithOptions(decimal: true)),
+                field('İstasyon', Icons.local_gas_station_outlined, widget.station,
+                  'İstasyon adı (isteğe bağlı)', '', TextInputType.text),
+                Container(width: double.infinity, padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(color: const Color(0xFFF3EDFF),
+                    borderRadius: BorderRadius.circular(14)),
+                  child: const Row(children: [
+                    Icon(Icons.info_rounded, color: purple, size: 23),
+                    SizedBox(width: 10),
+                    Expanded(child: Text('Yakıt alım bilgilerinizi doğru girin. Kayıtlarınız araç giderleri hesabına dahil edilir.',
+                      style: TextStyle(color: Color(0xFF665F88), fontSize: 12, height: 1.35))),
+                  ])),
+                if (error != null) Padding(padding: const EdgeInsets.only(top: 10),
+                  child: Text(error!, style: const TextStyle(color: Colors.red, fontSize: 12))),
+                const SizedBox(height: 16),
+                Row(children: [
+                  Expanded(child: SizedBox(height: 50, child: OutlinedButton(
+                    onPressed: saving ? null : () => Navigator.pop(context, false),
+                    style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFF10152D),
+                      side: const BorderSide(color: Color(0xFF10152D)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))),
+                    child: const Text('İptal', style: TextStyle(fontWeight: FontWeight.w700))))),
+                  const SizedBox(width: 10),
+                  Expanded(child: SizedBox(height: 50, child: FilledButton.icon(
+                    onPressed: saving ? null : () => widget.onSave(setSaving, showError),
+                    style: FilledButton.styleFrom(backgroundColor: const Color(0xFFB9FF45),
+                      foregroundColor: const Color(0xFF10152D),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))),
+                    icon: saving ? const SizedBox(width: 18, height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.save_rounded),
+                    label: Text(saving ? 'Kaydediliyor' : 'Kaydet',
+                      style: const TextStyle(fontWeight: FontWeight.w800)),
+                  ))),
+                ]),
+              ])),
+          ]),
+        ),
+      ),
     );
   }
 }
