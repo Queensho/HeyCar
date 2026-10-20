@@ -97,11 +97,17 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
     }
   }
 
-  Future<void> showFuelModal() async {
+  Future<void> showFuelModal([Map<String, dynamic>? existing]) async {
     final amount = TextEditingController();
     final km = TextEditingController();
     final liters = TextEditingController();
     final station = TextEditingController();
+    if (existing != null) {
+      amount.text = '${existing['total_cost'] ?? ''}';
+      km.text = '${existing['odometer_km'] ?? ''}';
+      liters.text = '${existing['liters'] ?? ''}';
+      station.text = '${existing['station'] ?? ''}';
+    }
     final saved = await showDialog<bool>(
       context: context,
       barrierColor: const Color(0xB3000016),
@@ -125,14 +131,17 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
               setSaving(true);
               try {
                 final now = DateTime.now();
-                final endpoint = Uri.parse('${QrBackend.baseUrl}/api/owner/vehicles/${Uri.encodeComponent(widget.vehicleId)}/fuel-v2');
-                final response = await OwnerHttp.post(endpoint, body: jsonEncode({
-                  'filledAt': now.toUtc().toIso8601String(),
+                final endpoint = Uri.parse('${QrBackend.baseUrl}/api/owner/vehicles/${Uri.encodeComponent(widget.vehicleId)}/fuel-v2${existing == null ? '' : '/${existing['id']}'}');
+                final payload = jsonEncode({
+                  'filledAt': existing == null ? now.toUtc().toIso8601String() : '${existing['filled_at']}',
                   'odometerKm': distance, 'liters': volume,
                   'totalCost': roundedCost, 'station': station.text.trim(),
-                })).timeout(const Duration(seconds: 12));
+                });
+                final response = existing == null
+                    ? await OwnerHttp.post(endpoint, body: payload).timeout(const Duration(seconds: 12))
+                    : await OwnerHttp.put(endpoint, body: payload).timeout(const Duration(seconds: 12));
                 if (!dialogContext.mounted) return;
-                if (response.statusCode == 201) {
+                if (response.statusCode == 201 || response.statusCode == 200) {
                   Navigator.of(dialogContext).pop(true);
                 } else {
                   showError('Yakıt kaydı oluşturulamadı (HTTP ${response.statusCode}).');
@@ -254,6 +263,109 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
     );
   }
 
+
+  String decimalValue(Object? value, {int digits = 2}) {
+    final number = double.tryParse('${value ?? ''}') ?? 0;
+    final parts = number.toStringAsFixed(digits).split('.');
+    final grouped = parts[0].replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => '.');
+    return '$grouped,${parts[1]}';
+  }
+
+  Future<void> deleteFuelEntry(Map<String, dynamic> entry) async {
+    final confirmed = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
+      title: const Text('Yakıt kaydını sil?'),
+      content: const Text('Bu işlem geri alınamaz.'),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Vazgeç')),
+        TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Sil')),
+      ],
+    ));
+    if (confirmed != true || !mounted) return;
+    try {
+      final url = Uri.parse('${QrBackend.baseUrl}/api/owner/vehicles/${Uri.encodeComponent(widget.vehicleId)}/fuel-v2/${entry['id']}');
+      final response = await OwnerHttp.delete(url).timeout(const Duration(seconds: 12));
+      if (!mounted) return;
+      if (response.statusCode == 200) {
+        Navigator.of(context).pop();
+        await load();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Silinemedi (HTTP ${response.statusCode})')));
+      }
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bağlantı hatası, kayıt silinemedi.')));
+    }
+  }
+
+  Widget fuelDetailRow(IconData icon, String label, String value) => Container(
+    height: 40, margin: const EdgeInsets.only(bottom: 5),
+    padding: const EdgeInsets.symmetric(horizontal: 7),
+    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10),
+      border: Border.all(color: const Color(0xFFECE9F1))),
+    child: Row(children: [
+      Container(width: 29, height: 29, decoration: BoxDecoration(color: const Color(0xFFF3EDFF),
+        borderRadius: BorderRadius.circular(8)), child: Icon(icon, size: 19, color: purple)),
+      const SizedBox(width: 9),
+      Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF10152D))),
+      const SizedBox(width: 8),
+      Expanded(child: Text(value, textAlign: TextAlign.end, maxLines: 1, overflow: TextOverflow.ellipsis,
+        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: purple))),
+    ]),
+  );
+
+  void showFuelDetail(Map<String, dynamic> entry) {
+    showModalBottomSheet<void>(
+      context: context, isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (sheetContext) => SafeArea(top: false, child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(sheetContext).height * .72),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(height: 76, padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: const BoxDecoration(color: purple, borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+            child: Row(children: [
+              Container(width: 32, height: 32, decoration: BoxDecoration(color: const Color(0x33FFFFFF),
+                borderRadius: BorderRadius.circular(9)),
+                child: const Icon(Icons.local_gas_station_rounded, size: 25, color: Colors.white)),
+              const SizedBox(width: 10),
+              Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text.rich(TextSpan(children: [
+                  TextSpan(text: 'Yakıt ', style: TextStyle(color: Colors.white)),
+                  TextSpan(text: 'Kaydı', style: TextStyle(color: Color(0xFFB9FF45))),
+                ]), style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
+                const Text('Yakıt alım detayları', style: TextStyle(color: Colors.white, fontSize: 11)),
+              ])),
+              IconButton(tooltip: 'Kapat', onPressed: () => Navigator.pop(sheetContext),
+                icon: const Icon(Icons.close, color: Colors.white)),
+            ])),
+          Flexible(child: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              fuelDetailRow(Icons.payments_outlined, 'Tutar', money(double.tryParse('${entry['total_cost']}') ?? 0)),
+              fuelDetailRow(Icons.water_drop_outlined, 'Litre', '${decimalValue(entry['liters'])} L'),
+              fuelDetailRow(Icons.speed_rounded, 'Kilometre', '${decimalValue(entry['odometer_km'], digits: 0).replaceAll(',','')} km'),
+              fuelDetailRow(Icons.calendar_today_outlined, 'Tarih', dateLabel(entry, true)),
+              if ('${entry['station'] ?? ''}'.trim().isNotEmpty)
+                fuelDetailRow(Icons.local_gas_station_outlined, 'İstasyon', '${entry['station']}'),
+              const SizedBox(height: 7),
+              Row(children: [
+                Expanded(child: SizedBox(height: 42, child: OutlinedButton.icon(
+                  onPressed: () { Navigator.pop(sheetContext); showFuelModal(entry); },
+                  icon: const Icon(Icons.edit_outlined, size: 18), label: const Text('Düzenle'),
+                  style: OutlinedButton.styleFrom(foregroundColor: purple, side: const BorderSide(color: purple),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)))))),
+                const SizedBox(width: 8),
+                Expanded(child: SizedBox(height: 42, child: FilledButton.icon(
+                  onPressed: () => deleteFuelEntry(entry),
+                  icon: const Icon(Icons.delete_outline, size: 18), label: const Text('Sil'),
+                  style: FilledButton.styleFrom(backgroundColor: const Color(0xFFB9FF45),
+                    foregroundColor: const Color(0xFF10152D),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)))))),
+              ]),
+            ]))),
+        ]),
+      )),
+    );
+  }
+
   Widget historyCard(Map<String, dynamic> entry) {
     final fuel = entry['_fuel'] == true;
     final category = '${entry['category'] ?? 'other'}';
@@ -266,7 +378,7 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
         border: Border.all(color: const Color(0xFFF0EEF6)),
         boxShadow: const [BoxShadow(color: Color(0x09000000), blurRadius: 12, offset: Offset(0, 3))]),
       child: InkWell(borderRadius: BorderRadius.circular(16),
-        onTap: () => showModalBottomSheet<void>(context: context, showDragHandle: true, builder: (context) =>
+        onTap: fuel ? () => showFuelDetail(entry) : () => showModalBottomSheet<void>(context: context, showDragHandle: true, builder: (context) =>
           SafeArea(child: Padding(padding: const EdgeInsets.all(20), child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 10), Text('Tutar: ${moneyCents(amount)}'),
