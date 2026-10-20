@@ -36,4 +36,34 @@ module.exports=function registerMaintenanceV2Routes(app,pool){
  });
  app.get('/api/owner/vehicles/:vehicleId/expenses-v2',async(req,res)=>{try{const a=await gate(req,res);if(!a||!a.owner)return;const r=await pool.query('SELECT id,spent_at,category,amount,description,receipt_url FROM vehicle_expense_entries_v2 WHERE vehicle_id=$1 AND owner_id=$2 ORDER BY spent_at DESC,id DESC LIMIT 200',[a.vehicle,a.owner]);return res.json({ok:true,entries:r.rows});}catch(e){return fail(res,e);}});
  app.post('/api/owner/vehicles/:vehicleId/expenses-v2',async(req,res)=>{try{const a=await gate(req,res);if(!a||!a.owner)return;const b=req.body||{};const categories=['insurance','tax','parking','toll','repair','parts','cleaning','other'];if(!/^\d{4}-\d{2}-\d{2}$/.test(String(b.spentAt||''))||!Number.isFinite(Date.parse(b.spentAt))||!categories.includes(b.category)||!numeric(b.amount,0,999999999))return res.status(400).json({error:'INVALID_INPUT'});const r=await pool.query('INSERT INTO vehicle_expense_entries_v2(vehicle_id,owner_id,spent_at,category,amount,description) VALUES($1,$2,$3,$4,$5,$6) RETURNING id',[a.vehicle,a.owner,b.spentAt,b.category,b.amount,String(b.description||'').slice(0,2000)]);return res.status(201).json({ok:true,id:r.rows[0].id});}catch(e){return fail(res,e);}});
+ app.put('/api/owner/vehicles/:vehicleId/expenses-v2/:entryId',async(req,res)=>{
+  try{
+   const a=await gate(req,res);if(!a||!a.owner)return;
+   if(!validId(req.params.entryId))return res.status(400).json({error:'INVALID_ID'});
+   const b=req.body||{};
+   const categories=['insurance','tax','parking','toll','repair','parts','cleaning','other'];
+   if(!/^\d{4}-\d{2}-\d{2}$/.test(String(b.spentAt||''))||
+      !Number.isFinite(Date.parse(b.spentAt))||!categories.includes(b.category)||
+      !numeric(b.amount,0.01,999999999))
+     return res.status(400).json({error:'INVALID_INPUT'});
+   const r=await pool.query(
+    'UPDATE vehicle_expense_entries_v2 SET spent_at=$1,category=$2,amount=$3,description=$4 WHERE id=$5 AND vehicle_id=$6 AND owner_id=$7 RETURNING id',
+    [b.spentAt,b.category,b.amount,String(b.description||'').slice(0,2000),
+     req.params.entryId,a.vehicle,a.owner]);
+   if(!r.rowCount)return res.status(404).json({error:'ENTRY_NOT_FOUND'});
+   return res.json({ok:true,id:r.rows[0].id});
+  }catch(e){return fail(res,e);}
+ });
+ app.delete('/api/owner/vehicles/:vehicleId/expenses-v2/:entryId',async(req,res)=>{
+  try{
+   const a=await gate(req,res);if(!a||!a.owner)return;
+   if(!validId(req.params.entryId))return res.status(400).json({error:'INVALID_ID'});
+   const r=await pool.query(
+    'DELETE FROM vehicle_expense_entries_v2 WHERE id=$1 AND vehicle_id=$2 AND owner_id=$3 RETURNING id',
+    [req.params.entryId,a.vehicle,a.owner]);
+   if(!r.rowCount)return res.status(404).json({error:'ENTRY_NOT_FOUND'});
+   return res.json({ok:true});
+  }catch(e){return fail(res,e);}
+ });
+
 };

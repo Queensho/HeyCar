@@ -161,64 +161,187 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
     if (saved == true && mounted) await load();
   }
 
-  Future<void> add() async {
-    if (section == 0) return showFuelModal();
-    final amount = TextEditingController();
-    final km = TextEditingController();
-    final liters = TextEditingController();
-    final detail = TextEditingController();
-    final fuel = section == 0;
-    String category = 'other';
+
+  Future<void> showExpenseModal([Map<String, dynamic>? existing]) async {
+    final amount = TextEditingController(text: existing == null ? '' : '${existing['amount'] ?? ''}');
+    final detail = TextEditingController(text: existing == null ? '' : '${existing['description'] ?? ''}');
+    String category = '${existing?['category'] ?? 'other'}';
+    if (!categories.containsKey(category)) category = 'other';
     final saved = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(builder: (dialogContext, setDialogState) => AlertDialog(
-        title: Text(fuel ? 'Yakıt Ekle' : 'Masraf Ekle'),
-        content: SingleChildScrollView(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextField(controller: amount, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Tutar (TL)')),
-            if (fuel) ...[
-              TextField(controller: km, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Kilometre')),
-              TextField(controller: liters, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Litre')),
-            ],
-            if (!fuel) DropdownButtonFormField<String>(value: category, decoration: const InputDecoration(labelText:'Kategori'), items: categories.entries.map((e)=>DropdownMenuItem(value:e.key,child:Text(e.value))).toList(),onChanged:(value)=>setDialogState(()=>category=value??'other')),
-            TextField(controller: detail, decoration: InputDecoration(labelText: fuel ? 'İstasyon' : 'Açıklama')),
-          ]),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('İptal')),
-          FilledButton(
-            onPressed: () async {
-              final cost = double.tryParse(amount.text.replaceAll(',', '.'));
-              final distance = int.tryParse(km.text);
-              final volume = double.tryParse(liters.text.replaceAll(',', '.'));
-              if (cost == null || !cost.isFinite || cost < 0 || (fuel && (distance == null || distance < 0 || volume == null || !volume.isFinite || volume <= 0))) {
-                ScaffoldMessenger.of(dialogContext).showSnackBar(const SnackBar(content: Text('Geçerli değerler girin.')));
-                return;
-              }
-              final now = DateTime.now();
-              final day = '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-              final payload = fuel
-                  ? {'filledAt': now.toUtc().toIso8601String(), 'odometerKm': distance, 'liters': volume, 'totalCost': cost, 'station': detail.text}
-                  : {'spentAt': day, 'category': category, 'amount': cost, 'description': detail.text};
-              try {
-                final response = await OwnerHttp.post(endpoint, body: jsonEncode(payload)).timeout(const Duration(seconds: 12));
-                if (!dialogContext.mounted) return;
-                if (response.statusCode == 201) {
-                  Navigator.pop(dialogContext, true);
-                } else {
-                  ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text('Kaydedilemedi (${response.statusCode})')));
-                }
-              } catch (_) {
-                if (dialogContext.mounted) ScaffoldMessenger.of(dialogContext).showSnackBar(const SnackBar(content: Text('Bağlantı hatası')));
-              }
-            },
-            child: const Text('Kaydet'),
-          ),
-        ],
+      barrierColor: const Color(0xB3000016),
+      builder: (dialogContext) => _ExpenseEntryDialog(
+        amount: amount, detail: detail, categories: categories,
+        initialCategory: category,
+        onSave: (selectedCategory, setSaving, showError) async {
+          final raw = amount.text.trim().replaceAll(' ', '');
+          final normalized = raw.contains(',')
+              ? raw.replaceAll('.', '').replaceAll(',', '.')
+              : raw;
+          final value = double.tryParse(normalized);
+          if (value == null || !value.isFinite || value <= 0 || value > 999999999) {
+            showError('Sıfırdan büyük, geçerli bir tutar girin.');
+            return;
+          }
+          if (!categories.containsKey(selectedCategory)) {
+            showError('Geçerli bir kategori seçin.');
+            return;
+          }
+          final cents = (value * 100).round();
+          if (cents <= 0 || detail.text.length > 2000) {
+            showError('Tutarı ve açıklama uzunluğunu kontrol edin.');
+            return;
+          }
+          setSaving(true);
+          try {
+            final now = DateTime.now();
+            final day = '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+            final base = '${QrBackend.baseUrl}/api/owner/vehicles/${Uri.encodeComponent(widget.vehicleId)}/expenses-v2';
+            final url = Uri.parse(existing == null ? base : '$base/${existing['id']}');
+            final payload = jsonEncode({
+              'spentAt': existing == null ? day : '${existing['spent_at']}'.substring(0, 10),
+              'category': selectedCategory,
+              'amount': cents / 100,
+              'description': detail.text.trim(),
+            });
+            final response = existing == null
+                ? await OwnerHttp.post(url, body: payload).timeout(const Duration(seconds: 12))
+                : await OwnerHttp.put(url, body: payload).timeout(const Duration(seconds: 12));
+            if (!dialogContext.mounted) return;
+            if (response.statusCode == 201 || response.statusCode == 200) {
+              Navigator.pop(dialogContext, true);
+            } else {
+              showError('Masraf kaydedilemedi (HTTP ${response.statusCode}).');
+            }
+          } catch (_) {
+            if (dialogContext.mounted) showError('Bağlantı hatası. Tekrar deneyin.');
+          } finally {
+            if (dialogContext.mounted) setSaving(false);
+          }
+        },
+      ),
+    );
+    amount.dispose();
+    detail.dispose();
+    if (saved == true && mounted) await load();
+  }
+
+  Future<void> deleteExpenseEntry(Map<String, dynamic> entry) async {
+    final confirmed = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
+      title: const Text('Masraf kaydını sil?'),
+      content: const Text('Bu işlem geri alınamaz.'),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Vazgeç')),
+        TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Sil')),
+      ],
+    ));
+    if (confirmed != true || !mounted) return;
+    try {
+      final url = Uri.parse('${QrBackend.baseUrl}/api/owner/vehicles/${Uri.encodeComponent(widget.vehicleId)}/expenses-v2/${entry['id']}');
+      final response = await OwnerHttp.delete(url).timeout(const Duration(seconds: 12));
+      if (!mounted) return;
+      if (response.statusCode == 200) {
+        Navigator.of(context).pop();
+        await load();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Masraf silinemedi (HTTP ${response.statusCode})')));
+      }
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bağlantı hatası. Masraf silinemedi.')));
+    }
+  }
+
+  void showExpenseDetail(Map<String, dynamic> entry) {
+    final category = '${entry['category'] ?? 'other'}';
+    final categoryName = categories[category] ?? 'Diğer';
+    final categoryIconData = category == 'tax' ? Icons.receipt_long_outlined
+        : category == 'insurance' ? Icons.verified_user_outlined
+        : category == 'repair' ? Icons.build_outlined
+        : category == 'parking' ? Icons.local_parking_outlined
+        : category == 'toll' ? Icons.route_outlined
+        : category == 'parts' ? Icons.settings_outlined
+        : category == 'cleaning' ? Icons.cleaning_services_outlined
+        : Icons.receipt_outlined;
+    showModalBottomSheet<void>(
+      context: context, isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (sheetContext) => SafeArea(top: false, child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(sheetContext).height * .72),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(height: 76, padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: const BoxDecoration(color: purple,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+            child: Row(children: [
+              Container(width: 32, height: 32,
+                decoration: BoxDecoration(color: const Color(0x33FFFFFF),
+                  borderRadius: BorderRadius.circular(9)),
+                child: Icon(categoryIconData, size: 24, color: Colors.white)),
+              const SizedBox(width: 10),
+              Expanded(child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text.rich(TextSpan(children: [
+                    TextSpan(text: 'Masraf ', style: TextStyle(color: Colors.white)),
+                    TextSpan(text: 'Kaydı', style: TextStyle(color: Color(0xFFB9FF45))),
+                  ]), style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
+                  Text('$categoryName detayları',
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white, fontSize: 11)),
+                ])),
+              IconButton(tooltip: 'Kapat',
+                onPressed: () => Navigator.pop(sheetContext),
+                icon: const Icon(Icons.close, color: Colors.white)),
+            ])),
+          Flexible(child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              fuelDetailRow(Icons.payments_outlined, 'Tutar',
+                money(double.tryParse('${entry['amount']}') ?? 0)),
+              fuelDetailRow(categoryIconData, 'Kategori', categoryName),
+              fuelDetailRow(Icons.calendar_today_outlined, 'Tarih',
+                dateLabel(entry, false)),
+              if ('${entry['description'] ?? ''}'.trim().isNotEmpty)
+                fuelDetailRow(Icons.description_outlined, 'Açıklama',
+                  '${entry['description']}'),
+              const SizedBox(height: 7),
+              Row(children: [
+                Expanded(child: SizedBox(height: 42,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(sheetContext);
+                      showExpenseModal(entry);
+                    },
+                    icon: const Icon(Icons.edit_outlined, size: 18),
+                    label: const Text('Düzenle'),
+                    style: OutlinedButton.styleFrom(foregroundColor: purple,
+                      side: const BorderSide(color: purple),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(11)))))),
+                const SizedBox(width: 8),
+                Expanded(child: SizedBox(height: 42,
+                  child: FilledButton.icon(
+                    onPressed: () => deleteExpenseEntry(entry),
+                    icon: const Icon(Icons.delete_outline, size: 18),
+                    label: const Text('Sil'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFFB9FF45),
+                      foregroundColor: const Color(0xFF10152D),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(11)))))),
+              ]),
+            ]))),
+        ]),
       )),
     );
-    amount.dispose(); km.dispose(); liters.dispose(); detail.dispose();
-    if (saved == true && mounted) await load();
+  }
+
+  Future<void> add() async {
+    if (section == 0) return showFuelModal();
+    return showExpenseModal();
   }
 
 
@@ -378,16 +501,7 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
         border: Border.all(color: const Color(0xFFF0EEF6)),
         boxShadow: const [BoxShadow(color: Color(0x09000000), blurRadius: 12, offset: Offset(0, 3))]),
       child: InkWell(borderRadius: BorderRadius.circular(16),
-        onTap: fuel ? () => showFuelDetail(entry) : () => showModalBottomSheet<void>(context: context, showDragHandle: true, builder: (context) =>
-          SafeArea(child: Padding(padding: const EdgeInsets.all(20), child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 10), Text('Tutar: ${moneyCents(amount)}'),
-            Text('Tarih: $date'),
-            if (fuel) Text('Kilometre: ${entry['odometer_km']} km'),
-            if (!fuel && '${entry['description'] ?? ''}'.isNotEmpty) Text('Açıklama: ${entry['description']}'),
-            if (fuel && '${entry['station'] ?? ''}'.isNotEmpty) Text('İstasyon: ${entry['station']}'),
-            const SizedBox(height: 12),
-          ])))),
+        onTap: fuel ? () => showFuelDetail(entry) : () => showExpenseDetail(entry),
         child: Padding(padding: const EdgeInsets.all(12), child: Row(children: [
           categoryIcon(fuel, category), const SizedBox(width: 12),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -656,6 +770,164 @@ class _FuelEntryDialogState extends State<_FuelEntryDialog> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))),
                     icon: saving ? const SizedBox(width: 18, height: 18,
                       child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.save_rounded),
+                    label: Text(saving ? 'Kaydediliyor' : 'Kaydet',
+                      style: const TextStyle(fontWeight: FontWeight.w800)),
+                  ))),
+                ]),
+              ])),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+typedef _ExpenseSaveCallback = Future<void> Function(
+  String category, void Function(bool) setSaving, void Function(String) showError);
+
+class _ExpenseEntryDialog extends StatefulWidget {
+  const _ExpenseEntryDialog({required this.amount, required this.detail,
+    required this.categories, required this.initialCategory, required this.onSave});
+  final TextEditingController amount, detail;
+  final Map<String, String> categories;
+  final String initialCategory;
+  final _ExpenseSaveCallback onSave;
+  @override
+  State<_ExpenseEntryDialog> createState() => _ExpenseEntryDialogState();
+}
+
+class _ExpenseEntryDialogState extends State<_ExpenseEntryDialog> {
+  static const purple = Color(0xFF651FFF);
+  late String category;
+  bool saving = false;
+  String? error;
+
+  @override
+  void initState() {
+    super.initState();
+    category = widget.initialCategory;
+  }
+
+  void setSaving(bool value) { if (mounted) setState(() => saving = value); }
+  void showError(String message) { if (mounted) setState(() => error = message); }
+
+  Widget field(String title, IconData icon, Widget input) => LayoutBuilder(
+    builder: (context, constraints) {
+      final label = Row(mainAxisSize: MainAxisSize.min, children: [
+        Container(width: 36, height: 36, alignment: Alignment.center,
+          decoration: BoxDecoration(color: const Color(0xFFF3EDFF),
+            borderRadius: BorderRadius.circular(11)),
+          child: Icon(icon, color: purple, size: 19)),
+        const SizedBox(width: 7),
+        Flexible(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
+            color: Color(0xFF10152D)))),
+      ]);
+      return Padding(padding: const EdgeInsets.only(bottom: 9),
+        child: Row(children: [
+          SizedBox(width: constraints.maxWidth < 255 ? 100 : 122, child: label),
+          const SizedBox(width: 8),
+          Expanded(child: SizedBox(height: 46, child: input)),
+        ]));
+    });
+
+  InputDecoration decoration(String hint, {String? unit}) => InputDecoration(
+    hintText: hint, hintStyle: const TextStyle(color: Color(0xFF778096), fontSize: 12),
+    isDense: true, contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+    filled: true, fillColor: Colors.white,
+    suffixIcon: unit == null ? null : Container(
+      constraints: const BoxConstraints(minWidth: 40), margin: const EdgeInsets.all(3),
+      decoration: BoxDecoration(color: const Color(0xFFF3EDFF),
+        borderRadius: BorderRadius.circular(9)),
+      child: Center(widthFactor: 1, child: Text(unit,
+        style: const TextStyle(fontSize: 12, color: Color(0xFF10152D))))),
+    border: OutlineInputBorder(borderRadius: BorderRadius.circular(11),
+      borderSide: const BorderSide(color: Color(0xFFE4E2EB))),
+    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(11),
+      borderSide: const BorderSide(color: Color(0xFFE4E2EB))),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom;
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      clipBehavior: Clip.antiAlias,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: 420,
+          maxHeight: (size.height - keyboard - 48).clamp(0.0, 420.0).toDouble()),
+        child: SingleChildScrollView(
+          padding: EdgeInsets.zero,
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(height: 84, width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: const BoxDecoration(gradient: LinearGradient(
+                colors: [Color(0xFF651FFF), Color(0xFF4912C8)])),
+              child: Row(children: [
+                Container(width: 38, height: 38,
+                  decoration: BoxDecoration(color: const Color(0x33FFFFFF),
+                    borderRadius: BorderRadius.circular(11)),
+                  child: const Icon(Icons.receipt_long_rounded, color: Colors.white, size: 24)),
+                const SizedBox(width: 10),
+                Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    const Text.rich(TextSpan(children: [
+                      TextSpan(text: 'Masraf ', style: TextStyle(color: Colors.white)),
+                      TextSpan(text: 'Ekle', style: TextStyle(color: Color(0xFFB9FF45))),
+                    ]), style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 3),
+                    const Text('Aracınıza ait diğer masrafları kaydedin.',
+                      maxLines: 2, style: TextStyle(fontSize: 11, color: Colors.white)),
+                  ])),
+                IconButton(tooltip: 'Kapat', onPressed: saving ? null : () => Navigator.pop(context, false),
+                  icon: const Icon(Icons.close, color: Colors.white)),
+              ])),
+            Padding(padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                field('Tutar (TL)', Icons.payments_outlined, TextField(
+                  controller: widget.amount, enabled: !saving,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  style: const TextStyle(fontSize: 13),
+                  decoration: decoration('0,00', unit: 'TL'))),
+                field('Kategori', Icons.sell_outlined,
+                  DropdownButtonFormField<String>(
+                    value: category, isExpanded: true,
+                    decoration: decoration('Kategori seçin'),
+                    style: const TextStyle(fontSize: 13, color: Color(0xFF10152D)),
+                    items: widget.categories.entries.map((e) =>
+                      DropdownMenuItem(value: e.key, child: Text(e.value,
+                        overflow: TextOverflow.ellipsis))).toList(),
+                    onChanged: saving ? null : (value) {
+                      if (value != null) setState(() => category = value);
+                    })),
+                field('Açıklama', Icons.description_outlined, TextField(
+                  controller: widget.detail, enabled: !saving, maxLines: 1, maxLength: 2000,
+                  buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
+                  style: const TextStyle(fontSize: 13),
+                  decoration: decoration('Açıklama (isteğe bağlı)'))),
+                if (error != null) Padding(padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(error!, style: const TextStyle(color: Colors.red, fontSize: 12))),
+                const SizedBox(height: 3),
+                Row(children: [
+                  Expanded(child: SizedBox(height: 43, child: OutlinedButton(
+                    onPressed: saving ? null : () => Navigator.pop(context, false),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF10152D),
+                      side: const BorderSide(color: Color(0xFF10152D)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                    child: const Text('İptal', style: TextStyle(fontWeight: FontWeight.w700))))),
+                  const SizedBox(width: 8),
+                  Expanded(child: SizedBox(height: 43, child: FilledButton.icon(
+                    onPressed: saving ? null : () => widget.onSave(category, setSaving, showError),
+                    style: FilledButton.styleFrom(backgroundColor: const Color(0xFFB9FF45),
+                      foregroundColor: const Color(0xFF10152D),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                    icon: saving ? const SizedBox(width: 16, height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2)) :
+                      const Icon(Icons.save_outlined, size: 18),
                     label: Text(saving ? 'Kaydediliyor' : 'Kaydet',
                       style: const TextStyle(fontWeight: FontWeight.w800)),
                   ))),
