@@ -161,64 +161,131 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
     if (saved == true && mounted) await load();
   }
 
-  Future<void> add() async {
-    if (section == 0) return showFuelModal();
-    final amount = TextEditingController();
-    final km = TextEditingController();
-    final liters = TextEditingController();
-    final detail = TextEditingController();
-    final fuel = section == 0;
-    String category = 'other';
+
+  Future<void> showExpenseModal([Map<String, dynamic>? existing]) async {
+    final amount = TextEditingController(text: existing == null ? '' : '${existing['amount'] ?? ''}');
+    final detail = TextEditingController(text: existing == null ? '' : '${existing['description'] ?? ''}');
+    String category = '${existing?['category'] ?? 'other'}';
+    if (!categories.containsKey(category)) category = 'other';
     final saved = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(builder: (dialogContext, setDialogState) => AlertDialog(
-        title: Text(fuel ? 'Yakıt Ekle' : 'Masraf Ekle'),
-        content: SingleChildScrollView(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextField(controller: amount, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Tutar (TL)')),
-            if (fuel) ...[
-              TextField(controller: km, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Kilometre')),
-              TextField(controller: liters, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Litre')),
-            ],
-            if (!fuel) DropdownButtonFormField<String>(value: category, decoration: const InputDecoration(labelText:'Kategori'), items: categories.entries.map((e)=>DropdownMenuItem(value:e.key,child:Text(e.value))).toList(),onChanged:(value)=>setDialogState(()=>category=value??'other')),
-            TextField(controller: detail, decoration: InputDecoration(labelText: fuel ? 'İstasyon' : 'Açıklama')),
+      barrierColor: const Color(0xB3000016),
+      builder: (dialogContext) => _ExpenseEntryDialog(
+        amount: amount, detail: detail, categories: categories,
+        initialCategory: category,
+        onSave: (selectedCategory, setSaving, showError) async {
+          final raw = amount.text.trim().replaceAll(' ', '');
+          final normalized = raw.contains(',')
+              ? raw.replaceAll('.', '').replaceAll(',', '.')
+              : raw;
+          final value = double.tryParse(normalized);
+          if (value == null || !value.isFinite || value <= 0 || value > 999999999) {
+            showError('Sıfırdan büyük, geçerli bir tutar girin.');
+            return;
+          }
+          if (!categories.containsKey(selectedCategory)) {
+            showError('Geçerli bir kategori seçin.');
+            return;
+          }
+          final cents = (value * 100).round();
+          if (cents <= 0 || detail.text.length > 2000) {
+            showError('Tutarı ve açıklama uzunluğunu kontrol edin.');
+            return;
+          }
+          setSaving(true);
+          try {
+            final now = DateTime.now();
+            final day = '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+            final base = '${QrBackend.baseUrl}/api/owner/vehicles/${Uri.encodeComponent(widget.vehicleId)}/expenses-v2';
+            final url = Uri.parse(existing == null ? base : '$base/${existing['id']}');
+            final payload = jsonEncode({
+              'spentAt': existing == null ? day : '${existing['spent_at']}'.substring(0, 10),
+              'category': selectedCategory,
+              'amount': cents / 100,
+              'description': detail.text.trim(),
+            });
+            final response = existing == null
+                ? await OwnerHttp.post(url, body: payload).timeout(const Duration(seconds: 12))
+                : await OwnerHttp.put(url, body: payload).timeout(const Duration(seconds: 12));
+            if (!dialogContext.mounted) return;
+            if (response.statusCode == 201 || response.statusCode == 200) {
+              Navigator.pop(dialogContext, true);
+            } else {
+              showError('Masraf kaydedilemedi (HTTP ${response.statusCode}).');
+            }
+          } catch (_) {
+            if (dialogContext.mounted) showError('Bağlantı hatası. Tekrar deneyin.');
+          } finally {
+            if (dialogContext.mounted) setSaving(false);
+          }
+        },
+      ),
+    );
+    amount.dispose();
+    detail.dispose();
+    if (saved == true && mounted) await load();
+  }
+
+  Future<void> deleteExpenseEntry(Map<String, dynamic> entry) async {
+    final confirmed = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
+      title: const Text('Masraf kaydını sil?'),
+      content: const Text('Bu işlem geri alınamaz.'),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Vazgeç')),
+        TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Sil')),
+      ],
+    ));
+    if (confirmed != true || !mounted) return;
+    try {
+      final url = Uri.parse('${QrBackend.baseUrl}/api/owner/vehicles/${Uri.encodeComponent(widget.vehicleId)}/expenses-v2/${entry['id']}');
+      final response = await OwnerHttp.delete(url).timeout(const Duration(seconds: 12));
+      if (!mounted) return;
+      if (response.statusCode == 200) {
+        Navigator.of(context).pop();
+        await load();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Masraf silinemedi (HTTP ${response.statusCode})')));
+      }
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bağlantı hatası. Masraf silinemedi.')));
+    }
+  }
+
+  void showExpenseDetail(Map<String, dynamic> entry) {
+    showModalBottomSheet<void>(
+      context: context, isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (sheetContext) => SafeArea(top: false, child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(categories['${entry['category']}'] ?? 'Diğer',
+            style: const TextStyle(fontSize: 19, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Text('Tutar: ${money(double.tryParse('${entry['amount']}') ?? 0)}'),
+          Text('Tarih: ${dateLabel(entry, false)}'),
+          if ('${entry['description'] ?? ''}'.isNotEmpty)
+            Text('Açıklama: ${entry['description']}'),
+          const SizedBox(height: 12),
+          Row(children: [
+            Expanded(child: OutlinedButton.icon(
+              onPressed: () { Navigator.pop(sheetContext); showExpenseModal(entry); },
+              icon: const Icon(Icons.edit_outlined), label: const Text('Düzenle'))),
+            const SizedBox(width: 8),
+            Expanded(child: FilledButton.icon(
+              onPressed: () => deleteExpenseEntry(entry),
+              icon: const Icon(Icons.delete_outline), label: const Text('Sil'),
+              style: FilledButton.styleFrom(backgroundColor: const Color(0xFFB9FF45),
+                foregroundColor: const Color(0xFF10152D)))),
           ]),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('İptal')),
-          FilledButton(
-            onPressed: () async {
-              final cost = double.tryParse(amount.text.replaceAll(',', '.'));
-              final distance = int.tryParse(km.text);
-              final volume = double.tryParse(liters.text.replaceAll(',', '.'));
-              if (cost == null || !cost.isFinite || cost < 0 || (fuel && (distance == null || distance < 0 || volume == null || !volume.isFinite || volume <= 0))) {
-                ScaffoldMessenger.of(dialogContext).showSnackBar(const SnackBar(content: Text('Geçerli değerler girin.')));
-                return;
-              }
-              final now = DateTime.now();
-              final day = '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-              final payload = fuel
-                  ? {'filledAt': now.toUtc().toIso8601String(), 'odometerKm': distance, 'liters': volume, 'totalCost': cost, 'station': detail.text}
-                  : {'spentAt': day, 'category': category, 'amount': cost, 'description': detail.text};
-              try {
-                final response = await OwnerHttp.post(endpoint, body: jsonEncode(payload)).timeout(const Duration(seconds: 12));
-                if (!dialogContext.mounted) return;
-                if (response.statusCode == 201) {
-                  Navigator.pop(dialogContext, true);
-                } else {
-                  ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text('Kaydedilemedi (${response.statusCode})')));
-                }
-              } catch (_) {
-                if (dialogContext.mounted) ScaffoldMessenger.of(dialogContext).showSnackBar(const SnackBar(content: Text('Bağlantı hatası')));
-              }
-            },
-            child: const Text('Kaydet'),
-          ),
-        ],
+        ]),
       )),
     );
-    amount.dispose(); km.dispose(); liters.dispose(); detail.dispose();
-    if (saved == true && mounted) await load();
+  }
+
+  Future<void> add() async {
+    if (section == 0) return showFuelModal();
+    return showExpenseModal();
   }
 
 
@@ -378,16 +445,7 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
         border: Border.all(color: const Color(0xFFF0EEF6)),
         boxShadow: const [BoxShadow(color: Color(0x09000000), blurRadius: 12, offset: Offset(0, 3))]),
       child: InkWell(borderRadius: BorderRadius.circular(16),
-        onTap: fuel ? () => showFuelDetail(entry) : () => showModalBottomSheet<void>(context: context, showDragHandle: true, builder: (context) =>
-          SafeArea(child: Padding(padding: const EdgeInsets.all(20), child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 10), Text('Tutar: ${moneyCents(amount)}'),
-            Text('Tarih: $date'),
-            if (fuel) Text('Kilometre: ${entry['odometer_km']} km'),
-            if (!fuel && '${entry['description'] ?? ''}'.isNotEmpty) Text('Açıklama: ${entry['description']}'),
-            if (fuel && '${entry['station'] ?? ''}'.isNotEmpty) Text('İstasyon: ${entry['station']}'),
-            const SizedBox(height: 12),
-          ])))),
+        onTap: fuel ? () => showFuelDetail(entry) : () => showExpenseDetail(entry),
         child: Padding(padding: const EdgeInsets.all(12), child: Row(children: [
           categoryIcon(fuel, category), const SizedBox(width: 12),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
