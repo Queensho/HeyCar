@@ -252,32 +252,88 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
   }
 
   void showExpenseDetail(Map<String, dynamic> entry) {
+    final category = '${entry['category'] ?? 'other'}';
+    final categoryName = categories[category] ?? 'Diğer';
+    final categoryIconData = category == 'tax' ? Icons.receipt_long_outlined
+        : category == 'insurance' ? Icons.verified_user_outlined
+        : category == 'repair' ? Icons.build_outlined
+        : category == 'parking' ? Icons.local_parking_outlined
+        : category == 'toll' ? Icons.route_outlined
+        : category == 'parts' ? Icons.settings_outlined
+        : category == 'cleaning' ? Icons.cleaning_services_outlined
+        : Icons.receipt_outlined;
     showModalBottomSheet<void>(
       context: context, isScrollControlled: true,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (sheetContext) => SafeArea(top: false, child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(categories['${entry['category']}'] ?? 'Diğer',
-            style: const TextStyle(fontSize: 19, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          Text('Tutar: ${money(double.tryParse('${entry['amount']}') ?? 0)}'),
-          Text('Tarih: ${dateLabel(entry, false)}'),
-          if ('${entry['description'] ?? ''}'.isNotEmpty)
-            Text('Açıklama: ${entry['description']}'),
-          const SizedBox(height: 12),
-          Row(children: [
-            Expanded(child: OutlinedButton.icon(
-              onPressed: () { Navigator.pop(sheetContext); showExpenseModal(entry); },
-              icon: const Icon(Icons.edit_outlined), label: const Text('Düzenle'))),
-            const SizedBox(width: 8),
-            Expanded(child: FilledButton.icon(
-              onPressed: () => deleteExpenseEntry(entry),
-              icon: const Icon(Icons.delete_outline), label: const Text('Sil'),
-              style: FilledButton.styleFrom(backgroundColor: const Color(0xFFB9FF45),
-                foregroundColor: const Color(0xFF10152D)))),
-          ]),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (sheetContext) => SafeArea(top: false, child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(sheetContext).height * .72),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(height: 76, padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: const BoxDecoration(color: purple,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+            child: Row(children: [
+              Container(width: 32, height: 32,
+                decoration: BoxDecoration(color: const Color(0x33FFFFFF),
+                  borderRadius: BorderRadius.circular(9)),
+                child: Icon(categoryIconData, size: 24, color: Colors.white)),
+              const SizedBox(width: 10),
+              Expanded(child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text.rich(TextSpan(children: [
+                    TextSpan(text: 'Masraf ', style: TextStyle(color: Colors.white)),
+                    TextSpan(text: 'Kaydı', style: TextStyle(color: Color(0xFFB9FF45))),
+                  ]), style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
+                  Text('$categoryName detayları',
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white, fontSize: 11)),
+                ])),
+              IconButton(tooltip: 'Kapat',
+                onPressed: () => Navigator.pop(sheetContext),
+                icon: const Icon(Icons.close, color: Colors.white)),
+            ])),
+          Flexible(child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              fuelDetailRow(Icons.payments_outlined, 'Tutar',
+                money(double.tryParse('${entry['amount']}') ?? 0)),
+              fuelDetailRow(categoryIconData, 'Kategori', categoryName),
+              fuelDetailRow(Icons.calendar_today_outlined, 'Tarih',
+                dateLabel(entry, false)),
+              if ('${entry['description'] ?? ''}'.trim().isNotEmpty)
+                fuelDetailRow(Icons.description_outlined, 'Açıklama',
+                  '${entry['description']}'),
+              const SizedBox(height: 7),
+              Row(children: [
+                Expanded(child: SizedBox(height: 42,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(sheetContext);
+                      showExpenseModal(entry);
+                    },
+                    icon: const Icon(Icons.edit_outlined, size: 18),
+                    label: const Text('Düzenle'),
+                    style: OutlinedButton.styleFrom(foregroundColor: purple,
+                      side: const BorderSide(color: purple),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(11)))))),
+                const SizedBox(width: 8),
+                Expanded(child: SizedBox(height: 42,
+                  child: FilledButton.icon(
+                    onPressed: () => deleteExpenseEntry(entry),
+                    icon: const Icon(Icons.delete_outline, size: 18),
+                    label: const Text('Sil'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFFB9FF45),
+                      foregroundColor: const Color(0xFF10152D),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(11)))))),
+              ]),
+            ]))),
         ]),
       )),
     );
