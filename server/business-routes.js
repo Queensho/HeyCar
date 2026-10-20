@@ -130,10 +130,15 @@ module.exports=function registerBusinessRoutes(app,pool){
   if(!owned.rowCount)return res.status(403).json({error:'VEHICLE_NOT_OWNED'});
   const client=await pool.connect();try{
    await client.query('BEGIN');
-   const service=await client.query("SELECT s.id,s.business_id,s.duration_minutes FROM marketplace_services s JOIN businesses b ON b.id=s.business_id WHERE s.id=$1 AND s.active AND b.is_active AND b.approval_status='approved' FOR UPDATE OF s",[serviceId]);
+   const service=await client.query("SELECT s.id,s.business_id,s.duration_minutes,b.opening_hours FROM marketplace_services s JOIN businesses b ON b.id=s.business_id WHERE s.id=$1 AND s.active AND b.is_active AND b.approval_status='approved'",[serviceId]);
    if(!service.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'SERVICE_NOT_FOUND'});}
    await client.query('SELECT id FROM businesses WHERE id=$1 FOR UPDATE',[service.rows[0].business_id]);
    const duration=service.rows[0].duration_minutes||60;
+   // Accept only structured 24-hour windows; unstructured schedules require business confirmation.
+   const hours=String(service.rows[0].opening_hours||'').trim();
+   const windowMatch=hours.match(/^(\\d{1,2}):(\\d{2})\\s*[-–]\\s*(\\d{1,2}):(\\d{2})$/);
+   if(windowMatch){const [,sh,sm,eh,em]=windowMatch.map(Number);const from=sh*60+sm,to=eh*60+em;const utcMinutes=date.getUTCHours()*60+date.getUTCMinutes();if(sh>23||eh>23||sm>59||em>59||from>=to||utcMinutes<from||utcMinutes+duration>to){await client.query('ROLLBACK');return res.status(409).json({error:'OUTSIDE_BUSINESS_HOURS'});}}
+
    const conflict=await client.query("SELECT 1 FROM marketplace_appointments a JOIN marketplace_services s ON s.id=a.service_id WHERE s.business_id=$1 AND a.status IN ('pending','confirmed') AND a.requested_at < $2::timestamptz + ($3::int * interval '1 minute') AND a.requested_at + (COALESCE(s.duration_minutes,60) * interval '1 minute') > $2::timestamptz LIMIT 1",[service.rows[0].business_id,date.toISOString(),duration]);
    if(conflict.rowCount){await client.query('ROLLBACK');return res.status(409).json({error:'SLOT_UNAVAILABLE'});}
    const q=await client.query('INSERT INTO marketplace_appointments(service_id,owner_id,plate,requested_at) VALUES($1,$2,$3,$4) RETURNING *',[serviceId,String(owner),normalizedPlate,date.toISOString()]);
