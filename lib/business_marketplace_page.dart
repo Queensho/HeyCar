@@ -37,6 +37,16 @@ class _BusinessMarketplacePageState extends State<BusinessMarketplacePage>{
   try{final response=await http.post(Uri.parse('$api/api/business/marketplace/services'),headers:headers,body:jsonEncode(submitted));if(response.statusCode!=201)throw Exception('Hizmet kaydedilemedi: ${response.statusCode}');await _load();}
   catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString())));}finally{if(mounted)setState(()=>busy=false);}
  }
+ Future<void> _toggleService(Map<String,dynamic> service)async{
+  if(busy)return;
+  setState(()=>busy=true);
+  try{
+   final body={'title':service['title'],'description':service['description']??'','category':service['category'],'priceCents':service['price_cents'],'durationMinutes':service['duration_minutes'],'active':service['active']!=true};
+   final response=await http.patch(Uri.parse('$api/api/business/marketplace/services/${service['id']}'),headers:headers,body:jsonEncode(body));
+   if(response.statusCode!=200)throw Exception('Hizmet durumu güncellenemedi (${response.statusCode})');
+   await _load();
+  }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString())));}finally{if(mounted)setState(()=>busy=false);}
+ }
  Future<void> _setStatus(Map<String,dynamic> appointment,String status)async{
   setState(()=>busy=true);try{
    final id=appointment['id'];final response=await http.patch(Uri.parse('$api/api/business/marketplace/appointments/$id'),headers:headers,body:jsonEncode({'status':status}));
@@ -47,7 +57,7 @@ class _BusinessMarketplacePageState extends State<BusinessMarketplacePage>{
   if(error!=null)Text(error!,style:const TextStyle(color:Colors.red)),
   Row(children:[const Expanded(child:Text('Hizmetlerim',style:TextStyle(fontSize:19,fontWeight:FontWeight.w800))),FilledButton.icon(onPressed:busy?null:_createService,icon:const Icon(Icons.add),label:const Text('Hizmet Ekle'),style:FilledButton.styleFrom(backgroundColor:purple))]),
   if(services.isEmpty)const Padding(padding:EdgeInsets.all(12),child:Text('Henüz hizmet eklenmedi.')),
-  ...services.map((s)=>Card(color:Colors.white,child:ListTile(title:Text((s['title']??'').toString()),subtitle:Text((s['category']??'').toString()),trailing:Text('₺${((num.tryParse(s['price_cents'].toString())??0)/100).toStringAsFixed(2)}')))),
+  ...services.map((s)=>Card(color:Colors.white,child:ListTile(title:Text((s['title']??'').toString()),subtitle:Text((s['category']??'').toString()),trailing:Column(mainAxisSize:MainAxisSize.min,children:[Text('₺${((num.tryParse(s['price_cents'].toString())??0)/100).toStringAsFixed(2)}'),Expanded(child:Switch(value:s['active']==true,onChanged:busy?null:(_)=>_toggleService(s),activeThumbColor:purple))])))),
   const SizedBox(height:20),const Text('Randevu Talepleri',style:TextStyle(fontSize:19,fontWeight:FontWeight.w800)),const SizedBox(height:8),
   if(appointments.isEmpty)const Padding(padding:EdgeInsets.all(12),child:Text('Henüz randevu talebi yok.')),
   ...appointments.map((a)=>Card(color:Colors.white,child:Padding(padding:const EdgeInsets.all(12),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
