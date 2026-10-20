@@ -35,7 +35,7 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
   String money(double amount) {
     final cents = (amount * 100).round();
     final whole = (cents.abs() ~/ 100).toString();
-    final grouped = whole.replaceAllMapped(RegExp(r'\\B(?=(\\d{3})+(?!\\d))'), (m) => '.');
+    final grouped = whole.replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => '.');
     return '${cents < 0 ? '-' : ''}$grouped,${(cents.abs() % 100).toString().padLeft(2, '0')} TL';
   }
   int cents(List<dynamic> source, bool fuel) => filtered(source, fuel).fold<int>(0, (total, e) => total + ((double.tryParse('${e[fuel ? 'total_cost' : 'amount']}') ?? 0) * 100).round());
