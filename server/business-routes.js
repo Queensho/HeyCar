@@ -12,6 +12,13 @@ module.exports=function registerBusinessRoutes(app,pool){
   skipSuccessfulRequests:true,
   message:{error:'TOO_MANY_ATTEMPTS'},
  });
+ const marketplaceBookingLimiter=rateLimit({
+  windowMs:15*60*1000,
+  limit:12,
+  standardHeaders:'draft-7',
+  legacyHeaders:false,
+  message:{error:'TOO_MANY_BOOKING_REQUESTS'},
+ });
  const hash=s=>crypto.createHash('sha256').update(String(s)).digest('hex');
  const legacyPassword=s=>{
   const salt=String(process.env.BUSINESS_PASSWORD_SALT||'');
@@ -129,7 +136,7 @@ module.exports=function registerBusinessRoutes(app,pool){
   if(!q.rowCount)return res.status(404).json({error:'SERVICE_NOT_FOUND'});
   res.json({ok:true,service:q.rows[0]});
  }catch(e){console.error('marketplace update',e);res.status(500).json({error:'SERVICE_UPDATE_FAILED'});}});
- app.post('/api/marketplace/appointments',async(req,res)=>{const owner=authenticatedOwnerId(req);if(!owner)return res.status(401).json({error:'AUTH_REQUIRED'});try{
+ app.post('/api/marketplace/appointments',marketplaceBookingLimiter,async(req,res)=>{const owner=authenticatedOwnerId(req);if(!owner)return res.status(401).json({error:'AUTH_REQUIRED'});try{
   const {serviceId,plate,requestedAt}=req.body||{};const date=new Date(requestedAt);
   if(typeof requestedAt!=='string'||!/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,3})?(?:Z|[+-]\\d{2}:\\d{2})$/.test(requestedAt)||!/^[a-f0-9-]{36}$/i.test(String(serviceId||''))||!Number.isFinite(date.getTime())||date.getTime()<=Date.now()||date.getTime()>Date.now()+90*86400000||!/^([0-9]{2})[A-Z0-9 ]{3,12}$/.test(String(plate||'').trim().toUpperCase()))return res.status(400).json({error:'INVALID_APPOINTMENT'});
   const normalizedPlate=String(plate).trim().toUpperCase().replace(/\\s+/g,'');
