@@ -37,6 +37,27 @@ class _BusinessMarketplacePageState extends State<BusinessMarketplacePage>{
   try{final response=await http.post(Uri.parse('$api/api/business/marketplace/services'),headers:headers,body:jsonEncode(submitted));if(response.statusCode!=201)throw Exception('Hizmet kaydedilemedi: ${response.statusCode}');await _load();}
   catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString())));}finally{if(mounted)setState(()=>busy=false);}
  }
+ Future<void> _editService(Map<String,dynamic> service)async{
+  final title=TextEditingController(text:(service['title']??'').toString());
+  final description=TextEditingController(text:(service['description']??'').toString());
+  final price=TextEditingController(text:((num.tryParse((service['price_cents']??0).toString())??0)/100).toStringAsFixed(2));
+  final duration=TextEditingController(text:(service['duration_minutes']??60).toString());
+  String category=(service['category']??'Servis').toString();
+  const categories=['Servis','Oto Yıkama','Lastik','Akaryakıt','Detailing','Otopark'];
+  if(!categories.contains(category))category='Servis';
+  final updated=await showDialog<Map<String,dynamic>>(context:context,builder:(ctx)=>StatefulBuilder(builder:(ctx,update)=>AlertDialog(title:const Text('Hizmeti Düzenle'),content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
+   TextField(controller:title,decoration:const InputDecoration(labelText:'Hizmet adı')),
+   TextField(controller:description,maxLines:2,decoration:const InputDecoration(labelText:'Açıklama')),
+   DropdownButtonFormField<String>(initialValue:category,items:categories.map((c)=>DropdownMenuItem(value:c,child:Text(c))).toList(),onChanged:(v){if(v!=null)update(()=>category=v);},decoration:const InputDecoration(labelText:'Kategori')),
+   TextField(controller:price,keyboardType:const TextInputType.numberWithOptions(decimal:true),decoration:const InputDecoration(labelText:'Fiyat (TL)')),
+   TextField(controller:duration,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'Süre (dakika)')),
+  ])),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Vazgeç')),FilledButton(onPressed:(){final p=num.tryParse(price.text.replaceAll(',','.'));final d=int.tryParse(duration.text);if(title.text.trim().length<2||p==null||p<0||d==null||d<15||d>1440)return;Navigator.pop(ctx,{'title':title.text.trim(),'description':description.text.trim(),'category':category,'priceCents':(p*100).round(),'durationMinutes':d,'active':service['active']==true});},child:const Text('Kaydet'))])));
+  title.dispose();description.dispose();price.dispose();duration.dispose();
+  if(updated==null)return;
+  setState(()=>busy=true);
+  try{final response=await http.patch(Uri.parse('$api/api/business/marketplace/services/${service['id']}'),headers:headers,body:jsonEncode(updated));if(response.statusCode!=200)throw Exception('Hizmet güncellenemedi (${response.statusCode})');await _load();}
+  catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString())));}finally{if(mounted)setState(()=>busy=false);}
+ }
  Future<void> _toggleService(Map<String,dynamic> service)async{
   if(busy)return;
   setState(()=>busy=true);
@@ -57,7 +78,7 @@ class _BusinessMarketplacePageState extends State<BusinessMarketplacePage>{
   if(error!=null)Text(error!,style:const TextStyle(color:Colors.red)),
   Row(children:[const Expanded(child:Text('Hizmetlerim',style:TextStyle(fontSize:19,fontWeight:FontWeight.w800))),FilledButton.icon(onPressed:busy?null:_createService,icon:const Icon(Icons.add),label:const Text('Hizmet Ekle'),style:FilledButton.styleFrom(backgroundColor:purple))]),
   if(services.isEmpty)const Padding(padding:EdgeInsets.all(12),child:Text('Henüz hizmet eklenmedi.')),
-  ...services.map((s)=>Card(color:Colors.white,child:ListTile(title:Text((s['title']??'').toString()),subtitle:Text((s['category']??'').toString()),trailing:Column(mainAxisSize:MainAxisSize.min,children:[Text('₺${((num.tryParse(s['price_cents'].toString())??0)/100).toStringAsFixed(2)}'),Expanded(child:Switch(value:s['active']==true,onChanged:busy?null:(_)=>_toggleService(s),activeThumbColor:purple))])))),
+  ...services.map((s)=>Card(color:Colors.white,child:ListTile(title:Text((s['title']??'').toString()),subtitle:Text((s['category']??'').toString()),onTap:busy?null:()=>_editService(s),trailing:Column(mainAxisSize:MainAxisSize.min,children:[Text('₺${((num.tryParse(s['price_cents'].toString())??0)/100).toStringAsFixed(2)}'),Expanded(child:Switch(value:s['active']==true,onChanged:busy?null:(_)=>_toggleService(s),activeThumbColor:purple))])))),
   const SizedBox(height:20),const Text('Randevu Talepleri',style:TextStyle(fontSize:19,fontWeight:FontWeight.w800)),const SizedBox(height:8),
   if(appointments.isEmpty)const Padding(padding:EdgeInsets.all(12),child:Text('Henüz randevu talebi yok.')),
   ...appointments.map((a)=>Card(color:Colors.white,child:Padding(padding:const EdgeInsets.all(12),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
