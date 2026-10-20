@@ -13,13 +13,33 @@ class MaintenanceV2Page extends StatefulWidget {
 class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
   static const purple = Color(0xFF651FFF);
   int section = 0;
+  int period = 0; // 0: this week, 1: last week, 2: this month, 3: all
+  List<dynamic> fuelEntries = [];
+  List<dynamic> expenseEntries = [];
+  DateTime? entryDate(Map<String, dynamic> e, bool fuel) => DateTime.tryParse('${e[fuel ? 'filled_at' : 'spent_at'] ?? ''}')?.toLocal();
+  DateTime weekStart(DateTime d) => DateTime(d.year, d.month, d.day).subtract(Duration(days: d.weekday - 1));
+  bool inPeriod(DateTime? date) {
+    if (date == null) return false;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final start = weekStart(today);
+    if (period == 0) return !date.isBefore(start) && date.isBefore(start.add(const Duration(days: 7)));
+    if (period == 1) return !date.isBefore(start.subtract(const Duration(days: 7))) && date.isBefore(start);
+    if (period == 2) return date.year == now.year && date.month == now.month;
+    return true;
+  }
+  List<Map<String, dynamic>> filtered(List<dynamic> source, bool fuel) => source.whereType<Map<String, dynamic>>().where((e) => inPeriod(entryDate(e, fuel))).toList();
+  double sumEntries(List<dynamic> source, bool fuel) => filtered(source, fuel).fold<double>(0, (sum, e) => sum + (double.tryParse('${e[fuel ? 'total_cost' : 'amount']}') ?? 0));
+  String money(double amount) => '${amount.toStringAsFixed(2).replaceAll('.', ',')} TL';
+  String dateLabel(Map<String, dynamic> e, bool fuel) { final d = entryDate(e, fuel); return d == null ? 'Tarih yok' : '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}'; }
+  static const periods = ['Bu Hafta', 'Geçen Hafta', 'Bu Ay', 'Tüm Zamanlar'];
   bool loading = false;
   List<dynamic> entries = [];
   String? error;
   static const categories = {'other':'Diğer','insurance':'Sigorta','tax':'Vergi','parking':'Otopark','toll':'Geçiş','repair':'Tamir','parts':'Yedek parça','cleaning':'Temizlik'};
   double? get averageConsumption {
     if (section != 0) return null;
-    final rows = entries.whereType<Map<String,dynamic>>().where((e) => e['full_tank'] == true).toList();
+    final rows = filtered(fuelEntries, true).where((e) => e['full_tank'] == true).toList();
     rows.sort((a,b) => (a['odometer_km'] as num).compareTo(b['odometer_km'] as num));
     if (rows.length < 2) return null;
     final distance = (rows.last['odometer_km'] as num).toDouble() - (rows.first['odometer_km'] as num).toDouble();
@@ -41,10 +61,19 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
   Future<void> load() async {
     setState(() { loading = true; error = null; });
     try {
-      final response = await OwnerHttp.get(endpoint).timeout(const Duration(seconds: 12));
-      if (response.statusCode != 200) throw Exception('HTTP ${response.statusCode}');
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
-      if (mounted) setState(() => entries = (data['entries'] as List?) ?? []);
+      final base = '${QrBackend.baseUrl}/api/owner/vehicles/${Uri.encodeComponent(widget.vehicleId)}';
+      final responses = await Future.wait([
+        OwnerHttp.get(Uri.parse('$base/fuel-v2')),
+        OwnerHttp.get(Uri.parse('$base/expenses-v2')),
+      ]).timeout(const Duration(seconds: 12));
+      if (responses.any((r) => r.statusCode != 200)) throw Exception('HTTP error');
+      final fuelData = jsonDecode(responses[0].body) as Map<String, dynamic>;
+      final expenseData = jsonDecode(responses[1].body) as Map<String, dynamic>;
+      if (mounted) setState(() {
+        fuelEntries = (fuelData['entries'] as List?) ?? [];
+        expenseEntries = (expenseData['entries'] as List?) ?? [];
+        entries = section == 0 ? fuelEntries : expenseEntries;
+      });
     } catch (_) {
       if (mounted) setState(() => error = 'Kayıtlar yüklenemedi.');
     } finally {
@@ -128,11 +157,25 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
             padding: const EdgeInsets.all(8),
             child: FilledButton(
               style: FilledButton.styleFrom(backgroundColor: section == index ? purple : const Color(0xFFF3EDFF), foregroundColor: section == index ? Colors.white : purple),
-              onPressed: () { if (section != index) { setState(() => section = index); load(); } },
+              onPressed: () { if (section != index) { setState(() { section = index; entries = section == 0 ? fuelEntries : expenseEntries; }); } },
               child: Text(index == 0 ? 'Yakıt' : 'Masraflar'),
             ),
           )),
       ]),
+      Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Text('Harcama Özeti', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 10),
+        Wrap(spacing: 8, runSpacing: 8, children: [for (var i = 0; i < periods.length; i++) ChoiceChip(label: Text(periods[i]), selected: period == i, selectedColor: const Color(0xFFF3EDFF), onSelected: (_) => setState(() => period = i))]),
+        const SizedBox(height: 12),
+        Container(width: double.infinity, padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: const Color(0xFFF3EDFF), borderRadius: BorderRadius.circular(16)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('Toplam Harcama', style: TextStyle(color: purple, fontWeight: FontWeight.w600)),
+          Text(money(sumEntries(fuelEntries, true) + sumEntries(expenseEntries, false)), style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: purple)),
+          const SizedBox(height: 8),
+          Text('Yakıt: ${money(sumEntries(fuelEntries, true))}   •   Diğer: ${money(sumEntries(expenseEntries, false))}', style: const TextStyle(fontSize: 12)),
+        ])),
+        const SizedBox(height: 14),
+        const Text('Harcama Geçmişi', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+      ])),
       if (section == 0 && averageConsumption != null) Padding(padding:const EdgeInsets.all(12),child:Text('Ortalama tüketim: ${averageConsumption!.toStringAsFixed(1)} L/100 km',style:const TextStyle(color:purple,fontWeight:FontWeight.bold))),
       Expanded(child: loading
           ? const Center(child: CircularProgressIndicator())
@@ -142,13 +185,13 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
                   onRefresh: load,
                   child: ListView.builder(
                     physics: const AlwaysScrollableScrollPhysics(),
-                    itemCount: entries.length,
+                    itemCount: filtered(entries, section == 0).length,
                     itemBuilder: (context, index) {
-                      final entry = entries[index] as Map<String, dynamic>;
+                      final entry = filtered(entries, section == 0)[index];
                       return ListTile(
                         leading: Icon(section == 0 ? Icons.local_gas_station : Icons.receipt_long, color: purple),
-                        title: Text(section == 0 ? '${entry['liters']} L • ${entry['total_cost']} TL' : '${entry['category']} • ${entry['amount']} TL'),
-                        subtitle: Text(section == 0 ? '${entry['odometer_km']} km' : '${entry['spent_at']}'),
+                        title: Text(section == 0 ? '${entry['liters']} L • ${money(double.tryParse('${entry['total_cost']}') ?? 0)}' : '${categories['${entry['category']}'] ?? 'Diğer'} • ${money(double.tryParse('${entry['amount']}') ?? 0)}'),
+                        subtitle: Text(section == 0 ? '${entry['odometer_km']} km • ${dateLabel(entry, true)}' : dateLabel(entry, false)),
                       );
                     },
                   ),
