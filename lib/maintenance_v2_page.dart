@@ -432,7 +432,7 @@ class _FuelEntryDialogState extends State<_FuelEntryDialog> {
   Widget field(String title, IconData icon, TextEditingController controller,
       String hint, String unit, TextInputType keyboard) {
     return LayoutBuilder(builder: (context, constraints) {
-      final compact = constraints.maxWidth < 355;
+      final compact = constraints.maxWidth < 280;
       final input = TextField(
         controller: controller, keyboardType: keyboard,
         enabled: !saving,
@@ -466,7 +466,7 @@ class _FuelEntryDialogState extends State<_FuelEntryDialog> {
         child: compact ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           label, const SizedBox(height: 7), SizedBox(height: 48, child: input),
         ]) : Row(children: [
-          SizedBox(width: 158, child: label), const SizedBox(width: 8),
+          SizedBox(width: constraints.maxWidth < 340 ? 130 : 145, child: label), const SizedBox(width: 8),
           Expanded(child: SizedBox(height: 48, child: input)),
         ]));
     });
@@ -482,16 +482,16 @@ class _FuelEntryDialogState extends State<_FuelEntryDialog> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       clipBehavior: Clip.antiAlias,
       child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: 420, maxHeight: size.height - keyboard - 32),
+        constraints: BoxConstraints(maxWidth: 420, maxHeight: size.height - keyboard - 40),
         child: SingleChildScrollView(
           padding: EdgeInsets.zero,
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Container(
-              height: 128, width: double.infinity,
+              height: 124, width: double.infinity,
               decoration: const BoxDecoration(gradient: LinearGradient(
                 colors: [Color(0xFF651FFF), Color(0xFF4912C8)])),
               child: Stack(children: [
-                Positioned(left: 18, top: 24, right: 95, child: Column(
+                Positioned(left: 18, top: 24, right: 125, child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start, children: [
                     const Text.rich(TextSpan(children: [
                       TextSpan(text: 'Yakıt ', style: TextStyle(color: Colors.white)),
@@ -501,8 +501,7 @@ class _FuelEntryDialogState extends State<_FuelEntryDialog> {
                     const Text('Aracınıza yaptığınız yakıt alımını kaydedin.',
                       style: TextStyle(color: Colors.white, fontSize: 12, height: 1.4)),
                   ])),
-                const Positioned(right: 21, bottom: 9,
-                  child: Icon(Icons.local_gas_station_rounded, color: Color(0xFFB9FF45), size: 64)),
+                Positioned(right: 12, bottom: 0, child: Image.asset('assets/images/services/Yakitust.png', width: 125, height: 102, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Icon(Icons.local_gas_station_rounded, color: Color(0xFFB9FF45), size: 58))),
                 Positioned(right: 8, top: 8, child: IconButton(
                   tooltip: 'Kapat', onPressed: saving ? null : () => Navigator.pop(context, false),
                   icon: const Icon(Icons.close, color: Colors.white))),
