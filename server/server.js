@@ -6,6 +6,7 @@ const cors=require('cors');
 const helmet=require('helmet');
 
 const registerQrRoutes=require('./qr-routes');
+const registerMaintenanceV2Routes=require('./maintenance-v2-routes');
 const registerTouchpointRoutes=require('./touchpoint-routes');
 const registerStoreRoutes=require('./store-routes');
 const registerOnboardingRoutes=require('./onboarding-routes');
@@ -141,6 +142,7 @@ const adminAuth=registerAdminAuthRoutes(app,pool);
 // register notifications, conversations, calls, drivers, DND, maintenance,
 // reminders, parking and vehicle-management exactly once.
 registerQrRoutes(app,pool);
+registerMaintenanceV2Routes(app,pool);
 registerTouchpointRoutes(app,pool);
 registerStoreRoutes(app,pool,adminAuth);
 registerOnboardingRoutes(app,pool);

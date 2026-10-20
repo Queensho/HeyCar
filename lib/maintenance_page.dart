@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'onboarding_backend.dart';
 import 'qr_backend.dart';
 import 'maintenance_detail_page.dart';
+import 'maintenance_v2_page.dart';
 import 'owner_auth.dart';
 import 'driver_auth.dart';
 import 'cepqar_theme.dart';
@@ -29,6 +30,7 @@ String _amount(double n){final parts=n.toStringAsFixed(n%1==0?0:2).split('.');fi
         _title(),const SizedBox(height:20),_summary(),const SizedBox(height:18),
         if(records.isEmpty)_empty()else _timeline(),
         const SizedBox(height:18),
+        if(!widget.driverMode) Padding(padding:const EdgeInsets.only(bottom:12),child:SizedBox(width:double.infinity,height:48,child:OutlinedButton.icon(onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>MaintenanceV2Page(vehicleId:vid))),icon:const Icon(Icons.local_gas_station_outlined),label:const Text('Yakıt ve Masraflarım')))),
         SizedBox(height:54,child:FilledButton.icon(
           style:FilledButton.styleFrom(backgroundColor:_brand,foregroundColor:Colors.white,
             shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(16))),

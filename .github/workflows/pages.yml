@@ -30,6 +30,8 @@ jobs:
         run: flutter pub get
       - name: Check redesigned notifications compatibility with Android runtime patch
         run: python3 -m unittest discover -s tool/tests -p test_fix_runtime_android.py -v
+      - name: Analyze Maintenance V2 screens
+        run: flutter analyze lib/maintenance_v2_page.dart lib/maintenance_page.dart --no-fatal-infos --no-fatal-warnings
       - name: Analyze owner light theme screens
         run: flutter analyze lib/maintenance_detail_page.dart lib/owner_settings_detail.dart lib/vehicle_center_page.dart --no-fatal-infos --no-fatal-warnings
       - name: Verify secure public QR links and contact error screens
