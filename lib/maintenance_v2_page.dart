@@ -725,3 +725,161 @@ class _FuelEntryDialogState extends State<_FuelEntryDialog> {
     );
   }
 }
+
+typedef _ExpenseSaveCallback = Future<void> Function(
+  String category, void Function(bool) setSaving, void Function(String) showError);
+
+class _ExpenseEntryDialog extends StatefulWidget {
+  const _ExpenseEntryDialog({required this.amount, required this.detail,
+    required this.categories, required this.initialCategory, required this.onSave});
+  final TextEditingController amount, detail;
+  final Map<String, String> categories;
+  final String initialCategory;
+  final _ExpenseSaveCallback onSave;
+  @override
+  State<_ExpenseEntryDialog> createState() => _ExpenseEntryDialogState();
+}
+
+class _ExpenseEntryDialogState extends State<_ExpenseEntryDialog> {
+  static const purple = Color(0xFF651FFF);
+  late String category;
+  bool saving = false;
+  String? error;
+
+  @override
+  void initState() {
+    super.initState();
+    category = widget.initialCategory;
+  }
+
+  void setSaving(bool value) { if (mounted) setState(() => saving = value); }
+  void showError(String message) { if (mounted) setState(() => error = message); }
+
+  Widget field(String title, IconData icon, Widget input) => LayoutBuilder(
+    builder: (context, constraints) {
+      final label = Row(mainAxisSize: MainAxisSize.min, children: [
+        Container(width: 36, height: 36, alignment: Alignment.center,
+          decoration: BoxDecoration(color: const Color(0xFFF3EDFF),
+            borderRadius: BorderRadius.circular(11)),
+          child: Icon(icon, color: purple, size: 19)),
+        const SizedBox(width: 7),
+        Flexible(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
+            color: Color(0xFF10152D)))),
+      ]);
+      return Padding(padding: const EdgeInsets.only(bottom: 9),
+        child: Row(children: [
+          SizedBox(width: constraints.maxWidth < 310 ? 120 : 136, child: label),
+          const SizedBox(width: 8),
+          Expanded(child: SizedBox(height: 46, child: input)),
+        ]));
+    });
+
+  InputDecoration decoration(String hint, {String? unit}) => InputDecoration(
+    hintText: hint, hintStyle: const TextStyle(color: Color(0xFF778096), fontSize: 12),
+    isDense: true, contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+    filled: true, fillColor: Colors.white,
+    suffixIcon: unit == null ? null : Container(
+      constraints: const BoxConstraints(minWidth: 40), margin: const EdgeInsets.all(3),
+      decoration: BoxDecoration(color: const Color(0xFFF3EDFF),
+        borderRadius: BorderRadius.circular(9)),
+      child: Center(widthFactor: 1, child: Text(unit,
+        style: const TextStyle(fontSize: 12, color: Color(0xFF10152D))))),
+    border: OutlineInputBorder(borderRadius: BorderRadius.circular(11),
+      borderSide: const BorderSide(color: Color(0xFFE4E2EB))),
+    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(11),
+      borderSide: const BorderSide(color: Color(0xFFE4E2EB))),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom;
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      clipBehavior: Clip.antiAlias,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: 420,
+          maxHeight: (size.height - keyboard - 32).clamp(0.0, 460.0).toDouble()),
+        child: SingleChildScrollView(
+          padding: EdgeInsets.zero,
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(height: 84, width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: const BoxDecoration(gradient: LinearGradient(
+                colors: [Color(0xFF651FFF), Color(0xFF4912C8)])),
+              child: Row(children: [
+                Container(width: 38, height: 38,
+                  decoration: BoxDecoration(color: const Color(0x33FFFFFF),
+                    borderRadius: BorderRadius.circular(11)),
+                  child: const Icon(Icons.receipt_long_rounded, color: Colors.white, size: 24)),
+                const SizedBox(width: 10),
+                Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    const Text.rich(TextSpan(children: [
+                      TextSpan(text: 'Masraf ', style: TextStyle(color: Colors.white)),
+                      TextSpan(text: 'Ekle', style: TextStyle(color: Color(0xFFB9FF45))),
+                    ]), style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 3),
+                    const Text('Aracınıza ait diğer masrafları kaydedin.',
+                      maxLines: 2, style: TextStyle(fontSize: 11, color: Colors.white)),
+                  ])),
+                IconButton(tooltip: 'Kapat', onPressed: saving ? null : () => Navigator.pop(context, false),
+                  icon: const Icon(Icons.close, color: Colors.white)),
+              ])),
+            Padding(padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                field('Tutar (TL)', Icons.payments_outlined, TextField(
+                  controller: widget.amount, enabled: !saving,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  style: const TextStyle(fontSize: 13),
+                  decoration: decoration('0,00', unit: 'TL'))),
+                field('Kategori', Icons.sell_outlined,
+                  DropdownButtonFormField<String>(
+                    value: category, isExpanded: true,
+                    decoration: decoration('Kategori seçin'),
+                    style: const TextStyle(fontSize: 13, color: Color(0xFF10152D)),
+                    items: widget.categories.entries.map((e) =>
+                      DropdownMenuItem(value: e.key, child: Text(e.value,
+                        overflow: TextOverflow.ellipsis))).toList(),
+                    onChanged: saving ? null : (value) {
+                      if (value != null) setState(() => category = value);
+                    })),
+                field('Açıklama', Icons.description_outlined, TextField(
+                  controller: widget.detail, enabled: !saving, maxLines: 1, maxLength: 2000,
+                  buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
+                  style: const TextStyle(fontSize: 13),
+                  decoration: decoration('Açıklama (isteğe bağlı)'))),
+                if (error != null) Padding(padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(error!, style: const TextStyle(color: Colors.red, fontSize: 12))),
+                const SizedBox(height: 3),
+                Row(children: [
+                  Expanded(child: SizedBox(height: 43, child: OutlinedButton(
+                    onPressed: saving ? null : () => Navigator.pop(context, false),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF10152D),
+                      side: const BorderSide(color: Color(0xFF10152D)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                    child: const Text('İptal', style: TextStyle(fontWeight: FontWeight.w700))))),
+                  const SizedBox(width: 8),
+                  Expanded(child: SizedBox(height: 43, child: FilledButton.icon(
+                    onPressed: saving ? null : () => widget.onSave(category, setSaving, showError),
+                    style: FilledButton.styleFrom(backgroundColor: const Color(0xFFB9FF45),
+                      foregroundColor: const Color(0xFF10152D),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                    icon: saving ? const SizedBox(width: 16, height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2)) :
+                      const Icon(Icons.save_outlined, size: 18),
+                    label: Text(saving ? 'Kaydediliyor' : 'Kaydet',
+                      style: const TextStyle(fontWeight: FontWeight.w800)),
+                  ))),
+                ]),
+              ])),
+          ]),
+        ),
+      ),
+    );
+  }
+}
