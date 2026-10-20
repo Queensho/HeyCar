@@ -194,7 +194,7 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
             maxLines: 2, style: const TextStyle(color: Color(0xFF778096), fontSize: 11)),
         ])),
         const SizedBox(width: 6),
-        const Icon(Icons.receipt_long_rounded, color: Color(0xFFAD86F9), size: 42),
+        Image.asset('assets/images/services/Yakittoplam.png', width: 76, height: 88, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Icon(Icons.receipt_long_rounded, color: purple, size: 42)),
       ]),
     );
   }
@@ -279,8 +279,10 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
                 TextSpan(text: 'Giderleri', style: TextStyle(color: Color(0xFFB9FF45))),
               ]), style: TextStyle(fontSize: 29, fontWeight: FontWeight.w800)),
               const SizedBox(height: 6),
-              const Text('Yakıt, bakım, sigorta ve diğer tüm araç\nmasraflarınızı takip edin.',
-                style: TextStyle(fontSize: 12, color: Colors.white, height: 1.45)),
+              SizedBox(height: 78, child: Stack(children: [
+                const Positioned(left: 0, top: 0, child: Text('Yakıt, bakım, sigorta ve diğer tüm araç\nmasraflarınızı takip edin.', style: TextStyle(fontSize: 12, color: Colors.white, height: 1.45))),
+                Positioned(right: 0, bottom: 0, child: Image.asset('assets/images/services/Yakitust.png', width: 145, height: 94, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const SizedBox.shrink())),
+              ])),
             ]))),
         ),
         Expanded(child: Container(
