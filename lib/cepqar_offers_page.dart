@@ -8,6 +8,7 @@ import 'cepqar_theme.dart';
 import 'onboarding_backend.dart';
 import 'owner_auth.dart';
 import 'driver_auth.dart';
+import 'marketplace_service_page.dart';
 
 class CepqarOffersPage extends StatefulWidget {
   const CepqarOffersPage({super.key,this.driverMode=false,this.vehiclePlate=''});
@@ -122,11 +123,11 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
       if(marketplaceLoading)const Center(child:Padding(padding:EdgeInsets.all(16),child:CircularProgressIndicator(color:purple)))
       else if(marketplaceError!=null)Text(marketplaceError!,style:const TextStyle(color:muted,fontSize:12))
       else if(items.isEmpty)const Padding(padding:EdgeInsets.symmetric(vertical:12),child:Text('Bu kategoride henüz yayınlanmış hizmet yok.',style:TextStyle(color:muted,fontSize:12)))
-      else ...items.map((service)=>Container(margin:const EdgeInsets.only(bottom:10),padding:const EdgeInsets.all(14),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(16),border:Border.all(color:const Color(0xFFECECF3))),child:Row(children:[
+      else ...items.map((service)=>InkWell(onTap:()=>Navigator.of(context).push(MaterialPageRoute(builder:(_)=>MarketplaceServicePage(service:service,initialPlate:widget.vehiclePlate))),borderRadius:BorderRadius.circular(16),child:Container(margin:const EdgeInsets.only(bottom:10),padding:const EdgeInsets.all(14),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(16),border:Border.all(color:const Color(0xFFECECF3))),child:Row(children:[
         Container(width:42,height:42,decoration:BoxDecoration(color:const Color(0xFFF3EDFF),borderRadius:BorderRadius.circular(12)),child:const Icon(Icons.build_circle_outlined,color:purple)),
         const SizedBox(width:10),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text((service['title']??'Hizmet').toString(),maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontWeight:FontWeight.w800,color:ink,fontSize:13)),const SizedBox(height:3),Text((service['business_name']??'').toString(),maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:muted,fontSize:11))])),
         const SizedBox(width:8),Text(service['price_cents']==null?'Fiyat sor':'₺${(num.tryParse(service['price_cents'].toString())??0)/100}',style:const TextStyle(color:purple,fontSize:12,fontWeight:FontWeight.w800))
-      ]))),
+      ])))),
     ]);
   }
 
