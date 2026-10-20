@@ -129,6 +129,12 @@ module.exports=function registerBusinessRoutes(app,pool){
   const q=await pool.query("INSERT INTO marketplace_appointments(service_id,owner_id,plate,requested_at) SELECT s.id,$2,$3,$4 FROM marketplace_services s JOIN businesses b ON b.id=s.business_id WHERE s.id=$1 AND s.active AND b.is_active AND b.approval_status='approved' RETURNING *",[serviceId,String(owner),String(plate).trim().toUpperCase(),date.toISOString()]);
   if(!q.rowCount)return res.status(404).json({error:'SERVICE_NOT_FOUND'});res.status(201).json({ok:true,appointment:q.rows[0]});
  }catch(e){console.error('marketplace appointment',e);res.status(500).json({error:'APPOINTMENT_FAILED'});}});
+ app.get('/api/marketplace/appointments',async(req,res)=>{const owner=authenticatedOwnerId(req);if(!owner)return res.status(401).json({error:'AUTH_REQUIRED'});try{
+  const q=await pool.query('SELECT a.*,s.title AS service_title,b.name AS business_name FROM marketplace_appointments a JOIN marketplace_services s ON s.id=a.service_id JOIN businesses b ON b.id=s.business_id WHERE a.owner_id=$1 ORDER BY a.created_at DESC LIMIT 100',[String(owner)]);res.json({ok:true,appointments:q.rows});
+ }catch(e){res.status(500).json({error:'APPOINTMENTS_UNAVAILABLE'});}});
+ app.patch('/api/marketplace/appointments/:id/cancel',async(req,res)=>{const owner=authenticatedOwnerId(req);if(!owner)return res.status(401).json({error:'AUTH_REQUIRED'});try{
+  const q=await pool.query("UPDATE marketplace_appointments SET status='cancelled',updated_at=now() WHERE id=$1 AND owner_id=$2 AND status IN ('pending','confirmed') RETURNING *",[req.params.id,String(owner)]);if(!q.rowCount)return res.status(409).json({error:'INVALID_TRANSITION_OR_ACCESS'});res.json({ok:true,appointment:q.rows[0]});
+ }catch(e){res.status(500).json({error:'APPOINTMENT_CANCEL_FAILED'});}});
  app.get('/api/business/marketplace/appointments',async(req,res)=>{const account=await auth(req,res);if(!account)return;try{
   const q=await pool.query('SELECT a.*,s.title AS service_title FROM marketplace_appointments a JOIN marketplace_services s ON s.id=a.service_id JOIN businesses b ON b.id=s.business_id WHERE b.account_id=$1 ORDER BY a.created_at DESC LIMIT 100',[account]);res.json({ok:true,appointments:q.rows});
  }catch(e){res.status(500).json({error:'APPOINTMENTS_UNAVAILABLE'});}});
