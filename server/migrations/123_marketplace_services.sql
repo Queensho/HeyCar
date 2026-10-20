@@ -1,7 +1,7 @@
 -- Service marketplace: businesses own listings; appointments belong to a listing and an owner.
 CREATE TABLE IF NOT EXISTS marketplace_services (
- id BIGSERIAL PRIMARY KEY,
- business_id BIGINT NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+ id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+ business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
  title TEXT NOT NULL CHECK(length(trim(title)) BETWEEN 2 AND 120),
  description TEXT NOT NULL DEFAULT '',
  category TEXT NOT NULL,
@@ -13,8 +13,8 @@ CREATE TABLE IF NOT EXISTS marketplace_services (
 );
 CREATE INDEX IF NOT EXISTS idx_marketplace_services_active ON marketplace_services(category,business_id) WHERE active;
 CREATE TABLE IF NOT EXISTS marketplace_appointments (
- id BIGSERIAL PRIMARY KEY,
- service_id BIGINT NOT NULL REFERENCES marketplace_services(id),
+ id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+ service_id UUID NOT NULL REFERENCES marketplace_services(id),
  owner_id TEXT NOT NULL,
  plate TEXT NOT NULL,
  requested_at TIMESTAMPTZ NOT NULL,
