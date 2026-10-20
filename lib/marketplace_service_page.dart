@@ -1,0 +1,76 @@
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'owner_auth.dart';
+import 'onboarding_backend.dart';
+
+/// Owner-facing marketplace service detail and appointment request.
+class MarketplaceServicePage extends StatefulWidget {
+  const MarketplaceServicePage({super.key,required this.service,this.initialPlate=''});
+  final Map<String,dynamic> service;
+  final String initialPlate;
+  @override State<MarketplaceServicePage> createState()=>_MarketplaceServicePageState();
+}
+
+class _MarketplaceServicePageState extends State<MarketplaceServicePage> {
+  static const purple=Color(0xFF651FFF);
+  static const ink=Color(0xFF10152D);
+  late final TextEditingController plate=TextEditingController(text:widget.initialPlate);
+  DateTime? day;
+  TimeOfDay? time;
+  bool sending=false;
+  String? error;
+
+  @override void dispose(){plate.dispose();super.dispose();}
+
+  Future<void> _chooseDate()async{
+    final now=DateTime.now();
+    final selected=await showDatePicker(context:context,initialDate:day??now.add(const Duration(days:1)),firstDate:now,lastDate:now.add(const Duration(days:90)),helpText:'Randevu tarihi');
+    if(selected!=null&&mounted)setState(()=>day=selected);
+  }
+  Future<void> _chooseTime()async{
+    final selected=await showTimePicker(context:context,initialTime:time??const TimeOfDay(hour:10,minute:0),helpText:'Randevu saati');
+    if(selected!=null&&mounted)setState(()=>time=selected);
+  }
+  Future<void> _request()async{
+    if(day==null||time==null||plate.text.trim().isEmpty){setState(()=>error='Tarih, saat ve araç plakası gerekli.');return;}
+    final when=DateTime(day!.year,day!.month,day!.day,time!.hour,time!.minute);
+    if(!when.isAfter(DateTime.now())){setState(()=>error='Gelecekte bir saat seçmelisin.');return;}
+    setState((){sending=true;error=null;});
+    try{
+      final response=await OwnerHttp.post(Uri.parse('${OnboardingBackend.baseUrl}/api/marketplace/appointments'),body:jsonEncode({'serviceId':widget.service['id'],'plate':plate.text.trim().toUpperCase(),'requestedAt':when.toUtc().toIso8601String()})).timeout(const Duration(seconds:15));
+      if(response.statusCode<200||response.statusCode>=300){
+        String message='Randevu oluşturulamadı.';
+        try{final body=jsonDecode(response.body);switch(body['error']){case 'SLOT_UNAVAILABLE':message='Bu saat dolu. Başka bir saat seç.';break;case 'VEHICLE_NOT_OWNED':message='Plaka hesabındaki araçlarla eşleşmiyor.';break;case 'OUTSIDE_BUSINESS_HOURS':message='İşletme bu saatte hizmet vermiyor.';break;case 'AUTH_REQUIRED':message='Randevu için araç sahibi hesabına giriş yap.';break;}}catch(_){}
+        throw Exception(message);
+      }
+      if(!mounted)return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Randevu talebin işletmeye gönderildi. Onay bekleniyor.')));
+      Navigator.of(context).pop(true);
+    }catch(e){if(mounted)setState(()=>error=e.toString().replaceFirst('Exception: ',''));}
+    finally{if(mounted)setState(()=>sending=false);}
+  }
+
+  @override Widget build(BuildContext context){
+    final service=widget.service;
+    final cents=num.tryParse((service['price_cents']??'').toString());
+    return Scaffold(backgroundColor:const Color(0xFFF8F9FC),appBar:AppBar(title:const Text('Hizmet Detayı'),backgroundColor:Colors.white,foregroundColor:ink),body:ListView(padding:const EdgeInsets.all(16),children:[
+      Container(padding:const EdgeInsets.all(18),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(18)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        Text((service['category']??'Hizmet').toString(),style:const TextStyle(color:purple,fontWeight:FontWeight.w700)),const SizedBox(height:8),
+        Text((service['title']??'').toString(),style:const TextStyle(fontSize:22,color:ink,fontWeight:FontWeight.w900)),const SizedBox(height:6),
+        Text((service['business_name']??'').toString(),style:const TextStyle(color:ink,fontWeight:FontWeight.w600)),
+        if((service['address']??'').toString().isNotEmpty)Padding(padding:const EdgeInsets.only(top:5),child:Text(service['address'].toString())),
+        if((service['description']??'').toString().isNotEmpty)Padding(padding:const EdgeInsets.only(top:12),child:Text(service['description'].toString())),
+        const SizedBox(height:12),Text(cents==null?'Fiyat işletmeden öğrenilir':'₺${(cents/100).toStringAsFixed(2)}',style:const TextStyle(color:purple,fontSize:20,fontWeight:FontWeight.w900)),
+      ])),const SizedBox(height:14),
+      Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(18)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        const Text('Randevu Talebi',style:TextStyle(fontSize:17,fontWeight:FontWeight.w800,color:ink)),const SizedBox(height:12),
+        TextField(controller:plate,textCapitalization:TextCapitalization.characters,decoration:const InputDecoration(labelText:'Araç plakası',border:OutlineInputBorder())),const SizedBox(height:10),
+        OutlinedButton.icon(onPressed:_chooseDate,icon:const Icon(Icons.calendar_month),label:Text(day==null?'Tarih seç':'${day!.day}.${day!.month}.${day!.year}')),
+        const SizedBox(height:5),OutlinedButton.icon(onPressed:_chooseTime,icon:const Icon(Icons.schedule),label:Text(time==null?'Saat seç':time!.format(context))),
+        if(error!=null)Padding(padding:const EdgeInsets.symmetric(vertical:10),child:Text(error!,style:const TextStyle(color:Colors.red))),
+        const SizedBox(height:12),SizedBox(width:double.infinity,child:FilledButton(onPressed:sending?null:_request,style:FilledButton.styleFrom(backgroundColor:purple,padding:const EdgeInsets.symmetric(vertical:14)),child:Text(sending?'Gönderiliyor...':'Randevu Talebi Gönder'))),
+        const SizedBox(height:8),const Text('Randevu, işletme onayladıktan sonra kesinleşir.',style:TextStyle(fontSize:11,color:Color(0xFF778096)))
+      ]))
+    ]));
+  }
+}
