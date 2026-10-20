@@ -16,6 +16,17 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
   bool loading = false;
   List<dynamic> entries = [];
   String? error;
+  static const categories = {'other':'Diğer','insurance':'Sigorta','tax':'Vergi','parking':'Otopark','toll':'Geçiş','repair':'Tamir','parts':'Yedek parça','cleaning':'Temizlik'};
+  double? get averageConsumption {
+    if (section != 0) return null;
+    final rows = entries.whereType<Map<String,dynamic>>().where((e) => e['full_tank'] == true).toList();
+    rows.sort((a,b) => (a['odometer_km'] as num).compareTo(b['odometer_km'] as num));
+    if (rows.length < 2) return null;
+    final distance = (rows.last['odometer_km'] as num).toDouble() - (rows.first['odometer_km'] as num).toDouble();
+    if (distance <= 0) return null;
+    final liters = rows.skip(1).fold<double>(0,(sum,e)=>sum+(double.tryParse('${e['liters']}')??0));
+    return liters * 100 / distance;
+  }
 
   Uri get endpoint => Uri.parse(
     '${QrBackend.baseUrl}/api/owner/vehicles/${Uri.encodeComponent(widget.vehicleId)}/${section == 0 ? 'fuel-v2' : 'expenses-v2'}',
@@ -47,9 +58,10 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
     final liters = TextEditingController();
     final detail = TextEditingController();
     final fuel = section == 0;
+    String category = 'other';
     final saved = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
+      builder: (dialogContext) => StatefulBuilder(builder: (dialogContext, setDialogState) => AlertDialog(
         title: Text(fuel ? 'Yakıt Ekle' : 'Masraf Ekle'),
         content: SingleChildScrollView(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -58,6 +70,7 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
               TextField(controller: km, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Kilometre')),
               TextField(controller: liters, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Litre')),
             ],
+            if (!fuel) DropdownButtonFormField<String>(value: category, decoration: const InputDecoration(labelText:'Kategori'), items: categories.entries.map((e)=>DropdownMenuItem(value:e.key,child:Text(e.value))).toList(),onChanged:(value)=>setDialogState(()=>category=value??'other')),
             TextField(controller: detail, decoration: InputDecoration(labelText: fuel ? 'İstasyon' : 'Açıklama')),
           ]),
         ),
@@ -76,7 +89,7 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
               final day = '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
               final payload = fuel
                   ? {'filledAt': now.toUtc().toIso8601String(), 'odometerKm': distance, 'liters': volume, 'totalCost': cost, 'station': detail.text}
-                  : {'spentAt': day, 'category': 'other', 'amount': cost, 'description': detail.text};
+                  : {'spentAt': day, 'category': category, 'amount': cost, 'description': detail.text};
               try {
                 final response = await OwnerHttp.post(endpoint, body: jsonEncode(payload)).timeout(const Duration(seconds: 12));
                 if (!dialogContext.mounted) return;
@@ -92,7 +105,7 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
             child: const Text('Kaydet'),
           ),
         ],
-      ),
+      )),
     );
     amount.dispose(); km.dispose(); liters.dispose(); detail.dispose();
     if (saved == true && mounted) await load();
@@ -120,6 +133,7 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
             ),
           )),
       ]),
+      if (section == 0 && averageConsumption != null) Padding(padding:const EdgeInsets.all(12),child:Text('Ortalama tüketim: ${averageConsumption!.toStringAsFixed(1)} L/100 km',style:const TextStyle(color:purple,fontWeight:FontWeight.bold))),
       Expanded(child: loading
           ? const Center(child: CircularProgressIndicator())
           : error != null
