@@ -158,7 +158,7 @@ module.exports=function registerBusinessRoutes(app,pool){
   const q=await pool.query('SELECT a.*,s.title AS service_title FROM marketplace_appointments a JOIN marketplace_services s ON s.id=a.service_id JOIN businesses b ON b.id=s.business_id WHERE b.account_id=$1 ORDER BY a.created_at DESC LIMIT 100',[account]);res.json({ok:true,appointments:q.rows});
  }catch(e){res.status(500).json({error:'APPOINTMENTS_UNAVAILABLE'});}});
  app.patch('/api/business/marketplace/appointments/:id',async(req,res)=>{const account=await auth(req,res);if(!account)return;const status=req.body?.status;if(!['confirmed','rejected','completed'].includes(status))return res.status(400).json({error:'INVALID_STATUS'});try{
-  const q=await pool.query("UPDATE marketplace_appointments a SET status=$3,updated_at=now() FROM marketplace_services s JOIN businesses b ON b.id=s.business_id WHERE a.id=$1 AND a.service_id=s.id AND b.account_id=$2 AND ((a.status='pending' AND $3 IN ('confirmed','rejected')) OR (a.status='confirmed' AND $3='completed')) RETURNING a.*",[req.params.id,account,status]);
+  const q=await pool.query("UPDATE marketplace_appointments a SET status=$3,updated_at=now() FROM marketplace_services s JOIN businesses b ON b.id=s.business_id WHERE a.id=$1 AND a.service_id=s.id AND b.account_id=$2 AND ((a.status='pending' AND $3 IN ('confirmed','rejected')) OR (a.status='confirmed' AND $3='completed' AND a.requested_at <= now())) RETURNING a.*",[req.params.id,account,status]);
   if(!q.rowCount)return res.status(409).json({error:'INVALID_TRANSITION_OR_ACCESS'});res.json({ok:true,appointment:q.rows[0]});
  }catch(e){res.status(500).json({error:'APPOINTMENT_UPDATE_FAILED'});}});
 
