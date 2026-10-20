@@ -427,7 +427,7 @@ class _OfferDetailPageState extends State<_OfferDetailPage>{
  @override Widget build(BuildContext context){
   final validOffer=o.id.isNotEmpty;
   final alreadyUsed=redemption?['status']=='redeemed';
-  final discount=RegExp(r'\\d+').firstMatch(o.badge)?.group(0);
+  final discount=RegExp(r'[0-9]+').firstMatch(o.badge)?.group(0);
   final width=MediaQuery.sizeOf(context).width;
   return Scaffold(
    backgroundColor:const Color(0xFFF8F9FC),
