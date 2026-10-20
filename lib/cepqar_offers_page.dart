@@ -408,64 +408,85 @@ class _OfferDetailPageState extends State<_OfferDetailPage>{
  void _msg(String s){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(s)));}
  @override Widget build(BuildContext context){
   const purple=Color(0xFF651FFF),lime=Color(0xFFB9FF45),ink=Color(0xFF10152D),muted=Color(0xFF778096);
-  Widget line(IconData icon,String title,String subtitle,VoidCallback action)=>ListTile(
-    onTap:action,contentPadding:const EdgeInsets.symmetric(horizontal:12),
-    leading:Icon(icon,color:purple,size:27),
-    title:Text(title,style:const TextStyle(color:ink,fontWeight:FontWeight.w800,fontSize:14)),
-    subtitle:Text(subtitle,style:const TextStyle(color:muted,fontSize:11)),
-    trailing:const Icon(Icons.chevron_right_rounded,color:purple));
-  final badge=o.badge.trim();
-  return Scaffold(backgroundColor:const Color(0xFFF7F7FC),
+  final screen=MediaQuery.sizeOf(context),badge=o.badge.trim();
+  Widget actionRow(IconData icon,String title,String subtitle,VoidCallback action)=>InkWell(
+    onTap:action,child:Padding(padding:const EdgeInsets.symmetric(vertical:12,horizontal:12),child:Row(children:[
+      Icon(icon,color:purple,size:29),const SizedBox(width:16),
+      Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        Text(title,style:const TextStyle(color:ink,fontSize:14,fontWeight:FontWeight.w800)),
+        const SizedBox(height:3),Text(subtitle,maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:muted,fontSize:11.5))
+      ])),const Icon(Icons.chevron_right_rounded,color:purple,size:24)
+    ])));
+  Widget benefit(IconData icon,String title)=>Expanded(child:Column(children:[
+    Icon(icon,color:purple,size:31),const SizedBox(height:7),
+    Text(title,textAlign:TextAlign.center,style:const TextStyle(fontSize:10.5,color:ink,height:1.2))
+  ]));
+  return Scaffold(
+    backgroundColor:const Color(0xFFF8F7FC),
     body:Stack(children:[
       ListView(padding:EdgeInsets.zero,children:[
-        SizedBox(height:MediaQuery.of(context).size.height*.48,child:Stack(fit:StackFit.expand,children:[
-          Container(decoration:const BoxDecoration(gradient:LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:[Color(0xFF651FFF),Color(0xFF151C42)]))),
-          if(o.imageUrl.isNotEmpty)Image.network(o.imageUrl,fit:BoxFit.cover,errorBuilder:(_,__,___)=>Center(child:Icon(o.icon,color:Colors.white,size:100)))
-          else Center(child:Icon(o.icon,color:Colors.white,size:100)),
-          const DecoratedBox(decoration:BoxDecoration(gradient:LinearGradient(begin:Alignment.topCenter,end:Alignment.bottomCenter,colors:[Color(0x55000000),Colors.transparent,Color(0xCC4912C8)]))),
-          Positioned(left:20,right:20,bottom:35,child:Row(crossAxisAlignment:CrossAxisAlignment.end,children:[
+        SizedBox(height:screen.height*.43,child:Stack(fit:StackFit.expand,children:[
+          Container(decoration:const BoxDecoration(gradient:LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:[Color(0xFF651FFF),Color(0xFF161A43)]))),
+          if(o.imageUrl.isNotEmpty)Image.network(o.imageUrl,fit:BoxFit.cover,errorBuilder:(_,__,___)=>Center(child:Icon(o.icon,color:Colors.white,size:105)))
+          else Center(child:Icon(o.icon,color:Colors.white,size:105)),
+          const DecoratedBox(decoration:BoxDecoration(gradient:LinearGradient(begin:Alignment.topCenter,end:Alignment.bottomCenter,colors:[Color(0x55000000),Colors.transparent,Color(0xD9651FFF)]))),
+          Positioned(left:18,right:18,bottom:30,child:Row(crossAxisAlignment:CrossAxisAlignment.end,children:[
+            Container(width:55,height:55,decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(15)),child:Icon(o.icon,color:purple,size:34)),
+            const SizedBox(width:12),
             Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-              Text(o.name,maxLines:2,style:const TextStyle(color:Colors.white,fontWeight:FontWeight.w900,fontSize:27)),
-              const SizedBox(height:5),
-              Text('${o.category}  •  ${o.distance}',style:const TextStyle(color:Colors.white,fontSize:13,fontWeight:FontWeight.w600))
+              Text(o.name,maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Colors.white,fontWeight:FontWeight.w900,fontSize:22)),
+              const SizedBox(height:4),Text('${o.category}  •  ${o.distance}',maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Colors.white,fontSize:12))
             ])),
-            if(badge.isNotEmpty)Container(padding:const EdgeInsets.all(12),decoration:BoxDecoration(color:lime,borderRadius:BorderRadius.circular(17)),child:Text(badge,textAlign:TextAlign.center,style:const TextStyle(color:ink,fontSize:18,fontWeight:FontWeight.w900)))
+            if(badge.isNotEmpty)Container(constraints:const BoxConstraints(maxWidth:110),padding:const EdgeInsets.symmetric(horizontal:12,vertical:14),decoration:BoxDecoration(color:lime,borderRadius:BorderRadius.circular(16)),child:Text(badge,textAlign:TextAlign.center,style:const TextStyle(color:ink,fontWeight:FontWeight.w900,fontSize:18)))
           ]))
         ])),
-        Transform.translate(offset:const Offset(0,-17),child:Container(margin:const EdgeInsets.symmetric(horizontal:13),padding:const EdgeInsets.all(18),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(24)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-          const Text('Kampanya Detayları',style:TextStyle(fontSize:22,fontWeight:FontWeight.w900,color:ink)),
-          const SizedBox(height:12),
-          Text(o.description.isEmpty?'Kampanya açıklaması işletme tarafından henüz eklenmedi.':o.description,style:const TextStyle(fontSize:14,color:muted,height:1.5)),
-          const SizedBox(height:18),
-          Container(padding:const EdgeInsets.all(14),decoration:BoxDecoration(color:const Color(0xFFF3EDFF),borderRadius:BorderRadius.circular(18)),child:Row(children:[
-            Icon(o.icon,color:purple,size:32),const SizedBox(width:12),
-            Expanded(child:Text(o.category,style:const TextStyle(color:ink,fontWeight:FontWeight.w700))),
-            const Icon(Icons.verified_rounded,color:purple)
+        Transform.translate(offset:const Offset(0,-14),child:Container(margin:const EdgeInsets.symmetric(horizontal:12),padding:const EdgeInsets.fromLTRB(17,20,17,16),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(23),boxShadow:[BoxShadow(color:Colors.black.withValues(alpha:.035),blurRadius:15)]),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
+            Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+              const Text('Kampanya Detayları',style:TextStyle(color:ink,fontSize:21,fontWeight:FontWeight.w900)),
+              const SizedBox(height:10),
+              Text(o.description.isEmpty?'İşletme kampanya açıklaması eklememiş.':o.description,style:const TextStyle(color:muted,fontSize:13,height:1.45))
+            ])),
+            const SizedBox(width:8),
+            Container(width:88,height:106,decoration:BoxDecoration(color:const Color(0xFFF3EDFF),borderRadius:BorderRadius.circular(17)),child:Image.asset('assets/Heycar3d.png',fit:BoxFit.contain,errorBuilder:(_,__,___)=>Icon(o.icon,color:purple,size:48)))
+          ]),
+          const SizedBox(height:16),
+          Container(padding:const EdgeInsets.symmetric(horizontal:7,vertical:15),decoration:BoxDecoration(color:const Color(0xFFF5F0FF),borderRadius:BorderRadius.circular(17)),child:Row(children:[
+            benefit(Icons.timer_outlined,'Hızlı & Güvenli\\nHizmet'),
+            benefit(Icons.water_drop_rounded,'Profesyonel\\nEkipman'),
+            benefit(Icons.eco_rounded,'Özenli\\nUygulama'),
+            benefit(Icons.auto_awesome_rounded,'Kaliteli\\nSonuç')
           ])),
-          const SizedBox(height:12),
-          line(Icons.location_on_outlined,'Geçerli İşletme',o.address.isEmpty?o.name:o.address,()=>_msg(o.address.isEmpty?'Adres belirtilmedi.':o.address)),
-          const Divider(),
-          line(Icons.calendar_month_outlined,'Geçerlilik Tarihi','Kampanya tarihleri için işletme bilgilerini inceleyin.',()=>_msg('Geçerlilik tarihleri kampanya detaylarında henüz sunulmuyor.')),
-          const Divider(),
-          line(Icons.description_outlined,'Kampanya Koşulları',o.description.isEmpty?'Koşullar belirtilmedi.':o.description,()=>showDialog<void>(context:context,builder:(c)=>AlertDialog(title:const Text('Kampanya Koşulları'),content:Text(o.description.isEmpty?'Koşullar belirtilmedi.':o.description),actions:[TextButton(onPressed:()=>Navigator.pop(c),child:const Text('Kapat'))]))),
-          const Divider(),
-          line(Icons.share_outlined,'Arkadaşınla Paylaş','Bu fırsatı arkadaşlarınla paylaş.',_share),
-          if(o.openingHours.isNotEmpty)...[const Divider(),line(Icons.access_time_rounded,'Çalışma Saatleri',o.openingHours,()=>_msg(o.openingHours))],
-          if(storeReviewCount>0)...[const Divider(),Text('★ $storeRating ($storeReviewCount değerlendirme)',style:const TextStyle(color:ink,fontWeight:FontWeight.w700))],
+          const SizedBox(height:15),
+          Container(decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(16),boxShadow:[BoxShadow(color:Colors.black.withValues(alpha:.035),blurRadius:12)]),child:Column(children:[
+            actionRow(Icons.location_on_rounded,'Geçerli Şubeler',o.address.isEmpty?o.name:o.address,()=>_msg(o.address.isEmpty?'Adres belirtilmemiş.':o.address)),
+            const Divider(height:1,indent:12,endIndent:12),
+            actionRow(Icons.calendar_month_rounded,'Geçerlilik Tarihi','Kampanya tarihleri işletme tarafından belirtilir.',()=>_msg('Kampanya tarihleri henüz bu API yanıtında bulunmuyor.')),
+            const Divider(height:1,indent:12,endIndent:12),
+            actionRow(Icons.receipt_long_rounded,'Kampanya Koşulları','Kampanya detaylarını ve şartlarını inceleyin.',()=>showDialog<void>(context:context,builder:(c)=>AlertDialog(title:const Text('Kampanya Koşulları'),content:Text(o.description.isEmpty?'İşletme koşul belirtmemiş.':o.description),actions:[TextButton(onPressed:()=>Navigator.pop(c),child:const Text('Kapat'))]))),
+            const Divider(height:1,indent:12,endIndent:12),
+            actionRow(Icons.share_rounded,'Arkadaşınla Paylaş','Bu fırsatı arkadaşlarınla paylaş.',_share)
+          ]))
         ]))),
-        Padding(padding:const EdgeInsets.fromLTRB(20,0,20,110),child:Container(padding:const EdgeInsets.all(17),decoration:BoxDecoration(color:const Color(0xFFF0E9FF),borderRadius:BorderRadius.circular(18)),child:const Row(children:[Icon(Icons.info_rounded,color:purple),SizedBox(width:12),Expanded(child:Text('Kullanım için işletme çalışanına uygulama üzerinden oluşturduğunuz kupon kodunu gösterin.',style:TextStyle(color:muted,fontSize:12)))])))
+        Padding(padding:const EdgeInsets.fromLTRB(18,0,18,28),child:Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:const Color(0xFFF0E9FF),borderRadius:BorderRadius.circular(17)),child:const Row(children:[
+          Icon(Icons.info_rounded,color:purple,size:27),SizedBox(width:13),
+          Expanded(child:Text('Bu kampanya CepQontag ile anlaşmalı işletmelerde geçerlidir. Kullanım için şube çalışanına uygulamada oluşturduğunuz kuponu gösterin.',style:TextStyle(color:muted,fontSize:11.5,height:1.35)))
+        ])))
       ]),
-      SafeArea(child:Padding(padding:const EdgeInsets.symmetric(horizontal:15,vertical:7),child:Row(children:[
-        CircleAvatar(backgroundColor:purple.withValues(alpha:.7),child:IconButton(onPressed:()=>Navigator.pop(context),icon:const Icon(Icons.arrow_back_ios_new_rounded,color:Colors.white,size:19))),
+      SafeArea(child:Padding(padding:const EdgeInsets.fromLTRB(18,7,18,0),child:Row(children:[
+        CircleAvatar(backgroundColor:purple.withValues(alpha:.8),child:IconButton(onPressed:()=>Navigator.pop(context),icon:const Icon(Icons.arrow_back_ios_new_rounded,color:Colors.white,size:19))),
         const Expanded(child:Text('Fırsat Detayı',textAlign:TextAlign.center,style:TextStyle(color:Colors.white,fontSize:19,fontWeight:FontWeight.w900))),
-        CircleAvatar(backgroundColor:purple.withValues(alpha:.7),child:IconButton(onPressed:_toggleFavorite,icon:Icon(favorite?Icons.favorite:Icons.favorite_border,color:Colors.white)))
-      ]))),
+        CircleAvatar(backgroundColor:purple.withValues(alpha:.8),child:IconButton(onPressed:_toggleFavorite,icon:Icon(favorite?Icons.favorite_rounded:Icons.favorite_border_rounded,color:Colors.white,size:25)))
+      ])))
     ]),
-    bottomNavigationBar:SafeArea(child:Padding(padding:const EdgeInsets.fromLTRB(18,6,18,12),child:SizedBox(height:56,child:FilledButton.icon(
+    bottomNavigationBar:SafeArea(child:Padding(padding:const EdgeInsets.fromLTRB(18,7,18,10),child:SizedBox(height:54,child:FilledButton(
       onPressed:busy?null:(redemption?['status']=='redeemed'?_review:(redemption!=null?_showCode:_useOffer)),
       style:FilledButton.styleFrom(backgroundColor:lime,foregroundColor:ink,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(20))),
-      icon:const Icon(Icons.qr_code_2_rounded,size:24),
-      label:Text(busy?'İşleniyor...':redemption?['status']=='redeemed'?'Puan ve Yorum Yap':redemption!=null?'Kullanım Kodunu Göster':'Fırsatı Kullan',style:const TextStyle(fontSize:17,fontWeight:FontWeight.w900))
+      child:Row(mainAxisAlignment:MainAxisAlignment.center,children:[
+        const Icon(Icons.qr_code_2_rounded,size:25),const SizedBox(width:12),
+        Text(busy?'İşleniyor...':redemption?['status']=='redeemed'?'Puan ve Yorum Yap':redemption!=null?'Kullanım Kodunu Göster':'Fırsatı Kullan',style:const TextStyle(fontSize:17,fontWeight:FontWeight.w900)),
+        const SizedBox(width:12),const Icon(Icons.chevron_right_rounded,size:26)
+      ])
     ))))
   );
  }
