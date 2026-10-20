@@ -58,6 +58,56 @@ class _BusinessMarketplacePageState extends State<BusinessMarketplacePage>{
   try{final response=await http.patch(Uri.parse('$api/api/business/marketplace/services/${service['id']}'),headers:headers,body:jsonEncode(updated));if(response.statusCode!=200)throw Exception('Hizmet güncellenemedi (${response.statusCode})');await _load();}
   catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString())));}finally{if(mounted)setState(()=>busy=false);}
  }
+ Future<void> _editHours(Map<String,dynamic> service)async{
+  const names=['Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi','Pazar'];
+  final raw=service['weekly_hours'];
+  final previous=raw is Map?raw:<String,dynamic>{};
+  final open=List<bool>.generate(7,(i)=>previous.isEmpty?i<6:previous['${i+1}']!=null);
+  final starts=List<TimeOfDay>.generate(7,(i)=>_parseClock(previous['${i+1}'] is Map?previous['${i+1}']['open']:null,const TimeOfDay(hour:9,minute:0)));
+  final ends=List<TimeOfDay>.generate(7,(i)=>_parseClock(previous['${i+1}'] is Map?previous['${i+1}']['close']:null,const TimeOfDay(hour:18,minute:0)));
+  final hours=await showDialog<Map<String,dynamic>>(context:context,builder:(ctx)=>StatefulBuilder(builder:(ctx,update)=>AlertDialog(title:const Text('Çalışma Saatleri'),content:SizedBox(width:420,child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
+   for(var i=0;i<7;i++)Padding(padding:const EdgeInsets.symmetric(vertical:5),child:Column(children:[Row(children:[Expanded(child:Text(names[i])),Switch(value:open[i],onChanged:(v)=>update(()=>open[i]=v))]),
+    if(open[i])Row(children:[Expanded(child:OutlinedButton(onPressed:()async{final t=await showTimePicker(context:ctx,initialTime:starts[i]);if(t!=null)update(()=>starts[i]=t);},child:Text(starts[i].format(ctx)))),const Padding(padding:EdgeInsets.symmetric(horizontal:8),child:Text('–')),Expanded(child:OutlinedButton(onPressed:()async{final t=await showTimePicker(context:ctx,initialTime:ends[i]);if(t!=null)update(()=>ends[i]=t);},child:Text(ends[i].format(ctx))))])])),
+   const SizedBox(height:8),const Text('Saatler işletmenin yerel saatine (Türkiye) göredir.',style:TextStyle(fontSize:12)),
+  ]))),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Vazgeç')),FilledButton(onPressed:(){final value=<String,dynamic>{};for(var i=0;i<7;i++){if(!open[i]){value['${i+1}']=null;continue;}final a=_clock(starts[i]),b=_clock(ends[i]);if(a.compareTo(b)>=0){ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('${names[i]}: kapanış saati açılıştan sonra olmalı.')));return;}value['${i+1}']={'open':a,'close':b};}Navigator.pop(ctx,value);},child:const Text('Kaydet'))])));
+  if(hours==null||!mounted)return;
+  setState(()=>busy=true);
+  try{final response=await http.patch(Uri.parse('$api/api/business/marketplace/services/${service['id']}/hours'),headers:headers,body:jsonEncode({'weeklyHours':hours,'timezone':'Europe/Istanbul'}));if(response.statusCode!=200)throw Exception('Çalışma saatleri kaydedilemedi (${response.statusCode})');await _load();}
+  catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString())));}finally{if(mounted)setState(()=>busy=false);}
+ }
+ String _clock(TimeOfDay t)=>'${t.hour.toString().padLeft(2,'0')}:${t.minute.toString().padLeft(2,'0')}';
+ TimeOfDay _parseClock(dynamic value,TimeOfDay fallback){final m=RegExp(r'^(\\d{2}):(\\d{2})
+  if(busy)return;
+  setState(()=>busy=true);
+  try{
+   final body={'title':service['title'],'description':service['description']??'','category':service['category'],'priceCents':service['price_cents'],'durationMinutes':service['duration_minutes'],'active':service['active']!=true};
+   final response=await http.patch(Uri.parse('$api/api/business/marketplace/services/${service['id']}'),headers:headers,body:jsonEncode(body));
+   if(response.statusCode!=200)throw Exception('Hizmet durumu güncellenemedi (${response.statusCode})');
+   await _load();
+  }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString())));}finally{if(mounted)setState(()=>busy=false);}
+ }
+ Future<void> _setStatus(Map<String,dynamic> appointment,String status)async{
+  setState(()=>busy=true);try{
+   final id=appointment['id'];final response=await http.patch(Uri.parse('$api/api/business/marketplace/appointments/$id'),headers:headers,body:jsonEncode({'status':status}));
+   if(response.statusCode!=200)throw Exception('Randevu güncellenemedi (${response.statusCode})');await _load();
+  }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString())));}finally{if(mounted)setState(()=>busy=false);}
+ }
+ @override Widget build(BuildContext context)=>Scaffold(backgroundColor:const Color(0xFFF8F9FC),appBar:AppBar(title:const Text('Hizmetlerim ve Randevular'),backgroundColor:Colors.white,actions:[IconButton(onPressed:_load,icon:const Icon(Icons.refresh))]),body:loading?const Center(child:CircularProgressIndicator()):ListView(padding:const EdgeInsets.all(16),children:[
+  if(error!=null)Text(error!,style:const TextStyle(color:Colors.red)),
+  Row(children:[const Expanded(child:Text('Hizmetlerim',style:TextStyle(fontSize:19,fontWeight:FontWeight.w800))),FilledButton.icon(onPressed:busy?null:_createService,icon:const Icon(Icons.add),label:const Text('Hizmet Ekle'),style:FilledButton.styleFrom(backgroundColor:purple))]),
+  if(services.isEmpty)const Padding(padding:EdgeInsets.all(12),child:Text('Henüz hizmet eklenmedi.')),
+  ...services.map((s)=>Card(color:Colors.white,child:ListTile(title:Text((s['title']??'').toString()),subtitle:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text((s['category']??'').toString()),TextButton.icon(onPressed:busy?null:()=>_editHours(s),icon:const Icon(Icons.schedule,size:16),label:const Text('Çalışma Saatleri'))]),onTap:busy?null:()=>_editService(s),trailing:SizedBox(width:100,height:58,child:Column(mainAxisSize:MainAxisSize.min,children:[Text('₺${((num.tryParse(s['price_cents'].toString())??0)/100).toStringAsFixed(2)}'),SizedBox(height:32,child:FittedBox(fit:BoxFit.contain,child:Switch(value:s['active']==true,onChanged:busy?null:(_)=>_toggleService(s),activeThumbColor:purple)))]))))),
+  const SizedBox(height:20),const Text('Randevu Talepleri',style:TextStyle(fontSize:19,fontWeight:FontWeight.w800)),const SizedBox(height:8),
+  if(appointments.isEmpty)const Padding(padding:EdgeInsets.all(12),child:Text('Henüz randevu talebi yok.')),
+  ...appointments.map((a)=>Card(color:Colors.white,child:Padding(padding:const EdgeInsets.all(12),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+   Text((a['service_title']??'Hizmet').toString(),style:const TextStyle(fontWeight:FontWeight.w800)),const SizedBox(height:4),
+   Text('Plaka: ${a['plate']}'),Text('Tarih: ${a['requested_at']}'),Text('Durum: ${a['status']}'),
+   if(a['status']=='pending')Wrap(spacing:8,children:[TextButton(onPressed:busy?null:()=>_setStatus(a,'rejected'),child:const Text('Reddet')),FilledButton(onPressed:busy?null:()=>_setStatus(a,'confirmed'),child:const Text('Onayla'))]),
+   if(a['status']=='confirmed')TextButton(onPressed:busy?null:()=>_setStatus(a,'completed'),child:const Text('Hizmet Tamamlandı')),
+  ])))),
+ ]));
+}
+).firstMatch((value??'').toString());if(m==null)return fallback;final h=int.tryParse(m.group(1)!),min=int.tryParse(m.group(2)!);return h!=null&&min!=null&&h<24&&min<60?TimeOfDay(hour:h,minute:min):fallback;}
  Future<void> _toggleService(Map<String,dynamic> service)async{
   if(busy)return;
   setState(()=>busy=true);
