@@ -9,6 +9,7 @@ import 'onboarding_backend.dart';
 import 'owner_auth.dart';
 import 'driver_auth.dart';
 import 'marketplace_service_page.dart';
+import 'marketplace_appointments_page.dart';
 
 class CepqarOffersPage extends StatefulWidget {
   const CepqarOffersPage({super.key,this.driverMode=false,this.vehiclePlate=''});
@@ -119,7 +120,7 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
       return matchCategory&&matchSearch;
     }).toList();
     return Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-      Row(children:[const Expanded(child:Text('Hizmetler',style:TextStyle(fontSize:20,fontWeight:FontWeight.w900,color:ink))),TextButton(onPressed:_loadMarketplace,child:const Text('Yenile',style:TextStyle(color:purple)))]),
+      Row(children:[const Expanded(child:Text('Hizmetler',style:TextStyle(fontSize:20,fontWeight:FontWeight.w900,color:ink))),TextButton(onPressed:()=>Navigator.of(context).push(MaterialPageRoute(builder:(_)=>const MarketplaceAppointmentsPage())),child:const Text('Randevularım',style:TextStyle(color:purple,fontSize:12))),IconButton(onPressed:_loadMarketplace,tooltip:'Hizmetleri yenile',icon:const Icon(Icons.refresh,color:purple))]),
       if(marketplaceLoading)const Center(child:Padding(padding:EdgeInsets.all(16),child:CircularProgressIndicator(color:purple)))
       else if(marketplaceError!=null)Text(marketplaceError!,style:const TextStyle(color:muted,fontSize:12))
       else if(items.isEmpty)const Padding(padding:EdgeInsets.symmetric(vertical:12),child:Text('Bu kategoride henüz yayınlanmış hizmet yok.',style:TextStyle(color:muted,fontSize:12)))
