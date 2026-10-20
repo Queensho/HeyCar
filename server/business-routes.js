@@ -136,6 +136,16 @@ module.exports=function registerBusinessRoutes(app,pool){
   if(!q.rowCount)return res.status(404).json({error:'SERVICE_NOT_FOUND'});
   res.json({ok:true,service:q.rows[0]});
  }catch(e){console.error('marketplace update',e);res.status(500).json({error:'SERVICE_UPDATE_FAILED'});}});
+ const validWeeklyHours=hours=>hours&&typeof hours==='object'&&!Array.isArray(hours)&&Object.keys(hours).length===7&&[1,2,3,4,5,6,7].every(day=>{const v=hours[String(day)];if(v===null)return true;if(!v||typeof v!=='object'||Array.isArray(v))return false;const re=/^(?:[01]\\d|2[0-3]):[0-5]\\d$/;return re.test(v.open)&&re.test(v.close)&&v.open<v.close;});
+ const localBookingParts=(date,tz)=>{const parts=new Intl.DateTimeFormat('en-GB',{timeZone:tz,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(date);const v=Object.fromEntries(parts.map(p=>[p.type,p.value]));const weekday=new Date(Date.UTC(Number(v.year),Number(v.month)-1,Number(v.day))).getUTCDay()||7;return {weekday,clock:v.hour+':'+v.minute,ymd:v.year+'-'+v.month+'-'+v.day};};
+ app.patch('/api/business/marketplace/services/:id/hours',async(req,res)=>{const account=await auth(req,res);if(!account)return;try{
+  const {weeklyHours,timezone='Europe/Istanbul'}=req.body||{};
+  if(weeklyHours!==null&&!validWeeklyHours(weeklyHours))return res.status(400).json({error:'INVALID_WEEKLY_HOURS'});
+  try{new Intl.DateTimeFormat('en',{timeZone:timezone});}catch(_){return res.status(400).json({error:'INVALID_TIMEZONE'});}
+  const q=await pool.query("UPDATE marketplace_services s SET weekly_hours=$3::jsonb,booking_timezone=$4 FROM businesses b WHERE s.id=$1 AND s.business_id=b.id AND b.account_id=$2 AND b.approval_status='approved' RETURNING s.*",[req.params.id,account,JSON.stringify(weeklyHours),timezone]);
+  if(!q.rowCount)return res.status(404).json({error:'SERVICE_NOT_FOUND'});
+  res.json({ok:true,service:q.rows[0]});
+ }catch(e){console.error('marketplace hours',e);res.status(500).json({error:'SERVICE_HOURS_FAILED'});}});
  app.post('/api/marketplace/appointments',marketplaceBookingLimiter,async(req,res)=>{const owner=authenticatedOwnerId(req);if(!owner)return res.status(401).json({error:'AUTH_REQUIRED'});try{
   const {serviceId,plate,requestedAt}=req.body||{};const date=new Date(requestedAt);
   if(typeof requestedAt!=='string'||!/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,3})?(?:Z|[+-]\\d{2}:\\d{2})$/.test(requestedAt)||!/^[a-f0-9-]{36}$/i.test(String(serviceId||''))||!Number.isFinite(date.getTime())||date.getTime()<=Date.now()||date.getTime()>Date.now()+90*86400000||!/^([0-9]{2})[A-Z0-9 ]{3,12}$/.test(String(plate||'').trim().toUpperCase()))return res.status(400).json({error:'INVALID_APPOINTMENT'});
@@ -148,9 +158,17 @@ module.exports=function registerBusinessRoutes(app,pool){
    if(!service.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'SERVICE_NOT_FOUND'});}
    await client.query('SELECT id FROM businesses WHERE id=$1 FOR UPDATE',[service.rows[0].business_id]);
    // Recheck under the business lock: a listing can be disabled while a booking waits.
-   const current=await client.query("SELECT s.duration_minutes FROM marketplace_services s JOIN businesses b ON b.id=s.business_id WHERE s.id=$1 AND s.active=true AND b.is_active=true AND b.approval_status='approved'",[serviceId]);
+   const current=await client.query("SELECT s.duration_minutes,s.weekly_hours,s.booking_timezone FROM marketplace_services s JOIN businesses b ON b.id=s.business_id WHERE s.id=$1 AND s.active=true AND b.is_active=true AND b.approval_status='approved'",[serviceId]);
    if(!current.rowCount){await client.query('ROLLBACK');return res.status(409).json({error:'SERVICE_UNAVAILABLE'});}
    const duration=current.rows[0].duration_minutes||60;
+   const weekly=current.rows[0].weekly_hours;
+   if(weekly){
+    const tz=current.rows[0].booking_timezone||'Europe/Istanbul';
+    const start=localBookingParts(date,tz);
+    const end=localBookingParts(new Date(date.getTime()+duration*60000),tz);
+    const window=weekly[String(start.weekday)];
+    if(!window||start.ymd!==end.ymd||start.clock<window.open||end.clock>window.close){await client.query('ROLLBACK');return res.status(409).json({error:'OUTSIDE_BUSINESS_HOURS'});}
+   }
    const conflict=await client.query("SELECT 1 FROM marketplace_appointments a JOIN marketplace_services s ON s.id=a.service_id WHERE s.business_id=$1 AND a.status IN ('pending','confirmed') AND a.requested_at < $2::timestamptz + ($3::int * interval '1 minute') AND a.requested_at + (COALESCE(s.duration_minutes,60) * interval '1 minute') > $2::timestamptz LIMIT 1",[service.rows[0].business_id,date.toISOString(),duration]);
    if(conflict.rowCount){await client.query('ROLLBACK');return res.status(409).json({error:'SLOT_UNAVAILABLE'});}
    const q=await client.query('INSERT INTO marketplace_appointments(service_id,owner_id,plate,requested_at) VALUES($1,$2,$3,$4) RETURNING *',[serviceId,String(owner),normalizedPlate,date.toISOString()]);
