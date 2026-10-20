@@ -96,6 +96,16 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
     }
   }
 
+  // Reuse the existing offer discovery and redemption flow for service browsing.
+  Widget _serviceCategoryGrid()=>Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+    Row(children:[const Expanded(child:Text('Hizmet Kategorileri',style:TextStyle(fontSize:20,fontWeight:FontWeight.w900,color:ink))),TextButton(onPressed:()=>setState(()=>category='Tümü'),child:const Text('Tümünü Gör',style:TextStyle(color:purple,fontSize:12,fontWeight:FontWeight.w700)))]),
+    GridView.count(shrinkWrap:true,physics:const NeverScrollableScrollPhysics(),crossAxisCount:4,mainAxisSpacing:9,crossAxisSpacing:9,childAspectRatio:.92,children:[
+      for(final item in const [('Servis',Icons.build_rounded,'Bakım'),('Oto Yıkama',Icons.local_car_wash_rounded,'Oto Yıkama'),('Lastik',Icons.tire_repair_rounded,'Lastik'),('Akaryakıt',Icons.local_gas_station_rounded,'Yakıt'),('Detailing',Icons.auto_awesome_rounded,'Detaylı Temizlik'),('Otopark',Icons.local_parking_rounded,'Otopark')])
+        InkWell(borderRadius:BorderRadius.circular(16),onTap:()=>setState(()=>category=item.$1),child:Container(padding:const EdgeInsets.symmetric(vertical:9,horizontal:3),decoration:BoxDecoration(color:category==item.$1?const Color(0xFFF3EDFF):Colors.white,borderRadius:BorderRadius.circular(16),border:Border.all(color:category==item.$1?purple.withValues(alpha:.45):const Color(0xFFECECF3))),child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[Icon(item.$2,color:purple,size:25),const SizedBox(height:7),Text(item.$3,textAlign:TextAlign.center,maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:ink,fontSize:10,fontWeight:FontWeight.w700))]))),
+    ]),
+    if(category!='Tümü')Padding(padding:const EdgeInsets.only(top:9),child:Text('Seçili hizmet: $category • Yakındaki işletmeler aşağıda listelenir.',style:const TextStyle(color:muted,fontSize:11))),
+  ]);
+
   Widget _sectionHeading(String label,{VoidCallback? onAll})=>Padding(
     padding:const EdgeInsets.only(bottom:12),
     child:Row(children:[
@@ -352,6 +362,8 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
               ])),
             ]),
           ),
+          const SizedBox(height:14),
+          _serviceCategoryGrid(),
           const SizedBox(height:14),
           _sectionHeading('Sana Özel Fırsatlar'),
           _editorialStrip('personal'),
