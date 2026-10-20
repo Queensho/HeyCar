@@ -769,7 +769,7 @@ class _ExpenseEntryDialogState extends State<_ExpenseEntryDialog> {
       ]);
       return Padding(padding: const EdgeInsets.only(bottom: 9),
         child: Row(children: [
-          SizedBox(width: constraints.maxWidth < 310 ? 120 : 136, child: label),
+          SizedBox(width: constraints.maxWidth < 255 ? 100 : 122, child: label),
           const SizedBox(width: 8),
           Expanded(child: SizedBox(height: 46, child: input)),
         ]));
@@ -796,13 +796,13 @@ class _ExpenseEntryDialogState extends State<_ExpenseEntryDialog> {
     final size = MediaQuery.sizeOf(context);
     final keyboard = MediaQuery.viewInsetsOf(context).bottom;
     return Dialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
       backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       clipBehavior: Clip.antiAlias,
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: 420,
-          maxHeight: (size.height - keyboard - 32).clamp(0.0, 460.0).toDouble()),
+          maxHeight: (size.height - keyboard - 48).clamp(0.0, 420.0).toDouble()),
         child: SingleChildScrollView(
           padding: EdgeInsets.zero,
           child: Column(mainAxisSize: MainAxisSize.min, children: [
