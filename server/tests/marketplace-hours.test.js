@@ -33,3 +33,8 @@ test('business local time conversion handles DST and invalid dates',()=>{
  assert.equal(resolveLocalBookingTime('2026-03-29','02:30','Europe/Berlin'),null);
  assert.equal(resolveLocalBookingTime('2026-10-25','02:30','Europe/Berlin'),null);
 });
+
+test('repeated timezone conversions remain consistent with cached formatters',()=>{
+ for(let i=0;i<40;i++)assert.equal(resolveLocalBookingTime('2026-10-19','09:00','Europe/Istanbul')?.toISOString(),'2026-10-19T06:00:00.000Z');
+ assert.equal(localBookingParts(new Date('2026-10-19T06:00:00Z'),'UTC').clock,'06:00');
+});
