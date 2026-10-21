@@ -39,3 +39,14 @@ test('repeated timezone conversions remain consistent with cached formatters',()
  for(let i=0;i<40;i++)assert.equal(resolveLocalBookingTime('2026-10-19','09:00','Europe/Istanbul')?.toISOString(),'2026-10-19T06:00:00.000Z');
  assert.equal(localBookingParts(new Date('2026-10-19T06:00:00Z'),'UTC').clock,'06:00');
 });
+
+test('booking window rejects exact closing-time starts and accepts exact end boundary',()=>{
+ const monday=new Date('2026-10-19T14:00:00Z'); // 17:00 Istanbul
+ assert.equal(isWithinWeeklyHours(monday,60,hours,'Europe/Istanbul'),true);
+ assert.equal(isWithinWeeklyHours(new Date('2026-10-19T15:00:00Z'),15,hours,'Europe/Istanbul'),false);
+ assert.equal(isWithinWeeklyHours(new Date('2026-10-19T14:01:00Z'),60,hours,'Europe/Istanbul'),false);
+});
+test('local booking conversion preserves half-hour and quarter-hour offsets',()=>{
+ assert.equal(resolveLocalBookingTime('2026-10-19','09:00','Asia/Kolkata')?.toISOString(),'2026-10-19T03:30:00.000Z');
+ assert.equal(resolveLocalBookingTime('2026-10-19','09:00','Asia/Kathmandu')?.toISOString(),'2026-10-19T03:15:00.000Z');
+});
