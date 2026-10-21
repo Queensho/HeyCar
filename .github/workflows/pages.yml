@@ -39,6 +39,19 @@ jobs:
       - name: Compile Android owner APK on pull requests
         run: |
           flutter create . --platforms=android --project-name app --org com.cepqar --no-pub
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('android/app/build.gradle.kts')
+          text=p.read_text()
+          if 'isCoreLibraryDesugaringEnabled = true' not in text:
+              text=text.replace('compileOptions {','compileOptions {\n        isCoreLibraryDesugaringEnabled = true',1)
+          if 'coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:' not in text:
+              if 'dependencies {' in text:
+                  text=text.replace('dependencies {','dependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")',1)
+              else:
+                  text+='\n\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")\n}\n'
+          p.write_text(text)
+          PY
           flutter build apk --debug --target lib/entry_theme_live.dart
       - name: Analyze Maintenance V2 screens
         run: flutter analyze lib/maintenance_v2_page.dart lib/maintenance_page.dart --no-fatal-infos --no-fatal-warnings
