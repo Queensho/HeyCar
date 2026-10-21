@@ -97,7 +97,7 @@ class _BusinessMarketplacePageState extends State<BusinessMarketplacePage>{
   if(appointments.isEmpty)const Padding(padding:EdgeInsets.all(12),child:Text('Henüz randevu talebi yok.')),
   ...appointments.map((a)=>Card(color:Colors.white,child:Padding(padding:const EdgeInsets.all(12),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
    Text((a['service_title']??'Hizmet').toString(),style:const TextStyle(fontWeight:FontWeight.w800)),const SizedBox(height:4),
-   Text('Plaka: ${a['plate']}'),Text('Tarih: ${a['requested_at']}'),Text('Durum: ${a['status']}'),
+   Text('Plaka: ${a['plate']}'),Text('Tarih: ${a['appointment_local_date']??''} ${a['appointment_local_time']??''}'),Text('Saat dilimi: ${a['booking_timezone']??'Europe/Istanbul'}',style:const TextStyle(fontSize:11,color:Color(0xFF778096))),Text('Durum: ${a['status']}'),
    if(a['status']=='pending')Wrap(spacing:8,children:[TextButton(onPressed:busy?null:()=>_setStatus(a,'rejected'),child:const Text('Reddet')),FilledButton(onPressed:busy?null:()=>_setStatus(a,'confirmed'),child:const Text('Onayla'))]),
    if(a['status']=='confirmed')TextButton(onPressed:busy?null:()=>_setStatus(a,'completed'),child:const Text('Hizmet Tamamlandı')),
   ])))),
