@@ -36,15 +36,14 @@ class _MarketplaceServicePageState extends State<MarketplaceServicePage> {
   }
   Future<void> _request()async{
     if(day==null||time==null||plate.text.trim().isEmpty){setState(()=>error='Tarih, saat ve araç plakası gerekli.');return;}
-    final when=DateTime(day!.year,day!.month,day!.day,time!.hour,time!.minute);
-    if(!when.isAfter(DateTime.now())){setState(()=>error='Gelecekte bir saat seçmelisin.');return;}
-    if(when.isAfter(DateTime.now().add(const Duration(days:90)))){setState(()=>error='En fazla 90 gün sonrası için randevu alınabilir.');return;}
+    final localDate='${day!.year.toString().padLeft(4,'0')}-${day!.month.toString().padLeft(2,'0')}-${day!.day.toString().padLeft(2,'0')}';
+    final localTime='${time!.hour.toString().padLeft(2,'0')}:${time!.minute.toString().padLeft(2,'0')}';
     setState((){sending=true;error=null;});
     try{
-      final response=await OwnerHttp.post(Uri.parse('${OnboardingBackend.baseUrl}/api/marketplace/appointments'),body:jsonEncode({'serviceId':widget.service['id'],'plate':plate.text.trim().toUpperCase(),'requestedAt':when.toUtc().toIso8601String()})).timeout(const Duration(seconds:15));
+      final response=await OwnerHttp.post(Uri.parse('${OnboardingBackend.baseUrl}/api/marketplace/appointments'),body:jsonEncode({'serviceId':widget.service['id'],'plate':plate.text.trim().toUpperCase(),'localDate':localDate,'localTime':localTime})).timeout(const Duration(seconds:15));
       if(response.statusCode<200||response.statusCode>=300){
         String message='Randevu oluşturulamadı.';
-        try{final body=jsonDecode(response.body);switch(body['error']){case 'SLOT_UNAVAILABLE':message='Bu saat dolu. Başka bir saat seç.';break;case 'TOO_MANY_BOOKING_REQUESTS':message='Çok fazla randevu isteği gönderildi. 15 dakika sonra tekrar dene.';break;case 'VEHICLE_NOT_OWNED':message='Plaka hesabındaki araçlarla eşleşmiyor.';break;case 'OUTSIDE_BUSINESS_HOURS':message='İşletme bu saatte hizmet vermiyor.';break;case 'AUTH_REQUIRED':message='Randevu için araç sahibi hesabına giriş yap.';break;}}catch(_){}
+        try{final body=jsonDecode(response.body);switch(body['error']){case 'SLOT_UNAVAILABLE':message='Bu saat dolu. Başka bir saat seç.';break;case 'TOO_MANY_BOOKING_REQUESTS':message='Çok fazla randevu isteği gönderildi. 15 dakika sonra tekrar dene.';break;case 'VEHICLE_NOT_OWNED':message='Plaka hesabındaki araçlarla eşleşmiyor.';break;case 'INVALID_LOCAL_TIME':message='Bu tarih ve saat işletmenin saat diliminde geçerli değil.';break;case 'INVALID_APPOINTMENT':message='Randevu gelecekte ve en fazla 90 gün içinde olmalı.';break;case 'OUTSIDE_BUSINESS_HOURS':message='İşletme bu saatte hizmet vermiyor.';break;case 'AUTH_REQUIRED':message='Randevu için araç sahibi hesabına giriş yap.';break;}}catch(_){}
         throw Exception(message);
       }
       if(!mounted)return;
