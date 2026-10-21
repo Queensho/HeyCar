@@ -118,7 +118,7 @@ module.exports=function registerBusinessRoutes(app,pool){
 
  // Marketplace v1: authenticated business catalog and owner appointments.
  app.get('/api/marketplace/services',async(req,res)=>{try{
-  const q=await pool.query("SELECT s.id,s.business_id,s.title,s.description,s.category,s.price_cents,s.duration_minutes,b.name AS business_name,b.address FROM marketplace_services s JOIN businesses b ON b.id=s.business_id WHERE s.active=true AND b.is_active=true AND b.approval_status='approved' ORDER BY s.created_at DESC LIMIT 100");
+  const q=await pool.query("SELECT s.id,s.business_id,s.title,s.description,s.category,s.price_cents,s.duration_minutes,s.weekly_hours,s.booking_timezone,b.name AS business_name,b.address FROM marketplace_services s JOIN businesses b ON b.id=s.business_id WHERE s.active=true AND b.is_active=true AND b.approval_status='approved' ORDER BY s.created_at DESC LIMIT 100");
   res.json({ok:true,services:q.rows});
  }catch(e){console.error('marketplace list',e);res.status(500).json({error:'SERVICES_UNAVAILABLE'});}});
  app.get('/api/business/marketplace/services',async(req,res)=>{const account=await auth(req,res);if(!account)return;try{
