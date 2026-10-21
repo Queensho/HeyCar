@@ -170,7 +170,7 @@ module.exports=function registerBusinessRoutes(app,pool){
   const useLocal=localDate!==undefined||localTime!==undefined;
   let date=useLocal?null:new Date(requestedAt);
   const validAbsolute=typeof requestedAt==='string'&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.test(requestedAt);
-  if(!/^[a-f0-9-]{36}$/i.test(String(serviceId||''))||!/^([0-9]{2})[A-Z0-9 ]{3,12}$/.test(String(plate||'').trim().toUpperCase())||(useLocal?(typeof localDate!=='string'||typeof localTime!=='string'||requestedAt!==undefined):!validAbsolute||!Number.isFinite(date.getTime())))return res.status(400).json({error:'INVALID_APPOINTMENT'});
+  if(!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(String(serviceId||''))||!/^([0-9]{2})[A-Z0-9 ]{3,12}$/.test(String(plate||'').trim().toUpperCase())||(useLocal?(typeof localDate!=='string'||typeof localTime!=='string'||requestedAt!==undefined):!validAbsolute||!Number.isFinite(date.getTime())))return res.status(400).json({error:'INVALID_APPOINTMENT'});
   const normalizedPlate=String(plate).trim().toUpperCase().replace(/\s+/g,'');
   const owned=await pool.query("SELECT 1 FROM vehicles WHERE owner_id::text=$1 AND upper(replace(plate,' ',''))=$2 LIMIT 1",[String(owner),normalizedPlate]);
   if(!owned.rowCount)return res.status(403).json({error:'VEHICLE_NOT_OWNED'});
