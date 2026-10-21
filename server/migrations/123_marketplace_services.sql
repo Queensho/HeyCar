@@ -22,6 +22,10 @@ CREATE TABLE IF NOT EXISTS marketplace_appointments (
  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+-- Avoid duplicate pending or confirmed bookings for the same owner, service and start time.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_marketplace_appointments_unique_active_owner_slot
+ ON marketplace_appointments(service_id,owner_id,requested_at)
+ WHERE status IN ('pending','confirmed');
 CREATE INDEX IF NOT EXISTS idx_marketplace_appointments_owner ON marketplace_appointments(owner_id,created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_marketplace_appointments_service ON marketplace_appointments(service_id,status);
 -- Speed up future booking collision checks and business appointment queries.
