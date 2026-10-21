@@ -15,7 +15,7 @@ function isWithinWeeklyHours(start,duration,weekly,tz){
  return Boolean(window&&a.ymd===b.ymd&&a.clock>=window.open&&b.clock<=window.close);
 }
 function resolveLocalBookingTime(ymd,clock,tz){
- if(typeof ymd!=='string'||!/^\\d{4}-\\d{2}-\\d{2}$/.test(ymd)||typeof clock!=='string'||! /^(?:[01]\\d|2[0-3]):[0-5]\\d$/.test(clock))return null;
+ if(typeof ymd!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(ymd)||typeof clock!=='string'||! /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(clock))return null;
  const [year,month,day]=ymd.split('-').map(Number),[hour,minute]=clock.split(':').map(Number);
  const base=Date.UTC(year,month-1,day,hour,minute);
  if(new Date(base).toISOString().slice(0,10)!==ymd)return null;
