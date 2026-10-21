@@ -1,3 +1,4 @@
+const {validWeeklyHours,isWithinWeeklyHours}=require('./marketplace-hours');
 const crypto=require('crypto');
 const {getAppSettings}=require('./app-settings-service');
 const {ownerId:authenticatedOwnerId}=require('./owner-auth-service');
@@ -146,8 +147,6 @@ module.exports=function registerBusinessRoutes(app,pool){
   }
   res.json({ok:true,service:q.rows[0]});
  }catch(e){console.error('marketplace update',e);res.status(500).json({error:'SERVICE_UPDATE_FAILED'});}});
- const validWeeklyHours=hours=>hours&&typeof hours==='object'&&!Array.isArray(hours)&&Object.keys(hours).length===7&&[1,2,3,4,5,6,7].every(day=>{const v=hours[String(day)];if(v===null)return true;if(!v||typeof v!=='object'||Array.isArray(v))return false;const re=/^(?:[01]\d|2[0-3]):[0-5]\d$/;return re.test(v.open)&&re.test(v.close)&&v.open<v.close;});
- const localBookingParts=(date,tz)=>{const parts=new Intl.DateTimeFormat('en-GB',{timeZone:tz,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(date);const v=Object.fromEntries(parts.map(p=>[p.type,p.value]));const weekday=new Date(Date.UTC(Number(v.year),Number(v.month)-1,Number(v.day))).getUTCDay()||7;return {weekday,clock:v.hour+':'+v.minute,ymd:v.year+'-'+v.month+'-'+v.day};};
  app.patch('/api/business/marketplace/services/:id/hours',async(req,res)=>{const account=await auth(req,res);if(!account)return;try{
   const {weeklyHours,timezone='Europe/Istanbul'}=req.body||{};
   if(weeklyHours!==null&&!validWeeklyHours(weeklyHours))return res.status(400).json({error:'INVALID_WEEKLY_HOURS'});
@@ -182,13 +181,7 @@ module.exports=function registerBusinessRoutes(app,pool){
    if(!current.rowCount){await client.query('ROLLBACK');return res.status(409).json({error:'SERVICE_UNAVAILABLE'});}
    const duration=current.rows[0].duration_minutes||60;
    const weekly=current.rows[0].weekly_hours;
-   if(weekly){
-    const tz=current.rows[0].booking_timezone||'Europe/Istanbul';
-    const start=localBookingParts(date,tz);
-    const end=localBookingParts(new Date(date.getTime()+duration*60000),tz);
-    const window=weekly[String(start.weekday)];
-    if(!window||start.ymd!==end.ymd||start.clock<window.open||end.clock>window.close){await client.query('ROLLBACK');return res.status(409).json({error:'OUTSIDE_BUSINESS_HOURS'});}
-   }
+   if(weekly&&!isWithinWeeklyHours(date,duration,weekly,current.rows[0].booking_timezone||'Europe/Istanbul')){await client.query('ROLLBACK');return res.status(409).json({error:'OUTSIDE_BUSINESS_HOURS'});}
    const conflict=await client.query("SELECT 1 FROM marketplace_appointments a JOIN marketplace_services s ON s.id=a.service_id WHERE s.business_id=$1 AND a.status IN ('pending','confirmed') AND a.requested_at < $2::timestamptz + ($3::int * interval '1 minute') AND a.requested_at + (COALESCE(s.duration_minutes,60) * interval '1 minute') > $2::timestamptz LIMIT 1",[service.rows[0].business_id,date.toISOString(),duration]);
    if(conflict.rowCount){await client.query('ROLLBACK');return res.status(409).json({error:'SLOT_UNAVAILABLE'});}
    const q=await client.query('INSERT INTO marketplace_appointments(service_id,owner_id,plate,requested_at) VALUES($1,$2,$3,$4) RETURNING *',[serviceId,String(owner),normalizedPlate,date.toISOString()]);
