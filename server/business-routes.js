@@ -193,7 +193,7 @@ module.exports=function registerBusinessRoutes(app,pool){
    await client.query('COMMIT');res.status(201).json({ok:true,appointment:q.rows[0]});
   }catch(e){await client.query('ROLLBACK');throw e;}finally{client.release();}
 
- }catch(e){console.error('marketplace appointment',e);res.status(500).json({error:'APPOINTMENT_FAILED'});}});
+ }catch(e){if(e?.code==='23505'&&e?.constraint==='idx_marketplace_appointments_unique_active_owner_slot')return res.status(409).json({error:'SLOT_UNAVAILABLE'});console.error('marketplace appointment',e);res.status(500).json({error:'APPOINTMENT_FAILED'});}});
  app.get('/api/marketplace/appointments',async(req,res)=>{const owner=authenticatedOwnerId(req);if(!owner)return res.status(401).json({error:'AUTH_REQUIRED'});try{
   const q=await pool.query('SELECT a.*,s.title AS service_title,s.booking_timezone,b.name AS business_name FROM marketplace_appointments a JOIN marketplace_services s ON s.id=a.service_id JOIN businesses b ON b.id=s.business_id WHERE a.owner_id=$1 ORDER BY a.created_at DESC LIMIT 100',[String(owner)]);res.json({ok:true,appointments:q.rows.map(a=>{const local=localBookingParts(new Date(a.requested_at),a.booking_timezone||'Europe/Istanbul');return {...a,appointment_local_date:local.ymd,appointment_local_time:local.clock};})});
  }catch(e){res.status(500).json({error:'APPOINTMENTS_UNAVAILABLE'});}});
