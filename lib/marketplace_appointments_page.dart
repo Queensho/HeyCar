@@ -30,8 +30,10 @@ class _MarketplaceAppointmentsPageState extends State<MarketplaceAppointmentsPag
   cancellationDialogOpen=true;
   final id=(appointment['id']??'').toString();
   if(id.isEmpty){cancellationDialogOpen=false;return;}
-  final confirm=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(title:const Text('Randevu iptal edilsin mi?'),content:const Text('İptal edilen randevu yeniden onaylanamaz.'),actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('Vazgeç')),TextButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('Randevuyu İptal Et'))]));
-  cancellationDialogOpen=false;
+  bool? confirm;
+  try{
+   confirm=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(title:const Text('Randevu iptal edilsin mi?'),content:const Text('İptal edilen randevu yeniden onaylanamaz.'),actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('Vazgeç')),TextButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('Randevuyu İptal Et'))]));
+  }finally{cancellationDialogOpen=false;}
   if(confirm!=true||!mounted||cancelling!=null)return;
   setState(()=>cancelling=id);
   try{
