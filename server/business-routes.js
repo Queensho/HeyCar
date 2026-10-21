@@ -132,7 +132,13 @@ module.exports=function registerBusinessRoutes(app,pool){
  app.patch('/api/business/marketplace/services/:id',async(req,res)=>{const account=await auth(req,res);if(!account)return;try{
   const {title,description,category,priceCents,durationMinutes,active}=req.body||{};
   if(typeof title!=='string'||title.trim().length<2||title.trim().length>120||typeof category!=='string'||!category.trim()||category.length>80||typeof description!=='string'||description.length>2000||!Number.isSafeInteger(priceCents)||priceCents<0||!Number.isInteger(durationMinutes)||durationMinutes<15||durationMinutes>1440||typeof active!=='boolean')return res.status(400).json({error:'INVALID_SERVICE'});
-  const q=await pool.query('UPDATE marketplace_services s SET title=$3,description=$4,category=$5,price_cents=$6,duration_minutes=$7,active=$8 FROM businesses b WHERE s.id=$1 AND s.business_id=b.id AND b.account_id=$2 AND b.approval_status=\'approved\' AND (s.duration_minutes=$7 OR NOT EXISTS (SELECT 1 FROM marketplace_appointments a WHERE a.service_id=s.id AND a.status IN (\'pending\',\'confirmed\') AND a.requested_at>now())) RETURNING s.*',[req.params.id,account,title.trim(),description.trim(),category.trim(),priceCents,durationMinutes,active]);
+  const client=await pool.connect();let q;
+  try{await client.query('BEGIN');
+   const lock=await client.query("SELECT b.id FROM businesses b JOIN marketplace_services s ON s.business_id=b.id WHERE s.id=$1 AND b.account_id=$2 AND b.approval_status='approved' FOR UPDATE OF b",[req.params.id,account]);
+   if(!lock.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'SERVICE_NOT_FOUND'});}
+   q=await client.query('UPDATE marketplace_services s SET title=$3,description=$4,category=$5,price_cents=$6,duration_minutes=$7,active=$8 FROM businesses b WHERE s.id=$1 AND s.business_id=b.id AND b.account_id=$2 AND b.approval_status=\'approved\' AND (s.duration_minutes=$7 OR NOT EXISTS (SELECT 1 FROM marketplace_appointments a WHERE a.service_id=s.id AND a.status IN (\'pending\',\'confirmed\') AND a.requested_at>now())) RETURNING s.*',[req.params.id,account,title.trim(),description.trim(),category.trim(),priceCents,durationMinutes,active]);
+   await client.query('COMMIT');
+  }catch(e){await client.query('ROLLBACK');throw e;}finally{client.release();}
   if(!q.rowCount)return res.status(404).json({error:'SERVICE_NOT_FOUND'});
   res.json({ok:true,service:q.rows[0]});
  }catch(e){console.error('marketplace update',e);res.status(500).json({error:'SERVICE_UPDATE_FAILED'});}});
