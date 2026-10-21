@@ -13,6 +13,7 @@ class _MarketplaceAppointmentsPageState extends State<MarketplaceAppointmentsPag
  bool loading=true;
  String? error;
  String? cancelling;
+ bool cancellationDialogOpen=false;
  @override void initState(){super.initState();_load();}
  Future<void> _load()async{
   if(mounted)setState((){loading=true;error=null;});
@@ -25,11 +26,13 @@ class _MarketplaceAppointmentsPageState extends State<MarketplaceAppointmentsPag
   finally{if(mounted)setState(()=>loading=false);}
  }
  Future<void> _cancel(Map<String,dynamic> appointment)async{
-  if(cancelling!=null)return;
+  if(cancelling!=null||cancellationDialogOpen)return;
+  cancellationDialogOpen=true;
   final id=(appointment['id']??'').toString();
-  if(id.isEmpty)return;
+  if(id.isEmpty){cancellationDialogOpen=false;return;}
   final confirm=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(title:const Text('Randevu iptal edilsin mi?'),content:const Text('İptal edilen randevu yeniden onaylanamaz.'),actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('Vazgeç')),TextButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('Randevuyu İptal Et'))]));
-  if(confirm!=true||!mounted)return;
+  cancellationDialogOpen=false;
+  if(confirm!=true||!mounted||cancelling!=null)return;
   setState(()=>cancelling=id);
   try{
    final response=await OwnerHttp.patch(Uri.parse('${OnboardingBackend.baseUrl}/api/marketplace/appointments/$id/cancel')).timeout(const Duration(seconds:15));
