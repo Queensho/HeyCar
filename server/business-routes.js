@@ -1,4 +1,4 @@
-const {validWeeklyHours,isWithinWeeklyHours}=require('./marketplace-hours');
+const {validWeeklyHours,isWithinWeeklyHours,resolveLocalBookingTime}=require('./marketplace-hours');
 const crypto=require('crypto');
 const {getAppSettings}=require('./app-settings-service');
 const {ownerId:authenticatedOwnerId}=require('./owner-auth-service');
@@ -166,8 +166,11 @@ module.exports=function registerBusinessRoutes(app,pool){
   res.json({ok:true,service:q.rows[0]});
  }catch(e){console.error('marketplace hours',e);res.status(500).json({error:'SERVICE_HOURS_FAILED'});}});
  app.post('/api/marketplace/appointments',marketplaceBookingLimiter,async(req,res)=>{const owner=authenticatedOwnerId(req);if(!owner)return res.status(401).json({error:'AUTH_REQUIRED'});try{
-  const {serviceId,plate,requestedAt}=req.body||{};const date=new Date(requestedAt);
-  if(typeof requestedAt!=='string'||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.test(requestedAt)||!/^[a-f0-9-]{36}$/i.test(String(serviceId||''))||!Number.isFinite(date.getTime())||date.getTime()<=Date.now()||date.getTime()>Date.now()+90*86400000||!/^([0-9]{2})[A-Z0-9 ]{3,12}$/.test(String(plate||'').trim().toUpperCase()))return res.status(400).json({error:'INVALID_APPOINTMENT'});
+  const {serviceId,plate,requestedAt,localDate,localTime}=req.body||{};
+  const useLocal=localDate!==undefined||localTime!==undefined;
+  let date=useLocal?null:new Date(requestedAt);
+  const validAbsolute=typeof requestedAt==='string'&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.test(requestedAt);
+  if(!/^[a-f0-9-]{36}$/i.test(String(serviceId||''))||!/^([0-9]{2})[A-Z0-9 ]{3,12}$/.test(String(plate||'').trim().toUpperCase())||(useLocal?(typeof localDate!=='string'||typeof localTime!=='string'||requestedAt!==undefined):!validAbsolute||!Number.isFinite(date.getTime())))return res.status(400).json({error:'INVALID_APPOINTMENT'});
   const normalizedPlate=String(plate).trim().toUpperCase().replace(/\s+/g,'');
   const owned=await pool.query("SELECT 1 FROM vehicles WHERE owner_id::text=$1 AND upper(replace(plate,' ',''))=$2 LIMIT 1",[String(owner),normalizedPlate]);
   if(!owned.rowCount)return res.status(403).json({error:'VEHICLE_NOT_OWNED'});
@@ -179,6 +182,8 @@ module.exports=function registerBusinessRoutes(app,pool){
    // Recheck under the business lock: a listing can be disabled while a booking waits.
    const current=await client.query("SELECT s.duration_minutes,s.weekly_hours,s.booking_timezone FROM marketplace_services s JOIN businesses b ON b.id=s.business_id WHERE s.id=$1 AND s.active=true AND b.is_active=true AND b.approval_status='approved'",[serviceId]);
    if(!current.rowCount){await client.query('ROLLBACK');return res.status(409).json({error:'SERVICE_UNAVAILABLE'});}
+   if(useLocal){date=resolveLocalBookingTime(localDate,localTime,current.rows[0].booking_timezone||'Europe/Istanbul');if(!date){await client.query('ROLLBACK');return res.status(400).json({error:'INVALID_LOCAL_TIME'});}}
+   if(date.getTime()<=Date.now()||date.getTime()>Date.now()+90*86400000){await client.query('ROLLBACK');return res.status(400).json({error:'INVALID_APPOINTMENT'});}
    const duration=current.rows[0].duration_minutes||60;
    const weekly=current.rows[0].weekly_hours;
    if(weekly&&!isWithinWeeklyHours(date,duration,weekly,current.rows[0].booking_timezone||'Europe/Istanbul')){await client.query('ROLLBACK');return res.status(409).json({error:'OUTSIDE_BUSINESS_HOURS'});}
