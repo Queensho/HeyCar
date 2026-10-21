@@ -32,6 +32,7 @@ class _MarketplaceAppointmentsPageState extends State<MarketplaceAppointmentsPag
   setState(()=>cancelling=id);
   try{
    final response=await OwnerHttp.patch(Uri.parse('${OnboardingBackend.baseUrl}/api/marketplace/appointments/$id/cancel')).timeout(const Duration(seconds:15));
+   if(response.statusCode==409)throw Exception('Bu randevu artık iptal edilemiyor. Başlangıç saati geçmiş veya randevu durumu değişmiş olabilir.');
    if(response.statusCode!=200)throw Exception('Randevu iptal edilemedi (${response.statusCode}).');
    await _load();
   }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString().replaceFirst('Exception: ',''))));}
