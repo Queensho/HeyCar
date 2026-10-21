@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'owner_auth.dart';
 import 'onboarding_backend.dart';
@@ -22,7 +24,7 @@ class _MarketplaceAppointmentsPageState extends State<MarketplaceAppointmentsPag
    if(response.statusCode!=200)throw Exception(response.statusCode==401?'Randevuları görmek için giriş yap.':'Randevular yüklenemedi.');
    final data=jsonDecode(response.body) as Map;
    if(mounted)setState(()=>appointments=(data['appointments'] as List? ?? []).whereType<Map>().map((a)=>Map<String,dynamic>.from(a)).toList());
-  }catch(e){if(mounted)setState(()=>error=e.toString().replaceFirst('Exception: ',''));}
+  }on TimeoutException{if(mounted)setState(()=>error='Randevular yüklenirken zaman aşımı oluştu. Tekrar dene.');}on SocketException{if(mounted)setState(()=>error='İnternet bağlantısı kurulamadı. Bağlantını kontrol et.');}catch(e){if(mounted)setState(()=>error=e.toString().replaceFirst('Exception: ',''));}
   finally{if(mounted)setState(()=>loading=false);}
  }
  Future<void> _cancel(Map<String,dynamic> appointment)async{
@@ -41,7 +43,7 @@ class _MarketplaceAppointmentsPageState extends State<MarketplaceAppointmentsPag
    if(response.statusCode==409){await _load();throw Exception('Bu randevu artık iptal edilemiyor. Başlangıç saati geçmiş veya randevu durumu değişmiş olabilir. Liste güncellendi.');}
    if(response.statusCode!=200)throw Exception('Randevu iptal edilemedi (${response.statusCode}).');
    await _load();
-  }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString().replaceFirst('Exception: ',''))));}
+  }on TimeoutException{if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('İptal isteği zaman aşımına uğradı. Randevu durumunu yenileyerek kontrol et.')));}on SocketException{if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('İnternet bağlantısı kurulamadı. Randevu durumunu kontrol et.')));}catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString().replaceFirst('Exception: ',''))));}
   finally{if(mounted)setState(()=>cancelling=null);}
  }
  bool _canCancel(Map<String,dynamic> a){final start=DateTime.tryParse((a['requested_at']??'').toString());return start!=null&&start.isAfter(DateTime.now());}
