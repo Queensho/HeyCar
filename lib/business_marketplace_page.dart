@@ -85,7 +85,7 @@ class _BusinessMarketplacePageState extends State<BusinessMarketplacePage>{
  Future<void> _setStatus(Map<String,dynamic> appointment,String status)async{
   setState(()=>busy=true);try{
    final id=appointment['id'];final response=await http.patch(Uri.parse('$api/api/business/marketplace/appointments/$id'),headers:headers,body:jsonEncode({'status':status}));
-   if(response.statusCode==409)throw Exception('Randevu durumu değişmiş olabilir. Onaylama için başlangıç saati geçmemiş, tamamlama için hizmet süresi dolmuş olmalıdır. Listeyi yenileyip tekrar kontrol edin.');
+   if(response.statusCode==409){await _load();throw Exception('Randevu durumu değişmiş veya işlem için uygun saat geçmiş olabilir. Liste güncellendi.');}
    if(response.statusCode!=200)throw Exception('Randevu güncellenemedi (${response.statusCode})');await _load();
   }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString())));}finally{if(mounted)setState(()=>busy=false);}
  }
