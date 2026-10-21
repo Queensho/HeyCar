@@ -58,7 +58,7 @@ class _MarketplaceServicePageState extends State<MarketplaceServicePage> {
     final raw=service['weekly_hours'];
     if(raw is! Map)return const Text('Çalışma saatleri işletme tarafından henüz belirtilmedi.',style:TextStyle(fontSize:12,color:Color(0xFF778096)));
     const names=['Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi','Pazar'];
-    return Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('Çalışma Saatleri',style:TextStyle(fontWeight:FontWeight.w800,color:ink)),const SizedBox(height:8),for(var i=0;i<7;i++)Padding(padding:const EdgeInsets.symmetric(vertical:3),child:Row(children:[Expanded(child:Text(names[i],style:const TextStyle(fontSize:12))),Text(raw['${i+1}'] is Map?'${raw['${i+1}']['open']} – ${raw['${i+1}']['close']}':'Kapalı',style:const TextStyle(fontSize:12,fontWeight:FontWeight.w600))])),const SizedBox(height:5),const Text('Saatler Türkiye saatine göredir.',style:TextStyle(fontSize:11,color:Color(0xFF778096)))]);
+    return Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('Çalışma Saatleri',style:TextStyle(fontWeight:FontWeight.w800,color:ink)),const SizedBox(height:8),for(var i=0;i<7;i++)Padding(padding:const EdgeInsets.symmetric(vertical:3),child:Row(children:[Expanded(child:Text(names[i],style:const TextStyle(fontSize:12))),Text(raw['${i+1}'] is Map?'${raw['${i+1}']['open']} – ${raw['${i+1}']['close']}':'Kapalı',style:const TextStyle(fontSize:12,fontWeight:FontWeight.w600))])),const SizedBox(height:5),Text('Saat dilimi: ${(service['booking_timezone']??'Europe/Istanbul').toString()}',style:const TextStyle(fontSize:11,color:Color(0xFF778096)))]);
   }
   @override Widget build(BuildContext context){
     final service=widget.service;
