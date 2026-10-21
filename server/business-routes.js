@@ -139,7 +139,11 @@ module.exports=function registerBusinessRoutes(app,pool){
    q=await client.query('UPDATE marketplace_services s SET title=$3,description=$4,category=$5,price_cents=$6,duration_minutes=$7,active=$8 FROM businesses b WHERE s.id=$1 AND s.business_id=b.id AND b.account_id=$2 AND b.approval_status=\'approved\' AND (s.duration_minutes=$7 OR NOT EXISTS (SELECT 1 FROM marketplace_appointments a WHERE a.service_id=s.id AND a.status IN (\'pending\',\'confirmed\') AND a.requested_at>now())) RETURNING s.*',[req.params.id,account,title.trim(),description.trim(),category.trim(),priceCents,durationMinutes,active]);
    await client.query('COMMIT');
   }catch(e){await client.query('ROLLBACK');throw e;}finally{client.release();}
-  if(!q.rowCount)return res.status(404).json({error:'SERVICE_NOT_FOUND'});
+  if(!q.rowCount){
+   const check=await pool.query("SELECT EXISTS(SELECT 1 FROM marketplace_services s JOIN businesses b ON b.id=s.business_id WHERE s.id=$1 AND b.account_id=$2 AND b.approval_status='approved') AS owned, EXISTS(SELECT 1 FROM marketplace_appointments a JOIN marketplace_services s ON s.id=a.service_id JOIN businesses b ON b.id=s.business_id WHERE s.id=$1 AND b.account_id=$2 AND a.status IN ('pending','confirmed') AND a.requested_at>now()) AS booked",[req.params.id,account]);
+   if(check.rows[0]?.owned&&check.rows[0]?.booked)return res.status(409).json({error:'FUTURE_APPOINTMENTS_EXIST'});
+   return res.status(404).json({error:'SERVICE_NOT_FOUND'});
+  }
   res.json({ok:true,service:q.rows[0]});
  }catch(e){console.error('marketplace update',e);res.status(500).json({error:'SERVICE_UPDATE_FAILED'});}});
  const validWeeklyHours=hours=>hours&&typeof hours==='object'&&!Array.isArray(hours)&&Object.keys(hours).length===7&&[1,2,3,4,5,6,7].every(day=>{const v=hours[String(day)];if(v===null)return true;if(!v||typeof v!=='object'||Array.isArray(v))return false;const re=/^(?:[01]\d|2[0-3]):[0-5]\d$/;return re.test(v.open)&&re.test(v.close)&&v.open<v.close;});
