@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'owner_auth.dart';
 import 'onboarding_backend.dart';
@@ -49,7 +51,7 @@ class _MarketplaceServicePageState extends State<MarketplaceServicePage> {
       if(!mounted)return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Randevu talebin işletmeye gönderildi. Onay bekleniyor.')));
       Navigator.of(context).pop(true);
-    }catch(e){if(mounted)setState(()=>error=e.toString().replaceFirst('Exception: ',''));}
+    }on TimeoutException{if(mounted)setState(()=>error='Bağlantı zaman aşımına uğradı. Randevularım ekranından talebini kontrol et.');}on SocketException{if(mounted)setState(()=>error='İnternet bağlantısı kurulamadı. Bağlantını kontrol et.');}catch(e){if(mounted)setState(()=>error=e.toString().replaceFirst('Exception: ',''));}
     finally{if(mounted)setState(()=>sending=false);}
   }
 
