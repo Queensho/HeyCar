@@ -88,6 +88,8 @@ class _BusinessMarketplacePageState extends State<BusinessMarketplacePage>{
    if(response.statusCode!=200)throw Exception('Randevu güncellenemedi (${response.statusCode})');await _load();
   }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString())));}finally{if(mounted)setState(()=>busy=false);}
  }
+ bool _canConfirm(Map<String,dynamic> a){final date=DateTime.tryParse((a['requested_at']??'').toString());return date!=null&&date.isAfter(DateTime.now());}
+ bool _canComplete(Map<String,dynamic> a){final date=DateTime.tryParse((a['requested_at']??'').toString());final minutes=int.tryParse((a['service_duration_minutes']??60).toString())??60;return date!=null&&!DateTime.now().isBefore(date.add(Duration(minutes:minutes)));}
  @override Widget build(BuildContext context)=>Scaffold(backgroundColor:const Color(0xFFF8F9FC),appBar:AppBar(title:const Text('Hizmetlerim ve Randevular'),backgroundColor:Colors.white,actions:[IconButton(onPressed:_load,icon:const Icon(Icons.refresh))]),body:loading?const Center(child:CircularProgressIndicator()):ListView(padding:const EdgeInsets.all(16),children:[
   if(error!=null)Text(error!,style:const TextStyle(color:Colors.red)),
   Row(children:[const Expanded(child:Text('Hizmetlerim',style:TextStyle(fontSize:19,fontWeight:FontWeight.w800))),FilledButton.icon(onPressed:busy?null:_createService,icon:const Icon(Icons.add),label:const Text('Hizmet Ekle'),style:FilledButton.styleFrom(backgroundColor:purple))]),
@@ -98,8 +100,8 @@ class _BusinessMarketplacePageState extends State<BusinessMarketplacePage>{
   ...appointments.map((a)=>Card(color:Colors.white,child:Padding(padding:const EdgeInsets.all(12),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
    Text((a['service_title']??'Hizmet').toString(),style:const TextStyle(fontWeight:FontWeight.w800)),const SizedBox(height:4),
    Text('Plaka: ${a['plate']}'),Text('Tarih: ${a['appointment_local_date']??''} ${a['appointment_local_time']??''}'),Text('Saat dilimi: ${a['booking_timezone']??'Europe/Istanbul'}',style:const TextStyle(fontSize:11,color:Color(0xFF778096))),Text('Durum: ${a['status']}'),
-   if(a['status']=='pending')Wrap(spacing:8,children:[TextButton(onPressed:busy?null:()=>_setStatus(a,'rejected'),child:const Text('Reddet')),FilledButton(onPressed:busy?null:()=>_setStatus(a,'confirmed'),child:const Text('Onayla'))]),
-   if(a['status']=='confirmed')TextButton(onPressed:busy?null:()=>_setStatus(a,'completed'),child:const Text('Hizmet Tamamlandı')),
+   if(a['status']=='pending')Wrap(spacing:8,children:[TextButton(onPressed:busy?null:()=>_setStatus(a,'rejected'),child:const Text('Reddet')),FilledButton(onPressed:busy||!_canConfirm(a)?null:()=>_setStatus(a,'confirmed'),child:const Text('Onayla'))]),
+   if(a['status']=='confirmed')TextButton(onPressed:busy||!_canComplete(a)?null:()=>_setStatus(a,'completed'),child:const Text('Hizmet Tamamlandı')),
   ])))),
  ]));
 }
