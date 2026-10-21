@@ -54,6 +54,12 @@ class _MarketplaceServicePageState extends State<MarketplaceServicePage> {
     finally{if(mounted)setState(()=>sending=false);}
   }
 
+  Widget _hoursSummary(Map<String,dynamic> service){
+    final raw=service['weekly_hours'];
+    if(raw is! Map)return const Text('Çalışma saatleri işletme tarafından henüz belirtilmedi.',style:TextStyle(fontSize:12,color:Color(0xFF778096)));
+    const names=['Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi','Pazar'];
+    return Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('Çalışma Saatleri',style:TextStyle(fontWeight:FontWeight.w800,color:ink)),const SizedBox(height:8),for(var i=0;i<7;i++)Padding(padding:const EdgeInsets.symmetric(vertical:3),child:Row(children:[Expanded(child:Text(names[i],style:const TextStyle(fontSize:12))),Text(raw['${i+1}'] is Map?'${raw['${i+1}']['open']} – ${raw['${i+1}']['close']}':'Kapalı',style:const TextStyle(fontSize:12,fontWeight:FontWeight.w600))])),const SizedBox(height:5),const Text('Saatler Türkiye saatine göredir.',style:TextStyle(fontSize:11,color:Color(0xFF778096)))]);
+  }
   @override Widget build(BuildContext context){
     final service=widget.service;
     final cents=num.tryParse((service['price_cents']??'').toString());
@@ -66,6 +72,7 @@ class _MarketplaceServicePageState extends State<MarketplaceServicePage> {
         if((service['description']??'').toString().isNotEmpty)Padding(padding:const EdgeInsets.only(top:12),child:Text(service['description'].toString())),
         const SizedBox(height:12),Text(cents==null?'Fiyat işletmeden öğrenilir':'₺${(cents/100).toStringAsFixed(2)}',style:const TextStyle(color:purple,fontSize:20,fontWeight:FontWeight.w900)),
       ])),const SizedBox(height:14),
+      Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(18)),child:_hoursSummary(service)),const SizedBox(height:14),
       Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(18)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
         const Text('Randevu Talebi',style:TextStyle(fontSize:17,fontWeight:FontWeight.w800,color:ink)),const SizedBox(height:12),
         TextField(controller:plate,textCapitalization:TextCapitalization.characters,decoration:const InputDecoration(labelText:'Araç plakası',border:OutlineInputBorder())),const SizedBox(height:10),
