@@ -36,6 +36,10 @@ jobs:
         run: |
           flutter create . --platforms=web --project-name heycar_app --no-pub
           flutter build web --debug --target lib/entry_theme_live.dart
+      - name: Compile Android owner APK on pull requests
+        run: |
+          flutter create . --platforms=android --project-name app --org com.cepqar --no-pub
+          flutter build apk --debug --target lib/entry_theme_live.dart
       - name: Analyze Maintenance V2 screens
         run: flutter analyze lib/maintenance_v2_page.dart lib/maintenance_page.dart --no-fatal-infos --no-fatal-warnings
       - name: Analyze owner light theme screens
