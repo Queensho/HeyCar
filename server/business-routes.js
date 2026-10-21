@@ -142,7 +142,13 @@ module.exports=function registerBusinessRoutes(app,pool){
   const {weeklyHours,timezone='Europe/Istanbul'}=req.body||{};
   if(weeklyHours!==null&&!validWeeklyHours(weeklyHours))return res.status(400).json({error:'INVALID_WEEKLY_HOURS'});
   try{new Intl.DateTimeFormat('en',{timeZone:timezone});}catch(_){return res.status(400).json({error:'INVALID_TIMEZONE'});}
-  const q=await pool.query("UPDATE marketplace_services s SET weekly_hours=$3::jsonb,booking_timezone=$4 FROM businesses b WHERE s.id=$1 AND s.business_id=b.id AND b.account_id=$2 AND b.approval_status='approved' AND NOT EXISTS (SELECT 1 FROM marketplace_appointments a WHERE a.service_id=s.id AND a.status IN ('pending','confirmed') AND a.requested_at>now()) RETURNING s.*",[req.params.id,account,JSON.stringify(weeklyHours),timezone]);
+  const client=await pool.connect();let q;
+  try{await client.query('BEGIN');
+   const lock=await client.query("SELECT b.id FROM businesses b JOIN marketplace_services s ON s.business_id=b.id WHERE s.id=$1 AND b.account_id=$2 AND b.approval_status='approved' FOR UPDATE OF b",[req.params.id,account]);
+   if(!lock.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'SERVICE_NOT_FOUND'});}
+   q=await client.query("UPDATE marketplace_services s SET weekly_hours=$3::jsonb,booking_timezone=$4 FROM businesses b WHERE s.id=$1 AND s.business_id=b.id AND b.account_id=$2 AND b.approval_status='approved' AND NOT EXISTS (SELECT 1 FROM marketplace_appointments a WHERE a.service_id=s.id AND a.status IN ('pending','confirmed') AND a.requested_at>now()) RETURNING s.*",[req.params.id,account,JSON.stringify(weeklyHours),timezone]);
+   await client.query('COMMIT');
+  }catch(e){await client.query('ROLLBACK');throw e;}finally{client.release();}
   if(!q.rowCount){
    const check=await pool.query("SELECT EXISTS(SELECT 1 FROM marketplace_services s JOIN businesses b ON b.id=s.business_id WHERE s.id=$1 AND b.account_id=$2 AND b.approval_status='approved') AS owned, EXISTS(SELECT 1 FROM marketplace_appointments a JOIN marketplace_services s ON s.id=a.service_id JOIN businesses b ON b.id=s.business_id WHERE s.id=$1 AND b.account_id=$2 AND a.status IN ('pending','confirmed') AND a.requested_at>now()) AS booked",[req.params.id,account]);
    if(check.rows[0]?.owned&&check.rows[0]?.booked)return res.status(409).json({error:'FUTURE_APPOINTMENTS_EXIST'});
