@@ -32,6 +32,7 @@ test('business local time conversion handles DST and invalid dates',()=>{
  assert.equal(resolveLocalBookingTime('2026-02-30','09:00','Europe/Istanbul'),null);
  assert.equal(resolveLocalBookingTime('2026-03-29','02:30','Europe/Berlin'),null);
  assert.equal(resolveLocalBookingTime('2026-10-25','02:30','Europe/Berlin'),null);
+ assert.equal(resolveLocalBookingTime('2026-10-19','09:00','Invalid/Timezone'),null);
 });
 
 test('repeated timezone conversions remain consistent with cached formatters',()=>{
