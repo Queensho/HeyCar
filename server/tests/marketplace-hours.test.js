@@ -8,6 +8,8 @@ test('weekly schedule requires seven valid days',()=>{
  assert.equal(validWeeklyHours({...hours,'1':{open:'18:00',close:'09:00'}}),false);
  assert.equal(validWeeklyHours({...hours,'2':{open:'25:00',close:'26:00'}}),false);
  assert.equal(validWeeklyHours({'1':hours['1']}),false);
+ assert.equal(validWeeklyHours({...hours,'1':{open:'09:00',close:'18:00',extra:'unexpected'}}),false);
+ assert.equal(validWeeklyHours({...hours,'1':{open:900,close:'18:00'}}),false);
 });
 test('booking window respects Istanbul hours and closed Sunday',()=>{
  const at=(iso)=>new Date(iso);
