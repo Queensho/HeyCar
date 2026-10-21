@@ -55,7 +55,7 @@ class _BusinessMarketplacePageState extends State<BusinessMarketplacePage>{
   title.dispose();description.dispose();price.dispose();duration.dispose();
   if(updated==null)return;
   setState(()=>busy=true);
-  try{final response=await http.patch(Uri.parse('$api/api/business/marketplace/services/${service['id']}'),headers:headers,body:jsonEncode(updated));if(response.statusCode!=200)throw Exception('Hizmet güncellenemedi (${response.statusCode})');await _load();}
+  try{final response=await http.patch(Uri.parse('$api/api/business/marketplace/services/${service['id']}'),headers:headers,body:jsonEncode(updated));if(response.statusCode==409)throw Exception('Gelecekte bekleyen veya onaylanmış randevular olduğu için hizmet süresi değiştirilemiyor.');if(response.statusCode!=200)throw Exception('Hizmet güncellenemedi (${response.statusCode})');await _load();}
   catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString())));}finally{if(mounted)setState(()=>busy=false);}
  }
  Future<void> _editHours(Map<String,dynamic> service)async{
