@@ -142,7 +142,7 @@ module.exports=function registerBusinessRoutes(app,pool){
   const {weeklyHours,timezone='Europe/Istanbul'}=req.body||{};
   if(weeklyHours!==null&&!validWeeklyHours(weeklyHours))return res.status(400).json({error:'INVALID_WEEKLY_HOURS'});
   try{new Intl.DateTimeFormat('en',{timeZone:timezone});}catch(_){return res.status(400).json({error:'INVALID_TIMEZONE'});}
-  const q=await pool.query("UPDATE marketplace_services s SET weekly_hours=$3::jsonb,booking_timezone=$4 FROM businesses b WHERE s.id=$1 AND s.business_id=b.id AND b.account_id=$2 AND b.approval_status='approved' RETURNING s.*",[req.params.id,account,JSON.stringify(weeklyHours),timezone]);
+  const q=await pool.query("UPDATE marketplace_services s SET weekly_hours=$3::jsonb,booking_timezone=$4 FROM businesses b WHERE s.id=$1 AND s.business_id=b.id AND b.account_id=$2 AND b.approval_status='approved' AND NOT EXISTS (SELECT 1 FROM marketplace_appointments a WHERE a.service_id=s.id AND a.status IN ('pending','confirmed') AND a.requested_at>now()) RETURNING s.*",[req.params.id,account,JSON.stringify(weeklyHours),timezone]);
   if(!q.rowCount)return res.status(404).json({error:'SERVICE_NOT_FOUND'});
   res.json({ok:true,service:q.rows[0]});
  }catch(e){console.error('marketplace hours',e);res.status(500).json({error:'SERVICE_HOURS_FAILED'});}});
