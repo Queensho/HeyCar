@@ -23,7 +23,9 @@ function resolveLocalBookingTime(ymd,clock,tz){
  const base=Date.UTC(year,month-1,day,hour,minute);
  if(new Date(base).toISOString().slice(0,10)!==ymd)return null;
  const matches=[];
- for(let offset=-14*60;offset<=14*60;offset+=15){const candidate=new Date(base-offset*60000);const local=localBookingParts(candidate,tz);if(local.ymd===ymd&&local.clock===clock)matches.push(candidate);}
+ try{
+  for(let offset=-14*60;offset<=14*60;offset+=15){const candidate=new Date(base-offset*60000);const local=localBookingParts(candidate,tz);if(local.ymd===ymd&&local.clock===clock)matches.push(candidate);}
+ }catch(e){if(e instanceof RangeError)return null;throw e;}
  return matches.length===1?matches[0]:null;
 }
 module.exports={validWeeklyHours,localBookingParts,isWithinWeeklyHours,resolveLocalBookingTime};
