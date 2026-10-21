@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
@@ -85,10 +87,10 @@ class _BusinessMarketplacePageState extends State<BusinessMarketplacePage>{
  Future<void> _setStatus(Map<String,dynamic> appointment,String status)async{
   if(busy)return;
   setState(()=>busy=true);try{
-   final id=appointment['id'];final response=await http.patch(Uri.parse('$api/api/business/marketplace/appointments/$id'),headers:headers,body:jsonEncode({'status':status}));
+   final id=appointment['id'];final response=await http.patch(Uri.parse('$api/api/business/marketplace/appointments/$id'),headers:headers,body:jsonEncode({'status':status})).timeout(const Duration(seconds:15));
    if(response.statusCode==409){await _load();throw Exception('Randevu durumu değişmiş veya işlem için uygun saat geçmiş olabilir. Liste güncellendi.');}
    if(response.statusCode!=200)throw Exception('Randevu güncellenemedi (${response.statusCode})');await _load();
-  }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString())));}finally{if(mounted)setState(()=>busy=false);}
+  }on TimeoutException{if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('İşlem zaman aşımına uğradı. Randevu listesini yenileyerek durumu kontrol et.')));}on SocketException{if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('İnternet bağlantısı kurulamadı. Randevu listesini kontrol et.')));}catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString().replaceFirst('Exception: ',''))));}finally{if(mounted)setState(()=>busy=false);}
  }
  bool _canConfirm(Map<String,dynamic> a){final date=DateTime.tryParse((a['requested_at']??'').toString());return date!=null&&date.isAfter(DateTime.now());}
  bool _canComplete(Map<String,dynamic> a){final date=DateTime.tryParse((a['requested_at']??'').toString());final minutes=int.tryParse((a['service_duration_minutes']??60).toString())??60;return date!=null&&!DateTime.now().isBefore(date.add(Duration(minutes:minutes)));}
