@@ -36,7 +36,7 @@ class _BusinessMarketplacePageState extends State<BusinessMarketplacePage>{
   title.dispose();description.dispose();price.dispose();duration.dispose();
   if(submitted==null)return;
   setState(()=>busy=true);
-  try{final response=await http.post(Uri.parse('$api/api/business/marketplace/services'),headers:headers,body:jsonEncode(submitted));if(response.statusCode!=201)throw Exception('Hizmet kaydedilemedi: ${response.statusCode}');await _load();}
+  try{final response=await http.post(Uri.parse('$api/api/business/marketplace/services'),headers:headers,body:jsonEncode(submitted)).timeout(const Duration(seconds:15));if(response.statusCode!=201)throw Exception('Hizmet kaydedilemedi: ${response.statusCode}');await _load();}
   catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString())));}finally{if(mounted)setState(()=>busy=false);}
  }
  Future<void> _editService(Map<String,dynamic> service)async{
@@ -57,7 +57,7 @@ class _BusinessMarketplacePageState extends State<BusinessMarketplacePage>{
   title.dispose();description.dispose();price.dispose();duration.dispose();
   if(updated==null)return;
   setState(()=>busy=true);
-  try{final response=await http.patch(Uri.parse('$api/api/business/marketplace/services/${service['id']}'),headers:headers,body:jsonEncode(updated));if(response.statusCode==409)throw Exception('Gelecekte bekleyen veya onaylanmış randevular olduğu için hizmet süresi değiştirilemiyor.');if(response.statusCode!=200)throw Exception('Hizmet güncellenemedi (${response.statusCode})');await _load();}
+  try{final response=await http.patch(Uri.parse('$api/api/business/marketplace/services/${service['id']}'),headers:headers,body:jsonEncode(updated)).timeout(const Duration(seconds:15));if(response.statusCode==409)throw Exception('Gelecekte bekleyen veya onaylanmış randevular olduğu için hizmet süresi değiştirilemiyor.');if(response.statusCode!=200)throw Exception('Hizmet güncellenemedi (${response.statusCode})');await _load();}
   catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString())));}finally{if(mounted)setState(()=>busy=false);}
  }
  Future<void> _editHours(Map<String,dynamic> service)async{
@@ -69,7 +69,7 @@ class _BusinessMarketplacePageState extends State<BusinessMarketplacePage>{
   final hours=await showDialog<Map<String,dynamic>>(context:context,builder:(ctx)=>StatefulBuilder(builder:(ctx,update)=>AlertDialog(title:const Text('Çalışma Saatleri'),content:SizedBox(width:420,child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[for(var i=0;i<7;i++)Column(children:[Row(children:[Expanded(child:Text(names[i])),Switch(value:enabled[i],onChanged:(v)=>update(()=>enabled[i]=v))]),if(enabled[i])Row(children:[Expanded(child:OutlinedButton(onPressed:()async{final t=await showTimePicker(context:ctx,initialTime:start[i]);if(t!=null)update(()=>start[i]=t);},child:Text(_clock(start[i])))),const Padding(padding:EdgeInsets.symmetric(horizontal:6),child:Text('–')),Expanded(child:OutlinedButton(onPressed:()async{final t=await showTimePicker(context:ctx,initialTime:end[i]);if(t!=null)update(()=>end[i]=t);},child:Text(_clock(end[i]))))]),const SizedBox(height:8)])]))),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Vazgeç')),FilledButton(onPressed:(){final value=<String,dynamic>{};for(var i=0;i<7;i++){if(!enabled[i]){value['${i+1}']=null;continue;}final a=_clock(start[i]),b=_clock(end[i]);if(a.compareTo(b)>=0){ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('${names[i]}: kapanış saati açılıştan sonra olmalı.')));return;}value['${i+1}']={'open':a,'close':b};}Navigator.pop(ctx,value);},child:const Text('Kaydet'))])));
   if(hours==null||!mounted)return;
   setState(()=>busy=true);
-  try{final response=await http.patch(Uri.parse('$api/api/business/marketplace/services/${service['id']}/hours'),headers:headers,body:jsonEncode({'weeklyHours':hours,'timezone':'Europe/Istanbul'}));if(response.statusCode==409)throw Exception('Gelecekte bekleyen veya onaylanmış randevular var. Önce bu randevuları sonuçlandırmalısın.');if(response.statusCode!=200)throw Exception('Çalışma saatleri kaydedilemedi (${response.statusCode})');await _load();}
+  try{final response=await http.patch(Uri.parse('$api/api/business/marketplace/services/${service['id']}/hours'),headers:headers,body:jsonEncode({'weeklyHours':hours,'timezone':'Europe/Istanbul'})).timeout(const Duration(seconds:15));if(response.statusCode==409)throw Exception('Gelecekte bekleyen veya onaylanmış randevular var. Önce bu randevuları sonuçlandırmalısın.');if(response.statusCode!=200)throw Exception('Çalışma saatleri kaydedilemedi (${response.statusCode})');await _load();}
   catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString())));}finally{if(mounted)setState(()=>busy=false);}
  }
  String _clock(TimeOfDay t)=>'${t.hour.toString().padLeft(2,'0')}:${t.minute.toString().padLeft(2,'0')}';
@@ -79,7 +79,7 @@ class _BusinessMarketplacePageState extends State<BusinessMarketplacePage>{
   setState(()=>busy=true);
   try{
    final body={'title':service['title'],'description':service['description']??'','category':service['category'],'priceCents':service['price_cents'],'durationMinutes':service['duration_minutes'],'active':service['active']!=true};
-   final response=await http.patch(Uri.parse('$api/api/business/marketplace/services/${service['id']}'),headers:headers,body:jsonEncode(body));
+   final response=await http.patch(Uri.parse('$api/api/business/marketplace/services/${service['id']}'),headers:headers,body:jsonEncode(body)).timeout(const Duration(seconds:15));
    if(response.statusCode!=200)throw Exception('Hizmet durumu güncellenemedi (${response.statusCode})');
    await _load();
   }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString())));}finally{if(mounted)setState(()=>busy=false);}
