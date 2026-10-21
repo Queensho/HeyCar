@@ -32,6 +32,10 @@ jobs:
         run: python3 -m unittest discover -s tool/tests -p test_fix_runtime_android.py -v
       - name: Analyze unified marketplace owner and business screens
         run: flutter analyze lib/cepqar_offers_page.dart lib/marketplace_service_page.dart lib/marketplace_appointments_page.dart lib/business_marketplace_page.dart --no-fatal-infos --no-fatal-warnings
+      - name: Compile owner web app on pull requests
+        run: |
+          flutter create . --platforms=web --project-name heycar_app --no-pub
+          flutter build web --debug --target lib/entry_theme_live.dart
       - name: Analyze Maintenance V2 screens
         run: flutter analyze lib/maintenance_v2_page.dart lib/maintenance_page.dart --no-fatal-infos --no-fatal-warnings
       - name: Analyze owner light theme screens
