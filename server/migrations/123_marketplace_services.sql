@@ -24,3 +24,7 @@ CREATE TABLE IF NOT EXISTS marketplace_appointments (
 );
 CREATE INDEX IF NOT EXISTS idx_marketplace_appointments_owner ON marketplace_appointments(owner_id,created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_marketplace_appointments_service ON marketplace_appointments(service_id,status);
+-- Speed up future booking collision checks and business appointment queries.
+CREATE INDEX IF NOT EXISTS idx_marketplace_appointments_active_schedule
+ ON marketplace_appointments(service_id,requested_at)
+ WHERE status IN ('pending','confirmed');
