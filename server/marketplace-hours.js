@@ -1,7 +1,7 @@
 'use strict';
 function validWeeklyHours(hours){
  if(!hours||typeof hours!=='object'||Array.isArray(hours)||Object.keys(hours).length!==7)return false;
- return [1,2,3,4,5,6,7].every(day=>{const v=hours[String(day)];if(v===null)return true;if(!v||typeof v!=='object'||Array.isArray(v))return false;const re=/^(?:[01]\d|2[0-3]):[0-5]\d$/;return re.test(v.open)&&re.test(v.close)&&v.open<v.close;});
+ return [1,2,3,4,5,6,7].every(day=>{const v=hours[String(day)];if(v===null)return true;if(!v||typeof v!=='object'||Array.isArray(v))return false;const re=/^(?:[01]\d|2[0-3]):[0-5]\d$/;return Object.keys(v).length===2&&typeof v.open==='string'&&typeof v.close==='string'&&re.test(v.open)&&re.test(v.close)&&v.open<v.close;});
 }
 function localBookingParts(date,tz){
  const parts=new Intl.DateTimeFormat('en-GB',{timeZone:tz,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(date);
