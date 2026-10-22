@@ -132,7 +132,7 @@ class _BusinessMarketplacePageState extends State<BusinessMarketplacePage>{
   if(busy)return;
   setState(()=>busy=true);
   try{
-   final body={'title':service['title'],'description':service['description']??'','category':service['category'],'priceCents':service['price_cents'],'durationMinutes':service['duration_minutes'],'active':service['active']!=true};
+   final body={'title':service['title'],'description':service['description']??'','category':service['category'],'priceCents':int.tryParse((service['price_cents']??0).toString())??0,'durationMinutes':service['duration_minutes'],'active':service['active']!=true};
    final response=await http.patch(Uri.parse('$api/api/business/marketplace/services/${service['id']}'),headers:headers,body:jsonEncode(body)).timeout(const Duration(seconds:15));
    if(response.statusCode!=200)throw Exception('Hizmet durumu güncellenemedi (${response.statusCode})');
    await _load();
@@ -154,8 +154,10 @@ class _BusinessMarketplacePageState extends State<BusinessMarketplacePage>{
  @override Widget build(BuildContext context)=>Scaffold(backgroundColor:const Color(0xFFF8F9FC),appBar:AppBar(title:const Text('Hizmetlerim ve Randevular'),backgroundColor:Colors.white,actions:[IconButton(onPressed:loading||busy?null:_load,tooltip:'Hizmetleri ve randevuları yenile',icon:const Icon(Icons.refresh))]),body:loading?const Center(child:CircularProgressIndicator()):ListView(padding:const EdgeInsets.all(16),children:[
   if(error!=null)Text(error!,style:const TextStyle(color:Colors.red)),
   Row(children:[const Expanded(child:Text('Hizmetlerim',style:TextStyle(fontSize:19,fontWeight:FontWeight.w800))),FilledButton.icon(onPressed:busy?null:_createService,icon:const Icon(Icons.add),label:const Text('Hizmet Ekle'),style:FilledButton.styleFrom(backgroundColor:purple))]),
+  Wrap(spacing:8,runSpacing:4,children:[for(final status in ['pending','confirmed','completed'])Chip(label:Text('${status=='pending'?'Bekleyen':status=='confirmed'?'Onaylanan':'Tamamlanan'}: ${appointments.where((a)=>a['status']==status).length}'))]),
+  const Text('İstatistikler son 100 randevuyu kapsar.',style:TextStyle(fontSize:11,color:Color(0xFF778096))),
   if(services.isEmpty)const Padding(padding:EdgeInsets.all(12),child:Text('Henüz hizmet eklenmedi.')),
-  ...services.map((s)=>Card(color:Colors.white,child:ListTile(title:Text((s['title']??'').toString()),subtitle:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text((s['category']??'').toString()),TextButton.icon(onPressed:busy?null:()=>_editHours(s),icon:const Icon(Icons.schedule,size:16),label:const Text('Çalışma Saatleri')),TextButton.icon(onPressed:busy?null:()=>_manageImages(s),icon:const Icon(Icons.photo_library_outlined,size:16),label:const Text('Fotoğraflar'))]),onTap:busy?null:()=>_editService(s),trailing:SizedBox(width:100,height:58,child:Column(mainAxisSize:MainAxisSize.min,children:[Text('₺${((num.tryParse(s['price_cents'].toString())??0)/100).toStringAsFixed(2)}'),SizedBox(height:32,child:FittedBox(fit:BoxFit.contain,child:Switch(value:s['active']==true,onChanged:busy?null:(_)=>_toggleService(s),activeThumbColor:purple)))]))))),
+  ...services.map((s)=>Card(color:Colors.white,child:ListTile(title:Text((s['title']??'').toString()),subtitle:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text((s['category']??'').toString()),if(s['admin_hidden']==true)Text('Yönetici tarafından yayından kaldırıldı: ${s['moderation_reason']??''}',style:const TextStyle(color:Colors.red)),TextButton.icon(onPressed:busy?null:()=>_editHours(s),icon:const Icon(Icons.schedule,size:16),label:const Text('Çalışma Saatleri')),TextButton.icon(onPressed:busy?null:()=>_manageImages(s),icon:const Icon(Icons.photo_library_outlined,size:16),label:const Text('Fotoğraflar'))]),onTap:busy?null:()=>_editService(s),trailing:SizedBox(width:100,height:58,child:Column(mainAxisSize:MainAxisSize.min,children:[Text('₺${((num.tryParse(s['price_cents'].toString())??0)/100).toStringAsFixed(2)}'),SizedBox(height:32,child:FittedBox(fit:BoxFit.contain,child:Switch(value:s['active']==true,onChanged:busy?null:(_)=>_toggleService(s),activeThumbColor:purple)))]))))),
   const SizedBox(height:20),const Text('Randevu Talepleri',style:TextStyle(fontSize:19,fontWeight:FontWeight.w800)),const SizedBox(height:8),
   if(appointments.isEmpty)const Padding(padding:EdgeInsets.all(12),child:Text('Henüz randevu talebi yok.')),
   ...appointments.map((a)=>Card(color:Colors.white,child:Padding(padding:const EdgeInsets.all(12),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
@@ -166,3 +168,4 @@ class _BusinessMarketplacePageState extends State<BusinessMarketplacePage>{
   ])))),
  ]));
 }
+

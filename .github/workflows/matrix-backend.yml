@@ -71,7 +71,7 @@ jobs:
 
       - name: Test marketplace booking hours
         working-directory: server
-        run: node --test tests/marketplace-hours.test.js tests/marketplace-availability.test.js tests/marketplace-routes.test.js
+        run: node --test tests/marketplace-hours.test.js tests/marketplace-availability.test.js tests/marketplace-routes.test.js tests/business-image.test.js
 
       - name: Run valet security regression tests
         working-directory: server
@@ -193,6 +193,12 @@ jobs:
       - name: Verify tracked migration rerun is idempotent
         working-directory: server
         run: npm run migrate
+
+      - name: Test marketplace HTTP lifecycle and concurrent bookings on PostgreSQL
+        working-directory: server
+        env:
+          MARKETPLACE_PG_TEST: '1'
+        run: node --test tests/marketplace-postgres.test.js
 
       - name: Verify migration tracking count
         shell: bash

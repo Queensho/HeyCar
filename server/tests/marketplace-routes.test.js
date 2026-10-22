@@ -63,7 +63,7 @@ test('availability validates query shape before accessing the database',async()=
 });
 test('unpublished services cannot expose availability',async()=>{
  const call=routes({query:async(sql,values)=>{
-  assert.match(sql,/s\.active AND b\.is_active AND b\.approval_status='approved'/);
+  assert.match(sql,/s\.active AND NOT s\.admin_hidden AND b\.is_active AND b\.approval_status='approved'/);
   assert.equal(values[0],id);
   return {rows:[],rowCount:0};
  }});

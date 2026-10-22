@@ -31,7 +31,7 @@ jobs:
       - name: Check redesigned notifications compatibility with Android runtime patch
         run: python3 -m unittest discover -s tool/tests -p test_fix_runtime_android.py -v
       - name: Analyze unified marketplace owner and business screens
-        run: flutter analyze lib/cepqar_offers_page.dart lib/marketplace_service_page.dart lib/marketplace_appointments_page.dart lib/business_marketplace_page.dart --no-fatal-infos --no-fatal-warnings
+        run: flutter analyze lib/cepqar_offers_page.dart lib/marketplace_service_page.dart lib/marketplace_appointments_page.dart lib/business_marketplace_page.dart lib/admin_marketplace_page.dart --no-fatal-infos --no-fatal-warnings
       - name: Compile owner web app on pull requests
         run: |
           flutter create . --platforms=web --project-name heycar_app --no-pub
@@ -43,6 +43,10 @@ jobs:
           path: build/web/
           if-no-files-found: error
           retention-days: 7
+      - name: Compile marketplace business and admin web panels
+        run: |
+          flutter build web --debug --target lib/entry_business.dart
+          flutter build web --debug --target lib/admin_v3.dart
       - name: Compile Android owner APK on pull requests
         run: |
           flutter create . --platforms=android --project-name app --org com.cepqar --no-pub
@@ -407,4 +411,5 @@ jobs:
           name: cepqontag-owner-android-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
           retention-days: 14
+
 

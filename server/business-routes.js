@@ -1,6 +1,7 @@
 const {validWeeklyHours,isWithinWeeklyHours,resolveLocalBookingTime,localBookingParts}=require('./marketplace-hours');
 const {availableSlots}=require('./marketplace-availability');
 const crypto=require('crypto');
+const {decodeBusinessImage}=require('./business-image');
 const {getAppSettings}=require('./app-settings-service');
 const {ownerId:authenticatedOwnerId}=require('./owner-auth-service');
 const {driverId:authenticatedDriverId}=require('./driver-auth-service');
@@ -50,7 +51,7 @@ module.exports=function registerBusinessRoutes(app,pool){
  const fs=require('fs'),path=require('path');
  const uploadDir=process.env.BUSINESS_UPLOAD_DIR||'/opt/heycar/uploads/business';try{fs.mkdirSync(uploadDir,{recursive:true});}catch(e){console.error('upload dir',e);}
  app.get('/uploads/business/:name',(req,res)=>{const n=path.basename(String(req.params.name||''));if(!/^[a-f0-9-]+\.(jpg|jpeg|png|webp)$/i.test(n))return res.status(404).end();res.sendFile(path.join(uploadDir,n));});
- app.post('/api/business/media',async(req,res)=>{const account=await auth(req,res);if(!account)return;try{const body=req.body||{},raw=String(body.data||''),kind=String(body.kind||'campaign');const m=raw.match(/^data:image\/(jpeg|jpg|png|webp);base64,(.+)$/);if(!m)return res.status(400).json({error:'INVALID_IMAGE'});const buf=Buffer.from(m[2],'base64');if(!buf.length||buf.length>2500000)return res.status(413).json({error:'IMAGE_TOO_LARGE'});const ext=m[1]==='jpeg'?'jpg':m[1],name=crypto.randomUUID()+'.'+ext;fs.writeFileSync(path.join(uploadDir,name),buf,{mode:0o644});const base=String(process.env.PUBLIC_API_BASE_URL||'https://cepqar.com').replace(/\/$/,'');res.status(201).json({ok:true,url:base+'/uploads/business/'+name,kind});}catch(e){console.error('business media',e);res.status(500).json({error:'UPLOAD_FAILED'});}});
+ app.post('/api/business/media',async(req,res)=>{const account=await auth(req,res);if(!account)return;try{const body=req.body||{},raw=String(body.data||''),kind=String(body.kind||'campaign');const image=decodeBusinessImage(raw);if(image.error)return res.status(image.status).json({error:image.error});const buf=image.buffer,ext=image.ext,name=crypto.randomUUID()+'.'+ext;fs.writeFileSync(path.join(uploadDir,name),buf,{mode:0o644});const base=String(process.env.PUBLIC_API_BASE_URL||'https://cepqar.com').replace(/\/$/,'');res.status(201).json({ok:true,url:base+'/uploads/business/'+name,kind});}catch(e){console.error('business media',e);res.status(500).json({error:'UPLOAD_FAILED'});}});
 
  async function auth(req,res){const raw=String(req.headers.authorization||'').replace(/^Bearer\s+/i,'');if(!raw){res.status(401).json({error:'AUTH_REQUIRED'});return null;}const q=await pool.query("SELECT a.id FROM business_sessions s JOIN business_accounts a ON a.id=s.account_id WHERE s.token_hash=$1 AND s.expires_at>now()",[hash(raw)]);if(!q.rowCount){res.status(401).json({error:'INVALID_SESSION'});return null;}return q.rows[0].id;}
  app.post('/api/business/address-candidates',async(req,res)=>{try{const {street,houseNumber,district,city}=req.body||{};if(!street||!houseNumber||!city)return res.status(400).json({error:'INVALID_ADDRESS'});const key=process.env.GEOAPIFY_API_KEY;if(!key)return res.status(503).json({error:'GEOCODING_UNAVAILABLE'});const text=[street,'No: '+houseNumber,district,city,'Türkiye'].filter(Boolean).join(', ');const url='https://api.geoapify.com/v1/geocode/search?text='+encodeURIComponent(text)+'&limit=5&filter=countrycode:tr&lang=tr&apiKey='+encodeURIComponent(key);const gr=await fetch(url);const gj=await gr.json();const norm=s=>String(s||'').toLocaleLowerCase('tr-TR').replace(/[^a-z0-9çğıöşü]/g,'');const wantedStreet=norm(street),wantedHouse=norm(houseNumber),wantedDistrict=norm(district),wantedCity=norm(city);const rows=(gj.features||[]).map(f=>f.properties||{}).map(p=>{const confidence=Number(p.rank&&p.rank.confidence||0);const streetOk=norm(p.street)===wantedStreet;const houseOk=norm(p.housenumber)===wantedHouse;const area=[p.suburb,p.district,p.city,p.county,p.state].map(norm);const districtOk=!wantedDistrict||area.some(x=>x.includes(wantedDistrict)||wantedDistrict.includes(x));const cityOk=!wantedCity||area.some(x=>x.includes(wantedCity)||wantedCity.includes(x));const score=(streetOk?4:0)+(houseOk?3:0)+(districtOk?2:0)+(cityOk?2:0)+confidence;return {formatted:p.formatted,latitude:Number(p.lat),longitude:Number(p.lon),confidence,streetOk,houseOk,districtOk,cityOk,score};}).filter(x=>Number.isFinite(x.latitude)&&Number.isFinite(x.longitude)).sort((a,b)=>b.score-a.score);res.json({ok:true,candidates:rows});}catch(e){console.error('address candidates',e);res.status(503).json({error:'GEOCODING_FAILED'});}});
@@ -121,7 +122,7 @@ module.exports=function registerBusinessRoutes(app,pool){
  app.get('/api/marketplace/services/:id/availability',async(req,res)=>{
   if(!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(req.params.id)||typeof req.query.date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(req.query.date))return res.status(400).json({error:'INVALID_AVAILABILITY_QUERY'});
   try{
-   const q=await pool.query("SELECT s.business_id,s.duration_minutes,s.weekly_hours,s.booking_timezone FROM marketplace_services s JOIN businesses b ON b.id=s.business_id WHERE s.id=$1 AND s.active AND b.is_active AND b.approval_status='approved'",[req.params.id]);
+   const q=await pool.query("SELECT s.business_id,s.duration_minutes,s.weekly_hours,s.booking_timezone FROM marketplace_services s JOIN businesses b ON b.id=s.business_id WHERE s.id=$1 AND s.active AND NOT s.admin_hidden AND b.is_active AND b.approval_status='approved'",[req.params.id]);
    if(!q.rowCount)return res.status(404).json({error:'SERVICE_NOT_FOUND'});
    const service=q.rows[0],timezone=service.booking_timezone||'Europe/Istanbul';
    const noon=resolveLocalBookingTime(req.query.date,'12:00',timezone);
@@ -134,7 +135,7 @@ module.exports=function registerBusinessRoutes(app,pool){
   }catch(e){console.error('marketplace availability',e);return res.status(500).json({error:'AVAILABILITY_UNAVAILABLE'});}
  });
  app.get('/api/marketplace/services',async(req,res)=>{try{
-  const q=await pool.query("SELECT s.id,s.business_id,s.title,s.description,s.category,s.price_cents,s.duration_minutes,s.weekly_hours,s.booking_timezone,b.name AS business_name,b.address FROM marketplace_services s JOIN businesses b ON b.id=s.business_id WHERE s.active=true AND b.is_active=true AND b.approval_status='approved' ORDER BY s.created_at DESC LIMIT 100");
+  const q=await pool.query("SELECT s.id,s.business_id,s.title,s.description,s.category,s.price_cents,s.duration_minutes,s.weekly_hours,s.booking_timezone,b.name AS business_name,b.address FROM marketplace_services s JOIN businesses b ON b.id=s.business_id WHERE s.active=true AND NOT s.admin_hidden AND b.is_active=true AND b.approval_status='approved' ORDER BY s.created_at DESC LIMIT 100");
   res.json({ok:true,services:q.rows});
  }catch(e){console.error('marketplace list',e);res.status(500).json({error:'SERVICES_UNAVAILABLE'});}});
 
@@ -142,8 +143,8 @@ module.exports=function registerBusinessRoutes(app,pool){
  app.get('/api/marketplace/services/:id/reviews',async(req,res)=>{
   if(!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(req.params.id))return res.status(400).json({error:'INVALID_SERVICE'});
   try{
-   const q=await pool.query("SELECT r.id,r.rating,r.comment,r.created_at FROM marketplace_reviews r JOIN marketplace_appointments a ON a.id=r.appointment_id WHERE r.service_id=$1 AND a.status='completed' ORDER BY r.created_at DESC LIMIT 50",[req.params.id]);
-   const summary=await pool.query("SELECT count(*)::int AS review_count,round(avg(rating)::numeric,1) AS average_rating FROM marketplace_reviews r JOIN marketplace_appointments a ON a.id=r.appointment_id WHERE r.service_id=$1 AND a.status='completed'",[req.params.id]);
+   const q=await pool.query("SELECT r.id,r.rating,r.comment,r.created_at FROM marketplace_reviews r JOIN marketplace_appointments a ON a.id=r.appointment_id WHERE r.service_id=$1 AND a.status='completed' AND EXISTS (SELECT 1 FROM marketplace_services s JOIN businesses b ON b.id=s.business_id WHERE s.id=r.service_id AND s.active AND NOT s.admin_hidden AND b.is_active AND b.approval_status='approved') ORDER BY r.created_at DESC LIMIT 50",[req.params.id]);
+   const summary=await pool.query("SELECT count(*)::int AS review_count,round(avg(rating)::numeric,1) AS average_rating FROM marketplace_reviews r JOIN marketplace_appointments a ON a.id=r.appointment_id WHERE r.service_id=$1 AND a.status='completed' AND EXISTS (SELECT 1 FROM marketplace_services s JOIN businesses b ON b.id=s.business_id WHERE s.id=r.service_id AND s.active AND NOT s.admin_hidden AND b.is_active AND b.approval_status='approved')",[req.params.id]);
    res.json({ok:true,reviews:q.rows,...summary.rows[0]});
   }catch(e){console.error('marketplace reviews',e);res.status(500).json({error:'REVIEWS_UNAVAILABLE'});}
  });
@@ -177,7 +178,7 @@ module.exports=function registerBusinessRoutes(app,pool){
  app.get('/api/marketplace/services/:id/images',async(req,res)=>{
   if(!galleryUuid.test(req.params.id))return res.status(400).json({error:'INVALID_SERVICE'});
   try{
-   const q=await pool.query("SELECT i.id,i.image_url,i.alt_text,i.sort_order FROM marketplace_service_images i JOIN marketplace_services s ON s.id=i.service_id JOIN businesses b ON b.id=s.business_id WHERE i.service_id=$1 AND s.active=true AND b.is_active AND b.approval_status='approved' ORDER BY i.sort_order ASC",[req.params.id]);
+   const q=await pool.query("SELECT i.id,i.image_url,i.alt_text,i.sort_order FROM marketplace_service_images i JOIN marketplace_services s ON s.id=i.service_id JOIN businesses b ON b.id=s.business_id WHERE i.service_id=$1 AND s.active=true AND NOT s.admin_hidden AND b.is_active AND b.approval_status='approved' ORDER BY i.sort_order ASC",[req.params.id]);
    res.json({ok:true,images:q.rows});
   }catch(e){console.error('marketplace images list',e);res.status(500).json({error:'IMAGES_UNAVAILABLE'});}
  });
@@ -265,11 +266,11 @@ module.exports=function registerBusinessRoutes(app,pool){
   if(!owned.rowCount)return res.status(403).json({error:'VEHICLE_NOT_OWNED'});
   const client=await pool.connect();try{
    await client.query('BEGIN');
-   const service=await client.query("SELECT s.id,s.business_id,s.duration_minutes,b.opening_hours FROM marketplace_services s JOIN businesses b ON b.id=s.business_id WHERE s.id=$1 AND s.active AND b.is_active AND b.approval_status='approved'",[serviceId]);
+   const service=await client.query("SELECT s.id,s.business_id,s.duration_minutes,b.opening_hours FROM marketplace_services s JOIN businesses b ON b.id=s.business_id WHERE s.id=$1 AND s.active AND NOT s.admin_hidden AND b.is_active AND b.approval_status='approved'",[serviceId]);
    if(!service.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'SERVICE_NOT_FOUND'});}
    await client.query('SELECT id FROM businesses WHERE id=$1 FOR UPDATE',[service.rows[0].business_id]);
    // Recheck under the business lock: a listing can be disabled while a booking waits.
-   const current=await client.query("SELECT s.duration_minutes,s.weekly_hours,s.booking_timezone FROM marketplace_services s JOIN businesses b ON b.id=s.business_id WHERE s.id=$1 AND s.active=true AND b.is_active=true AND b.approval_status='approved'",[serviceId]);
+   const current=await client.query("SELECT s.duration_minutes,s.weekly_hours,s.booking_timezone FROM marketplace_services s JOIN businesses b ON b.id=s.business_id WHERE s.id=$1 AND s.active=true AND NOT s.admin_hidden AND b.is_active=true AND b.approval_status='approved'",[serviceId]);
    if(!current.rowCount){await client.query('ROLLBACK');return res.status(409).json({error:'SERVICE_UNAVAILABLE'});}
    if(useLocal){date=resolveLocalBookingTime(localDate,localTime,current.rows[0].booking_timezone||'Europe/Istanbul');if(!date){await client.query('ROLLBACK');return res.status(400).json({error:'INVALID_LOCAL_TIME'});}}
    if(date.getTime()<=Date.now()||date.getTime()>Date.now()+90*86400000){await client.query('ROLLBACK');return res.status(400).json({error:'INVALID_APPOINTMENT'});}
