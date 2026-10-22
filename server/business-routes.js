@@ -1,4 +1,5 @@
 const {validWeeklyHours,isWithinWeeklyHours,resolveLocalBookingTime,localBookingParts}=require('./marketplace-hours');
+const {availableSlots}=require('./marketplace-availability');
 const crypto=require('crypto');
 const {getAppSettings}=require('./app-settings-service');
 const {ownerId:authenticatedOwnerId}=require('./owner-auth-service');
@@ -117,6 +118,21 @@ module.exports=function registerBusinessRoutes(app,pool){
  app.get('/api/offers/:campaignId/reviews',async(req,res)=>{try{const q=await pool.query(`SELECT r.rating,r.comment,r.created_at FROM offer_reviews r JOIN business_campaigns c0 ON c0.id=$1 JOIN business_campaigns c ON c.business_id=c0.business_id WHERE r.campaign_id=c.id ORDER BY r.created_at DESC LIMIT 50`,[req.params.campaignId]);const s=await pool.query(`SELECT round(avg(r.rating)::numeric,1) rating,count(r.id)::int review_count FROM offer_reviews r JOIN business_campaigns c0 ON c0.id=$1 JOIN business_campaigns c ON c.business_id=c0.business_id WHERE r.campaign_id=c.id`,[req.params.campaignId]);res.json({ok:true,reviews:q.rows,rating:s.rows[0]?.rating||null,reviewCount:s.rows[0]?.review_count||0});}catch(e){res.status(400).json({error:'INVALID_OFFER'});}});
 
  // Marketplace v1: authenticated business catalog and owner appointments.
+ app.get('/api/marketplace/services/:id/availability',async(req,res)=>{
+  if(!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(req.params.id)||typeof req.query.date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(req.query.date))return res.status(400).json({error:'INVALID_AVAILABILITY_QUERY'});
+  try{
+   const q=await pool.query("SELECT s.business_id,s.duration_minutes,s.weekly_hours,s.booking_timezone FROM marketplace_services s JOIN businesses b ON b.id=s.business_id WHERE s.id=$1 AND s.active AND b.is_active AND b.approval_status='approved'",[req.params.id]);
+   if(!q.rowCount)return res.status(404).json({error:'SERVICE_NOT_FOUND'});
+   const service=q.rows[0],timezone=service.booking_timezone||'Europe/Istanbul';
+   const noon=resolveLocalBookingTime(req.query.date,'12:00',timezone);
+   if(!noon)return res.status(400).json({error:'INVALID_AVAILABILITY_QUERY'});
+   // A 36-hour margin covers local dates, DST and the maximum 24-hour service.
+   const busy=await pool.query("SELECT a.requested_at,a.requested_at + (COALESCE(s.duration_minutes,60) * interval '1 minute') AS ends_at FROM marketplace_appointments a JOIN marketplace_services s ON s.id=a.service_id WHERE s.business_id=$1 AND a.status IN ('pending','confirmed') AND a.requested_at BETWEEN $2::timestamptz - interval '36 hours' AND $2::timestamptz + interval '36 hours'",[service.business_id,noon.toISOString()]);
+   const slots=availableSlots(service,req.query.date,busy.rows);
+   res.set('Cache-Control','no-store');
+   return res.json({ok:true,date:req.query.date,booking_timezone:timezone,duration_minutes:service.duration_minutes||60,slots});
+  }catch(e){console.error('marketplace availability',e);return res.status(500).json({error:'AVAILABILITY_UNAVAILABLE'});}
+ });
  app.get('/api/marketplace/services',async(req,res)=>{try{
   const q=await pool.query("SELECT s.id,s.business_id,s.title,s.description,s.category,s.price_cents,s.duration_minutes,s.weekly_hours,s.booking_timezone,b.name AS business_name,b.address FROM marketplace_services s JOIN businesses b ON b.id=s.business_id WHERE s.active=true AND b.is_active=true AND b.approval_status='approved' ORDER BY s.created_at DESC LIMIT 100");
   res.json({ok:true,services:q.rows});
@@ -161,7 +177,7 @@ module.exports=function registerBusinessRoutes(app,pool){
  app.get('/api/marketplace/services/:id/images',async(req,res)=>{
   if(!galleryUuid.test(req.params.id))return res.status(400).json({error:'INVALID_SERVICE'});
   try{
-   const q=await pool.query('SELECT i.id,i.image_url,i.alt_text,i.sort_order FROM marketplace_service_images i JOIN marketplace_services s ON s.id=i.service_id WHERE i.service_id=$1 AND s.active=true ORDER BY i.sort_order ASC',[req.params.id]);
+   const q=await pool.query("SELECT i.id,i.image_url,i.alt_text,i.sort_order FROM marketplace_service_images i JOIN marketplace_services s ON s.id=i.service_id JOIN businesses b ON b.id=s.business_id WHERE i.service_id=$1 AND s.active=true AND b.is_active AND b.approval_status='approved' ORDER BY i.sort_order ASC",[req.params.id]);
    res.json({ok:true,images:q.rows});
   }catch(e){console.error('marketplace images list',e);res.status(500).json({error:'IMAGES_UNAVAILABLE'});}
  });
@@ -282,3 +298,4 @@ module.exports=function registerBusinessRoutes(app,pool){
  }catch(e){res.status(500).json({error:'APPOINTMENT_UPDATE_FAILED'});}});
 
 };
+

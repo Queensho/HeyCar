@@ -71,7 +71,7 @@ jobs:
 
       - name: Test marketplace booking hours
         working-directory: server
-        run: node --test tests/marketplace-hours.test.js
+        run: node --test tests/marketplace-hours.test.js tests/marketplace-availability.test.js tests/marketplace-routes.test.js
 
       - name: Run valet security regression tests
         working-directory: server
@@ -908,3 +908,4 @@ jobs:
           qr_session_limited=$(curl -sS -o /tmp/qr-session-limited.json -w '%{http_code}'             -X POST -H 'Content-Type: application/json' -d '{}'             "http://127.0.0.1:8090/api/qr/MISSING17/session")
           test "$qr_session_limited" = "429"
           echo "MATRIX_QR_SESSION_PROBE_RATE_LIMIT_OK"
+

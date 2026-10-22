@@ -6,16 +6,18 @@ function validWeeklyHours(hours){
 const formatterCache=new Map();
 function localBookingParts(date,tz){
  let formatter=formatterCache.get(tz);
- if(!formatter){formatter=new Intl.DateTimeFormat('en-GB',{timeZone:tz,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'});if(formatterCache.size>=32)formatterCache.clear();formatterCache.set(tz,formatter);}
+ if(!formatter){formatter=new Intl.DateTimeFormat('en-GB',{timeZone:tz,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'});if(formatterCache.size>=32)formatterCache.clear();formatterCache.set(tz,formatter);}
  const parts=formatter.formatToParts(date);
  const v=Object.fromEntries(parts.map(p=>[p.type,p.value]));
  const weekday=new Date(Date.UTC(Number(v.year),Number(v.month)-1,Number(v.day))).getUTCDay()||7;
- return {weekday,clock:v.hour+':'+v.minute,ymd:v.year+'-'+v.month+'-'+v.day};
+ return {weekday,clock:v.hour+':'+v.minute,second:Number(v.second),ymd:v.year+'-'+v.month+'-'+v.day};
 }
 function isWithinWeeklyHours(start,duration,weekly,tz){
+ if(!(start instanceof Date)||!Number.isFinite(start.getTime())||!Number.isInteger(duration)||duration<15||duration>1440)return false;
  if(!weekly)return true;
+ if(!validWeeklyHours(weekly))return false;
  const a=localBookingParts(start,tz),b=localBookingParts(new Date(start.getTime()+duration*60000),tz),window=weekly[String(a.weekday)];
- return Boolean(window&&a.ymd===b.ymd&&a.clock>=window.open&&b.clock<=window.close);
+ return Boolean(window&&a.ymd===b.ymd&&a.clock>=window.open&&(b.clock<window.close||(b.clock===window.close&&b.second===0&&start.getMilliseconds()===0)));
 }
 function resolveLocalBookingTime(ymd,clock,tz){
  if(typeof ymd!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(ymd)||typeof clock!=='string'||! /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(clock))return null;
@@ -29,3 +31,4 @@ function resolveLocalBookingTime(ymd,clock,tz){
  return matches.length===1?matches[0]:null;
 }
 module.exports={validWeeklyHours,localBookingParts,isWithinWeeklyHours,resolveLocalBookingTime};
+

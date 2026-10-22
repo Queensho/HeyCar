@@ -20,6 +20,10 @@ class _MarketplaceServicePageState extends State<MarketplaceServicePage> {
   DateTime? day;
   TimeOfDay? time;
   bool sending=false;
+  bool slotsLoading=false;
+  List<String> slots=[];
+  String? slotsError;
+  int slotsRequest=0;
   String? error;
   bool imagesLoading=true;
   List<Map<String,dynamic>> images=[];
@@ -97,11 +101,23 @@ class _MarketplaceServicePageState extends State<MarketplaceServicePage> {
     final last=first.add(const Duration(days:89));
     final initial=day!=null&&!day!.isBefore(first)&&!day!.isAfter(last)?day!:first.add(const Duration(days:1));
     final selected=await showDatePicker(context:context,initialDate:initial,firstDate:first,lastDate:last,helpText:'Randevu tarihi');
-    if(selected!=null&&mounted)setState(()=>day=selected);
+    if(selected!=null&&mounted){setState((){day=selected;time=null;});await _loadSlots();}
   }
-  Future<void> _chooseTime()async{
-    final selected=await showTimePicker(context:context,initialTime:time??const TimeOfDay(hour:10,minute:0),helpText:'Randevu saati');
-    if(selected!=null&&mounted)setState(()=>time=selected);
+  Future<void> _loadSlots()async{
+    if(day==null)return;
+    final request=++slotsRequest;
+    final selectedDay=day!;
+    final date='${selectedDay.year.toString().padLeft(4,'0')}-${selectedDay.month.toString().padLeft(2,'0')}-${selectedDay.day.toString().padLeft(2,'0')}';
+    setState((){slotsLoading=true;slotsError=null;slots=[];time=null;});
+    try{
+      final uri=Uri.parse('${OnboardingBackend.baseUrl}/api/marketplace/services/${widget.service['id']}/availability').replace(queryParameters:{'date':date});
+      final response=await OwnerHttp.get(uri).timeout(const Duration(seconds:15));
+      if(response.statusCode!=200)throw Exception('Uygun saatler yüklenemedi.');
+      final data=jsonDecode(response.body) as Map;
+      final values=(data['slots'] as List? ?? []).whereType<Map>().map((s)=>(s['local_time']??'').toString()).where((s)=>RegExp(r'^(?:[01]\d|2[0-3]):[0-5]\d$').hasMatch(s)).toList();
+      if(mounted&&request==slotsRequest)setState(()=>slots=values);
+    }catch(_){if(mounted&&request==slotsRequest)setState(()=>slotsError='Uygun saatler yüklenemedi. Yeniden dene.');}
+    finally{if(mounted&&request==slotsRequest)setState(()=>slotsLoading=false);}
   }
   Future<void> _request()async{
     if(!mounted||sending)return;
@@ -140,6 +156,7 @@ class _MarketplaceServicePageState extends State<MarketplaceServicePage> {
         if((service['address']??'').toString().isNotEmpty)Padding(padding:const EdgeInsets.only(top:5),child:Text(service['address'].toString())),
         if((service['description']??'').toString().isNotEmpty)Padding(padding:const EdgeInsets.only(top:12),child:Text(service['description'].toString())),
         const SizedBox(height:12),Text(cents==null?'Fiyat işletmeden öğrenilir':'₺${(cents/100).toStringAsFixed(2)}',style:const TextStyle(color:purple,fontSize:20,fontWeight:FontWeight.w900)),
+        const SizedBox(height:6),Text('Süre: ${service['duration_minutes']??60} dakika · Ödeme işletmede',style:const TextStyle(fontSize:12,color:Color(0xFF778096))),
       ])),const SizedBox(height:14),
       Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(18)),child:_hoursSummary(service)),const SizedBox(height:14),
       _gallerySection(),const SizedBox(height:14),
@@ -147,12 +164,19 @@ class _MarketplaceServicePageState extends State<MarketplaceServicePage> {
       Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(18)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
         const Text('Randevu Talebi',style:TextStyle(fontSize:17,fontWeight:FontWeight.w800,color:ink)),const SizedBox(height:12),
         TextField(controller:plate,textCapitalization:TextCapitalization.characters,decoration:const InputDecoration(labelText:'Araç plakası',border:OutlineInputBorder())),const SizedBox(height:10),
-        OutlinedButton.icon(onPressed:_chooseDate,icon:const Icon(Icons.calendar_month),label:Text(day==null?'Tarih seç':'${day!.day}.${day!.month}.${day!.year}')),
-        const SizedBox(height:5),OutlinedButton.icon(onPressed:_chooseTime,icon:const Icon(Icons.schedule),label:Text(time==null?'Saat seç':time!.format(context))),
+        OutlinedButton.icon(onPressed:sending?null:_chooseDate,icon:const Icon(Icons.calendar_month),label:Text(day==null?'Tarih seç':'${day!.day}.${day!.month}.${day!.year}')),
+        if(day!=null)...[
+          Row(children:[const Expanded(child:Text('Uygun saatler',style:TextStyle(fontWeight:FontWeight.w700))),IconButton(onPressed:sending||slotsLoading?null:_loadSlots,tooltip:'Saatleri yenile',icon:const Icon(Icons.refresh))]),
+          if(slotsLoading)const LinearProgressIndicator(color:purple)
+          else if(slotsError!=null)Text(slotsError!,style:const TextStyle(color:Colors.red))
+          else if(slots.isEmpty)const Text('Bu tarihte uygun saat yok. Başka bir tarih seç.')
+          else Wrap(spacing:8,runSpacing:4,children:slots.map((clock){final parts=clock.split(':');final value=TimeOfDay(hour:int.parse(parts[0]),minute:int.parse(parts[1]));return ChoiceChip(label:Text(clock),selected:time==value,onSelected:sending?null:(_)=>setState(()=>time=value),selectedColor:const Color(0xFFB9FF45));}).toList()),
+        ],
         if(error!=null)Padding(padding:const EdgeInsets.symmetric(vertical:10),child:Text(error!,style:const TextStyle(color:Colors.red))),
-        const SizedBox(height:12),SizedBox(width:double.infinity,child:FilledButton(onPressed:sending?null:_request,style:FilledButton.styleFrom(backgroundColor:purple,padding:const EdgeInsets.symmetric(vertical:14)),child:Text(sending?'Gönderiliyor...':'Randevu Talebi Gönder'))),
+        const SizedBox(height:12),SizedBox(width:double.infinity,child:FilledButton(onPressed:sending||slotsLoading||time==null?null:_request,style:FilledButton.styleFrom(backgroundColor:purple,padding:const EdgeInsets.symmetric(vertical:14)),child:Text(sending?'Gönderiliyor...':'Randevu Talebi Gönder'))),
         const SizedBox(height:8),const Text('Randevu, işletme onayladıktan sonra kesinleşir.',style:TextStyle(fontSize:11,color:Color(0xFF778096)))
       ]))
     ]));
   }
 }
+
