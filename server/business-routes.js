@@ -143,6 +143,45 @@ module.exports=function registerBusinessRoutes(app,pool){
   }catch(e){console.error('marketplace review create',e);res.status(500).json({error:'REVIEW_CREATE_FAILED'});}
  });
 
+ // Service gallery: read-only public listing and authenticated business management.
+ const galleryUuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+ const galleryUrl=(value)=>typeof value==='string'&&value.length<=2048&&/^https:\/\/[^\\s<>"]+$/.test(value)&&!/[?#]@/.test(value);
+ app.get('/api/marketplace/services/:id/images',async(req,res)=>{
+  if(!galleryUuid.test(req.params.id))return res.status(400).json({error:'INVALID_SERVICE'});
+  try{
+   const q=await pool.query('SELECT i.id,i.image_url,i.alt_text,i.sort_order FROM marketplace_service_images i JOIN marketplace_services s ON s.id=i.service_id WHERE i.service_id=$1 AND s.active=true ORDER BY i.sort_order ASC',[req.params.id]);
+   res.json({ok:true,images:q.rows});
+  }catch(e){console.error('marketplace images list',e);res.status(500).json({error:'IMAGES_UNAVAILABLE'});}
+ });
+ app.get('/api/business/marketplace/services/:id/images',async(req,res)=>{
+  const account=await auth(req,res);if(!account)return;
+  if(!galleryUuid.test(req.params.id))return res.status(400).json({error:'INVALID_SERVICE'});
+  try{
+   const q=await pool.query('SELECT i.id,i.image_url,i.alt_text,i.sort_order FROM marketplace_service_images i JOIN marketplace_services s ON s.id=i.service_id JOIN businesses b ON b.id=s.business_id WHERE s.id=$1 AND b.account_id=$2 ORDER BY i.sort_order ASC',[req.params.id,account]);
+   res.json({ok:true,images:q.rows});
+  }catch(e){console.error('business images list',e);res.status(500).json({error:'IMAGES_UNAVAILABLE'});}
+ });
+ app.post('/api/business/marketplace/services/:id/images',async(req,res)=>{
+  const account=await auth(req,res);if(!account)return;
+  if(!galleryUuid.test(req.params.id))return res.status(400).json({error:'INVALID_SERVICE'});
+  const {imageUrl,altText='',sortOrder}=req.body||{};
+  if(!galleryUrl(imageUrl)||typeof altText!=='string'||altText.length>160||!Number.isInteger(sortOrder)||sortOrder<0||sortOrder>9)return res.status(400).json({error:'INVALID_IMAGE'});
+  try{
+   const q=await pool.query('INSERT INTO marketplace_service_images(service_id,image_url,alt_text,sort_order) SELECT s.id,$3,$4,$5 FROM marketplace_services s JOIN businesses b ON b.id=s.business_id WHERE s.id=$1 AND b.account_id=$2 RETURNING id,image_url,alt_text,sort_order',[req.params.id,account,imageUrl,altText,sortOrder]);
+   if(!q.rowCount)return res.status(404).json({error:'SERVICE_NOT_FOUND'});
+   res.status(201).json({ok:true,image:q.rows[0]});
+  }catch(e){if(e.code==='23505')return res.status(409).json({error:'IMAGE_ALREADY_EXISTS_OR_POSITION_TAKEN'});console.error('business image create',e);res.status(500).json({error:'IMAGE_CREATE_FAILED'});}
+ });
+ app.delete('/api/business/marketplace/services/:id/images/:imageId',async(req,res)=>{
+  const account=await auth(req,res);if(!account)return;
+  if(!galleryUuid.test(req.params.id)||!galleryUuid.test(req.params.imageId))return res.status(400).json({error:'INVALID_IMAGE'});
+  try{
+   const q=await pool.query('DELETE FROM marketplace_service_images i USING marketplace_services s,businesses b WHERE i.id=$1 AND i.service_id=s.id AND s.id=$2 AND s.business_id=b.id AND b.account_id=$3 RETURNING i.id',[req.params.imageId,req.params.id,account]);
+   if(!q.rowCount)return res.status(404).json({error:'IMAGE_NOT_FOUND'});
+   res.json({ok:true});
+  }catch(e){console.error('business image delete',e);res.status(500).json({error:'IMAGE_DELETE_FAILED'});}
+ });
+
  app.get('/api/business/marketplace/services',async(req,res)=>{const account=await auth(req,res);if(!account)return;try{
   const q=await pool.query('SELECT s.* FROM marketplace_services s JOIN businesses b ON b.id=s.business_id WHERE b.account_id=$1 ORDER BY s.created_at DESC',[account]);res.json({ok:true,services:q.rows});
  }catch(e){res.status(500).json({error:'SERVICES_UNAVAILABLE'});}});
