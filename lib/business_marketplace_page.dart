@@ -37,7 +37,7 @@ class _BusinessMarketplacePageState extends State<BusinessMarketplacePage>{
   if(submitted==null)return;
   setState(()=>busy=true);
   try{final response=await http.post(Uri.parse('$api/api/business/marketplace/services'),headers:headers,body:jsonEncode(submitted)).timeout(const Duration(seconds:15));if(response.statusCode!=201)throw Exception('Hizmet kaydedilemedi: ${response.statusCode}');await _load();}
-  catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString())));}finally{if(mounted)setState(()=>busy=false);}
+  on TimeoutException{if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('İşlem zaman aşımına uğradı. Tekrar göndermeden önce listeyi yenileyerek sonucu kontrol et.')));}on SocketException{if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('İnternet bağlantısı kurulamadı. Listeyi yenileyerek işlem durumunu kontrol et.')));}catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString().replaceFirst('Exception: ',''))));}finally{if(mounted)setState(()=>busy=false);}
  }
  Future<void> _editService(Map<String,dynamic> service)async{
   final title=TextEditingController(text:(service['title']??'').toString());
@@ -58,7 +58,7 @@ class _BusinessMarketplacePageState extends State<BusinessMarketplacePage>{
   if(updated==null)return;
   setState(()=>busy=true);
   try{final response=await http.patch(Uri.parse('$api/api/business/marketplace/services/${service['id']}'),headers:headers,body:jsonEncode(updated)).timeout(const Duration(seconds:15));if(response.statusCode==409)throw Exception('Gelecekte bekleyen veya onaylanmış randevular olduğu için hizmet süresi değiştirilemiyor.');if(response.statusCode!=200)throw Exception('Hizmet güncellenemedi (${response.statusCode})');await _load();}
-  catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString())));}finally{if(mounted)setState(()=>busy=false);}
+  on TimeoutException{if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('İşlem zaman aşımına uğradı. Tekrar göndermeden önce listeyi yenileyerek sonucu kontrol et.')));}on SocketException{if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('İnternet bağlantısı kurulamadı. Listeyi yenileyerek işlem durumunu kontrol et.')));}catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString().replaceFirst('Exception: ',''))));}finally{if(mounted)setState(()=>busy=false);}
  }
  Future<void> _editHours(Map<String,dynamic> service)async{
   const names=['Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi','Pazar'];
@@ -70,7 +70,7 @@ class _BusinessMarketplacePageState extends State<BusinessMarketplacePage>{
   if(hours==null||!mounted)return;
   setState(()=>busy=true);
   try{final response=await http.patch(Uri.parse('$api/api/business/marketplace/services/${service['id']}/hours'),headers:headers,body:jsonEncode({'weeklyHours':hours,'timezone':'Europe/Istanbul'})).timeout(const Duration(seconds:15));if(response.statusCode==409)throw Exception('Gelecekte bekleyen veya onaylanmış randevular var. Önce bu randevuları sonuçlandırmalısın.');if(response.statusCode!=200)throw Exception('Çalışma saatleri kaydedilemedi (${response.statusCode})');await _load();}
-  catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString())));}finally{if(mounted)setState(()=>busy=false);}
+  on TimeoutException{if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('İşlem zaman aşımına uğradı. Tekrar göndermeden önce listeyi yenileyerek sonucu kontrol et.')));}on SocketException{if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('İnternet bağlantısı kurulamadı. Listeyi yenileyerek işlem durumunu kontrol et.')));}catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString().replaceFirst('Exception: ',''))));}finally{if(mounted)setState(()=>busy=false);}
  }
  String _clock(TimeOfDay t)=>'${t.hour.toString().padLeft(2,'0')}:${t.minute.toString().padLeft(2,'0')}';
  TimeOfDay _parseClock(dynamic value,TimeOfDay fallback){final parts=(value??'').toString().split(':');if(parts.length!=2)return fallback;final h=int.tryParse(parts[0]),m=int.tryParse(parts[1]);return h!=null&&m!=null&&h>=0&&h<24&&m>=0&&m<60?TimeOfDay(hour:h,minute:m):fallback;}
@@ -82,7 +82,7 @@ class _BusinessMarketplacePageState extends State<BusinessMarketplacePage>{
    final response=await http.patch(Uri.parse('$api/api/business/marketplace/services/${service['id']}'),headers:headers,body:jsonEncode(body)).timeout(const Duration(seconds:15));
    if(response.statusCode!=200)throw Exception('Hizmet durumu güncellenemedi (${response.statusCode})');
    await _load();
-  }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString())));}finally{if(mounted)setState(()=>busy=false);}
+  }on TimeoutException{if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('İşlem zaman aşımına uğradı. Tekrar göndermeden önce listeyi yenileyerek sonucu kontrol et.')));}on SocketException{if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('İnternet bağlantısı kurulamadı. Listeyi yenileyerek işlem durumunu kontrol et.')));}catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString().replaceFirst('Exception: ',''))));}finally{if(mounted)setState(()=>busy=false);}
  }
  Future<void> _setStatus(Map<String,dynamic> appointment,String status)async{
   if(busy)return;
