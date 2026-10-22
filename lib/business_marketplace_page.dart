@@ -74,6 +74,58 @@ class _BusinessMarketplacePageState extends State<BusinessMarketplacePage>{
   try{final response=await http.patch(Uri.parse('$api/api/business/marketplace/services/${service['id']}/hours'),headers:headers,body:jsonEncode({'weeklyHours':hours,'timezone':'Europe/Istanbul'})).timeout(const Duration(seconds:15));if(response.statusCode==409)throw Exception('Gelecekte bekleyen veya onaylanmış randevular var. Önce bu randevuları sonuçlandırmalısın.');if(response.statusCode!=200)throw Exception('Çalışma saatleri kaydedilemedi (${response.statusCode})');await _load();}
   on TimeoutException{if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('İşlem zaman aşımına uğradı. Tekrar göndermeden önce listeyi yenileyerek sonucu kontrol et.')));}on SocketException{if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('İnternet bağlantısı kurulamadı. Listeyi yenileyerek işlem durumunu kontrol et.')));}catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString().replaceFirst('Exception: ',''))));}finally{if(mounted)setState(()=>busy=false);}
  }
+ Future<void> _manageImages(Map<String,dynamic> service)async{
+  final id=(service['id']??'').toString();
+  final url=TextEditingController();
+  final alt=TextEditingController();
+  List<Map<String,dynamic>> images=[];
+  bool fetching=true,saving=false;
+  String? message;
+  Future<void> refresh(void Function(void Function()) update)async{
+   update(()=>fetching=true);
+   try{
+    final r=await http.get(Uri.parse('$api/api/business/marketplace/services/$id/images'),headers:headers).timeout(const Duration(seconds:15));
+    if(r.statusCode!=200)throw Exception('Fotoğraflar yüklenemedi (${r.statusCode})');
+    final data=jsonDecode(r.body) as Map;
+    update((){images=(data['images'] as List? ?? []).whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).toList();message=null;});
+   }catch(e){update(()=>message=e.toString().replaceFirst('Exception: ',''));}
+   finally{update(()=>fetching=false);}
+  }
+  if(!mounted)return;
+  await showDialog<void>(context:context,builder:(dialogContext)=>StatefulBuilder(builder:(ctx,update){
+   if(fetching&&images.isEmpty&&message==null){Future.microtask(()=>refresh(update));message='Yükleniyor';}
+   return AlertDialog(title:const Text('Hizmet Fotoğrafları'),content:SizedBox(width:420,child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
+    if(fetching)const LinearProgressIndicator(color:purple),
+    if(message!=null&&message!='Yükleniyor')Text(message!,style:const TextStyle(color:Colors.red)),
+    for(final item in images)ListTile(contentPadding:EdgeInsets.zero,leading:ClipRRect(borderRadius:BorderRadius.circular(8),child:Image.network((item['image_url']??'').toString(),width:56,height:48,fit:BoxFit.cover,errorBuilder:(_,__,___)=>const Icon(Icons.broken_image_outlined))),title:Text((item['alt_text']??'Fotoğraf').toString(),maxLines:1),trailing:IconButton(tooltip:'Fotoğrafı sil',onPressed:saving?null:()async{
+     update(()=>saving=true);
+     try{
+      final r=await http.delete(Uri.parse('$api/api/business/marketplace/services/$id/images/${item['id']}'),headers:headers).timeout(const Duration(seconds:15));
+      if(r.statusCode!=200)throw Exception('Silinemedi (${r.statusCode})');
+      await refresh(update);
+     }catch(e){update(()=>message=e.toString().replaceFirst('Exception: ',''));}
+     finally{update(()=>saving=false);}
+    },icon:const Icon(Icons.delete_outline,color:Colors.red))),
+    const Divider(),TextField(controller:url,decoration:const InputDecoration(labelText:'HTTPS fotoğraf adresi',hintText:'https://...',border:OutlineInputBorder())),const SizedBox(height:8),
+    TextField(controller:alt,maxLength:160,decoration:const InputDecoration(labelText:'Fotoğraf açıklaması',border:OutlineInputBorder())),
+    const Text('Şimdilik yalnızca güvenilir HTTPS fotoğraf bağlantıları desteklenir.',style:TextStyle(fontSize:11,color:Color(0xFF778096))),
+   ]))),actions:[TextButton(onPressed:()=>Navigator.pop(dialogContext),child:const Text('Kapat')),FilledButton.icon(style:FilledButton.styleFrom(backgroundColor:purple),onPressed:saving||fetching?null:()async{
+    final imageUrl=url.text.trim();
+    if(!imageUrl.startsWith('https://')||images.length>=10){update(()=>message='Geçerli HTTPS adresi girin. En fazla 10 fotoğraf eklenebilir.');return;}
+    final used=images.map((i)=>int.tryParse((i['sort_order']??'').toString())??-1).toSet();
+    final order=List.generate(10,(i)=>i).firstWhere((i)=>!used.contains(i),orElse:()=>-1);
+    if(order<0)return;
+    update(()=>saving=true);
+    try{
+     final r=await http.post(Uri.parse('$api/api/business/marketplace/services/$id/images'),headers:headers,body:jsonEncode({'imageUrl':imageUrl,'altText':alt.text.trim(),'sortOrder':order})).timeout(const Duration(seconds:15));
+     if(r.statusCode!=201)throw Exception(r.statusCode==409?'Bu fotoğraf veya sıra zaten kullanılıyor.':'Fotoğraf eklenemedi (${r.statusCode})');
+     url.clear();alt.clear();await refresh(update);
+    }catch(e){update(()=>message=e.toString().replaceFirst('Exception: ',''));}
+    finally{update(()=>saving=false);}
+   },icon:const Icon(Icons.add_photo_alternate_outlined),label:const Text('Ekle'))]);
+  }));
+  url.dispose();alt.dispose();
+ }
  String _clock(TimeOfDay t)=>'${t.hour.toString().padLeft(2,'0')}:${t.minute.toString().padLeft(2,'0')}';
  TimeOfDay _parseClock(dynamic value,TimeOfDay fallback){final parts=(value??'').toString().split(':');if(parts.length!=2)return fallback;final h=int.tryParse(parts[0]),m=int.tryParse(parts[1]);return h!=null&&m!=null&&h>=0&&h<24&&m>=0&&m<60?TimeOfDay(hour:h,minute:m):fallback;}
  Future<void> _toggleService(Map<String,dynamic> service)async{
@@ -103,7 +155,7 @@ class _BusinessMarketplacePageState extends State<BusinessMarketplacePage>{
   if(error!=null)Text(error!,style:const TextStyle(color:Colors.red)),
   Row(children:[const Expanded(child:Text('Hizmetlerim',style:TextStyle(fontSize:19,fontWeight:FontWeight.w800))),FilledButton.icon(onPressed:busy?null:_createService,icon:const Icon(Icons.add),label:const Text('Hizmet Ekle'),style:FilledButton.styleFrom(backgroundColor:purple))]),
   if(services.isEmpty)const Padding(padding:EdgeInsets.all(12),child:Text('Henüz hizmet eklenmedi.')),
-  ...services.map((s)=>Card(color:Colors.white,child:ListTile(title:Text((s['title']??'').toString()),subtitle:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text((s['category']??'').toString()),TextButton.icon(onPressed:busy?null:()=>_editHours(s),icon:const Icon(Icons.schedule,size:16),label:const Text('Çalışma Saatleri'))]),onTap:busy?null:()=>_editService(s),trailing:SizedBox(width:100,height:58,child:Column(mainAxisSize:MainAxisSize.min,children:[Text('₺${((num.tryParse(s['price_cents'].toString())??0)/100).toStringAsFixed(2)}'),SizedBox(height:32,child:FittedBox(fit:BoxFit.contain,child:Switch(value:s['active']==true,onChanged:busy?null:(_)=>_toggleService(s),activeThumbColor:purple)))]))))),
+  ...services.map((s)=>Card(color:Colors.white,child:ListTile(title:Text((s['title']??'').toString()),subtitle:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text((s['category']??'').toString()),TextButton.icon(onPressed:busy?null:()=>_editHours(s),icon:const Icon(Icons.schedule,size:16),label:const Text('Çalışma Saatleri')),TextButton.icon(onPressed:busy?null:()=>_manageImages(s),icon:const Icon(Icons.photo_library_outlined,size:16),label:const Text('Fotoğraflar'))]),onTap:busy?null:()=>_editService(s),trailing:SizedBox(width:100,height:58,child:Column(mainAxisSize:MainAxisSize.min,children:[Text('₺${((num.tryParse(s['price_cents'].toString())??0)/100).toStringAsFixed(2)}'),SizedBox(height:32,child:FittedBox(fit:BoxFit.contain,child:Switch(value:s['active']==true,onChanged:busy?null:(_)=>_toggleService(s),activeThumbColor:purple)))]))))),
   const SizedBox(height:20),const Text('Randevu Talepleri',style:TextStyle(fontSize:19,fontWeight:FontWeight.w800)),const SizedBox(height:8),
   if(appointments.isEmpty)const Padding(padding:EdgeInsets.all(12),child:Text('Henüz randevu talebi yok.')),
   ...appointments.map((a)=>Card(color:Colors.white,child:Padding(padding:const EdgeInsets.all(12),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
