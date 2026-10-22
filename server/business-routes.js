@@ -146,13 +146,15 @@ module.exports=function registerBusinessRoutes(app,pool){
  // Service gallery: read-only public listing and authenticated business management.
  const galleryUuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
  const galleryUrl=(value)=>{
-  if(typeof value!=='string'||value.length>2048||value.length<12||/[\\s<>"'\\]/.test(value))return false;
+  if(typeof value!=='string'||value.length<12||value.length>2048)return false;
+  if([...value].some(ch=>ch.charCodeAt(0)<=32||ch==='<'
+   ||ch==='>'||ch==='"'||ch==="'"||ch==='\\'))return false;
   try{
    const url=new URL(value);
    if(url.protocol!=='https:'||url.username||url.password||url.port||url.search||url.hash)return false;
-   const host=url.hostname.toLowerCase().replace(/\\.$/,'');
+   const host=url.hostname.toLowerCase();
    if(!host.includes('.')||host==='localhost'||host.endsWith('.localhost')||host.endsWith('.local')||host.endsWith('.internal'))return false;
-   if(/^\\d+\\.\\d+\\.\\d+\\.\\d+$/.test(host)||host.includes(':')||host==='0x7f000001')return false;
+   if(host.includes(':')||host.split('.').every(part=>part.length>0&&[...part].every(ch=>ch>='0'&&ch<='9')))return false;
    return true;
   }catch(_){return false;}
  };
