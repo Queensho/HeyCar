@@ -90,7 +90,10 @@ class _BusinessMarketplacePageState extends State<BusinessMarketplacePage>{
   setState(()=>busy=true);try{
    final id=appointment['id'];final response=await http.patch(Uri.parse('$api/api/business/marketplace/appointments/$id'),headers:headers,body:jsonEncode({'status':status})).timeout(const Duration(seconds:15));
    if(response.statusCode==409){await _load();throw Exception('Randevu durumu değişmiş veya işlem için uygun saat geçmiş olabilir. Liste güncellendi.');}
-   if(response.statusCode!=200)throw Exception('Randevu güncellenemedi (${response.statusCode})');await _load();
+   if(response.statusCode==401||response.statusCode==403)throw Exception('Oturum süresi dolmuş veya bu randevuyu güncelleme yetkin yok. Yeniden giriş yap.');
+   if(response.statusCode==404)throw Exception('Randevu bulunamadı. Listeyi yenileyerek kontrol et.');
+   if(response.statusCode!=200)throw Exception('Randevu güncellenemedi (${response.statusCode}). Tekrar dene.');
+   await _load();
   }on TimeoutException{if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('İşlem zaman aşımına uğradı. Randevu listesini yenileyerek durumu kontrol et.')));}on SocketException{if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('İnternet bağlantısı kurulamadı. Randevu listesini kontrol et.')));}catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString().replaceFirst('Exception: ',''))));}finally{if(mounted)setState(()=>busy=false);}
  }
  bool _canConfirm(Map<String,dynamic> a){final date=DateTime.tryParse((a['requested_at']??'').toString());return date!=null&&date.isAfter(DateTime.now());}
