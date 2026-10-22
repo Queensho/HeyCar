@@ -36,6 +36,13 @@ jobs:
         run: |
           flutter create . --platforms=web --project-name heycar_app --no-pub
           flutter build web --debug --target lib/entry_theme_live.dart
+      - name: Save marketplace web preview bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: cepqontag-marketplace-web-preview
+          path: build/web/
+          if-no-files-found: error
+          retention-days: 7
       - name: Compile Android owner APK on pull requests
         run: |
           flutter create . --platforms=android --project-name app --org com.cepqar --no-pub
