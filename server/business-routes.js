@@ -145,7 +145,17 @@ module.exports=function registerBusinessRoutes(app,pool){
 
  // Service gallery: read-only public listing and authenticated business management.
  const galleryUuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
- const galleryUrl=(value)=>typeof value==='string'&&value.length<=2048&&/^https:\/\/[^\\s<>"]+$/.test(value)&&!/[?#]@/.test(value);
+ const galleryUrl=(value)=>{
+  if(typeof value!=='string'||value.length>2048||value.length<12||/[\\s<>"'\\]/.test(value))return false;
+  try{
+   const url=new URL(value);
+   if(url.protocol!=='https:'||url.username||url.password||url.port||url.search||url.hash)return false;
+   const host=url.hostname.toLowerCase().replace(/\\.$/,'');
+   if(!host.includes('.')||host==='localhost'||host.endsWith('.localhost')||host.endsWith('.local')||host.endsWith('.internal'))return false;
+   if(/^\\d+\\.\\d+\\.\\d+\\.\\d+$/.test(host)||host.includes(':')||host==='0x7f000001')return false;
+   return true;
+  }catch(_){return false;}
+ };
  app.get('/api/marketplace/services/:id/images',async(req,res)=>{
   if(!galleryUuid.test(req.params.id))return res.status(400).json({error:'INVALID_SERVICE'});
   try{
