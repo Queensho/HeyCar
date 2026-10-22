@@ -44,7 +44,7 @@ class _MarketplaceServicePageState extends State<MarketplaceServicePage> {
       else if(images.isEmpty)const Text('Henüz fotoğraf eklenmedi.',style:TextStyle(fontSize:12,color:Color(0xFF778096)))
       else SizedBox(height:160,child:ListView.separated(scrollDirection:Axis.horizontal,itemCount:images.length,separatorBuilder:(_,__)=>const SizedBox(width:10),itemBuilder:(context,index){
         final item=images[index];
-        return ClipRRect(borderRadius:BorderRadius.circular(12),child:Image.network((item['image_url']??'').toString(),width:220,height:160,fit:BoxFit.cover,errorBuilder:(_,__,___)=>const SizedBox(width:220,child:Center(child:Icon(Icons.broken_image_outlined,color:Color(0xFF778096)))));
+        return ClipRRect(borderRadius:BorderRadius.circular(12),child:Image.network((item['image_url']??'').toString(),width:220,height:160,fit:BoxFit.cover,errorBuilder:(_,__,___)=>const SizedBox(width:220,child:Center(child:Icon(Icons.broken_image_outlined,color:Color(0xFF778096))))));
       })),
     ]),
   );
