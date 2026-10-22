@@ -21,13 +21,40 @@ class _MarketplaceServicePageState extends State<MarketplaceServicePage> {
   TimeOfDay? time;
   bool sending=false;
   String? error;
+  bool imagesLoading=true;
+  List<Map<String,dynamic>> images=[];
+  Future<void> _loadImages()async{
+    final id=(widget.service['id']??'').toString();
+    if(id.isEmpty){if(mounted)setState(()=>imagesLoading=false);return;}
+    try{
+      final response=await OwnerHttp.get(Uri.parse('${OnboardingBackend.baseUrl}/api/marketplace/services/$id/images')).timeout(const Duration(seconds:15));
+      if(response.statusCode!=200)throw Exception('Images unavailable');
+      final data=jsonDecode(response.body) as Map;
+      if(mounted)setState(()=>images=(data['images'] as List? ?? []).whereType<Map>().map((item)=>Map<String,dynamic>.from(item)).toList());
+    }catch(_){if(mounted)setState(()=>images=[]);}
+    finally{if(mounted)setState(()=>imagesLoading=false);}
+  }
+  Widget _gallerySection()=>Container(
+    padding:const EdgeInsets.all(14),
+    decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(18)),
+    child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      const Text('Hizmet Fotoğrafları',style:TextStyle(fontSize:16,fontWeight:FontWeight.w800,color:ink)),
+      const SizedBox(height:12),
+      if(imagesLoading)const Center(child:CircularProgressIndicator(color:purple))
+      else if(images.isEmpty)const Text('Henüz fotoğraf eklenmedi.',style:TextStyle(fontSize:12,color:Color(0xFF778096)))
+      else SizedBox(height:160,child:ListView.separated(scrollDirection:Axis.horizontal,itemCount:images.length,separatorBuilder:(_,__)=>const SizedBox(width:10),itemBuilder:(context,index){
+        final item=images[index];
+        return ClipRRect(borderRadius:BorderRadius.circular(12),child:Image.network((item['image_url']??'').toString(),width:220,height:160,fit:BoxFit.cover,errorBuilder:(_,__,___)=>const SizedBox(width:220,child:Center(child:Icon(Icons.broken_image_outlined,color:Color(0xFF778096)))));
+      })),
+    ]),
+  );
   bool reviewsLoading=true;
   String? reviewsError;
   List<Map<String,dynamic>> reviews=[];
   int reviewCount=0;
   String? averageRating;
 
-  @override void initState(){super.initState();_loadReviews();}
+  @override void initState(){super.initState();_loadReviews();_loadImages();}
   Future<void> _loadReviews()async{
     final id=(widget.service['id']??'').toString();
     if(id.isEmpty){if(mounted)setState((){reviewsLoading=false;reviewsError='Hizmet bulunamadı.';});return;}
@@ -115,6 +142,7 @@ class _MarketplaceServicePageState extends State<MarketplaceServicePage> {
         const SizedBox(height:12),Text(cents==null?'Fiyat işletmeden öğrenilir':'₺${(cents/100).toStringAsFixed(2)}',style:const TextStyle(color:purple,fontSize:20,fontWeight:FontWeight.w900)),
       ])),const SizedBox(height:14),
       Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(18)),child:_hoursSummary(service)),const SizedBox(height:14),
+      _gallerySection(),const SizedBox(height:14),
       _reviewsSection(),const SizedBox(height:14),
       Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(18)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
         const Text('Randevu Talebi',style:TextStyle(fontSize:17,fontWeight:FontWeight.w800,color:ink)),const SizedBox(height:12),
