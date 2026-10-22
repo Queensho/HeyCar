@@ -21,6 +21,46 @@ class _MarketplaceServicePageState extends State<MarketplaceServicePage> {
   TimeOfDay? time;
   bool sending=false;
   String? error;
+  bool reviewsLoading=true;
+  String? reviewsError;
+  List<Map<String,dynamic>> reviews=[];
+  int reviewCount=0;
+  String? averageRating;
+
+  @override void initState(){super.initState();_loadReviews();}
+  Future<void> _loadReviews()async{
+    final id=(widget.service['id']??'').toString();
+    if(id.isEmpty){if(mounted)setState((){reviewsLoading=false;reviewsError='Hizmet bulunamadı.';});return;}
+    if(mounted)setState((){reviewsLoading=true;reviewsError=null;});
+    try{
+      final response=await OwnerHttp.get(Uri.parse('${OnboardingBackend.baseUrl}/api/marketplace/services/$id/reviews')).timeout(const Duration(seconds:15));
+      if(response.statusCode!=200)throw Exception('Değerlendirmeler yüklenemedi.');
+      final data=jsonDecode(response.body) as Map;
+      if(mounted)setState((){
+        reviews=(data['reviews'] as List? ?? []).whereType<Map>().map((r)=>Map<String,dynamic>.from(r)).toList();
+        reviewCount=int.tryParse((data['review_count']??'0').toString())??0;
+        averageRating=data['average_rating']?.toString();
+      });
+    }catch(_){if(mounted)setState(()=>reviewsError='Değerlendirmeler şu anda yüklenemiyor.');}
+    finally{if(mounted)setState(()=>reviewsLoading=false);}
+  }
+  Widget _reviewsSection()=>Container(
+    padding:const EdgeInsets.all(16),
+    decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(18)),
+    child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      Row(children:[const Expanded(child:Text('Müşteri Değerlendirmeleri',style:TextStyle(fontSize:16,fontWeight:FontWeight.w800,color:ink))),
+        IconButton(onPressed:reviewsLoading?null:_loadReviews,tooltip:'Yorumları yenile',icon:const Icon(Icons.refresh))]),
+      if(reviewsLoading)const Center(child:Padding(padding:EdgeInsets.all(12),child:CircularProgressIndicator(color:purple)))
+      else if(reviewsError!=null)Text(reviewsError!,style:const TextStyle(color:Color(0xFF778096)))
+      else ...[
+        Text(reviewCount==0?'Henüz değerlendirme yapılmadı.':'⭐ ${averageRating??'-'} / 5 · $reviewCount değerlendirme',style:const TextStyle(fontWeight:FontWeight.w700)),
+        for(final r in reviews)Padding(padding:const EdgeInsets.only(top:12),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          Text('⭐ ${r['rating']??'-'} / 5',style:const TextStyle(fontWeight:FontWeight.w700)),
+          if((r['comment']??'').toString().isNotEmpty)Text(r['comment'].toString()),
+        ])),
+      ],
+    ]),
+  );
 
   @override void dispose(){plate.dispose();super.dispose();}
 
@@ -75,6 +115,7 @@ class _MarketplaceServicePageState extends State<MarketplaceServicePage> {
         const SizedBox(height:12),Text(cents==null?'Fiyat işletmeden öğrenilir':'₺${(cents/100).toStringAsFixed(2)}',style:const TextStyle(color:purple,fontSize:20,fontWeight:FontWeight.w900)),
       ])),const SizedBox(height:14),
       Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(18)),child:_hoursSummary(service)),const SizedBox(height:14),
+      _reviewsSection(),const SizedBox(height:14),
       Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(18)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
         const Text('Randevu Talebi',style:TextStyle(fontSize:17,fontWeight:FontWeight.w800,color:ink)),const SizedBox(height:12),
         TextField(controller:plate,textCapitalization:TextCapitalization.characters,decoration:const InputDecoration(labelText:'Araç plakası',border:OutlineInputBorder())),const SizedBox(height:10),
