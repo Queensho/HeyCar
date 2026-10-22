@@ -37,6 +37,7 @@ class _MarketplaceServicePageState extends State<MarketplaceServicePage> {
     if(selected!=null&&mounted)setState(()=>time=selected);
   }
   Future<void> _request()async{
+    if(!mounted||sending)return;
     if(day==null||time==null||plate.text.trim().isEmpty){setState(()=>error='Tarih, saat ve araç plakası gerekli.');return;}
     final localDate='${day!.year.toString().padLeft(4,'0')}-${day!.month.toString().padLeft(2,'0')}-${day!.day.toString().padLeft(2,'0')}';
     final localTime='${time!.hour.toString().padLeft(2,'0')}:${time!.minute.toString().padLeft(2,'0')}';
