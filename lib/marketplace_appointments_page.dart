@@ -21,7 +21,8 @@ class _MarketplaceAppointmentsPageState extends State<MarketplaceAppointmentsPag
   if(mounted)setState((){loading=true;error=null;});
   try{
    final response=await OwnerHttp.get(Uri.parse('${OnboardingBackend.baseUrl}/api/marketplace/appointments')).timeout(const Duration(seconds:15));
-   if(response.statusCode!=200)throw Exception(response.statusCode==401?'Randevuları görmek için giriş yap.':'Randevular yüklenemedi.');
+   if(response.statusCode==401||response.statusCode==403)throw Exception('Randevuları görmek için yeniden giriş yap.');
+   if(response.statusCode!=200)throw Exception('Randevular yüklenemedi (${response.statusCode}). Tekrar dene.');
    final data=jsonDecode(response.body) as Map;
    if(mounted)setState(()=>appointments=(data['appointments'] as List? ?? []).whereType<Map>().map((a)=>Map<String,dynamic>.from(a)).toList());
   }on TimeoutException{if(mounted)setState(()=>error='Randevular yüklenirken zaman aşımı oluştu. Tekrar dene.');}on SocketException{if(mounted)setState(()=>error='İnternet bağlantısı kurulamadı. Bağlantını kontrol et.');}catch(e){if(mounted)setState(()=>error=e.toString().replaceFirst('Exception: ',''));}
@@ -41,7 +42,9 @@ class _MarketplaceAppointmentsPageState extends State<MarketplaceAppointmentsPag
   try{
    final response=await OwnerHttp.patch(Uri.parse('${OnboardingBackend.baseUrl}/api/marketplace/appointments/$id/cancel')).timeout(const Duration(seconds:15));
    if(response.statusCode==409){await _load();throw Exception('Bu randevu artık iptal edilemiyor. Başlangıç saati geçmiş veya randevu durumu değişmiş olabilir. Liste güncellendi.');}
-   if(response.statusCode!=200)throw Exception('Randevu iptal edilemedi (${response.statusCode}).');
+   if(response.statusCode==401||response.statusCode==403)throw Exception('Oturum süresi dolmuş veya bu randevuyu iptal etme yetkin yok. Yeniden giriş yap.');
+   if(response.statusCode==404)throw Exception('Randevu bulunamadı. Listeyi yenileyerek kontrol et.');
+   if(response.statusCode!=200)throw Exception('Randevu iptal edilemedi (${response.statusCode}). Tekrar dene.');
    await _load();
   }on TimeoutException{if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('İptal isteği zaman aşımına uğradı. Randevu durumunu yenileyerek kontrol et.')));}on SocketException{if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('İnternet bağlantısı kurulamadı. Randevu durumunu kontrol et.')));}catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString().replaceFirst('Exception: ',''))));}
   finally{if(mounted)setState(()=>cancelling=null);}
