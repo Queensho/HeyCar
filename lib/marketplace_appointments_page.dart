@@ -55,8 +55,7 @@ class _MarketplaceAppointmentsPageState extends State<MarketplaceAppointmentsPag
   int rating=5;
   bool submitting=false;
   final comment=TextEditingController();
-  try{
-   await showDialog<void>(context:context,builder:(dialogContext)=>StatefulBuilder(builder:(dialogContext,refresh)=>AlertDialog(
+  final route=DialogRoute<void>(context:context,builder:(dialogContext)=>StatefulBuilder(builder:(dialogContext,refresh)=>AlertDialog(
     title:const Text('Hizmeti Değerlendir'),
     content:Column(mainAxisSize:MainAxisSize.min,children:[
      Wrap(spacing:2,children:List.generate(5,(index)=>IconButton(
@@ -81,7 +80,8 @@ class _MarketplaceAppointmentsPageState extends State<MarketplaceAppointmentsPag
      },child:const Text('Gönder')),
     ],
    )));
-  }finally{comment.dispose();}
+  try{await Navigator.of(context).push(route);}
+  finally{unawaited(route.completed.then((_){comment.dispose();}));}
  }
  bool _canCancel(Map<String,dynamic> a){final start=DateTime.tryParse((a['requested_at']??'').toString());return start!=null&&start.isAfter(DateTime.now());}
  String _status(String raw){switch(raw){case 'pending':return 'Onay Bekliyor';case 'confirmed':return 'Onaylandı';case 'rejected':return 'Reddedildi';case 'cancelled':return 'İptal Edildi';case 'completed':return 'Tamamlandı';default:return raw;}}
@@ -95,3 +95,4 @@ class _MarketplaceAppointmentsPageState extends State<MarketplaceAppointmentsPag
   if((a['status']=='pending'||a['status']=='confirmed')&&_canCancel(a))Align(alignment:Alignment.centerRight,child:TextButton(onPressed:cancelling!=null?null:()=>_cancel(a),child:Text(cancelling==a['id']?'İptal ediliyor...':'İptal Et'))),
  ])))).toList()));
 }
+
