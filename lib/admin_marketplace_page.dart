@@ -28,16 +28,8 @@ class _AdminMarketplacePageState extends State<AdminMarketplacePage> {
   }
   Future<void> moderate(Map<String, dynamic> service) async {
     final hidden = service['admin_hidden'] != true;
-    final reason = TextEditingController();
-    final approved = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
-      title: Text(hidden ? 'Hizmeti yayından kaldır' : 'Hizmeti yeniden yayınla'),
-      content: TextField(controller: reason, maxLength: 1000, maxLines: 3, decoration: InputDecoration(labelText: hidden ? 'Gerekçe (zorunlu)' : 'Gerekçe')),
-      actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Vazgeç')),
-        FilledButton(onPressed: () { if (hidden && reason.text.trim().isEmpty) return; Navigator.pop(ctx, true); }, child: const Text('Uygula'))],
-    ));
-    final text = reason.text.trim();
-    reason.dispose();
-    if (approved != true || !mounted) return;
+    final text = await showDialog<String>(context: context, builder: (_) => _ModerationDialog(hidden: hidden));
+    if (text == null || !mounted) return;
     setState(() => busy = true);
     try { await widget.moderate(service['id'].toString(), hidden, text).timeout(const Duration(seconds: 20)); await refresh(); }
     catch (_) { if (mounted) setState(() => error = 'İşlem doğrulanamadı. Listeyi yenileyerek sonucu kontrol et.'); }
@@ -63,4 +55,27 @@ class _AdminMarketplacePageState extends State<AdminMarketplacePage> {
       TextButton(onPressed: busy || loading ? null : () => moderate(s), child: Text(s['admin_hidden'] == true ? 'Yayın engelini kaldır' : 'Yayından kaldır')),
     ]))),
   ]);
+}
+
+class _ModerationDialog extends StatefulWidget {
+  const _ModerationDialog({required this.hidden});
+  final bool hidden;
+  @override
+  State<_ModerationDialog> createState() => _ModerationDialogState();
+}
+class _ModerationDialogState extends State<_ModerationDialog> {
+  final reason = TextEditingController();
+  bool missingReason = false;
+  @override
+  void dispose() { reason.dispose(); super.dispose(); }
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: Text(widget.hidden ? 'Hizmeti yayından kaldır' : 'Hizmeti yeniden yayınla'),
+    content: TextField(controller: reason, maxLength: 1000, maxLines: 3, decoration: InputDecoration(labelText: widget.hidden ? 'Gerekçe (zorunlu)' : 'Gerekçe', errorText: missingReason ? 'Yayından kaldırma gerekçesi gerekli.' : null)),
+    actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Vazgeç')),
+      FilledButton(onPressed: () {
+        if (widget.hidden && reason.text.trim().isEmpty) { setState(() => missingReason = true); return; }
+        Navigator.pop(context, reason.text.trim());
+      }, child: const Text('Uygula'))],
+  );
 }

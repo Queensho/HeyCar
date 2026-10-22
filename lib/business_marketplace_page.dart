@@ -28,14 +28,15 @@ class _BusinessMarketplacePageState extends State<BusinessMarketplacePage>{
  Future<void> _createService()async{
   final title=TextEditingController(),description=TextEditingController(),price=TextEditingController(),duration=TextEditingController(text:'60');
   String category='Servis';
-  final submitted=await showDialog<Map<String,dynamic>>(context:context,builder:(ctx)=>StatefulBuilder(builder:(ctx,update)=>AlertDialog(title:const Text('Yeni Hizmet'),content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
+  final route=DialogRoute<Map<String,dynamic>>(context:context,builder:(ctx)=>StatefulBuilder(builder:(ctx,update)=>AlertDialog(title:const Text('Yeni Hizmet'),content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
    TextField(controller:title,decoration:const InputDecoration(labelText:'Hizmet adı')),
    TextField(controller:description,maxLines:2,decoration:const InputDecoration(labelText:'Açıklama')),
    DropdownButtonFormField<String>(initialValue:category,items:const ['Servis','Oto Yıkama','Lastik','Akaryakıt','Detailing','Otopark'].map((c)=>DropdownMenuItem(value:c,child:Text(c))).toList(),onChanged:(v){if(v!=null)update(()=>category=v);},decoration:const InputDecoration(labelText:'Kategori')),
    TextField(controller:price,keyboardType:const TextInputType.numberWithOptions(decimal:true),decoration:const InputDecoration(labelText:'Fiyat (TL)')),
    TextField(controller:duration,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'Süre (dakika)')),
   ])),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Vazgeç')),FilledButton(onPressed:(){final p=num.tryParse(price.text.replaceAll(',','.'));final d=int.tryParse(duration.text);if(title.text.trim().length<2||p==null||p<0||d==null||d<15||d>1440)return;Navigator.pop(ctx,{'title':title.text.trim(),'description':description.text.trim(),'category':category,'priceCents':(p*100).round(),'durationMinutes':d});},child:const Text('Kaydet'))])));
-  title.dispose();description.dispose();price.dispose();duration.dispose();
+  final submitted=await Navigator.of(context).push(route);
+  unawaited(route.completed.then((_){title.dispose();description.dispose();price.dispose();duration.dispose();}));
   if(submitted==null||!mounted||busy)return;
   setState(()=>busy=true);
   try{final response=await http.post(Uri.parse('$api/api/business/marketplace/services'),headers:headers,body:jsonEncode(submitted)).timeout(const Duration(seconds:15));if(response.statusCode!=201)throw Exception('Hizmet kaydedilemedi: ${response.statusCode}');await _load();}
@@ -49,14 +50,15 @@ class _BusinessMarketplacePageState extends State<BusinessMarketplacePage>{
   String category=(service['category']??'Servis').toString();
   const categories=['Servis','Oto Yıkama','Lastik','Akaryakıt','Detailing','Otopark'];
   if(!categories.contains(category))category='Servis';
-  final updated=await showDialog<Map<String,dynamic>>(context:context,builder:(ctx)=>StatefulBuilder(builder:(ctx,update)=>AlertDialog(title:const Text('Hizmeti Düzenle'),content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
+  final route=DialogRoute<Map<String,dynamic>>(context:context,builder:(ctx)=>StatefulBuilder(builder:(ctx,update)=>AlertDialog(title:const Text('Hizmeti Düzenle'),content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
    TextField(controller:title,decoration:const InputDecoration(labelText:'Hizmet adı')),
    TextField(controller:description,maxLines:2,decoration:const InputDecoration(labelText:'Açıklama')),
    DropdownButtonFormField<String>(initialValue:category,items:categories.map((c)=>DropdownMenuItem(value:c,child:Text(c))).toList(),onChanged:(v){if(v!=null)update(()=>category=v);},decoration:const InputDecoration(labelText:'Kategori')),
    TextField(controller:price,keyboardType:const TextInputType.numberWithOptions(decimal:true),decoration:const InputDecoration(labelText:'Fiyat (TL)')),
    TextField(controller:duration,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'Süre (dakika)')),
   ])),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Vazgeç')),FilledButton(onPressed:(){final p=num.tryParse(price.text.replaceAll(',','.'));final d=int.tryParse(duration.text);if(title.text.trim().length<2||p==null||p<0||d==null||d<15||d>1440)return;Navigator.pop(ctx,{'title':title.text.trim(),'description':description.text.trim(),'category':category,'priceCents':(p*100).round(),'durationMinutes':d,'active':service['active']==true});},child:const Text('Kaydet'))])));
-  title.dispose();description.dispose();price.dispose();duration.dispose();
+  final updated=await Navigator.of(context).push(route);
+  unawaited(route.completed.then((_){title.dispose();description.dispose();price.dispose();duration.dispose();}));
   if(updated==null||!mounted||busy)return;
   setState(()=>busy=true);
   try{final response=await http.patch(Uri.parse('$api/api/business/marketplace/services/${service['id']}'),headers:headers,body:jsonEncode(updated)).timeout(const Duration(seconds:15));if(response.statusCode==409)throw Exception('Gelecekte bekleyen veya onaylanmış randevular olduğu için hizmet süresi değiştirilemiyor.');if(response.statusCode!=200)throw Exception('Hizmet güncellenemedi (${response.statusCode})');await _load();}
@@ -92,7 +94,8 @@ class _BusinessMarketplacePageState extends State<BusinessMarketplacePage>{
    finally{update(()=>fetching=false);}
   }
   if(!mounted)return;
-  await showDialog<void>(context:context,builder:(dialogContext)=>StatefulBuilder(builder:(ctx,update){
+  final route=DialogRoute<void>(context:context,builder:(dialogContext)=>StatefulBuilder(builder:(ctx,rawUpdate){
+   void update(VoidCallback fn){if(ctx.mounted)rawUpdate(fn);}
    if(fetching&&images.isEmpty&&message==null){Future.microtask(()=>refresh(update));message='Yükleniyor';}
    return AlertDialog(title:const Text('Hizmet Fotoğrafları'),content:SizedBox(width:420,child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
     if(fetching)const LinearProgressIndicator(color:purple),
@@ -119,12 +122,14 @@ class _BusinessMarketplacePageState extends State<BusinessMarketplacePage>{
     try{
      final r=await http.post(Uri.parse('$api/api/business/marketplace/services/$id/images'),headers:headers,body:jsonEncode({'imageUrl':imageUrl,'altText':alt.text.trim(),'sortOrder':order})).timeout(const Duration(seconds:15));
      if(r.statusCode!=201)throw Exception(r.statusCode==409?'Bu fotoğraf veya sıra zaten kullanılıyor.':'Fotoğraf eklenemedi (${r.statusCode})');
+     if(!ctx.mounted)return;
      url.clear();alt.clear();await refresh(update);
     }catch(e){update(()=>message=e.toString().replaceFirst('Exception: ',''));}
     finally{update(()=>saving=false);}
    },icon:const Icon(Icons.add_photo_alternate_outlined),label:const Text('Ekle'))]);
   }));
-  url.dispose();alt.dispose();
+  await Navigator.of(context).push(route);
+  unawaited(route.completed.then((_){url.dispose();alt.dispose();}));
  }
  String _clock(TimeOfDay t)=>'${t.hour.toString().padLeft(2,'0')}:${t.minute.toString().padLeft(2,'0')}';
  TimeOfDay _parseClock(dynamic value,TimeOfDay fallback){final parts=(value??'').toString().split(':');if(parts.length!=2)return fallback;final h=int.tryParse(parts[0]),m=int.tryParse(parts[1]);return h!=null&&m!=null&&h>=0&&h<24&&m>=0&&m<60?TimeOfDay(hour:h,minute:m):fallback;}
