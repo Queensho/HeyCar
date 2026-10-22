@@ -121,6 +121,28 @@ module.exports=function registerBusinessRoutes(app,pool){
   const q=await pool.query("SELECT s.id,s.business_id,s.title,s.description,s.category,s.price_cents,s.duration_minutes,s.weekly_hours,s.booking_timezone,b.name AS business_name,b.address FROM marketplace_services s JOIN businesses b ON b.id=s.business_id WHERE s.active=true AND b.is_active=true AND b.approval_status='approved' ORDER BY s.created_at DESC LIMIT 100");
   res.json({ok:true,services:q.rows});
  }catch(e){console.error('marketplace list',e);res.status(500).json({error:'SERVICES_UNAVAILABLE'});}});
+
+ // Public reviews only for completed appointments, with aggregate scores per service.
+ app.get('/api/marketplace/services/:id/reviews',async(req,res)=>{
+  if(!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(req.params.id))return res.status(400).json({error:'INVALID_SERVICE'});
+  try{
+   const q=await pool.query("SELECT r.id,r.rating,r.comment,r.created_at FROM marketplace_reviews r JOIN marketplace_appointments a ON a.id=r.appointment_id WHERE r.service_id=$1 AND a.status='completed' ORDER BY r.created_at DESC LIMIT 50",[req.params.id]);
+   const summary=await pool.query("SELECT count(*)::int AS review_count,round(avg(rating)::numeric,1) AS average_rating FROM marketplace_reviews r JOIN marketplace_appointments a ON a.id=r.appointment_id WHERE r.service_id=$1 AND a.status='completed'",[req.params.id]);
+   res.json({ok:true,reviews:q.rows,...summary.rows[0]});
+  }catch(e){console.error('marketplace reviews',e);res.status(500).json({error:'REVIEWS_UNAVAILABLE'});}
+ });
+ app.post('/api/marketplace/appointments/:id/review',async(req,res)=>{
+  const owner=authenticatedOwnerId(req);
+  if(!owner)return res.status(401).json({error:'AUTH_REQUIRED'});
+  const {rating,comment=''}=req.body||{};
+  if(!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(req.params.id)||!Number.isInteger(rating)||rating<1||rating>5||typeof comment!=='string'||comment.length>1000)return res.status(400).json({error:'INVALID_REVIEW'});
+  try{
+   const q=await pool.query("INSERT INTO marketplace_reviews(appointment_id,owner_id,service_id,rating,comment) SELECT a.id,a.owner_id,a.service_id,$3,$4 FROM marketplace_appointments a WHERE a.id=$1 AND a.owner_id=$2 AND a.status='completed' ON CONFLICT (appointment_id) DO NOTHING RETURNING id,rating,comment,created_at",[req.params.id,String(owner),rating,comment.trim()]);
+   if(!q.rowCount)return res.status(409).json({error:'REVIEW_NOT_ALLOWED_OR_ALREADY_SUBMITTED'});
+   res.status(201).json({ok:true,review:q.rows[0]});
+  }catch(e){console.error('marketplace review create',e);res.status(500).json({error:'REVIEW_CREATE_FAILED'});}
+ });
+
  app.get('/api/business/marketplace/services',async(req,res)=>{const account=await auth(req,res);if(!account)return;try{
   const q=await pool.query('SELECT s.* FROM marketplace_services s JOIN businesses b ON b.id=s.business_id WHERE b.account_id=$1 ORDER BY s.created_at DESC',[account]);res.json({ok:true,services:q.rows});
  }catch(e){res.status(500).json({error:'SERVICES_UNAVAILABLE'});}});
