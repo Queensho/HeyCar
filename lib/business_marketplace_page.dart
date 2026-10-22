@@ -98,7 +98,7 @@ class _BusinessMarketplacePageState extends State<BusinessMarketplacePage>{
  }
  bool _canConfirm(Map<String,dynamic> a){final date=DateTime.tryParse((a['requested_at']??'').toString());return date!=null&&date.isAfter(DateTime.now());}
  bool _canComplete(Map<String,dynamic> a){final date=DateTime.tryParse((a['requested_at']??'').toString());final minutes=int.tryParse((a['service_duration_minutes']??60).toString())??60;return date!=null&&!DateTime.now().isBefore(date.add(Duration(minutes:minutes)));}
- @override Widget build(BuildContext context)=>Scaffold(backgroundColor:const Color(0xFFF8F9FC),appBar:AppBar(title:const Text('Hizmetlerim ve Randevular'),backgroundColor:Colors.white,actions:[IconButton(onPressed:_load,icon:const Icon(Icons.refresh))]),body:loading?const Center(child:CircularProgressIndicator()):ListView(padding:const EdgeInsets.all(16),children:[
+ @override Widget build(BuildContext context)=>Scaffold(backgroundColor:const Color(0xFFF8F9FC),appBar:AppBar(title:const Text('Hizmetlerim ve Randevular'),backgroundColor:Colors.white,actions:[IconButton(onPressed:loading||busy?null:_load,tooltip:'Hizmetleri ve randevuları yenile',icon:const Icon(Icons.refresh))]),body:loading?const Center(child:CircularProgressIndicator()):ListView(padding:const EdgeInsets.all(16),children:[
   if(error!=null)Text(error!,style:const TextStyle(color:Colors.red)),
   Row(children:[const Expanded(child:Text('Hizmetlerim',style:TextStyle(fontSize:19,fontWeight:FontWeight.w800))),FilledButton.icon(onPressed:busy?null:_createService,icon:const Icon(Icons.add),label:const Text('Hizmet Ekle'),style:FilledButton.styleFrom(backgroundColor:purple))]),
   if(services.isEmpty)const Padding(padding:EdgeInsets.all(12),child:Text('Henüz hizmet eklenmedi.')),
