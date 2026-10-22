@@ -19,7 +19,8 @@ class _BusinessMarketplacePageState extends State<BusinessMarketplacePage>{
  Map<String,String> get headers=>{'Authorization':'Bearer ${widget.token}','Content-Type':'application/json'};
  Future<void> _load()async{setState((){loading=true;error=null;});try{
   final responses=await Future.wait([http.get(Uri.parse('$api/api/business/marketplace/services'),headers:headers).timeout(const Duration(seconds:15)),http.get(Uri.parse('$api/api/business/marketplace/appointments'),headers:headers).timeout(const Duration(seconds:15))]);
-  if(responses.any((r)=>r.statusCode!=200))throw Exception('İşletme hizmetleri yüklenemedi.');
+  if(responses.any((r)=>r.statusCode==401||r.statusCode==403))throw Exception('İşletme oturumunun süresi dolmuş veya bu işlem için yetkin yok. Yeniden giriş yap.');
+  if(responses.any((r)=>r.statusCode!=200))throw Exception('İşletme hizmetleri veya randevuları yüklenemedi. Tekrar dene.');
   final a=jsonDecode(responses[0].body) as Map,b=jsonDecode(responses[1].body) as Map;
   if(mounted)setState((){services=(a['services'] as List? ?? []).whereType<Map>().map((x)=>Map<String,dynamic>.from(x)).toList();appointments=(b['appointments'] as List? ?? []).whereType<Map>().map((x)=>Map<String,dynamic>.from(x)).toList();});
  }on TimeoutException{if(mounted)setState(()=>error='Hizmetler ve randevular yüklenirken zaman aşımı oluştu. Tekrar dene.');}on SocketException{if(mounted)setState(()=>error='İnternet bağlantısı kurulamadı. Bağlantını kontrol et.');}catch(e){if(mounted)setState(()=>error=e.toString().replaceFirst('Exception: ',''));}finally{if(mounted)setState(()=>loading=false);}}
