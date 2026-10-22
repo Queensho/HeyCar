@@ -17,7 +17,7 @@ class _BusinessMarketplacePageState extends State<BusinessMarketplacePage>{
  String? error;
  @override void initState(){super.initState();_load();}
  Map<String,String> get headers=>{'Authorization':'Bearer ${widget.token}','Content-Type':'application/json'};
- Future<void> _load()async{setState((){loading=true;error=null;});try{
+ Future<void> _load()async{if(!mounted||loading&&services.isNotEmpty)return;setState((){loading=true;error=null;});try{
   final responses=await Future.wait([http.get(Uri.parse('$api/api/business/marketplace/services'),headers:headers).timeout(const Duration(seconds:15)),http.get(Uri.parse('$api/api/business/marketplace/appointments'),headers:headers).timeout(const Duration(seconds:15))]);
   if(responses.any((r)=>r.statusCode==401||r.statusCode==403))throw Exception('İşletme oturumunun süresi dolmuş veya bu işlem için yetkin yok. Yeniden giriş yap.');
   if(responses.any((r)=>r.statusCode!=200))throw Exception('İşletme hizmetleri veya randevuları yüklenemedi. Tekrar dene.');
