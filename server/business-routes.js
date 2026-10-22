@@ -22,6 +22,7 @@ module.exports=function registerBusinessRoutes(app,pool){
   legacyHeaders:false,
   message:{error:'TOO_MANY_BOOKING_REQUESTS'},
  });
+ const availabilityLimiter=rateLimit({windowMs:60*1000,limit:60,standardHeaders:'draft-7',legacyHeaders:false,message:{error:'TOO_MANY_REQUESTS'}});
  const hash=s=>crypto.createHash('sha256').update(String(s)).digest('hex');
  const legacyPassword=s=>{
   const salt=String(process.env.BUSINESS_PASSWORD_SALT||'');
@@ -119,7 +120,7 @@ module.exports=function registerBusinessRoutes(app,pool){
  app.get('/api/offers/:campaignId/reviews',async(req,res)=>{try{const q=await pool.query(`SELECT r.rating,r.comment,r.created_at FROM offer_reviews r JOIN business_campaigns c0 ON c0.id=$1 JOIN business_campaigns c ON c.business_id=c0.business_id WHERE r.campaign_id=c.id ORDER BY r.created_at DESC LIMIT 50`,[req.params.campaignId]);const s=await pool.query(`SELECT round(avg(r.rating)::numeric,1) rating,count(r.id)::int review_count FROM offer_reviews r JOIN business_campaigns c0 ON c0.id=$1 JOIN business_campaigns c ON c.business_id=c0.business_id WHERE r.campaign_id=c.id`,[req.params.campaignId]);res.json({ok:true,reviews:q.rows,rating:s.rows[0]?.rating||null,reviewCount:s.rows[0]?.review_count||0});}catch(e){res.status(400).json({error:'INVALID_OFFER'});}});
 
  // Marketplace v1: authenticated business catalog and owner appointments.
- app.get('/api/marketplace/services/:id/availability',async(req,res)=>{
+ app.get('/api/marketplace/services/:id/availability',availabilityLimiter,async(req,res)=>{
   if(!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(req.params.id)||typeof req.query.date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(req.query.date))return res.status(400).json({error:'INVALID_AVAILABILITY_QUERY'});
   try{
    const q=await pool.query("SELECT s.business_id,s.duration_minutes,s.weekly_hours,s.booking_timezone FROM marketplace_services s JOIN businesses b ON b.id=s.business_id WHERE s.id=$1 AND s.active AND NOT s.admin_hidden AND b.is_active AND b.approval_status='approved'",[req.params.id]);
@@ -169,7 +170,7 @@ module.exports=function registerBusinessRoutes(app,pool){
   try{
    const url=new URL(value);
    if(url.protocol!=='https:'||url.username||url.password||url.port||url.search||url.hash)return false;
-   const host=url.hostname.toLowerCase();
+   const host=url.hostname.toLowerCase().replace(/[.]$/,'');
    if(!host.includes('.')||host==='localhost'||host.endsWith('.localhost')||host.endsWith('.local')||host.endsWith('.internal'))return false;
    if(host.includes(':')||host.split('.').every(part=>part.length>0&&[...part].every(ch=>ch>='0'&&ch<='9')))return false;
    return true;
@@ -221,6 +222,7 @@ module.exports=function registerBusinessRoutes(app,pool){
   if(!q.rowCount)return res.status(403).json({error:'BUSINESS_NOT_APPROVED'});res.status(201).json({ok:true,service:q.rows[0]});
  }catch(e){console.error('marketplace create',e);res.status(500).json({error:'SERVICE_CREATE_FAILED'});}});
  app.patch('/api/business/marketplace/services/:id',async(req,res)=>{const account=await auth(req,res);if(!account)return;try{
+  if(!galleryUuid.test(req.params.id))return res.status(400).json({error:'INVALID_SERVICE'});
   const {title,description,category,priceCents,durationMinutes,active}=req.body||{};
   if(typeof title!=='string'||title.trim().length<2||title.trim().length>120||typeof category!=='string'||!category.trim()||category.length>80||typeof description!=='string'||description.length>2000||!Number.isSafeInteger(priceCents)||priceCents<0||!Number.isInteger(durationMinutes)||durationMinutes<15||durationMinutes>1440||typeof active!=='boolean')return res.status(400).json({error:'INVALID_SERVICE'});
   const client=await pool.connect();let q;
@@ -238,7 +240,9 @@ module.exports=function registerBusinessRoutes(app,pool){
   res.json({ok:true,service:q.rows[0]});
  }catch(e){console.error('marketplace update',e);res.status(500).json({error:'SERVICE_UPDATE_FAILED'});}});
  app.patch('/api/business/marketplace/services/:id/hours',async(req,res)=>{const account=await auth(req,res);if(!account)return;try{
+  if(!galleryUuid.test(req.params.id))return res.status(400).json({error:'INVALID_SERVICE'});
   const {weeklyHours,timezone='Europe/Istanbul'}=req.body||{};
+  if(typeof timezone!=='string'||timezone.length>100)return res.status(400).json({error:'INVALID_TIMEZONE'});
   if(weeklyHours!==null&&!validWeeklyHours(weeklyHours))return res.status(400).json({error:'INVALID_WEEKLY_HOURS'});
   try{new Intl.DateTimeFormat('en',{timeZone:timezone});}catch(_){return res.status(400).json({error:'INVALID_TIMEZONE'});}
   const client=await pool.connect();let q;
@@ -288,12 +292,14 @@ module.exports=function registerBusinessRoutes(app,pool){
   const q=await pool.query('SELECT a.*,s.title AS service_title,s.booking_timezone,b.name AS business_name FROM marketplace_appointments a JOIN marketplace_services s ON s.id=a.service_id JOIN businesses b ON b.id=s.business_id WHERE a.owner_id=$1 ORDER BY a.created_at DESC LIMIT 100',[String(owner)]);res.json({ok:true,appointments:q.rows.map(a=>{const local=localBookingParts(new Date(a.requested_at),a.booking_timezone||'Europe/Istanbul');return {...a,appointment_local_date:local.ymd,appointment_local_time:local.clock};})});
  }catch(e){res.status(500).json({error:'APPOINTMENTS_UNAVAILABLE'});}});
  app.patch('/api/marketplace/appointments/:id/cancel',async(req,res)=>{const owner=authenticatedOwnerId(req);if(!owner)return res.status(401).json({error:'AUTH_REQUIRED'});try{
+  if(!galleryUuid.test(req.params.id))return res.status(400).json({error:'INVALID_APPOINTMENT'});
   const q=await pool.query("UPDATE marketplace_appointments SET status='cancelled',updated_at=now() WHERE id=$1 AND owner_id=$2 AND status IN ('pending','confirmed') AND requested_at > now() RETURNING *",[req.params.id,String(owner)]);if(!q.rowCount)return res.status(409).json({error:'INVALID_TRANSITION_OR_ACCESS'});res.json({ok:true,appointment:q.rows[0]});
  }catch(e){res.status(500).json({error:'APPOINTMENT_CANCEL_FAILED'});}});
  app.get('/api/business/marketplace/appointments',async(req,res)=>{const account=await auth(req,res);if(!account)return;try{
   const q=await pool.query('SELECT a.*,s.title AS service_title,s.booking_timezone,s.duration_minutes AS service_duration_minutes FROM marketplace_appointments a JOIN marketplace_services s ON s.id=a.service_id JOIN businesses b ON b.id=s.business_id WHERE b.account_id=$1 ORDER BY a.created_at DESC LIMIT 100',[account]);res.json({ok:true,appointments:q.rows.map(a=>{const local=localBookingParts(new Date(a.requested_at),a.booking_timezone||'Europe/Istanbul');return {...a,appointment_local_date:local.ymd,appointment_local_time:local.clock};})});
  }catch(e){res.status(500).json({error:'APPOINTMENTS_UNAVAILABLE'});}});
  app.patch('/api/business/marketplace/appointments/:id',async(req,res)=>{const account=await auth(req,res);if(!account)return;const status=req.body?.status;if(!['confirmed','rejected','completed'].includes(status))return res.status(400).json({error:'INVALID_STATUS'});try{
+  if(!galleryUuid.test(req.params.id))return res.status(400).json({error:'INVALID_APPOINTMENT'});
   const q=await pool.query("UPDATE marketplace_appointments a SET status=$3,updated_at=now() FROM marketplace_services s JOIN businesses b ON b.id=s.business_id WHERE a.id=$1 AND a.service_id=s.id AND b.account_id=$2 AND ((a.status='pending' AND ($3='rejected' OR ($3='confirmed' AND a.requested_at > now()))) OR (a.status='confirmed' AND $3='completed' AND a.requested_at <= now() AND now() >= a.requested_at + (COALESCE(s.duration_minutes,60) * interval '1 minute'))) RETURNING a.*",[req.params.id,account,status]);
   if(!q.rowCount)return res.status(409).json({error:'INVALID_TRANSITION_OR_ACCESS'});res.json({ok:true,appointment:q.rows[0]});
  }catch(e){res.status(500).json({error:'APPOINTMENT_UPDATE_FAILED'});}});

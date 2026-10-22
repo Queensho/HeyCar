@@ -75,3 +75,17 @@ test('review validation rejects invalid ratings before writing',async()=>{
   assert.equal((await call('post','/api/marketplace/appointments/:id/review',{params:{id},headers:{authorization:'Bearer '+jwt()},body:{rating}})).statusCode,400);
  }
 });
+test('gallery rejects local hosts even when a DNS trailing dot is present',async()=>{
+ const call=routes({query:async sql=>{
+  assert.match(sql,/business_sessions/);
+  return {rowCount:1,rows:[{id:'business-a'}]};
+ }});
+ for(const imageUrl of ['https://localhost./image.png','https://photo.local./image.png','https://photo.internal./image.png','https://127.0.0.1/image.png','https://example.com/with space.png']){
+  const r=await call('post','/api/business/marketplace/services/:id/images',{params:{id},headers:{authorization:'Bearer business-token'},body:{imageUrl,sortOrder:0}});
+  assert.equal(r.statusCode,400,imageUrl);
+ }
+});
+test('malformed appointment IDs return a client error without database access',async()=>{
+ const call=routes(noDb);
+ assert.equal((await call('patch','/api/marketplace/appointments/:id/cancel',{params:{id:'bad'},headers:{authorization:'Bearer '+jwt()}})).statusCode,400);
+});

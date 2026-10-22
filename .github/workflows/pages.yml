@@ -36,6 +36,8 @@ jobs:
         run: |
           flutter create . --platforms=web --project-name heycar_app --no-pub
           flutter build web --debug --target lib/entry_theme_live.dart
+      - name: Test marketplace admin moderation and responsive layout
+        run: flutter test test/admin_marketplace_page_test.dart
       - name: Save marketplace web preview bundle
         uses: actions/upload-artifact@v4
         with:

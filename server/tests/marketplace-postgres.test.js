@@ -112,6 +112,19 @@ test('marketplace HTTP lifecycle with PostgreSQL', {skip:process.env.MARKETPLACE
    assert.equal((await request('DELETE',url+'/'+image.data.image.id,businessToken)).status,200);
    assert.equal((await request('POST',url,businessToken,{...body,imageUrl:'http://127.0.0.1/x.jpg'})).status,400);
   });
+  await t.test('different services share the same business capacity under concurrency',async()=>{
+   const q=await pool.query("INSERT INTO marketplace_services(business_id,title,category,price_cents,duration_minutes) VALUES($1,'Second Service','Servis',5000,30) RETURNING id",[business]);
+   const other=q.rows[0].id;
+   const body={plate:'34ABC123',localDate:day};
+   const results=await Promise.all([
+    request('POST','/api/marketplace/appointments',a,{...body,serviceId:service.id,localTime:'11:00'}),
+    request('POST','/api/marketplace/appointments',a,{...body,serviceId:other,localTime:'11:30'}),
+   ]);
+   assert.deepEqual(results.map(r=>r.status).sort(),[201,409]);
+   const winner=results.find(r=>r.status===201).data.appointment;
+   assert.equal((await request('PATCH',`/api/business/marketplace/appointments/${winner.id}`,businessToken,{status:'rejected'})).status,200);
+   await pool.query('UPDATE marketplace_services SET active=false WHERE id=$1',[other]);
+  });
   await t.test('admin takedown survives business reactivation and blocks all public booking',async()=>{
    const url=`/api/admin/manage/marketplace/services/${service.id}`;
    assert.equal((await request('PATCH',url,businessToken,{hidden:true,reason:'Test'})).status,401);

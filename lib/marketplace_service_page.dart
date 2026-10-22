@@ -130,6 +130,7 @@ class _MarketplaceServicePageState extends State<MarketplaceServicePage> {
       if(response.statusCode<200||response.statusCode>=300){
         String message='Randevu oluşturulamadı.';
         try{final body=jsonDecode(response.body);switch(body['error']){case 'SLOT_UNAVAILABLE':message='Bu saat dolu. Başka bir saat seç.';break;case 'TOO_MANY_BOOKING_REQUESTS':message='Çok fazla randevu isteği gönderildi. 15 dakika sonra tekrar dene.';break;case 'VEHICLE_NOT_OWNED':message='Plaka hesabındaki araçlarla eşleşmiyor.';break;case 'INVALID_LOCAL_TIME':message='Bu tarih ve saat işletmenin saat diliminde geçerli değil.';break;case 'INVALID_APPOINTMENT':message='Randevu gelecekte ve en fazla 90 gün içinde olmalı.';break;case 'OUTSIDE_BUSINESS_HOURS':message='İşletme bu saatte hizmet vermiyor.';break;case 'SERVICE_UNAVAILABLE':message='Bu hizmet artık randevu kabul etmiyor. Başka bir hizmet seç.';break;case 'SERVICE_NOT_FOUND':message='Bu hizmet artık mevcut değil.';break;case 'AUTH_REQUIRED':message='Randevu için araç sahibi hesabına giriş yap.';break;}}catch(_){}
+        try{if(jsonDecode(response.body)['error']=='SLOT_UNAVAILABLE')await _loadSlots();}catch(_){}
         throw Exception(message);
       }
       if(!mounted)return;
