@@ -1,0 +1,101 @@
+name: CepQontag Marketplace Staging Tests
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cepqontag-staging-smoke
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 10
+    steps:
+      - name: Establish verified staging SSH connection
+        shell: bash
+        env:
+          SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+          SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+          SSH_PORT: ${{ secrets.STAGING_SSH_PORT }}
+          SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+          EXPECTED_FINGERPRINT: ${{ secrets.STAGING_SSH_HOST_FINGERPRINT }}
+        run: |
+          set -euo pipefail
+          test -n "$SSH_KEY" && test -n "$SSH_HOST" && test -n "$SSH_PORT" && test -n "$EXPECTED_FINGERPRINT"
+          test "$SSH_USER" = "cepqontag-deploy"
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/staging_key
+          chmod 600 ~/.ssh/staging_key
+          ssh-keyscan -T 10 -t ed25519 -p "$SSH_PORT" -H "$SSH_HOST" > ~/.ssh/known_hosts
+          test -s ~/.ssh/known_hosts
+          actual="$(ssh-keygen -lf ~/.ssh/known_hosts -E sha256 | awk 'NR==1 {print $2}')"
+          test "$actual" = "$EXPECTED_FINGERPRINT" || { echo "::error::SSH host identity mismatch"; exit 1; }
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Run read-only marketplace API and DB smoke tests
+        shell: bash
+        env:
+          SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+          SSH_PORT: ${{ secrets.STAGING_SSH_PORT }}
+          SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+        run: |
+          set -euo pipefail
+          ssh -i "$HOME/.ssh/staging_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" 'cd /home/cepqontag-deploy/app/server && node' <<'NODE'
+          'use strict';
+          const assert = require('node:assert/strict');
+          require('dotenv').config({quiet:true});
+          const {Pool}=require('pg');
+          const base='http://127.0.0.1:8091';
+          const checks=[];
+          async function check(name,fn){
+            try{await fn();console.log('PASS '+name);checks.push({name,ok:true});}
+            catch(e){console.error('FAIL '+name+': '+e.message);checks.push({name,ok:false});}
+          }
+          async function request(path,opts={}){
+            const response=await fetch(base+path,{...opts,signal:AbortSignal.timeout(8000)});
+            let json;try{json=await response.json();}catch{throw Error('Non-JSON response HTTP '+response.status);}
+            return {status:response.status,json};
+          }
+          (async()=>{
+            await check('Staging health',async()=>{
+              const r=await request('/health');
+              assert.equal(r.status,200);assert.equal(r.json.ok,true);
+            });
+            await check('Marketplace services public listing',async()=>{
+              const r=await request('/api/marketplace/services');
+              assert.equal(r.status,200);assert.equal(r.json.ok,true);assert.ok(Array.isArray(r.json.services));
+              console.log('Service count: '+r.json.services.length);
+            });
+            await check('Business account endpoint requires authentication',async()=>{
+              const r=await request('/api/business/me');
+              assert.equal(r.status,401);
+            });
+            await check('Business campaigns endpoint requires authentication',async()=>{
+              const r=await request('/api/business/campaigns');
+              assert.equal(r.status,401);
+            });
+            await check('Staging DB identity and marketplace tables',async()=>{
+              const pool=new Pool({
+                host:process.env.DB_HOST,port:Number(process.env.DB_PORT||5432),
+                user:process.env.DB_USER,password:process.env.DB_PASSWORD,database:process.env.DB_NAME,
+                connectionTimeoutMillis:5000
+              });
+              try{
+                const id=await pool.query('SELECT current_database() AS db');
+                assert.equal(id.rows[0].db,'heycar_staging');
+                const r=await pool.query("SELECT tablename FROM pg_tables WHERE schemaname='public' AND tablename=ANY($1::text[])",
+                  [['marketplace_services','marketplace_service_images','marketplace_appointments','marketplace_reviews']]);
+                assert.equal(r.rowCount,4,'Expected 4 marketplace tables');
+              }finally{await pool.end();}
+            });
+            const failed=checks.filter(c=>!c.ok);
+            console.log('RESULT '+(checks.length-failed.length)+'/'+checks.length+' passed; '+failed.length+' failed');
+            if(failed.length)process.exitCode=1;
+          })().catch(e=>{console.error('Test runner error: '+e.message);process.exitCode=1;});
+          NODE
