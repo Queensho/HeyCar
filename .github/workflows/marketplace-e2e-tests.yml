@@ -1,0 +1,66 @@
+name: CepQontag Marketplace E2E Tests
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cepqontag-marketplace-e2e
+  cancel-in-progress: false
+
+jobs:
+  marketplace-e2e:
+    name: Marketplace lifecycle on disposable PostgreSQL
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: marketplace_test
+          POSTGRES_PASSWORD: marketplace_test_only
+          POSTGRES_DB: heycar_matrix
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U marketplace_test -d heycar_matrix"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: '5432'
+      DB_USER: marketplace_test
+      DB_PASSWORD: marketplace_test_only
+      DB_NAME: heycar_matrix
+      MARKETPLACE_PG_TEST: '1'
+      NODE_ENV: test
+    steps:
+      - name: Checkout marketplace feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/offers-services-unified-ux-20261020
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: server
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Syntax validation
+        working-directory: server
+        run: npm run check
+
+      - name: Marketplace API authorization and validation tests
+        working-directory: server
+        run: node --test tests/marketplace-routes.test.js tests/marketplace-hours.test.js tests/marketplace-availability.test.js
+
+      - name: Marketplace PostgreSQL full lifecycle
+        working-directory: server
+        run: node --test tests/marketplace-postgres.test.js
