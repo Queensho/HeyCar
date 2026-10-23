@@ -1,0 +1,84 @@
+name: Deploy CepQontag Staging
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cepqontag-staging-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy marketplace branch to staging only
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 15
+    steps:
+      - name: Checkout marketplace test branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/offers-services-unified-ux-20261020
+          persist-credentials: false
+
+      - name: Verify source syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check server/server.js
+          node --check server/admin-auth-routes.js
+
+      - name: Set up SSH
+        env:
+          SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+          SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+          SSH_PORT: ${{ secrets.STAGING_SSH_PORT }}
+          SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SSH_KEY" && test -n "$SSH_HOST" && test -n "$SSH_PORT" && test -n "$SSH_USER"
+          test "$SSH_USER" = "cepqontag-deploy"
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/staging_key
+          chmod 600 ~/.ssh/staging_key
+          ssh-keyscan -T 10 -p "$SSH_PORT" -H "$SSH_HOST" > ~/.ssh/known_hosts
+          test -s ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Copy staging application code
+        env:
+          SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+          SSH_PORT: ${{ secrets.STAGING_SSH_PORT }}
+          SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          rsync -az --no-perms --no-owner --no-group \
+            --exclude='.git/' --exclude='.github/' \
+            --exclude='node_modules/' --exclude='.env' --exclude='*.env' \
+            -e "ssh -i $HOME/.ssh/staging_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p $SSH_PORT" \
+            ./ "$SSH_USER@$SSH_HOST:/home/cepqontag-deploy/app/"
+
+      - name: Install, validate, restart staging only, health check
+        env:
+          SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+          SSH_PORT: ${{ secrets.STAGING_SSH_PORT }}
+          SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -i "$HOME/.ssh/staging_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" 'set -eu
+            cd /home/cepqontag-deploy/app/server
+            test -f .env
+            npm install --ignore-scripts --no-audit
+            npm run check
+            sudo -n /usr/bin/systemctl restart cepqontag-staging.service
+            sleep 3
+            curl -fsS --max-time 10 http://127.0.0.1:8091/health
+            echo
+            echo STAGING_DEPLOY_OK
+          '
