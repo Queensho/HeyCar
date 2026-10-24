@@ -1,0 +1,84 @@
+name: CepQontag recovery verification
+
+on:
+  push:
+    branches:
+      - recovery/pr42-working-apk-source-candidate-20261018
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/recovery-verify.yml'
+      - 'lib/**'
+      - 'pubspec.yaml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/pr42-working-apk-source-candidate-20261018
+      - name: Check recovered APK source fingerprints
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '3b674714b4ea2c6ea815f5ef84d1e60f9e9f8fbf  lib/owner_home_redesign.dart\n' | git hash-object --stdin >/dev/null
+          test "$(git hash-object lib/owner_home_redesign.dart)" = "3b674714b4ea2c6ea815f5ef84d1e60f9e9f8fbf"
+          test "$(git hash-object lib/weather_card.dart)" = "79df7512b3f34824c470596a915f6ce373e99837"
+          test -f pubspec.yaml
+      - name: Inspect Android project availability
+        id: android
+        shell: bash
+        run: |
+          if [ -d android ] && [ -f android/gradlew ] && [ -d android/app ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::No complete Android Gradle project in this branch; cannot build APK from this checkout"
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.47.7'
+          cache: true
+      - name: Generate temporary Android scaffolding for build diagnostic
+        if: steps.android.outputs.available == 'false'
+        run: |
+          flutter create --platforms=android --project-name heycar_app .
+          python3 - <<'PY'
+          from pathlib import Path
+          gradle = Path("android/app/build.gradle.kts")
+          s = gradle.read_text()
+          s = s.replace("isCoreLibraryDesugaringEnabled = true", "")
+          s = s.replace("compileOptions {", "compileOptions {\n        isCoreLibraryDesugaringEnabled = true", 1)
+          s = s.replace('applicationId = "com.example.heycar_app"', 'applicationId = "com.cepqar.app"')
+          s = s.replace('namespace = "com.example.heycar_app"', 'namespace = "com.cepqar.app"')
+          s += '\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n'
+          gradle.write_text(s)
+          manifest = Path("android/app/src/main/AndroidManifest.xml")
+          m = manifest.read_text()
+          m = m.replace("<manifest xmlns:android=", "<manifest xmlns:android=")
+          pos = m.index(">")
+          permissions = ["INTERNET","POST_NOTIFICATIONS","RECEIVE_BOOT_COMPLETED","WAKE_LOCK","VIBRATE","RECORD_AUDIO","CAMERA","FOREGROUND_SERVICE","FOREGROUND_SERVICE_MICROPHONE","FOREGROUND_SERVICE_PHONE_CALL","USE_FULL_SCREEN_INTENT","MANAGE_OWN_CALLS"]
+          m = m[:pos+1] + "".join('\\n    <uses-permission android:name="android.permission.%s" />'%p for p in permissions) + m[pos+1:]
+          m = m.replace('android:label="heycar_app"', 'android:label="CepQontag"')
+          manifest.write_text(m)
+          print("Restored known package name and essential manifest permissions for diagnostic only")
+          PY
+          echo '::warning::Android scaffolding generated temporarily. APK package ID, signing, manifest and native setup DO NOT match the known-good APK and must NOT be distributed.'
+      - name: Flutter dependencies
+        run: flutter pub get
+      - name: Build recovery debug APK
+        run: flutter build apk --debug
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: cepqontag-diagnostic-debug-DO-NOT-INSTALL
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 7

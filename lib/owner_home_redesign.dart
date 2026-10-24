@@ -1348,7 +1348,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                   const SizedBox(height:3),
                   Expanded(
                     child:Image.asset(
-                      'assets/Qrkod.png',
+                      'assets/CepqarQr.png',
                       fit:BoxFit.contain,
                       errorBuilder:(_,__,___)=>const Icon(Icons.qr_code_2_rounded,color:Colors.black,size:54),
                     ),
