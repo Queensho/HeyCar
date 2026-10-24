@@ -30,6 +30,42 @@ jobs:
         run: flutter pub get
       - name: Check redesigned notifications compatibility with Android runtime patch
         run: python3 -m unittest discover -s tool/tests -p test_fix_runtime_android.py -v
+      - name: Analyze unified marketplace owner and business screens
+        run: flutter analyze lib/cepqar_offers_page.dart lib/marketplace_service_page.dart lib/marketplace_appointments_page.dart lib/business_marketplace_page.dart lib/admin_marketplace_page.dart --no-fatal-infos --no-fatal-warnings
+      - name: Compile owner web app on pull requests
+        run: |
+          flutter create . --platforms=web --project-name heycar_app --no-pub
+          flutter build web --debug --target lib/entry_theme_live.dart
+      - name: Test marketplace admin moderation and responsive layout
+        run: flutter test test/admin_marketplace_page_test.dart
+      - name: Save marketplace web preview bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: cepqontag-marketplace-web-preview
+          path: build/web/
+          if-no-files-found: error
+          retention-days: 7
+      - name: Compile marketplace business and admin web panels
+        run: |
+          flutter build web --debug --target lib/entry_business.dart
+          flutter build web --debug --target lib/admin_v3.dart
+      - name: Compile Android owner APK on pull requests
+        run: |
+          flutter create . --platforms=android --project-name app --org com.cepqar --no-pub
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('android/app/build.gradle.kts')
+          text=p.read_text()
+          if 'isCoreLibraryDesugaringEnabled = true' not in text:
+              text=text.replace('compileOptions {','compileOptions {\n        isCoreLibraryDesugaringEnabled = true',1)
+          if 'coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:' not in text:
+              if 'dependencies {' in text:
+                  text=text.replace('dependencies {','dependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")',1)
+              else:
+                  text+='\n\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")\n}\n'
+          p.write_text(text)
+          PY
+          flutter build apk --debug --target lib/entry_theme_live.dart
       - name: Analyze Maintenance V2 screens
         run: flutter analyze lib/maintenance_v2_page.dart lib/maintenance_page.dart --no-fatal-infos --no-fatal-warnings
       - name: Analyze owner light theme screens
@@ -377,4 +413,5 @@ jobs:
           name: cepqontag-owner-android-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
           retention-days: 14
+
 
