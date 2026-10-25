@@ -223,9 +223,9 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
                 SizedBox(width:135,child:Text(title,maxLines:2,overflow:TextOverflow.ellipsis,
                   style:const TextStyle(color:Colors.white,fontSize:13,height:1.05,fontWeight:FontWeight.w900))),
                 const SizedBox(height:5),
-                SizedBox(width:135,child:Text(subtitle,maxLines:2,overflow:TextOverflow.ellipsis,
-                  style:const TextStyle(color:Colors.white,fontSize:10,height:1.15))),
-                const Spacer(),
+                Expanded(child:Align(alignment:Alignment.topLeft,
+                  child:SizedBox(width:135,child:Text(subtitle,maxLines:2,overflow:TextOverflow.ellipsis,
+                    style:const TextStyle(color:Colors.white,fontSize:10,height:1.15))))),
                 Container(
                   padding:const EdgeInsets.symmetric(horizontal:12,vertical:7),
                   decoration:BoxDecoration(color:lime,borderRadius:BorderRadius.circular(18)),

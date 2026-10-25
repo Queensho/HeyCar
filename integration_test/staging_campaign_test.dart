@@ -32,7 +32,7 @@ void main(){
    final vertical=find.descendant(of:find.byType(CustomScrollView),matching:find.byType(Scrollable)).first;
    await tester.scrollUntilVisible(find.text('Yakınımdaki Fırsatlar'),300,scrollable:vertical,maxScrolls:20);
    await tester.pumpAndSettle(const Duration(milliseconds:300),EnginePhase.sendSemanticsUpdate,const Duration(seconds:30));
-   if(!driver)await binding.convertFlutterSurfaceToImage();
+   await binding.convertFlutterSurfaceToImage();
    await tester.pump();
    await binding.takeScreenshot('staging-${driver?'driver':'owner'}-${active?'active':'inactive'}-list');
    expect(find.byType(CircularProgressIndicator),findsNothing);
