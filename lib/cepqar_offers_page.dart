@@ -1,3 +1,4 @@
+import 'app_environment.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -38,7 +39,7 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
    }catch(_){}
   }
 
-  static const apiBase='https://heycar-api-185-165-46-213.nip.io';
+  static const apiBase=AppEnvironment.apiBase;
   final categories=const ['Tümü','Oto Yıkama','Detailing','Lastik','Otopark','Servis','Akaryakıt'];
   final offers=const [
     _Offer('Oto Yıkama','CleanDrive Oto Yıkama','Premium oto yıkamada %30 indirim','%30 İndirim','1.2 km','4.8','320',Icons.local_car_wash_rounded,['İç - Dış Temizlik']),
@@ -114,6 +115,7 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
   Widget _offerTile(_Offer o,{bool compact=false}){
     final image=o.imageUrl.trim();
     return InkWell(
+      key:ValueKey('offer-${o.id}'),
       onTap:()=>_showOffer(o),borderRadius:BorderRadius.circular(20),
       child:Container(
         width:compact?214:null,
@@ -378,7 +380,7 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
 
 }
 class _Offer{const _Offer(this.category,this.name,this.description,this.badge,this.distance,this.rating,this.reviews,this.icon,this.tags,{this.id='',this.address='',this.couponCode='',this.openingHours='',this.imageUrl='',this.logoUrl=''});final String category,name,description,badge,distance,rating,reviews,id,address,couponCode,openingHours,imageUrl,logoUrl; List<String> get categories=>category.split(',').map((x)=>x.trim()).where((x)=>x.isNotEmpty).toList();final IconData icon;final List<String> tags;
- factory _Offer.fromApi(Map<String,dynamic> x){final cat=(x['category']??'Servis').toString();final meters=double.tryParse('${x['distance_m']}')??0;final d=meters<1000?'${meters.round()} m':'${(meters/1000).toStringAsFixed(1)} km';IconData icon=Icons.build_rounded;if(cat.toLowerCase().contains('yıkama'))icon=Icons.local_car_wash_rounded;else if(cat.toLowerCase().contains('lastik'))icon=Icons.tire_repair_rounded;else if(cat.toLowerCase().contains('otopark'))icon=Icons.local_parking_rounded;else if(cat.toLowerCase().contains('akaryakıt'))icon=Icons.local_gas_station_rounded;else if(cat.toLowerCase().contains('detail'))icon=Icons.auto_awesome_rounded;return _Offer(cat,(x['name']??'CepQontag İşletmesi').toString(),(x['description']??'').toString(),(x['badge']??'Fırsat').toString(),d,(x['rating']??'—').toString(),(x['review_count']??0).toString(),icon,const [],imageUrl:(x['image_url']??'').toString(),logoUrl:(x['logo_url']??'').toString(),address:(x['address']??'').toString(),couponCode:(x['coupon_code']??'').toString(),openingHours:(x['opening_hours']??'').toString(),id:(x['id']??'').toString());}
+ factory _Offer.fromApi(Map<String,dynamic> x){final cat=(x['category']??'Servis').toString();final meters=double.tryParse('${x['distance_m']}')??0;final d=meters<1000?'${meters.round()} m':'${(meters/1000).toStringAsFixed(1)} km';IconData icon=Icons.build_rounded;if(cat.toLowerCase().contains('yıkama'))icon=Icons.local_car_wash_rounded;else if(cat.toLowerCase().contains('lastik'))icon=Icons.tire_repair_rounded;else if(cat.toLowerCase().contains('otopark'))icon=Icons.local_parking_rounded;else if(cat.toLowerCase().contains('akaryakıt'))icon=Icons.local_gas_station_rounded;else if(cat.toLowerCase().contains('detail'))icon=Icons.auto_awesome_rounded;return _Offer(cat,(x['title']??x['name']??'CepQontag İşletmesi').toString(),(x['description']??'').toString(),(x['badge']??'Fırsat').toString(),d,(x['rating']??'—').toString(),(x['review_count']??0).toString(),icon,const [],imageUrl:(x['image_url']??'').toString(),logoUrl:(x['logo_url']??'').toString(),address:(x['address']??'').toString(),couponCode:(x['coupon_code']??'').toString(),openingHours:(x['opening_hours']??'').toString(),id:(x['id']??'').toString());}
 }
 class _OfferCard extends StatelessWidget{
  const _OfferCard({required this.o,required this.driverMode,required this.vehiclePlate});final _Offer o;final bool driverMode;final String vehiclePlate;
@@ -499,3 +501,4 @@ class _Pill extends StatelessWidget{const _Pill(this.text,this.color);final Stri
 class _InfoCard extends StatelessWidget{const _InfoCard({required this.child});final Widget child;@override Widget build(BuildContext c)=>Container(padding:const EdgeInsets.all(12),decoration:BoxDecoration(color:CepqarTheme.panel,borderRadius:BorderRadius.circular(16),border:Border.all(color:CepqarTheme.line)),child:child);}
 class _Title extends StatelessWidget{const _Title(this.text);final String text;@override Widget build(BuildContext c)=>Text(text,style:TextStyle(color:CepqarTheme.text,fontSize:15,fontWeight:FontWeight.w900));}
 class _Service extends StatelessWidget{const _Service(this.icon,this.text);final IconData icon;final String text;@override Widget build(BuildContext c)=>Container(width:76,height:72,padding:const EdgeInsets.all(7),decoration:BoxDecoration(color:CepqarTheme.panel,borderRadius:BorderRadius.circular(14),border:Border.all(color:CepqarTheme.line)),child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[Icon(icon,color:CepqarTheme.purple,size:22),const SizedBox(height:5),Text(text,maxLines:2,textAlign:TextAlign.center,style:TextStyle(color:CepqarTheme.text,fontSize:8.5,fontWeight:FontWeight.w700))]));}
+

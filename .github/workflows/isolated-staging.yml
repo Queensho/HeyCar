@@ -52,3 +52,92 @@ jobs:
           name: staging-infrastructure
           path: staging-infrastructure.json
           if-no-files-found: error
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: flutter pub get
+      - name: Analyze environment and marketplace entry points
+        run: flutter analyze lib/app_environment.dart lib/staging_banner.dart lib/entry_staging.dart lib/entry_business.dart lib/business_panel_page.dart lib/cepqar_offers_page.dart integration_test/staging_campaign_test.dart test_driver/staging_campaign_driver.dart --no-fatal-infos --no-fatal-warnings
+      - name: Verify fail-closed endpoints and separate sessions
+        run: flutter test test/app_environment_test.dart --dart-define=APP_ENV=staging --dart-define=API_BASE_URL=http://127.0.0.1:18091 --dart-define=STAGING_SSH_TUNNEL=true
+      - name: Verify backend staging isolation
+        run: |
+          node --test server/tests/staging-safety.test.js
+          node --check server/server.js
+          node --check server/push-routes.js
+          node --check server/web-push-service.js
+          node --check tool/staging/fixture.cjs
+          bash -n tool/staging/ssh_setup.sh
+          python3 -m py_compile tool/staging/prepare_sources.py
+  builds:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Generate separate staging platforms
+        run: |
+          flutter create . --platforms=android,web --project-name app --org com.cepqar --no-pub
+          python3 tool/staging/prepare_sources.py
+          flutter pub get
+      - name: Build staging business panel for verified SSH tunnel transport
+        run: |
+          flutter build web --release --target lib/entry_business.dart --base-href /HeyCar/isletme-staging/ --pwa-strategy=none --dart-define=APP_ENV=staging --dart-define=API_BASE_URL=http://127.0.0.1:18091 --dart-define=STAGING_SSH_TUNNEL=true
+          mkdir -p staging-site/HeyCar/isletme-staging
+          cp -R build/web/. staging-site/HeyCar/isletme-staging/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: staging-business-panel-ssh-tunnel
+          path: staging-site/
+          if-no-files-found: error
+      - name: Build side-by-side Owner/Driver staging APK (SSH transport)
+        run: flutter build apk --debug --target lib/entry_staging.dart --dart-define=APP_ENV=staging --dart-define=API_BASE_URL=http://127.0.0.1:18091 --dart-define=STAGING_SSH_TUNNEL=true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cepqontag-staging-ssh-tunnel-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
+  staging-backend:
+    needs: checks
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 15
+    env:
+      SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+      SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+      SSH_PORT: ${{ secrets.STAGING_SSH_PORT }}
+      SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+      FINGERPRINT: ${{ secrets.STAGING_SSH_HOST_FINGERPRINT }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: bash tool/staging/ssh_setup.sh
+      - name: Apply guarded overlay without replacing existing marketplace modules or migrations
+        run: |
+          set -euo pipefail
+          ssh -i "$HOME/.ssh/staging_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" node < tool/staging/probe.cjs > /tmp/staging-preflight.json
+          scp -q -i "$HOME/.ssh/staging_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -P "$SSH_PORT" server/staging-safety.js "$SSH_USER@$SSH_HOST:/home/cepqontag-deploy/app/server/.staging-new-safety.js"
+          ssh -i "$HOME/.ssh/staging_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "node - $GITHUB_RUN_ID" < tool/staging/apply_server.cjs
+          if ! ssh -i "$HOME/.ssh/staging_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" 'sudo -n /usr/bin/systemctl restart cepqontag-staging.service && sleep 3 && curl -fsS --max-time 10 http://127.0.0.1:8091/api/environment'; then
+            ssh -i "$HOME/.ssh/staging_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "node - $GITHUB_RUN_ID restore" < tool/staging/apply_server.cjs
+            ssh -i "$HOME/.ssh/staging_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" 'sudo -n /usr/bin/systemctl restart cepqontag-staging.service'
+            exit 1
+          fi

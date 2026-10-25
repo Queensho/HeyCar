@@ -1,3 +1,4 @@
+import 'app_environment.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'qr_backend.dart';
@@ -15,7 +16,7 @@ class OnboardingDraft {
 }
 
 class OnboardingBackend {
-  static const String baseUrl = 'https://heycar-api-185-165-46-213.nip.io';
+  static const String baseUrl = AppEnvironment.apiBase;
   static const String legalVersion = '1.0';
 
   static Future<Map<String, dynamic>> registerWithVehicle({
@@ -88,3 +89,4 @@ class OnboardingBackend {
     throw Exception('Kayıt tamamlanamadı. Tekrar dene.');
   }
 }
+
