@@ -19,7 +19,7 @@ if [ "${1:-all}" = cleanup ]; then cleanup; exit; fi
 if [ "${1:-all}" = prepare ]; then
 trap 'status=$?; if [ "$status" -ne 0 ]; then cleanup; fi' EXIT
 # The only exposed test listener is local to this ephemeral runner.
-nohup ssh -i "$HOME/.ssh/staging_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ExitOnForwardFailure=yes -p "$SSH_PORT" -N -L 127.0.0.1:18091:127.0.0.1:8091 "$SSH_USER@$SSH_HOST" < /dev/null > /tmp/staging-tunnel.log 2>&1 &
+nohup ssh -i "$HOME/.ssh/staging_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ExitOnForwardFailure=yes -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -p "$SSH_PORT" -N -L 127.0.0.1:18091:127.0.0.1:8091 "$SSH_USER@$SSH_HOST" < /dev/null > /tmp/staging-tunnel.log 2>&1 &
 tunnel_pid=$!
 printf '%s\n' "$tunnel_pid" > .staging-tunnel.pid
 command -v chromedriver
@@ -55,7 +55,12 @@ while kill -0 "$tunnel_pid" 2>/dev/null; do adb emu geo fix 28.9784 41.0082 > /d
 # its differently signed package. Never grant or uninstall the production ID.
 android_phase() {
   local active="$1"
-  flutter build apk --debug --target integration_test/staging_campaign_test.dart --dart-define=APP_ENV=staging --dart-define=API_BASE_URL=http://10.0.2.2:18091 --dart-define=STAGING_SSH_TUNNEL=true --dart-define=STAGING_CAMPAIGN_ID="$campaign_id" --dart-define=STAGING_EXPECT_ACTIVE="$active"
+  flutter build apk --debug --target integration_test/staging_campaign_test.dart --dart-define=APP_ENV=staging --dart-define=API_BASE_URL=http://127.0.0.1:18091 --dart-define=STAGING_SSH_TUNNEL=true --dart-define=STAGING_CAMPAIGN_ID="$campaign_id" --dart-define=STAGING_EXPECT_ACTIVE="$active"
+  # Fail visibly if the SSH listener died during the Android build, then use
+  # adb transport instead of depending on emulator NAT reaching host loopback.
+  curl -fsS --max-time 15 http://127.0.0.1:18091/api/environment > /tmp/staging-android-identity.json
+  node -e "const x=require('/tmp/staging-android-identity.json');if(x.database!=='heycar_staging'||x.environment!=='staging')process.exit(1)"
+  adb -s "$device_id" reverse tcp:18091 tcp:18091
   adb -s "$device_id" install -r -g build/app/outputs/flutter-apk/app-debug.apk
   adb -s "$device_id" shell pm grant com.cepqar.app.staging android.permission.ACCESS_FINE_LOCATION
   adb -s "$device_id" shell pm grant com.cepqar.app.staging android.permission.ACCESS_COARSE_LOCATION
