@@ -29,6 +29,13 @@ void main(){
   await AppEnvironment.verifyServer();
   final response=await http.get(Uri.base.resolve('staging-fixture.json'));
   expect(response.statusCode,200);final fixture=jsonDecode(response.body) as Map;
+  final frameworkErrors=<String>[];
+  final originalErrorHandler=FlutterError.onError;
+  FlutterError.onError=(details){
+   if(frameworkErrors.length<3)frameworkErrors.add('${details.exceptionAsString()}\n${details.stack}'.split(fixture['password'] as String).join('[redacted]').split('\n').take(12).join('\n'));
+   originalErrorHandler?.call(details);
+  };
+  addTearDown(()=>FlutterError.onError=originalErrorHandler);
   final prefs=await SharedPreferences.getInstance();
   await prefs.setString('business_token','production-session-sentinel');
   await prefs.remove(AppEnvironment.storageKey('business_token'));
@@ -74,7 +81,7 @@ void main(){
   expect(campaign['is_active'],phase=='publish');
   if(phase=='create')expect(campaign['description'],'Staging panelinde düzenlendi');
   expect(prefs.getString('business_token'),'production-session-sentinel');
-  binding.reportData={'campaignId':campaign['id'],'phase':phase,'realBrowserUi':true};
+  binding.reportData={'campaignId':campaign['id'],'phase':phase,'realBrowserUi':true,'frameworkErrors':frameworkErrors};
   await binding.takeScreenshot('panel-$phase');
  });
 }
