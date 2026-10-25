@@ -36,6 +36,7 @@ adb install -r staging-apk/app-debug.apk
 adb shell pm grant com.cepqar.app.staging android.permission.ACCESS_FINE_LOCATION
 adb shell pm grant com.cepqar.app.staging android.permission.ACCESS_COARSE_LOCATION
 adb emu geo fix 28.9784 41.0082
+while kill -0 "$tunnel_pid" 2>/dev/null; do adb emu geo fix 28.9784 41.0082 > /dev/null 2>&1; sleep 3; done &
 flutter drive --driver test_driver/staging_campaign_driver.dart --target integration_test/staging_campaign_test.dart --dart-define=APP_ENV=staging --dart-define=API_BASE_URL=http://10.0.2.2:18091 --dart-define=STAGING_SSH_TUNNEL=true --dart-define=STAGING_CAMPAIGN_ID="$campaign_id" --dart-define=STAGING_EXPECT_ACTIVE=true
 node tool/staging/panel_e2e.cjs deactivate staging-fixture.json
 "${SSH[@]}" "node - inactive $REMOTE_FIXTURE" < tool/staging/fixture.cjs

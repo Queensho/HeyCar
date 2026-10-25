@@ -363,7 +363,7 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
           const SizedBox(height:14),
           _sectionHeading('Yakınımdaki Fırsatlar'),
           if(loading)const Padding(padding:EdgeInsets.symmetric(vertical:20),child:Center(child:CircularProgressIndicator(color:purple)))
-          else if(error!=null)Padding(padding:const EdgeInsets.all(12),child:Text(error!,style:const TextStyle(color:muted,fontSize:12)))
+          else if(error!=null)Padding(key:const ValueKey('offers-load-error'),padding:const EdgeInsets.all(12),child:Text(error!,style:const TextStyle(color:muted,fontSize:12)))
           else if(nearby.isEmpty)SizedBox(height:108,child:ListView(scrollDirection:Axis.horizontal,
             children:List.generate(2,(_)=>Container(width:210,margin:const EdgeInsets.only(right:10),
               padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(16)),

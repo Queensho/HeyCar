@@ -22,6 +22,7 @@ void main(){
    await tester.pumpWidget(MaterialApp(builder:environmentBanner,home:CepqarOffersPage(driverMode:driver)));
    await tester.pumpAndSettle(const Duration(milliseconds:300),EnginePhase.sendSemanticsUpdate,const Duration(seconds:60));
    expect(find.byType(CircularProgressIndicator),findsNothing);
+   expect(find.byKey(const ValueKey('offers-load-error')),findsNothing);
    expect(find.textContaining('Konum izni gerekli'),findsNothing);
    expect(find.textContaining('Sunucu hatası'),findsNothing);
    final card=find.byKey(const ValueKey('offer-$id'));

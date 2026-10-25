@@ -1,5 +1,5 @@
 'use strict';
-const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),assert=require('node:assert/strict');
 const root='/home/cepqontag-deploy/app/server';
 process.chdir(root);
 const dotenv=require(root+'/node_modules/dotenv');
@@ -29,7 +29,12 @@ if(process.argv[3]==='restore'){
   assert(source.includes(guard));fs.writeFileSync(file,source);
  }
  let content=fs.readFileSync('.env','utf8');
- for(const [key,value] of Object.entries({APP_ENV:'staging',PORT:'8091',STAGING_DISABLE_EXTERNAL_SERVICES:'1',PUBLIC_API_BASE_URL:'http://127.0.0.1:18091'})){
+ const settings={APP_ENV:'staging',PORT:'8091',STAGING_DISABLE_EXTERNAL_SERVICES:'1',PUBLIC_API_BASE_URL:env.PUBLIC_API_BASE_URL?.startsWith('https://')&&!env.PUBLIC_API_BASE_URL.includes('heycar-api-185-165-46-213.nip.io')?env.PUBLIC_API_BASE_URL:'http://127.0.0.1:18091'};
+ if(env.STAGING_AUTH_KEYS_ISOLATED!=='1'){
+  for(const key of ['OWNER_AUTH_SECRET','DRIVER_AUTH_SECRET','JWT_SECRET','SESSION_SECRET'])settings[key]=crypto.randomBytes(48).toString('base64url');
+  settings.STAGING_AUTH_KEYS_ISOLATED='1';
+ }
+ for(const [key,value] of Object.entries(settings)){
   content=content.replace(new RegExp('^'+key+'=.*$','gm'),'');content+='\n'+key+'='+value+'\n';
  }
  fs.writeFileSync('.env',content,{mode:0o600});
