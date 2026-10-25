@@ -69,7 +69,7 @@ jobs:
           node-version: '20'
       - run: flutter pub get
       - name: Analyze environment and marketplace entry points
-        run: flutter analyze lib/app_environment.dart lib/staging_banner.dart lib/entry_staging.dart lib/entry_business.dart lib/business_panel_page.dart lib/cepqar_offers_page.dart integration_test/staging_campaign_test.dart test_driver/staging_campaign_driver.dart --no-fatal-infos --no-fatal-warnings
+        run: flutter analyze lib/app_environment.dart lib/staging_banner.dart lib/entry_staging.dart lib/entry_business.dart lib/business_panel_page.dart lib/cepqar_offers_page.dart integration_test/staging_campaign_test.dart integration_test/staging_business_test.dart test_driver/staging_campaign_driver.dart --no-fatal-infos --no-fatal-warnings
       - name: Verify fail-closed endpoints and separate sessions
         run: flutter test test/app_environment_test.dart --dart-define=APP_ENV=staging --dart-define=API_BASE_URL=http://127.0.0.1:18091 --dart-define=STAGING_SSH_TUNNEL=true
       - name: Verify backend staging isolation
@@ -199,11 +199,9 @@ jobs:
       - name: Prepare emulator test sources
         run: |
           flutter pub get
-          flutter create . --platforms=android --project-name app --org com.cepqar --no-pub
+          flutter create . --platforms=android,web --project-name app --org com.cepqar --no-pub
           python3 tool/staging/prepare_sources.py
           flutter pub get
-          npm install --no-save --ignore-scripts playwright
-          npx playwright install --with-deps chromium
           bash tool/staging/ssh_setup.sh
       - name: Verify real business browser and PostgreSQL before booting Android
         run: bash tool/staging/run_e2e.sh prepare
