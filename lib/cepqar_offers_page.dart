@@ -454,10 +454,10 @@ class _OfferDetailPageState extends State<_OfferDetailPage>{
           ]),
           const SizedBox(height:16),
           Container(padding:const EdgeInsets.symmetric(horizontal:7,vertical:15),decoration:BoxDecoration(color:const Color(0xFFF5F0FF),borderRadius:BorderRadius.circular(17)),child:Row(children:[
-            benefit(Icons.timer_outlined,'Hızlı & Güvenli\\nHizmet'),
-            benefit(Icons.water_drop_rounded,'Profesyonel\\nEkipman'),
-            benefit(Icons.eco_rounded,'Özenli\\nUygulama'),
-            benefit(Icons.auto_awesome_rounded,'Kaliteli\\nSonuç')
+            benefit(Icons.timer_outlined,'Hızlı & Güvenli\nHizmet'),
+            benefit(Icons.water_drop_rounded,'Profesyonel\nEkipman'),
+            benefit(Icons.eco_rounded,'Özenli\nUygulama'),
+            benefit(Icons.auto_awesome_rounded,'Kaliteli\nSonuç')
           ])),
           const SizedBox(height:15),
           Container(decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(16),boxShadow:[BoxShadow(color:Colors.black.withValues(alpha:.035),blurRadius:12)]),child:Column(children:[
