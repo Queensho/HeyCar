@@ -2,11 +2,13 @@
 const fs=require('node:fs'),assert=require('node:assert/strict');
 const {chromium}=require('playwright');
 const phase=process.argv[2],file=process.argv[3],fixture=JSON.parse(fs.readFileSync(file,'utf8'));
-let browser;
+let browser,page;
 (async()=>{
  browser=await chromium.launch({headless:true,args:['--enable-webgl','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
  const context=await browser.newContext({viewport:{width:1440,height:1100},...(fs.existsSync('staging-auth-state.json')?{storageState:'staging-auth-state.json'}:{})});
- const page=await context.newPage();
+ page=await context.newPage();
+ page.on('pageerror',error=>console.error('STAGING_BROWSER_ERROR: '+String(error.message).split(fixture.password).join('[redacted]').slice(0,500)));
+ const text=value=>page.getByText(value,{exact:true}).or(page.getByLabel(value,{exact:true})).first();
  let violation=false;
  await page.route('**/*',async route=>{
   const request=route.request(),url=new URL(request.url());
@@ -17,14 +19,14 @@ let browser;
  });
  if(phase==='create')await page.addInitScript(()=>localStorage.setItem('flutter.business_token',JSON.stringify('production-session-sentinel')));
  await page.goto('http://127.0.0.1:8085/HeyCar/isletme-staging/');
- await page.getByText('STAGING / TEST ORTAMI',{exact:true}).waitFor({timeout:60000});
+ await text('STAGING / TEST ORTAMI').waitFor({timeout:60000});
  if(phase==='create'){
   await page.getByRole('button',{name:'Giriş Yap',exact:true}).click();
   await page.getByRole('textbox',{name:'E-posta',exact:true}).fill(fixture.email);
   await page.getByLabel('Şifre',{exact:true}).fill(fixture.password);
   const login=page.waitForResponse(r=>r.url().endsWith('/api/business/auth/login')&&r.request().method()==='POST');
   await page.getByRole('button',{name:'Giriş Yap',exact:true}).click();assert.equal((await login).status(),200);
-  await page.getByText('CepQontag Staging İşletmesi',{exact:true}).first().waitFor();
+  await text('CepQontag Staging İşletmesi').waitFor();
   await page.getByRole('button',{name:'Yeni Kampanya Oluştur',exact:true}).click();
   await page.getByRole('textbox',{name:'Kampanya başlığı',exact:true}).fill(fixture.title);
   await page.getByRole('textbox',{name:'Açıklama',exact:true}).fill('Yalnız staging arayüz testi');
@@ -35,10 +37,10 @@ let browser;
   const response=await created;assert.equal(response.status(),201);const data=await response.json();
   fixture.campaignId=data.campaign.id;fs.writeFileSync(file,JSON.stringify(fixture),{mode:0o600});
   assert.equal(data.campaign.title,fixture.title);assert.equal(data.campaign.is_active,false);
-  await page.getByText(fixture.title,{exact:true}).first().waitFor();
+  await text(fixture.title).waitFor();
   assert.equal(await page.evaluate(()=>localStorage.getItem('flutter.business_token')),JSON.stringify('production-session-sentinel'));
  }else{
-  await page.getByText(fixture.title,{exact:true}).first().waitFor({timeout:60000});
+  await text(fixture.title).waitFor({timeout:60000});
   await page.getByRole('button',{name:'Düzenle',exact:true}).first().click();
   if(phase==='edit')await page.getByRole('textbox',{name:'Açıklama',exact:true}).fill('Staging panelinde düzenlendi');
   else{
@@ -50,15 +52,16 @@ let browser;
   await page.getByRole('button',{name:'Kaydet',exact:true}).click();const response=await updated;assert.equal(response.status(),200);
   const body=response.request().postDataJSON();
   if(phase!=='edit')assert.deepEqual(Object.keys(body),['isActive']);
-  await page.getByText('Kampanya güncellendi.',{exact:true}).waitFor();
+  await text('Kampanya güncellendi.').waitFor();
  }
  assert.equal(violation,false,'PRODUCTION_REQUEST_BLOCKED');
  await context.storageState({path:'staging-auth-state.json'});fs.chmodSync('staging-auth-state.json',0o600);
  fs.mkdirSync('staging-evidence',{recursive:true});
  await page.screenshot({path:'staging-evidence/panel-'+phase+'.png',fullPage:true});
  await browser.close();console.log('STAGING_PANEL_UI_'+phase.toUpperCase()+'_PASS');
-})().catch(error=>{
+})().catch(async error=>{
  const message=String(error.message||error).split(fixture.password).join('[redacted]').replace(/Bearer\s+\S+/g,'Bearer [redacted]');
  console.error('STAGING_PANEL_UI_'+phase.toUpperCase()+'_FAILED: '+message.slice(0,1800));
+ if(page){fs.mkdirSync('staging-evidence',{recursive:true});await page.screenshot({path:'staging-evidence/panel-'+phase+'-failure.png'}).catch(()=>{});const labels=await page.locator('[aria-label]').evaluateAll(nodes=>nodes.map(n=>({role:n.getAttribute('role'),label:n.getAttribute('aria-label')})).slice(0,50)).catch(()=>[]);console.error('STAGING_BROWSER_LABELS: '+JSON.stringify(labels));}
  process.exitCode=1;
 }).finally(()=>browser?.close());

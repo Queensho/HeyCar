@@ -1,5 +1,6 @@
 'use strict';
 const fs=require('node:fs');
+const {execFileSync}=require('node:child_process');
 const assert=require('node:assert/strict');
 process.chdir('/home/cepqontag-deploy/app/server');
 require(process.cwd()+'/node_modules/dotenv').config({quiet:true});
@@ -29,6 +30,8 @@ const {Pool}=require(process.cwd()+'/node_modules/pg');
     }
    }
   }
-  console.log(JSON.stringify({database:r.rows[0].database,loopbackHealth:true,nginxReadable,httpsCandidates:[...candidates]},null,2));
+  let sudo='';try{sudo=execFileSync('sudo',['-n','-l'],{stdio:['ignore','pipe','ignore']}).toString();}catch{}
+  let canWriteNewSite=false;try{fs.accessSync('/etc/nginx/sites-enabled',fs.constants.W_OK);canWriteNewSite=true;}catch{}
+  console.log(JSON.stringify({database:r.rows[0].database,loopbackHealth:true,nginxReadable,httpsCandidates:[...candidates],httpsAdministration:{nginxInstalled:fs.existsSync('/usr/sbin/nginx'),certbotInstalled:fs.existsSync('/usr/bin/certbot'),canWriteNewSite,passwordlessNginxCommand:sudo.includes('/usr/sbin/nginx')||/NOPASSWD:\s*ALL/.test(sudo)}},null,2));
  }finally{await pool.end();}
 })().catch(()=>{console.error('STAGING_PROBE_FAILED: configuration, database or loopback health could not be verified');process.exitCode=1;});

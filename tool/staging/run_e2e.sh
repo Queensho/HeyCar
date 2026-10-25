@@ -10,13 +10,20 @@ cleanup() {
     "${SSH[@]}" "node - cleanup $REMOTE_FIXTURE" < tool/staging/fixture.cjs || true
     "${SSH[@]}" "rm -f $REMOTE_FIXTURE" || true
   fi
+  for file in .staging-tunnel.pid .staging-site.pid; do
+    if [ -f "$file" ]; then kill "$(cat "$file")" 2>/dev/null || true; rm -f "$file"; fi
+  done
   rm -f staging-fixture.json staging-auth-state.json
 }
-trap cleanup EXIT
+if [ "${1:-all}" = cleanup ]; then cleanup; exit; fi
+if [ "${1:-all}" = prepare ]; then
+trap 'status=$?; if [ "$status" -ne 0 ]; then cleanup; fi' EXIT
 # The only exposed test listener is local to this ephemeral runner.
-ssh -i "$HOME/.ssh/staging_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ExitOnForwardFailure=yes -p "$SSH_PORT" -N -L 127.0.0.1:18091:127.0.0.1:8091 "$SSH_USER@$SSH_HOST" &
+nohup ssh -i "$HOME/.ssh/staging_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ExitOnForwardFailure=yes -p "$SSH_PORT" -N -L 127.0.0.1:18091:127.0.0.1:8091 "$SSH_USER@$SSH_HOST" < /dev/null > /tmp/staging-tunnel.log 2>&1 &
 tunnel_pid=$!
-python3 -m http.server 8085 --bind 127.0.0.1 --directory staging-site > /tmp/staging-site.log 2>&1 &
+printf '%s\n' "$tunnel_pid" > .staging-tunnel.pid
+nohup python3 -m http.server 8085 --bind 127.0.0.1 --directory staging-site < /dev/null > /tmp/staging-site.log 2>&1 &
+printf '%s\n' "$!" > .staging-site.pid
 for attempt in $(seq 1 20); do
   if curl -fsS http://127.0.0.1:18091/api/environment > /tmp/staging-identity.json; then break; fi
   sleep 1
@@ -31,6 +38,10 @@ node tool/staging/panel_e2e.cjs edit staging-fixture.json
 "${SSH[@]}" "node - approve $REMOTE_FIXTURE" < tool/staging/fixture.cjs
 node tool/staging/panel_e2e.cjs publish staging-fixture.json
 "${SSH[@]}" "node - active $REMOTE_FIXTURE" < tool/staging/fixture.cjs
+exit 0
+fi
+trap cleanup EXIT
+tunnel_pid=$(cat .staging-tunnel.pid)
 campaign_id=$(node -p "require('./staging-fixture.json').campaignId")
 adb install -r staging-apk/app-debug.apk
 adb shell pm grant com.cepqar.app.staging android.permission.ACCESS_FINE_LOCATION
