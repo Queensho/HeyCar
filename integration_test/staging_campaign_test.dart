@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:http/http.dart' as http;
-import '../lib/app_environment.dart';
-import '../lib/cepqar_offers_page.dart';
-import '../lib/staging_banner.dart';
+import 'package:heycar_app/app_environment.dart';
+import 'package:heycar_app/cepqar_offers_page.dart';
+import 'package:heycar_app/staging_banner.dart';
 
 void main(){
  final binding=IntegrationTestWidgetsFlutterBinding.ensureInitialized();

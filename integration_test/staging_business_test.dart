@@ -4,8 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:integration_test/integration_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../lib/app_environment.dart';
-import '../lib/entry_business.dart';
+import 'package:heycar_app/app_environment.dart';
+import 'package:heycar_app/entry_business.dart';
 
 void main(){
  final binding=IntegrationTestWidgetsFlutterBinding.ensureInitialized();
