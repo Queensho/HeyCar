@@ -21,18 +21,32 @@ void main(){
    expect(offers.any((o)=>o['id']==id),active);
    await tester.pumpWidget(MaterialApp(builder:environmentBanner,home:CepqarOffersPage(driverMode:driver)));
    await tester.pumpAndSettle(const Duration(milliseconds:300),EnginePhase.sendSemanticsUpdate,const Duration(seconds:60));
+   // The nearby section is lazily built below the editorial sections. Search
+   // through the real field, then scroll the vertical page into that section.
+   final search=find.byType(TextField);
+   if(search.evaluate().isNotEmpty){
+    await tester.enterText(search.first,'CepQontag Staging Test');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+   }
+   final vertical=find.descendant(of:find.byType(CustomScrollView),matching:find.byType(Scrollable)).first;
+   await tester.scrollUntilVisible(find.text('Yakınımdaki Fırsatlar'),300,scrollable:vertical,maxScrolls:20);
+   await tester.pumpAndSettle(const Duration(milliseconds:300),EnginePhase.sendSemanticsUpdate,const Duration(seconds:30));
+   if(!driver)await binding.convertFlutterSurfaceToImage();
+   await tester.pump();
+   await binding.takeScreenshot('staging-${driver?'driver':'owner'}-${active?'active':'inactive'}-list');
    expect(find.byType(CircularProgressIndicator),findsNothing);
    expect(find.byKey(const ValueKey('offers-load-error')),findsNothing);
    expect(find.textContaining('Konum izni gerekli'),findsNothing);
    expect(find.textContaining('Sunucu hatası'),findsNothing);
    final card=find.byKey(const ValueKey('offer-$id'));
    if(active){
+    await tester.scrollUntilVisible(card,180,scrollable:vertical,maxScrolls:12);
     expect(card,findsWidgets);
     await tester.ensureVisible(card.first);await tester.tap(card.first);
     await tester.pumpAndSettle();
     expect(find.text('CepQontag Staging Test'),findsWidgets);
    }else{expect(card,findsNothing);}
-   if(!driver)await binding.convertFlutterSurfaceToImage();
    await tester.pump();
    await binding.takeScreenshot('staging-${driver?'driver':'owner'}-${active?'active':'inactive'}');
   });
