@@ -84,5 +84,6 @@ void main(){
   expect(prefs.getString('business_token'),'production-session-sentinel');
   binding.reportData={'campaignId':campaign['id'],'phase':phase,'realBrowserUi':true,'frameworkErrors':frameworkErrors};
   await binding.takeScreenshot('panel-$phase');
+  FlutterError.onError=originalErrorHandler;
  });
 }
