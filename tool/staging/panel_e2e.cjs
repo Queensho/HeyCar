@@ -4,7 +4,7 @@ const {chromium}=require('playwright');
 const phase=process.argv[2],file=process.argv[3],fixture=JSON.parse(fs.readFileSync(file,'utf8'));
 let browser,page;
 (async()=>{
- browser=await chromium.launch({headless:true,args:['--enable-webgl','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ browser=await chromium.launch({headless:true,args:['--force-renderer-accessibility','--enable-webgl','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
  const context=await browser.newContext({viewport:{width:1440,height:1100},...(fs.existsSync('staging-auth-state.json')?{storageState:'staging-auth-state.json'}:{})});
  page=await context.newPage();
  page.on('pageerror',error=>console.error('STAGING_BROWSER_ERROR: '+String(error.message).split(fixture.password).join('[redacted]').slice(0,500)));
@@ -19,6 +19,9 @@ let browser,page;
  });
  if(phase==='create')await page.addInitScript(()=>localStorage.setItem('flutter.business_token',JSON.stringify('production-session-sentinel')));
  await page.goto('http://127.0.0.1:8085/HeyCar/isletme-staging/');
+ await page.locator('flutter-view').waitFor({state:'attached',timeout:60000});
+ const accessibility=page.locator('flt-semantics-placeholder');
+ if(await accessibility.count())await accessibility.evaluate(node=>node.click());
  await text('STAGING / TEST ORTAMI').waitFor({timeout:60000});
  if(phase==='create'){
   await page.getByRole('button',{name:'Giriş Yap',exact:true}).click();
