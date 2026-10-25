@@ -23,7 +23,7 @@ void main(){
   final f=field(label);await waitFor(t,f);await t.ensureVisible(f);await t.enterText(f,value);await t.pump();
  }
  Future<void> tap(WidgetTester t,String label)async{
-  final f=find.text(label).first;await waitFor(t,f);await t.ensureVisible(f);await t.pump(const Duration(milliseconds:250));await t.tap(f);await t.pump(const Duration(milliseconds:300));
+  final matches=find.text(label);await waitFor(t,matches);final f=matches.first;await t.ensureVisible(f);await t.pump(const Duration(milliseconds:250));await t.tap(f);await t.pump(const Duration(milliseconds:300));
  }
  testWidgets('real Chrome business panel $phase',(tester)async{
   await AppEnvironment.verifyServer();
