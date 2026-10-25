@@ -2,8 +2,9 @@
 const fs=require('node:fs'),assert=require('node:assert/strict');
 const {chromium}=require('playwright');
 const phase=process.argv[2],file=process.argv[3],fixture=JSON.parse(fs.readFileSync(file,'utf8'));
+let browser;
 (async()=>{
- const browser=await chromium.launch({headless:true,args:['--enable-webgl','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ browser=await chromium.launch({headless:true,args:['--enable-webgl','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
  const context=await browser.newContext({viewport:{width:1440,height:1100},...(fs.existsSync('staging-auth-state.json')?{storageState:'staging-auth-state.json'}:{})});
  const page=await context.newPage();
  let violation=false;
@@ -56,4 +57,8 @@ const phase=process.argv[2],file=process.argv[3],fixture=JSON.parse(fs.readFileS
  fs.mkdirSync('staging-evidence',{recursive:true});
  await page.screenshot({path:'staging-evidence/panel-'+phase+'.png',fullPage:true});
  await browser.close();console.log('STAGING_PANEL_UI_'+phase.toUpperCase()+'_PASS');
-})().catch(()=>{console.error('STAGING_PANEL_UI_'+phase.toUpperCase()+'_FAILED (credentials and token omitted)');process.exitCode=1;});
+})().catch(error=>{
+ const message=String(error.message||error).split(fixture.password).join('[redacted]').replace(/Bearer\s+\S+/g,'Bearer [redacted]');
+ console.error('STAGING_PANEL_UI_'+phase.toUpperCase()+'_FAILED: '+message.slice(0,1800));
+ process.exitCode=1;
+}).finally(()=>browser?.close());

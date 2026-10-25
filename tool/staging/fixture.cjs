@@ -10,11 +10,13 @@ const pool=new Pool({host:process.env.DB_HOST,port:Number(process.env.DB_PORT||5
  const identity=await pool.query('SELECT current_database() AS db');assert.equal(identity.rows[0].db,'heycar_staging');
  const mode=process.argv[2];
  if(mode==='seed'){
+  await pool.query('BEGIN');
   const salt=crypto.randomBytes(16).toString('base64url'),password=crypto.randomBytes(24).toString('base64url');
   const email='staging-e2e-'+crypto.randomUUID()+'@example.invalid';
   const hash='scrypt_v2:'+salt+':'+crypto.scryptSync(password,salt,64).toString('hex');
   const a=await pool.query('INSERT INTO business_accounts(email,password_hash) VALUES($1,$2) RETURNING id',[email,hash]);
   const b=await pool.query("INSERT INTO businesses(account_id,name,category,address,latitude,longitude,approval_status,is_active) VALUES($1,'CepQontag Staging İşletmesi','Servis','Staging test, İstanbul',41.0082,28.9784,'approved',true) RETURNING id",[a.rows[0].id]);
+  await pool.query('COMMIT');
   process.stdout.write(JSON.stringify({email,password,accountId:a.rows[0].id,businessId:b.rows[0].id,title:'CepQontag Staging Test'}));
  }else{
   const fixture=JSON.parse(fs.readFileSync(process.argv[3],'utf8'));
@@ -31,4 +33,4 @@ const pool=new Pool({host:process.env.DB_HOST,port:Number(process.env.DB_PORT||5
   }
   console.log('STAGING_FIXTURE_'+mode.toUpperCase()+'_OK');
  }
-})().catch(()=>{console.error('STAGING_FIXTURE_FAILED');process.exitCode=1;}).finally(()=>pool.end());
+})().catch(async()=>{await pool.query('ROLLBACK').catch(()=>{});console.error('STAGING_FIXTURE_FAILED');process.exitCode=1;}).finally(()=>pool.end());
