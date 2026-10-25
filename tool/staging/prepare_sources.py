@@ -32,6 +32,7 @@ def prepare(root):
     text = re.sub(r'android:label="[^"]+"', 'android:label="CepQontag STAGING"', text)
     # Loopback-only SSH transport is used by the emulator test artifact. Public
     # staging builds still require HTTPS in AppEnvironment.validate().
+    text = text.replace('<application', '<uses-permission android:name="android.permission.INTERNET" /><uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" /><uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" /><application', 1)
     text = text.replace('<application', '<application android:usesCleartextTraffic="true"', 1)
     text = text.replace('</application>', '<meta-data android:name="firebase_messaging_auto_init_enabled" android:value="false" /><meta-data android:name="firebase_analytics_collection_enabled" android:value="false" /><meta-data android:name="firebase_crashlytics_collection_enabled" android:value="false" /></application>')
     manifest.write_text(text)

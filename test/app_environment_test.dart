@@ -15,7 +15,7 @@ void main(){
  });
  test('SSH transport is an explicit loopback-only test opt-in',(){
   AppEnvironment.validate(environment:'staging',api:'http://10.0.2.2:18091',tunnel:true);
-  expect(()=>AppEnvironment.validate(environment:'staging',api:'http://10.0.2.2:18091'),throwsStateError);
+  expect(()=>AppEnvironment.validate(environment:'staging',api:'http://10.0.2.2:18091',tunnel:false),throwsStateError);
   expect(()=>AppEnvironment.validate(environment:'staging',api:'http://example.com:18091',tunnel:true),throwsStateError);
  });
  test('staging owner and driver credentials do not reuse production storage',()async{

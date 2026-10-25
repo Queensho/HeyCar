@@ -31,7 +31,7 @@ void main(){
     await tester.pumpAndSettle();
     expect(find.text('CepQontag Staging Test'),findsWidgets);
    }else{expect(card,findsNothing);}
-   await binding.convertFlutterSurfaceToImage();
+   if(!driver)await binding.convertFlutterSurfaceToImage();
    await tester.pump();
    await binding.takeScreenshot('staging-${driver?'driver':'owner'}-${active?'active':'inactive'}');
   });
