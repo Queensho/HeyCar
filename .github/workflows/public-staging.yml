@@ -1,8 +1,8 @@
-name: Public Marketplace Staging
+name: Public Marketplace Staging Preflight
 on:
   push:
     branches: [feature/isolated-marketplace-staging-20261025]
-    paths: ['tool/staging/public_*', '.github/workflows/public-staging.yml', 'deploy/STAGING_PUBLIC.md']
+    paths: ['tool/staging/public*', '.github/workflows/public-staging.yml', 'deploy/STAGING_PUBLIC.md']
   workflow_dispatch:
 permissions:
   contents: read
@@ -35,7 +35,7 @@ jobs:
         run: |
           node - <<'JS'
           const fs=require('fs');const p=require('./staging-public-preflight.json');
-          (async()=>{const checks={};for(const scheme of ['http','https']){try{const r=await fetch(scheme+'://'+p.hostname+'/api/environment',{signal:AbortSignal.timeout(15000),redirect:'manual'});checks[scheme]={status:r.status};if(scheme==='https'&&r.status===200){const x=await r.json();checks.https.staging=x.environment==='staging'&&x.database==='heycar_staging';}}catch{checks[scheme]={reachable:false};}}fs.writeFileSync('staging-public-network.json',JSON.stringify(checks,null,2));console.log(checks);})();
+          (async()=>{const checks={};for(const scheme of ['http','https']){try{const r=await fetch(scheme+'://'+p.hostname+'/api/environment',{signal:AbortSignal.timeout(15000),redirect:'manual'});checks[scheme]={status:r.status};if(scheme==='https'&&r.status===200){const x=await r.json();checks.https.staging=x.environment==='staging'&&x.database==='heycar_staging';}}catch(e){checks[scheme]={reachable:false,errorCode:e.cause?.code||e.name};}}fs.writeFileSync('staging-public-network.json',JSON.stringify(checks,null,2));console.log(checks);})();
           JS
       - uses: actions/upload-artifact@v4
         if: always()
