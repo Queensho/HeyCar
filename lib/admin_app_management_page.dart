@@ -744,7 +744,8 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
             const SizedBox(height:8),
             DropdownButtonFormField<String>(value:action,decoration:const InputDecoration(labelText:'Action'),items:actions.entries.map((e)=>DropdownMenuItem(value:e.key,child:Text(e.value))).toList(),onChanged:(v)=>setD(()=>action=v??'NONE')),
             if(action=='EXTERNAL_URL')...[const SizedBox(height:8),TextField(controller:target,decoration:const InputDecoration(labelText:'http/https URL'))],
-            SwitchListTile(contentPadding:EdgeInsets.zero,value:enabled,onChanged:(v)=>setD(()=>enabled=v),title:const Text('Aktif')),
+            SwitchListTile(contentPadding:EdgeInsets.zero,value:isHomeHero,onChanged:(v)=>setD(()=>isHomeHero=v),title:const Text('Ana Sayfa Üst Banner (360 × 140 dp)'),subtitle:const Text('Yayınlandığında üst banner görseli olarak kullanılır. Görsel seçilmezse varsayılan banner korunur.')),
+        SwitchListTile(contentPadding:EdgeInsets.zero,value:enabled,onChanged:(v)=>setD(()=>enabled=v),title:const Text('Aktif')),
             SwitchListTile(contentPadding:EdgeInsets.zero,value:testOnly,onChanged:(v)=>setD(()=>testOnly=v),title:const Text('Sadece test hesabında')),
           ]);
           final phone=Column(children:[const Text('CANLI KART ÖNİZLEMESİ',style:TextStyle(color:AdminUi.muted,fontSize:9,fontWeight:FontWeight.w900)),const SizedBox(height:10),_ServicePreview(row:preview,colorOfToken:colorOfToken,iconFor:iconFor)]);
@@ -781,7 +782,7 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
     final editing=source!=null,row=Map<String,dynamic>.from(source??{});
     final title=TextEditingController(text:'${row['title']??''}'),target=TextEditingController(text:'${row['actionTarget']??''}');
     String icon='${row['icon']??'campaign'}',iconUrl='${row['iconUrl']??''}',iconToken='${row['iconToken']??'primary'}',background='${row['backgroundToken']??'surface'}',action='${row['action']??'NONE'}';
-    bool enabled=row['enabled']!=false;
+    bool enabled=row['enabled']!=false;bool isHomeHero=row['placement']=='home_hero';
     final result=await showDialog<Map<String,dynamic>>(context:context,builder:(d)=>StatefulBuilder(builder:(d,setD)=>AlertDialog(
       title:Text(editing?'Hızlı Erişim Düzenle':'Yeni Hızlı Erişim'),
       content:SizedBox(width:520,child:Column(mainAxisSize:MainAxisSize.min,children:[
@@ -812,7 +813,7 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
   }
 
   Widget _bannerPage()=>_editableItemPage(
-    title:'Promosyon & Duyurular',subtitle:'Server-driven banner oluşturun; ana sayfadaki promo_banner componenti açık olduğunda gösterilir.',
+    title:'Promosyon & Duyurular',subtitle:'Banner görseli yükleyin; Ana Sayfa Üst Banner seçimi 360 × 140 dp alanında gösterilir.',
     rows:_list('banners'),addLabel:'Banner Ekle',onAdd:()=>_editBanner(),onEdit:_editBanner,onDelete:(row){final rows=_list('banners')..removeWhere((x)=>x['id']==row['id']);_setList('banners',rows);},
     preview:(row)=>_BannerPreview(row:row,colorOfToken:colorOfToken),
   );
@@ -833,7 +834,7 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
         if(action=='EXTERNAL_URL')...[const SizedBox(height:8),TextField(controller:target,decoration:const InputDecoration(labelText:'http/https URL'))],
         SwitchListTile(contentPadding:EdgeInsets.zero,value:enabled,onChanged:(v)=>setD(()=>enabled=v),title:const Text('Aktif')),
       ]))),
-      actions:[TextButton(onPressed:()=>Navigator.pop(d),child:const Text('Vazgeç')),FilledButton(onPressed:()=>Navigator.pop(d,{...row,'id':'${row['id']??'banner_${DateTime.now().millisecondsSinceEpoch}'}','title':title.text.trim(),'subtitle':subtitle.text.trim(),'imageUrl':image,'backgroundToken':background,'badgeText':badge.text.trim(),'badgeToken':badgeToken,'ctaText':cta.text.trim(),'action':action,'actionTarget':action=='EXTERNAL_URL'?target.text.trim():'','enabled':enabled,'sortOrder':row['sortOrder']??((_list('banners').length+1)*10),'audience':row['audience']??'all'}),child:const Text('Uygula'))],
+      actions:[TextButton(onPressed:()=>Navigator.pop(d),child:const Text('Vazgeç')),FilledButton(onPressed:()=>Navigator.pop(d,{...row,'id':'${row['id']??'banner_${DateTime.now().millisecondsSinceEpoch}'}','title':title.text.trim(),'subtitle':subtitle.text.trim(),'imageUrl':image,'placement':isHomeHero?'home_hero':'standard','backgroundToken':background,'badgeText':badge.text.trim(),'badgeToken':badgeToken,'ctaText':cta.text.trim(),'action':action,'actionTarget':action=='EXTERNAL_URL'?target.text.trim():'','enabled':enabled,'sortOrder':row['sortOrder']??((_list('banners').length+1)*10),'audience':row['audience']??'all'}),child:const Text('Uygula'))],
     )));
     if(result==null)return;
     final common=await editCommon(result,title:'Hedefleme & Zamanlama');if(common==null)return;
