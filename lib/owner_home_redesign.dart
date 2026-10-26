@@ -1871,6 +1871,8 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       (title:'NFC + QR Etiket',asset:'assets/Etiket4.png',comingSoon:true),
       (title:'Motosiklet Etiketi',asset:'assets/Etiket.png',comingSoon:true),
     ];
+    final managed=_appUiConfig.banners.where((b)=>b.raw['placement']=='home_store').toList();
+    final hasManaged=_appUiConfig.banners.any((b)=>b.raw['placement']=='home_store');
     void openStore()=>Navigator.of(context).push(MaterialPageRoute<void>(
       builder:(_)=>const CepqontagStorePage()));
     return Padding(
@@ -1891,10 +1893,13 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
           key:const ValueKey('home-store-carousel'),
           scrollDirection:Axis.horizontal,
           padding:const EdgeInsets.only(right:16),
-          itemCount:products.length,
+          itemCount:hasManaged?managed.length:products.length,
           separatorBuilder:(_,__)=>const SizedBox(width:10),
           itemBuilder:(context,index){
-            final product=products[index];
+            final product=products[index%products.length];
+            final storeItem=hasManaged?managed[index]:null;
+            final cardTitle=storeItem?.title??product.title;
+            final cardImage=storeItem?.imageUrl??'';
             return SizedBox(width:142,child:Material(
               color:const Color(0xFF210B45),borderRadius:BorderRadius.circular(18),
               clipBehavior:Clip.antiAlias,
@@ -1906,10 +1911,13 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                       colors:[Color(0xFF7827F9),Color(0xFF300D65),Color(0xFF100C23)]))),
                   Align(alignment:Alignment.topCenter,child:Padding(
                     padding:const EdgeInsets.only(top:9,left:18,right:18,bottom:42),
-                    child:Image.asset(product.asset,fit:BoxFit.contain,
+                    child:cardImage.isNotEmpty?Image.network(cardImage,fit:BoxFit.contain,
+                      errorBuilder:(_,__,___)=>const Icon(Icons.qr_code_2_rounded,
+                        color:Color(0xFFB9FF45),size:58))
+                      :Image.asset(product.asset,fit:BoxFit.contain,
                       errorBuilder:(_,__,___)=>const Icon(Icons.qr_code_2_rounded,
                         color:Color(0xFFB9FF45),size:58)))),
-                  if(product.comingSoon)Positioned(top:8,right:8,child:Container(
+                  if(storeItem==null&&product.comingSoon)Positioned(top:8,right:8,child:Container(
                     padding:const EdgeInsets.symmetric(horizontal:6,vertical:3),
                     decoration:BoxDecoration(color:const Color(0xFFB9FF45),
                       borderRadius:BorderRadius.circular(8)),
@@ -1920,7 +1928,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                       begin:Alignment.topCenter,end:Alignment.bottomCenter,
                       colors:[Colors.transparent,Color(0xEE100C23)])),
                     child:Row(crossAxisAlignment:CrossAxisAlignment.end,children:[
-                      Expanded(child:Text(product.title,maxLines:2,
+                      Expanded(child:Text(cardTitle,maxLines:2,
                         overflow:TextOverflow.ellipsis,
                         style:const TextStyle(fontSize:12,height:1.12,
                           fontWeight:FontWeight.w800,color:Colors.white))),
