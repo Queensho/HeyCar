@@ -1786,8 +1786,8 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         key:const ValueKey('premium-home-vehicle'),
         onTap:widget.vehicles,borderRadius:BorderRadius.circular(22),
         child:Container(padding:const EdgeInsets.all(11),
-          decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(22),
-            border:Border.all(color:const Color(0xFFEBEBF1))),
+          decoration:BoxDecoration(color:const Color(0xFFB9FF45),borderRadius:BorderRadius.circular(22),
+            border:Border.all(color:const Color(0xFFA4E93B))),
           child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
             Row(children:[
               const Expanded(child:Text('Aracım',
@@ -1811,7 +1811,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         ),
       ))),
       const SizedBox(width:8),
-      Expanded(child:SizedBox(height:210,child:Column(children:[
+      Expanded(child:SizedBox(height:184,child:Column(children:[
         Expanded(child:_ridezTile('Yaklaşan Servis','Bakım hatırlatmaları',
           Icons.calendar_month_rounded,()=>widget.shortcut('reminders'))),
         const SizedBox(height:8),
