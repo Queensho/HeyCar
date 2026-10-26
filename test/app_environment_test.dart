@@ -10,7 +10,7 @@ import '../lib/staging_banner.dart';
 void main(){
  testWidgets('staging announcement stays accessible across Navigator routes',(tester)async{
   final semantics=tester.ensureSemantics();
-  addTearDown(semantics.dispose);
+  try{
   final navigator=GlobalKey<NavigatorState>();
   Set<String> labels(){
    final result=<String>{};
@@ -27,6 +27,7 @@ void main(){
   navigator.currentState!.push(MaterialPageRoute<void>(builder:(_)=>const Scaffold(body:TextField(obscureText:true))));
   await tester.pumpAndSettle();
   expect(labels().any((label)=>label.contains('STAGING / TEST ORTAMI')),isTrue);
+  }finally{semantics.dispose();}
  });
  test('production default remains unchanged',(){expect(AppEnvironment.productionApi,'https://heycar-api-185-165-46-213.nip.io');});
  test('staging refuses production, missing TLS and unknown environments',(){
