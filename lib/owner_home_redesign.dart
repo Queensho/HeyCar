@@ -1177,7 +1177,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     final ids=[...quickAccessIds,...ownerShortcutCatalog.map((item)=>item.id).where((id)=>!quickAccessIds.contains(id))];
     final items=ids.map(_quickDef)
       .whereType<OwnerShortcutDefinition>().toList();
-    if(items.isEmpty)return const SizedBox.shrink();
+    if(items.isEmpty)return quickRow();
     return Column(children:[
       _homeSectionHeading('Hızlı Erişim',_editQuickAccess,top:11,swipeHint:true),
       _quickAccessPanel([
@@ -1452,14 +1452,14 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
 
   Widget _homeServicesPromo(){
     final services=_appUiConfig.services;
-    if(services.isEmpty)return const SizedBox.shrink();
+    final visibleServices=services.isNotEmpty?services:AppUiConfig.defaults().services;
     return Column(children:[
       _homeSectionHeading('Hizmetler',widget.services,top:11),
       const SizedBox(height:3),
       Padding(
         padding:const EdgeInsets.symmetric(horizontal:16),
         child:OwnerHomeServicesPromo(
-          services:services,
+          services:visibleServices,
           tokens:_ui,
           onOpenServices:widget.services,
         ),
@@ -1678,19 +1678,19 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   Widget _ridezHero()=>Padding(
     padding:const EdgeInsets.fromLTRB(16,10,16,10),
     child:InkWell(onTap:widget.services,borderRadius:BorderRadius.circular(24),
-      child:Container(height:194,padding:const EdgeInsets.all(17),
+      child:Container(height:210,padding:const EdgeInsets.all(14),
         decoration:const BoxDecoration(
           gradient:LinearGradient(colors:[Color(0xFF21104E),Color(0xFF651FFF),Color(0xFFB5FF39)]),
           borderRadius:BorderRadius.all(Radius.circular(24))),
         child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-          const Text('Yola Daha\\nGüvenli Çıkın',
+          const Text('Yola Daha\nGüvenli Çıkın',
             style:TextStyle(color:Colors.white,fontSize:25,fontWeight:FontWeight.w900,height:1.1)),
           const SizedBox(height:8),
           const Text('Bakım, vale, yol yardım ve daha fazlası',
             style:TextStyle(color:Colors.white,fontSize:12)),
           const Spacer(),
           Row(children:[
-            const Text('Hizmetleri keşfet',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w800)),
+            const Flexible(child:Text('Hizmetleri keşfet',maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:Colors.white,fontWeight:FontWeight.w800))),
             const SizedBox(width:8),const Icon(Icons.arrow_forward_rounded,color:Colors.white,size:19),
           ]),
         ]),
@@ -1762,15 +1762,10 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
           _ridezVehicleGrid(),
           _ridezMetrics(),
           // Keep the tested, data-driven quick access and services sections visible.
-          _appUiConfig.version<=1?quickRow():_managedQuickActions(),
+          _appUiConfig.quickActions.isEmpty?quickRow():_managedQuickActions(),
           _homeServicesPromo(),
           monthly(),
-          for(final component in _appUiConfig.components.where((c)=>
-            false))...[
-            RepaintBoundary(key:ValueKey('ridez-${component.id}-${_appUiConfig.version}'),
-              child:_managedComponent(component)),
-            if(component.type=='monthly_summary')_motorcycleHomePanel(),
-          ],
+          if(VehicleKind.isMotorcycle(QrDraft.vehicleType))_motorcycleHomePanel(),
           for(final component in _appUiConfig.components.where((c)=>
             !{'weather_card','vehicle_security','quick_actions','services_grid','monthly_summary'}.contains(c.type)))
             RepaintBoundary(key:ValueKey('extra-${component.id}-${_appUiConfig.version}'),
