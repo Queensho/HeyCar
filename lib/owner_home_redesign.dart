@@ -1660,7 +1660,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
 
   // Ridez-inspired dashboard: reference geometry, CepQontag actions and real data.
   Widget _ridezTile(String title,String subtitle,IconData icon,VoidCallback onTap,{Key? key}){
-    return Expanded(child:InkWell(key:key,onTap:onTap,borderRadius:BorderRadius.circular(20),
+    return InkWell(key:key,onTap:onTap,borderRadius:BorderRadius.circular(20),
       child:Container(padding:const EdgeInsets.all(12),
         decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(20),
           border:Border.all(color:const Color(0xFFEBEBF1))),
@@ -1671,7 +1671,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
           const SizedBox(height:5),
           Text(subtitle,maxLines:2,overflow:TextOverflow.ellipsis,
             style:const TextStyle(fontSize:11,color:Color(0xFF737B90))),
-        ]))));
+        ])));
   }
 
   Widget _ridezHero()=>Padding(
@@ -1740,11 +1740,11 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   Widget _ridezMetrics()=>Padding(
     padding:const EdgeInsets.fromLTRB(16,0,16,10),
     child:Row(children:[
-      _ridezTile('Sürüşler','Veri mevcut değil',Icons.route_rounded,widget.vehicles),
+      Expanded(child:_ridezTile('Sürüşler','Veri mevcut değil',Icons.route_rounded,widget.vehicles)),
       const SizedBox(width:7),
-      _ridezTile('Mesafe','Veri mevcut değil',Icons.location_on_rounded,widget.vehicles),
+      Expanded(child:_ridezTile('Mesafe','Veri mevcut değil',Icons.location_on_rounded,widget.vehicles)),
       const SizedBox(width:7),
-      _ridezTile('Yakıt','Veri mevcut değil',Icons.local_gas_station_rounded,widget.vehicles),
+      Expanded(child:_ridezTile('Yakıt','Veri mevcut değil',Icons.local_gas_station_rounded,widget.vehicles)),
     ]),
   );
 
