@@ -1862,6 +1862,82 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     ]),
   );
 
+  // Compact store discovery carousel, placed immediately below the vehicle grid.
+  // Product taps open the existing store so pricing and availability remain live.
+  Widget _homeStoreCarousel(){
+    const products=<({String title,String asset,bool comingSoon})>[
+      (title:'Araç İletişim Etiketi',asset:'assets/Etiket4.png',comingSoon:false),
+      (title:'Ek Araç Etiketi',asset:'assets/Etiket3.png',comingSoon:false),
+      (title:'NFC + QR Etiket',asset:'assets/Etiket4.png',comingSoon:true),
+      (title:'Motosiklet Etiketi',asset:'assets/Etiket.png',comingSoon:true),
+    ];
+    void openStore()=>Navigator.of(context).push(MaterialPageRoute<void>(
+      builder:(_)=>const CepqontagStorePage()));
+    return Padding(
+      padding:const EdgeInsets.fromLTRB(16,6,0,14),
+      child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        Padding(
+          padding:const EdgeInsets.only(right:16,bottom:12),
+          child:Row(children:[
+            const Expanded(child:Text('CepQontag Store',
+              style:TextStyle(fontSize:19,fontWeight:FontWeight.w900,color:Color(0xFF10152D)))),
+            TextButton(onPressed:openStore,child:const Row(mainAxisSize:MainAxisSize.min,children:[
+              Text('Tümü',style:TextStyle(color:Color(0xFF651FFF),fontWeight:FontWeight.w700)),
+              Icon(Icons.chevron_right_rounded,color:Color(0xFF651FFF),size:18),
+            ])),
+          ]),
+        ),
+        SizedBox(height:170,child:ListView.separated(
+          key:const ValueKey('home-store-carousel'),
+          scrollDirection:Axis.horizontal,
+          padding:const EdgeInsets.only(right:16),
+          itemCount:products.length,
+          separatorBuilder:(_,__)=>const SizedBox(width:10),
+          itemBuilder:(context,index){
+            final product=products[index];
+            return SizedBox(width:142,child:Material(
+              color:const Color(0xFF210B45),borderRadius:BorderRadius.circular(18),
+              clipBehavior:Clip.antiAlias,
+              child:InkWell(
+                onTap:openStore,
+                child:Stack(fit:StackFit.expand,children:[
+                  const DecoratedBox(decoration:BoxDecoration(
+                    gradient:LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,
+                      colors:[Color(0xFF7827F9),Color(0xFF300D65),Color(0xFF100C23)]))),
+                  Align(alignment:Alignment.topCenter,child:Padding(
+                    padding:const EdgeInsets.only(top:9,left:18,right:18,bottom:42),
+                    child:Image.asset(product.asset,fit:BoxFit.contain,
+                      errorBuilder:(_,__,___)=>const Icon(Icons.qr_code_2_rounded,
+                        color:Color(0xFFB9FF45),size:58)))),
+                  if(product.comingSoon)Positioned(top:8,right:8,child:Container(
+                    padding:const EdgeInsets.symmetric(horizontal:6,vertical:3),
+                    decoration:BoxDecoration(color:const Color(0xFFB9FF45),
+                      borderRadius:BorderRadius.circular(8)),
+                    child:const Text('Yakında',style:TextStyle(fontSize:9,fontWeight:FontWeight.w800)))),
+                  Positioned(left:0,right:0,bottom:0,child:Container(
+                    padding:const EdgeInsets.fromLTRB(10,15,7,9),
+                    decoration:const BoxDecoration(gradient:LinearGradient(
+                      begin:Alignment.topCenter,end:Alignment.bottomCenter,
+                      colors:[Colors.transparent,Color(0xEE100C23)])),
+                    child:Row(crossAxisAlignment:CrossAxisAlignment.end,children:[
+                      Expanded(child:Text(product.title,maxLines:2,
+                        overflow:TextOverflow.ellipsis,
+                        style:const TextStyle(fontSize:12,height:1.12,
+                          fontWeight:FontWeight.w800,color:Colors.white))),
+                      const SizedBox(width:4),
+                      const CircleAvatar(radius:12,backgroundColor:Colors.white,
+                        child:Icon(Icons.chevron_right_rounded,color:Color(0xFF25104F),size:17)),
+                    ]),
+                  )),
+                ]),
+              ),
+            ));
+          },
+        )),
+      ]),
+    );
+  }
+
   Widget _ridezMetric(String title,String subtitle,IconData icon,Color tint)=>Container(
     padding:const EdgeInsets.fromLTRB(10,10,8,10),
     decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(19),
@@ -1905,6 +1981,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             header(),
             _ridezHero(),
             _ridezVehicleGrid(),
+            _homeStoreCarousel(),
           ]),
           if(VehicleKind.isMotorcycle(QrDraft.vehicleType))_motorcycleHomePanel(),
           for(final component in _appUiConfig.components.where((c)=>
