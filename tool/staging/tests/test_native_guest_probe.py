@@ -23,10 +23,20 @@ class NativeGuestTests(unittest.TestCase):
         <node package="com.cepqar.app.staging" text="Telefon Numarası" />
         <node package="com.cepqar.app.staging" content-desc="Şifre" />
         <node package="com.cepqar.app.staging" text="STAGING / TEST ORTAMI" />
+        <node package="com.cepqar.app.staging" class="android.widget.EditText" password="false" />
+        <node package="com.cepqar.app.staging" class="android.widget.EditText" password="true" />
         </hierarchy>'''
         self.assertTrue(probe.login_form_visible(xml))
         self.assertFalse(probe.login_form_visible(xml.replace('com.cepqar.app.staging', 'com.cepqar.app')))
-        self.assertFalse(probe.login_form_visible(xml.replace('Şifre', 'Giriş Yap')))
+        self.assertFalse(probe.login_form_visible(xml.replace('password="true"', 'password="false"')))
+
+    def test_turkish_accessibility_case_and_whitespace_are_normalized(self):
+        self.assertEqual(probe.normalized('STAGİNG / TEST\nORTAMI'), 'staging / test ortami')
+        self.assertEqual(probe.normalized('Telefon Numarası'), 'telefon numarasi')
+
+    def test_static_login_labels_without_editable_fields_are_not_a_form(self):
+        xml='<hierarchy><node package="com.cepqar.app.staging" text="Telefon Numarası Şifre STAGING / TEST ORTAMI" /></hierarchy>'
+        self.assertFalse(probe.login_form_visible(xml))
 
 
 if __name__ == '__main__':

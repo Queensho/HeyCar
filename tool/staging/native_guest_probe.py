@@ -9,6 +9,7 @@ import re
 import subprocess
 import sys
 import time
+import unicodedata
 import xml.etree.ElementTree as ET
 
 PACKAGE = 'com.cepqar.app.staging'
@@ -35,10 +36,21 @@ def login_bounds(xml):
     return min(candidates)[1]
 
 
+def normalized(label):
+    # Android accessibility can return dotted-I combining marks and newlines.
+    text=unicodedata.normalize('NFKD', label.casefold().replace('ı','i'))
+    return ' '.join(''.join(c for c in text if not unicodedata.combining(c)).split())
+
+
 def login_form_visible(xml):
-    labels = ' '.join(node.get('text', '')+' '+node.get('content-desc', '')
-                      for node in stage_nodes(xml)).casefold()
-    return 'telefon numarası' in labels and 'şifre' in labels and 'STAGING / TEST ORTAMI'.casefold() in labels
+    nodes=stage_nodes(xml)
+    labels=normalized(' '.join(node.get('text', '')+' '+node.get('content-desc', '') for node in nodes))
+    fields=[node for node in nodes if node.get('class')=='android.widget.EditText']
+    password=any(node.get('password')=='true' for node in fields)
+    phone=any(node.get('password')!='true' for node in fields)
+    return (len(fields)>=2 and password and phone
+            and ('telefon numarasi' in labels or '5xx' in labels)
+            and 'staging / test ortami' in labels)
 
 
 def run(device):
@@ -50,7 +62,17 @@ def run(device):
 
     def snapshot():
         adb('shell', 'uiautomator', 'dump', '/sdcard/cepqontag-staging-ui.xml')
-        return adb('exec-out', 'cat', '/sdcard/cepqontag-staging-ui.xml').decode()
+        xml=adb('exec-out', 'cat', '/sdcard/cepqontag-staging-ui.xml').decode()
+        evidence=Path('staging-evidence');evidence.mkdir(exist_ok=True)
+        views=[]
+        for node in stage_nodes(xml):
+            view={key:node.get(key,'') for key in ('class','bounds','password','enabled','focusable')}
+            editable=view['class']=='android.widget.EditText'
+            for key in ('text','content-desc'):
+                view[key]='[editable value omitted]' if editable else node.get(key,'')[:300]
+            views.append(view)
+        (evidence/'downloadable-apk-accessibility.json').write_text(json.dumps({'stageNodes':views},ensure_ascii=False))
+        return xml
 
     deadline = time.monotonic()+45
     while True:
