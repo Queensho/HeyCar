@@ -64,6 +64,9 @@ class InstallerTests(unittest.TestCase):
             self.assertNotIn('--standalone', args)
             self.assertEqual(args[args.index('--domain') + 1], m.HOST)
             self.assertEqual(args[args.index('--config-dir') + 1], str(m.ACME))
+            self.assertEqual(args[args.index('--work-dir') + 1], str(m.ACME_WORK))
+            self.assertEqual(args[args.index('--logs-dir') + 1], str(m.ACME_LOG))
+            self.assertEqual(args[args.index('--server') + 1], 'https://acme-v02.api.letsencrypt.org/directory')
 
     def test_reload_requires_a_passing_nginx_test(self):
         with patch.object(m, 'run', side_effect=RuntimeError('bad nginx')) as run:

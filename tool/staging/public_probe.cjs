@@ -13,6 +13,9 @@ const assert=require('node:assert/strict');
  assert(addresses.includes(publicIp),'NIP_DNS_MISMATCH');
  const dependencies={};
  for(const binary of ['/usr/bin/python3','/usr/sbin/nginx','/usr/bin/certbot','/usr/bin/openssl','/usr/bin/systemctl','/usr/bin/curl'])dependencies[binary]=fs.existsSync(binary);
+ const runtimeVersions={python:execFileSync('/usr/bin/python3',['-I','-c','import sys; print(".".join(map(str,sys.version_info[:3])))'],{encoding:'utf8',stdio:['ignore','pipe','ignore']}).trim(),openssl:execFileSync('/usr/bin/openssl',['version'],{encoding:'utf8',stdio:['ignore','pipe','ignore']}).trim()};
+ const certbotHelp=execFileSync('/usr/bin/certbot',['--help','all'],{encoding:'utf8',stdio:['ignore','pipe','ignore']});
+ const certbotOptions={};for(const flag of ['--no-directory-hooks','--config-dir','--work-dir','--logs-dir','--keep-until-expiring'])certbotOptions[flag]=certbotHelp.includes(flag);
  const productionReadonly={};
  const prodHealth=await fetch('https://heycar-api-185-165-46-213.nip.io/health',{signal:AbortSignal.timeout(15000)});
  assert.equal(prodHealth.status,200);assert.equal((await prodHealth.json()).ok,true);productionReadonly.apiHealthy=true;
@@ -47,5 +50,5 @@ const assert=require('node:assert/strict');
  let helperTrusted=false;try{const s=fs.statSync(helper);helperTrusted=s.uid===0&&(s.mode&0o022)===0;}catch{}
  let canWriteSites=false;try{fs.accessSync('/etc/nginx/sites-enabled',fs.constants.W_OK);canWriteSites=true;}catch{}
  const helperAuthorized=helperTrusted&&rules.includes(helper)&&rules.includes('NOPASSWD');
- console.log(JSON.stringify({identity,publicIp,hostname,addresses,nginxSites,dependencies,productionReadonly,nginxInstalled:fs.existsSync('/usr/sbin/nginx'),certbotInstalled:fs.existsSync('/usr/bin/certbot'),canWriteSites,helperTrusted,helperAuthorized,nginxSudo:rules.includes('/usr/sbin/nginx'),certbotSudo:rules.includes('/usr/bin/certbot'),nginxReloadSudo:/systemctl[^\n]*(?:reload|restart)[^\n]*nginx/.test(rules),unrestrictedSudo:/NOPASSWD:\s*ALL/.test(rules)},null,2));
+ console.log(JSON.stringify({identity,publicIp,hostname,addresses,nginxSites,dependencies,runtimeVersions,certbotOptions,productionReadonly,nginxInstalled:fs.existsSync('/usr/sbin/nginx'),certbotInstalled:fs.existsSync('/usr/bin/certbot'),canWriteSites,helperTrusted,helperAuthorized,nginxSudo:rules.includes('/usr/sbin/nginx'),certbotSudo:rules.includes('/usr/bin/certbot'),nginxReloadSudo:/systemctl[^\n]*(?:reload|restart)[^\n]*nginx/.test(rules),unrestrictedSudo:/NOPASSWD:\s*ALL/.test(rules)},null,2));
 })().catch(e=>{console.error('PUBLIC_STAGING_PROBE_FAILED: '+e.message);process.exitCode=1;});

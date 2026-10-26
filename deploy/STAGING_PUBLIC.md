@@ -173,3 +173,7 @@ preflight is deliberately rerun on the VPS with `--check` in the final command,
 BEFORE installation. Neither actual root installation nor issuance is claimed
 performed by this security review. Public Pages and direct HTTPS APK rollout
 remain separate, pending tasks; production files/database/panel are not deployed.
+
+The same ancestor/symlink trust checks cover isolated ACME work and log directories,
+not only the certificate config directory. CI records Python/OpenSSL versions and
+required Certbot options without exposing the help dump or credentials.

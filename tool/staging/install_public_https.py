@@ -26,6 +26,8 @@ SITE = Path('/etc/nginx/sites-available/zz-cepqontag-staging.conf')
 LINK = Path('/etc/nginx/sites-enabled/zz-cepqontag-staging.conf')
 WEBROOT = Path('/var/www/cepqontag-staging-acme')
 ACME = Path('/etc/letsencrypt/cepqontag-staging')
+ACME_WORK = Path('/var/lib/letsencrypt/cepqontag-staging')
+ACME_LOG = Path('/var/log/letsencrypt/cepqontag-staging')
 STATE = Path('/var/lib/cepqontag-staging-https')
 NGINX_ROOT = Path('/etc/nginx')
 PRODUCTION_CERTS = Path('/etc/letsencrypt/live')
@@ -236,7 +238,7 @@ def inspect_machine():
         raise RuntimeError('STAGING_DNS_MISMATCH')
     identity('http://127.0.0.1:8091/api/environment')
     run('/usr/sbin/nginx', '-t')
-    for path in [STATE, WEBROOT, ACME, SITE.parent, LINK.parent, HELPER.parent, SERVICE.parent]:
+    for path in [STATE, WEBROOT, ACME, ACME_WORK, ACME_LOG, SITE.parent, LINK.parent, HELPER.parent, SERVICE.parent]:
         trusted_directory(path)
     if STATE.exists():
         trusted_directory(STATE, private=True)
@@ -292,8 +294,8 @@ def certificate():
         '--domain', HOST, '--keep-until-expiring', '--config', '/dev/null',
         '--no-directory-hooks', '--server', 'https://acme-v02.api.letsencrypt.org/directory',
         '--config-dir', str(ACME),
-        '--work-dir', '/var/lib/letsencrypt/cepqontag-staging',
-        '--logs-dir', '/var/log/letsencrypt/cepqontag-staging', timeout=240)
+        '--work-dir', str(ACME_WORK),
+        '--logs-dir', str(ACME_LOG), timeout=240)
     run('/usr/bin/openssl', 'x509', '-in', str(ACME / 'live' / HOST / 'fullchain.pem'),
         '-noout', '-checkhost', HOST, '-checkend', '86400')
 
