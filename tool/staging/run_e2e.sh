@@ -82,6 +82,9 @@ fi
 android_phase() {
   local active="$1"
   flutter build apk --debug --target integration_test/staging_campaign_test.dart "${environment_flags[@]}" --dart-define=STAGING_CAMPAIGN_ID="$campaign_id" --dart-define=STAGING_EXPECT_ACTIVE="$active"
+  # Release compilation workers before the emulator runs the full guest app.
+  # Flutter-generated Gradle heaps can otherwise exhaust the hosted runner.
+  (cd android && ./gradlew --stop)
   # Fail visibly if the SSH listener died during the Android build, then use
   # adb transport instead of depending on emulator NAT reaching host loopback.
   curl -fsS --max-time 15 "$api_url/api/environment" > /tmp/staging-android-identity.json
