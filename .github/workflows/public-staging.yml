@@ -2,7 +2,7 @@ name: Public Marketplace Staging Preflight
 on:
   push:
     branches: [feature/isolated-marketplace-staging-20261025]
-    paths: ['tool/staging/public*', '.github/workflows/public-staging.yml', 'deploy/STAGING_PUBLIC.md']
+    paths: ['tool/staging/public*', 'tool/staging/install_public_https.py', 'tool/staging/tests/**', '.github/workflows/public-staging.yml', 'deploy/STAGING_PUBLIC.md']
   workflow_dispatch:
 permissions:
   contents: read
@@ -24,6 +24,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - name: Verify root installer safety and rollback without privileged mutations
+        run: |
+          python3 -m py_compile tool/staging/install_public_https.py
+          python3 -m unittest discover -s tool/staging/tests -v
+          node --check tool/staging/public_probe.cjs
       - run: bash tool/staging/ssh_setup.sh
       - name: Verify actual staging identity, public IP, nip.io DNS and narrow HTTPS privileges
         run: |

@@ -97,3 +97,38 @@ Remove/restore only the dedicated staging site, nginx -t, reload, and verify
 unrelated configuration hashes. Keep production virtual hosts/certificates and
 the production service untouched. If a Pages overlay is later deployed, roll
 back with the captured complete original Pages artifact, not a partial site.
+
+## Root installer (user-authorized follow-up)
+
+`tool/staging/install_public_https.py` is a self-contained, fixed-host installer.
+Run the pinned/hash-verified version as root, with Python isolated mode `-I`.
+It first inspects nginx -t/-T, verifies public IP/DNS and actual staging identity,
+records root-only hashes of unrelated Nginx configuration and public certificates,
+and refuses unmanaged files/symlinks. It creates only the staging host and uses
+only webroot ACME in a dedicated certificate store. It does not grant sudo to
+any deploy user, install packages, change the backend/.env/database or deploy
+Pages/main. There is no production service restart.
+
+After nginx -t it reloads Nginx, checks the public ACME token, issues/renews the
+single certificate, validates trusted HTTPS identity and GitHub Pages CORS,
+rejects an untrusted Origin, checks unrelated hashes and installs a root-only
+renewal helper plus `cepqontag-staging-tls-renew.service/.timer`. The daily timer
+is enabled; a real future renewal is not claimed tested. Its timeout allows the
+ACME operation to complete. HTTPS failure restores only the previous staging
+files/link and runs nginx -t before reload. Isolated ACME state is retained for
+diagnosis/retry; production certificates are not revoked, deleted or modified.
+
+Root-only inspection, results and staging rollback backups are saved under
+`/var/lib/cepqontag-staging-https/run-*`. Console output contains no passwords or
+private keys. The helper may be rerun with no arguments (idempotent) or --renew.
+The installed helper and units are administrator/root-owned, not deploy-writable.
+Rollback after a successful install: disable only the staging TLS renewal timer,
+restore/remove only the previously managed staging host using the run backup,
+nginx -t and reload. Keep production files/certificates and services untouched.
+
+Local/CI tests cover root refusal, scoped configuration, symlink refusal,
+production hash detection, isolated Certbot arguments, test-before-reload,
+normal TLS trust and an actual temporary-filesystem rollback after injected ACME
+failure. They are not evidence of real VPS certificate issuance. Public panel,
+public APK and campaign lifecycle tests remain pending until the root installer
+has actually completed; previous tunnel evidence is retained in PR #265.
