@@ -4,7 +4,7 @@ from pathlib import Path
 
 PRODUCTION_API = 'https://heycar-api-185-165-46-213.nip.io'
 
-def prepare(root):
+def prepare(root, https_only=False):
     for path in (root / 'lib').rglob('*.dart'):
         if path.name == 'app_environment.dart':
             continue
@@ -33,7 +33,7 @@ def prepare(root):
     # Loopback-only SSH transport is used by the emulator test artifact. Public
     # staging builds still require HTTPS in AppEnvironment.validate().
     text = text.replace('<application', '<uses-permission android:name="android.permission.INTERNET" /><uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" /><uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" /><application', 1)
-    text = text.replace('<application', '<application android:usesCleartextTraffic="true"', 1)
+    text = text.replace('<application', '<application android:usesCleartextTraffic="' + ('false' if https_only else 'true') + '"', 1)
     text = text.replace('</application>', '<meta-data android:name="firebase_messaging_auto_init_enabled" android:value="false" /><meta-data android:name="firebase_analytics_collection_enabled" android:value="false" /><meta-data android:name="firebase_crashlytics_collection_enabled" android:value="false" /></application>')
     manifest.write_text(text)
     # Do not restore any production Firebase configuration in staging builds.
@@ -42,4 +42,7 @@ def prepare(root):
     print('STAGING_SOURCE_AND_PACKAGE_ISOLATION_OK')
 
 if __name__ == '__main__':
-    prepare(Path('.'))
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--https-only', action='store_true')
+    prepare(Path('.'), https_only=parser.parse_args().https_only)
