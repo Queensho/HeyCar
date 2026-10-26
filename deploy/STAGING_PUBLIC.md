@@ -1,5 +1,12 @@
 # Issue #266 — public nip.io staging
 
+> Current status, 2026-10-26: the dedicated public HTTPS API and staging Pages
+> panel are live and were verified in public release run 40320832935. This file
+> preserves the earlier root/TLS security audit and its historical blockers.
+> Use [the current public release procedure](STAGING_PUBLIC_RELEASE.md) for
+> deployment and rollback. Do not run the clean-install root script over the
+> already configured unmanaged staging virtual host.
+
 Continues PR #265; never deploy main or production. The previously successful
 Chrome/PostgreSQL/Android tunnel evidence remains in run 40199343168.
 

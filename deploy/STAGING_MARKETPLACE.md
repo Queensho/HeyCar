@@ -1,8 +1,14 @@
 # Isolated marketplace staging
 
-The actual staging service was verified over fingerprint-pinned SSH at
-`127.0.0.1:8091`, backed by `heycar_staging`. There is currently no configured
-staging HTTPS origin. Do not invent one or publish clients pointing at production.
+> Historical SSH transport and initial provisioning notes. The public HTTPS API
+> and separate staging panel are now available; see
+> [current public release procedure](STAGING_PUBLIC_RELEASE.md). Private tunnel
+> artifacts remain separate regression fixtures, not the public phone APK.
+
+The initial staging service was verified over fingerprint-pinned SSH at
+`127.0.0.1:8091`, backed by `heycar_staging`. HTTPS was not configured at that
+point. The current verified public origin is
+`https://staging-api-185-165-46-213.nip.io`; never point staging at production.
 
 ## Entry points and isolation
 
@@ -54,8 +60,9 @@ does not count as UI proof; require the `campaign-ui-e2e` job itself to pass.
 
 ## Public HTTPS and Pages gate
 
-Provision a distinct staging DNS A/AAAA record pointing to this VPS. A domain
-name has not yet been supplied. Do not reuse the production API hostname.
+The original provisioning steps below apply before a public host exists.
+The nip.io hostname now resolves to the verified VPS and has valid public TLS;
+do not provision it again or reuse the production API hostname.
 `tool/staging/https-nginx.conf.template` is a **new virtual host** template,
 not a replacement for a production file.
 
