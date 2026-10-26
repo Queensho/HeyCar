@@ -1894,11 +1894,14 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                     gradient:LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,
                       colors:[Color(0xFF7827F9),Color(0xFF300D65),Color(0xFF100C23)]))),
                   if(campaign.imageUrl.isNotEmpty)
-                    Align(alignment:Alignment.topCenter,child:Padding(
-                      padding:const EdgeInsets.only(top:9,left:9,right:9,bottom:42),
-                      child:Image.network(campaign.imageUrl,fit:BoxFit.contain,
-                        errorBuilder:(_,__,___)=>const Icon(Icons.campaign_rounded,
-                          color:Color(0xFFB9FF45),size:58)))),
+                    Positioned.fill(child:Image.network(
+                      campaign.imageUrl,
+                      fit:BoxFit.cover,
+                      alignment:Alignment.center,
+                      errorBuilder:(_,__,___)=>const Center(
+                        child:Icon(Icons.campaign_rounded,
+                          color:Color(0xFFB9FF45),size:58)),
+                    )),
                   Positioned(left:0,right:0,bottom:0,child:Container(
                     padding:const EdgeInsets.fromLTRB(10,15,7,9),
                     decoration:const BoxDecoration(gradient:LinearGradient(
