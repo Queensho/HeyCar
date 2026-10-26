@@ -2,7 +2,7 @@ name: Public Marketplace Staging Preflight
 on:
   push:
     branches: [feature/isolated-marketplace-staging-20261025]
-    paths: ['tool/staging/public*', 'tool/staging/install_public_https.py', 'tool/staging/tests/**', '.github/workflows/public-staging.yml', 'deploy/STAGING_PUBLIC.md']
+    paths: ['tool/staging/pages_permission_probe.cjs', 'tool/staging/public*', 'tool/staging/install_public_https.py', 'tool/staging/tests/**', '.github/workflows/public-staging.yml', 'deploy/STAGING_PUBLIC.md']
   workflow_dispatch:
 permissions:
   contents: read
