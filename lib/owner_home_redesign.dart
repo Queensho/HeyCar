@@ -1694,7 +1694,34 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
           ]))));
   }
 
-  Widget _ridezHero()=>Padding(
+  Widget _ridezHero(){
+    final managed=_appUiConfig.banners.where((b)=>b.raw['placement']=='home_hero').toList();
+    final banner=managed.isEmpty?null:managed.first;
+    if(banner!=null&&banner.imageUrl.trim().isNotEmpty){
+      return Padding(
+        padding:const EdgeInsets.fromLTRB(16,8,16,10),
+        child:AspectRatio(
+          aspectRatio:360/140,
+          child:InkWell(
+            onTap:banner.action=='NONE'?null:()=>_runManagedAction(banner),
+            borderRadius:BorderRadius.circular(22),
+            child:ClipRRect(
+              borderRadius:BorderRadius.circular(22),
+              child:Image.network(
+                banner.imageUrl,
+                fit:BoxFit.cover,
+                width:double.infinity,
+                errorBuilder:(_,__,___)=>_ridezDefaultHero(),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+    return _ridezDefaultHero();
+  }
+
+  Widget _ridezDefaultHero()=>Padding(
     padding:const EdgeInsets.fromLTRB(16,8,16,10),
     child:InkWell(
       onTap:widget.services,
