@@ -1,3 +1,4 @@
+import 'app_environment.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,16 +13,16 @@ class OwnerAuth{
     final p=await SharedPreferences.getInstance();
     // On web, other tabs/PWA windows can rotate credentials in storage.
     await p.reload();
-    accessToken=p.getString('owner_access_token')??'';
-    refreshToken=p.getString('owner_refresh_token')??'';
+    accessToken=p.getString(AppEnvironment.storageKey('owner_access_token'))??'';
+    refreshToken=p.getString(AppEnvironment.storageKey('owner_refresh_token'))??'';
   }
 
   static Future<void> saveFrom(Map d)async{
     accessToken='${d['accessToken']??''}';
     refreshToken='${d['refreshToken']??''}';
     final p=await SharedPreferences.getInstance();
-    if(accessToken.isNotEmpty)await p.setString('owner_access_token',accessToken);
-    if(refreshToken.isNotEmpty)await p.setString('owner_refresh_token',refreshToken);
+    if(accessToken.isNotEmpty)await p.setString(AppEnvironment.storageKey('owner_access_token'),accessToken);
+    if(refreshToken.isNotEmpty)await p.setString(AppEnvironment.storageKey('owner_refresh_token'),refreshToken);
   }
 
   static Future<void> logout()async{await restore();final rt=refreshToken,at=accessToken;try{if(rt.isNotEmpty)await http.post(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/auth/logout'),headers:{'Content-Type':'application/json',if(at.isNotEmpty)'Authorization':'Bearer $at'},body:jsonEncode({'refreshToken':rt})).timeout(const Duration(seconds:10));}catch(_){}await clear();}
@@ -30,8 +31,8 @@ class OwnerAuth{
     accessToken='';
     refreshToken='';
     final p=await SharedPreferences.getInstance();
-    await p.remove('owner_access_token');
-    await p.remove('owner_refresh_token');
+    await p.remove(AppEnvironment.storageKey('owner_access_token'));
+    await p.remove(AppEnvironment.storageKey('owner_refresh_token'));
   }
 
   static bool accessTokenUsable(){
@@ -149,3 +150,4 @@ class OwnerHttp {
     return fn(await OwnerAuth.headers(json:json));
   }
 }
+

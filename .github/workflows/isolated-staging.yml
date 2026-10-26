@@ -1,0 +1,277 @@
+name: Isolated Marketplace Staging
+on:
+  push:
+    branches: [feature/isolated-marketplace-staging-20261025]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: isolated-marketplace-staging
+  cancel-in-progress: false
+jobs:
+  infrastructure:
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify staging SSH identity
+        env:
+          SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+          SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+          SSH_PORT: ${{ secrets.STAGING_SSH_PORT }}
+          SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+          FINGERPRINT: ${{ secrets.STAGING_SSH_HOST_FINGERPRINT }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in SSH_KEY SSH_HOST SSH_PORT SSH_USER FINGERPRINT; do
+            if [ -z "${!name}" ]; then echo "::error::Missing staging binding: $name"; exit 1; fi
+          done
+          test "$SSH_USER" = cepqontag-deploy
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/staging_key
+          chmod 600 ~/.ssh/staging_key
+          ssh-keyscan -T 10 -t ed25519 -p "$SSH_PORT" -H "$SSH_HOST" > ~/.ssh/known_hosts
+          actual=$(ssh-keygen -lf ~/.ssh/known_hosts -E sha256 | awk 'NR==1 {print $2}')
+          test "$actual" = "$FINGERPRINT"
+      - name: Inspect actual staging database and HTTPS configuration (read only)
+        env:
+          SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+          SSH_PORT: ${{ secrets.STAGING_SSH_PORT }}
+          SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+        run: |
+          set -euo pipefail
+          ssh -i "$HOME/.ssh/staging_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" node < tool/staging/probe.cjs > staging-infrastructure.json
+          node -e "const r=require('./staging-infrastructure.json'); console.log(JSON.stringify(r,null,2))"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: staging-infrastructure
+          path: staging-infrastructure.json
+          if-no-files-found: error
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: flutter pub get
+      - name: Analyze environment and marketplace entry points
+        run: flutter analyze lib/app_environment.dart lib/staging_banner.dart lib/entry_staging.dart lib/entry_business.dart lib/business_panel_page.dart lib/cepqar_offers_page.dart integration_test/staging_campaign_test.dart integration_test/staging_business_test.dart test_driver/staging_campaign_driver.dart --no-fatal-infos --no-fatal-warnings
+      - name: Verify fail-closed endpoints and separate sessions
+        run: flutter test test/app_environment_test.dart --dart-define=APP_ENV=staging --dart-define=API_BASE_URL=http://127.0.0.1:18091 --dart-define=STAGING_SSH_TUNNEL=true
+      - name: Verify backend staging isolation
+        run: |
+          node --test server/tests/staging-safety.test.js
+          node --check server/server.js
+          node --check server/push-routes.js
+          node --check server/web-push-service.js
+          node --check tool/staging/fixture.cjs
+          bash -n tool/staging/ssh_setup.sh
+          python3 -m py_compile tool/staging/prepare_sources.py
+  builds:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Reuse only source-identical staging client artifacts
+        id: reuse
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node tool/staging/reuse_clients.cjs
+      - uses: actions/download-artifact@v4
+        if: steps.reuse.outputs.run_id != ''
+        with:
+          name: staging-business-panel-ssh-tunnel
+          run-id: ${{ steps.reuse.outputs.run_id }}
+          github-token: ${{ github.token }}
+          path: staging-site/
+      - uses: actions/download-artifact@v4
+        if: steps.reuse.outputs.run_id != ''
+        with:
+          name: cepqontag-staging-ssh-tunnel-apk
+          run-id: ${{ steps.reuse.outputs.run_id }}
+          github-token: ${{ github.token }}
+          path: build/app/outputs/flutter-apk/
+      - uses: subosito/flutter-action@v2
+        if: steps.reuse.outputs.run_id == ''
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+        if: steps.reuse.outputs.run_id == ''
+      - name: Generate separate staging platforms
+        if: steps.reuse.outputs.run_id == ''
+        run: |
+          flutter create . --platforms=android,web --project-name app --org com.cepqar --no-pub
+          python3 tool/staging/prepare_sources.py
+          flutter pub get
+      - name: Build staging business panel for verified SSH tunnel transport
+        if: steps.reuse.outputs.run_id == ''
+        run: |
+          flutter build web --release --target lib/entry_business.dart --base-href /HeyCar/isletme-staging/ --pwa-strategy=none --dart-define=APP_ENV=staging --dart-define=API_BASE_URL=http://127.0.0.1:18091 --dart-define=STAGING_SSH_TUNNEL=true
+          mkdir -p staging-site/HeyCar/isletme-staging
+          cp -R build/web/. staging-site/HeyCar/isletme-staging/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: staging-business-panel-ssh-tunnel
+          path: staging-site/
+          if-no-files-found: error
+      - name: Build side-by-side Owner/Driver staging APK (SSH transport)
+        if: steps.reuse.outputs.run_id == ''
+        run: flutter build apk --debug --target lib/entry_staging.dart --dart-define=APP_ENV=staging --dart-define=API_BASE_URL=http://127.0.0.1:18091 --dart-define=STAGING_SSH_TUNNEL=true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cepqontag-staging-ssh-tunnel-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
+  staging-backend:
+    concurrency:
+      group: staging-marketplace-backend-write
+      cancel-in-progress: false
+    needs: checks
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 15
+    env:
+      SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+      SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+      SSH_PORT: ${{ secrets.STAGING_SSH_PORT }}
+      SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+      FINGERPRINT: ${{ secrets.STAGING_SSH_HOST_FINGERPRINT }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: bash tool/staging/ssh_setup.sh
+      - name: Apply guarded overlay without replacing existing marketplace modules or migrations
+        run: |
+          set -euo pipefail
+          ssh -i "$HOME/.ssh/staging_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" node < tool/staging/probe.cjs > /tmp/staging-preflight.json
+          scp -q -i "$HOME/.ssh/staging_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -P "$SSH_PORT" server/staging-safety.js "$SSH_USER@$SSH_HOST:/home/cepqontag-deploy/app/server/.staging-new-safety.js"
+          ssh -i "$HOME/.ssh/staging_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "node - $GITHUB_RUN_ID" < tool/staging/apply_server.cjs
+          if ! ssh -i "$HOME/.ssh/staging_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" 'sudo -n /usr/bin/systemctl restart cepqontag-staging.service && sleep 3 && curl -fsS --max-time 10 http://127.0.0.1:8091/api/environment'; then
+            ssh -i "$HOME/.ssh/staging_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "node - $GITHUB_RUN_ID restore" < tool/staging/apply_server.cjs
+            ssh -i "$HOME/.ssh/staging_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" 'sudo -n /usr/bin/systemctl restart cepqontag-staging.service'
+            exit 1
+          fi
+  campaign-ui-e2e:
+    needs: [checks, builds, staging-backend]
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 60
+    env:
+      SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+      SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+      SSH_PORT: ${{ secrets.STAGING_SSH_PORT }}
+      SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+      FINGERPRINT: ${{ secrets.STAGING_SSH_HOST_FINGERPRINT }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/download-artifact@v4
+        with:
+          name: staging-business-panel-ssh-tunnel
+          path: staging-site/
+      - uses: actions/download-artifact@v4
+        with:
+          name: cepqontag-staging-ssh-tunnel-apk
+          path: staging-apk/
+      - name: Prepare emulator test sources
+        run: |
+          flutter pub get
+          flutter create . --platforms=android,web --project-name app --org com.cepqar --no-pub
+          python3 tool/staging/prepare_sources.py
+          flutter pub get
+          bash tool/staging/ssh_setup.sh
+          flutter drive --help --verbose | python3 -c "import sys; h=sys.stdin.read(); assert 'enable-software-rendering' in h and 'enable-impeller' in h"
+      - name: Verify real business browser and PostgreSQL before booting Android
+        run: bash tool/staging/run_e2e.sh prepare
+      - name: Compile native campaign states before booting the emulator
+        run: bash tool/staging/run_e2e.sh build-android
+      - name: Enable Android hardware acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Real business browser, PostgreSQL and Owner/Driver Android UI lifecycle
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_2
+          ram-size: 2048M
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none -memory 2048 -feature -Vulkan
+          disable-animations: true
+          script: bash tool/staging/run_e2e.sh mobile
+      - name: Clean up staging-only test account and runner tunnel
+        if: always()
+        run: bash tool/staging/run_e2e.sh cleanup
+      - name: Upload UI screenshots and non-secret proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-campaign-ui-evidence
+          path: staging-evidence/
+          if-no-files-found: warn
+  public-staging-builds:
+    if: vars.STAGING_API_URL != ''
+    needs: [checks, staging-backend]
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 35
+    env:
+      STAGING_API_URL: ${{ vars.STAGING_API_URL }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify actual HTTPS staging identity before producing public clients
+        run: |
+          set -euo pipefail
+          node -e "const u=new URL(process.env.STAGING_API_URL);if(u.protocol!=='https:'||['heycar-api-185-165-46-213.nip.io','cepqar.com','cepqontag.com'].includes(u.hostname))process.exit(1)"
+          curl -fsS --max-time 15 "$STAGING_API_URL/api/environment" > /tmp/identity.json
+          node -e "const x=require('/tmp/identity.json');if(x.environment!=='staging'||x.database!=='heycar_staging'||x.externalServicesDisabled!==true)process.exit(1)"
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: |
+          flutter pub get
+          flutter create . --platforms=android,web --project-name app --org com.cepqar --no-pub
+          python3 tool/staging/prepare_sources.py
+          flutter pub get
+          flutter build web --release --target lib/entry_business.dart --base-href /HeyCar/isletme-staging/ --pwa-strategy=none --dart-define=APP_ENV=staging --dart-define=API_BASE_URL="$STAGING_API_URL"
+          mkdir -p public-staging/isletme-staging
+          cp -R build/web/. public-staging/isletme-staging/
+          flutter build apk --debug --target lib/entry_staging.dart --dart-define=APP_ENV=staging --dart-define=API_BASE_URL="$STAGING_API_URL"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: staging-business-panel-public-https
+          path: public-staging/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cepqontag-staging-https-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk

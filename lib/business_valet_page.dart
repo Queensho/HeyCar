@@ -1,9 +1,10 @@
+import 'app_environment.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 const _vBg=Color(0xFF07111F),_vPanel=Color(0xFF101A30),_vLine=Color(0xFF27355D),_vPurple=Color(0xFF713BFF),_vLime=Color(0xFFB6FF2A),_vMuted=Color(0xFFA7B0C7);
-const _vApi='https://heycar-api-185-165-46-213.nip.io';
+const _vApi=AppEnvironment.apiBase;
 
 class BusinessValetPage extends StatefulWidget{
  const BusinessValetPage({super.key,required this.token});
@@ -140,3 +141,4 @@ class _BusinessValetPageState extends State<BusinessValetPage>{
  Widget listBox(String title,List<Map<String,dynamic>> xs,IconData icon)=>box(Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(title,style:const TextStyle(color:Colors.white,fontWeight:FontWeight.w900)),const SizedBox(height:8),if(xs.isEmpty)const Text('Kayıt yok',style:TextStyle(color:_vMuted)) else ...xs.take(6).map((x)=>ListTile(dense:true,contentPadding:EdgeInsets.zero,leading:Icon(icon,color:_vPurple),title:Text((x['name']??'-').toString(),style:const TextStyle(color:Colors.white,fontWeight:FontWeight.w700)),subtitle:x['phone']!=null?Text(x['phone'].toString(),style:const TextStyle(color:_vMuted)):null))]));
  Widget box(Widget child)=>Container(padding:const EdgeInsets.all(14),decoration:BoxDecoration(color:_vPanel,borderRadius:BorderRadius.circular(18),border:Border.all(color:_vLine)),child:child);
 }
+

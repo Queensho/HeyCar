@@ -1,0 +1,269 @@
+name: Public HTTPS Marketplace Release
+on:
+  push:
+    branches: [feature/isolated-marketplace-staging-20261025]
+    paths:
+      - '.github/workflows/staging-public-release.yml'
+      - 'lib/**'
+      - 'assets/**'
+      - 'android/**'
+      - 'pubspec.*'
+      - 'integration_test/**'
+      - 'test_driver/**'
+      - 'test/app_environment_test.dart'
+      - 'deploy/STAGING_PUBLIC_RELEASE.md'
+      - 'tool/staging/public_pages.py'
+      - 'tool/staging/public_panel_smoke.cjs'
+      - 'tool/staging/run_e2e.sh'
+      - 'tool/staging/native_guest_probe.py'
+      - 'tool/staging/prepare_sources.py'
+      - 'tool/staging/reuse_clients.cjs'
+      - 'tool/staging/tests/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: public-https-marketplace-release
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 10
+    env:
+      SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+      SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+      SSH_PORT: ${{ secrets.STAGING_SSH_PORT }}
+      SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+      FINGERPRINT: ${{ secrets.STAGING_SSH_HOST_FINGERPRINT }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python3 -m unittest discover -s tool/staging/tests -v
+      - run: bash -n tool/staging/run_e2e.sh
+      - run: bash tool/staging/ssh_setup.sh
+      - name: Read-only actual SSH, PostgreSQL, Nginx, production and public TLS checks
+        run: |
+          ssh -i "$HOME/.ssh/staging_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" node < tool/staging/public_probe.cjs > staging-public-infrastructure.json
+          curl -fsS --max-time 20 https://staging-api-185-165-46-213.nip.io/api/environment > staging-public-identity.json
+          node -e "const x=require('./staging-public-identity.json');if(x.environment!=='staging'||x.database!=='heycar_staging'||x.port!==8091||x.externalServicesDisabled!==true)process.exit(1);console.log('PUBLIC_TLS_STAGING_IDENTITY_VERIFIED')"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: public-https-staging-preflight
+          path: staging-public-*.json
+  pages-inspect:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      deployments: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Identify the exact active Pages deployment and artifact without publishing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tool/staging/public_pages.py inspect
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: active-pages-source-inspection
+          path: pages-source.json
+  builds:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      STAGING_PUBLIC_API: https://staging-api-185-165-46-213.nip.io
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Reuse only identical verified HTTPS client sources and build flags
+        id: reuse
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node tool/staging/reuse_clients.cjs public
+      - uses: actions/download-artifact@v4
+        if: steps.reuse.outputs.run_id != ''
+        with:
+          name: staging-business-panel-direct-https
+          run-id: ${{ steps.reuse.outputs.run_id }}
+          github-token: ${{ github.token }}
+          path: public-panel/
+      - uses: actions/download-artifact@v4
+        if: steps.reuse.outputs.run_id != ''
+        with:
+          name: cepqontag-staging-direct-https-apk
+          run-id: ${{ steps.reuse.outputs.run_id }}
+          github-token: ${{ github.token }}
+          path: build/app/outputs/flutter-apk/
+      - uses: subosito/flutter-action@v2
+        if: steps.reuse.outputs.run_id == ''
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+        if: steps.reuse.outputs.run_id == ''
+      - name: Analyze and test actual staging application modules
+        if: steps.reuse.outputs.run_id == ''
+        run: |
+          flutter analyze lib/app_environment.dart lib/staging_banner.dart lib/entry_staging.dart lib/entry_business.dart lib/business_panel_page.dart lib/cepqar_offers_page.dart integration_test/staging_campaign_test.dart integration_test/staging_business_test.dart --no-fatal-infos --no-fatal-warnings
+          flutter test test/app_environment_test.dart --dart-define=APP_ENV=staging --dart-define=API_BASE_URL="$STAGING_PUBLIC_API"
+      - name: Prepare isolated HTTPS-only platforms
+        if: steps.reuse.outputs.run_id == ''
+        run: |
+          flutter create . --platforms=android,web --project-name app --org com.cepqar --no-pub
+          python3 tool/staging/prepare_sources.py --https-only
+          flutter pub get
+      - name: Build independent staging panel (no production or SSH API)
+        if: steps.reuse.outputs.run_id == ''
+        run: |
+          flutter build web --release --target lib/entry_business.dart --base-href /HeyCar/isletme-staging/ --pwa-strategy=none --dart-define=APP_ENV=staging --dart-define=API_BASE_URL="$STAGING_PUBLIC_API"
+          mkdir -p public-panel
+          cp -R build/web/. public-panel/
+          rm -f public-panel/flutter_service_worker.js
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          Path('public-panel/staging-build.json').write_text(json.dumps({'commit':os.environ['GITHUB_SHA'],'environment':'staging','api':os.environ['STAGING_PUBLIC_API'],'transport':'direct HTTPS'}))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: staging-business-panel-direct-https
+          path: public-panel/
+          if-no-files-found: error
+      - name: Build independently installable HTTPS Android APK
+        if: steps.reuse.outputs.run_id == ''
+        run: flutter build apk --debug --target lib/entry_staging.dart --dart-define=APP_ENV=staging --dart-define=API_BASE_URL="$STAGING_PUBLIC_API"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cepqontag-staging-direct-https-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
+  public-ui-e2e:
+    needs: builds
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 60
+    concurrency:
+      group: staging-marketplace-backend-write
+      cancel-in-progress: false
+    env:
+      STAGING_PUBLIC_API: https://staging-api-185-165-46-213.nip.io
+      SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+      SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+      SSH_PORT: ${{ secrets.STAGING_SSH_PORT }}
+      SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+      FINGERPRINT: ${{ secrets.STAGING_SSH_HOST_FINGERPRINT }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: cepqontag-staging-direct-https-apk
+          path: staging-apk/
+      - name: Prepare real public API UI tests
+        run: |
+          flutter pub get
+          flutter create . --platforms=android,web --project-name app --org com.cepqar --no-pub
+          python3 tool/staging/prepare_sources.py --https-only
+          flutter pub get
+          bash tool/staging/ssh_setup.sh
+          flutter drive --help --verbose | python3 -c "import sys; h=sys.stdin.read(); assert 'enable-software-rendering' in h and 'enable-impeller' in h"
+      - name: Chrome business UI create/edit/publish and real PostgreSQL via public HTTPS
+        run: bash tool/staging/run_e2e.sh prepare
+      - name: Compile native campaign states before booting the emulator
+        run: bash tool/staging/run_e2e.sh build-android
+      - name: Enable Android hardware acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Downloadable APK launch and Owner/Driver campaign lifecycle without adb reverse or SSH tunnel
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_2
+          ram-size: 2048M
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none -memory 2048 -feature -Vulkan
+          disable-animations: true
+          script: bash tool/staging/run_e2e.sh mobile
+      - name: Clean only this staging fixture
+        if: always()
+        run: bash tool/staging/run_e2e.sh cleanup
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: public-https-marketplace-ui-evidence
+          path: staging-evidence/
+  publish-panel:
+    needs: [builds, public-ui-e2e, pages-inspect]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency:
+      group: heycar-pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: https://queensho.github.io/HeyCar/isletme-staging/
+    permissions:
+      contents: read
+      actions: read
+      deployments: read
+      pages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: staging-business-panel-direct-https
+          path: public-panel/
+      - name: Preserve active production bytes and overlay only staging subdirectory
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tool/staging/public_pages.py prepare public-panel
+      - name: Retain original complete Pages artifact for rollback
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pages-before-staging-rollback-and-proof
+          path: |
+            pages-original.tar
+            pages-preservation.json
+          retention-days: 30
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: pages-preserved
+          retention-days: 30
+      - name: Refuse stale source or changed production bytes immediately before publishing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tool/staging/public_pages.py predeploy
+      - uses: actions/deploy-pages@v4
+        id: deployment
+      - name: Verify staging URL and unchanged production paths
+        run: python3 tool/staging/public_pages.py verify
+      - name: Published release panel real browser HTTPS startup and staging banner screenshot
+        run: |
+          npm install --no-save playwright
+          google-chrome --version
+          timeout 180s node tool/staging/public_panel_smoke.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: published-staging-panel-evidence
+          path: staging-evidence/

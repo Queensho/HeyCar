@@ -39,6 +39,8 @@ dependencies:
   nfc_manager: 4.1.1
 
 dev_dependencies:
+  integration_test:
+    sdk: flutter
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
@@ -68,3 +70,4 @@ flutter:
     - assets/Etiket3.png
     - assets/Etiket4.png
     - assets/Etiketbeyaz.png
+

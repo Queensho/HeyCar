@@ -1,3 +1,4 @@
+import 'app_environment.dart';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -13,7 +14,7 @@ class AdminPromoBanner extends StatefulWidget {
 }
 
 class _AdminPromoBannerState extends State<AdminPromoBanner> {
-  static const _api = 'https://heycar-api-185-165-46-213.nip.io';
+  static const _api = AppEnvironment.apiBase;
   List<Map<String, dynamic>> items = const [];
   bool loading = true;
 
@@ -190,3 +191,4 @@ class _AdminPromoBannerState extends State<AdminPromoBanner> {
     );
   }
 }
+

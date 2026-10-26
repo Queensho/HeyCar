@@ -59,6 +59,7 @@ module.exports=function registerWebPush(app,pool){
   app.delete('/api/driver/web-push-subscription',async(req,res)=>{try{const driver=authenticatedDriverId(req);if(!driver)return res.status(401).json({error:'DRIVER_REQUIRED'});await pool.query('UPDATE driver_web_push_subscriptions SET active=FALSE,updated_at=NOW() WHERE driver_id=$1',[driver]);return res.json({ok:true});}catch(e){console.error('driver web push unsubscribe',e);return res.status(500).json({error:'SERVER_ERROR'});}});
 
   async function sendFrom(table,idColumn,userId,data,title,body){
+    if(process.env.APP_ENV==='staging')return {attempted:0,delivered:0,skipped:'staging'};
     if(!enabled)return {attempted:0,delivered:0,skipped:'WEB_PUSH_NOT_CONFIGURED'};
     const rows=(await pool.query(
       `SELECT id,endpoint,p256dh,auth FROM ${table} WHERE ${idColumn}=$1 AND active=TRUE ORDER BY updated_at DESC`,
@@ -99,3 +100,4 @@ module.exports=function registerWebPush(app,pool){
     sendDriver:(driver,data,title,body)=>sendFrom('driver_web_push_subscriptions','driver_id',driver,data,title,body),
   };
 };
+

@@ -1,0 +1,81 @@
+name: Public Marketplace Staging Preflight
+on:
+  push:
+    branches: [feature/isolated-marketplace-staging-20261025]
+    paths: ['tool/staging/pages_permission_probe.cjs', 'tool/staging/public*', 'tool/staging/install_public_https.py', 'tool/staging/tests/**', '.github/workflows/public-staging.yml', 'deploy/STAGING_PUBLIC.md']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+  checks: read
+  deployments: read
+concurrency:
+  group: public-marketplace-staging
+  cancel-in-progress: false
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 8
+    env:
+      SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+      SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+      SSH_PORT: ${{ secrets.STAGING_SSH_PORT }}
+      SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+      FINGERPRINT: ${{ secrets.STAGING_SSH_HOST_FINGERPRINT }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify root installer safety and rollback without privileged mutations
+        run: |
+          python3 -m py_compile tool/staging/install_public_https.py
+          python3 -m unittest discover -s tool/staging/tests -v
+          node --check tool/staging/public_probe.cjs
+      - run: bash tool/staging/ssh_setup.sh
+      - name: Verify actual staging identity, public IP, nip.io DNS and narrow HTTPS privileges
+        run: |
+          set -euo pipefail
+          ssh -i "$HOME/.ssh/staging_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" node < tool/staging/public_probe.cjs > staging-public-preflight.json
+          cat staging-public-preflight.json
+          node -e "const r=require('./staging-public-preflight.json');require('fs').appendFileSync(process.env.GITHUB_STEP_SUMMARY,JSON.stringify(r,null,2))"
+      - name: Check public HTTP and TLS reachability without installing or replacing anything
+        run: |
+          node - <<'JS'
+          const fs=require('fs');const p=require('./staging-public-preflight.json');
+          (async()=>{const checks={};for(const scheme of ['http','https']){try{const r=await fetch(scheme+'://'+p.hostname+'/api/environment',{signal:AbortSignal.timeout(15000),redirect:'manual'});checks[scheme]={status:r.status};if(scheme==='https'&&r.status===200){const x=await r.json();checks.https.staging=x.environment==='staging'&&x.database==='heycar_staging';}}catch(e){checks[scheme]={reachable:false,errorCode:e.cause?.code||e.name};}}fs.writeFileSync('staging-public-network.json',JSON.stringify(checks,null,2));console.log(checks);})();
+          JS
+      - name: Read actual Pages rejection annotations and deployment branch policy
+        id: pages_permission
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node tool/staging/pages_permission_probe.cjs
+      - uses: actions/download-artifact@v4
+        with:
+          name: staging-business-panel-direct-https
+          run-id: ${{ steps.pages_permission.outputs.release_run }}
+          github-token: ${{ github.token }}
+          path: public-panel/
+      - name: Prepare reviewable complete Pages payload without deploying
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tool/staging/public_pages.py prepare public-panel
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ready-staging-pages-preserved-payload
+          path: pages-preserved/
+          if-no-files-found: warn
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: original-pages-and-staging-preservation-proof
+          path: |
+            pages-original.tar
+            pages-preservation.json
+          if-no-files-found: warn
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: staging-public-preflight
+          path: staging-public-*.json

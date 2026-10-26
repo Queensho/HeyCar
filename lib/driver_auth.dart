@@ -1,8 +1,9 @@
+import 'app_environment.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-const _driverApiBase = 'https://heycar-api-185-165-46-213.nip.io';
+const _driverApiBase = AppEnvironment.apiBase;
 
 class DriverAuth {
   static String accessToken = '';
@@ -10,24 +11,24 @@ class DriverAuth {
 
   static Future<void> restore() async {
     final p = await SharedPreferences.getInstance();
-    accessToken = p.getString('driver_access_token') ?? '';
-    refreshToken = p.getString('driver_refresh_token') ?? '';
+    accessToken = p.getString(AppEnvironment.storageKey('driver_access_token')) ?? '';
+    refreshToken = p.getString(AppEnvironment.storageKey('driver_refresh_token')) ?? '';
   }
 
   static Future<void> saveFrom(Map data) async {
     accessToken = '${data['accessToken'] ?? ''}';
     refreshToken = '${data['refreshToken'] ?? ''}';
     final p = await SharedPreferences.getInstance();
-    if (accessToken.isNotEmpty) await p.setString('driver_access_token', accessToken);
-    if (refreshToken.isNotEmpty) await p.setString('driver_refresh_token', refreshToken);
+    if (accessToken.isNotEmpty) await p.setString(AppEnvironment.storageKey('driver_access_token'), accessToken);
+    if (refreshToken.isNotEmpty) await p.setString(AppEnvironment.storageKey('driver_refresh_token'), refreshToken);
   }
 
   static Future<void> clear() async {
     accessToken = '';
     refreshToken = '';
     final p = await SharedPreferences.getInstance();
-    await p.remove('driver_access_token');
-    await p.remove('driver_refresh_token');
+    await p.remove(AppEnvironment.storageKey('driver_access_token'));
+    await p.remove(AppEnvironment.storageKey('driver_refresh_token'));
   }
 
   static Future<bool> refresh() async {
@@ -104,3 +105,4 @@ class DriverHttp {
     return r;
   }
 }
+

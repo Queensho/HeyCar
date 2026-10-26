@@ -1,3 +1,4 @@
+import 'app_environment.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'onboarding_backend.dart';
@@ -15,7 +16,7 @@ class QrDraft {
 }
 
 class QrBackend {
-  static const String baseUrl = 'https://heycar-api-185-165-46-213.nip.io';
+  static const String baseUrl = AppEnvironment.apiBase;
 
   static String normalizeToken(String raw) {
     final value = raw.trim();
@@ -115,3 +116,4 @@ class QrBackend {
     return decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
   }
 }
+

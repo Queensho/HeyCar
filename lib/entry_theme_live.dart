@@ -1,3 +1,5 @@
+import 'app_environment.dart';
+import 'staging_banner.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
@@ -37,6 +39,7 @@ import 'cepqontag_splash.dart';
 final GlobalKey<NavigatorState> cepqarNavigatorKey=GlobalKey<NavigatorState>();
 Future<void> main()async{
   WidgetsFlutterBinding.ensureInitialized();
+  AppEnvironment.validate();
   // Do not hold the first Flutter frame behind Firebase's Android service
   // initialization. The existing push/call listeners are still registered
   // during startup, independently of dashboard API loading.
@@ -73,6 +76,8 @@ class ThemeOwnerApp extends StatelessWidget{
       valueListenable:AppUiThemeController.tokens,
       builder:(_,tokens,__)=>MaterialApp(
         navigatorKey:cepqarNavigatorKey,
+        builder:environmentBanner,
+        title:AppEnvironment.isStaging?'CepQontag STAGING':'CepQontag',
         debugShowCheckedModeBanner:false,
         locale:const Locale('tr','TR'),
         supportedLocales:const [Locale('tr','TR')],
@@ -383,4 +388,5 @@ void _registerPushLater(){
 Future<void> _saveSession()async{final p=await SharedPreferences.getInstance();await p.setBool('owner_logged_in',true);await p.setString('owner_user_id',OnboardingDraft.userId);await p.setString('owner_phone',OnboardingDraft.phone);await p.setString('owner_display_name',OnboardingDraft.displayName);await p.setString('owner_email',OnboardingDraft.email);await p.setString('owner_vehicle_id',OnboardingDraft.vehicleId);await p.setString('owner_plate',QrDraft.plate);await p.setString('owner_make',QrDraft.make);await p.setString('owner_model',QrDraft.model);await p.setString('owner_qr_token',QrDraft.token);_registerPushLater();}
 void next()=>setState(()=>index=(index+1).clamp(0,4));void back()=>setState(()=>index=(index-1).clamp(0,4));Future<void> done()async{await _saveSession();if(mounted){setState((){hasSession=true;loginMode=false;registerMode=false;});Future<void>.delayed(const Duration(milliseconds:350),(){if(mounted)_openPendingPush();});}}void resetToWelcome()=>setState((){loginMode=false;registerMode=false;index=0;});
 @override void dispose(){WidgetsBinding.instance.removeObserver(this);PushNotifications.onNavigationRequested=null;super.dispose();}
-@override Widget build(BuildContext context){if(runtimeLoading||restoring)return const CepqontagSplash();final cfg=runtimeConfig;if(cfg!=null&&(cfg.maintenanceMode||cfg.updateRequired))return AppAccessGatePage(config:cfg,onRetry:()=>_loadRuntimeConfig());if(!kIsWeb&&!callPermissionSetupDone)return CallPermissionSetupPage(onDone:()=>setState(()=>callPermissionSetupDone=true));if(driverId.isNotEmpty&&!hasSession)return DriverHomePage(userId:driverId);if(hasSession)return ownerHome();if(loginMode)return Stack(children:[PasswordOwnerLoginScreen(onDone:done,onBack:resetToWelcome),Positioned(left:20,right:20,bottom:16,child:SafeArea(child:SizedBox(height:46,child:OutlinedButton.icon(onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const DriverCodeEntryPage())),style:OutlinedButton.styleFrom(backgroundColor:Colors.white,foregroundColor:const Color(0xFF5E24F5),side:const BorderSide(color:Color(0xFF5E24F5),width:1.5),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15))),icon:const Icon(Icons.vpn_key_outlined,size:18),label:const Text('Davet kodum var',style:TextStyle(fontSize:12.5,fontWeight:FontWeight.w800))))))]);if(registerMode)return OwnerRegisterScreen(onBack:resetToWelcome,onContinue:()async{if(OnboardingDraft.transferCode.isNotEmpty){await done();}else if(mounted){setState((){registerMode=false;index=1;});}});final screens=<Widget>[OwnerWelcomeOverlay(onRegister:()=>setState(()=>registerMode=true),onLogin:()=>setState(()=>loginMode=true)),OwnerVehicleSetupPage(onDone:next,onBack:resetToWelcome),RealQrScanPage(onFound:next,onBack:back),RealQrConfirmPage(onDone:next,onBack:back),OwnerGuidePage(onDone:done,onBack:back)];return screens[index];}}
+@override Widget build(BuildContext context){if(runtimeLoading||restoring)return const CepqontagSplash();final cfg=runtimeConfig;if(cfg!=null&&(cfg.maintenanceMode||cfg.updateRequired))return AppAccessGatePage(config:cfg,onRetry:()=>_loadRuntimeConfig());if(!AppEnvironment.isStaging&&!kIsWeb&&!callPermissionSetupDone)return CallPermissionSetupPage(onDone:()=>setState(()=>callPermissionSetupDone=true));if(driverId.isNotEmpty&&!hasSession)return DriverHomePage(userId:driverId);if(hasSession)return ownerHome();if(loginMode)return Stack(children:[PasswordOwnerLoginScreen(onDone:done,onBack:resetToWelcome),Positioned(left:20,right:20,bottom:16,child:SafeArea(child:SizedBox(height:46,child:OutlinedButton.icon(onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const DriverCodeEntryPage())),style:OutlinedButton.styleFrom(backgroundColor:Colors.white,foregroundColor:const Color(0xFF5E24F5),side:const BorderSide(color:Color(0xFF5E24F5),width:1.5),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15))),icon:const Icon(Icons.vpn_key_outlined,size:18),label:const Text('Davet kodum var',style:TextStyle(fontSize:12.5,fontWeight:FontWeight.w800))))))]);if(registerMode)return OwnerRegisterScreen(onBack:resetToWelcome,onContinue:()async{if(OnboardingDraft.transferCode.isNotEmpty){await done();}else if(mounted){setState((){registerMode=false;index=1;});}});final screens=<Widget>[OwnerWelcomeOverlay(onRegister:()=>setState(()=>registerMode=true),onLogin:()=>setState(()=>loginMode=true)),OwnerVehicleSetupPage(onDone:next,onBack:resetToWelcome),RealQrScanPage(onFound:next,onBack:back),RealQrConfirmPage(onDone:next,onBack:back),OwnerGuidePage(onDone:done,onBack:back)];return screens[index];}}
+

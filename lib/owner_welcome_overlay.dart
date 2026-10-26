@@ -200,7 +200,7 @@ class _PreviewNotification extends StatelessWidget {
   Widget build(BuildContext context) {
     final compact = MediaQuery.sizeOf(context).width < 370;
     return Container(
-      height: 91 * scale,
+      constraints: BoxConstraints(minHeight: 91 * scale),
       padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 13, vertical: 4),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: .96),
@@ -216,6 +216,7 @@ class _PreviewNotification extends StatelessWidget {
         ),
         const SizedBox(width: 10),
         Expanded(child: Column(
+          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -227,7 +228,7 @@ class _PreviewNotification extends StatelessWidget {
           ],
         )),
         const SizedBox(width: 4),
-        Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Column(mainAxisSize: MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.center, children: [
           Text(time, style: TextStyle(color: _purple, fontSize: compact ? 8 : 9.5)),
           const SizedBox(height: 8),
           const CircleAvatar(radius: 14,
@@ -286,3 +287,4 @@ class _LimeUnderline extends CustomPainter {
   }
   @override bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
+

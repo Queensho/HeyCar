@@ -1,3 +1,4 @@
+import 'app_environment.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -31,6 +32,7 @@ Future<void> heyCarNotificationResponseBackground(NotificationResponse r)async{
 
 @pragma('vm:entry-point')
 Future<void> heyCarFirebaseBackgroundHandler(RemoteMessage m)async{
+    if(AppEnvironment.isStaging)return;
   WidgetsFlutterBinding.ensureInitialized();
   if(Firebase.apps.isEmpty)await Firebase.initializeApp();
   final data=Map<String,dynamic>.from(m.data);
@@ -61,6 +63,7 @@ class PushNotifications{
   static final Map<String,DateTime> _recentLocalNotifications=<String,DateTime>{};
 
   static Future<void> bootstrap(){
+    if(AppEnvironment.isStaging)return Future<void>.value();
     if(_bootstrapped)return Future<void>.value();
     // App/session restoration may request FCM concurrently with first-frame
     // initialization. Register the handler and initialize Firebase once.
@@ -79,6 +82,7 @@ class PushNotifications{
   }
 
   static Future<void> prepareCallPermissions()async{
+    if(AppEnvironment.isStaging)return;
     await bootstrap();
     await ensureChannels(requestPermissions:true);
     await FirebaseMessaging.instance.requestPermission(alert:true,badge:true,sound:true);
@@ -91,6 +95,7 @@ class PushNotifications{
   }
 
   static Future<void> init()async{
+    if(AppEnvironment.isStaging)return;
     await bootstrap();
     await ensureChannels(requestPermissions:true);
     await FirebaseMessaging.instance.requestPermission(alert:true,badge:true,sound:true);
@@ -300,6 +305,7 @@ class PushNotifications{
   }
 
   static Future<void> registerToken({bool scheduleRetry=true})async{
+    if(AppEnvironment.isStaging)return;
     if(_tokenRegistrationInFlight)return;
     _tokenRegistrationInFlight=true;
     SharedPreferences? prefs;
@@ -393,12 +399,14 @@ class PushNotifications{
   }
 
   static Future<void> refreshTokenRegistration()async{
+    if(AppEnvironment.isStaging)return;
     _tokenRetryTimer?.cancel();
     _tokenRetryTimer=null;
     await registerToken();
   }
 
   static Future<void> unregisterDriverToken()async{
+    if(AppEnvironment.isStaging)return;
     final prefs=await SharedPreferences.getInstance();
     final deviceId=prefs.getString('push_device_id')??'';
     if(deviceId.isEmpty)return;
@@ -548,3 +556,4 @@ class PushNotifications{
     }catch(e){stderr.writeln('Call $action failed: $e');}
   }
 }
+
