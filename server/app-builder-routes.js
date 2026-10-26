@@ -177,6 +177,7 @@ function sanitizeItem(raw,kind){
   }else if(kind==='banner'){
     out.title=clean(raw.title,100);out.subtitle=clean(raw.subtitle,220);if(!out.title)throw new Error('TITLE_REQUIRED');
     out.imageUrl=safeHttpUrl(raw.imageUrl)||'';out.backgroundToken=token(raw.backgroundToken,'primary');
+    out.placement=raw.placement==='home_hero'?'home_hero':'standard';
     out.badgeText=clean(raw.badgeText,40);out.badgeToken=token(raw.badgeToken,'accent');
     out.ctaText=clean(raw.ctaText,60);
     const a=action(raw.action,raw.actionTarget);if(!a)throw new Error('INVALID_ACTION');out.action=a.type;if(a.target)out.actionTarget=a.target;
