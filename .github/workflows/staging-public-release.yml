@@ -4,6 +4,14 @@ on:
     branches: [feature/isolated-marketplace-staging-20261025]
     paths:
       - '.github/workflows/staging-public-release.yml'
+      - 'lib/**'
+      - 'assets/**'
+      - 'android/**'
+      - 'pubspec.*'
+      - 'integration_test/**'
+      - 'test_driver/**'
+      - 'test/app_environment_test.dart'
+      - 'deploy/STAGING_PUBLIC_RELEASE.md'
       - 'tool/staging/public_pages.py'
       - 'tool/staging/public_panel_smoke.cjs'
       - 'tool/staging/run_e2e.sh'
