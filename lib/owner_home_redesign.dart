@@ -1659,8 +1659,8 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
 
 
   // Ridez-inspired dashboard: reference geometry, CepQontag actions and real data.
-  Widget _ridezTile(String title,String subtitle,IconData icon,VoidCallback onTap){
-    return Expanded(child:InkWell(onTap:onTap,borderRadius:BorderRadius.circular(20),
+  Widget _ridezTile(String title,String subtitle,IconData icon,VoidCallback onTap,{Key? key}){
+    return Expanded(child:InkWell(key:key,onTap:onTap,borderRadius:BorderRadius.circular(20),
       child:Container(padding:const EdgeInsets.all(12),
         decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(20),
           border:Border.all(color:const Color(0xFFEBEBF1))),
@@ -1677,7 +1677,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   Widget _ridezHero()=>Padding(
     padding:const EdgeInsets.fromLTRB(16,10,16,10),
     child:InkWell(onTap:widget.services,borderRadius:BorderRadius.circular(24),
-      child:Container(height:176,padding:const EdgeInsets.all(21),
+      child:Container(height:194,padding:const EdgeInsets.all(17),
         decoration:const BoxDecoration(
           gradient:LinearGradient(colors:[Color(0xFF21104E),Color(0xFF651FFF),Color(0xFFB5FF39)]),
           borderRadius:BorderRadius.all(Radius.circular(24))),
@@ -1700,7 +1700,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   Widget _ridezVehicleGrid()=>Padding(
     padding:const EdgeInsets.fromLTRB(16,0,16,10),
     child:IntrinsicHeight(child:Row(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
-      Expanded(child:InkWell(onTap:widget.vehicles,borderRadius:BorderRadius.circular(22),
+      Expanded(child:InkWell(key:const ValueKey('premium-home-vehicle'),onTap:widget.vehicles,borderRadius:BorderRadius.circular(22),
         child:Container(padding:const EdgeInsets.all(15),
           decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(22),
             border:Border.all(color:const Color(0xFFEBEBF1))),
@@ -1710,9 +1710,9 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             Text(QrDraft.plate.isEmpty?'Araç ekleyin':QrDraft.plate,
               style:const TextStyle(color:Color(0xFF737B90),fontSize:13)),
             const Spacer(),
-            Center(child:Icon(VehicleKind.isMotorcycle(QrDraft.vehicleType)
-              ?Icons.two_wheeler_rounded:Icons.directions_car_filled_rounded,
-              color:const Color(0xFF651FFF),size:78)),
+            Center(child:VehicleKind.isMotorcycle(QrDraft.vehicleType)
+              ?const Icon(Icons.two_wheeler_rounded,color:Color(0xFF651FFF),size:78)
+              :_premiumCarArtwork()),
             const Spacer(),
             Text('${QrDraft.make} ${QrDraft.model}'.trim().isEmpty?'Araç detayları':'${QrDraft.make} ${QrDraft.model}'.trim(),
               maxLines:2,style:const TextStyle(fontSize:12,fontWeight:FontWeight.w800)),
@@ -1726,7 +1726,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
           ()=>widget.shortcut('reminders')),
         const SizedBox(height:9),
         _ridezTile('QR Güvenliği','Etiket güvenliğini kontrol edin',Icons.qr_code_2_rounded,
-          ()=>widget.shortcut('qr_security')),
+          ()=>widget.shortcut('qr_security'),key:const ValueKey('premium-home-qr-security')),
       ])),
     ])),
   );
