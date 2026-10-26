@@ -206,6 +206,7 @@ jobs:
           python3 tool/staging/prepare_sources.py
           flutter pub get
           bash tool/staging/ssh_setup.sh
+          flutter drive --help --verbose | python3 -c "import sys; h=sys.stdin.read(); assert 'enable-software-rendering' in h and 'enable-impeller' in h"
       - name: Verify real business browser and PostgreSQL before booting Android
         run: bash tool/staging/run_e2e.sh prepare
       - name: Compile native campaign states before booting the emulator

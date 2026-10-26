@@ -21,14 +21,16 @@ cleanup() {
 import json, subprocess
 from pathlib import Path
 memory={}
+readable=False
 for line in Path('/proc/meminfo').read_text().splitlines():
     key,value=line.split(':',1)
     if key in ('MemTotal','MemAvailable','SwapTotal','SwapFree'): memory[key]=value.strip()
 try:
     result=subprocess.run(['sudo','-n','dmesg','--ctime'],capture_output=True,text=True,timeout=5)
-    events=[line for line in result.stdout.splitlines() if 'Killed process' in line or 'Out of memory:' in line][-10:]
+    readable=result.returncode==0
+    events=[line for line in result.stdout.splitlines() if any(k in line for k in ('Killed process','Out of memory:','segfault','qemu-system'))][-10:]
 except (OSError,subprocess.TimeoutExpired): events=[]
-Path('staging-evidence/runner-memory.json').write_text(json.dumps({'hostMemory':memory,'oomEvents':events}))
+Path('staging-evidence/runner-memory.json').write_text(json.dumps({'hostMemory':memory,'kernelLogReadable':readable,'nativeFailureEvents':events}))
 RESOURCE
   if [ -f staging-fixture.json ]; then
     "${SCP[@]}" staging-fixture.json "$SSH_USER@$SSH_HOST:$REMOTE_FIXTURE" || true
@@ -96,7 +98,7 @@ printf '%s\n' "$!" > .staging-gps.pid
 if [ -n "$public_api" ]; then
   # Launch the actual downloadable APK before installing integration binaries.
   adb -s "$device_id" install -r -g staging-apk/app-debug.apk
-  adb -s "$device_id" shell am start -W -n com.cepqar.app.staging/com.cepqar.app.MainActivity
+  adb -s "$device_id" shell am start -W -n com.cepqar.app.staging/com.cepqar.app.MainActivity --ez enable-software-rendering true --ez enable-impeller false
   sleep 15
   mkdir -p staging-evidence
   adb -s "$device_id" shell dumpsys activity activities > /tmp/staging-activities.txt
@@ -123,7 +125,7 @@ android_phase() {
   adb -s "$device_id" shell pm grant com.cepqar.app.staging android.permission.ACCESS_FINE_LOCATION
   adb -s "$device_id" shell pm grant com.cepqar.app.staging android.permission.ACCESS_COARSE_LOCATION
   adb -s "$device_id" shell settings put secure location_mode 3
-  flutter drive -d "$device_id" --driver test_driver/staging_campaign_driver.dart --target integration_test/staging_campaign_test.dart --use-application-binary="$binary"
+  flutter drive -d "$device_id" --driver test_driver/staging_campaign_driver.dart --target integration_test/staging_campaign_test.dart --use-application-binary="$binary" --enable-software-rendering --no-enable-impeller
 }
 android_phase true
 flutter drive --driver test_driver/staging_campaign_driver.dart --target integration_test/staging_business_test.dart -d web-server --web-hostname=127.0.0.1 --web-port=8085 --browser-name=chrome --headless "${environment_flags[@]}" --dart-define=STAGING_PHASE=deactivate

@@ -63,6 +63,7 @@ def run(device):
             time.sleep(1)
     x1, y1, x2, y2 = bounds
     adb('shell', 'input', 'tap', str((x1+x2)//2), str((y1+y2)//2))
+    print('STAGING_APK_GUEST_LOGIN_BUTTON_TAPPED', flush=True)
     deadline = time.monotonic()+30
     while not login_form_visible(snapshot()):
         if time.monotonic() >= deadline:
@@ -80,4 +81,21 @@ def run(device):
 
 
 if __name__ == '__main__':
-    run(sys.argv[1])
+    try:
+        run(sys.argv[1])
+    except Exception:
+        # Empty guest form only; no credentials are entered by this probe.
+        # Capture the last screen and Android native crash buffer when reachable.
+        evidence = Path('staging-evidence')
+        evidence.mkdir(exist_ok=True)
+        for name, args in (
+            ('downloadable-apk-login-failure.png', ['exec-out', 'screencap', '-p']),
+            ('downloadable-apk-native-crash.txt', ['logcat', '-d', '-b', 'crash']),
+        ):
+            try:
+                data=subprocess.check_output(['adb','-s',sys.argv[1],*args],timeout=5)
+                (evidence/name).write_bytes(data)
+            except (OSError, subprocess.SubprocessError):
+                pass
+        raise
+

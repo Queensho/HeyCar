@@ -81,9 +81,14 @@ setup only for APP_ENV=staging; production/web permission behavior is unchanged.
 Android UI Automator opens the real downloaded APK guest login form, checks
 accessible phone/password fields plus the staging banner, and captures a
 screenshot without entering credentials. The full application guest entry is
-kept separate from the Flutter integration binding: that binding repeatedly
-terminated the emulator, even after precompilation/Gradle cleanup and with no
-host OOM event. Owner/Driver campaign widgets retain their real Flutter native
+kept separate from the Flutter campaign integration binding. Emulator disconnects
+were also reproduced on the real APK guest-to-login transition, so they are not
+assumed to be a binding-only issue. Precompilation/Gradle cleanup did not resolve
+the disconnect. The emulator launch now explicitly requests Skia software
+rendering with Impeller disabled (intent extras for the downloaded APK; Flutter
+drive options for the integration APK). These are CI launch options, not APK
+defaults or production permission changes. Physical-device GPU behavior is not
+verified by this test. Owner/Driver campaign widgets retain their real Flutter native
 integration tests; neither guest nor campaign validation is inferred from API
 responses. Native binaries are compiled before AVD startup; a stale fixture/API/
 source context is rejected. Runner memory diagnostics contain no credentials.

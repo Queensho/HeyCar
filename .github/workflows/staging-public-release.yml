@@ -180,6 +180,7 @@ jobs:
           python3 tool/staging/prepare_sources.py --https-only
           flutter pub get
           bash tool/staging/ssh_setup.sh
+          flutter drive --help --verbose | python3 -c "import sys; h=sys.stdin.read(); assert 'enable-software-rendering' in h and 'enable-impeller' in h"
       - name: Chrome business UI create/edit/publish and real PostgreSQL via public HTTPS
         run: bash tool/staging/run_e2e.sh prepare
       - name: Compile native campaign states before booting the emulator
