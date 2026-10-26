@@ -838,6 +838,8 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
     final title=TextEditingController(text:'${row['title']??''}');
     String image='${row['imageUrl']??''}';
     bool enabled=row['enabled']!=false;
+    String action='${row['action']??'NONE'}';
+    final target=TextEditingController(text:'${row['actionTarget']??''}');
     final result=await showDialog<Map<String,dynamic>>(context:context,
       builder:(dialogContext)=>StatefulBuilder(builder:(context,setDialog)=>AlertDialog(
         title:Text(editing?'Kampanya Kartı Düzenle':'Kampanya Kartı Ekle'),
