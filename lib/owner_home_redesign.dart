@@ -1815,9 +1815,12 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         Expanded(child:_ridezTile('Yaklaşan Servis','Bakım hatırlatmaları',
           Icons.calendar_month_rounded,()=>widget.shortcut('reminders'))),
         const SizedBox(height:8),
-        Expanded(child:_ridezTile('QR Güvenliği','Etiket güvenliğini kontrol edin',
-          Icons.qr_code_2_rounded,()=>widget.shortcut('qr_security'),
-          key:const ValueKey('premium-home-qr-security'))),
+        Expanded(child:_ridezTile('Bu Ayki Özetim','Aylık araç istatistikleri',
+          Icons.bar_chart_rounded,()=>showModalBottomSheet<void>(
+            context:context,isScrollControlled:true,showDragHandle:true,
+            builder:(sheetContext)=>SafeArea(child:SingleChildScrollView(
+              padding:const EdgeInsets.symmetric(vertical:16),child:monthly()))),
+          key:const ValueKey('premium-home-monthly-summary'))),
       ]))),
     ]),
   );
@@ -1865,14 +1868,10 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             header(),
             _ridezHero(),
             _ridezVehicleGrid(),
-            _ridezMetrics(),
-            _appUiConfig.quickActions.isEmpty?quickRow():_managedQuickActions(),
-            _homeServicesPromo(),
-            monthly(),
           ]),
           if(VehicleKind.isMotorcycle(QrDraft.vehicleType))_motorcycleHomePanel(),
           for(final component in _appUiConfig.components.where((c)=>
-            !{'weather_card','vehicle_security','quick_actions','services_grid','monthly_summary'}.contains(c.type)))
+            !{'weather_card','vehicle_security','quick_actions','services_grid','monthly_summary','recent_notifications','promo_banner'}.contains(c.type)))
             RepaintBoundary(key:ValueKey('extra-${component.id}-${_appUiConfig.version}'),
               child:_managedComponent(component)),
           const SizedBox(height:22),
