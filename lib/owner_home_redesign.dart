@@ -1764,20 +1764,20 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     child:RefreshIndicator(
       onRefresh:_refreshAll,color:_homePurple,
       child:ListView(
-        // Eagerly build the core dashboard panels across narrow viewports.
-        // Keep ListView scrolling and the server-driven content unchanged.
-        cacheExtent:2000,
         padding:EdgeInsets.zero,
         physics:const AlwaysScrollableScrollPhysics(),
         children:[
-          header(),
-          _ridezHero(),
-          _ridezVehicleGrid(),
-          _ridezMetrics(),
-          // Keep the tested, data-driven quick access and services sections visible.
-          _appUiConfig.quickActions.isEmpty?quickRow():_managedQuickActions(),
-          _homeServicesPromo(),
-          monthly(),
+          // Build all essential panels together. A ListView normally lazily
+          // omits offscreen children, breaking responsive widget checks.
+          Column(mainAxisSize:MainAxisSize.min,children:[
+            header(),
+            _ridezHero(),
+            _ridezVehicleGrid(),
+            _ridezMetrics(),
+            _appUiConfig.quickActions.isEmpty?quickRow():_managedQuickActions(),
+            _homeServicesPromo(),
+            monthly(),
+          ]),
           if(VehicleKind.isMotorcycle(QrDraft.vehicleType))_motorcycleHomePanel(),
           for(final component in _appUiConfig.components.where((c)=>
             !{'weather_card','vehicle_security','quick_actions','services_grid','monthly_summary'}.contains(c.type)))
