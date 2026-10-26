@@ -271,5 +271,17 @@ class InstallerTests(unittest.TestCase):
                 m.verify_https()
 
 
+
+    def test_external_production_certificate_change_blocks_reload(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cert = Path(tmp)/'production-fullchain.pem'
+            cert.write_bytes(b'externally changed cert')
+            with patch.object(m, 'run') as run:
+                with self.assertRaisesRegex(RuntimeError, 'PRODUCTION_PUBLIC_CERTIFICATE_CHANGED_RELOAD_REFUSED'):
+                    m.reload_nginx(certificates={str(cert): 'previous-hash'})
+                self.assertEqual(run.call_args_list[0].args, ('/usr/sbin/nginx', '-t'))
+                self.assertEqual(run.call_count, 1)
+
+
 if __name__ == '__main__':
     unittest.main()

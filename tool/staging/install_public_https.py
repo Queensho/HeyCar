@@ -168,9 +168,17 @@ def require_unchanged(baseline):
         raise RuntimeError('UNRELATED_NGINX_CHANGED_RELOAD_REFUSED')
 
 
-def reload_nginx(baseline=None):
+def require_unchanged_certificates(certificates):
+    for name, digest in (certificates or {}).items():
+        path = Path(name)
+        if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != digest:
+            raise RuntimeError('PRODUCTION_PUBLIC_CERTIFICATE_CHANGED_RELOAD_REFUSED')
+
+
+def reload_nginx(baseline=None, certificates=None):
     run('/usr/sbin/nginx', '-t')
     require_unchanged(baseline)  # Recheck AFTER -t, immediately before reload.
+    require_unchanged_certificates(certificates)
     run('/usr/bin/systemctl', 'reload', 'nginx')
 
 
@@ -395,7 +403,7 @@ def main():
             require_unchanged(baseline)
             if bootstrap_changed:
                 nginx_reload_attempted = True
-                reload_nginx(baseline)
+                reload_nginx(baseline, certs)
                 nginx_reloads += 1
             token = secrets.token_urlsafe(24)
             challenge = challenge_dir / ('cepqontag-preflight-' + token)
@@ -409,12 +417,11 @@ def main():
             require_unchanged(baseline)
             if tls_changed or cert_before != cert_after:
                 nginx_reload_attempted = True
-                reload_nginx(baseline)
+                reload_nginx(baseline, certs)
                 nginx_reloads += 1
             verify_https()
             production_readonly(panel_hash)
-            if any(not Path(p).exists() or hashlib.sha256(Path(p).read_bytes()).hexdigest() != digest for p, digest in certs.items()):
-                raise RuntimeError('PRODUCTION_PUBLIC_CERTIFICATE_CHANGED')
+            require_unchanged_certificates(certs)
             if production_config_snapshot() != baseline:
                 raise RuntimeError('UNRELATED_NGINX_CHANGED_AFTER_VERIFY')
             source = Path(__file__).read_bytes()
@@ -456,7 +463,7 @@ def main():
                 run('/usr/bin/systemctl', 'daemon-reload')
             try:
                 if nginx_reload_attempted:
-                    reload_nginx(baseline)
+                    reload_nginx(baseline, certs)
                 else:
                     require_unchanged(baseline)
             except Exception as rollback_error:

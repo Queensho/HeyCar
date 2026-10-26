@@ -182,3 +182,7 @@ Repeated install/daily renewal does not reload Nginx when both staging config
 and certificate bytes are unchanged. Fresh setup requires HTTP bootstrap and
 TLS activation reloads; nginx -t and protection checks precede each. The result
 JSON reports nginxReloads. Renewal execution itself is still not claimed live-tested.
+
+Production public certificate hashes are also checked immediately before each
+normal/rollback reload. An independent production certificate rotation blocks
+the reload and requires administrator inspection; certificates are never reverted.
