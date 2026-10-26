@@ -58,6 +58,46 @@ void action(String a){
     Navigator.push(context,MaterialPageRoute(builder:(_)=>WeatherDetailsPage(service:weatherService))).whenComplete(weatherService.dispose);
   }
 }
+void _showQuickAccess(){
+  final actions=<({String title,IconData icon,String action})>[
+    (title:'Park Yerim',icon:Icons.local_parking_rounded,action:'parking'),
+    (title:'Bakım Geçmişi',icon:Icons.build_circle_outlined,action:'maintenance'),
+    (title:'Sürücüler',icon:Icons.people_outline_rounded,action:'drivers'),
+    (title:'Muayene',icon:Icons.fact_check_outlined,action:'inspection'),
+    (title:'Bildirimler',icon:Icons.notifications_outlined,action:'notifications'),
+    (title:'QR Güvenliği',icon:Icons.qr_code_rounded,action:'qr_security'),
+  ];
+  showModalBottomSheet<void>(
+    context:context,isScrollControlled:true,showDragHandle:true,
+    builder:(sheetContext)=>SafeArea(child:Padding(
+      padding:const EdgeInsets.fromLTRB(18,8,18,24),
+      child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
+        const Text('Hızlı Erişim',style:TextStyle(fontSize:22,fontWeight:FontWeight.w900)),
+        const SizedBox(height:16),
+        GridView.builder(shrinkWrap:true,physics:const NeverScrollableScrollPhysics(),
+          gridDelegate:const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount:3,mainAxisSpacing:10,crossAxisSpacing:10,childAspectRatio:1.1),
+          itemCount:actions.length,itemBuilder:(_,i){
+            final item=actions[i];
+            return InkWell(
+              onTap:(){Navigator.pop(sheetContext);action(item.action);},
+              borderRadius:BorderRadius.circular(18),
+              child:Container(
+                decoration:BoxDecoration(color:const Color(0xFFF3EDFF),
+                  borderRadius:BorderRadius.circular(18)),
+                child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[
+                  Icon(item.icon,color:const Color(0xFF651FFF),size:27),
+                  const SizedBox(height:8),
+                  Text(item.title,textAlign:TextAlign.center,
+                    style:const TextStyle(fontSize:11,fontWeight:FontWeight.w700)),
+                ]),
+              ),
+            );
+          }),
+      ]),
+    )),
+  );
+}
 @override Widget build(BuildContext context)=>ValueListenableBuilder<ThemeMode>(
   valueListenable:CepqarTheme.mode,
   builder:(_,__,___)=>ValueListenableBuilder<int>(
@@ -86,9 +126,9 @@ void action(String a){
         OwnerNotificationsPage(key:ValueKey('notifications-$vid'),vehicleId:vid,plate:QrDraft.plate,active:tab==3),
         OwnerSettingsPage(onOpenVehicles:()=>setState(()=>tab=1),onOpenQr:_qr),
       ];
-      const labels=['Anasayfa','Araçlarım','Hizmetler','Profil'];
-      const icons=[Icons.home_rounded,Icons.directions_car_outlined,Icons.grid_view_rounded,Icons.person_outline_rounded];
-      const navTabs=[0,1,2,4];
+      const labels=['Anasayfa','Araçlarım','Hizmetler','Hızlı Erişim','Profil'];
+      const icons=[Icons.home_rounded,Icons.directions_car_outlined,Icons.grid_view_rounded,Icons.grid_view_rounded,Icons.person_outline_rounded];
+      const navTabs=[0,1,2,-1,4];
       return Scaffold(
         backgroundColor:CepqarTheme.bg,
         body:IndexedStack(index:tab,children:pages),
@@ -108,7 +148,7 @@ void action(String a){
               final active=tab==navTabs[i];
               return Expanded(
                 child:InkWell(
-                  onTap:()=>setState(()=>tab=navTabs[i]),
+                  onTap:()=>navTabs[i]==-1?_showQuickAccess():setState(()=>tab=navTabs[i]),
                   borderRadius:BorderRadius.circular(18),
                   child:AnimatedContainer(
                     duration:const Duration(milliseconds:180),
