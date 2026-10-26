@@ -1661,16 +1661,17 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   // Ridez-inspired dashboard: reference geometry, CepQontag actions and real data.
   Widget _ridezTile(String title,String subtitle,IconData icon,VoidCallback onTap,{Key? key}){
     return InkWell(key:key,onTap:onTap,borderRadius:BorderRadius.circular(20),
-      child:Container(padding:const EdgeInsets.all(12),
+      child:Container(padding:const EdgeInsets.symmetric(horizontal:10,vertical:7),
         decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(20),
           border:Border.all(color:const Color(0xFFEBEBF1))),
         child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-          Icon(icon,color:const Color(0xFF651FFF),size:26),
-          const SizedBox(height:9),
-          Text(title,maxLines:2,style:const TextStyle(fontWeight:FontWeight.w800,fontSize:13,color:Color(0xFF141527))),
-          const SizedBox(height:5),
+          Icon(icon,color:const Color(0xFF651FFF),size:21),
+          const SizedBox(height:4),
+          Text(title,maxLines:1,overflow:TextOverflow.ellipsis,
+            style:const TextStyle(fontWeight:FontWeight.w800,fontSize:12,color:Color(0xFF141527))),
+          const SizedBox(height:3),
           Text(subtitle,maxLines:2,overflow:TextOverflow.ellipsis,
-            style:const TextStyle(fontSize:11,color:Color(0xFF737B90))),
+            style:const TextStyle(fontSize:10,height:1.1,color:Color(0xFF737B90))),
         ])));
   }
 
@@ -1760,8 +1761,12 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
           _ridezHero(),
           _ridezVehicleGrid(),
           _ridezMetrics(),
+          // Keep the tested, data-driven quick access and services sections visible.
+          _appUiConfig.version<=1?quickRow():_managedQuickActions(),
+          _homeServicesPromo(),
+          monthly(),
           for(final component in _appUiConfig.components.where((c)=>
-            c.type=='quick_actions'||c.type=='services_grid'||c.type=='monthly_summary'))...[
+            false))...[
             RepaintBoundary(key:ValueKey('ridez-${component.id}-${_appUiConfig.version}'),
               child:_managedComponent(component)),
             if(component.type=='monthly_summary')_motorcycleHomePanel(),
