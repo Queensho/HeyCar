@@ -1760,7 +1760,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         ),
       ))),
       const SizedBox(width:8),
-      Expanded(child:SizedBox(height:184,child:Column(children:[
+      Expanded(child:SizedBox(height:210,child:Column(children:[
         Expanded(child:_ridezTile('Yaklaşan Servis','Bakım hatırlatmaları',
           Icons.calendar_month_rounded,()=>widget.shortcut('reminders'))),
         const SizedBox(height:8),
