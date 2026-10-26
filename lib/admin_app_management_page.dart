@@ -744,7 +744,7 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
             const SizedBox(height:8),
             DropdownButtonFormField<String>(value:action,decoration:const InputDecoration(labelText:'Action'),items:actions.entries.map((e)=>DropdownMenuItem(value:e.key,child:Text(e.value))).toList(),onChanged:(v)=>setD(()=>action=v??'NONE')),
             if(action=='EXTERNAL_URL')...[const SizedBox(height:8),TextField(controller:target,decoration:const InputDecoration(labelText:'http/https URL'))],
-            SwitchListTile(contentPadding:EdgeInsets.zero,value:isHomeHero,onChanged:(v)=>setD(()=>isHomeHero=v),title:const Text('Ana Sayfa Üst Banner (360 × 140 dp)'),subtitle:const Text('Yayınlandığında üst banner görseli olarak kullanılır. Görsel seçilmezse varsayılan banner korunur.')),
+            
         SwitchListTile(contentPadding:EdgeInsets.zero,value:enabled,onChanged:(v)=>setD(()=>enabled=v),title:const Text('Aktif')),
             SwitchListTile(contentPadding:EdgeInsets.zero,value:testOnly,onChanged:(v)=>setD(()=>testOnly=v),title:const Text('Sadece test hesabında')),
           ]);
@@ -782,7 +782,7 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
     final editing=source!=null,row=Map<String,dynamic>.from(source??{});
     final title=TextEditingController(text:'${row['title']??''}'),target=TextEditingController(text:'${row['actionTarget']??''}');
     String icon='${row['icon']??'campaign'}',iconUrl='${row['iconUrl']??''}',iconToken='${row['iconToken']??'primary'}',background='${row['backgroundToken']??'surface'}',action='${row['action']??'NONE'}';
-    bool enabled=row['enabled']!=false;bool isHomeHero=row['placement']=='home_hero';
+    bool enabled=row['enabled']!=false;
     final result=await showDialog<Map<String,dynamic>>(context:context,builder:(d)=>StatefulBuilder(builder:(d,setD)=>AlertDialog(
       title:Text(editing?'Hızlı Erişim Düzenle':'Yeni Hızlı Erişim'),
       content:SizedBox(width:520,child:Column(mainAxisSize:MainAxisSize.min,children:[
@@ -821,7 +821,7 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
   Future<void> _editBanner([Map<String,dynamic>? source])async{
     final editing=source!=null,row=Map<String,dynamic>.from(source??{});
     final title=TextEditingController(text:'${row['title']??''}'),subtitle=TextEditingController(text:'${row['subtitle']??''}'),badge=TextEditingController(text:'${row['badgeText']??''}'),cta=TextEditingController(text:'${row['ctaText']??''}'),target=TextEditingController(text:'${row['actionTarget']??''}');
-    String image='${row['imageUrl']??''}',background='${row['backgroundToken']??'primary'}',badgeToken='${row['badgeToken']??'accent'}',action='${row['action']??'NONE'}';bool enabled=row['enabled']!=false;
+    String image='${row['imageUrl']??''}',background='${row['backgroundToken']??'primary'}',badgeToken='${row['badgeToken']??'accent'}',action='${row['action']??'NONE'}';bool enabled=row['enabled']!=false;bool isHomeHero=row['placement']=='home_hero';
     final result=await showDialog<Map<String,dynamic>>(context:context,builder:(d)=>StatefulBuilder(builder:(d,setD)=>AlertDialog(
       title:Text(editing?'Banner Düzenle':'Yeni Banner'),
       content:SizedBox(width:650,child:SingleChildScrollView(child:Column(children:[
@@ -832,6 +832,7 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
         Row(children:[Expanded(child:DropdownButtonFormField<String>(value:background,decoration:const InputDecoration(labelText:'Background token'),items:tokenNames.entries.map((e)=>DropdownMenuItem(value:e.key,child:Text(e.value))).toList(),onChanged:(v)=>setD(()=>background=v??'primary'))),const SizedBox(width:8),Expanded(child:DropdownButtonFormField<String>(value:badgeToken,decoration:const InputDecoration(labelText:'Badge token'),items:tokenNames.entries.map((e)=>DropdownMenuItem(value:e.key,child:Text(e.value))).toList(),onChanged:(v)=>setD(()=>badgeToken=v??'accent')))]),const SizedBox(height:8),
         DropdownButtonFormField<String>(value:action,decoration:const InputDecoration(labelText:'Action'),items:actions.entries.map((e)=>DropdownMenuItem(value:e.key,child:Text(e.value))).toList(),onChanged:(v)=>setD(()=>action=v??'NONE')),
         if(action=='EXTERNAL_URL')...[const SizedBox(height:8),TextField(controller:target,decoration:const InputDecoration(labelText:'http/https URL'))],
+        SwitchListTile(contentPadding:EdgeInsets.zero,value:isHomeHero,onChanged:(v)=>setD(()=>isHomeHero=v),title:const Text('Ana Sayfa Üst Banner (360 × 140 dp)'),subtitle:const Text('Yayınlandığında üst banner görseli olarak kullanılır. Görsel seçilmezse varsayılan banner korunur.')),
         SwitchListTile(contentPadding:EdgeInsets.zero,value:enabled,onChanged:(v)=>setD(()=>enabled=v),title:const Text('Aktif')),
       ]))),
       actions:[TextButton(onPressed:()=>Navigator.pop(d),child:const Text('Vazgeç')),FilledButton(onPressed:()=>Navigator.pop(d,{...row,'id':'${row['id']??'banner_${DateTime.now().millisecondsSinceEpoch}'}','title':title.text.trim(),'subtitle':subtitle.text.trim(),'imageUrl':image,'placement':isHomeHero?'home_hero':'standard','backgroundToken':background,'badgeText':badge.text.trim(),'badgeToken':badgeToken,'ctaText':cta.text.trim(),'action':action,'actionTarget':action=='EXTERNAL_URL'?target.text.trim():'','enabled':enabled,'sortOrder':row['sortOrder']??((_list('banners').length+1)*10),'audience':row['audience']??'all'}),child:const Text('Uygula'))],
