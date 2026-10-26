@@ -14,6 +14,22 @@ SSH=(ssh -i "$HOME/.ssh/staging_key" -o BatchMode=yes -o StrictHostKeyChecking=y
 SCP=(scp -q -i "$HOME/.ssh/staging_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -P "$SSH_PORT")
 REMOTE_FIXTURE="/home/cepqontag-deploy/staging-fixture-$GITHUB_RUN_ID.json"
 cleanup() {
+  mkdir -p staging-evidence
+  # Runner-only diagnostics: memory counters and kernel OOM events, never env,
+  # process arguments, browser storage, tokens or application logcat.
+  python3 - <<'RESOURCE'
+import json, subprocess
+from pathlib import Path
+memory={}
+for line in Path('/proc/meminfo').read_text().splitlines():
+    key,value=line.split(':',1)
+    if key in ('MemTotal','MemAvailable','SwapTotal','SwapFree'): memory[key]=value.strip()
+try:
+    result=subprocess.run(['sudo','-n','dmesg','--ctime'],capture_output=True,text=True,timeout=5)
+    events=[line for line in result.stdout.splitlines() if 'Killed process' in line or 'Out of memory:' in line][-10:]
+except (OSError,subprocess.TimeoutExpired): events=[]
+Path('staging-evidence/runner-memory.json').write_text(json.dumps({'hostMemory':memory,'oomEvents':events}))
+RESOURCE
   if [ -f staging-fixture.json ]; then
     "${SCP[@]}" staging-fixture.json "$SSH_USER@$SSH_HOST:$REMOTE_FIXTURE" || true
     "${SSH[@]}" "node - cleanup $REMOTE_FIXTURE" < tool/staging/fixture.cjs || true
@@ -54,6 +70,20 @@ flutter drive --driver test_driver/staging_campaign_driver.dart --target integra
 "${SSH[@]}" "node - active $REMOTE_FIXTURE" < tool/staging/fixture.cjs
 exit 0
 fi
+if [ "${1:-all}" = build-android ]; then
+  trap 'status=$?; if [ "$status" -ne 0 ]; then cleanup; fi' EXIT
+  campaign_id=$(node -p "require('./staging-fixture.json').campaignId")
+  mkdir -p staging-native
+  # Compile both campaign states before the AVD consumes host RAM/GPU resources.
+  for active in true false; do
+    flutter build apk --debug --target integration_test/staging_campaign_test.dart "${environment_flags[@]}" --dart-define=STAGING_CAMPAIGN_ID="$campaign_id" --dart-define=STAGING_EXPECT_ACTIVE="$active"
+    cp build/app/outputs/flutter-apk/app-debug.apk "staging-native/$active.apk"
+  done
+  (cd android && ./gradlew --stop)
+  node -e "require('fs').writeFileSync('staging-native/context.json',JSON.stringify({campaignId:require('./staging-fixture.json').campaignId,api:process.env.STAGING_PUBLIC_API||'http://127.0.0.1:18091',source:process.env.GITHUB_SHA}))"
+  exit 0
+fi
+node -e "const c=require('./staging-native/context.json');if(c.campaignId!==require('./staging-fixture.json').campaignId||c.api!==(process.env.STAGING_PUBLIC_API||'http://127.0.0.1:18091')||c.source!==process.env.GITHUB_SHA)throw Error('STALE_NATIVE_TEST_BINARY')"
 trap cleanup EXIT
 tunnel_pid=
 if [ -z "$public_api" ]; then tunnel_pid=$(cat .staging-tunnel.pid); fi
@@ -64,7 +94,7 @@ adb emu geo fix 28.9784 41.0082
 while adb -s "$device_id" get-state > /dev/null 2>&1; do adb -s "$device_id" emu geo fix 28.9784 41.0082 > /dev/null 2>&1; sleep 3; done &
 printf '%s\n' "$!" > .staging-gps.pid
 if [ -n "$public_api" ]; then
-  # Launch the actual downloadable APK before building the integration target.
+  # Launch the actual downloadable APK before installing integration binaries.
   adb -s "$device_id" install -r -g staging-apk/app-debug.apk
   adb -s "$device_id" shell am start -W -n com.cepqar.app.staging/com.cepqar.app.MainActivity
   sleep 15
@@ -81,20 +111,18 @@ fi
 # its differently signed package. Never grant or uninstall the production ID.
 android_phase() {
   local active="$1"
-  flutter build apk --debug --target integration_test/staging_campaign_test.dart "${environment_flags[@]}" --dart-define=STAGING_CAMPAIGN_ID="$campaign_id" --dart-define=STAGING_EXPECT_ACTIVE="$active"
-  # Release compilation workers before the emulator runs the full guest app.
-  # Flutter-generated Gradle heaps can otherwise exhaust the hosted runner.
-  (cd android && ./gradlew --stop)
-  # Fail visibly if the SSH listener died during the Android build, then use
+  local binary="staging-native/$active.apk"
+  test -s "$binary"
+  # Fail visibly if API connectivity was lost, then use
   # adb transport instead of depending on emulator NAT reaching host loopback.
   curl -fsS --max-time 15 "$api_url/api/environment" > /tmp/staging-android-identity.json
   node -e "const x=require('/tmp/staging-android-identity.json');if(x.database!=='heycar_staging'||x.environment!=='staging')process.exit(1)"
   if [ -z "$public_api" ]; then adb -s "$device_id" reverse tcp:18091 tcp:18091; fi
-  adb -s "$device_id" install -r -g build/app/outputs/flutter-apk/app-debug.apk
+  adb -s "$device_id" install -r -g "$binary"
   adb -s "$device_id" shell pm grant com.cepqar.app.staging android.permission.ACCESS_FINE_LOCATION
   adb -s "$device_id" shell pm grant com.cepqar.app.staging android.permission.ACCESS_COARSE_LOCATION
   adb -s "$device_id" shell settings put secure location_mode 3
-  flutter drive -d "$device_id" --driver test_driver/staging_campaign_driver.dart --target integration_test/staging_campaign_test.dart --use-application-binary=build/app/outputs/flutter-apk/app-debug.apk
+  flutter drive -d "$device_id" --driver test_driver/staging_campaign_driver.dart --target integration_test/staging_campaign_test.dart --use-application-binary="$binary"
 }
 android_phase true
 flutter drive --driver test_driver/staging_campaign_driver.dart --target integration_test/staging_business_test.dart -d web-server --web-hostname=127.0.0.1 --web-port=8085 --browser-name=chrome --headless "${environment_flags[@]}" --dart-define=STAGING_PHASE=deactivate
