@@ -1699,36 +1699,42 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
 
   Widget _ridezVehicleGrid()=>Padding(
     padding:const EdgeInsets.fromLTRB(16,0,16,10),
-    child:IntrinsicHeight(child:Row(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
-      Expanded(child:InkWell(key:const ValueKey('premium-home-vehicle'),onTap:widget.vehicles,borderRadius:BorderRadius.circular(22),
-        child:Container(padding:const EdgeInsets.all(15),
+    child:Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      Expanded(child:SizedBox(height:226,child:InkWell(
+        key:const ValueKey('premium-home-vehicle'),
+        onTap:widget.vehicles,borderRadius:BorderRadius.circular(22),
+        child:Container(padding:const EdgeInsets.all(12),
           decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(22),
             border:Border.all(color:const Color(0xFFEBEBF1))),
           child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-            const Text('Aracım',style:TextStyle(fontWeight:FontWeight.w900,fontSize:18)),
+            const Text('Aracım',style:TextStyle(fontWeight:FontWeight.w900,fontSize:17)),
+            const SizedBox(height:5),
+            Text(QrDraft.plate.trim().isEmpty?'Araç ekleyin':QrDraft.plate,
+              maxLines:1,overflow:TextOverflow.ellipsis,
+              style:const TextStyle(color:Color(0xFF737B90),fontSize:12)),
             const SizedBox(height:8),
-            Text(QrDraft.plate.isEmpty?'Araç ekleyin':QrDraft.plate,
-              style:const TextStyle(color:Color(0xFF737B90),fontSize:13)),
-            const Spacer(),
-            Center(child:VehicleKind.isMotorcycle(QrDraft.vehicleType)
-              ?const Icon(Icons.two_wheeler_rounded,color:Color(0xFF651FFF),size:78)
-              :_premiumCarArtwork()),
-            const Spacer(),
+            Expanded(child:Center(child:VehicleKind.isMotorcycle(QrDraft.vehicleType)
+              ?const Icon(Icons.two_wheeler_rounded,color:Color(0xFF651FFF),size:64)
+              :FittedBox(fit:BoxFit.contain,child:SizedBox(width:120,height:80,
+                child:_premiumCarArtwork())))),
             Text('${QrDraft.make} ${QrDraft.model}'.trim().isEmpty?'Araç detayları':'${QrDraft.make} ${QrDraft.model}'.trim(),
-              maxLines:2,style:const TextStyle(fontSize:12,fontWeight:FontWeight.w800)),
-            const SizedBox(height:6),
-            const Icon(Icons.arrow_circle_right_rounded,color:Color(0xFF651FFF)),
+              maxLines:1,overflow:TextOverflow.ellipsis,
+              style:const TextStyle(fontSize:11,fontWeight:FontWeight.w800)),
+            const SizedBox(height:5),
+            const Icon(Icons.arrow_circle_right_rounded,color:Color(0xFF651FFF),size:22),
           ]),
-        ))),
+        ),
+      ))),
       const SizedBox(width:9),
-      Expanded(child:Column(children:[
-        _ridezTile('Yaklaşan Servis','Bakım hatırlatmaları',Icons.calendar_month_rounded,
-          ()=>widget.shortcut('reminders')),
+      Expanded(child:SizedBox(height:226,child:Column(children:[
+        Expanded(child:_ridezTile('Yaklaşan Servis','Bakım hatırlatmaları',
+          Icons.calendar_month_rounded,()=>widget.shortcut('reminders'))),
         const SizedBox(height:9),
-        _ridezTile('QR Güvenliği','Etiket güvenliğini kontrol edin',Icons.qr_code_2_rounded,
-          ()=>widget.shortcut('qr_security'),key:const ValueKey('premium-home-qr-security')),
-      ])),
-    ])),
+        Expanded(child:_ridezTile('QR Güvenliği','Etiket güvenliğini kontrol edin',
+          Icons.qr_code_2_rounded,()=>widget.shortcut('qr_security'),
+          key:const ValueKey('premium-home-qr-security'))),
+      ]))),
+    ]),
   );
 
   Widget _ridezMetrics()=>Padding(
