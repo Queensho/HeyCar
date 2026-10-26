@@ -784,8 +784,6 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
     final title=TextEditingController(text:'${row['title']??''}'),target=TextEditingController(text:'${row['actionTarget']??''}');
     String icon='${row['icon']??'campaign'}',iconUrl='${row['iconUrl']??''}',iconToken='${row['iconToken']??'primary'}',background='${row['backgroundToken']??'surface'}',action='${row['action']??'NONE'}';
     bool enabled=row['enabled']!=false;
-    String action='${row['action']??'NONE'}';
-    final target=TextEditingController(text:'${row['actionTarget']??''}');
     final result=await showDialog<Map<String,dynamic>>(context:context,builder:(d)=>StatefulBuilder(builder:(d,setD)=>AlertDialog(
       title:Text(editing?'Hızlı Erişim Düzenle':'Yeni Hızlı Erişim'),
       content:SizedBox(width:520,child:Column(mainAxisSize:MainAxisSize.min,children:[
