@@ -15,6 +15,7 @@ on:
       - 'tool/staging/public_pages.py'
       - 'tool/staging/public_panel_smoke.cjs'
       - 'tool/staging/run_e2e.sh'
+      - 'tool/staging/native_guest_probe.py'
       - 'tool/staging/prepare_sources.py'
       - 'tool/staging/reuse_clients.cjs'
       - 'tool/staging/tests/**'
@@ -246,6 +247,7 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: pages-preserved
+          retention-days: 30
       - name: Refuse stale source or changed production bytes immediately before publishing
         env:
           GH_TOKEN: ${{ github.token }}

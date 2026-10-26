@@ -78,5 +78,12 @@ private/public UI regressions to run independently without sharing credentials.
 Native launch follow-up: screenshot review found that disabled staging calling
 services still led to call-permission onboarding. The entry gate now skips that
 setup only for APP_ENV=staging; production/web permission behavior is unchanged.
-The native integration suite also opens the real guest login form, asserts no
-call-permission setup and captures a screenshot before testing campaign screens.
+Android UI Automator opens the real downloaded APK guest login form, checks
+accessible phone/password fields plus the staging banner, and captures a
+screenshot without entering credentials. The full application guest entry is
+kept separate from the Flutter integration binding: that binding repeatedly
+terminated the emulator, even after precompilation/Gradle cleanup and with no
+host OOM event. Owner/Driver campaign widgets retain their real Flutter native
+integration tests; neither guest nor campaign validation is inferred from API
+responses. Native binaries are compiled before AVD startup; a stale fixture/API/
+source context is rejected. Runner memory diagnostics contain no credentials.

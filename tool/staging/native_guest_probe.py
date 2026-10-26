@@ -1,0 +1,83 @@
+"""Open the actual downloaded staging APK's guest login via Android accessibility.
+
+Runner/emulator only; never accepts a production package or enters credentials.
+The campaign screen integration suite is intentionally separate from this APK probe.
+"""
+import json
+from pathlib import Path
+import re
+import subprocess
+import sys
+import time
+import xml.etree.ElementTree as ET
+
+PACKAGE = 'com.cepqar.app.staging'
+
+
+def stage_nodes(xml):
+    return [node for node in ET.fromstring(xml).iter('node')
+            if node.get('package') == PACKAGE]
+
+
+def login_bounds(xml):
+    candidates = []
+    for node in stage_nodes(xml):
+        label = ' '.join((node.get('text', ''), node.get('content-desc', '')))
+        if 'Giriş Yap' not in label or node.get('enabled') == 'false':
+            continue
+        values = re.fullmatch(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', node.get('bounds', ''))
+        if values:
+            x1, y1, x2, y2 = map(int, values.groups())
+            if x2 > x1 and y2 > y1:
+                candidates.append(((x2-x1)*(y2-y1), (x1, y1, x2, y2)))
+    if not candidates:
+        raise RuntimeError('STAGING_APK_LOGIN_BUTTON_NOT_ACCESSIBLE')
+    return min(candidates)[1]
+
+
+def login_form_visible(xml):
+    labels = ' '.join(node.get('text', '')+' '+node.get('content-desc', '')
+                      for node in stage_nodes(xml)).casefold()
+    return 'telefon numarası' in labels and 'şifre' in labels and 'STAGING / TEST ORTAMI'.casefold() in labels
+
+
+def run(device):
+    if not re.fullmatch(r'emulator-\d+', device):
+        raise RuntimeError('EMULATOR_ONLY')
+
+    def adb(*args):
+        return subprocess.check_output(['adb', '-s', device, *args], timeout=30)
+
+    def snapshot():
+        adb('shell', 'uiautomator', 'dump', '/sdcard/cepqontag-staging-ui.xml')
+        return adb('exec-out', 'cat', '/sdcard/cepqontag-staging-ui.xml').decode()
+
+    deadline = time.monotonic()+45
+    while True:
+        try:
+            bounds = login_bounds(snapshot())
+            break
+        except (RuntimeError, ET.ParseError):
+            if time.monotonic() >= deadline:
+                raise
+            time.sleep(1)
+    x1, y1, x2, y2 = bounds
+    adb('shell', 'input', 'tap', str((x1+x2)//2), str((y1+y2)//2))
+    deadline = time.monotonic()+30
+    while not login_form_visible(snapshot()):
+        if time.monotonic() >= deadline:
+            raise RuntimeError('STAGING_APK_LOGIN_FORM_NOT_VISIBLE')
+        time.sleep(1)
+    evidence = Path('staging-evidence')
+    evidence.mkdir(exist_ok=True)
+    (evidence/'downloadable-https-apk-login.png').write_bytes(adb('exec-out', 'screencap', '-p'))
+    (evidence/'downloadable-apk-login.json').write_text(json.dumps({
+        'package': PACKAGE, 'automation': 'Android UI Automator',
+        'guestLoginOpened': True, 'stagingBannerVerified': True,
+        'credentialsEntered': False,
+    }))
+    print('DOWNLOADED_STAGING_APK_GUEST_LOGIN_UI_PASSED')
+
+
+if __name__ == '__main__':
+    run(sys.argv[1])

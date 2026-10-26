@@ -6,34 +6,11 @@ import 'package:http/http.dart' as http;
 import 'package:heycar_app/app_environment.dart';
 import 'package:heycar_app/cepqar_offers_page.dart';
 import 'package:heycar_app/staging_banner.dart';
-import 'package:heycar_app/entry_theme_live.dart';
-import 'package:heycar_app/owner_welcome_overlay.dart';
-import 'package:heycar_app/owner_password_login.dart';
-import 'package:heycar_app/call_permission_setup.dart';
 
 void main(){
  final binding=IntegrationTestWidgetsFlutterBinding.ensureInitialized();
  const id=String.fromEnvironment('STAGING_CAMPAIGN_ID');
  const active=bool.fromEnvironment('STAGING_EXPECT_ACTIVE',defaultValue:true);
- testWidgets('native staging guest reaches login without disabled calling setup',(tester)async{
-  expect(AppEnvironment.isStaging,isTrue);
-  await AppEnvironment.verifyServer();
-  await tester.pumpWidget(const ThemeOwnerApp());
-  final deadline=DateTime.now().add(const Duration(seconds:60));
-  while(find.byType(OwnerWelcomeOverlay).evaluate().isEmpty&&DateTime.now().isBefore(deadline)){
-   await tester.pump(const Duration(milliseconds:100));
-   await tester.runAsync(()=>Future<void>.delayed(const Duration(milliseconds:150)));
-  }
-  expect(find.byType(OwnerWelcomeOverlay),findsOneWidget);
-  expect(find.byType(CallPermissionSetupPage),findsNothing);
-  final login=find.byKey(const ValueKey('owner-welcome-login'));
-  await tester.ensureVisible(login);await tester.tap(login);
-  await tester.pumpAndSettle();
-  expect(find.byType(PasswordOwnerLoginScreen),findsOneWidget);
-  expect(find.text('STAGING / TEST ORTAMI'),findsOneWidget);
-  await binding.convertFlutterSurfaceToImage();await tester.pump();
-  await binding.takeScreenshot('staging-guest-login-${active?'active':'inactive'}');
- });
  for(final driver in [false,true]){
   testWidgets('real Android ${driver?'driver':'owner'} campaign ${active?'visible and detail':'removed'}',(tester)async{
    expect(AppEnvironment.isStaging,isTrue);expect(id,isNotEmpty);
