@@ -1177,7 +1177,17 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     final ids=[...quickAccessIds,...ownerShortcutCatalog.map((item)=>item.id).where((id)=>!quickAccessIds.contains(id))];
     final items=ids.map(_quickDef)
       .whereType<OwnerShortcutDefinition>().toList();
-    if(items.isEmpty)return quickRow();
+    if(items.isEmpty)return Column(children:[
+      _homeSectionHeading('Hızlı Erişim',_editQuickAccess,top:11,swipeHint:true),
+      _quickAccessPanel([
+        for(final item in ownerShortcutCatalog)OwnerQuickPanelItem(
+          id:item.id,title:item.title,icon:_quickPanelIcon(item.id,item.icon),
+          iconColor:_quickPanelTint(item.id),
+          iconBackground:_quickPanelBackground(item.id),
+          onTap:()=>widget.shortcut(item.action),onLongPress:_editQuickAccess,
+        ),
+      ]),
+    ]);
     return Column(children:[
       _homeSectionHeading('Hızlı Erişim',_editQuickAccess,top:11,swipeHint:true),
       _quickAccessPanel([
@@ -1754,6 +1764,9 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     child:RefreshIndicator(
       onRefresh:_refreshAll,color:_homePurple,
       child:ListView(
+        // Eagerly build the core dashboard panels across narrow viewports.
+        // Keep ListView scrolling and the server-driven content unchanged.
+        cacheExtent:2000,
         padding:EdgeInsets.zero,
         physics:const AlwaysScrollableScrollPhysics(),
         children:[
