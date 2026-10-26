@@ -1714,21 +1714,21 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                   child:Icon(Icons.directions_car_filled_rounded,
                     size:165,color:Colors.white))),
               Padding(
-                padding:const EdgeInsets.fromLTRB(16,12,10,10),
+                padding:const EdgeInsets.fromLTRB(16,7,10,6),
                 child:Column(
                   crossAxisAlignment:CrossAxisAlignment.start,
                   children:[
                     const Text('Yola\nDaha Güvenli Çıkın',
                       maxLines:2,overflow:TextOverflow.ellipsis,
-                      style:TextStyle(color:Colors.white,fontSize:19,
+                      style:TextStyle(color:Colors.white,fontSize:18,
                         fontWeight:FontWeight.w900,height:1.05)),
-                    const SizedBox(height:3),
+                    const SizedBox(height:2),
                     const Text('Bakım, sigorta, vale ve daha fazlası\nCepQontag’da.',
                       maxLines:2,overflow:TextOverflow.ellipsis,
                       style:TextStyle(color:Colors.white,fontSize:9,height:1.15)),
                     const Spacer(),
                     Container(
-                      padding:const EdgeInsets.fromLTRB(10,4,4,4),
+                      padding:const EdgeInsets.fromLTRB(10,3,4,3),
                       decoration:BoxDecoration(color:Colors.white,
                         borderRadius:BorderRadius.circular(24)),
                       child:Row(mainAxisSize:MainAxisSize.min,children:[
@@ -1736,7 +1736,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                           style:TextStyle(color:Color(0xFF21104E),
                             fontWeight:FontWeight.w800,fontSize:10)),
                         const SizedBox(width:8),
-                        const CircleAvatar(radius:11,
+                        const CircleAvatar(radius:10,
                           backgroundColor:Color(0xFF651FFF),
                           child:Icon(Icons.chevron_right_rounded,
                             color:Colors.white,size:17)),
