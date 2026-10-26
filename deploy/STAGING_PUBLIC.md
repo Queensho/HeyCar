@@ -22,7 +22,7 @@ Grant `cepqontag-deploy` access through an administrator-reviewed, root-owned
 fixed-purpose wrapper (not sudo ALL, a shell, arbitrary install, or arbitrary
 file editing). It needs only:
 
-- Install/replace/remove `/etc/nginx/sites-available/cepqontag-staging.conf` and
+- Install/replace/remove `/etc/nginx/sites-available/zz-cepqontag-staging.conf` and
   its same-named symlink in `/etc/nginx/sites-enabled/` using the two checked-in
   public-http/public-https nginx configurations. Refuse existing unmanaged files.
 - Create/write the challenge webroot `/var/www/cepqontag-staging-acme`.
@@ -132,3 +132,44 @@ normal TLS trust and an actual temporary-filesystem rollback after injected ACME
 failure. They are not evidence of real VPS certificate issuance. Public panel,
 public APK and campaign lifecycle tests remain pending until the root installer
 has actually completed; previous tunnel evidence is retained in PR #265.
+
+
+## Security review follow-up (2026-10-26)
+
+The original c16068e installer SHA-256 was verified as
+`ae7944a3a2c044852cb2b198af2e1f2c7b929b2097c3b6350ea9ad5672a9cff3`.
+It is superseded by the reviewed installer in this branch; use the NEW pinned
+commit/hash command in PR #265, not the old command.
+
+Fixed findings:
+- Use `zz-cepqontag-staging.conf` so adding a host does not precede the existing
+  HTTPS sites and inadvertently change the implicit default certificate. Compare
+  the public default/SNI-less TLS certificate fingerprint before/after, in
+  addition to production API health and the live panel HTML hash.
+- `--check` is a root-only, configuration-read-only preflight. It issues no
+  certificate, creates no state/webroot/config, performs no reload and installs
+  no timer. It checks Python >=3.9, binaries, required Certbot options, active
+  Nginx, IP/DNS, the real staging identity, nginx -t/-T, directory trust,
+  existing isolated ACME state, production API/panel and default TLS fingerprint.
+  Like any nginx -t invocation, Nginx may open its normal log files.
+- Track config hashes, owners, modes and symlinks, including nginx -T includes
+  outside /etc/nginx. Check AFTER nginx -t immediately before every reload.
+  On concurrent unrelated changes, restore only staging files and refuse reload;
+  report STAGING_ROLLBACK_RELOAD_BLOCKED for administrator inspection. Do not
+  restore any production files. Independent root administrators must still
+  serialize their own config changes; the installer cannot lock arbitrary writers.
+- Do not chmod existing webroot directories. Reject unsafe ancestors/symlinks,
+  foreign ACME lineages and stored Certbot hooks. Pin the ACME server; no nginx
+  plugin, standalone listener or production cert store is used.
+- CORS must allow the exact Pages origin, POST and authorization/content-type;
+  an untrusted Origin must return 403. CORS is validated, not changed by this
+  installer. All API/Pages HTTPS requests keep normal certificate verification.
+- Rollback restores separate timer enabled/active states. The renewal timer is
+  configured, but a future real renewal remains untested until it executes.
+
+The current SSH account cannot perform root nginx -t/-T or read protected cert
+files; its available non-root VPS inspection is recorded by CI. Full root
+preflight is deliberately rerun on the VPS with `--check` in the final command,
+BEFORE installation. Neither actual root installation nor issuance is claimed
+performed by this security review. Public Pages and direct HTTPS APK rollout
+remain separate, pending tasks; production files/database/panel are not deployed.

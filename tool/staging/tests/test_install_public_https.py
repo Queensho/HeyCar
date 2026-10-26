@@ -78,6 +78,12 @@ class InstallerTests(unittest.TestCase):
             self.assertNotIn('context', open_url.call_args.kwargs)
 
     def test_failed_certificate_rolls_back_only_staging_files(self):
+        self.assert_failed_transaction(False)
+
+    def test_rollback_refuses_reload_after_external_production_edit(self):
+        self.assert_failed_transaction(True)
+
+    def assert_failed_transaction(self, concurrent):
         # Entire transaction is confined to a temporary tree. No real sudo,
         # nginx, certbot, network call or /etc mutation is made by this test.
         with tempfile.TemporaryDirectory() as tmp, contextlib.ExitStack() as stack:
@@ -106,22 +112,146 @@ class InstallerTests(unittest.TestCase):
             stack.enter_context(patch.object(Path, 'is_file', lambda p: True if str(p) in binaries else real_is_file(p)))
             stack.enter_context(patch.object(m.socket, 'getaddrinfo', return_value=[(0,0,0,'',(m.IP,80))]))
             stack.enter_context(patch.object(m, 'identity'))
+            stack.enter_context(patch.object(m, 'inspect_machine', return_value='panel-hash'))
             def response(url, *args, **kwargs):
                 value = m.IP if url.endswith('ipify.org') else url.rsplit('cepqontag-preflight-',1)[-1]
                 return io.BytesIO(value.encode())
             stack.enter_context(patch.object(m, 'request', side_effect=response))
-            stack.enter_context(patch.object(m, 'run', return_value=''))
+            commands = stack.enter_context(patch.object(m, 'run', return_value=''))
             stack.enter_context(patch.object(m.subprocess, 'run', return_value=subprocess.CompletedProcess([],1)))
-            reload = stack.enter_context(patch.object(m, 'reload_nginx'))
-            stack.enter_context(patch.object(m, 'certificate', side_effect=RuntimeError('ACME_FAILED')))
-            with contextlib.redirect_stderr(io.StringIO()), self.assertRaisesRegex(RuntimeError, 'ACME_FAILED'):
+            def failed_acme():
+                if concurrent:
+                    prod.write_text('external production edit')
+                raise RuntimeError('ACME_FAILED')
+            stack.enter_context(patch.object(m, 'certificate', side_effect=failed_acme))
+            expected = 'STAGING_ROLLBACK_RELOAD_BLOCKED' if concurrent else 'ACME_FAILED'
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaisesRegex(RuntimeError, expected):
                 m.main()
             self.assertEqual(paths['SITE'].read_text(), before)
             self.assertEqual(paths['LINK'].resolve(), paths['SITE'])
-            self.assertEqual(prod.read_text(), 'untouched production')
+            self.assertEqual(prod.read_text(), 'external production edit' if concurrent else 'untouched production')
             self.assertFalse(paths['HELPER'].exists())
             self.assertFalse(paths['SERVICE'].exists())
-            self.assertEqual(reload.call_count, 2)  # bootstrap, then restored original
+            reloads = [call for call in commands.call_args_list if call.args == ('/usr/bin/systemctl', 'reload', 'nginx')]
+            self.assertEqual(len(reloads), 1 if concurrent else 2)
+
+
+    def test_check_mode_has_no_mutations(self):
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(patch.object(m.os, 'geteuid', return_value=0))
+            stack.enter_context(patch.object(m.signal, 'signal'))
+            stack.enter_context(patch.object(m.os, 'umask'))
+            stack.enter_context(patch.object(sys, 'argv', ['installer', '--check']))
+            stack.enter_context(patch.object(m, 'inspect_machine', return_value='panel-hash'))
+            stack.enter_context(patch.object(m, 'inspect_config', return_value={}))
+            mkdir = stack.enter_context(patch.object(Path, 'mkdir'))
+            atomic = stack.enter_context(patch.object(m, 'atomic'))
+            reload = stack.enter_context(patch.object(m, 'reload_nginx'))
+            cert = stack.enter_context(patch.object(m, 'certificate'))
+            with contextlib.redirect_stdout(io.StringIO()) as output:
+                m.main()
+            self.assertIn('"readOnly": true', output.getvalue())
+            for mutation in [mkdir, atomic, reload, cert]:
+                mutation.assert_not_called()
+
+    def test_concurrent_production_config_change_blocks_reload(self):
+        with patch.object(m, 'run') as run, patch.object(m, 'production_config_snapshot', return_value={'prod': 'changed'}):
+            with self.assertRaisesRegex(RuntimeError, 'UNRELATED_NGINX_CHANGED_RELOAD_REFUSED'):
+                m.reload_nginx({'prod': 'original'})
+            self.assertEqual(run.call_args_list[0].args, ('/usr/sbin/nginx', '-t'))
+            self.assertEqual(run.call_count, 1)
+
+    def test_external_nginx_include_change_is_detected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)/'nginx'; root.mkdir()
+            external = Path(tmp)/'ssl-options.conf'; external.write_text('ssl_session_timeout 1d;')
+            dump = '# configuration file ' + str(external) + ':\n' + external.read_text()
+            with patch.object(m, 'NGINX_ROOT', root), patch.object(m, 'EXTRA_CONFIGS', set()), patch.object(m, 'run', return_value=dump):
+                before = m.inspect_config()
+                external.write_text('ssl_session_timeout 2d;')
+                with self.assertRaisesRegex(RuntimeError, 'UNRELATED_NGINX_CHANGED'):
+                    m.require_unchanged(before)
+
+    def test_existing_webroot_permissions_are_never_relaxed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)/'webroot'; root.mkdir(mode=0o700)
+            with patch.object(m, 'WEBROOT', root), patch.object(m, 'trusted_directory'), patch.object(m.os, 'chmod') as chmod:
+                with self.assertRaisesRegex(RuntimeError, 'EXISTING_WEBROOT_NOT_PUBLICLY_TRAVERSABLE'):
+                    m.ensure_webroot()
+                chmod.assert_not_called()
+            self.assertEqual(root.stat().st_mode & 0o777, 0o700)
+
+    def test_production_panel_change_is_detected_without_writes(self):
+        def response(url):
+            result = io.BytesIO(b'{"ok":true}' if url == m.PRODUCTION_API else b'changed panel')
+            result.status = 200
+            result.geturl = lambda: url
+            return result
+        with patch.object(m, 'request', side_effect=response):
+            with self.assertRaisesRegex(RuntimeError, 'PRODUCTION_PANEL_CONTENT_CHANGED'):
+                m.production_readonly('original-hash')
+
+    def test_identity_rejects_production_database_and_non_object_payload(self):
+        for data in [b'{"environment":"production","database":"heycar"}', b'[]']:
+            with patch.object(m, 'request', return_value=io.BytesIO(data)):
+                with self.assertRaisesRegex(RuntimeError, 'STAGING_IDENTITY_MISMATCH'):
+                    m.identity('http://127.0.0.1:8091/api/environment')
+
+    def test_stored_certbot_hooks_are_rejected(self):
+        import os
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp); (root/'renewal').mkdir()
+            (root/'renewal'/(m.HOST+'.conf')).write_text('deploy_hook = /some/production-hook')
+            real_stat = Path.stat
+            def root_stat(path, *args, **kwargs):
+                values = list(real_stat(path, *args, **kwargs)); values[4] = 0
+                return os.stat_result(values)
+            with patch.object(m, 'ACME', root), patch.object(Path, 'stat', root_stat):
+                with self.assertRaisesRegex(RuntimeError, 'ACME_STORED_HOOK_FORBIDDEN'):
+                    m.inspect_acme()
+
+    def test_writable_parent_is_rejected(self):
+        import os
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_stat = Path.stat
+            def root_stat(path, *args, **kwargs):
+                values = list(real_stat(path, *args, **kwargs)); values[4] = 0
+                return os.stat_result(values)
+            with patch.object(Path, 'stat', root_stat):
+                with self.assertRaisesRegex(RuntimeError, 'REFUSE_UNTRUSTED_DIRECTORY: /tmp'):
+                    m.trusted_directory(root)
+
+
+
+    def test_default_tls_fingerprint_is_inspected_without_sni(self):
+        import hashlib
+        import ssl
+        der = b'public-certificate-bytes'
+        with patch.object(m, 'run', return_value=ssl.DER_cert_to_PEM_cert(der)) as run:
+            self.assertEqual(m.default_tls_fingerprint(), hashlib.sha256(der).hexdigest())
+            self.assertIn('-noservername', run.call_args.args)
+            self.assertIn(m.IP + ':443', run.call_args.args)
+
+    def test_changing_implicit_default_certificate_is_rejected(self):
+        import hashlib
+        def response(url):
+            result = io.BytesIO(b'{"ok":true}' if url == m.PRODUCTION_API else b'panel')
+            result.status = 200; result.geturl = lambda: url
+            return result
+        baseline = {'panelSha256': hashlib.sha256(b'panel').hexdigest(), 'defaultTlsSha256': 'old-cert'}
+        with patch.object(m, 'request', side_effect=response), patch.object(m, 'default_tls_fingerprint', return_value='new-cert'):
+            with self.assertRaisesRegex(RuntimeError, 'PRODUCTION_DEFAULT_TLS_CERTIFICATE_CHANGED'):
+                m.production_readonly(baseline)
+        self.assertEqual(m.LINK.name, 'zz-cepqontag-staging.conf')
+
+    def test_pages_origin_alone_is_not_sufficient_for_jwt_cors(self):
+        response = io.BytesIO()
+        response.status = 204
+        response.headers = {'Access-Control-Allow-Origin': 'https://queensho.github.io', 'Access-Control-Allow-Methods': 'POST'}
+        with patch.object(m, 'identity'), patch.object(m, 'request', return_value=response):
+            with self.assertRaisesRegex(RuntimeError, 'STAGING_CORS_JWT_HEADERS_OR_METHOD_MISSING'):
+                m.verify_https()
 
 
 if __name__ == '__main__':
