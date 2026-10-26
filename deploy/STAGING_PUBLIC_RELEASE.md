@@ -92,3 +92,12 @@ verified by this test. Owner/Driver campaign widgets retain their real Flutter n
 integration tests; neither guest nor campaign validation is inferred from API
 responses. Native binaries are compiled before AVD startup; a stale fixture/API/
 source context is rejected. Runner memory diagnostics contain no credentials.
+
+Accessibility follow-up: the actual Android accessibility export showed both
+phone/password fields but no persistent staging banner after opening login.
+Navigator route BlockSemantics had removed the earlier sibling header. The
+staging-only builder now gives the Navigator its own semantic container; the
+production branch still returns the original child directly. A Flutter regression
+test checks the exported semantic tree before/after route navigation, while the
+real APK UI Automator probe still requires the banner plus two real input fields.
+No input values are written to accessibility diagnostic artifacts.

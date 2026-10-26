@@ -1,10 +1,33 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/app_environment.dart';
 import '../lib/owner_auth.dart';
 import '../lib/driver_auth.dart';
+import '../lib/staging_banner.dart';
 
 void main(){
+ testWidgets('staging announcement stays accessible across Navigator routes',(tester)async{
+  final semantics=tester.ensureSemantics();
+  addTearDown(semantics.dispose);
+  final navigator=GlobalKey<NavigatorState>();
+  Set<String> labels(){
+   final result=<String>{};
+   void visit(SemanticsNode node){
+    result.add(node.label);
+    node.visitChildren((child){visit(child);return true;});
+   }
+   visit(tester.binding.pipelineOwner.semanticsOwner!.rootSemanticsNode!);
+   return result;
+  }
+  await tester.pumpWidget(MaterialApp(navigatorKey:navigator,builder:environmentBanner,home:const Scaffold(body:Text('Guest'))));
+  await tester.pumpAndSettle();
+  expect(labels().any((label)=>label.contains('STAGING / TEST ORTAMI')),isTrue);
+  navigator.currentState!.push(MaterialPageRoute<void>(builder:(_)=>const Scaffold(body:TextField(obscureText:true))));
+  await tester.pumpAndSettle();
+  expect(labels().any((label)=>label.contains('STAGING / TEST ORTAMI')),isTrue);
+ });
  test('production default remains unchanged',(){expect(AppEnvironment.productionApi,'https://heycar-api-185-165-46-213.nip.io');});
  test('staging refuses production, missing TLS and unknown environments',(){
   for(final api in [AppEnvironment.productionApi,'http://staging.example.com','https://cepqar.com','https://a.example/path']){
