@@ -86,7 +86,10 @@ class InstallerTests(unittest.TestCase):
     def test_rollback_refuses_reload_after_external_production_edit(self):
         self.assert_failed_transaction(True)
 
-    def assert_failed_transaction(self, concurrent):
+    def test_unchanged_valid_certificate_and_config_do_not_reload_nginx(self):
+        self.assert_failed_transaction(False, unchanged=True)
+
+    def assert_failed_transaction(self, concurrent, unchanged=False):
         # Entire transaction is confined to a temporary tree. No real sudo,
         # nginx, certbot, network call or /etc mutation is made by this test.
         with tempfile.TemporaryDirectory() as tmp, contextlib.ExitStack() as stack:
@@ -101,7 +104,11 @@ class InstallerTests(unittest.TestCase):
                 value.parent.mkdir(parents=True, exist_ok=True)
             prod = paths['NGINX_ROOT']/'production.conf'
             prod.write_text('untouched production')
-            before = m.MARKER + 'old staging config'
+            before = m.render(True) if unchanged else m.MARKER + 'old staging config'
+            if unchanged:
+                chain = paths['ACME']/'live'/m.HOST/'fullchain.pem'
+                chain.parent.mkdir(parents=True)
+                chain.write_bytes(b'unchanged-cert')
             paths['SITE'].write_text(before)
             paths['LINK'].symlink_to(paths['SITE'])
             stack.enter_context(patch.object(m.os, 'geteuid', return_value=0))
@@ -126,17 +133,24 @@ class InstallerTests(unittest.TestCase):
                 if concurrent:
                     prod.write_text('external production edit')
                 raise RuntimeError('ACME_FAILED')
-            stack.enter_context(patch.object(m, 'certificate', side_effect=failed_acme))
+            stack.enter_context(patch.object(m, 'certificate', side_effect=(lambda: None) if unchanged else failed_acme))
+            stack.enter_context(patch.object(m, 'verify_https'))
+            stack.enter_context(patch.object(m, 'production_readonly'))
             expected = 'STAGING_ROLLBACK_RELOAD_BLOCKED' if concurrent else 'ACME_FAILED'
-            with contextlib.redirect_stderr(io.StringIO()), self.assertRaisesRegex(RuntimeError, expected):
-                m.main()
+            if unchanged:
+                with contextlib.redirect_stdout(io.StringIO()) as output:
+                    m.main()
+                self.assertIn('"nginxReloads": 0', output.getvalue())
+            else:
+                with contextlib.redirect_stderr(io.StringIO()), self.assertRaisesRegex(RuntimeError, expected):
+                    m.main()
             self.assertEqual(paths['SITE'].read_text(), before)
             self.assertEqual(paths['LINK'].resolve(), paths['SITE'])
             self.assertEqual(prod.read_text(), 'external production edit' if concurrent else 'untouched production')
-            self.assertFalse(paths['HELPER'].exists())
-            self.assertFalse(paths['SERVICE'].exists())
+            self.assertEqual(paths['HELPER'].exists(), unchanged)
+            self.assertEqual(paths['SERVICE'].exists(), unchanged)
             reloads = [call for call in commands.call_args_list if call.args == ('/usr/bin/systemctl', 'reload', 'nginx')]
-            self.assertEqual(len(reloads), 1 if concurrent else 2)
+            self.assertEqual(len(reloads), 0 if unchanged else (1 if concurrent else 2))
 
 
     def test_check_mode_has_no_mutations(self):

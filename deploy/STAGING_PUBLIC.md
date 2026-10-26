@@ -177,3 +177,8 @@ remain separate, pending tasks; production files/database/panel are not deployed
 The same ancestor/symlink trust checks cover isolated ACME work and log directories,
 not only the certificate config directory. CI records Python/OpenSSL versions and
 required Certbot options without exposing the help dump or credentials.
+
+Repeated install/daily renewal does not reload Nginx when both staging config
+and certificate bytes are unchanged. Fresh setup requires HTTP bootstrap and
+TLS activation reloads; nginx -t and protection checks precede each. The result
+JSON reports nginxReloads. Renewal execution itself is still not claimed live-tested.

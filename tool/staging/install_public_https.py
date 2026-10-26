@@ -277,6 +277,14 @@ def inspect_config():
     return production_config_snapshot()
 
 
+def apply_site(text):
+    data = text.encode()
+    if SITE.exists() and SITE.read_bytes() == data:
+        return False
+    atomic(SITE, data)
+    return True
+
+
 def ensure_webroot():
     for directory in [WEBROOT, WEBROOT / '.well-known', WEBROOT / '.well-known/acme-challenge']:
         if not directory.exists():
@@ -370,17 +378,25 @@ def main():
         timer_enabled = subprocess.run(['/usr/bin/systemctl', 'is-enabled', TIMER.name], env=ENV, capture_output=True).returncode == 0
         timer_changed = False
         challenge = None
+        nginx_reload_attempted = False
+        nginx_reloads = 0
         try:
             challenge_dir = ensure_webroot()
-            if not (ACME / 'live' / HOST / 'fullchain.pem').exists():
-                atomic(SITE, render(False))
+            fullchain = ACME / 'live' / HOST / 'fullchain.pem'
+            cert_before = hashlib.sha256(fullchain.read_bytes()).hexdigest() if fullchain.exists() else None
+            bootstrap_changed = False
+            if cert_before is None:
+                bootstrap_changed = apply_site(render(False))
             elif not SITE.exists():
-                atomic(SITE, render(True))
+                bootstrap_changed = apply_site(render(True))
             if not had_link:
                 LINK.symlink_to(SITE)
-            if production_config_snapshot() != baseline:
-                raise RuntimeError('UNRELATED_NGINX_CHANGED_BEFORE_RELOAD')
-            reload_nginx(baseline)
+                bootstrap_changed = True
+            require_unchanged(baseline)
+            if bootstrap_changed:
+                nginx_reload_attempted = True
+                reload_nginx(baseline)
+                nginx_reloads += 1
             token = secrets.token_urlsafe(24)
             challenge = challenge_dir / ('cepqontag-preflight-' + token)
             atomic(challenge, token)
@@ -388,28 +404,39 @@ def main():
                 if response.read().decode() != token:
                     raise RuntimeError('PUBLIC_ACME_CHALLENGE_MISMATCH')
             certificate()
-            atomic(SITE, render(True))
-            if production_config_snapshot() != baseline:
-                raise RuntimeError('UNRELATED_NGINX_CHANGED_BEFORE_TLS_RELOAD')
-            reload_nginx(baseline)
+            tls_changed = apply_site(render(True))
+            cert_after = hashlib.sha256(fullchain.read_bytes()).hexdigest()
+            require_unchanged(baseline)
+            if tls_changed or cert_before != cert_after:
+                nginx_reload_attempted = True
+                reload_nginx(baseline)
+                nginx_reloads += 1
             verify_https()
             production_readonly(panel_hash)
             if any(not Path(p).exists() or hashlib.sha256(Path(p).read_bytes()).hexdigest() != digest for p, digest in certs.items()):
                 raise RuntimeError('PRODUCTION_PUBLIC_CERTIFICATE_CHANGED')
             if production_config_snapshot() != baseline:
                 raise RuntimeError('UNRELATED_NGINX_CHANGED_AFTER_VERIFY')
-            atomic(HELPER, Path(__file__).read_bytes(), 0o700)
-            atomic(SERVICE, MARKER + '[Unit]\nDescription=CepQontag staging TLS renewal only\nAfter=network-online.target nginx.service\nWants=network-online.target\n[Service]\nType=oneshot\nTimeoutStartSec=600\nExecStart=/usr/bin/python3 -I ' + str(HELPER) + ' --renew\n')
-            atomic(TIMER, MARKER + '[Unit]\nDescription=CepQontag staging TLS renewal timer\n[Timer]\nOnCalendar=daily\nRandomizedDelaySec=3600\nPersistent=true\n[Install]\nWantedBy=timers.target\n')
-            run('/usr/bin/systemctl', 'daemon-reload')
-            timer_changed = True
-            run('/usr/bin/systemctl', 'enable', '--now', TIMER.name)
+            source = Path(__file__).read_bytes()
+            if not HELPER.exists() or HELPER.read_bytes() != source:
+                atomic(HELPER, source, 0o700)
+            service_text = MARKER + '[Unit]\nDescription=CepQontag staging TLS renewal only\nAfter=network-online.target nginx.service\nWants=network-online.target\n[Service]\nType=oneshot\nTimeoutStartSec=600\nExecStart=/usr/bin/python3 -I ' + str(HELPER) + ' --renew\n'
+            timer_text = MARKER + '[Unit]\nDescription=CepQontag staging TLS renewal timer\n[Timer]\nOnCalendar=daily\nRandomizedDelaySec=3600\nPersistent=true\n[Install]\nWantedBy=timers.target\n'
+            for path, text in [(SERVICE, service_text), (TIMER, timer_text)]:
+                if not path.exists() or path.read_text() != text:
+                    timer_changed = True
+                    atomic(path, text)
+            if timer_changed:
+                run('/usr/bin/systemctl', 'daemon-reload')
+            if not timer_enabled or not timer_active:
+                timer_changed = True
+                run('/usr/bin/systemctl', 'enable', '--now', TIMER.name)
             result = {'hostname': HOST, 'https': 'verified', 'database': 'heycar_staging',
                       'pagesCors': 'verified', 'untrustedOrigin': 'rejected',
                       'productionNginxAndCertificates': 'unchanged', 'productionApi': 'healthy',
                       'productionPanel': 'unchanged', 'productionDefaultTlsCertificate': 'unchanged',
                       'renewalTimer': 'enabled',
-                      'renewalExecution': 'not-yet-run', 'pagesAndApk': 'not-published-by-this-installer'}
+                      'renewalExecution': 'not-yet-run', 'nginxReloads': nginx_reloads, 'pagesAndApk': 'not-published-by-this-installer'}
             atomic(report / 'result.json', json.dumps(result, indent=2), 0o600)
             print(json.dumps(result, indent=2))
             print('Root-only inspection/rollback backup: ' + str(report))
@@ -428,7 +455,10 @@ def main():
             if timer_changed:
                 run('/usr/bin/systemctl', 'daemon-reload')
             try:
-                reload_nginx(baseline)
+                if nginx_reload_attempted:
+                    reload_nginx(baseline)
+                else:
+                    require_unchanged(baseline)
             except Exception as rollback_error:
                 print('STAGING_FILES_RESTORED; RELOAD_NOT_COMPLETED: ' + str(rollback_error), file=sys.stderr)
                 raise RuntimeError('STAGING_ROLLBACK_RELOAD_BLOCKED; original: ' + str(original)) from rollback_error
