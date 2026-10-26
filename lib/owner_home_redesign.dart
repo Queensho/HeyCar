@@ -69,6 +69,8 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   bool valetRequesting=false;
   bool loading=true;
   bool _monthlyFetchFailed=false;
+  int? _nearestServiceDays;
+  String _serviceReminderVehicleId='';
   bool _refreshing=false;
   bool premium=false;
   int activeVehicleCount=0;
@@ -129,6 +131,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     super.initState();
     _loadQuickAccess();
     _loadAppUiConfig();
+    _loadServiceReminder();
     if(widget.active){
       load();
       _loadWeather();
@@ -266,6 +269,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       _loadWeather(force:true),
       _loadStories(force:true),
       _refreshAppUiConfig(),
+      _loadServiceReminder(),
     ]);
   }
 
@@ -1669,7 +1673,35 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
 
 
   // Ridez-inspired dashboard: reference geometry, CepQontag actions and real data.
-  Widget _ridezTile(String title,String subtitle,IconData icon,VoidCallback onTap,{Key? key}){
+  Future<void> _loadServiceReminder()async{
+    final id=QrDraft.vehicleId.trim();
+    if(id.isEmpty){
+      if(mounted)setState((){_nearestServiceDays=null;_serviceReminderVehicleId='';});
+      return;
+    }
+    try{
+      final r=await OwnerHttp.get(
+        Uri.parse('${QrBackend.baseUrl}/api/vehicles/$id/reminders'),json:false,
+      ).timeout(const Duration(seconds:12));
+      if(r.statusCode!=200)return;
+      final d=jsonDecode(r.body);
+      final now=DateTime.now();
+      final today=DateTime(now.year,now.month,now.day);
+      int? nearest;
+      for(final raw in (d['reminders'] as List? ?? const [])){
+        if(raw is! Map)continue;
+        final date=DateTime.tryParse('${raw['due_date']}'.split('T').first);
+        if(date==null)continue;
+        final days=DateTime(date.year,date.month,date.day).difference(today).inDays;
+        if(days>=0&&(nearest==null||days<nearest))nearest=days;
+      }
+      if(mounted&&QrDraft.vehicleId.trim()==id){
+        setState((){_nearestServiceDays=nearest;_serviceReminderVehicleId=id;});
+      }
+    }catch(_){}
+  }
+
+  Widget _ridezTile(String title,String subtitle,IconData icon,VoidCallback onTap,{Key? key,bool urgent=false}){
     return Material(color:Colors.white,borderRadius:BorderRadius.circular(20),
       child:InkWell(key:key,onTap:onTap,borderRadius:BorderRadius.circular(20),
         child:Container(padding:const EdgeInsets.symmetric(horizontal:9,vertical:8),
@@ -1687,7 +1719,8 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                 style:const TextStyle(fontWeight:FontWeight.w800,fontSize:12,color:Color(0xFF141527))),
               const SizedBox(height:2),
               Text(subtitle,maxLines:2,overflow:TextOverflow.ellipsis,
-                style:const TextStyle(fontSize:10,height:1.15,color:Color(0xFF737B90))),
+                style:TextStyle(fontSize:10,height:1.15,fontWeight:urgent?FontWeight.w800:FontWeight.normal,
+                  color:urgent?const Color(0xFFD32F2F):const Color(0xFF737B90))),
             ])),
             const SizedBox(width:2),
             const Icon(Icons.chevron_right_rounded,color:Color(0xFF651FFF),size:17),
@@ -1812,12 +1845,19 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       ))),
       const SizedBox(width:8),
       Expanded(child:SizedBox(height:184,child:Column(children:[
-        Expanded(child:_ridezTile('Yaklaşan Servis','Bakım hatırlatmaları',
-          Icons.calendar_month_rounded,()=>widget.shortcut('reminders'))),
+        Expanded(child:_ridezTile('Yaklaşan Servis',
+          _serviceReminderVehicleId==QrDraft.vehicleId.trim()&&_nearestServiceDays!=null&&_nearestServiceDays!<=15
+            ?(_nearestServiceDays==0?'Bugün son gün':'Son $_nearestServiceDays gün kaldı')
+            :'Bakım hatırlatmaları',
+          Icons.calendar_month_rounded,()=>widget.shortcut('reminders'),
+          urgent:_serviceReminderVehicleId==QrDraft.vehicleId.trim()&&_nearestServiceDays!=null&&_nearestServiceDays!<=15)),
         const SizedBox(height:8),
-        Expanded(child:_ridezTile('QR Güvenliği','Etiket güvenliğini kontrol edin',
-          Icons.qr_code_2_rounded,()=>widget.shortcut('qr_security'),
-          key:const ValueKey('premium-home-qr-security'))),
+        Expanded(child:_ridezTile('Bu Ayki Özetim','Aylık araç istatistikleri',
+          Icons.bar_chart_rounded,()=>showModalBottomSheet<void>(
+            context:context,isScrollControlled:true,showDragHandle:true,
+            builder:(sheetContext)=>SafeArea(child:SingleChildScrollView(
+              padding:const EdgeInsets.symmetric(vertical:16),child:monthly()))),
+          key:const ValueKey('premium-home-monthly-summary'))),
       ]))),
     ]),
   );
@@ -1865,14 +1905,10 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             header(),
             _ridezHero(),
             _ridezVehicleGrid(),
-            _ridezMetrics(),
-            _appUiConfig.quickActions.isEmpty?quickRow():_managedQuickActions(),
-            _homeServicesPromo(),
-            monthly(),
           ]),
           if(VehicleKind.isMotorcycle(QrDraft.vehicleType))_motorcycleHomePanel(),
           for(final component in _appUiConfig.components.where((c)=>
-            !{'weather_card','vehicle_security','quick_actions','services_grid','monthly_summary'}.contains(c.type)))
+            !{'weather_card','vehicle_security','quick_actions','services_grid','monthly_summary','recent_notifications','promo_banner'}.contains(c.type)))
             RepaintBoundary(key:ValueKey('extra-${component.id}-${_appUiConfig.version}'),
               child:_managedComponent(component)),
           const SizedBox(height:22),
