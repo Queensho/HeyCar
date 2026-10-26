@@ -8,6 +8,7 @@ on:
       - 'tool/staging/public_panel_smoke.cjs'
       - 'tool/staging/run_e2e.sh'
       - 'tool/staging/prepare_sources.py'
+      - 'tool/staging/reuse_clients.cjs'
       - 'tool/staging/tests/**'
   workflow_dispatch:
 permissions:
@@ -74,21 +75,45 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - name: Reuse only identical verified HTTPS client sources and build flags
+        id: reuse
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node tool/staging/reuse_clients.cjs public
+      - uses: actions/download-artifact@v4
+        if: steps.reuse.outputs.run_id != ''
+        with:
+          name: staging-business-panel-direct-https
+          run-id: ${{ steps.reuse.outputs.run_id }}
+          github-token: ${{ github.token }}
+          path: public-panel/
+      - uses: actions/download-artifact@v4
+        if: steps.reuse.outputs.run_id != ''
+        with:
+          name: cepqontag-staging-direct-https-apk
+          run-id: ${{ steps.reuse.outputs.run_id }}
+          github-token: ${{ github.token }}
+          path: build/app/outputs/flutter-apk/
       - uses: subosito/flutter-action@v2
+        if: steps.reuse.outputs.run_id == ''
         with:
           channel: stable
           cache: true
       - run: flutter pub get
+        if: steps.reuse.outputs.run_id == ''
       - name: Analyze and test actual staging application modules
+        if: steps.reuse.outputs.run_id == ''
         run: |
           flutter analyze lib/app_environment.dart lib/staging_banner.dart lib/entry_staging.dart lib/entry_business.dart lib/business_panel_page.dart lib/cepqar_offers_page.dart integration_test/staging_campaign_test.dart integration_test/staging_business_test.dart --no-fatal-infos --no-fatal-warnings
           flutter test test/app_environment_test.dart --dart-define=APP_ENV=staging --dart-define=API_BASE_URL="$STAGING_PUBLIC_API"
       - name: Prepare isolated HTTPS-only platforms
+        if: steps.reuse.outputs.run_id == ''
         run: |
           flutter create . --platforms=android,web --project-name app --org com.cepqar --no-pub
           python3 tool/staging/prepare_sources.py --https-only
           flutter pub get
       - name: Build independent staging panel (no production or SSH API)
+        if: steps.reuse.outputs.run_id == ''
         run: |
           flutter build web --release --target lib/entry_business.dart --base-href /HeyCar/isletme-staging/ --pwa-strategy=none --dart-define=APP_ENV=staging --dart-define=API_BASE_URL="$STAGING_PUBLIC_API"
           mkdir -p public-panel
@@ -105,6 +130,7 @@ jobs:
           path: public-panel/
           if-no-files-found: error
       - name: Build independently installable HTTPS Android APK
+        if: steps.reuse.outputs.run_id == ''
         run: flutter build apk --debug --target lib/entry_staging.dart --dart-define=APP_ENV=staging --dart-define=API_BASE_URL="$STAGING_PUBLIC_API"
       - uses: actions/upload-artifact@v4
         with:
@@ -117,7 +143,7 @@ jobs:
     environment: staging
     timeout-minutes: 60
     concurrency:
-      group: isolated-marketplace-staging
+      group: staging-marketplace-backend-write
       cancel-in-progress: false
     env:
       STAGING_PUBLIC_API: https://staging-api-185-165-46-213.nip.io

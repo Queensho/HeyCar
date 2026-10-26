@@ -70,8 +70,8 @@ if [ -n "$public_api" ]; then
   sleep 15
   mkdir -p staging-evidence
   adb -s "$device_id" shell dumpsys activity activities > /tmp/staging-activities.txt
-  rg 'mResumedActivity.*com.cepqar.app.staging' /tmp/staging-activities.txt
   adb -s "$device_id" exec-out screencap -p > staging-evidence/downloadable-https-apk-launch.png
+  python3 -c "import re;from pathlib import Path;assert re.search(r'(mResumedActivity|topResumedActivity).*com\\.cepqar\\.app\\.staging',Path('/tmp/staging-activities.txt').read_text()), 'STAGING_APK_NOT_FOREGROUND'"
   adb -s "$device_id" shell am force-stop com.cepqar.app.staging
   # Artifact and this runner have different debug signing keys. Reset only stage.
   adb -s "$device_id" uninstall com.cepqar.app.staging

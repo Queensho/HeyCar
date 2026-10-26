@@ -140,6 +140,9 @@ jobs:
           path: build/app/outputs/flutter-apk/app-debug.apk
           if-no-files-found: error
   staging-backend:
+    concurrency:
+      group: staging-marketplace-backend-write
+      cancel-in-progress: false
     needs: checks
     runs-on: ubuntu-latest
     environment: staging

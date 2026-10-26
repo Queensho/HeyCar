@@ -66,3 +66,11 @@ The current main/scheduled heycar-pages workflow builds a whole site without
 isletme-staging/. A later authorized production Pages deployment can remove this
 staging folder. Review and explicitly address that implication before any merge;
 this staging PR does not modify or trigger that production workflow.
+
+CI follow-up: the first APK launch succeeded, then the runner lacked ripgrep.
+The foreground assertion now uses Python (tested against both dumpsys variants)
+and captures the actual APK screenshot before the assertion. Cached public
+clients are reused only after lib/assets/pubspec/platform-preparation sources
+AND compilation flags match; artifact build commit remains recorded. The UI
+job locks staging backend writes, while distinct fixture accounts allow the
+private/public UI regressions to run independently without sharing credentials.
