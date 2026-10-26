@@ -74,3 +74,9 @@ clients are reused only after lib/assets/pubspec/platform-preparation sources
 AND compilation flags match; artifact build commit remains recorded. The UI
 job locks staging backend writes, while distinct fixture accounts allow the
 private/public UI regressions to run independently without sharing credentials.
+
+Native launch follow-up: screenshot review found that disabled staging calling
+services still led to call-permission onboarding. The entry gate now skips that
+setup only for APP_ENV=staging; production/web permission behavior is unchanged.
+The native integration suite also opens the real guest login form, asserts no
+call-permission setup and captures a screenshot before testing campaign screens.
