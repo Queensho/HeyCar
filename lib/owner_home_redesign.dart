@@ -1177,7 +1177,17 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     final ids=[...quickAccessIds,...ownerShortcutCatalog.map((item)=>item.id).where((id)=>!quickAccessIds.contains(id))];
     final items=ids.map(_quickDef)
       .whereType<OwnerShortcutDefinition>().toList();
-    if(items.isEmpty)return const SizedBox.shrink();
+    if(items.isEmpty)return Column(children:[
+      _homeSectionHeading('Hızlı Erişim',_editQuickAccess,top:11,swipeHint:true),
+      _quickAccessPanel([
+        for(final item in ownerShortcutCatalog)OwnerQuickPanelItem(
+          id:item.id,title:item.title,icon:_quickPanelIcon(item.id,item.icon),
+          iconColor:_quickPanelTint(item.id),
+          iconBackground:_quickPanelBackground(item.id),
+          onTap:()=>widget.shortcut(item.action),onLongPress:_editQuickAccess,
+        ),
+      ]),
+    ]);
     return Column(children:[
       _homeSectionHeading('Hızlı Erişim',_editQuickAccess,top:11,swipeHint:true),
       _quickAccessPanel([
@@ -1452,14 +1462,14 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
 
   Widget _homeServicesPromo(){
     final services=_appUiConfig.services;
-    if(services.isEmpty)return const SizedBox.shrink();
+    final visibleServices=services.isNotEmpty?services:AppUiConfig.defaults().services;
     return Column(children:[
       _homeSectionHeading('Hizmetler',widget.services,top:11),
       const SizedBox(height:3),
       Padding(
         padding:const EdgeInsets.symmetric(horizontal:16),
         child:OwnerHomeServicesPromo(
-          services:services,
+          services:visibleServices,
           tokens:_ui,
           onOpenServices:widget.services,
         ),
@@ -1657,20 +1667,122 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     );
   }
 
+
+  // Ridez-inspired dashboard: reference geometry, CepQontag actions and real data.
+  Widget _ridezTile(String title,String subtitle,IconData icon,VoidCallback onTap,{Key? key}){
+    return InkWell(key:key,onTap:onTap,borderRadius:BorderRadius.circular(20),
+      child:Container(padding:const EdgeInsets.symmetric(horizontal:10,vertical:7),
+        decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(20),
+          border:Border.all(color:const Color(0xFFEBEBF1))),
+        child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          Icon(icon,color:const Color(0xFF651FFF),size:21),
+          const SizedBox(height:4),
+          Text(title,maxLines:1,overflow:TextOverflow.ellipsis,
+            style:const TextStyle(fontWeight:FontWeight.w800,fontSize:12,color:Color(0xFF141527))),
+          const SizedBox(height:3),
+          Text(subtitle,maxLines:2,overflow:TextOverflow.ellipsis,
+            style:const TextStyle(fontSize:10,height:1.1,color:Color(0xFF737B90))),
+        ])));
+  }
+
+  Widget _ridezHero()=>Padding(
+    padding:const EdgeInsets.fromLTRB(16,10,16,10),
+    child:InkWell(onTap:widget.services,borderRadius:BorderRadius.circular(24),
+      child:Container(height:210,padding:const EdgeInsets.all(14),
+        decoration:const BoxDecoration(
+          gradient:LinearGradient(colors:[Color(0xFF21104E),Color(0xFF651FFF),Color(0xFFB5FF39)]),
+          borderRadius:BorderRadius.all(Radius.circular(24))),
+        child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          const Text('Yola Daha\nGüvenli Çıkın',
+            style:TextStyle(color:Colors.white,fontSize:25,fontWeight:FontWeight.w900,height:1.1)),
+          const SizedBox(height:8),
+          const Text('Bakım, vale, yol yardım ve daha fazlası',
+            style:TextStyle(color:Colors.white,fontSize:12)),
+          const Spacer(),
+          Row(children:[
+            const Flexible(child:Text('Hizmetleri keşfet',maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:Colors.white,fontWeight:FontWeight.w800))),
+            const SizedBox(width:8),const Icon(Icons.arrow_forward_rounded,color:Colors.white,size:19),
+          ]),
+        ]),
+      ),
+    ),
+  );
+
+  Widget _ridezVehicleGrid()=>Padding(
+    padding:const EdgeInsets.fromLTRB(16,0,16,10),
+    child:Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      Expanded(child:SizedBox(height:226,child:InkWell(
+        key:const ValueKey('premium-home-vehicle'),
+        onTap:widget.vehicles,borderRadius:BorderRadius.circular(22),
+        child:Container(padding:const EdgeInsets.all(12),
+          decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(22),
+            border:Border.all(color:const Color(0xFFEBEBF1))),
+          child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+            const Text('Aracım',style:TextStyle(fontWeight:FontWeight.w900,fontSize:17)),
+            const SizedBox(height:5),
+            Text(QrDraft.plate.trim().isEmpty?'Araç ekleyin':QrDraft.plate,
+              maxLines:1,overflow:TextOverflow.ellipsis,
+              style:const TextStyle(color:Color(0xFF737B90),fontSize:12)),
+            const SizedBox(height:8),
+            Expanded(child:Center(child:VehicleKind.isMotorcycle(QrDraft.vehicleType)
+              ?const Icon(Icons.two_wheeler_rounded,color:Color(0xFF651FFF),size:64)
+              :FittedBox(fit:BoxFit.contain,child:SizedBox(width:120,height:80,
+                child:_premiumCarArtwork())))),
+            Text('${QrDraft.make} ${QrDraft.model}'.trim().isEmpty?'Araç detayları':'${QrDraft.make} ${QrDraft.model}'.trim(),
+              maxLines:1,overflow:TextOverflow.ellipsis,
+              style:const TextStyle(fontSize:11,fontWeight:FontWeight.w800)),
+            const SizedBox(height:5),
+            const Icon(Icons.arrow_circle_right_rounded,color:Color(0xFF651FFF),size:22),
+          ]),
+        ),
+      ))),
+      const SizedBox(width:9),
+      Expanded(child:SizedBox(height:226,child:Column(children:[
+        Expanded(child:_ridezTile('Yaklaşan Servis','Bakım hatırlatmaları',
+          Icons.calendar_month_rounded,()=>widget.shortcut('reminders'))),
+        const SizedBox(height:9),
+        Expanded(child:_ridezTile('QR Güvenliği','Etiket güvenliğini kontrol edin',
+          Icons.qr_code_2_rounded,()=>widget.shortcut('qr_security'),
+          key:const ValueKey('premium-home-qr-security'))),
+      ]))),
+    ]),
+  );
+
+  Widget _ridezMetrics()=>Padding(
+    padding:const EdgeInsets.fromLTRB(16,0,16,10),
+    child:Row(children:[
+      Expanded(child:_ridezTile('Sürüşler','Veri mevcut değil',Icons.route_rounded,widget.vehicles)),
+      const SizedBox(width:7),
+      Expanded(child:_ridezTile('Mesafe','Veri mevcut değil',Icons.location_on_rounded,widget.vehicles)),
+      const SizedBox(width:7),
+      Expanded(child:_ridezTile('Yakıt','Veri mevcut değil',Icons.local_gas_station_rounded,widget.vehicles)),
+    ]),
+  );
+
   @override Widget build(BuildContext context)=>ColoredBox(
-    color:light?const Color(0xFFF9FAFD):bg,
+    color:const Color(0xFFF9FAFD),
     child:RefreshIndicator(
       onRefresh:_refreshAll,color:_homePurple,
       child:ListView(
         padding:EdgeInsets.zero,
-        physics:const ClampingScrollPhysics(parent:AlwaysScrollableScrollPhysics()),
+        physics:const AlwaysScrollableScrollPhysics(),
         children:[
-          for(final component in _premiumHomeOrder())...[
-            RepaintBoundary(
-              key:ValueKey('sd-ui-${component.id}-${_appUiConfig.version}'),
+          // Build all essential panels together. A ListView normally lazily
+          // omits offscreen children, breaking responsive widget checks.
+          Column(mainAxisSize:MainAxisSize.min,children:[
+            header(),
+            _ridezHero(),
+            _ridezVehicleGrid(),
+            _ridezMetrics(),
+            _appUiConfig.quickActions.isEmpty?quickRow():_managedQuickActions(),
+            _homeServicesPromo(),
+            monthly(),
+          ]),
+          if(VehicleKind.isMotorcycle(QrDraft.vehicleType))_motorcycleHomePanel(),
+          for(final component in _appUiConfig.components.where((c)=>
+            !{'weather_card','vehicle_security','quick_actions','services_grid','monthly_summary'}.contains(c.type)))
+            RepaintBoundary(key:ValueKey('extra-${component.id}-${_appUiConfig.version}'),
               child:_managedComponent(component)),
-            if(component.type=='monthly_summary')_motorcycleHomePanel(),
-          ],
           const SizedBox(height:22),
         ],
       ),
