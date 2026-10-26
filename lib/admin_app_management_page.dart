@@ -820,10 +820,10 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
   );
 
   Widget _storeCardsPage()=>_editableItemPage(
-    title:'Ana Sayfa Store Kartları',
+    title:'Ana Sayfa Kampanyaları',
     subtitle:'Kart ekleyin, görsel değiştirin, sıralayın, aktif/pasif yapın veya silin. Kaydet ve Yayınla ile uygulamaya aktarılır.',
     rows:_list('banners').where((row)=>row['placement']=='home_store').toList(),
-    addLabel:'Ürün Kartı Ekle',
+    addLabel:'Kampanya Ekle',
     onAdd:()=>_editStoreCard(),
     onEdit:_editStoreCard,
     onDelete:(row){final rows=_list('banners')..removeWhere((x)=>x['id']==row['id']);_setList('banners',rows);},
@@ -836,20 +836,28 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
     final title=TextEditingController(text:'${row['title']??''}');
     String image='${row['imageUrl']??''}';
     bool enabled=row['enabled']!=false;
+    String action='${row['action']??'NONE'}';
+    final target=TextEditingController(text:'${row['actionTarget']??''}');
     final result=await showDialog<Map<String,dynamic>>(context:context,
       builder:(dialogContext)=>StatefulBuilder(builder:(context,setDialog)=>AlertDialog(
-        title:Text(editing?'Store Kartı Düzenle':'Store Kartı Ekle'),
+        title:Text(editing?'Kampanya Kartı Düzenle':'Kampanya Kartı Ekle'),
         content:SizedBox(width:420,child:SingleChildScrollView(child:Column(
           mainAxisSize:MainAxisSize.min,children:[
             TextField(controller:title,decoration:const InputDecoration(
-              labelText:'Ürün adı',hintText:'Araç İletişim Etiketi')),
+              labelText:'Kampanya başlığı',hintText:'Araç İletişim Etiketi')),
             const SizedBox(height:12),
             if(image.isNotEmpty)SizedBox(height:105,child:Image.network(image,
               fit:BoxFit.contain,errorBuilder:(_,__,___)=>const Icon(Icons.broken_image_outlined))),
             OutlinedButton.icon(onPressed:()async{
               final selected=await pickAsset(category:'banner');
               if(selected!=null)setDialog(()=>image=selected);
-            },icon:const Icon(Icons.photo_library_outlined),label:const Text('Ürün Görseli Seç')),
+            },icon:const Icon(Icons.photo_library_outlined),label:const Text('Kampanya Görseli Seç')),
+            DropdownButtonFormField<String>(value:action,
+              decoration:const InputDecoration(labelText:'Kart tıklama eylemi'),
+              items:actions.entries.map((e)=>DropdownMenuItem(value:e.key,child:Text(e.value))).toList(),
+              onChanged:(v)=>setDialog(()=>action=v??'NONE')),
+            if(action=='EXTERNAL_URL')TextField(controller:target,
+              decoration:const InputDecoration(labelText:'Bağlantı (https://...)')),
             SwitchListTile(title:const Text('Aktif'),value:enabled,
               onChanged:(value)=>setDialog(()=>enabled=value)),
           ]))),
@@ -858,14 +866,15 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
           FilledButton(onPressed:(){
             if(title.text.trim().isEmpty||image.trim().isEmpty){
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                content:Text('Ürün adı ve görseli zorunludur.')));
+                content:Text('Kampanya başlığı ve görseli zorunludur.')));
               return;
             }
             Navigator.pop(dialogContext,{
               ...row,
               'id':row['id']??'store_${DateTime.now().millisecondsSinceEpoch}',
               'title':title.text.trim(),'subtitle':'','imageUrl':image,
-              'placement':'home_store','enabled':enabled,'action':'NONE',
+              'placement':'home_store','enabled':enabled,'action':action,
+              'actionTarget':action=='EXTERNAL_URL'?target.text.trim():'',
               'sortOrder':row['sortOrder']??((_list('banners').length+1)*10),
               'audience':'all',
             });
@@ -873,6 +882,7 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
         ],
       )));
     title.dispose();
+    target.dispose();
     if(result==null)return;
     final rows=_list('banners');
     if(editing){final index=rows.indexWhere((x)=>x['id']==source['id']);
@@ -1053,7 +1063,7 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
           Padding(padding:const EdgeInsets.symmetric(horizontal:12,vertical:5),child:Row(children:[
             Expanded(child:OutlinedButton.icon(onPressed:()=>setState(()=>_showStoreCards=false),icon:const Icon(Icons.image_outlined),label:const Text('Bannerlar'))),
             const SizedBox(width:8),
-            Expanded(child:OutlinedButton.icon(onPressed:()=>setState(()=>_showStoreCards=true),icon:const Icon(Icons.storefront_outlined),label:const Text('Store Kartları'))),
+            Expanded(child:OutlinedButton.icon(onPressed:()=>setState(()=>_showStoreCards=true),icon:const Icon(Icons.storefront_outlined),label:const Text('Kampanyalar'))),
           ])),
           Expanded(child:_showStoreCards?_storeCardsPage():_bannerPage()),
         ]),
