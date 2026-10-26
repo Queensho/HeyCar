@@ -1696,34 +1696,58 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
 
   Widget _ridezHero()=>Padding(
     padding:const EdgeInsets.fromLTRB(16,8,16,10),
-    child:InkWell(onTap:widget.services,borderRadius:BorderRadius.circular(24),
-      child:Container(height:MediaQuery.sizeOf(context).width <= 350 ? 216 : 196,clipBehavior:Clip.antiAlias,
-        decoration:const BoxDecoration(
-          gradient:LinearGradient(begin:Alignment.centerLeft,end:Alignment.centerRight,
-            colors:[Color(0xFF21104E),Color(0xFF651FFF),Color(0xFF301276)]),
-          borderRadius:BorderRadius.all(Radius.circular(24))),
-        child:Stack(children:[
-          Positioned(right:-15,bottom:-22,child:Opacity(opacity:.17,
-            child:Icon(Icons.directions_car_filled_rounded,size:195,color:Colors.white))),
-          Padding(padding:const EdgeInsets.fromLTRB(16,14,12,12),
-            child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-              const Text('Yola\nDaha Güvenli Çıkın',
-                style:TextStyle(color:Colors.white,fontSize:22,fontWeight:FontWeight.w900,height:1.08)),
-              const SizedBox(height:5),
-              const Text('Bakım, sigorta, vale ve daha fazlası\nCepQontag’da.',
-                style:TextStyle(color:Colors.white,fontSize:10,height:1.2)),
-              const Spacer(),
-              Container(padding:const EdgeInsets.fromLTRB(12,7,7,7),
-                decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(25)),
-                child:Row(mainAxisSize:MainAxisSize.min,children:[
-                  const Text('Fırsatları Keşfet',
-                    style:TextStyle(color:Color(0xFF21104E),fontWeight:FontWeight.w800,fontSize:11)),
-                  const SizedBox(width:10),
-                  const CircleAvatar(radius:12,backgroundColor:Color(0xFF651FFF),
-                    child:Icon(Icons.chevron_right_rounded,color:Colors.white,size:19)),
-                ])),
-            ])),
-        ]),
+    child:InkWell(
+      onTap:widget.services,
+      borderRadius:BorderRadius.circular(22),
+      child:AspectRatio(
+        aspectRatio:360/140,
+        child:ClipRRect(
+          borderRadius:BorderRadius.circular(22),
+          child:DecoratedBox(
+            decoration:const BoxDecoration(
+              gradient:LinearGradient(
+                begin:Alignment.centerLeft,end:Alignment.centerRight,
+                colors:[Color(0xFF21104E),Color(0xFF651FFF),Color(0xFF301276)])),
+            child:Stack(fit:StackFit.expand,children:[
+              Positioned(right:-8,bottom:-24,
+                child:Opacity(opacity:.15,
+                  child:Icon(Icons.directions_car_filled_rounded,
+                    size:165,color:Colors.white))),
+              Padding(
+                padding:const EdgeInsets.fromLTRB(16,7,10,6),
+                child:Column(
+                  crossAxisAlignment:CrossAxisAlignment.start,
+                  children:[
+                    const Text('Yola\nDaha Güvenli Çıkın',
+                      maxLines:2,overflow:TextOverflow.ellipsis,
+                      style:TextStyle(color:Colors.white,fontSize:18,
+                        fontWeight:FontWeight.w900,height:1.05)),
+                    const SizedBox(height:2),
+                    const Text('Bakım, sigorta, vale ve daha fazlası\nCepQontag’da.',
+                      maxLines:2,overflow:TextOverflow.ellipsis,
+                      style:TextStyle(color:Colors.white,fontSize:9,height:1.15)),
+                    const Spacer(),
+                    Container(
+                      padding:const EdgeInsets.fromLTRB(10,3,4,3),
+                      decoration:BoxDecoration(color:Colors.white,
+                        borderRadius:BorderRadius.circular(24)),
+                      child:Row(mainAxisSize:MainAxisSize.min,children:[
+                        const Text('Fırsatları Keşfet',
+                          style:TextStyle(color:Color(0xFF21104E),
+                            fontWeight:FontWeight.w800,fontSize:10)),
+                        const SizedBox(width:8),
+                        const CircleAvatar(radius:10,
+                          backgroundColor:Color(0xFF651FFF),
+                          child:Icon(Icons.chevron_right_rounded,
+                            color:Colors.white,size:17)),
+                      ]),
+                    ),
+                  ],
+                ),
+              ),
+            ]),
+          ),
+        ),
       ),
     ),
   );
