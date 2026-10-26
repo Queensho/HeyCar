@@ -43,23 +43,13 @@ void main(){
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('premium-home-vehicle')),findsOneWidget);
       expect(find.byKey(const ValueKey('owner-brand-logo-bmw')),findsOneWidget);
-      expect(find.byKey(const ValueKey('premium-home-qr-security')),findsOneWidget);
-      expect(find.text('Hızlı Erişim'),findsOneWidget);
-      expect(find.byKey(const ValueKey('owner-home-services-promo')),findsOneWidget);
-      expect(find.text('CepQontag Hizmetleri'),findsOneWidget);
-      expect(find.byKey(const ValueKey('owner-home-quick-panel')),findsOneWidget);
-      expect(find.byKey(const ValueKey('owner-quick-parking')),findsOneWidget);
-      expect(tester.getTopLeft(find.byKey(
-        const ValueKey('premium-home-qr-security'))).dy,
-        greaterThan(tester.getTopLeft(find.byKey(
-          const ValueKey('premium-home-vehicle'))).dy));
+      expect(find.byKey(const ValueKey('premium-home-monthly-summary')),findsOneWidget);
+      expect(find.byKey(const ValueKey('owner-home-services-promo')),findsNothing);
+      expect(find.byKey(const ValueKey('owner-home-quick-panel')),findsNothing);
       await tester.tap(find.byKey(const ValueKey('premium-home-vehicle')));
       expect(vehicles,1);
-      await tester.tap(find.byKey(const ValueKey('premium-home-qr-security')));
-      expect(lastShortcut,'qr_security');
-      await tester.drag(find.byType(ListView).first,const Offset(0,-510));
+      await tester.tap(find.byKey(const ValueKey('premium-home-monthly-summary')));
       await tester.pumpAndSettle();
-      expect(find.text('Bu Ayki Özetim'),findsOneWidget);
       expect(find.byKey(const ValueKey('owner-monthly-summary-panel')),findsOneWidget);
       expect(tester.takeException(),isNull);
     });
