@@ -70,6 +70,7 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
     'qr_active':'Etiketi aktif olanlar','qr_inactive':'Etiketi aktif olmayanlar',
   };
 
+  bool _showStoreCards=false;
   int section=0;
   bool loading=true,saving=false,publishing=false,dirty=false;
   String? error;
@@ -818,6 +819,68 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
     preview:(row)=>_BannerPreview(row:row,colorOfToken:colorOfToken),
   );
 
+  Widget _storeCardsPage()=>_editableItemPage(
+    title:'Ana Sayfa Store Kartları',
+    subtitle:'Kart ekleyin, görsel değiştirin, sıralayın, aktif/pasif yapın veya silin. Kaydet ve Yayınla ile uygulamaya aktarılır.',
+    rows:_list('banners').where((row)=>row['placement']=='home_store').toList(),
+    addLabel:'Ürün Kartı Ekle',
+    onAdd:()=>_editStoreCard(),
+    onEdit:_editStoreCard,
+    onDelete:(row){final rows=_list('banners')..removeWhere((x)=>x['id']==row['id']);_setList('banners',rows);},
+    preview:(row)=>_BannerPreview(row:row,colorOfToken:colorOfToken),
+  );
+
+  Future<void> _editStoreCard([Map<String,dynamic>? source])async{
+    final editing=source!=null;
+    final row=Map<String,dynamic>.from(source??{});
+    final title=TextEditingController(text:'${row['title']??''}');
+    String image='${row['imageUrl']??''}';
+    bool enabled=row['enabled']!=false;
+    final result=await showDialog<Map<String,dynamic>>(context:context,
+      builder:(dialogContext)=>StatefulBuilder(builder:(context,setDialog)=>AlertDialog(
+        title:Text(editing?'Store Kartı Düzenle':'Store Kartı Ekle'),
+        content:SizedBox(width:420,child:SingleChildScrollView(child:Column(
+          mainAxisSize:MainAxisSize.min,children:[
+            TextField(controller:title,decoration:const InputDecoration(
+              labelText:'Ürün adı',hintText:'Araç İletişim Etiketi')),
+            const SizedBox(height:12),
+            if(image.isNotEmpty)SizedBox(height:105,child:Image.network(image,
+              fit:BoxFit.contain,errorBuilder:(_,__,___)=>const Icon(Icons.broken_image_outlined))),
+            OutlinedButton.icon(onPressed:()async{
+              final selected=await pickAsset(category:'banner');
+              if(selected!=null)setDialog(()=>image=selected);
+            },icon:const Icon(Icons.photo_library_outlined),label:const Text('Ürün Görseli Seç')),
+            SwitchListTile(title:const Text('Aktif'),value:enabled,
+              onChanged:(value)=>setDialog(()=>enabled=value)),
+          ]))),
+        actions:[
+          TextButton(onPressed:()=>Navigator.pop(dialogContext),child:const Text('Vazgeç')),
+          FilledButton(onPressed:(){
+            if(title.text.trim().isEmpty||image.trim().isEmpty){
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                content:Text('Ürün adı ve görseli zorunludur.')));
+              return;
+            }
+            Navigator.pop(dialogContext,{
+              ...row,
+              'id':row['id']??'store_${DateTime.now().millisecondsSinceEpoch}',
+              'title':title.text.trim(),'subtitle':'','imageUrl':image,
+              'placement':'home_store','enabled':enabled,'action':'NONE',
+              'sortOrder':row['sortOrder']??((_list('banners').length+1)*10),
+              'audience':'all',
+            });
+          },child:const Text('Uygula')),
+        ],
+      )));
+    title.dispose();
+    if(result==null)return;
+    final rows=_list('banners');
+    if(editing){final index=rows.indexWhere((x)=>x['id']==source['id']);
+      if(index>=0)rows[index]=result;
+    }else{rows.add(result);}
+    _setList('banners',rows);
+  }
+
   Future<void> _editBanner([Map<String,dynamic>? source])async{
     final editing=source!=null,row=Map<String,dynamic>.from(source??{});
     final title=TextEditingController(text:'${row['title']??''}'),subtitle=TextEditingController(text:'${row['subtitle']??''}'),badge=TextEditingController(text:'${row['badgeText']??''}'),cta=TextEditingController(text:'${row['ctaText']??''}'),target=TextEditingController(text:'${row['actionTarget']??''}');
@@ -856,7 +919,7 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
         itemCount:rows.length,buildDefaultDragHandles:false,onReorder:(oldIndex,newIndex){
           if(newIndex>oldIndex)newIndex--;final next=List<Map<String,dynamic>>.from(rows);final item=next.removeAt(oldIndex);next.insert(newIndex,item);
           for(var i=0;i<next.length;i++)next[i]['sortOrder']=(i+1)*10;
-          if(title.startsWith('Hizmet'))_setList('services',next);else if(title.startsWith('Hızlı'))_setList('quickActions',next);else _setList('banners',next);
+          if(title.startsWith('Hizmet'))_setList('services',next);else if(title.startsWith('Hızlı'))_setList('quickActions',next);else if(title.startsWith('Ana Sayfa Store')){final all=_list('banners')..removeWhere((r)=>r['placement']=='home_store');all.addAll(next);_setList('banners',all);}else _setList('banners',next);
         },
         itemBuilder:(_,i){
           final row=rows[i];
@@ -986,7 +1049,14 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
     return Column(children:[
       _topBar(),_sectionTabs(),
       Expanded(child:switch(section){
-        0=>_layoutPage(),1=>_servicesPage(),2=>_quickPage(),3=>_bannerPage(),
+        0=>_layoutPage(),1=>_servicesPage(),2=>_quickPage(),3=>Column(children:[
+          Padding(padding:const EdgeInsets.symmetric(horizontal:12,vertical:5),child:Row(children:[
+            Expanded(child:OutlinedButton.icon(onPressed:()=>setState(()=>_showStoreCards=false),icon:const Icon(Icons.image_outlined),label:const Text('Bannerlar'))),
+            const SizedBox(width:8),
+            Expanded(child:OutlinedButton.icon(onPressed:()=>setState(()=>_showStoreCards=true),icon:const Icon(Icons.storefront_outlined),label:const Text('Store Kartları'))),
+          ])),
+          Expanded(child:_showStoreCards?_storeCardsPage():_bannerPage()),
+        ]),
         4=>AdminStoryManagementPage(token:widget.token,admin:widget.admin),
         5=>_assetPage(),6=>_themePage(),7=>_versionsPage(),_=>_brandsPage(),
       }),
