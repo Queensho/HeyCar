@@ -253,8 +253,8 @@ jobs:
       - name: Published release panel real browser HTTPS startup and staging banner screenshot
         run: |
           npm install --no-save playwright
-          npx playwright install --with-deps chromium
-          node tool/staging/public_panel_smoke.cjs
+          google-chrome --version
+          timeout 180s node tool/staging/public_panel_smoke.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
