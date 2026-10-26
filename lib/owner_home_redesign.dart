@@ -1670,39 +1670,59 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
 
   // Ridez-inspired dashboard: reference geometry, CepQontag actions and real data.
   Widget _ridezTile(String title,String subtitle,IconData icon,VoidCallback onTap,{Key? key}){
-    return InkWell(key:key,onTap:onTap,borderRadius:BorderRadius.circular(20),
-      child:Container(padding:const EdgeInsets.symmetric(horizontal:10,vertical:7),
-        decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(20),
-          border:Border.all(color:const Color(0xFFEBEBF1))),
-        child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-          Icon(icon,color:const Color(0xFF651FFF),size:21),
-          const SizedBox(height:4),
-          Text(title,maxLines:1,overflow:TextOverflow.ellipsis,
-            style:const TextStyle(fontWeight:FontWeight.w800,fontSize:12,color:Color(0xFF141527))),
-          const SizedBox(height:3),
-          Text(subtitle,maxLines:2,overflow:TextOverflow.ellipsis,
-            style:const TextStyle(fontSize:10,height:1.1,color:Color(0xFF737B90))),
-        ])));
+    return Material(color:Colors.white,borderRadius:BorderRadius.circular(20),
+      child:InkWell(key:key,onTap:onTap,borderRadius:BorderRadius.circular(20),
+        child:Container(padding:const EdgeInsets.symmetric(horizontal:12,vertical:12),
+          decoration:BoxDecoration(borderRadius:BorderRadius.circular(20),
+            border:Border.all(color:const Color(0xFFEBEBF1))),
+          child:Row(children:[
+            Container(width:42,height:46,
+              decoration:BoxDecoration(color:const Color(0xFFF1E9FF),
+                borderRadius:BorderRadius.circular(14)),
+              child:Icon(icon,color:const Color(0xFF651FFF),size:26)),
+            const SizedBox(width:9),
+            Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,
+              mainAxisAlignment:MainAxisAlignment.center,children:[
+              Text(title,maxLines:1,overflow:TextOverflow.ellipsis,
+                style:const TextStyle(fontWeight:FontWeight.w800,fontSize:12,color:Color(0xFF141527))),
+              const SizedBox(height:4),
+              Text(subtitle,maxLines:2,overflow:TextOverflow.ellipsis,
+                style:const TextStyle(fontSize:10,height:1.15,color:Color(0xFF737B90))),
+            ])),
+            const SizedBox(width:2),
+            const Icon(Icons.chevron_right_rounded,color:Color(0xFF651FFF),size:17),
+          ]))));
   }
 
   Widget _ridezHero()=>Padding(
-    padding:const EdgeInsets.fromLTRB(16,10,16,10),
+    padding:const EdgeInsets.fromLTRB(16,8,16,10),
     child:InkWell(onTap:widget.services,borderRadius:BorderRadius.circular(24),
-      child:Container(height:210,padding:const EdgeInsets.all(14),
+      child:Container(height:MediaQuery.sizeOf(context).width <= 350 ? 188 : 158,clipBehavior:Clip.antiAlias,
         decoration:const BoxDecoration(
-          gradient:LinearGradient(colors:[Color(0xFF21104E),Color(0xFF651FFF),Color(0xFFB5FF39)]),
+          gradient:LinearGradient(begin:Alignment.centerLeft,end:Alignment.centerRight,
+            colors:[Color(0xFF21104E),Color(0xFF651FFF),Color(0xFF301276)]),
           borderRadius:BorderRadius.all(Radius.circular(24))),
-        child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-          const Text('Yola Daha\nGüvenli Çıkın',
-            style:TextStyle(color:Colors.white,fontSize:25,fontWeight:FontWeight.w900,height:1.1)),
-          const SizedBox(height:8),
-          const Text('Bakım, vale, yol yardım ve daha fazlası',
-            style:TextStyle(color:Colors.white,fontSize:12)),
-          const Spacer(),
-          Row(children:[
-            const Flexible(child:Text('Hizmetleri keşfet',maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:Colors.white,fontWeight:FontWeight.w800))),
-            const SizedBox(width:8),const Icon(Icons.arrow_forward_rounded,color:Colors.white,size:19),
-          ]),
+        child:Stack(children:[
+          Positioned(right:-15,bottom:-22,child:Opacity(opacity:.27,
+            child:Icon(Icons.directions_car_filled_rounded,size:195,color:Colors.white))),
+          Padding(padding:const EdgeInsets.fromLTRB(16,14,12,12),
+            child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+              const Text('Yola\\nDaha Güvenli Çıkın',
+                style:TextStyle(color:Colors.white,fontSize:22,fontWeight:FontWeight.w900,height:1.08)),
+              const SizedBox(height:5),
+              const Text('Bakım, sigorta, vale ve daha fazlası\\nCepQontag’da.',
+                style:TextStyle(color:Colors.white,fontSize:10,height:1.2)),
+              const Spacer(),
+              Container(padding:const EdgeInsets.fromLTRB(12,7,7,7),
+                decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(25)),
+                child:Row(mainAxisSize:MainAxisSize.min,children:[
+                  const Text('Fırsatları Keşfet',
+                    style:TextStyle(color:Color(0xFF21104E),fontWeight:FontWeight.w800,fontSize:11)),
+                  const SizedBox(width:10),
+                  const CircleAvatar(radius:12,backgroundColor:Color(0xFF651FFF),
+                    child:Icon(Icons.chevron_right_rounded,color:Colors.white,size:19)),
+                ])),
+            ])),
         ]),
       ),
     ),
@@ -1711,36 +1731,39 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   Widget _ridezVehicleGrid()=>Padding(
     padding:const EdgeInsets.fromLTRB(16,0,16,10),
     child:Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
-      Expanded(child:SizedBox(height:226,child:InkWell(
+      Expanded(child:SizedBox(height:184,child:InkWell(
         key:const ValueKey('premium-home-vehicle'),
         onTap:widget.vehicles,borderRadius:BorderRadius.circular(22),
-        child:Container(padding:const EdgeInsets.all(12),
+        child:Container(padding:const EdgeInsets.all(11),
           decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(22),
             border:Border.all(color:const Color(0xFFEBEBF1))),
           child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-            const Text('Aracım',style:TextStyle(fontWeight:FontWeight.w900,fontSize:17)),
-            const SizedBox(height:5),
+            Row(children:[
+              const Expanded(child:Text('Aracım',
+                style:TextStyle(fontWeight:FontWeight.w900,fontSize:16))),
+              const Icon(Icons.chevron_right_rounded,color:Color(0xFF651FFF),size:20),
+            ]),
+            const SizedBox(height:3),
             Text(QrDraft.plate.trim().isEmpty?'Araç ekleyin':QrDraft.plate,
               maxLines:1,overflow:TextOverflow.ellipsis,
-              style:const TextStyle(color:Color(0xFF737B90),fontSize:12)),
-            const SizedBox(height:8),
+              style:const TextStyle(color:Color(0xFF737B90),fontSize:11)),
             Expanded(child:Center(child:VehicleKind.isMotorcycle(QrDraft.vehicleType)
-              ?const Icon(Icons.two_wheeler_rounded,color:Color(0xFF651FFF),size:64)
+              ?const Icon(Icons.two_wheeler_rounded,color:Color(0xFF651FFF),size:66)
               :FittedBox(fit:BoxFit.contain,child:SizedBox(width:120,height:80,
                 child:_premiumCarArtwork())))),
             Text('${QrDraft.make} ${QrDraft.model}'.trim().isEmpty?'Araç detayları':'${QrDraft.make} ${QrDraft.model}'.trim(),
               maxLines:1,overflow:TextOverflow.ellipsis,
               style:const TextStyle(fontSize:11,fontWeight:FontWeight.w800)),
-            const SizedBox(height:5),
-            const Icon(Icons.arrow_circle_right_rounded,color:Color(0xFF651FFF),size:22),
+            const SizedBox(height:4),
+            const Icon(Icons.arrow_circle_right_rounded,color:Color(0xFF25104F),size:20),
           ]),
         ),
       ))),
-      const SizedBox(width:9),
-      Expanded(child:SizedBox(height:226,child:Column(children:[
+      const SizedBox(width:8),
+      Expanded(child:SizedBox(height:210,child:Column(children:[
         Expanded(child:_ridezTile('Yaklaşan Servis','Bakım hatırlatmaları',
           Icons.calendar_month_rounded,()=>widget.shortcut('reminders'))),
-        const SizedBox(height:9),
+        const SizedBox(height:8),
         Expanded(child:_ridezTile('QR Güvenliği','Etiket güvenliğini kontrol edin',
           Icons.qr_code_2_rounded,()=>widget.shortcut('qr_security'),
           key:const ValueKey('premium-home-qr-security'))),
@@ -1748,14 +1771,32 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     ]),
   );
 
+  Widget _ridezMetric(String title,String subtitle,IconData icon,Color tint)=>Container(
+    padding:const EdgeInsets.fromLTRB(10,10,8,10),
+    decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(19),
+      border:Border.all(color:const Color(0xFFEBEBF1))),
+    child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      Container(width:37,height:37,
+        decoration:BoxDecoration(color:tint.withValues(alpha:.11),borderRadius:BorderRadius.circular(12)),
+        child:Icon(icon,color:tint,size:23)),
+      const SizedBox(height:7),
+      Text(title,maxLines:1,overflow:TextOverflow.ellipsis,
+        style:const TextStyle(fontSize:10,fontWeight:FontWeight.w700,color:Color(0xFF737B90))),
+      const SizedBox(height:3),
+      Text(subtitle,maxLines:1,overflow:TextOverflow.ellipsis,
+        style:const TextStyle(fontSize:12,fontWeight:FontWeight.w900,color:Color(0xFF141527))),
+      const Text('Bu Ay',style:TextStyle(fontSize:10,color:Color(0xFF737B90))),
+    ]),
+  );
+
   Widget _ridezMetrics()=>Padding(
     padding:const EdgeInsets.fromLTRB(16,0,16,10),
     child:Row(children:[
-      Expanded(child:_ridezTile('Sürüşler','Veri mevcut değil',Icons.route_rounded,widget.vehicles)),
+      Expanded(child:_ridezMetric('Toplam Sürüş','Veri yok',Icons.route_rounded,const Color(0xFF651FFF))),
       const SizedBox(width:7),
-      Expanded(child:_ridezTile('Mesafe','Veri mevcut değil',Icons.location_on_rounded,widget.vehicles)),
+      Expanded(child:_ridezMetric('Toplam Mesafe','Veri yok',Icons.location_on_rounded,const Color(0xFF81D719))),
       const SizedBox(width:7),
-      Expanded(child:_ridezTile('Yakıt','Veri mevcut değil',Icons.local_gas_station_rounded,widget.vehicles)),
+      Expanded(child:_ridezMetric('Toplam Yakıt','Veri yok',Icons.local_gas_station_rounded,const Color(0xFF651FFF))),
     ]),
   );
 
