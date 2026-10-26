@@ -1672,18 +1672,18 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   Widget _ridezTile(String title,String subtitle,IconData icon,VoidCallback onTap,{Key? key}){
     return Material(color:Colors.white,borderRadius:BorderRadius.circular(20),
       child:InkWell(key:key,onTap:onTap,borderRadius:BorderRadius.circular(20),
-        child:Container(padding:const EdgeInsets.symmetric(horizontal:12,vertical:12),
+        child:Container(padding:const EdgeInsets.symmetric(horizontal:9,vertical:8),
           decoration:BoxDecoration(borderRadius:BorderRadius.circular(20),
             border:Border.all(color:const Color(0xFFEBEBF1))),
           child:Row(children:[
-            Container(width:42,height:46,
+            Container(width:38,height:42,
               decoration:BoxDecoration(color:const Color(0xFFF1E9FF),
                 borderRadius:BorderRadius.circular(14)),
               child:Icon(icon,color:const Color(0xFF651FFF),size:26)),
-            const SizedBox(width:9),
+            const SizedBox(width:7),
             Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,
               mainAxisAlignment:MainAxisAlignment.center,children:[
-              Text(title,maxLines:1,overflow:TextOverflow.ellipsis,
+              Text(title,maxLines:2,overflow:TextOverflow.ellipsis,
                 style:const TextStyle(fontWeight:FontWeight.w800,fontSize:12,color:Color(0xFF141527))),
               const SizedBox(height:4),
               Text(subtitle,maxLines:2,overflow:TextOverflow.ellipsis,
@@ -1697,20 +1697,20 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   Widget _ridezHero()=>Padding(
     padding:const EdgeInsets.fromLTRB(16,8,16,10),
     child:InkWell(onTap:widget.services,borderRadius:BorderRadius.circular(24),
-      child:Container(height:MediaQuery.sizeOf(context).width <= 350 ? 188 : 158,clipBehavior:Clip.antiAlias,
+      child:Container(height:MediaQuery.sizeOf(context).width <= 350 ? 188 : 174,clipBehavior:Clip.antiAlias,
         decoration:const BoxDecoration(
           gradient:LinearGradient(begin:Alignment.centerLeft,end:Alignment.centerRight,
             colors:[Color(0xFF21104E),Color(0xFF651FFF),Color(0xFF301276)]),
           borderRadius:BorderRadius.all(Radius.circular(24))),
         child:Stack(children:[
-          Positioned(right:-15,bottom:-22,child:Opacity(opacity:.27,
+          Positioned(right:-15,bottom:-22,child:Opacity(opacity:.17,
             child:Icon(Icons.directions_car_filled_rounded,size:195,color:Colors.white))),
           Padding(padding:const EdgeInsets.fromLTRB(16,14,12,12),
             child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-              const Text('Yola\\nDaha Güvenli Çıkın',
+              const Text('Yola\nDaha Güvenli Çıkın',
                 style:TextStyle(color:Colors.white,fontSize:22,fontWeight:FontWeight.w900,height:1.08)),
               const SizedBox(height:5),
-              const Text('Bakım, sigorta, vale ve daha fazlası\\nCepQontag’da.',
+              const Text('Bakım, sigorta, vale ve daha fazlası\nCepQontag’da.',
                 style:TextStyle(color:Colors.white,fontSize:10,height:1.2)),
               const Spacer(),
               Container(padding:const EdgeInsets.fromLTRB(12,7,7,7),
