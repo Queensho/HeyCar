@@ -1657,20 +1657,113 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     );
   }
 
+
+  // Ridez-inspired dashboard: reference geometry, CepQontag actions and real data.
+  Widget _ridezTile(String title,String subtitle,IconData icon,VoidCallback onTap){
+    return Expanded(child:InkWell(onTap:onTap,borderRadius:BorderRadius.circular(20),
+      child:Container(padding:const EdgeInsets.all(12),
+        decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(20),
+          border:Border.all(color:const Color(0xFFEBEBF1))),
+        child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          Icon(icon,color:const Color(0xFF651FFF),size:26),
+          const SizedBox(height:9),
+          Text(title,maxLines:2,style:const TextStyle(fontWeight:FontWeight.w800,fontSize:13,color:Color(0xFF141527))),
+          const SizedBox(height:5),
+          Text(subtitle,maxLines:2,overflow:TextOverflow.ellipsis,
+            style:const TextStyle(fontSize:11,color:Color(0xFF737B90))),
+        ]))));
+  }
+
+  Widget _ridezHero()=>Padding(
+    padding:const EdgeInsets.fromLTRB(16,10,16,10),
+    child:InkWell(onTap:widget.services,borderRadius:BorderRadius.circular(24),
+      child:Container(height:176,padding:const EdgeInsets.all(21),
+        decoration:const BoxDecoration(
+          gradient:LinearGradient(colors:[Color(0xFF21104E),Color(0xFF651FFF),Color(0xFFB5FF39)]),
+          borderRadius:BorderRadius.all(Radius.circular(24))),
+        child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          const Text('Yola Daha\\nGüvenli Çıkın',
+            style:TextStyle(color:Colors.white,fontSize:25,fontWeight:FontWeight.w900,height:1.1)),
+          const SizedBox(height:8),
+          const Text('Bakım, vale, yol yardım ve daha fazlası',
+            style:TextStyle(color:Colors.white,fontSize:12)),
+          const Spacer(),
+          Row(children:[
+            const Text('Hizmetleri keşfet',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w800)),
+            const SizedBox(width:8),const Icon(Icons.arrow_forward_rounded,color:Colors.white,size:19),
+          ]),
+        ]),
+      ),
+    ),
+  );
+
+  Widget _ridezVehicleGrid()=>Padding(
+    padding:const EdgeInsets.fromLTRB(16,0,16,10),
+    child:IntrinsicHeight(child:Row(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+      Expanded(child:InkWell(onTap:widget.vehicles,borderRadius:BorderRadius.circular(22),
+        child:Container(padding:const EdgeInsets.all(15),
+          decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(22),
+            border:Border.all(color:const Color(0xFFEBEBF1))),
+          child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+            const Text('Aracım',style:TextStyle(fontWeight:FontWeight.w900,fontSize:18)),
+            const SizedBox(height:8),
+            Text(QrDraft.plate.isEmpty?'Araç ekleyin':QrDraft.plate,
+              style:const TextStyle(color:Color(0xFF737B90),fontSize:13)),
+            const Spacer(),
+            Center(child:Icon(VehicleKind.isMotorcycle(QrDraft.vehicleType)
+              ?Icons.two_wheeler_rounded:Icons.directions_car_filled_rounded,
+              color:const Color(0xFF651FFF),size:78)),
+            const Spacer(),
+            Text('${QrDraft.make} ${QrDraft.model}'.trim().isEmpty?'Araç detayları':'${QrDraft.make} ${QrDraft.model}'.trim(),
+              maxLines:2,style:const TextStyle(fontSize:12,fontWeight:FontWeight.w800)),
+            const SizedBox(height:6),
+            const Icon(Icons.arrow_circle_right_rounded,color:Color(0xFF651FFF)),
+          ]),
+        ))),
+      const SizedBox(width:9),
+      Expanded(child:Column(children:[
+        _ridezTile('Yaklaşan Servis','Bakım hatırlatmaları',Icons.calendar_month_rounded,
+          ()=>widget.shortcut('reminders')),
+        const SizedBox(height:9),
+        _ridezTile('QR Güvenliği','Etiket güvenliğini kontrol edin',Icons.qr_code_2_rounded,
+          ()=>widget.shortcut('qr_security')),
+      ])),
+    ])),
+  );
+
+  Widget _ridezMetrics()=>Padding(
+    padding:const EdgeInsets.fromLTRB(16,0,16,10),
+    child:Row(children:[
+      _ridezTile('Sürüşler','Veri mevcut değil',Icons.route_rounded,widget.vehicles),
+      const SizedBox(width:7),
+      _ridezTile('Mesafe','Veri mevcut değil',Icons.location_on_rounded,widget.vehicles),
+      const SizedBox(width:7),
+      _ridezTile('Yakıt','Veri mevcut değil',Icons.local_gas_station_rounded,widget.vehicles),
+    ]),
+  );
+
   @override Widget build(BuildContext context)=>ColoredBox(
-    color:light?const Color(0xFFF9FAFD):bg,
+    color:const Color(0xFFF9FAFD),
     child:RefreshIndicator(
       onRefresh:_refreshAll,color:_homePurple,
       child:ListView(
         padding:EdgeInsets.zero,
-        physics:const ClampingScrollPhysics(parent:AlwaysScrollableScrollPhysics()),
+        physics:const AlwaysScrollableScrollPhysics(),
         children:[
-          for(final component in _premiumHomeOrder())...[
-            RepaintBoundary(
-              key:ValueKey('sd-ui-${component.id}-${_appUiConfig.version}'),
+          header(),
+          _ridezHero(),
+          _ridezVehicleGrid(),
+          _ridezMetrics(),
+          for(final component in _appUiConfig.components.where((c)=>
+            c.type=='quick_actions'||c.type=='services_grid'||c.type=='monthly_summary'))...[
+            RepaintBoundary(key:ValueKey('ridez-${component.id}-${_appUiConfig.version}'),
               child:_managedComponent(component)),
             if(component.type=='monthly_summary')_motorcycleHomePanel(),
           ],
+          for(final component in _appUiConfig.components.where((c)=>
+            !{'weather_card','vehicle_security','quick_actions','services_grid','monthly_summary'}.contains(c.type)))
+            RepaintBoundary(key:ValueKey('extra-${component.id}-${_appUiConfig.version}'),
+              child:_managedComponent(component)),
           const SizedBox(height:22),
         ],
       ),
