@@ -1697,7 +1697,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   Widget _ridezHero()=>Padding(
     padding:const EdgeInsets.fromLTRB(16,8,16,10),
     child:InkWell(onTap:widget.services,borderRadius:BorderRadius.circular(24),
-      child:Container(height:MediaQuery.sizeOf(context).width <= 350 ? 188 : 174,clipBehavior:Clip.antiAlias,
+      child:Container(height:MediaQuery.sizeOf(context).width <= 350 ? 216 : 196,clipBehavior:Clip.antiAlias,
         decoration:const BoxDecoration(
           gradient:LinearGradient(begin:Alignment.centerLeft,end:Alignment.centerRight,
             colors:[Color(0xFF21104E),Color(0xFF651FFF),Color(0xFF301276)]),
