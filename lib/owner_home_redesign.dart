@@ -1683,9 +1683,9 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             const SizedBox(width:7),
             Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,
               mainAxisAlignment:MainAxisAlignment.center,children:[
-              Text(title,maxLines:2,overflow:TextOverflow.ellipsis,
+              Text(title,maxLines:1,overflow:TextOverflow.ellipsis,
                 style:const TextStyle(fontWeight:FontWeight.w800,fontSize:12,color:Color(0xFF141527))),
-              const SizedBox(height:4),
+              const SizedBox(height:2),
               Text(subtitle,maxLines:2,overflow:TextOverflow.ellipsis,
                 style:const TextStyle(fontSize:10,height:1.15,color:Color(0xFF737B90))),
             ])),
