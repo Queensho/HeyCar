@@ -6,6 +6,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
+  checks: read
+  deployments: read
 concurrency:
   group: public-marketplace-staging
   cancel-in-progress: false
@@ -42,6 +45,35 @@ jobs:
           const fs=require('fs');const p=require('./staging-public-preflight.json');
           (async()=>{const checks={};for(const scheme of ['http','https']){try{const r=await fetch(scheme+'://'+p.hostname+'/api/environment',{signal:AbortSignal.timeout(15000),redirect:'manual'});checks[scheme]={status:r.status};if(scheme==='https'&&r.status===200){const x=await r.json();checks.https.staging=x.environment==='staging'&&x.database==='heycar_staging';}}catch(e){checks[scheme]={reachable:false,errorCode:e.cause?.code||e.name};}}fs.writeFileSync('staging-public-network.json',JSON.stringify(checks,null,2));console.log(checks);})();
           JS
+      - name: Read actual Pages rejection annotations and deployment branch policy
+        id: pages_permission
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node tool/staging/pages_permission_probe.cjs
+      - uses: actions/download-artifact@v4
+        with:
+          name: staging-business-panel-direct-https
+          run-id: ${{ steps.pages_permission.outputs.release_run }}
+          github-token: ${{ github.token }}
+          path: public-panel/
+      - name: Prepare reviewable complete Pages payload without deploying
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tool/staging/public_pages.py prepare public-panel
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ready-staging-pages-preserved-payload
+          path: pages-preserved/
+          if-no-files-found: warn
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: original-pages-and-staging-preservation-proof
+          path: |
+            pages-original.tar
+            pages-preservation.json
+          if-no-files-found: warn
       - uses: actions/upload-artifact@v4
         if: always()
         with:
