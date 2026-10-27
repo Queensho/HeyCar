@@ -1815,9 +1815,9 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   // Status-specific art is an optional bundled asset; retain a designed
   // gradient fallback until the three approved image files are added.
   String _homeValetArt(String status)=>switch(status){
-    'requested'||'retrieving'=>'assets/images/valet/valet_retrieving.webp',
-    'ready'=>'assets/images/valet/valet_ready.webp',
-    _=>'assets/images/valet/valet_parked.webp',
+    'requested'||'retrieving'=>'assets/images/services/araç getiriliyor.png',
+    'ready'=>'assets/images/services/teslimat.png',
+    _=>'assets/images/services/vale.png',
   };
 
   Widget _compactHomeValetCard(Map<String,dynamic> session){
