@@ -1815,7 +1815,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   // Status-specific art is an optional bundled asset; retain a designed
   // gradient fallback until the three approved image files are added.
   String _homeValetArt(String status)=>switch(status){
-    'requested'||'retrieving'=>'assets/images/services/araç getiriliyor.png',
+    'requested'||'retrieving'=>'assets/images/services/aracgetiriliyor.png',
     'ready'=>'assets/images/services/teslimat.png',
     _=>'assets/images/services/vale.png',
   };
