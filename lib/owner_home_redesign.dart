@@ -1820,6 +1820,22 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     _=>'assets/vale.png',
   };
 
+  void _openValetTracking(){
+    final session=valetSession;
+    if(session==null)return;
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder:(_)=>_ValetTrackingScreen(
+        session:session,
+        vehicle:_selectedVehicle,
+        deliveryCode:valetDeliveryCode,
+        onRefresh:()async{
+          await load(silent:true);
+          return valetSession;
+        },
+      ),
+    ));
+  }
+
   Widget _compactHomeValetCard(Map<String,dynamic> session){
     final status='${session['status']??'parked'}';
     final venue='${session['business_name']??'CepQontag Vale'}'.trim();
@@ -1834,7 +1850,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       child:InkWell(
         key:const ValueKey('premium-home-valet'),
         onTap:parked?(valetRequesting?null:_requestValetVehicle):
-          ()=>widget.shortcut('valet'),
+          _openValetTracking,
         child:Stack(fit:StackFit.expand,children:[
           const DecoratedBox(decoration:BoxDecoration(gradient:LinearGradient(
             begin:Alignment.topLeft,end:Alignment.bottomRight,
@@ -2559,4 +2575,152 @@ class _VehicleCardWavePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _VehicleCardWavePainter oldDelegate)=>false;
+}
+
+class _ValetTrackingScreen extends StatefulWidget{
+  const _ValetTrackingScreen({required this.session,required this.vehicle,
+    required this.deliveryCode,required this.onRefresh});
+  final Map<String,dynamic> session;
+  final Map<String,dynamic>? vehicle;
+  final String deliveryCode;
+  final Future<Map<String,dynamic>?> Function() onRefresh;
+  @override State<_ValetTrackingScreen> createState()=>_ValetTrackingScreenState();
+}
+class _ValetTrackingScreenState extends State<_ValetTrackingScreen>{
+  late Map<String,dynamic> session=widget.session;
+  bool refreshing=false;
+  static const lime=Color(0xFFB9FF45);
+  static const purple=Color(0xFF651FFF);
+  static const stages=['Araç teslim alındı','Araç park edildi',
+    'Araç çağrıldı','Araç getiriliyor','Teslimata hazır'];
+  int step(String status)=>switch(status){
+    'accepted'=>0,'parked'=>1,'requested'=>2,'retrieving'=>3,'ready'=>4,_=>0};
+  Future<void> refresh()async{
+    if(refreshing)return;
+    setState(()=>refreshing=true);
+    try{
+      final next=await widget.onRefresh();
+      if(mounted&&next!=null)setState(()=>session=next);
+    }finally{if(mounted)setState(()=>refreshing=false);}
+  }
+  @override Widget build(BuildContext context){
+    final status='${session['status']??'accepted'}';
+    final current=step(status);
+    final venue='${session['business_name']??'CepQontag Vale'}';
+    final vehicle=widget.vehicle;
+    final brand='${vehicle?['brand']??vehicle?['make']??''}'.trim();
+    final model='${vehicle?['model']??''}'.trim();
+    final car='$brand $model'.trim();
+    final code=widget.deliveryCode;
+    return Scaffold(backgroundColor:const Color(0xFF09051B),
+      body:Stack(children:[
+        Positioned.fill(child:Image.asset('assets/aracgetiriliyor.png',
+          fit:BoxFit.cover,errorBuilder:(_,__,___)=>
+            const ColoredBox(color:Color(0xFF250B58)))),
+        const Positioned.fill(child:DecoratedBox(decoration:BoxDecoration(
+          gradient:LinearGradient(begin:Alignment.topCenter,
+            end:Alignment.bottomCenter,colors:[
+              Color(0xC600061C),Color(0x330A0327),Color(0xF509041C)],
+            stops:[0,.42,1])))),
+        SafeArea(child:Column(children:[
+          Padding(padding:const EdgeInsets.fromLTRB(12,8,14,0),
+            child:Row(children:[
+              IconButton(onPressed:()=>Navigator.of(context).pop(),
+                icon:const Icon(Icons.arrow_back,color:Colors.white)),
+              const Expanded(child:Text('Vale Takip',style:TextStyle(
+                color:Colors.white,fontSize:24,fontWeight:FontWeight.w900))),
+              Container(padding:const EdgeInsets.symmetric(
+                horizontal:10,vertical:6),decoration:BoxDecoration(
+                  color:const Color(0xDD18271A),
+                  borderRadius:BorderRadius.circular(30)),
+                child:const Row(children:[
+                  Icon(Icons.circle,color:lime,size:9),
+                  SizedBox(width:6),
+                  Text('Aktif',style:TextStyle(color:Colors.white,
+                    fontWeight:FontWeight.w800))])),
+            ])),
+          const Padding(padding:EdgeInsets.fromLTRB(20,0,20,0),
+            child:Align(alignment:Alignment.centerLeft,
+              child:Text('Vale işleminiz devam ediyor.',
+                style:TextStyle(color:Color(0xFFD7C6F7),fontSize:13)))),
+          const Spacer(),
+          Container(margin:const EdgeInsets.all(10),
+            padding:const EdgeInsets.fromLTRB(12,18,12,12),
+            decoration:BoxDecoration(
+              color:const Color(0xEB110B30),
+              borderRadius:BorderRadius.circular(24),
+              border:Border.all(color:const Color(0x996D42B2))),
+            child:Column(mainAxisSize:MainAxisSize.min,children:[
+              Row(crossAxisAlignment:CrossAxisAlignment.start,
+                children:List.generate(stages.length,(i){
+                  final done=i<current;
+                  final active=i==current;
+                  return Expanded(child:Column(children:[
+                    Row(children:[
+                      if(i>0)Expanded(child:Container(height:3,
+                        color:i<=current?lime:const Color(0xFF5B4A83))),
+                      Container(width:32,height:32,
+                        decoration:BoxDecoration(shape:BoxShape.circle,
+                          color:done?lime:active?purple:
+                            const Color(0xFF20173F),
+                          border:Border.all(color:active?const Color(0xFFCEAEFF):
+                            done?lime:const Color(0xFF69598D),width:2)),
+                        child:Icon(done?Icons.check_rounded:
+                          active?Icons.directions_car_filled_rounded:
+                          Icons.circle_outlined,
+                          color:done?const Color(0xFF23024C):Colors.white,
+                          size:18)),
+                      if(i<stages.length-1)Expanded(child:Container(height:3,
+                        color:i<current?lime:const Color(0xFF5B4A83))),
+                    ]),
+                    const SizedBox(height:8),
+                    Text(stages[i],maxLines:2,textAlign:TextAlign.center,
+                      style:TextStyle(color:i<=current?Colors.white:
+                        const Color(0xFF9B8AB9),fontSize:9,
+                        fontWeight:active?FontWeight.w900:FontWeight.w700)),
+                  ]));
+                })),
+              const SizedBox(height:16),
+              Container(padding:const EdgeInsets.all(12),
+                decoration:BoxDecoration(
+                  color:const Color(0x99261951),
+                  borderRadius:BorderRadius.circular(16)),
+                child:Row(children:[
+                  Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,
+                    children:[
+                      const Text('Vale işletmesi',style:TextStyle(
+                        color:Color(0xFFC4ACED),fontSize:10)),
+                      Text(venue,maxLines:2,overflow:TextOverflow.ellipsis,
+                        style:const TextStyle(color:Colors.white,fontSize:12,
+                          fontWeight:FontWeight.w800)),
+                    ])),
+                  Container(width:1,height:35,color:const Color(0xFF574377)),
+                  const SizedBox(width:9),
+                  Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,
+                    children:[
+                      const Text('Araç',style:TextStyle(
+                        color:Color(0xFFC4ACED),fontSize:10)),
+                      Text(car.isEmpty?'Seçili araç':car,maxLines:2,
+                        overflow:TextOverflow.ellipsis,
+                        style:const TextStyle(color:Colors.white,fontSize:12,
+                          fontWeight:FontWeight.w800)),
+                    ])),
+                ])),
+              if(status=='ready'&&code.isNotEmpty)
+                Padding(padding:const EdgeInsets.only(top:12),
+                  child:Text('Teslimat kodu: $code',
+                    style:const TextStyle(color:lime,fontSize:18,
+                      fontWeight:FontWeight.w900))),
+              const SizedBox(height:10),
+              SizedBox(width:double.infinity,height:40,
+                child:OutlinedButton.icon(onPressed:refreshing?null:refresh,
+                  icon:Icon(refreshing?Icons.hourglass_top:
+                    Icons.refresh_rounded),
+                  label:Text(refreshing?'Güncelleniyor...':'Durumu Yenile'),
+                  style:OutlinedButton.styleFrom(
+                    foregroundColor:lime,side:const BorderSide(color:lime)))),
+            ])),
+        ])),
+      ]));
+  }
 }
