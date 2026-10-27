@@ -47,6 +47,9 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/services/
+    - assets/vale.png
+    - assets/aracgetiriliyor.png
+    - assets/teslimat.png
     - assets/vehicle_brand_logos/
     - assets/Arka2.png
     - assets/Arac.png
