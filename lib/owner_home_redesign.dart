@@ -1818,28 +1818,51 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       Expanded(child:SizedBox(height:184,child:InkWell(
         key:const ValueKey('premium-home-vehicle'),
         onTap:widget.vehicles,borderRadius:BorderRadius.circular(22),
-        child:Container(padding:const EdgeInsets.all(11),
-          decoration:BoxDecoration(color:const Color(0xFFB9FF45),borderRadius:BorderRadius.circular(22),
-            border:Border.all(color:const Color(0xFFA4E93B))),
-          child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-            Row(children:[
-              const Expanded(child:Text('Aracım',
-                style:TextStyle(fontWeight:FontWeight.w900,fontSize:16))),
-              const Icon(Icons.chevron_right_rounded,color:Color(0xFF651FFF),size:20),
-            ]),
-            const SizedBox(height:3),
-            Text(QrDraft.plate.trim().isEmpty?'Araç ekleyin':QrDraft.plate,
-              maxLines:1,overflow:TextOverflow.ellipsis,
-              style:const TextStyle(color:Color(0xFF737B90),fontSize:11)),
-            Expanded(child:Center(child:VehicleKind.isMotorcycle(QrDraft.vehicleType)
-              ?const Icon(Icons.two_wheeler_rounded,color:Color(0xFF651FFF),size:66)
-              :FittedBox(fit:BoxFit.contain,child:SizedBox(width:120,height:80,
-                child:_premiumCarArtwork())))),
-            Text('${QrDraft.make} ${QrDraft.model}'.trim().isEmpty?'Araç detayları':'${QrDraft.make} ${QrDraft.model}'.trim(),
-              maxLines:1,overflow:TextOverflow.ellipsis,
-              style:const TextStyle(fontSize:11,fontWeight:FontWeight.w800)),
-            const SizedBox(height:4),
-            const Icon(Icons.arrow_circle_right_rounded,color:Color(0xFF25104F),size:20),
+        child:Container(
+          decoration:BoxDecoration(
+            gradient:const LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,
+              colors:[Color(0xFF7218FF),Color(0xFF3900C8),Color(0xFF210073)]),
+            borderRadius:BorderRadius.circular(22)),
+          clipBehavior:Clip.antiAlias,
+          child:Stack(fit:StackFit.expand,children:[
+            Positioned(top:-68,right:-85,width:180,height:155,
+              child:Transform.rotate(angle:0.5,child:Container(
+                decoration:BoxDecoration(color:const Color(0xFF8A32FF).withValues(alpha:0.58),
+                  borderRadius:BorderRadius.circular(75))))),
+            Positioned(bottom:-110,right:-90,width:215,height:200,
+              child:Container(decoration:const BoxDecoration(
+                color:Color(0xFFB9FF45),shape:BoxShape.circle))),
+            Positioned(bottom:-112,right:-50,width:190,height:175,
+              child:Container(decoration:BoxDecoration(
+                color:const Color(0xFFDCFF6C).withValues(alpha:0.46),
+                shape:BoxShape.circle))),
+            Padding(padding:const EdgeInsets.all(12),
+              child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                Row(children:[
+                  const Expanded(child:Text('Aracım',style:TextStyle(
+                    fontWeight:FontWeight.w900,fontSize:16,color:Colors.white))),
+                  const CircleAvatar(radius:13,backgroundColor:Color(0x667C55DD),
+                    child:Icon(Icons.chevron_right_rounded,color:Colors.white,size:20)),
+                ]),
+                const SizedBox(height:3),
+                Text(QrDraft.plate.trim().isEmpty?'Araç ekleyin':QrDraft.plate,
+                  maxLines:1,overflow:TextOverflow.ellipsis,
+                  style:const TextStyle(color:Color(0xFFD9C9FF),fontSize:11)),
+                Expanded(child:Center(child:VehicleKind.isMotorcycle(QrDraft.vehicleType)
+                  ?const Icon(Icons.two_wheeler_rounded,color:Colors.white,size:56)
+                  :ColorFiltered(colorFilter:const ColorFilter.mode(
+                      Colors.white,BlendMode.srcIn),
+                    child:FittedBox(fit:BoxFit.contain,child:SizedBox(
+                      width:110,height:72,child:_premiumCarArtwork()))))),
+                Text('${QrDraft.make} ${QrDraft.model}'.trim().isEmpty
+                  ?'Araç detayları':'${QrDraft.make} ${QrDraft.model}'.trim(),
+                  maxLines:1,overflow:TextOverflow.ellipsis,
+                  style:const TextStyle(fontSize:11,fontWeight:FontWeight.w800,
+                    color:Colors.white)),
+                const SizedBox(height:4),
+                const CircleAvatar(radius:11,backgroundColor:Color(0xFFB9FF45),
+                  child:Icon(Icons.arrow_forward_rounded,color:Color(0xFF25104F),size:15)),
+              ])),
           ]),
         ),
       ))),
