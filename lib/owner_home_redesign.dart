@@ -1812,57 +1812,81 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     ),
   );
 
+  // Status-specific art is an optional bundled asset; retain a designed
+  // gradient fallback until the three approved image files are added.
+  String _homeValetArt(String status)=>switch(status){
+    'requested'||'retrieving'=>'assets/aracgetiriliyor.png',
+    'ready'=>'assets/teslimat.png',
+    _=>'assets/vale.png',
+  };
+
   Widget _compactHomeValetCard(Map<String,dynamic> session){
     final status='${session['status']??'parked'}';
     final venue='${session['business_name']??'CepQontag Vale'}'.trim();
     final parked=status=='parked';
-    final active=['accepted','parked','requested','retrieving','ready'].contains(status);
-    if(!active)return SizedBox(height:184,child:Center(
-      child:Text(_valetStatusTitle(status))));
+    final retrieving=status=='requested'||status=='retrieving';
+    final ready=status=='ready';
+    final showCode=ready&&valetDeliveryCode.isNotEmpty;
     return SizedBox(height:184,child:Material(
-      color:const Color(0xFF3100A5),
+      color:const Color(0xFF210073),
       borderRadius:BorderRadius.circular(22),
       clipBehavior:Clip.antiAlias,
       child:InkWell(
         key:const ValueKey('premium-home-valet'),
-        onTap:parked?(valetRequesting?null:_requestValetVehicle):()=>widget.shortcut('valet'),
+        onTap:parked?(valetRequesting?null:_requestValetVehicle):
+          ()=>widget.shortcut('valet'),
         child:Stack(fit:StackFit.expand,children:[
-          const Positioned.fill(child:CustomPaint(painter:_VehicleCardWavePainter())),
-          Padding(padding:const EdgeInsets.all(12),child:Column(
+          const DecoratedBox(decoration:BoxDecoration(gradient:LinearGradient(
+            begin:Alignment.topLeft,end:Alignment.bottomRight,
+            colors:[Color(0xFF20083E),Color(0xFF651FFF),Color(0xFF210073)]))),
+          Image.asset(_homeValetArt(status),fit:BoxFit.cover,
+            errorBuilder:(_,__,___)=>const SizedBox.shrink()),
+          const DecoratedBox(decoration:BoxDecoration(gradient:LinearGradient(
+            begin:Alignment.topCenter,end:Alignment.bottomCenter,
+            colors:[Color(0xB5000624),Color(0x300C0340),Color(0xDD12082E)],
+            stops:[0,.45,1]))),
+          Padding(padding:const EdgeInsets.all(11),child:Column(
             crossAxisAlignment:CrossAxisAlignment.start,children:[
               Row(children:[
-                const Icon(Icons.local_parking_rounded,color:Color(0xFFB9FF45),size:23),
-                const SizedBox(width:5),
+                const Icon(Icons.local_parking_rounded,
+                  color:Color(0xFFB9FF45),size:19),
+                const SizedBox(width:4),
                 const Expanded(child:Text('VALE',style:TextStyle(
-                  color:Colors.white,fontSize:16,fontWeight:FontWeight.w900))),
-                const Icon(Icons.chevron_right_rounded,color:Colors.white,size:22),
+                  color:Colors.white,fontSize:15,fontWeight:FontWeight.w900))),
+                const Icon(Icons.chevron_right_rounded,
+                  color:Colors.white,size:21),
               ]),
-              const SizedBox(height:5),
               Text(venue.isEmpty?'CepQontag Vale':venue,
                 maxLines:1,overflow:TextOverflow.ellipsis,
-                style:const TextStyle(color:Color(0xFFE6D9FF),fontSize:10)),
+                style:const TextStyle(color:Color(0xFFE6D9FF),fontSize:9)),
               const Spacer(),
-              Text(_valetStatusTitle(status),maxLines:2,
-                overflow:TextOverflow.ellipsis,
+              Text(ready?'Teslimata Hazır':retrieving?
+                'Araç Getiriliyor':_valetStatusTitle(status),
+                maxLines:2,overflow:TextOverflow.ellipsis,
                 style:const TextStyle(color:Colors.white,fontSize:13,
-                  fontWeight:FontWeight.w800)),
-              if(valetDeliveryCode.isNotEmpty &&
-                  ['requested','retrieving','ready'].contains(status))
-                Text('Teslim kodu: $valetDeliveryCode',
-                  maxLines:1,overflow:TextOverflow.ellipsis,
-                  style:const TextStyle(color:Color(0xFFDCFF80),fontSize:10,
-                    fontWeight:FontWeight.w800)),
-              const SizedBox(height:9),
-              Container(
-                padding:const EdgeInsets.symmetric(horizontal:9,vertical:6),
+                  fontWeight:FontWeight.w900)),
+              if(showCode)
+                Container(margin:const EdgeInsets.only(top:5),
+                  padding:const EdgeInsets.symmetric(horizontal:8,vertical:4),
+                  decoration:BoxDecoration(color:const Color(0xCC210073),
+                    borderRadius:BorderRadius.circular(8)),
+                  child:Text('Teslim kodu: $valetDeliveryCode',
+                    maxLines:1,overflow:TextOverflow.ellipsis,
+                    style:const TextStyle(color:Colors.white,fontSize:11,
+                      fontWeight:FontWeight.w900))),
+              const SizedBox(height:7),
+              Container(width:double.infinity,
+                padding:const EdgeInsets.symmetric(horizontal:8,vertical:7),
                 decoration:BoxDecoration(color:const Color(0xFFB9FF45),
-                  borderRadius:BorderRadius.circular(20)),
-                child:Row(mainAxisSize:MainAxisSize.min,children:[
-                  Text(parked?(valetRequesting?'Gönderiliyor...':'Araç Getir'):
-                    _valetBadge(status),
+                  borderRadius:BorderRadius.circular(18)),
+                child:Row(mainAxisAlignment:MainAxisAlignment.center,children:[
+                  Flexible(child:Text(parked?
+                    (valetRequesting?'Gönderiliyor...':'Araç Getir'):
+                    ready?'Teslimat Kodu':retrieving?'Durumu Gör':'Vale Detayı',
+                    maxLines:1,overflow:TextOverflow.ellipsis,
                     style:const TextStyle(color:Color(0xFF210073),fontSize:10,
-                      fontWeight:FontWeight.w900)),
-                  const SizedBox(width:4),
+                      fontWeight:FontWeight.w900))),
+                  const SizedBox(width:5),
                   const Icon(Icons.arrow_forward_rounded,
                     color:Color(0xFF210073),size:14),
                 ])),
