@@ -1134,7 +1134,7 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
               onPressed:()=>setState(()=>_promotionTab=tab.$1),
               icon:Icon(tab.$3,size:16),label:Text(tab.$2))),
             if(tab.$1!=2)const SizedBox(width:6),
-          ],
+          ]
           ])),
           Expanded(child:switch(_promotionTab){
             1=>_storeCardsPage(),2=>_howToAdminPage(),_=>_bannerPage(),
