@@ -1812,9 +1812,73 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     ),
   );
 
+  Widget _compactHomeValetCard(Map<String,dynamic> session){
+    final status='${session['status']??'parked'}';
+    final venue='${session['business_name']??'CepQontag Vale'}'.trim();
+    final parked=status=='parked';
+    final active=['accepted','parked','requested','retrieving','ready'].contains(status);
+    if(!active)return SizedBox(height:184,child:Center(
+      child:Text(_valetStatusTitle(status))));
+    return SizedBox(height:184,child:Material(
+      color:const Color(0xFF3100A5),
+      borderRadius:BorderRadius.circular(22),
+      clipBehavior:Clip.antiAlias,
+      child:InkWell(
+        key:const ValueKey('premium-home-valet'),
+        onTap:parked?(valetRequesting?null:_requestValetVehicle):()=>widget.shortcut('valet'),
+        child:Stack(fit:StackFit.expand,children:[
+          const Positioned.fill(child:CustomPaint(painter:_VehicleCardWavePainter())),
+          Padding(padding:const EdgeInsets.all(12),child:Column(
+            crossAxisAlignment:CrossAxisAlignment.start,children:[
+              Row(children:[
+                const Icon(Icons.local_parking_rounded,color:Color(0xFFB9FF45),size:23),
+                const SizedBox(width:5),
+                const Expanded(child:Text('VALE',style:TextStyle(
+                  color:Colors.white,fontSize:16,fontWeight:FontWeight.w900))),
+                const Icon(Icons.chevron_right_rounded,color:Colors.white,size:22),
+              ]),
+              const SizedBox(height:5),
+              Text(venue.isEmpty?'CepQontag Vale':venue,
+                maxLines:1,overflow:TextOverflow.ellipsis,
+                style:const TextStyle(color:Color(0xFFE6D9FF),fontSize:10)),
+              const Spacer(),
+              Text(_valetStatusTitle(status),maxLines:2,
+                overflow:TextOverflow.ellipsis,
+                style:const TextStyle(color:Colors.white,fontSize:13,
+                  fontWeight:FontWeight.w800)),
+              if(valetDeliveryCode.isNotEmpty &&
+                  ['requested','retrieving','ready'].contains(status))
+                Text('Teslim kodu: $valetDeliveryCode',
+                  maxLines:1,overflow:TextOverflow.ellipsis,
+                  style:const TextStyle(color:Color(0xFFDCFF80),fontSize:10,
+                    fontWeight:FontWeight.w800)),
+              const SizedBox(height:9),
+              Container(
+                padding:const EdgeInsets.symmetric(horizontal:9,vertical:6),
+                decoration:BoxDecoration(color:const Color(0xFFB9FF45),
+                  borderRadius:BorderRadius.circular(20)),
+                child:Row(mainAxisSize:MainAxisSize.min,children:[
+                  Text(parked?(valetRequesting?'Gönderiliyor...':'Araç Getir'):
+                    _valetBadge(status),
+                    style:const TextStyle(color:Color(0xFF210073),fontSize:10,
+                      fontWeight:FontWeight.w900)),
+                  const SizedBox(width:4),
+                  const Icon(Icons.arrow_forward_rounded,
+                    color:Color(0xFF210073),size:14),
+                ])),
+            ])),
+        ]),
+      ),
+    ));
+  }
+
   Widget _ridezVehicleGrid()=>Padding(
     padding:const EdgeInsets.fromLTRB(16,0,16,10),
     child:Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      if(QrDraft.vehicleId.trim().isNotEmpty &&
+          _valetVehicleId==QrDraft.vehicleId.trim() && valetSession!=null)
+        Expanded(child:_compactHomeValetCard(valetSession!))
+      else
       Expanded(child:SizedBox(height:184,child:InkWell(
         key:const ValueKey('premium-home-vehicle'),
         onTap:widget.vehicles,borderRadius:BorderRadius.circular(22),
