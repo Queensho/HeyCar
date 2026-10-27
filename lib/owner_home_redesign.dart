@@ -1938,14 +1938,14 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                 onTap:(){Navigator.pop(sheetContext);_openHowToGuide(guides[i]);}),
             ))),child:const Text('Tümü')),
         ])),
-        SizedBox(height:174,child:ListView.separated(
+        SizedBox(height:138,child:ListView.separated(
           key:const ValueKey('home-how-to-carousel'),scrollDirection:Axis.horizontal,
           padding:const EdgeInsets.only(right:16),itemCount:guides.length,
-          separatorBuilder:(_,__)=>const SizedBox(width:12),
+          separatorBuilder:(_,__)=>const SizedBox(width:9),
           itemBuilder:(context,i){
             final guide=guides[i];
-            return SizedBox(width:158,child:Material(
-              borderRadius:BorderRadius.circular(14),clipBehavior:Clip.antiAlias,
+            return SizedBox(width:116,child:Material(
+              borderRadius:BorderRadius.circular(13),clipBehavior:Clip.antiAlias,
               color:const Color(0xFF241448),
               child:InkWell(onTap:()=>_openHowToGuide(guide),
                 child:Stack(fit:StackFit.expand,children:[
@@ -1954,9 +1954,9 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                   const DecoratedBox(decoration:BoxDecoration(gradient:LinearGradient(
                     begin:Alignment.topCenter,end:Alignment.bottomCenter,
                     colors:[Colors.transparent,Color(0xDD000000)]))),
-                  Positioned(left:12,right:10,bottom:12,child:Text(guide.title,
+                  Positioned(left:9,right:8,bottom:9,child:Text(guide.title,
                     maxLines:3,overflow:TextOverflow.ellipsis,
-                    style:const TextStyle(color:Colors.white,fontSize:14,
+                    style:const TextStyle(color:Colors.white,fontSize:11,
                       height:1.15,fontWeight:FontWeight.w800))),
                 ])),
             ));
@@ -1978,7 +1978,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
           child:Text('Kampanyalar',
             style:TextStyle(fontSize:19,fontWeight:FontWeight.w900,color:Color(0xFF10152D))),
         ),
-        SizedBox(height:170,child:ListView.separated(
+        SizedBox(height:138,child:ListView.separated(
           key:const ValueKey('home-campaign-carousel'),
           scrollDirection:Axis.horizontal,
           padding:const EdgeInsets.only(right:16),
@@ -1986,8 +1986,8 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
           separatorBuilder:(_,__)=>const SizedBox(width:10),
           itemBuilder:(context,index){
             final campaign=campaigns[index];
-            return SizedBox(width:142,child:Material(
-              color:const Color(0xFF210B45),borderRadius:BorderRadius.circular(18),
+            return SizedBox(width:116,child:Material(
+              color:const Color(0xFF210B45),borderRadius:BorderRadius.circular(14),
               clipBehavior:Clip.antiAlias,
               child:InkWell(
                 onTap:campaign.action=='NONE'?null:()=>_runManagedAction(campaign),
@@ -2005,14 +2005,14 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                           color:Color(0xFFB9FF45),size:58)),
                     )),
                   Positioned(left:0,right:0,bottom:0,child:Container(
-                    padding:const EdgeInsets.fromLTRB(10,15,7,9),
+                    padding:const EdgeInsets.fromLTRB(8,14,6,8),
                     decoration:const BoxDecoration(gradient:LinearGradient(
                       begin:Alignment.topCenter,end:Alignment.bottomCenter,
                       colors:[Colors.transparent,Color(0xEE100C23)])),
                     child:Row(crossAxisAlignment:CrossAxisAlignment.end,children:[
                       Expanded(child:Text(campaign.title,maxLines:2,
                         overflow:TextOverflow.ellipsis,
-                        style:const TextStyle(fontSize:12,height:1.12,
+                        style:const TextStyle(fontSize:11,height:1.12,
                           fontWeight:FontWeight.w800,color:Colors.white))),
                       if(campaign.action!='NONE')...[
                         const SizedBox(width:4),
