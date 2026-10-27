@@ -1825,17 +1825,8 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             borderRadius:BorderRadius.circular(22)),
           clipBehavior:Clip.antiAlias,
           child:Stack(fit:StackFit.expand,children:[
-            Positioned(top:-68,right:-85,width:180,height:155,
-              child:Transform.rotate(angle:0.5,child:Container(
-                decoration:BoxDecoration(color:const Color(0xFF8A32FF).withValues(alpha:0.58),
-                  borderRadius:BorderRadius.circular(75))))),
-            Positioned(bottom:-110,right:-90,width:215,height:200,
-              child:Container(decoration:const BoxDecoration(
-                color:Color(0xFFB9FF45),shape:BoxShape.circle))),
-            Positioned(bottom:-112,right:-50,width:190,height:175,
-              child:Container(decoration:BoxDecoration(
-                color:const Color(0xFFDCFF6C).withValues(alpha:0.46),
-                shape:BoxShape.circle))),
+            const Positioned.fill(child:CustomPaint(
+              painter:_VehicleCardWavePainter())),
             Padding(padding:const EdgeInsets.all(12),
               child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
                 Row(children:[
@@ -1849,11 +1840,20 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                   maxLines:1,overflow:TextOverflow.ellipsis,
                   style:const TextStyle(color:Color(0xFFD9C9FF),fontSize:11)),
                 Expanded(child:Center(child:VehicleKind.isMotorcycle(QrDraft.vehicleType)
-                  ?const Icon(Icons.two_wheeler_rounded,color:Colors.white,size:56)
-                  :ColorFiltered(colorFilter:const ColorFilter.mode(
-                      Colors.white,BlendMode.srcIn),
-                    child:FittedBox(fit:BoxFit.contain,child:SizedBox(
-                      width:110,height:72,child:_premiumCarArtwork()))))),
+                  ?const Icon(Icons.two_wheeler_rounded,color:Color(0xFFE9E9F1),size:64)
+                  :ShaderMask(
+                    blendMode:BlendMode.srcIn,
+                    shaderCallback:(bounds)=>const LinearGradient(
+                      begin:Alignment.topCenter,end:Alignment.bottomCenter,
+                      stops:[0,.18,.34,.48,.65,.82,1],
+                      colors:[Color(0xFF767887),Color(0xFFFFFFFF),
+                        Color(0xFF8C8F9E),Color(0xFFF9FAFF),
+                        Color(0xFF777A8A),Color(0xFFE8E9F3),
+                        Color(0xFF5F6377)]).createShader(bounds),
+                    child:SizedBox(width:145,height:95,
+                      child:FittedBox(fit:BoxFit.contain,
+                        child:SizedBox(width:145,height:95,
+                          child:_premiumCarArtwork())))))),
                 Text('${QrDraft.make} ${QrDraft.model}'.trim().isEmpty
                   ?'Araç detayları':'${QrDraft.make} ${QrDraft.model}'.trim(),
                   maxLines:1,overflow:TextOverflow.ellipsis,
@@ -2422,4 +2422,53 @@ class _MonthlySummaryPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _MonthlySummaryPainter oldDelegate) => false;
+}
+
+/// Organic vector waves matching the purple/lime brand reference.
+/// Paths scale with the card's actual size rather than approximating waves with circles.
+class _VehicleCardWavePainter extends CustomPainter {
+  const _VehicleCardWavePainter();
+
+  @override
+  void paint(Canvas canvas,Size size){
+    final w=size.width,h=size.height;
+    final upper=Path()
+      ..moveTo(w*.54,0)
+      ..cubicTo(w*.50,h*.23,w*.65,h*.32,w*.84,h*.40)
+      ..cubicTo(w*.96,h*.46,w*1.02,h*.51,w*1.05,h*.65)
+      ..lineTo(w*1.05,0)..close();
+    canvas.drawPath(upper,Paint()..shader=const LinearGradient(
+      begin:Alignment.topLeft,end:Alignment.bottomRight,
+      colors:[Color(0xFF822AFF),Color(0xFF5D0CE4)])
+      .createShader(Rect.fromLTWH(0,0,w,h)));
+
+    // Violet ribbon between the deep-purple field and lime foreground.
+    final ribbon=Path()
+      ..moveTo(w*.22,h*1.05)
+      ..cubicTo(w*.35,h*.91,w*.43,h*.76,w*.64,h*.68)
+      ..cubicTo(w*.82,h*.59,w*.92,h*.59,w*1.05,h*.55)
+      ..lineTo(w*1.05,h*1.05)..close();
+    canvas.drawPath(ribbon,Paint()..shader=const LinearGradient(
+      begin:Alignment.topLeft,end:Alignment.bottomRight,
+      colors:[Color(0xFF8321FF),Color(0xFF4E00D9)])
+      .createShader(Rect.fromLTWH(0,0,w,h)));
+
+    final lime=Path()
+      ..moveTo(w*.34,h*1.05)
+      ..cubicTo(w*.44,h*.88,w*.53,h*.75,w*.73,h*.70)
+      ..cubicTo(w*.89,h*.65,w*.98,h*.67,w*1.05,h*.62)
+      ..lineTo(w*1.05,h*1.05)..close();
+    canvas.drawPath(lime,Paint()..shader=const LinearGradient(
+      begin:Alignment.topLeft,end:Alignment.bottomRight,
+      colors:[Color(0xFFDCFF63),Color(0xFFB9FF45)])
+      .createShader(Rect.fromLTWH(0,0,w,h)));
+    final highlight=Path()
+      ..moveTo(w*.58,h*1.05)
+      ..cubicTo(w*.73,h*.85,w*.88,h*.86,w*1.05,h*.91)
+      ..lineTo(w*1.05,h*1.05)..close();
+    canvas.drawPath(highlight,Paint()..color=const Color(0xFFEAFF83).withValues(alpha:.48));
+  }
+
+  @override
+  bool shouldRepaint(covariant _VehicleCardWavePainter oldDelegate)=>false;
 }
