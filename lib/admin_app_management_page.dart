@@ -70,7 +70,7 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
     'qr_active':'Etiketi aktif olanlar','qr_inactive':'Etiketi aktif olmayanlar',
   };
 
-  bool _showStoreCards=false;
+  int _promotionTab=0;
   int section=0;
   bool loading=true,saving=false,publishing=false,dirty=false;
   String? error;
@@ -815,7 +815,7 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
 
   Widget _bannerPage()=>_editableItemPage(
     title:'Promosyon & Duyurular',subtitle:'Banner görseli yükleyin; Ana Sayfa Üst Banner seçimi 360 × 140 dp alanında gösterilir.',
-    rows:_list('banners'),addLabel:'Banner Ekle',onAdd:()=>_editBanner(),onEdit:_editBanner,onDelete:(row){final rows=_list('banners')..removeWhere((x)=>x['id']==row['id']);_setList('banners',rows);},
+    rows:_list('banners').where((row)=>row['badgeText']!='CEPQONTAG_GUIDE'&&row['placement']!='home_store').toList(),addLabel:'Banner Ekle',onAdd:()=>_editBanner(),onEdit:_editBanner,onDelete:(row){final rows=_list('banners')..removeWhere((x)=>x['id']==row['id']);_setList('banners',rows);},
     preview:(row)=>_BannerPreview(row:row,colorOfToken:colorOfToken),
   );
 
@@ -829,6 +829,72 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
     onDelete:(row){final rows=_list('banners')..removeWhere((x)=>x['id']==row['id']);_setList('banners',rows);},
     preview:(row)=>_BannerPreview(row:row,colorOfToken:colorOfToken),
   );
+
+
+  Widget _howToAdminPage()=>_editableItemPage(
+    title:'CepQontag Nasıl Çalışır?',
+    subtitle:'Görsel, başlık ve detay metni ekleyin; sıralayın, açıp kapatın ve yayınlayın.',
+    rows:_list('banners').where((row)=>row['badgeText']=='CEPQONTAG_GUIDE').toList(),
+    addLabel:'Rehber Ekle',onAdd:()=>_editHowToGuide(),
+    onEdit:_editHowToGuide,
+    onDelete:(row){final all=_list('banners')..removeWhere((x)=>x['id']==row['id']);
+      _setList('banners',all);},
+    preview:(row)=>_BannerPreview(row:row,colorOfToken:colorOfToken),
+  );
+
+  Future<void> _editHowToGuide([Map<String,dynamic>? source])async{
+    final row=Map<String,dynamic>.from(source??{});
+    final title=TextEditingController(text:'${row['title']??''}');
+    final details=TextEditingController(text:'${row['subtitle']??''}');
+    String image='${row['imageUrl']??''}';
+    bool enabled=row['enabled']!=false;
+    final result=await showDialog<Map<String,dynamic>>(context:context,
+      builder:(dialogContext)=>StatefulBuilder(builder:(context,setDialog)=>AlertDialog(
+        title:Text(source==null?'Rehber Ekle':'Rehberi Düzenle'),
+        content:SizedBox(width:460,child:SingleChildScrollView(child:Column(
+          mainAxisSize:MainAxisSize.min,children:[
+            TextField(controller:title,decoration:const InputDecoration(labelText:'Kart başlığı')),
+            const SizedBox(height:12),
+            if(image.isNotEmpty)SizedBox(height:120,child:Image.network(image,fit:BoxFit.cover,
+              errorBuilder:(_,__,___)=>const Icon(Icons.broken_image_outlined))),
+            OutlinedButton.icon(onPressed:()async{
+              final selected=await pickAsset(category:'banner');
+              if(selected!=null)setDialog(()=>image=selected);
+            },icon:const Icon(Icons.photo_library_outlined),label:const Text('Kapak Görseli Seç')),
+            const SizedBox(height:12),
+            TextField(controller:details,maxLines:10,minLines:5,
+              decoration:const InputDecoration(labelText:'Detay sayfası içeriği',
+                hintText:'Adım adım kullanım açıklamasını yazın')),
+            SwitchListTile(title:const Text('Yayında'),value:enabled,
+              onChanged:(v)=>setDialog(()=>enabled=v)),
+          ]))),
+        actions:[
+          TextButton(onPressed:()=>Navigator.pop(dialogContext),child:const Text('Vazgeç')),
+          FilledButton(onPressed:(){
+            if(title.text.trim().isEmpty||image.isEmpty||details.text.trim().isEmpty){
+              ScaffoldMessenger.of(dialogContext).showSnackBar(const SnackBar(
+                content:Text('Başlık, kapak görseli ve detay metni zorunludur.')));
+              return;
+            }
+            Navigator.pop(dialogContext,{
+              ...row,'id':row['id']??'guide_${DateTime.now().millisecondsSinceEpoch}',
+              'title':title.text.trim(),'subtitle':details.text.trim(),
+              'imageUrl':image,'badgeText':'CEPQONTAG_GUIDE',
+              'placement':'standard','enabled':enabled,'action':'NONE',
+              'actionTarget':'','audience':'all',
+              'sortOrder':row['sortOrder']??((_list('banners').length+1)*10),
+            });
+          },child:const Text('Uygula')),
+        ],
+      )));
+    title.dispose();details.dispose();
+    if(result==null)return;
+    final all=_list('banners');
+    if(source!=null){final i=all.indexWhere((x)=>x['id']==source['id']);
+      if(i>=0)all[i]=result;
+    }else{all.add(result);}
+    _setList('banners',all);
+  }
 
   Future<void> _editStoreCard([Map<String,dynamic>? source])async{
     final editing=source!=null;
@@ -929,7 +995,7 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
         itemCount:rows.length,buildDefaultDragHandles:false,onReorder:(oldIndex,newIndex){
           if(newIndex>oldIndex)newIndex--;final next=List<Map<String,dynamic>>.from(rows);final item=next.removeAt(oldIndex);next.insert(newIndex,item);
           for(var i=0;i<next.length;i++)next[i]['sortOrder']=(i+1)*10;
-          if(title.startsWith('Hizmet'))_setList('services',next);else if(title.startsWith('Hızlı'))_setList('quickActions',next);else if(title.startsWith('Ana Sayfa Store')){final all=_list('banners')..removeWhere((r)=>r['placement']=='home_store');all.addAll(next);_setList('banners',all);}else _setList('banners',next);
+          if(title.startsWith('Hizmet'))_setList('services',next);else if(title.startsWith('Hızlı'))_setList('quickActions',next);else if(title.startsWith('Ana Sayfa Kampanyaları')||title.startsWith('CepQontag Nasıl Çalışır?')||title.startsWith('Promosyon & Duyurular')){final all=_list('banners')..removeWhere((r)=>title.startsWith('Ana Sayfa Kampanyaları')?r['placement']=='home_store':title.startsWith('CepQontag Nasıl Çalışır?')?r['badgeText']=='CEPQONTAG_GUIDE':r['placement']!='home_store'&&r['badgeText']!='CEPQONTAG_GUIDE');all.addAll(next);_setList('banners',all);}else _setList('banners',next);
         },
         itemBuilder:(_,i){
           final row=rows[i];
@@ -937,7 +1003,7 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
             ReorderableDragStartListener(index:i,child:const Padding(padding:EdgeInsets.all(5),child:Icon(Icons.drag_indicator_rounded,color:AdminUi.muted))),
             SizedBox(width:150,child:preview(row)),const SizedBox(width:12),
             Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('${row['title']??row['id']}',style:const TextStyle(fontWeight:FontWeight.w900)),const SizedBox(height:3),Text('${row['subtitle']??''}',maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:AdminUi.muted,fontSize:10)),const SizedBox(height:3),Text('${actions['${row['action']??'NONE'}']??row['action']} • ${audiences['${row['audience']??'all'}']??row['audience']}',style:const TextStyle(color:AdminUi.muted,fontSize:9))])),
-            Switch(value:row['enabled']!=false,onChanged:(v){final next=List<Map<String,dynamic>>.from(rows);next[i]=Map<String,dynamic>.from(row)..['enabled']=v;if(title.startsWith('Hizmet'))_setList('services',next);else if(title.startsWith('Hızlı'))_setList('quickActions',next);else _setList('banners',next);}),
+            Switch(value:row['enabled']!=false,onChanged:(v){final next=List<Map<String,dynamic>>.from(rows);next[i]=Map<String,dynamic>.from(row)..['enabled']=v;if(title.startsWith('Hizmet'))_setList('services',next);else if(title.startsWith('Hızlı'))_setList('quickActions',next);else {final all=_list('banners');final index=all.indexWhere((r)=>r['id']==row['id']);if(index>=0)all[index]=next[i];_setList('banners',all);}}),
             IconButton(onPressed:()=>onEdit(row),icon:const Icon(Icons.edit_outlined)),
             IconButton(onPressed:()=>onDelete(row),icon:const Icon(Icons.delete_outline,color:Colors.redAccent)),
           ]));
@@ -1061,11 +1127,18 @@ class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
       Expanded(child:switch(section){
         0=>_layoutPage(),1=>_servicesPage(),2=>_quickPage(),3=>Column(children:[
           Padding(padding:const EdgeInsets.symmetric(horizontal:12,vertical:5),child:Row(children:[
-            Expanded(child:OutlinedButton.icon(onPressed:()=>setState(()=>_showStoreCards=false),icon:const Icon(Icons.image_outlined),label:const Text('Bannerlar'))),
-            const SizedBox(width:8),
-            Expanded(child:OutlinedButton.icon(onPressed:()=>setState(()=>_showStoreCards=true),icon:const Icon(Icons.storefront_outlined),label:const Text('Kampanyalar'))),
+            for(final tab in const [(0,'Bannerlar',Icons.image_outlined),
+            (1,'Kampanyalar',Icons.campaign_outlined),
+            (2,'Nasıl Çalışır',Icons.menu_book_outlined)])...[
+            Expanded(child:OutlinedButton.icon(
+              onPressed:()=>setState(()=>_promotionTab=tab.$1),
+              icon:Icon(tab.$3,size:16),label:Text(tab.$2))),
+            if(tab.$1!=2)const SizedBox(width:6),
+          ],
           ])),
-          Expanded(child:_showStoreCards?_storeCardsPage():_bannerPage()),
+          Expanded(child:switch(_promotionTab){
+            1=>_storeCardsPage(),2=>_howToAdminPage(),_=>_bannerPage(),
+          }),
         ]),
         4=>AdminStoryManagementPage(token:widget.token,admin:widget.admin),
         5=>_assetPage(),6=>_themePage(),7=>_versionsPage(),_=>_brandsPage(),
