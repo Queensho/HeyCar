@@ -1864,6 +1864,85 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
 
   // Compact store discovery carousel, placed immediately below the vehicle grid.
   // Product taps open the existing store so pricing and availability remain live.
+
+  // Admin-published educational cards share the existing banner transport.
+  // badgeText marks them without requiring a backend schema migration.
+  List<AppUiBanner> get _howToGuides=>_appUiConfig.banners
+      .where((b)=>b.raw['badgeText']=='CEPQONTAG_GUIDE').toList();
+
+  void _openHowToGuide(AppUiBanner guide){
+    Navigator.of(context).push(MaterialPageRoute<void>(builder:(context)=>Scaffold(
+      backgroundColor:const Color(0xFFF7F7FA),
+      appBar:AppBar(backgroundColor:const Color(0xFFF7F7FA),
+        title:const Text('CepQontag Nasıl Çalışır?')),
+      body:ListView(padding:const EdgeInsets.fromLTRB(20,20,20,32),children:[
+        ClipRRect(borderRadius:BorderRadius.circular(18),child:AspectRatio(
+          aspectRatio:1.9,
+          child:guide.imageUrl.isEmpty?const ColoredBox(color:Color(0xFF713BFF),
+            child:Icon(Icons.help_outline,color:Colors.white,size:52)):
+            Image.network(guide.imageUrl,fit:BoxFit.cover,
+              errorBuilder:(_,__,___)=>const ColoredBox(color:Color(0xFF713BFF),
+                child:Icon(Icons.help_outline,color:Colors.white,size:52))))),
+        const SizedBox(height:26),
+        Text(guide.title,style:const TextStyle(fontSize:25,fontWeight:FontWeight.w900,
+          color:Color(0xFF252535))),
+        const SizedBox(height:20),
+        SelectableText(guide.subtitle,style:const TextStyle(fontSize:16,height:1.65,
+          color:Color(0xFF626270))),
+        const SizedBox(height:32),
+        SizedBox(height:52,child:FilledButton(
+          style:FilledButton.styleFrom(backgroundColor:const Color(0xFF252535)),
+          onPressed:()=>Navigator.pop(context),child:const Text('Kapat'))),
+      ]),
+    )));
+  }
+
+  Widget _howToCarousel(){
+    final guides=_howToGuides;
+    if(guides.isEmpty)return const SizedBox.shrink();
+    return Padding(padding:const EdgeInsets.fromLTRB(16,8,0,20),child:Column(
+      crossAxisAlignment:CrossAxisAlignment.start,children:[
+        Padding(padding:const EdgeInsets.only(right:16,bottom:12),child:Row(children:[
+          const Expanded(child:Text('CepQontag Nasıl Çalışır?',
+            style:TextStyle(fontSize:19,fontWeight:FontWeight.w900,color:Color(0xFF10152D)))),
+          if(guides.length>3)TextButton(onPressed:()=>showModalBottomSheet<void>(
+            context:context,isScrollControlled:true,
+            builder:(sheetContext)=>SafeArea(child:ListView.builder(
+              itemCount:guides.length,
+              itemBuilder:(context,i)=>ListTile(
+                leading:const Icon(Icons.menu_book_outlined),
+                title:Text(guides[i].title),
+                onTap:(){Navigator.pop(sheetContext);_openHowToGuide(guides[i]);}),
+            ))),child:const Text('Tümü')),
+        ])),
+        SizedBox(height:174,child:ListView.separated(
+          key:const ValueKey('home-how-to-carousel'),scrollDirection:Axis.horizontal,
+          padding:const EdgeInsets.only(right:16),itemCount:guides.length,
+          separatorBuilder:(_,__)=>const SizedBox(width:12),
+          itemBuilder:(context,i){
+            final guide=guides[i];
+            return SizedBox(width:158,child:Material(
+              borderRadius:BorderRadius.circular(14),clipBehavior:Clip.antiAlias,
+              color:const Color(0xFF241448),
+              child:InkWell(onTap:()=>_openHowToGuide(guide),
+                child:Stack(fit:StackFit.expand,children:[
+                  if(guide.imageUrl.isNotEmpty)Image.network(guide.imageUrl,
+                    fit:BoxFit.cover,errorBuilder:(_,__,___)=>const SizedBox.shrink()),
+                  const DecoratedBox(decoration:BoxDecoration(gradient:LinearGradient(
+                    begin:Alignment.topCenter,end:Alignment.bottomCenter,
+                    colors:[Colors.transparent,Color(0xDD000000)]))),
+                  Positioned(left:12,right:10,bottom:12,child:Text(guide.title,
+                    maxLines:3,overflow:TextOverflow.ellipsis,
+                    style:const TextStyle(color:Colors.white,fontSize:14,
+                      height:1.15,fontWeight:FontWeight.w800))),
+                ])),
+            ));
+          },
+        )),
+      ],
+    ));
+  }
+
   Widget _homeStoreCarousel(){
     final campaigns=_appUiConfig.banners
       .where((b)=>b.raw['placement']=='home_store').toList();
@@ -1972,6 +2051,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             _ridezHero(),
             _ridezVehicleGrid(),
             _homeStoreCarousel(),
+            _howToCarousel(),
           ]),
           if(VehicleKind.isMotorcycle(QrDraft.vehicleType))_motorcycleHomePanel(),
           for(final component in _appUiConfig.components.where((c)=>
