@@ -2589,19 +2589,36 @@ class _ValetTrackingScreen extends StatefulWidget{
 class _ValetTrackingScreenState extends State<_ValetTrackingScreen>{
   late Map<String,dynamic> session=widget.session;
   bool refreshing=false;
+  Timer? _pollTimer;
+  @override void initState(){
+    super.initState();
+    _pollTimer=Timer.periodic(const Duration(seconds:3),(_)=>refresh(silent:true));
+  }
+  @override void dispose(){
+    _pollTimer?.cancel();
+    super.dispose();
+  }
   static const lime=Color(0xFFB9FF45);
   static const purple=Color(0xFF651FFF);
   static const stages=['Araç teslim alındı','Araç park edildi',
     'Araç çağrıldı','Araç getiriliyor','Teslimata hazır'];
   int step(String status)=>switch(status){
     'accepted'=>0,'parked'=>1,'requested'=>2,'retrieving'=>3,'ready'=>4,_=>0};
-  Future<void> refresh()async{
-    if(refreshing)return;
-    setState(()=>refreshing=true);
+  Future<void> refresh({bool silent=false})async{
+    if(refreshing||!mounted)return;
+    if(!silent)setState(()=>refreshing=true);
+    else refreshing=true;
     try{
       final next=await widget.onRefresh();
       if(mounted&&next!=null)setState(()=>session=next);
-    }finally{if(mounted)setState(()=>refreshing=false);}
+    }catch(_){
+      // Keep the last confirmed status if the network is temporarily unavailable.
+    }finally{
+      if(mounted){
+        if(silent)refreshing=false;
+        else setState(()=>refreshing=false);
+      }
+    }
   }
   @override Widget build(BuildContext context){
     final status='${session['status']??'accepted'}';
@@ -2713,7 +2730,7 @@ class _ValetTrackingScreenState extends State<_ValetTrackingScreen>{
                       fontWeight:FontWeight.w900))),
               const SizedBox(height:10),
               SizedBox(width:double.infinity,height:40,
-                child:OutlinedButton.icon(onPressed:refreshing?null:refresh,
+                child:OutlinedButton.icon(onPressed:refreshing?null:()=>refresh(),
                   icon:Icon(refreshing?Icons.hourglass_top:
                     Icons.refresh_rounded),
                   label:Text(refreshing?'Güncelleniyor...':'Durumu Yenile'),
