@@ -186,6 +186,68 @@ module.exports=function registerVehicleReminderRoutes(app,pool){
     }catch(e){console.error('vehicle reminder delete',e);res.status(500).json({error:'SERVER_ERROR'});}
   });
 
+  const customPath='/api/vehicles/:vehicleId/custom-reminders';
+  function validCustom(body){
+    const title=String(body?.title||'').trim();
+    const description=String(body?.description||'').trim();
+    const dueDate=String(body?.date||'').slice(0,10);
+    const offsets=body?.offsets;
+    if(!title||title.length>80||description.length>200||
+       !/^\d{4}-\d{2}-\d{2}$/.test(dueDate)||
+       Number.isNaN(Date.parse(dueDate+'T00:00:00Z'))||
+       !Array.isArray(offsets)||offsets.length>4||
+       !offsets.every(n=>Number.isInteger(n)&&[30,7,1,0].includes(n))||
+       new Set(offsets).size!==offsets.length)return null;
+    return {title,description,dueDate,offsets};
+  }
+  app.get(customPath,async(req,res)=>{
+    try{
+      const a=await access(req,res);if(!a)return;
+      const r=await pool.query(
+        `SELECT id,title,description,due_date AS date,offsets
+         FROM vehicle_custom_reminders WHERE owner_id=$1 AND vehicle_id=$2
+         ORDER BY due_date,id`,[a.ownerId,a.vehicle.id]);
+      res.json({ok:true,reminders:r.rows});
+    }catch(e){console.error('custom reminders list',e);res.status(500).json({error:'SERVER_ERROR'});}
+  });
+  app.post(customPath,express.json(),async(req,res)=>{
+    try{
+      const a=await access(req,res,{premiumRequired:true});if(!a)return;
+      const d=validCustom(req.body);
+      if(!d)return res.status(400).json({error:'INVALID_CUSTOM_REMINDER'});
+      const r=await pool.query(
+        `INSERT INTO vehicle_custom_reminders(owner_id,vehicle_id,title,description,due_date,offsets)
+         VALUES($1,$2,$3,$4,$5,$6) RETURNING id,title,description,due_date AS date,offsets`,
+        [a.ownerId,a.vehicle.id,d.title,d.description,d.dueDate,d.offsets]);
+      res.status(201).json({ok:true,reminder:r.rows[0]});
+    }catch(e){console.error('custom reminder create',e);res.status(500).json({error:'SERVER_ERROR'});}
+  });
+  app.put(customPath+'/:reminderId',express.json(),async(req,res)=>{
+    try{
+      const a=await access(req,res,{premiumRequired:true});if(!a)return;
+      const d=validCustom(req.body);
+      if(!d)return res.status(400).json({error:'INVALID_CUSTOM_REMINDER'});
+      const r=await pool.query(
+        `UPDATE vehicle_custom_reminders
+         SET title=$4,description=$5,due_date=$6,offsets=$7,updated_at=NOW()
+         WHERE id::text=$1 AND owner_id=$2 AND vehicle_id=$3
+         RETURNING id,title,description,due_date AS date,offsets`,
+        [req.params.reminderId,a.ownerId,a.vehicle.id,d.title,d.description,d.dueDate,d.offsets]);
+      if(!r.rows.length)return res.status(404).json({error:'NOT_FOUND'});
+      res.json({ok:true,reminder:r.rows[0]});
+    }catch(e){console.error('custom reminder update',e);res.status(500).json({error:'SERVER_ERROR'});}
+  });
+  app.delete(customPath+'/:reminderId',async(req,res)=>{
+    try{
+      const a=await access(req,res,{premiumRequired:true});if(!a)return;
+      const r=await pool.query(
+        'DELETE FROM vehicle_custom_reminders WHERE id::text=$1 AND owner_id=$2 AND vehicle_id=$3 RETURNING id',
+        [req.params.reminderId,a.ownerId,a.vehicle.id]);
+      if(!r.rows.length)return res.status(404).json({error:'NOT_FOUND'});
+      res.json({ok:true});
+    }catch(e){console.error('custom reminder delete',e);res.status(500).json({error:'SERVER_ERROR'});}
+  });
+
   app.get('/api/reminders/due',async(req,res)=>{
     try{
       await ensureSchema();
