@@ -637,7 +637,63 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
               ]))))));
     title.dispose();description.dispose();
   }
-  void _showAddReminder(BuildContext context){
-    _showCustomForm();
+  Future<void> _showAddReminder(BuildContext context)async{
+    await showModalBottomSheet<void>(
+      context:context,
+      showDragHandle:true,
+      backgroundColor:const Color(0xFFF8F5FC),
+      shape:const RoundedRectangleBorder(
+        borderRadius:BorderRadius.vertical(top:Radius.circular(28))),
+      builder:(sheetContext)=>SafeArea(
+        child:Padding(
+          padding:const EdgeInsets.fromLTRB(18,8,18,22),
+          child:Column(mainAxisSize:MainAxisSize.min,children:[
+            const Text('Hatırlatma Ekle',
+              style:TextStyle(fontSize:22,fontWeight:FontWeight.w800)),
+            const SizedBox(height:16),
+            for(final entry in const [
+              ('Araç Muayenesi','inspection'),
+              ('Trafik Sigortası','traffic'),
+              ('Kasko','kasko'),
+              ('Periyodik Bakım','maintenance'),
+            ])
+              ListTile(
+                title:Text(entry.$1),
+                trailing:const Icon(Icons.chevron_right_rounded),
+                onTap:(){
+                  Navigator.pop(sheetContext);
+                  pick(entry.$2,switch(entry.$2){
+                    'inspection'=>inspection,
+                    'traffic'=>trafficInsurance,
+                    'kasko'=>kasko,
+                    _=>maintenance,
+                  });
+                },
+              ),
+            const Divider(height:18),
+            ListTile(
+              key:const Key('create_custom_vehicle_reminder'),
+              tileColor:const Color(0xFFECE5FF),
+              shape:RoundedRectangleBorder(
+                borderRadius:BorderRadius.circular(16)),
+              leading:const Icon(Icons.add_circle_outline_rounded,
+                color:Color(0xFF713BFF)),
+              title:const Text('Özel Hatırlatma Oluştur',
+                style:TextStyle(fontWeight:FontWeight.w800,
+                  color:Color(0xFF5724ED))),
+              subtitle:const Text('Başlık, tarih ve bildirim günlerini seç'),
+              trailing:const Icon(Icons.chevron_right_rounded,
+                color:Color(0xFF713BFF)),
+              onTap:(){
+                Navigator.pop(sheetContext);
+                WidgetsBinding.instance.addPostFrameCallback((_){
+                  if(mounted)_showCustomForm();
+                });
+              },
+            ),
+          ]),
+        ),
+      ),
+    );
   }
 }
