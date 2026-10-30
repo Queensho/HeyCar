@@ -7,6 +7,7 @@ import 'cepqar_theme.dart';
 import 'owner_auth.dart';
 import 'driver_auth.dart';
 import 'push_notifications.dart';
+import 'vehicle_reminder_calendar.dart';
 
 Color get _bg => CepqarTheme.bg;
 Color get _panel => CepqarTheme.panel;
@@ -153,9 +154,8 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
   String apiType(String type) => type == 'traffic' ? 'traffic_insurance' : type;
   Future<void> pick(String type, DateTime? current) async {
     final now = DateTime.now();
-    final d = await showDatePicker(
-      context: context,
-      locale: const Locale('tr', 'TR'),
+    final d = await showVehicleReminderCalendar(
+      context,
       initialDate: current ?? now.add(const Duration(days: 30)),
       firstDate: DateTime(now.year - 2),
       lastDate: DateTime(now.year + 10),
@@ -588,8 +588,8 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
                   trailing:const Icon(Icons.chevron_right),
                   onTap:()async{
                     final now=DateTime.now();
-                    final result=await showDatePicker(
-                      context:sheetContext,locale:const Locale('tr','TR'),
+                    final result=await showVehicleReminderCalendar(
+                      sheetContext,
                       initialDate:chosen??now,firstDate:DateTime(now.year-2),
                       lastDate:DateTime(now.year+10));
                     if(result!=null)update(()=>chosen=result);
