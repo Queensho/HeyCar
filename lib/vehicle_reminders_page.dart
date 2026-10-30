@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'onboarding_backend.dart';
 import 'qr_backend.dart';
@@ -29,6 +30,21 @@ class VehicleRemindersPage extends StatefulWidget {
 
 class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
   bool loading = true, saving = false;
+  List<Map<String,dynamic>> customReminders=[];
+  String get customKey=>'vehicle_custom_reminders_${widget.vehicleId}_${widget.driverMode ? 'driver' : 'owner'}';
+  Future<void> loadCustom()async{
+    final prefs=await SharedPreferences.getInstance();
+    final raw=prefs.getString(customKey);
+    if(raw==null)return;
+    try{
+      final list=jsonDecode(raw) as List;
+      if(mounted)setState(()=>customReminders=list.map((x)=>Map<String,dynamic>.from(x as Map)).toList());
+    }catch(_){/* Invalid local cache is ignored. */}
+  }
+  Future<void> saveCustom()async{
+    final prefs=await SharedPreferences.getInstance();
+    await prefs.setString(customKey,jsonEncode(customReminders));
+  }
   DateTime? inspection, trafficInsurance, kasko, maintenance;
   String get owner => OnboardingDraft.userId.trim();
   Map<String, String> get headers => const {'Content-Type': 'application/json'};
@@ -37,6 +53,7 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
     super.initState();
     CepqarTheme.mode.addListener(_themeChanged);
     load();
+    loadCustom();
   }
 
   void _themeChanged() {
@@ -411,7 +428,14 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
                 const SizedBox(height:13),
                 for(final i in visible)card(items[i].type,items[i].title,
                   items[i].subtitle,items[i].icon,items[i].value,i),
-                if(visible.isEmpty)const Padding(
+                for(final entry in customReminders.asMap().entries)
+                  if(selectedFilter==0||selectedFilter==3||
+                    selectedFilter==1&&DateTime.tryParse('${entry.value['date']}')!=null&&
+                      DateTime.parse('${entry.value['date']}').difference(DateTime.now()).inDays<=30||
+                    selectedFilter==2&&DateTime.tryParse('${entry.value['date']}')!=null&&
+                      DateTime.parse('${entry.value['date']}').isBefore(DateTime.now()))
+                    _customCard(entry.key,entry.value),
+                if(visible.isEmpty&&customReminders.isEmpty)const Padding(
                   padding:EdgeInsets.symmetric(vertical:35),
                   child:Text('Bu kategoride hatırlatma bulunmuyor.',
                     style:TextStyle(color:Color(0xFF777C91)))),
@@ -444,25 +468,131 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
               ])),
           ])));
   }
+  Widget _customCard(int index,Map<String,dynamic> item){
+    final due=DateTime.tryParse('${item['date']}');
+    return Card(color:Colors.white,margin:const EdgeInsets.only(bottom:10),
+      shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(20)),
+      child:ListTile(
+        contentPadding:const EdgeInsets.symmetric(horizontal:14,vertical:7),
+        leading:const CircleAvatar(backgroundColor:Color(0xFFF0EAFF),
+          child:Icon(Icons.edit_calendar_rounded,color:Color(0xFF713BFF))),
+        title:Text('${item['title']}',style:const TextStyle(
+          fontWeight:FontWeight.w800,fontSize:14)),
+        subtitle:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          if(due!=null)Text(date(due)),
+          if('${item['description']??''}'.isNotEmpty)
+            Text('${item['description']}',maxLines:2,overflow:TextOverflow.ellipsis),
+          const Text('Özel Hatırlatma',style:TextStyle(
+            fontSize:10,color:Color(0xFF713BFF))),
+        ]),
+        onTap:()=>_editCustom(index),
+        trailing:PopupMenuButton<String>(
+          onSelected:(action)async{
+            if(action=='edit'){_editCustom(index);return;}
+            setState(()=>customReminders.removeAt(index));
+            await saveCustom();
+          },
+          itemBuilder:(_)=>const [
+            PopupMenuItem(value:'edit',child:Text('Düzenle')),
+            PopupMenuItem(value:'delete',child:Text('Sil')),
+          ]),
+      ));
+  }
+  void _editCustom(int index)=>_showCustomForm(existingIndex:index);
+  Future<void> _showCustomForm({int? existingIndex})async{
+    final old=existingIndex==null?null:customReminders[existingIndex];
+    final title=TextEditingController(text:'${old?['title']??''}');
+    final description=TextEditingController(text:'${old?['description']??''}');
+    DateTime? chosen=DateTime.tryParse('${old?['date']??''}');
+    final offsets=<int>{...((old?['offsets'] as List?)?.map((x)=>(x as num).toInt())??[30,7,1,0])};
+    final formKey=GlobalKey<FormState>();
+    await showModalBottomSheet<void>(context:context,isScrollControlled:true,
+      backgroundColor:Colors.white,showDragHandle:true,
+      shape:const RoundedRectangleBorder(
+        borderRadius:BorderRadius.vertical(top:Radius.circular(26))),
+      builder:(sheet)=>StatefulBuilder(builder:(sheetContext,update)=>
+        SafeArea(child:Padding(padding:EdgeInsets.fromLTRB(
+          18,4,18,MediaQuery.viewInsetsOf(sheetContext).bottom+16),
+          child:SingleChildScrollView(child:Form(key:formKey,
+            child:Column(mainAxisSize:MainAxisSize.min,
+              crossAxisAlignment:CrossAxisAlignment.start,children:[
+                Row(children:[
+                  const Expanded(child:Text('Yeni Hatırlatma Ekle',
+                    style:TextStyle(fontSize:19,fontWeight:FontWeight.w900))),
+                  IconButton(onPressed:()=>Navigator.pop(sheetContext),
+                    icon:const Icon(Icons.close)),
+                ]),
+                const SizedBox(height:8),
+                const Text('Özel Hatırlatma',style:TextStyle(
+                  color:Color(0xFF713BFF),fontWeight:FontWeight.w800)),
+                const SizedBox(height:14),
+                TextFormField(controller:title,maxLength:80,
+                  decoration:const InputDecoration(labelText:'Başlık *',
+                    hintText:'Örn. Kış lastiklerini değiştir',
+                    border:OutlineInputBorder()),
+                  validator:(v)=>v==null||v.trim().isEmpty?'Başlık giriniz':null),
+                const SizedBox(height:6),
+                TextFormField(controller:description,maxLength:200,maxLines:3,
+                  decoration:const InputDecoration(labelText:'Açıklama',
+                    hintText:'Hatırlatmanın ayrıntıları',
+                    border:OutlineInputBorder())),
+                const SizedBox(height:8),
+                ListTile(contentPadding:EdgeInsets.zero,
+                  leading:const Icon(Icons.calendar_month,color:Color(0xFF713BFF)),
+                  title:Text(chosen==null?'Tarih seçin':date(chosen!)),
+                  trailing:const Icon(Icons.chevron_right),
+                  onTap:()async{
+                    final now=DateTime.now();
+                    final result=await showDatePicker(
+                      context:sheetContext,locale:const Locale('tr','TR'),
+                      initialDate:chosen??now,firstDate:DateTime(now.year-2),
+                      lastDate:DateTime(now.year+10));
+                    if(result!=null)update(()=>chosen=result);
+                  }),
+                const Text('Bildirim zamanları',style:TextStyle(
+                  fontWeight:FontWeight.w800)),
+                for(final n in [30,7,1,0])
+                  SwitchListTile.adaptive(
+                    dense:true,activeColor:const Color(0xFF713BFF),
+                    contentPadding:EdgeInsets.zero,
+                    title:Text(n==0?'Aynı gün':'$n gün önce'),
+                    value:offsets.contains(n),
+                    onChanged:(v)=>update((){
+                      if(v)offsets.add(n);else offsets.remove(n);
+                    })),
+                const SizedBox(height:5),
+                const Text('Özel hatırlatmalar bu cihazda saklanır. Bildirim gönderimi henüz etkin değil.',
+                  style:TextStyle(fontSize:11,color:Color(0xFF777C91))),
+                const SizedBox(height:12),
+                SizedBox(width:double.infinity,height:46,
+                  child:FilledButton(onPressed:()async{
+                    if(!formKey.currentState!.validate())return;
+                    if(chosen==null){
+                      ScaffoldMessenger.of(sheetContext).showSnackBar(
+                        const SnackBar(content:Text('Tarih seçiniz.')));
+                      return;
+                    }
+                    final item=<String,dynamic>{
+                      'title':title.text.trim(),
+                      'description':description.text.trim(),
+                      'date':'${chosen!.year}-${chosen!.month.toString().padLeft(2,'0')}-${chosen!.day.toString().padLeft(2,'0')}',
+                      'offsets':offsets.toList()..sort(),
+                    };
+                    setState((){
+                      if(existingIndex==null)customReminders.add(item);
+                      else customReminders[existingIndex]=item;
+                      selectedFilter=3;
+                    });
+                    await saveCustom();
+                    if(sheetContext.mounted)Navigator.pop(sheetContext);
+                  },style:FilledButton.styleFrom(
+                    backgroundColor:const Color(0xFF713BFF)),
+                    child:Text(existingIndex==null?
+                      'Hatırlatmayı Kaydet':'Değişiklikleri Kaydet'))),
+              ]))))));
+    title.dispose();description.dispose();
+  }
   void _showAddReminder(BuildContext context){
-    showModalBottomSheet<void>(context:context,
-      showDragHandle:true,builder:(sheetContext)=>SafeArea(
-        child:Column(mainAxisSize:MainAxisSize.min,children:[
-          const Padding(padding:EdgeInsets.all(12),
-            child:Text('Hatırlatma Ekle',style:TextStyle(
-              fontSize:18,fontWeight:FontWeight.w800))),
-          for(final item in [
-            ('inspection','Araç Muayenesi',inspection),
-            ('traffic','Trafik Sigortası',trafficInsurance),
-            ('kasko','Kasko',kasko),
-            ('maintenance','Periyodik Bakım',maintenance),
-          ])ListTile(title:Text(item.$2),
-            trailing:const Icon(Icons.chevron_right),
-            onTap:(){
-              Navigator.of(sheetContext).pop();
-              pick(item.$1,item.$3);
-            }),
-          const SizedBox(height:12),
-        ])));
+    _showCustomForm();
   }
 }
