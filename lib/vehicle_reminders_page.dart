@@ -246,19 +246,18 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
         ]))));
   }
   Widget _art(int index){
-    final icon=switch(index){
-      0=>Icons.fact_check_rounded,1=>Icons.umbrella_rounded,
-      2=>Icons.shield_rounded,_=>Icons.car_repair_rounded};
-    return Container(width:84,height:75,alignment:Alignment.center,
-      decoration:BoxDecoration(
-        gradient:const RadialGradient(colors:[
-          Color(0xFFE5D6FF),Color(0x00FFFFFF)])),
-      child:Stack(alignment:Alignment.center,children:[
-        Positioned(right:1,bottom:5,child:Icon(Icons.directions_car_filled_rounded,
-          size:40,color:const Color(0xFF2B2054).withValues(alpha:.75))),
-        Positioned(left:0,top:2,child:Icon(icon,size:42,
-          color:const Color(0xFF713BFF))),
-      ]));
+    final asset=switch(index){
+      0=>'assets/images/services/Bakimmuayene.png',
+      1=>'assets/images/services/Bakimsigorta.png',
+      2=>'assets/images/services/Bakimkasko.png',
+      _=>'assets/images/services/Bakimperiyodik.png',
+    };
+    return SizedBox(width:76,height:72,
+      child:Image.asset(asset,fit:BoxFit.contain,
+        alignment:Alignment.center,
+        errorBuilder:(_,__,___)=>const Icon(
+          Icons.directions_car_filled_rounded,
+          color:Color(0xFF713BFF),size:32)));
   }
   Widget card(String type,String title,String subtitle,IconData icon,
       DateTime? value,int index){
@@ -273,20 +272,20 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
           blurRadius:14,offset:const Offset(0,4))]),
       child:InkWell(borderRadius:BorderRadius.circular(22),
         onTap:saving?null:()=>pick(type,value),
-        child:Padding(padding:const EdgeInsets.fromLTRB(12,12,8,12),
+        child:Padding(padding:const EdgeInsets.fromLTRB(11,9,6,9),
           child:Row(children:[
-            Container(width:48,height:48,
+            Container(width:44,height:44,
               decoration:BoxDecoration(color:index==0?
                 const Color(0xFFFFEDF2):const Color(0xFFF0EAFF),
                 borderRadius:BorderRadius.circular(16)),
               child:Icon(icon,color:index==0?const Color(0xFFF35A82):
                 const Color(0xFF7038F5),size:26)),
-            const SizedBox(width:12),
+            const SizedBox(width:10),
             Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,
               mainAxisAlignment:MainAxisAlignment.center,children:[
                 Text(title,maxLines:1,overflow:TextOverflow.ellipsis,
                   style:const TextStyle(color:Color(0xFF10142C),
-                    fontSize:15,fontWeight:FontWeight.w900)),
+                    fontSize:14,fontWeight:FontWeight.w900)),
                 const SizedBox(height:5),
                 Row(children:[
                   const Icon(Icons.calendar_today_outlined,size:13,
@@ -352,7 +351,7 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
       body:loading?const Center(child:CircularProgressIndicator()):
         RefreshIndicator(onRefresh:load,child:ListView(
           padding:EdgeInsets.zero,children:[
-            Container(height:210,clipBehavior:Clip.antiAlias,
+            Container(height:185,clipBehavior:Clip.antiAlias,
               decoration:const BoxDecoration(
                 gradient:LinearGradient(begin:Alignment.topLeft,
                   end:Alignment.bottomRight,colors:[
@@ -362,14 +361,11 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
                   bottomLeft:Radius.circular(30),
                   bottomRight:Radius.circular(30))),
               child:SafeArea(bottom:false,child:Stack(children:[
-                Positioned(right:-25,top:12,child:Opacity(opacity:.7,
-                  child:Image.asset('assets/Arac.png',width:190,height:165,
-                    fit:BoxFit.contain,errorBuilder:(_,__,___)=>
-                      const Icon(Icons.directions_car_filled_rounded,
-                        color:Color(0xFFB9FF45),size:125)))),
-                Positioned(right:8,top:4,child:Icon(
-                  Icons.calendar_month_rounded,color:const Color(0xFFB9FF45)
-                    .withValues(alpha:.65),size:76)),
+                Positioned(right:-8,top:18,
+                  child:Image.asset(
+                    'assets/images/services/Bakimheader.png',
+                    width:178,height:142,fit:BoxFit.contain,
+                    errorBuilder:(_,__,___)=>const SizedBox.shrink())),
                 Padding(padding:const EdgeInsets.fromLTRB(17,0,15,12),
                   child:Column(crossAxisAlignment:CrossAxisAlignment.start,
                     children:[
@@ -379,9 +375,9 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
                           color:Colors.white,size:24)),
                       const Spacer(),
                       const Text('Araç',style:TextStyle(color:Colors.white,
-                        fontSize:30,fontWeight:FontWeight.w900,height:1)),
+                        fontSize:26,fontWeight:FontWeight.w900,height:1)),
                       const Text('Hatırlatmaları',style:TextStyle(
-                        color:Color(0xFFB9FF45),fontSize:30,
+                        color:Color(0xFFB9FF45),fontSize:26,
                         fontWeight:FontWeight.w900,height:1.1)),
                       const SizedBox(height:7),
                       const SizedBox(width:220,child:Text(
