@@ -232,7 +232,7 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
           borderRadius:BorderRadius.circular(24)),
         child:Row(mainAxisAlignment:MainAxisAlignment.center,children:[
           Flexible(child:Text(label,maxLines:1,overflow:TextOverflow.ellipsis,
-            style:TextStyle(fontSize:11,fontWeight:FontWeight.w800,
+            style:TextStyle(fontSize:10,fontWeight:FontWeight.w800,
               color:selected?Colors.white:const Color(0xFF393258)))),
           if(count!=null)...[
             const SizedBox(width:4),
@@ -252,7 +252,7 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
       2=>'assets/images/services/Bakimkasko.png',
       _=>'assets/images/services/Bakimperiyodik.png',
     };
-    return SizedBox(width:76,height:72,
+    return SizedBox(width:100,height:90,
       child:Image.asset(asset,fit:BoxFit.contain,
         alignment:Alignment.center,
         errorBuilder:(_,__,___)=>const Icon(
@@ -296,6 +296,17 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
                     style:const TextStyle(color:Color(0xFF81869D),
                       fontSize:11,fontWeight:FontWeight.w700))),
                 ]),
+                if(value==null)...[
+                  const SizedBox(height:4),
+                  Text(switch(index){
+                    1=>'Zorunlu trafik sigortası süreni ekle, zamanı gelince hatırlatalım.',
+                    2=>'Kasko poliçe süreni ekle, yenileme zamanını kaçırma.',
+                    3=>'Aracının periyodik bakım zamanını ekle.',
+                    _=>'',
+                  },maxLines:2,overflow:TextOverflow.ellipsis,
+                    style:const TextStyle(fontSize:10,height:1.2,
+                      color:Color(0xFF85889B))),
+                ],
                 if(value!=null)...[
                   const SizedBox(height:6),
                   Container(padding:const EdgeInsets.symmetric(
@@ -361,10 +372,10 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
                   bottomLeft:Radius.circular(30),
                   bottomRight:Radius.circular(30))),
               child:SafeArea(bottom:false,child:Stack(children:[
-                Positioned(right:-8,top:18,
+                Positioned(right:-30,bottom:-10,
                   child:Image.asset(
                     'assets/images/services/Bakimheader.png',
-                    width:178,height:142,fit:BoxFit.contain,
+                    width:250,height:180,fit:BoxFit.contain,
                     errorBuilder:(_,__,___)=>const SizedBox.shrink())),
                 Padding(padding:const EdgeInsets.fromLTRB(17,0,15,12),
                   child:Column(crossAxisAlignment:CrossAxisAlignment.start,
@@ -373,14 +384,14 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
                         padding:EdgeInsets.zero,alignment:Alignment.centerLeft,
                         icon:const Icon(Icons.arrow_back_rounded,
                           color:Colors.white,size:24)),
-                      const Spacer(),
+                      const SizedBox(height:10),
                       const Text('Araç',style:TextStyle(color:Colors.white,
                         fontSize:26,fontWeight:FontWeight.w900,height:1)),
                       const Text('Hatırlatmaları',style:TextStyle(
                         color:Color(0xFFB9FF45),fontSize:26,
                         fontWeight:FontWeight.w900,height:1.1)),
                       const SizedBox(height:7),
-                      const SizedBox(width:220,child:Text(
+                      const SizedBox(width:200,child:Text(
                         'Önemli araç tarihlerini tek yerde takip et.',
                         style:TextStyle(color:Color(0xFFE0D8F0),
                           fontSize:11,height:1.3))),
@@ -394,8 +405,8 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
                   child:Row(children:[
                     _filter('Tümü',0,count:4),
                     _filter('Yaklaşan',1,count:upcomingCount),
-                    _filter('Geçen',2),
-                    _filter('Eklenen',3),
+                    _filter('Tamamlanan',2),
+                    _filter('Eklenenlerim',3),
                   ])),
                 const SizedBox(height:13),
                 for(final i in visible)card(items[i].type,items[i].title,
