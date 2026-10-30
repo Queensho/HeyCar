@@ -214,175 +214,248 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
     return _lime;
   }
 
-  Widget card(
-    String type,
-    String title,
-    String subtitle,
-    IconData icon,
-    DateTime? value,
-  ) {
-    return InkWell(
-      onTap: saving ? null : () => pick(type, value),
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: _panel,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: _line),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: _purple.withValues(alpha: .13),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Icon(icon, color: _purple, size: 28),
-            ),
-            const SizedBox(width: 13),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      color: CepqarTheme.text,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    value == null ? subtitle : date(value),
-                    style: TextStyle(
-                      color: _muted,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  if (value != null) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      status(value),
-                      style: TextStyle(
-                        color: accent(value),
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ],
+  int selectedFilter=0;
+  DateTime? valueFor(int i)=>switch(i){
+    0=>inspection,1=>trafficInsurance,2=>kasko,_=>maintenance};
+  int get upcomingCount=>[inspection,trafficInsurance,kasko,maintenance]
+      .where((d)=>d!=null&&d.difference(DateTime.now()).inDays<=30).length;
+  Widget _filter(String label,int index,{int? count}){
+    final selected=selectedFilter==index;
+    return Expanded(child:InkWell(
+      borderRadius:BorderRadius.circular(24),
+      onTap:()=>setState(()=>selectedFilter=index),
+      child:AnimatedContainer(duration:const Duration(milliseconds:180),
+        padding:const EdgeInsets.symmetric(vertical:11,horizontal:3),
+        decoration:BoxDecoration(
+          gradient:selected?const LinearGradient(colors:[
+            Color(0xFF9252FF),Color(0xFF5724ED)]):null,
+          borderRadius:BorderRadius.circular(24)),
+        child:Row(mainAxisAlignment:MainAxisAlignment.center,children:[
+          Flexible(child:Text(label,maxLines:1,overflow:TextOverflow.ellipsis,
+            style:TextStyle(fontSize:11,fontWeight:FontWeight.w800,
+              color:selected?Colors.white:const Color(0xFF393258)))),
+          if(count!=null)...[
+            const SizedBox(width:4),
+            Container(padding:const EdgeInsets.symmetric(horizontal:6,vertical:2),
+              decoration:BoxDecoration(color:selected?Colors.white24:
+                const Color(0xFFE2DEF2),borderRadius:BorderRadius.circular(12)),
+              child:Text('$count',style:TextStyle(fontSize:10,
+                color:selected?Colors.white:const Color(0xFF393258),
+                fontWeight:FontWeight.w900))),
+          ]
+        ]))));
+  }
+  Widget _art(int index){
+    final icon=switch(index){
+      0=>Icons.fact_check_rounded,1=>Icons.umbrella_rounded,
+      2=>Icons.shield_rounded,_=>Icons.car_repair_rounded};
+    return Container(width:84,height:75,alignment:Alignment.center,
+      decoration:BoxDecoration(
+        gradient:const RadialGradient(colors:[
+          Color(0xFFE5D6FF),Color(0x00FFFFFF)])),
+      child:Stack(alignment:Alignment.center,children:[
+        Positioned(right:1,bottom:5,child:Icon(Icons.directions_car_filled_rounded,
+          size:40,color:const Color(0xFF2B2054).withValues(alpha:.75))),
+        Positioned(left:0,top:2,child:Icon(icon,size:42,
+          color:const Color(0xFF713BFF))),
+      ]));
+  }
+  Widget card(String type,String title,String subtitle,IconData icon,
+      DateTime? value,int index){
+    final days=value==null?null:DateTime(value.year,value.month,value.day)
+      .difference(DateTime(DateTime.now().year,DateTime.now().month,
+        DateTime.now().day)).inDays;
+    return Container(margin:const EdgeInsets.only(bottom:10),
+      decoration:BoxDecoration(color:Colors.white,
+        borderRadius:BorderRadius.circular(22),
+        border:Border.all(color:const Color(0xFFECEAF3)),
+        boxShadow:[BoxShadow(color:const Color(0xFF25154D).withValues(alpha:.035),
+          blurRadius:14,offset:const Offset(0,4))]),
+      child:InkWell(borderRadius:BorderRadius.circular(22),
+        onTap:saving?null:()=>pick(type,value),
+        child:Padding(padding:const EdgeInsets.fromLTRB(12,12,8,12),
+          child:Row(children:[
+            Container(width:48,height:48,
+              decoration:BoxDecoration(color:index==0?
+                const Color(0xFFFFEDF2):const Color(0xFFF0EAFF),
+                borderRadius:BorderRadius.circular(16)),
+              child:Icon(icon,color:index==0?const Color(0xFFF35A82):
+                const Color(0xFF7038F5),size:26)),
+            const SizedBox(width:12),
+            Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,
+              mainAxisAlignment:MainAxisAlignment.center,children:[
+                Text(title,maxLines:1,overflow:TextOverflow.ellipsis,
+                  style:const TextStyle(color:Color(0xFF10142C),
+                    fontSize:15,fontWeight:FontWeight.w900)),
+                const SizedBox(height:5),
+                Row(children:[
+                  const Icon(Icons.calendar_today_outlined,size:13,
+                    color:Color(0xFF8388A2)),
+                  const SizedBox(width:5),
+                  Expanded(child:Text(value==null?subtitle:date(value),
+                    maxLines:1,overflow:TextOverflow.ellipsis,
+                    style:const TextStyle(color:Color(0xFF81869D),
+                      fontSize:11,fontWeight:FontWeight.w700))),
+                ]),
+                if(value!=null)...[
+                  const SizedBox(height:6),
+                  Container(padding:const EdgeInsets.symmetric(
+                    horizontal:8,vertical:4),
+                    decoration:BoxDecoration(
+                      color:days!=null&&days<=0?const Color(0xFFFFE6EB):
+                        const Color(0xFFFFF3DC),
+                      borderRadius:BorderRadius.circular(12)),
+                    child:Text(status(value),style:TextStyle(
+                      fontSize:10,fontWeight:FontWeight.w900,
+                      color:days!=null&&days<=0?const Color(0xFFE91D46):
+                        const Color(0xFF996000)))),
                 ],
-              ),
-            ),
-            if (value != null)
-              IconButton(
-                onPressed: saving ? null : () => clear(type),
-                icon: Icon(Icons.close_rounded, color: _muted),
-              )
-            else
-              Icon(Icons.chevron_right_rounded, color: _muted),
-          ],
-        ),
-      ),
-    );
+              ])),
+            _art(index),
+            if(value!=null)IconButton(
+              visualDensity:VisualDensity.compact,
+              onPressed:saving?null:()=>clear(type),
+              icon:const Icon(Icons.close_rounded,size:20,
+                color:Color(0xFF8A8EA3)))
+            else const Icon(Icons.chevron_right_rounded,size:22,
+              color:Color(0xFF8388A2)),
+          ]))));
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _bg,
-      appBar: AppBar(
-        backgroundColor: _bg,
-        foregroundColor: CepqarTheme.text,
-        elevation: 0,
-        title: Text(
-          'Araç Hatırlatmaları',
-          style: TextStyle(fontWeight: FontWeight.w900),
-        ),
-      ),
-      body: loading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: load,
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(18, 10, 18, 28),
-                children: [
-                  Text(
-                    'Önemli araç tarihlerini tek yerde takip et.',
-                    style: TextStyle(
-                      color: _muted,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  card(
-                    'inspection',
-                    'Araç Muayenesi',
-                    'Son geçerlilik tarihini ekle',
-                    Icons.fact_check_outlined,
-                    inspection,
-                  ),
-                  card(
-                    'traffic',
-                    'Trafik Sigortası',
-                    'Poliçe bitiş tarihini ekle',
-                    Icons.shield_outlined,
-                    trafficInsurance,
-                  ),
-                  card(
-                    'kasko',
-                    'Kasko',
-                    'Poliçe bitiş tarihini ekle',
-                    Icons.verified_user_outlined,
-                    kasko,
-                  ),
-                  card(
-                    'maintenance',
-                    'Periyodik Bakım',
-                    'Planlanan bakım tarihini ekle',
-                    Icons.build_circle_outlined,
-                    maintenance,
-                  ),
-                  Container(
-                    margin: const EdgeInsets.only(top: 5),
-                    padding: const EdgeInsets.all(15),
-                    decoration: BoxDecoration(
-                      color: CepqarTheme.isLight
-                          ? const Color(0xFFEAF8EF)
-                          : const Color(0xFF102A25),
-                      borderRadius: BorderRadius.circular(17),
-                      border: Border.all(
-                        color: CepqarTheme.isLight
-                            ? const Color(0xFFC7E8D4)
-                            : const Color(0xFF23523E),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.notifications_active_outlined, color: _lime),
-                        SizedBox(width: 11),
-                        Expanded(
-                          child: Text(
-                            'Tüm hatırlatmalar 30, 7 ve 1 gün kala; ayrıca son gün telefonuna bildirim olarak gelir.',
-                            style: TextStyle(
-                              color: CepqarTheme.text,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-    );
+  Widget build(BuildContext context){
+    final items=<({String type,String title,String subtitle,IconData icon,DateTime? value})>[
+      (type:'inspection',title:'Araç Muayenesi',
+        subtitle:'Son geçerlilik tarihini ekle',
+        icon:Icons.fact_check_outlined,value:inspection),
+      (type:'traffic',title:'Trafik Sigortası',
+        subtitle:'Poliçe bitiş tarihini ekle',
+        icon:Icons.shield_outlined,value:trafficInsurance),
+      (type:'kasko',title:'Kasko',subtitle:'Poliçe bitiş tarihini ekle',
+        icon:Icons.verified_user_outlined,value:kasko),
+      (type:'maintenance',title:'Periyodik Bakım',
+        subtitle:'Planlanan bakım tarihini ekle',
+        icon:Icons.build_circle_outlined,value:maintenance),
+    ];
+    final visible=<int>[];
+    for(var i=0;i<items.length;i++){
+      final d=items[i].value;
+      final days=d==null?null:DateTime(d.year,d.month,d.day)
+        .difference(DateTime(DateTime.now().year,DateTime.now().month,
+          DateTime.now().day)).inDays;
+      if(selectedFilter==0||
+        selectedFilter==1&&days!=null&&days<=30||
+        selectedFilter==2&&days!=null&&days<0||
+        selectedFilter==3&&d!=null)visible.add(i);
+    }
+    return Scaffold(backgroundColor:const Color(0xFFF9FAFE),
+      body:loading?const Center(child:CircularProgressIndicator()):
+        RefreshIndicator(onRefresh:load,child:ListView(
+          padding:EdgeInsets.zero,children:[
+            Container(height:210,clipBehavior:Clip.antiAlias,
+              decoration:const BoxDecoration(
+                gradient:LinearGradient(begin:Alignment.topLeft,
+                  end:Alignment.bottomRight,colors:[
+                    Color(0xFF140C38),Color(0xFF3E0F8C),
+                    Color(0xFF651FFF)]),
+                borderRadius:BorderRadius.only(
+                  bottomLeft:Radius.circular(30),
+                  bottomRight:Radius.circular(30))),
+              child:SafeArea(bottom:false,child:Stack(children:[
+                Positioned(right:-25,top:12,child:Opacity(opacity:.7,
+                  child:Image.asset('assets/Arac.png',width:190,height:165,
+                    fit:BoxFit.contain,errorBuilder:(_,__,___)=>
+                      const Icon(Icons.directions_car_filled_rounded,
+                        color:Color(0xFFB9FF45),size:125)))),
+                Positioned(right:8,top:4,child:Icon(
+                  Icons.calendar_month_rounded,color:const Color(0xFFB9FF45)
+                    .withValues(alpha:.65),size:76)),
+                Padding(padding:const EdgeInsets.fromLTRB(17,0,15,12),
+                  child:Column(crossAxisAlignment:CrossAxisAlignment.start,
+                    children:[
+                      IconButton(onPressed:()=>Navigator.of(context).pop(),
+                        padding:EdgeInsets.zero,alignment:Alignment.centerLeft,
+                        icon:const Icon(Icons.arrow_back_rounded,
+                          color:Colors.white,size:24)),
+                      const Spacer(),
+                      const Text('Araç',style:TextStyle(color:Colors.white,
+                        fontSize:30,fontWeight:FontWeight.w900,height:1)),
+                      const Text('Hatırlatmaları',style:TextStyle(
+                        color:Color(0xFFB9FF45),fontSize:30,
+                        fontWeight:FontWeight.w900,height:1.1)),
+                      const SizedBox(height:7),
+                      const SizedBox(width:220,child:Text(
+                        'Önemli araç tarihlerini tek yerde takip et.',
+                        style:TextStyle(color:Color(0xFFE0D8F0),
+                          fontSize:11,height:1.3))),
+                    ])),
+              ]))),
+            Padding(padding:const EdgeInsets.fromLTRB(14,13,14,0),
+              child:Column(children:[
+                Container(padding:const EdgeInsets.all(3),
+                  decoration:BoxDecoration(color:const Color(0xFFF0ECFA),
+                    borderRadius:BorderRadius.circular(26)),
+                  child:Row(children:[
+                    _filter('Tümü',0,count:4),
+                    _filter('Yaklaşan',1,count:upcomingCount),
+                    _filter('Geçen',2),
+                    _filter('Eklenen',3),
+                  ])),
+                const SizedBox(height:13),
+                for(final i in visible)card(items[i].type,items[i].title,
+                  items[i].subtitle,items[i].icon,items[i].value,i),
+                if(visible.isEmpty)const Padding(
+                  padding:EdgeInsets.symmetric(vertical:35),
+                  child:Text('Bu kategoride hatırlatma bulunmuyor.',
+                    style:TextStyle(color:Color(0xFF777C91)))),
+                Container(margin:const EdgeInsets.only(top:3),
+                  padding:const EdgeInsets.all(13),
+                  decoration:BoxDecoration(color:const Color(0xFFEAF8EF),
+                    borderRadius:BorderRadius.circular(18),
+                    border:Border.all(color:const Color(0xFFC7E8D4))),
+                  child:const Row(children:[
+                    Icon(Icons.notifications_active_outlined,
+                      color:Color(0xFF16834A),size:24),
+                    SizedBox(width:11),
+                    Expanded(child:Text(
+                      'Tüm hatırlatmalar 30, 7 ve 1 gün kala; ayrıca son gün telefonuna bildirim olarak gelir.',
+                      style:TextStyle(color:Color(0xFF17243C),
+                        fontSize:11,fontWeight:FontWeight.w700))),
+                  ])),
+                const SizedBox(height:12),
+                SizedBox(width:double.infinity,height:45,
+                  child:FilledButton.icon(
+                    onPressed:saving?null:()=>_showAddReminder(context),
+                    icon:const Icon(Icons.add_circle_outline_rounded),
+                    label:const Text('Yeni Hatırlatma Ekle'),
+                    style:FilledButton.styleFrom(
+                      backgroundColor:const Color(0xFF713BFF),
+                      foregroundColor:Colors.white,
+                      shape:RoundedRectangleBorder(
+                        borderRadius:BorderRadius.circular(23))))),
+                const SizedBox(height:24),
+              ])),
+          ])));
+  }
+  void _showAddReminder(BuildContext context){
+    showModalBottomSheet<void>(context:context,
+      showDragHandle:true,builder:(sheetContext)=>SafeArea(
+        child:Column(mainAxisSize:MainAxisSize.min,children:[
+          const Padding(padding:EdgeInsets.all(12),
+            child:Text('Hatırlatma Ekle',style:TextStyle(
+              fontSize:18,fontWeight:FontWeight.w800))),
+          for(final item in [
+            ('inspection','Araç Muayenesi',inspection),
+            ('traffic','Trafik Sigortası',trafficInsurance),
+            ('kasko','Kasko',kasko),
+            ('maintenance','Periyodik Bakım',maintenance),
+          ])ListTile(title:Text(item.$2),
+            trailing:const Icon(Icons.chevron_right),
+            onTap:(){
+              Navigator.of(sheetContext).pop();
+              pick(item.$1,item.$3);
+            }),
+          const SizedBox(height:12),
+        ])));
   }
 }
