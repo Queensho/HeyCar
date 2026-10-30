@@ -419,6 +419,77 @@ module.exports=function registerVehicleReminderRoutes(app,pool){
         }
       }
 
+      // Custom reminders use their own delivery key so edits and multiple reminders
+      // on the same vehicle cannot collide with built-in reminder milestones.
+      const customRows=await client.query(
+        `SELECT cr.*,v.plate,
+                (cr.due_date - ((NOW() AT TIME ZONE 'Europe/Istanbul')::date))::int AS days_left
+         FROM vehicle_custom_reminders cr
+         JOIN vehicles v ON v.id=cr.vehicle_id
+         JOIN users u ON u.id=cr.owner_id
+         WHERE cr.enabled=TRUE AND v.owner_id=cr.owner_id
+           AND COALESCE(u.premium,false)=TRUE
+           AND (u.premium_expires_at IS NULL OR u.premium_expires_at>NOW())`
+      );
+      for(const x of customRows.rows){
+        const daysLeft=Number(x.days_left);
+        if(daysLeft<0||!x.offsets.includes(daysLeft))continue;
+        eligible++;
+        const message=daysLeft===0
+          ?`${x.title} bugün için planlandı.`
+          :`${x.title} için ${daysLeft} gün kaldı.`;
+        const fullMessage=`Hatırlatma • ${x.plate}: ${message}`;
+        const created=await client.query(
+          `WITH delivery AS (
+             INSERT INTO vehicle_custom_reminder_deliveries(reminder_id,due_date,milestone_days)
+             VALUES($1,$2,$3) ON CONFLICT(reminder_id,due_date,milestone_days) DO NOTHING
+             RETURNING id
+           ), notification AS (
+             INSERT INTO vehicle_notifications(vehicle_id,type,message,status,created_at)
+             SELECT $4::uuid,'message',$5,'new',NOW() FROM delivery RETURNING id
+           ), linked AS (
+             UPDATE vehicle_custom_reminder_deliveries d SET notification_id=n.id
+             FROM delivery dl CROSS JOIN notification n WHERE d.id=dl.id
+             RETURNING d.id,d.notification_id
+           ) SELECT id,notification_id FROM linked`,
+          [x.id,x.due_date,daysLeft,x.vehicle_id,fullMessage]
+        );
+        if(!created.rows.length){duplicateSkips++;continue;}
+        createdCount++;
+        const deliveryId=created.rows[0].id;
+        const notificationId=created.rows[0].notification_id;
+        const push=app.locals.heycarPush;
+        if(push&&typeof push.sendOwner==='function'){
+          try{
+            const out=await push.sendOwner(String(x.owner_id),{
+              type:'vehicle_reminder',sourceType:'custom_vehicle_reminder',
+              vehicleId:String(x.vehicle_id),reminderId:String(x.id),
+              dueDate:String(x.due_date).slice(0,10),
+              milestoneDays:String(daysLeft),notificationId:String(notificationId),
+            },'Araç Hatırlatma',fullMessage);
+            const attempted=Number(out?.attempted||0);
+            const delivered=Number(out?.delivered||0);
+            pushAttempted+=attempted;pushDelivered+=delivered;
+            await client.query(
+              `UPDATE vehicle_custom_reminder_deliveries
+               SET push_attempted=$2,push_delivered=$3,push_attempted_at=NOW(),
+                   push_error=CASE WHEN $2>0 AND $3=0 THEN 'FCM_DELIVERY_FAILED' ELSE NULL END
+               WHERE id=$1`,[deliveryId,attempted,delivered]);
+          }catch(e){
+            console.error('custom reminder push',e);
+            await client.query(
+              `UPDATE vehicle_custom_reminder_deliveries
+               SET push_attempted_at=NOW(),push_error=$2 WHERE id=$1`,
+              [deliveryId,String(e?.message||e).slice(0,800)]);
+          }
+        }else{
+          await client.query(
+            `UPDATE vehicle_custom_reminder_deliveries
+             SET push_attempted_at=NOW(),push_error='PUSH_SERVICE_UNAVAILABLE'
+             WHERE id=$1`,[deliveryId]);
+        }
+      }
+
       const finished=await client.query(
         `UPDATE vehicle_reminder_job_runs
             SET status='success',finished_at=NOW(),eligible_count=$2,

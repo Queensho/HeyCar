@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'onboarding_backend.dart';
 import 'qr_backend.dart';
@@ -31,19 +30,66 @@ class VehicleRemindersPage extends StatefulWidget {
 class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
   bool loading = true, saving = false;
   List<Map<String,dynamic>> customReminders=[];
-  String get customKey=>'vehicle_custom_reminders_${widget.vehicleId}_${widget.driverMode ? 'driver' : 'owner'}';
+  Uri get customUri=>Uri.parse(
+    '${QrBackend.baseUrl}/api/vehicles/${widget.vehicleId}/custom-reminders');
   Future<void> loadCustom()async{
-    final prefs=await SharedPreferences.getInstance();
-    final raw=prefs.getString(customKey);
-    if(raw==null)return;
     try{
-      final list=jsonDecode(raw) as List;
-      if(mounted)setState(()=>customReminders=list.map((x)=>Map<String,dynamic>.from(x as Map)).toList());
-    }catch(_){/* Invalid local cache is ignored. */}
+      final r=await (widget.driverMode
+        ? DriverHttp.get(customUri,json:false)
+        : OwnerHttp.get(customUri,json:false))
+        .timeout(const Duration(seconds:12));
+      if(r.statusCode!=200)throw Exception('HTTP ${r.statusCode}');
+      final data=jsonDecode(r.body) as Map<String,dynamic>;
+      final entries=(data['reminders'] as List? ?? const [])
+        .map((x)=>Map<String,dynamic>.from(x as Map)).toList();
+      for(final entry in entries){
+        entry['date']='${entry['date']}'.split('T').first;
+      }
+      if(mounted)setState(()=>customReminders=entries);
+    }catch(e){
+      debugPrint('Custom reminders load failed: $e');
+      if(mounted)ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content:Text('Özel hatırlatmalar sunucudan alınamadı.')));
+    }
   }
-  Future<void> saveCustom()async{
-    final prefs=await SharedPreferences.getInstance();
-    await prefs.setString(customKey,jsonEncode(customReminders));
+  Future<bool> saveCustomItem(Map<String,dynamic> item,{String? id})async{
+    try{
+      final uri=id==null?customUri:customUri.replace(
+        path:'${customUri.path}/$id');
+      final body=jsonEncode(item);
+      final r=await (id==null
+        ? (widget.driverMode
+          ? DriverHttp.post(uri,headers:headers,body:body)
+          : OwnerHttp.post(uri,headers:headers,body:body))
+        : (widget.driverMode
+          ? DriverHttp.put(uri,headers:headers,body:body)
+          : OwnerHttp.put(uri,headers:headers,body:body)))
+        .timeout(const Duration(seconds:12));
+      if(r.statusCode<200||r.statusCode>=300)throw Exception('HTTP ${r.statusCode}');
+      await loadCustom();
+      return true;
+    }catch(e){
+      debugPrint('Custom reminder save failed: $e');
+      if(mounted)ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content:Text('Hatırlatma sunucuya kaydedilemedi.')));
+      return false;
+    }
+  }
+  Future<void> deleteCustom(int index)async{
+    final id='${customReminders[index]['id']}';
+    try{
+      final uri=customUri.replace(path:'${customUri.path}/$id');
+      final r=await (widget.driverMode
+        ? DriverHttp.delete(uri,json:false)
+        : OwnerHttp.delete(uri,json:false))
+        .timeout(const Duration(seconds:12));
+      if(r.statusCode<200||r.statusCode>=300)throw Exception('HTTP ${r.statusCode}');
+      await loadCustom();
+    }catch(e){
+      debugPrint('Custom reminder delete failed: $e');
+      if(mounted)ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content:Text('Hatırlatma silinemedi.')));
+    }
   }
   DateTime? inspection, trafficInsurance, kasko, maintenance;
   String get owner => OnboardingDraft.userId.trim();
@@ -489,8 +535,7 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
         trailing:PopupMenuButton<String>(
           onSelected:(action)async{
             if(action=='edit'){_editCustom(index);return;}
-            setState(()=>customReminders.removeAt(index));
-            await saveCustom();
+            await deleteCustom(index);
           },
           itemBuilder:(_)=>const [
             PopupMenuItem(value:'edit',child:Text('Düzenle')),
@@ -561,7 +606,7 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
                       if(v)offsets.add(n);else offsets.remove(n);
                     })),
                 const SizedBox(height:5),
-                const Text('Özel hatırlatmalar bu cihazda saklanır. Bildirim gönderimi henüz etkin değil.',
+                const Text('Özel hatırlatmalar hesabına kaydedilir. Seçtiğin günlerde bildirim gönderilir.',
                   style:TextStyle(fontSize:11,color:Color(0xFF777C91))),
                 const SizedBox(height:12),
                 SizedBox(width:double.infinity,height:46,
@@ -578,13 +623,13 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
                       'date':'${chosen!.year}-${chosen!.month.toString().padLeft(2,'0')}-${chosen!.day.toString().padLeft(2,'0')}',
                       'offsets':offsets.toList()..sort(),
                     };
-                    setState((){
-                      if(existingIndex==null)customReminders.add(item);
-                      else customReminders[existingIndex]=item;
-                      selectedFilter=3;
-                    });
-                    await saveCustom();
-                    if(sheetContext.mounted)Navigator.pop(sheetContext);
+                    update((){});
+                    final ok=await saveCustomItem(item,
+                      id:existingIndex==null?null:'${old?['id']}');
+                    if(ok){
+                      if(mounted)setState(()=>selectedFilter=3);
+                      if(sheetContext.mounted)Navigator.pop(sheetContext);
+                    }
                   },style:FilledButton.styleFrom(
                     backgroundColor:const Color(0xFF713BFF)),
                     child:Text(existingIndex==null?
