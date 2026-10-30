@@ -52,6 +52,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   Timer? valetTimer;
   Timer? storyTimer;
   Timer? appConfigTimer;
+  Timer? greetingTimer;
   bool _valetRefreshing=false;
   String _valetVehicleId='';
   bool _valetVerified=false;
@@ -146,11 +147,13 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     valetTimer?.cancel();
     storyTimer?.cancel();
     appConfigTimer?.cancel();
+    greetingTimer?.cancel();
     if(!widget.active)return;
     timer=Timer.periodic(const Duration(seconds:20),(_){if(!CallActivity.isActive)load(silent:true);});
     valetTimer=Timer.periodic(const Duration(seconds:3),(_){if(!CallActivity.isActive)_loadValetStatus();});
     storyTimer=Timer.periodic(const Duration(seconds:60),(_){if(!CallActivity.isActive)_loadStories();});
     appConfigTimer=Timer.periodic(const Duration(seconds:60),(_){if(!CallActivity.isActive)_refreshAppUiConfig();});
+    greetingTimer=Timer.periodic(const Duration(minutes:1),(_){if(mounted)setState((){});});
   }
 
   Future<void> _loadValetStatus()async{
@@ -205,7 +208,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       }
     }
   }
-  @override void dispose(){timer?.cancel();valetTimer?.cancel();storyTimer?.cancel();appConfigTimer?.cancel();_weatherService.dispose();super.dispose();}
+  @override void dispose(){timer?.cancel();valetTimer?.cancel();storyTimer?.cancel();appConfigTimer?.cancel();greetingTimer?.cancel();_weatherService.dispose();super.dispose();}
 
   Future<void> _loadAppUiConfig()async{
     final cached=await _appUiConfigService.cachedOrDefault();
@@ -618,6 +621,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   bool get _narrowHome=>MediaQuery.sizeOf(context).width<365;
   String get _welcomeText{
     final hour=DateTime.now().hour;
+    if(hour<5)return'İyi geceler,';
     if(hour<11)return'Günaydın,';
     if(hour<17)return'İyi günler,';
     return'İyi akşamlar,';
