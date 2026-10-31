@@ -19,4 +19,51 @@ function loadValet(pool){
  vm.runInNewContext(src,{require:id=>{if(id==='crypto')return crypto;if(id==='express-rate-limit')return limiter;if(id==='./owner-auth-service')return {ownerId:()=>null};if(id==='./driver-auth-service')return {driverId:()=>null};if(id==='./premium-entitlements')return {requireDriverVehicle:async()=>null};throw Error(id);},module:mod,console});
  const app={locals:{},get:(p,...h)=>routes['GET '+p]=h.at(-1),post:(p,...h)=>routes['POST '+p]=h.at(-1),patch:(p,...h)=>routes['PATCH '+p]=h.at(-1),put:(p,...h)=>routes['PUT '+p]=h.at(-1)};mod.exports(app,pool);return routes;
 }
-test('M03 valet logout revokes server session and push registrations',async()=>{const seen=[];const client={query:async(sql,args)=>{seen.push({sql,args});if(sql.startsWith('DELETE FROM valet_staff_sessions'))return {rows:[{staff_id:'staff1'}],rowCount:1};return {rows:[],rowCount:1};},release(){}};const routes=loadValet({connect:async()=>client,query:async()=>({rows:[],rowCount:0})}),r=response();await routes['POST /api/valet/logout']({headers:{authorization:'Bearer valet-secret'}},r);assert.equal(r.statusCode,200);assert.ok(seen.some(x=>x.sql.startsWith('DELETE FROM valet_staff_sessions')));assert.ok(seen.some(x=>x.sql.startsWith('UPDATE valet_push_tokens SET active=FALSE')));assert.ok(seen.some(x=>x.sql==='COMMIT'));});
+function logoutFixture({session=true,busy=false,onShift=true,failPush=false}={}){
+ const seen=[];
+ let released=false;
+ const client={async query(sql,args){
+  seen.push({sql,args});
+  if(['BEGIN','COMMIT','ROLLBACK'].includes(sql))return {rows:[],rowCount:0};
+  if(sql.startsWith('SELECT vs.staff_id'))return {rows:session?[{staff_id:'staff1',business_id:'business1',on_shift:onShift}]:[],rowCount:session?1:0};
+  if(sql.startsWith('SELECT 1 FROM valet_sessions'))return {rows:busy?[{exists:1}]:[],rowCount:busy?1:0};
+  if(sql.startsWith('UPDATE valet_push_tokens')&&failPush)throw Error('simulated update failure');
+  if(sql.startsWith('DELETE FROM valet_staff_sessions')||sql.startsWith('UPDATE valet_push_tokens')||sql.startsWith('UPDATE valet_shift_history')||sql.startsWith('UPDATE valet_staff SET'))return {rows:[],rowCount:1};
+  throw Error('Unexpected SQL in logout fixture: '+sql);
+ },release(){released=true;}};
+ const routes=loadValet({connect:async()=>client,query:async()=>{throw Error('Unexpected non-transaction query');}});
+ return {seen,get released(){return released;},async logout(){const res=response();await routes['POST /api/valet/logout']({headers:{authorization:'Bearer valet-secret'}},res);return res;}};
+}
+test('M03 valet logout locks session, revokes credentials and ends shift atomically',async()=>{
+ const f=logoutFixture(),r=await f.logout();
+ assert.equal(r.statusCode,200);
+ assert.equal(r.body.onShift,false);
+ const tokenHash=crypto.createHash('sha256').update('valet-secret').digest('hex');
+ assert.equal(f.seen[0].sql,'BEGIN');
+ assert.match(f.seen[1].sql,/FOR UPDATE OF vs,s/);
+ assert.equal(f.seen[1].args[0],tokenHash);
+ assert.match(f.seen[2].sql,/status IN \('accepted','retrieving','ready'\)/);
+ const revoked=f.seen.find(x=>x.sql.startsWith('DELETE FROM valet_staff_sessions'));
+ assert.equal(revoked.args[0],tokenHash);
+ assert.deepEqual(Array.from(f.seen.find(x=>x.sql.startsWith('UPDATE valet_push_tokens')).args),['staff1']);
+ assert.ok(f.seen.some(x=>x.sql.startsWith('UPDATE valet_shift_history')));
+ assert.ok(f.seen.some(x=>x.sql.startsWith('UPDATE valet_staff SET on_shift=FALSE')));
+ assert.equal(f.seen.at(-1).sql,'COMMIT');
+ assert.equal(f.released,true);
+});
+test('M03 active assignment blocks logout and preserves credentials',async()=>{
+ const f=logoutFixture({busy:true}),r=await f.logout();
+ assert.equal(r.statusCode,409);assert.equal(r.body.error,'ACTIVE_JOB_EXISTS');
+ assert.equal(f.seen.at(-1).sql,'ROLLBACK');
+ assert.ok(!f.seen.some(x=>/^(DELETE|UPDATE)/.test(x.sql)));assert.equal(f.released,true);
+});
+test('M03 already revoked session succeeds without revoking unrelated staff',async()=>{
+ const f=logoutFixture({session:false}),r=await f.logout();
+ assert.equal(r.statusCode,200);assert.equal(f.seen.at(-1).sql,'COMMIT');
+ assert.ok(!f.seen.some(x=>/^(DELETE|UPDATE)/.test(x.sql)));assert.equal(f.released,true);
+});
+test('M03 failed push revocation rolls back logout and releases the client',async()=>{
+ const f=logoutFixture({failPush:true}),r=await f.logout();
+ assert.equal(r.statusCode,500);assert.equal(f.seen.at(-1).sql,'ROLLBACK');
+ assert.ok(!f.seen.some(x=>x.sql==='COMMIT'));assert.equal(f.released,true);
+});
