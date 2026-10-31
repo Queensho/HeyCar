@@ -182,6 +182,19 @@ jobs:
           $$;
           SQL
 
+      - name: Verify migration safety and PostgreSQL rollback
+        working-directory: server
+        env:
+          MIGRATION_PG_TEST: '1'
+        run: node --test tests/migration-safety.test.js
+
+      - name: Verify dry-run does not create tracking on a fresh database
+        working-directory: server
+        run: |
+          node migrate.js --audit --expect-database=heycar_matrix > /tmp/migration-audit-before.json
+          node -e "const a=require('/tmp/migration-audit-before.json');if(a.tracking_present)process.exit(1)"
+          test "$(psql -h 127.0.0.1 -U postgres -d heycar_matrix -Atqc "SELECT to_regclass('public.schema_migrations') IS NULL")" = "t"
+
       - name: Apply tracked migration chain from scratch
         working-directory: server
         run: npm run migrate

@@ -1,150 +1,86 @@
-require('dotenv').config();
+'use strict';
+const {migrationFiles, migrationPlan} = require('./migration-plan');
+const {inspect} = require('./migration-audit');
 
-const fs=require('fs');
-const path=require('path');
-const crypto=require('crypto');
-const {Pool}=require('pg');
-
-function databaseConfig(){
-  const url=String(process.env.DATABASE_URL||'').trim();
-  if(url)return {connectionString:url};
-
-  const host=String(process.env.DB_HOST||process.env.PGHOST||'').trim();
-  const database=String(process.env.DB_NAME||process.env.PGDATABASE||'').trim();
-  const user=String(process.env.DB_USER||process.env.PGUSER||'').trim();
-  const password=String(process.env.DB_PASSWORD||process.env.PGPASSWORD||'');
-  const port=Number(String(process.env.DB_PORT||process.env.PGPORT||'5432').trim());
-
-  if(!host||!database||!user||!password)throw new Error('DATABASE_CONFIG_REQUIRED');
-  if(!Number.isInteger(port)||port<1||port>65535)throw new Error('DATABASE_PORT_INVALID');
-  return {host,port,database,user,password};
+function databaseConfig() {
+  const url = String(process.env.DATABASE_URL || '').trim();
+  if (url) return {connectionString: url, connectionTimeoutMillis: 10000};
+  const host = String(process.env.DB_HOST || process.env.PGHOST || '').trim();
+  const database = String(process.env.DB_NAME || process.env.PGDATABASE || '').trim();
+  const user = String(process.env.DB_USER || process.env.PGUSER || '').trim();
+  const password = String(process.env.DB_PASSWORD || process.env.PGPASSWORD || '');
+  const port = Number(process.env.DB_PORT || process.env.PGPORT || 5432);
+  if (!host || !database || !user || !password) throw new Error('DATABASE_CONFIG_REQUIRED');
+  if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('DATABASE_PORT_INVALID');
+  return {host, port, database, user, password, connectionTimeoutMillis: 10000};
 }
-
-function checksum(text){
-  return crypto.createHash('sha256').update(text).digest('hex');
+function options(args) {
+  if (args.some(arg => arg.startsWith('--baseline'))) throw new Error('UNSAFE_RANGE_BASELINE_DISABLED_USE_REVIEWED_RECOVERY_PLAN');
+  if (args.some(arg => !['--dry-run','--audit'].includes(arg) && !arg.startsWith('--expect-database='))) throw new Error('MIGRATION_ARGUMENT_INVALID');
+  return {readOnly: args.includes('--dry-run') || args.includes('--audit'),
+    audit: args.includes('--audit'), expectedDatabase: args.find(arg => arg.startsWith('--expect-database='))?.split('=').slice(1).join('=')};
 }
-
-function migrationFiles(){
-  const dir=path.join(__dirname,'migrations');
-  return fs.readdirSync(dir)
-    .filter(name=>/^\d{3}_.+\.sql$/.test(name))
-    .sort()
-    .map(name=>({name,path:path.join(dir,name)}));
-}
-
-function baselineThroughArg(){
-  const prefix='--baseline-through=';
-  const arg=process.argv.find(x=>x.startsWith(prefix));
-  return arg?arg.slice(prefix.length):'';
-}
-
-async function ensureTracking(client){
-  await client.query(`
-    CREATE TABLE IF NOT EXISTS public.schema_migrations (
-      filename TEXT PRIMARY KEY,
-      checksum_sha256 CHAR(64) NOT NULL,
-      applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )
-  `);
-}
-
-async function baseline(client,files,through){
-  if(process.env.MIGRATION_BASELINE_CONFIRM!=='YES'){
-    throw new Error('MIGRATION_BASELINE_CONFIRM_REQUIRED');
-  }
-  const targetIndex=files.findIndex(x=>x.name===through);
-  if(targetIndex<0)throw new Error('MIGRATION_BASELINE_TARGET_NOT_FOUND');
-
-  const tracked=await client.query('SELECT COUNT(*)::int AS n FROM public.schema_migrations');
-  if(Number(tracked.rows[0]?.n||0)!==0)throw new Error('MIGRATION_BASELINE_REQUIRES_EMPTY_TRACKING_TABLE');
-
-  const core=await client.query(`
-    SELECT
-      to_regclass('public.users') IS NOT NULL AS users,
-      to_regclass('public.vehicles') IS NOT NULL AS vehicles,
-      to_regclass('public.qr_tags') IS NOT NULL AS qr_tags
-  `);
-  const row=core.rows[0]||{};
-  if(!row.users||!row.vehicles||!row.qr_tags)throw new Error('MIGRATION_BASELINE_CORE_SCHEMA_MISSING');
-
-  for(const file of files.slice(0,targetIndex+1)){
-    const sql=fs.readFileSync(file.path,'utf8');
-    await client.query(
-      `INSERT INTO public.schema_migrations(filename,checksum_sha256)
-       VALUES($1,$2)`,
-      [file.name,checksum(sql)]
-    );
-    console.log(`BASELINED ${file.name}`);
+async function applyFile(client, file) {
+  await client.query('BEGIN');
+  try {
+    await client.query(file.executable);
+    await client.query('INSERT INTO public.schema_migrations(filename,checksum_sha256) VALUES($1,$2)', [file.name,file.sha256]);
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw error;
   }
 }
-
-async function run(){
-  const pool=new Pool(databaseConfig());
-  const client=await pool.connect();
-  const files=migrationFiles();
-  const baselineTarget=baselineThroughArg();
-
-  try{
-    await client.query('SELECT pg_advisory_lock($1)',[73194016]);
-    await ensureTracking(client);
-
-    const trackingState=await client.query('SELECT COUNT(*)::int AS n FROM public.schema_migrations');
-    const trackedCount=Number(trackingState.rows[0]?.n||0);
-    if(!baselineTarget&&trackedCount===0){
-      const existingCore=await client.query("SELECT to_regclass('public.users') IS NOT NULL AS users");
-      if(existingCore.rows[0]?.users){
-        throw new Error('EXISTING_SCHEMA_REQUIRES_EXPLICIT_BASELINE');
-      }
+async function execute(client, files, opts, log = console.log) {
+  let locked = false;
+  try {
+    if (opts.readOnly) {
+      await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
+      try {
+        const report = await inspect(client,files,opts.expectedDatabase);
+        log(JSON.stringify(opts.audit ? report : {identity: report.identity, tracking_present: report.tracking_present,
+          existing_schema: report.existing_schema, migrations: report.migrations, warning: report.warning}, null, 2));
+      } finally { await client.query('ROLLBACK'); }
+      return;
     }
-
-    if(baselineTarget){
-      await baseline(client,files,baselineTarget);
+    await client.query('SELECT pg_advisory_lock($1)', [73194016]);
+    locked = true;
+    // Inspect and check EVERY checksum before creating tracking or applying SQL.
+    const report = await inspect(client, files, opts.expectedDatabase);
+    if (report.existing_schema && !report.migrations.some(m => m.status === 'tracked')) {
+      throw new Error('EXISTING_SCHEMA_REQUIRES_EXPLICIT_BASELINE');
     }
-
-    const existing=await client.query(
-      'SELECT filename,checksum_sha256 FROM public.schema_migrations ORDER BY filename'
-    );
-    const applied=new Map(existing.rows.map(r=>[String(r.filename),String(r.checksum_sha256)]));
-
-    for(const file of files){
-      const sql=fs.readFileSync(file.path,'utf8');
-      const sha=checksum(sql);
-      const known=applied.get(file.name);
-      if(known){
-        if(known!==sha)throw new Error(`MIGRATION_CHECKSUM_MISMATCH: ${file.name}`);
-        continue;
-      }
-
-      console.log(`APPLY ${file.name}`);
-      await client.query('BEGIN');
-      try{
-        await client.query(sql);
-        await client.query(
-          `INSERT INTO public.schema_migrations(filename,checksum_sha256)
-           VALUES($1,$2)`,
-          [file.name,sha]
-        );
-        await client.query('COMMIT');
-      }catch(err){
-        await client.query('ROLLBACK').catch(()=>{});
-        throw err;
-      }
-      console.log(`APPLIED ${file.name}`);
+    await client.query(`CREATE TABLE IF NOT EXISTS public.schema_migrations (
+      filename TEXT PRIMARY KEY, checksum_sha256 CHAR(64) NOT NULL,
+      applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
+    const applied = new Set(report.migrations.filter(m => m.status === 'tracked').map(m => m.filename));
+    for (const file of files) {
+      if (applied.has(file.name)) continue;
+      log(`APPLY ${file.name}`);
+      await applyFile(client,file);
+      log(`APPLIED ${file.name}`);
     }
-
-    const count=await client.query('SELECT COUNT(*)::int AS n FROM public.schema_migrations');
-    if(Number(count.rows[0]?.n||0)!==files.length){
-      throw new Error(`MIGRATION_TRACKING_COUNT_MISMATCH: expected ${files.length}, found ${count.rows[0]?.n||0}`);
-    }
-    console.log(`MIGRATIONS_OK count=${files.length}`);
-  }finally{
-    try{await client.query('SELECT pg_advisory_unlock($1)',[73194016]);}catch(_){}
-    client.release();
-    await pool.end();
+    const rows = (await client.query('SELECT filename,checksum_sha256 FROM public.schema_migrations ORDER BY filename')).rows;
+    if (migrationPlan(files, rows).some(m => m.status !== 'tracked')) throw new Error('MIGRATION_TRACKING_COUNT_MISMATCH');
+    log(`MIGRATIONS_OK count=${files.length}`);
+  } finally {
+    if (locked) await client.query('SELECT pg_advisory_unlock($1)', [73194016]).catch(() => {});
   }
 }
-
-run().catch(err=>{
-  console.error(err?.stack||err);
-  process.exit(1);
+async function run(args = process.argv.slice(2)) {
+  const opts = options(args); // Reject unsafe options before any connection.
+  const files = migrationFiles();
+  require('dotenv').config({quiet: true});
+  const {Pool} = require('pg');
+  const pool = new Pool(databaseConfig());
+  let client;
+  try { client = await pool.connect(); await execute(client, files, opts); }
+  finally { if (client) client.release(); await pool.end(); }
+}
+if (require.main === module) run().catch(error => {
+  // Database error detail/stack can include values or credentials. Emit a code only.
+  const safe = /^(?:MIGRATION_|DATABASE_|EXISTING_SCHEMA_|UNSAFE_RANGE_)[A-Z_]+(?:$|: [\w.-]+\.sql$)/;
+  console.error(safe.test(error.message || '') ? error.message : `MIGRATION_FAILED code=${/^[A-Z0-9]{5}$/.test(error.code || '') ? error.code : 'UNKNOWN'}`);
+  process.exitCode = 1;
 });
+module.exports = {databaseConfig, options, applyFile, execute, run};
