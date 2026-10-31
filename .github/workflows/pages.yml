@@ -119,6 +119,12 @@ jobs:
         run: flutter build web --release --target lib/entry_business.dart --base-href /HeyCar/isletme/
       - name: Build marketplace admin web
         run: flutter build web --release --target lib/admin_v3.dart --base-href /HeyCar/admin/
+      - name: Prepare Android runtime resources
+        run: |
+          python3 tool/fix_runtime_android.py
+          python3 tool/callkit_locked_ringtone_patch.py
+      - name: Build marketplace owner Android debug APK
+        run: flutter build apk --debug --target lib/entry_theme_live.dart
 
   build:
     if: github.event_name != 'pull_request' || github.head_ref == 'rollback/owner-app-15oct-keep-backend-20261018'
