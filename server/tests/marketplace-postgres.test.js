@@ -29,7 +29,7 @@ test('marketplace HTTP lifecycle with PostgreSQL', {skip:process.env.MARKETPLACE
    CREATE TABLE businesses(id uuid PRIMARY KEY,account_id uuid,name text,address text,opening_hours text,is_active boolean DEFAULT true,approval_status text DEFAULT 'approved');
    CREATE TABLE business_sessions(account_id uuid,token_hash text,expires_at timestamptz);
    CREATE TABLE vehicles(owner_id text,plate text);`);
-  for(const migration of ['123_marketplace_services.sql','124_marketplace_weekly_hours.sql','125_marketplace_reviews.sql','126_marketplace_service_images.sql','127_marketplace_moderation.sql']){
+  for(const migration of ['128_marketplace_services.sql','129_marketplace_weekly_hours.sql','130_marketplace_reviews.sql','131_marketplace_service_images.sql','132_marketplace_moderation.sql']){
    const sql=fs.readFileSync(path.join(__dirname,'../migrations',migration),'utf8');
    await pool.query(sql);
    await pool.query(sql); // Additive SQL remains safe on a rerun.
