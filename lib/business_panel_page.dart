@@ -7,6 +7,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:image_picker/image_picker.dart';
 import 'admin_promo_banner.dart';
 import 'business_valet_page.dart';
+import 'business_marketplace_page.dart';
 
 const _bg=Color(0xFF07111F),_panel=Color(0xFF101A30),_line=Color(0xFF27355D),_purple=Color(0xFF713BFF),_muted=Color(0xFFA7B0C7);
 
@@ -33,6 +34,8 @@ class _BusinessPanelPageState extends State<BusinessPanelPage>{
   final home=Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
    _Header(desktop:desktop,onLogin:token.isEmpty?()=>_showAuth(context):_logout),
    const SizedBox(height:16),if(loading)const LinearProgressIndicator(color:_purple),if(loading)const SizedBox(height:10),_Hero(name:(business?['name']??'İşletmen').toString()),const SizedBox(height:16),const AdminPromoBanner(audience:'business'),const SizedBox(height:16),_Stats(desktop:desktop,stats:stats),const SizedBox(height:16),
+   SizedBox(width:double.infinity,height:46,child:OutlinedButton.icon(onPressed:()=>Navigator.of(context).push(MaterialPageRoute(builder:(_)=>BusinessMarketplacePage(token:token))),icon:const Icon(Icons.handyman_rounded),label:const Text('Hizmetlerim ve Randevular'),style:OutlinedButton.styleFrom(foregroundColor:Colors.white,side:const BorderSide(color:_purple)))),
+   const SizedBox(height:10),
    SizedBox(width:double.infinity,height:48,child:FilledButton.icon(onPressed:()=>_showCampaign(context),style:FilledButton.styleFrom(backgroundColor:_purple,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15))),icon:const Icon(Icons.add_circle_rounded),label:const Text('Yeni Kampanya Oluştur',style:TextStyle(fontWeight:FontWeight.w900)))),
    const SizedBox(height:16),
    if(!desktop)...[_Quick(onTap:(i){if(i==0){_editProfile(context);}else if(i==1){setState(()=>tab=desktop?2:0);_showCampaign(context);}else if(i==2){_showVerify(context);}else{setState(()=>tab=desktop?4:1);}}),const SizedBox(height:16)],
