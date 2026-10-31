@@ -32,6 +32,25 @@ Owner and business/admin entry points must use the intended API environment;
 existing business/admin hosts are still compiled into those applications. Verify
 them before distributing a build to staging users.
 
+## Build-time API environment selection
+
+Business and admin panels accept `CEPQONTAG_API_BASE_URL` through Flutter
+`--dart-define`. Use the **staging API origin** for staging builds and the
+approved production origin for production builds. Never embed credentials in
+this value. For example, replace the placeholder below with the actual HTTPS
+staging API origin (without a trailing slash):
+
+```sh
+flutter build web --release --target lib/entry_business.dart --base-href /HeyCar/isletme/ --dart-define=CEPQONTAG_API_BASE_URL=https://STAGING_API_HOST
+flutter build web --release --target lib/admin_v3.dart --base-href /HeyCar/admin/ --dart-define=CEPQONTAG_API_BASE_URL=https://STAGING_API_HOST
+```
+
+When the define is omitted, both panels retain the existing production API
+origin for backward compatibility. The owner marketplace uses
+`OnboardingBackend.baseUrl` and must be independently checked against the
+intended staging environment. CI builds without this define only prove the
+fallback build compiles; they do not validate staging connectivity.
+
 ## Migration and deployment order (approval required)
 
 1. Record the currently deployed commit, service configuration and web artifacts.
