@@ -41,12 +41,12 @@ them before distributing a build to staging users.
    Check pending/confirmed appointments, ownership and legacy sessions.
 3. From the complete release checkout, install backend dependencies with the
    repository's existing install procedure. Run `cd server && npm run migrate`
-   using the migration role. The tracked chain applies 123 (catalog/appointments),
-   124 (hours/timezone), 125 (reviews), 126 (gallery), then 127 (admin moderation).
+   using the migration role. The tracked chain applies 128 (catalog/appointments),
+   129 (hours/timezone), 130 (reviews), 131 (gallery), then 132 (admin moderation).
    Retain every earlier migration; never alter tracked files or their checksums.
 4. Run the migrator again: it must report success without reapplying migrations.
    Confirm both `admin_hidden` and `moderation_reason` exist and the new partial
-   public-list index exists. Migration 127 defaults existing listings to visible.
+   public-list index exists. Migration 132 defaults existing listings to visible.
 5. Deploy backend modules together, including `marketplace-availability.js`,
    `business-image.js`, `admin-marketplace-routes.js` and the updated server entry.
    Restart through the VPS's existing service manager and verify `/health`.
@@ -58,7 +58,7 @@ them before distributing a build to staging users.
 ## Rollback
 
 Restore the recorded backend commit and matching web/Android release. Keep additive
-migration 127 and its data in place; the older backend ignores the new columns.
+migration 132 and its data in place; the older backend ignores the new columns.
 An older backend does **not** enforce admin takedowns: disable marketplace exposure
 or prevent new bookings during rollback until a moderation-aware version is restored.
 Do not drop appointment/review/gallery tables. Restore a database backup only with
