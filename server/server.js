@@ -148,6 +148,7 @@ registerStoreRoutes(app,pool,adminAuth);
 registerOnboardingRoutes(app,pool);
 registerOwnerAuthRoutes(app,pool);
 registerBusinessRoutes(app,pool);
+require('./admin-marketplace-routes')(app,pool,adminAuth);
 registerValetRoutes(app,pool);
 registerTowingRoutes(app,pool,adminAuth);
 registerTowingProviderRoutes(app,pool);
@@ -186,3 +187,4 @@ process.on('SIGTERM',()=>shutdown('SIGTERM'));
 process.on('SIGINT',()=>shutdown('SIGINT'));
 
 module.exports={app,pool};
+

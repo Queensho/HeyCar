@@ -69,6 +69,10 @@ jobs:
             node --check "$file"
           done < <(find server -maxdepth 1 -type f -name '*.js' -print0 | sort -z)
 
+      - name: Test marketplace booking hours
+        working-directory: server
+        run: node --test tests/marketplace-hours.test.js tests/marketplace-availability.test.js tests/marketplace-routes.test.js tests/business-image.test.js
+
       - name: Run valet security regression tests
         working-directory: server
         run: node --test tests/security-valet-remediation.test.js
@@ -189,6 +193,12 @@ jobs:
       - name: Verify tracked migration rerun is idempotent
         working-directory: server
         run: npm run migrate
+
+      - name: Test marketplace HTTP lifecycle and concurrent bookings on PostgreSQL
+        working-directory: server
+        env:
+          MARKETPLACE_PG_TEST: '1'
+        run: node --test tests/marketplace-postgres.test.js
 
       - name: Verify migration tracking count
         shell: bash
@@ -904,3 +914,4 @@ jobs:
           qr_session_limited=$(curl -sS -o /tmp/qr-session-limited.json -w '%{http_code}'             -X POST -H 'Content-Type: application/json' -d '{}'             "http://127.0.0.1:8090/api/qr/MISSING17/session")
           test "$qr_session_limited" = "429"
           echo "MATRIX_QR_SESSION_PROBE_RATE_LIMIT_OK"
+

@@ -8,6 +8,8 @@ import 'cepqar_theme.dart';
 import 'onboarding_backend.dart';
 import 'owner_auth.dart';
 import 'driver_auth.dart';
+import 'marketplace_service_page.dart';
+import 'marketplace_appointments_page.dart';
 
 class CepqarOffersPage extends StatefulWidget {
   const CepqarOffersPage({super.key,this.driverMode=false,this.vehiclePlate=''});
@@ -48,7 +50,7 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
     _Offer('Akaryakıt','Akaryakıt Fırsatı','Tüm yakıt türlerinde litre indirimi','₺1,5 İndirim','4.2 km','4.5','520',Icons.local_gas_station_rounded,['Market']),
     _Offer('Servis','AutoServis','Periyodik bakımda CepQontag indirimi','%20 İndirim','5.6 km','4.7','98',Icons.build_rounded,['Periyodik Bakım']),
   ];
-  @override void initState(){super.initState();_loadOffers();_loadEditorial();_loadPageDesign();}
+  @override void initState(){super.initState();_loadOffers();_loadEditorial();_loadPageDesign();_loadMarketplace();}
   Future<void> _loadEditorial()async{
     try{final r=await http.get(Uri.parse('$apiBase/api/offers/editorial')).timeout(const Duration(seconds:12));
       if(r.statusCode!=200)throw Exception('Vitrin yüklenemedi');
@@ -95,6 +97,49 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
       default:return Icons.grid_view_rounded;
     }
   }
+
+  // Reuse the existing offer discovery and redemption flow for service browsing.
+  List<Map<String,dynamic>> marketplaceServices=[];
+  bool marketplaceLoading=false;
+  String? marketplaceError;
+  Future<void> _loadMarketplace()async{
+    if(mounted)setState((){marketplaceLoading=true;marketplaceError=null;});
+    try{
+      final response=await http.get(Uri.parse('$apiBase/api/marketplace/services')).timeout(const Duration(seconds:12));
+      if(response.statusCode!=200)throw Exception('Hizmetler yüklenemedi');
+      final data=jsonDecode(response.body) as Map<String,dynamic>;
+      if(mounted)setState(()=>marketplaceServices=(data['services'] as List? ?? []).whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).toList());
+    }catch(e){if(mounted)setState(()=>marketplaceError=e.toString().replaceFirst('Exception: ',''));}
+    finally{if(mounted)setState(()=>marketplaceLoading=false);}
+  }
+  Widget _marketplaceSection(){
+    final query=searchText.trim().toLowerCase();
+    final items=marketplaceServices.where((s){
+      final matchCategory=category=='Tümü'||s['category'].toString().toLowerCase()==category.toLowerCase();
+      final matchSearch=query.isEmpty||['title','business_name','description','category'].any((k)=>(s[k]??'').toString().toLowerCase().contains(query));
+      return matchCategory&&matchSearch;
+    }).toList();
+    return Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      Row(children:[const Expanded(child:Text('Hizmetler',style:TextStyle(fontSize:20,fontWeight:FontWeight.w900,color:ink))),TextButton(onPressed:()=>Navigator.of(context).push(MaterialPageRoute(builder:(_)=>const MarketplaceAppointmentsPage())),child:const Text('Randevularım',style:TextStyle(color:purple,fontSize:12))),IconButton(onPressed:_loadMarketplace,tooltip:'Hizmetleri yenile',icon:const Icon(Icons.refresh,color:purple))]),
+      if(marketplaceLoading)const Center(child:Padding(padding:EdgeInsets.all(16),child:CircularProgressIndicator(color:purple)))
+      else if(marketplaceError!=null)Text(marketplaceError!,style:const TextStyle(color:muted,fontSize:12))
+      else if(items.isEmpty)const Padding(padding:EdgeInsets.symmetric(vertical:12),child:Text('Bu kategoride henüz yayınlanmış hizmet yok.',style:TextStyle(color:muted,fontSize:12)))
+      else ...items.map((service)=>InkWell(onTap:()=>Navigator.of(context).push(MaterialPageRoute(builder:(_)=>MarketplaceServicePage(service:service,initialPlate:widget.vehiclePlate))),borderRadius:BorderRadius.circular(16),child:Container(margin:const EdgeInsets.only(bottom:10),padding:const EdgeInsets.all(14),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(16),border:Border.all(color:const Color(0xFFECECF3))),child:Row(children:[
+        Container(width:42,height:42,decoration:BoxDecoration(color:const Color(0xFFF3EDFF),borderRadius:BorderRadius.circular(12)),child:const Icon(Icons.build_circle_outlined,color:purple)),
+        const SizedBox(width:10),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text((service['title']??'Hizmet').toString(),maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontWeight:FontWeight.w800,color:ink,fontSize:13)),const SizedBox(height:3),Text((service['business_name']??'').toString(),maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:muted,fontSize:11))])),
+        const SizedBox(width:8),Text(service['price_cents']==null?'Fiyat sor':'₺${(num.tryParse(service['price_cents'].toString())??0)/100}',style:const TextStyle(color:purple,fontSize:12,fontWeight:FontWeight.w800))
+      ])))),
+    ]);
+  }
+
+  Widget _serviceCategoryGrid()=>Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+    Row(children:[const Expanded(child:Text('Hizmet Kategorileri',style:TextStyle(fontSize:20,fontWeight:FontWeight.w900,color:ink))),TextButton(onPressed:()=>setState(()=>category='Tümü'),child:const Text('Tümünü Gör',style:TextStyle(color:purple,fontSize:12,fontWeight:FontWeight.w700)))]),
+    GridView.count(shrinkWrap:true,physics:const NeverScrollableScrollPhysics(),crossAxisCount:4,mainAxisSpacing:9,crossAxisSpacing:9,childAspectRatio:.92,children:[
+      for(final item in const [('Servis',Icons.build_rounded,'Bakım'),('Oto Yıkama',Icons.local_car_wash_rounded,'Oto Yıkama'),('Lastik',Icons.tire_repair_rounded,'Lastik'),('Akaryakıt',Icons.local_gas_station_rounded,'Yakıt'),('Detailing',Icons.auto_awesome_rounded,'Detaylı Temizlik'),('Otopark',Icons.local_parking_rounded,'Otopark')])
+        InkWell(borderRadius:BorderRadius.circular(16),onTap:()=>setState(()=>category=item.$1),child:Container(padding:const EdgeInsets.symmetric(vertical:9,horizontal:3),decoration:BoxDecoration(color:category==item.$1?const Color(0xFFF3EDFF):Colors.white,borderRadius:BorderRadius.circular(16),border:Border.all(color:category==item.$1?purple.withValues(alpha:.45):const Color(0xFFECECF3))),child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[Icon(item.$2,color:purple,size:25),const SizedBox(height:7),Text(item.$3,textAlign:TextAlign.center,maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:ink,fontSize:10,fontWeight:FontWeight.w700))]))),
+    ]),
+    if(category!='Tümü')Padding(padding:const EdgeInsets.only(top:9),child:Text('Seçili hizmet: $category • Yakındaki işletmeler aşağıda listelenir.',style:const TextStyle(color:muted,fontSize:11))),
+  ]);
 
   Widget _sectionHeading(String label,{VoidCallback? onAll})=>Padding(
     padding:const EdgeInsets.only(bottom:12),
@@ -352,6 +397,10 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
               ])),
             ]),
           ),
+          const SizedBox(height:14),
+          _serviceCategoryGrid(),
+          const SizedBox(height:14),
+          _marketplaceSection(),
           const SizedBox(height:14),
           _sectionHeading('Sana Özel Fırsatlar'),
           _editorialStrip('personal'),
