@@ -182,3 +182,5 @@ onay/iptal/ret/tamamlama, review, görsel galerisi ve admin moderation HTTP life
 Test DB'si `heycar_marketplace_test` olarak hem ortamda hem PostgreSQL bağlantısında doğrulanır.
 İzole fixture şeması test bitiminde silinmez; disposable CI servisi yaşam döngüsüne bırakılır.
 Bu iş staging SSH environment veya staging/production secret'ı kullanmaz.
+
+Uygulama ön koşulları, güncel yedek/restore komutları, dört tablo kontrolü ve SQL çalışma sırası: [application-order.tr.md](application-order.tr.md). Yeni döküm henüz ulaşmadığından bu plan önceki hash ile işaretlenmiş referansa bağlıdır.

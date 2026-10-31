@@ -34,6 +34,18 @@ test('080 recovery restores definitions while preserving existing data', {skip:p
     INSERT INTO public.users VALUES('00000000-0000-4000-8000-000000000001','Preserved user');
     INSERT INTO public.towing_requests VALUES('00000000-0000-4000-8000-000000000002');`);
   const before=(await db.query('SELECT * FROM public.users')).rows;
+  const {execFileSync}=require('node:child_process');
+  assert.ok(config.host && config.user,'Recovery CLI test requires explicit test host/user fields');
+  function readonlyReport(filename){
+   return execFileSync('psql',['-X','-qAt','-h',config.host,'-p',String(config.port),'-U',config.user,
+    '-d',name,'-v','ON_ERROR_STOP=1','-f',path.join(__dirname,'../../deploy/recovery',filename)],
+    {encoding:'utf8',env:{...process.env,PGPASSWORD:config.password}});
+  }
+  const preflight=readonlyReport('000_schema_preflight_readonly.sql');
+  assert.ok(preflight.includes(name));
+  assert.match(preflight,/schema_migrations\|/);
+  const countsBefore=readonlyReport('001_public_row_counts_readonly.sql');
+  assert.equal(countsBefore.trim(),'public.towing_requests|1\npublic.users|1');
   await db.query(sql);
   assert.deepEqual((await db.query('SELECT * FROM public.users')).rows,before);
   assert.equal((await db.query('SELECT count(*)::int AS n FROM public.towing_requests')).rows[0].n,1);
@@ -51,6 +63,10 @@ test('080 recovery restores definitions while preserving existing data', {skip:p
   // The explicit failed transaction stays on this dedicated client until rollback.
   await db.query('ROLLBACK');
   assert.equal((await db.query('SELECT message FROM public.towing_messages')).rows[0].message,'Preserved message');
+  assert.equal((await db.query("SELECT to_regclass('public.schema_migrations') AS t")).rows[0].t,null);
+  const countsAfter=readonlyReport('001_public_row_counts_readonly.sql');
+  assert.equal(countsAfter.trim(),'public.towing_messages|1\npublic.towing_requests|1\npublic.users|1');
+  readonlyReport('000_schema_preflight_readonly.sql');
   assert.equal((await db.query("SELECT to_regclass('public.schema_migrations') AS t")).rows[0].t,null);
   // Wrong database fails before any schema creation.
   await assert.rejects(root.query(sql),/RECOVERY_DATABASE_NOT_ALLOWED/);
