@@ -152,6 +152,7 @@ registerValetRoutes(app,pool);
 registerTowingRoutes(app,pool,adminAuth);
 registerTowingProviderRoutes(app,pool);
 registerAdminManagementRoutes(app,pool,adminAuth);
+require('./admin-marketplace-routes')(app,pool,adminAuth);
 registerStoryRoutes(app,pool,adminAuth);
 registerAppBuilderRoutes(app,pool,adminAuth);
 registerSmartRouteRoutes(app,pool);
