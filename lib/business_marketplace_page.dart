@@ -10,7 +10,7 @@ class BusinessMarketplacePage extends StatefulWidget {
  @override State<BusinessMarketplacePage> createState()=>_BusinessMarketplacePageState();
 }
 class _BusinessMarketplacePageState extends State<BusinessMarketplacePage>{
- static const api='https://heycar-api-185-165-46-213.nip.io';
+ static const api=String.fromEnvironment('CEPQONTAG_API_BASE_URL',defaultValue:'https://heycar-api-185-165-46-213.nip.io');
  static const purple=Color(0xFF651FFF);
  List<Map<String,dynamic>> services=[],appointments=[];
  bool loading=true,busy=false;
