@@ -39,7 +39,7 @@ const _card2 = AdminUi.surfaceSoft;
 const _muted = AdminUi.muted;
 const _line = AdminUi.line;
 const _ink = AdminUi.ink;
-const _baseUrl = 'https://heycar-api-185-165-46-213.nip.io';
+const _baseUrl = String.fromEnvironment('CEPQONTAG_API_BASE_URL',defaultValue:'https://heycar-api-185-165-46-213.nip.io');
 const _publicBase = 'https://queensho.github.io/HeyCar/';
 
 void main() => runApp(const AdminV3App());
