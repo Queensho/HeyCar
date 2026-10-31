@@ -69,6 +69,10 @@ jobs:
             node --check "$file"
           done < <(find server -maxdepth 1 -type f -name '*.js' -print0 | sort -z)
 
+      - name: Run complete backend test suite (includes dependency-backed regressions)
+        working-directory: server
+        run: npm test
+
       - name: Run valet security regression tests
         working-directory: server
         run: node --test tests/security-valet-remediation.test.js
@@ -181,6 +185,12 @@ jobs:
           END
           $$;
           SQL
+
+      - name: Verify additive towing recovery on a separate disposable database
+        working-directory: server
+        env:
+          RECOVERY_PG_TEST: '1'
+        run: node --test tests/towing-recovery-postgres.test.js
 
       - name: Verify migration safety and PostgreSQL rollback
         working-directory: server
@@ -917,3 +927,88 @@ jobs:
           qr_session_limited=$(curl -sS -o /tmp/qr-session-limited.json -w '%{http_code}'             -X POST -H 'Content-Type: application/json' -d '{}'             "http://127.0.0.1:8090/api/qr/MISSING17/session")
           test "$qr_session_limited" = "429"
           echo "MATRIX_QR_SESSION_PROBE_RATE_LIMIT_OK"
+
+  marketplace-lifecycle:
+    name: Marketplace PostgreSQL lifecycle and 123-file staging source chain
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: heycar_marketplace_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d heycar_marketplace_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: '5432'
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: heycar_marketplace_test
+      PGPASSWORD: postgres
+      MARKETPLACE_PG_TEST: '1'
+      NODE_ENV: test
+    steps:
+      - name: Checkout PR tools and lifecycle regression
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Checkout the inspected staging source without deployment credentials
+        uses: actions/checkout@v4
+        with:
+          repository: Queensho/HeyCar
+          ref: 4238d9a4ea1a1a39edc2884d0f44d699dba4b7a2
+          path: marketplace-source
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install PR and staging source test dependencies
+        run: |
+          npm install --prefix server --ignore-scripts --no-audit --no-fund
+          npm install --prefix marketplace-source/server --ignore-scripts --no-audit --no-fund
+
+      - name: Verify pinned source and migration checksums
+        run: |
+          test "$(git -C marketplace-source rev-parse HEAD)" = "4238d9a4ea1a1a39edc2884d0f44d699dba4b7a2"
+          python3 - <<'PYTHON'
+          import csv, hashlib
+          from pathlib import Path
+          root = Path('marketplace-source/server/migrations')
+          entries = [r for r in csv.DictReader(Path('docs/migration-recovery/migration-inventory.csv').open())
+                     if r['source'].startswith('staging-source@')]
+          assert len(entries) == 123
+          assert sorted(r['filename'] for r in entries) == sorted(p.name for p in root.glob('*.sql'))
+          for row in entries:
+              assert hashlib.sha256((root / row['filename']).read_bytes()).hexdigest() == row['sha256'], row['filename']
+          PYTHON
+
+      - name: Apply and rerun all 123 staging source migrations with the PR runner
+        run: |
+          psql -h 127.0.0.1 -U postgres -d heycar_marketplace_test -v ON_ERROR_STOP=1 -c "CREATE ROLE heycar_user LOGIN PASSWORD 'marketplace-test-only'"
+          cp server/migrate.js server/migration-plan.js server/migration-audit.js marketplace-source/server/
+          cd marketplace-source/server
+          node migrate.js --expect-database=heycar_marketplace_test
+          node migrate.js --expect-database=heycar_marketplace_test
+          test "$(psql -h 127.0.0.1 -U postgres -d heycar_marketplace_test -Atqc 'SELECT count(*) FROM public.schema_migrations')" = "123"
+
+      - name: Marketplace authorization, weekly hours and availability regressions
+        working-directory: marketplace-source/server
+        run: node --test tests/marketplace-routes.test.js tests/marketplace-hours.test.js tests/marketplace-availability.test.js
+
+      - name: Marketplace HTTP lifecycle on dedicated PostgreSQL 16
+        working-directory: server
+        env:
+          MARKETPLACE_SOURCE_DIR: ${{ github.workspace }}/marketplace-source/server
+        run: node --test tests/marketplace-postgres.test.js

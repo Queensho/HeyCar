@@ -146,3 +146,39 @@ Bu adımlar tamamlanmadan staging migration engelini kaldırmak güvenli değild
 - `npm install` ağ/proxy erişimi hatasıyla durdu. PostgreSQL istemcisi/sunucusu kurulu değil.
   Canlı şema uyumu, restore testi, marketplace PostgreSQL lifecycle ve tam Matrix CI sonucu
   bu yerel test sonuçlarından çıkarılamaz. PostgreSQL regresyonu CI'a eklendi.
+
+## PR #300 devam çalışması
+
+119/123 farkının tam dosya adları ve hash'leri [migration-diff.tr.md](migration-diff.tr.md)
+içindedir. Bu kaynak branch karşılaştırmasıdır; VPS manifest'i elde edilmeden uzaktaki dosyalar
+hakkında kesin envanter sonucu vermez.
+
+`deploy/recovery/080_towing_messages_additive.sql` migration runner'ın otomatik taradığı dizinin
+dışında, elle incelenecek onarım dosyasıdır. Users/towing_requests veya mevcut kayıtları değiştirmez;
+yalnız eksik tabloyu, PK/FK/check constraint'lerini, indeksi ve eski 080 ile aynı runtime yetkilerini
+ekler. Baseline kaydı yazmaz. Hedef tablo zaten varsa sessizce geçmez, transaction'ı durdurur.
+Yanlış DB'de çalışmaz. Kilit beklemesi 5 saniyeyle sınırlıdır ve runner ile aynı advisory lock'u kullanır.
+
+Staging'de çalıştırılmadan önce yukarıdaki kalıcı yedek, tam geri yükleme ve şema incelemesi
+adımları tamamlanmalıdır. Aynı yetkili psql oturumunda `cepqontag.recovery_backup_sha256`
+ayarına doğrulanmış yedeğin 64 karakterli SHA-256'sı ve `cepqontag.recovery_schema_reviewed`
+ayarına `YES` verilmelidir. Bu ayarlar dış dosyaları doğrulamaz; operatörün tamamladığı kontrollerin
+beyanıdır. Bu çalışma staging'e bağlanıp bu ayarları vermedi veya SQL'i uygulamadı.
+
+Vale M03 testindeki eski mock, boş SELECT sonucu için `rowCount: 1` üretiyordu. Oturum sorgusu
+satırsız olduğu halde varmış gibi işleniyor, `session.rows[0]` erişimi hata veriyordu. Test fixture'ı
+gerçek oturum, aktif iş, iptal ve rollback akışlarını modelleyecek şekilde düzeltildi. Üretim logout
+koruması gevşetilmedi. Beş session-cleanup regresyonu yerelde geçti.
+
+Önceden yüklenemeyen `maintenance-v2-routes.test.js`, `tests/motorcycle-emergency-card.test.js`
+ve `tests/service-text-color-publish.test.js` dosyalarının bağımlılıkları zaten package.json'da vardı.
+Eksik olan yerel kurulumdu. `npm test` bütün backend test dosyalarını çalıştırıyor; Matrix bu komutu
+`npm install` sonrasında çağırıyor. Bu üç test atlanmıyor veya mock bağımlılıklarla değiştirilmiyor.
+
+Yeni Marketplace CI işi sabit staging kaynak SHA'sını ikinci çalışma dizinine alır, envanterdeki
+123 checksum'ı doğrular ve bu PR'ın runner'ıyla tam zinciri boş PostgreSQL 16 DB'sine uygular/tekrarlar.
+Ardından authorization/hours/availability ve servis oluşturma, eşzamanlı randevu çatışması,
+onay/iptal/ret/tamamlama, review, görsel galerisi ve admin moderation HTTP lifecycle testlerini çalıştırır.
+Test DB'si `heycar_marketplace_test` olarak hem ortamda hem PostgreSQL bağlantısında doğrulanır.
+İzole fixture şeması test bitiminde silinmez; disposable CI servisi yaşam döngüsüne bırakılır.
+Bu iş staging SSH environment veya staging/production secret'ı kullanmaz.
