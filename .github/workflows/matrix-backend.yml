@@ -199,6 +199,17 @@ jobs:
           test "$actual" = "$expected"
           echo "MATRIX_MIGRATION_TRACKING_OK count=$actual"
 
+      - name: Test marketplace rules and request boundaries
+        working-directory: server
+        run: |
+          node --test tests/marketplace-hours.test.js tests/marketplace-availability.test.js tests/marketplace-routes.test.js tests/business-image.test.js
+
+      - name: Verify marketplace PostgreSQL HTTP lifecycle on disposable matrix database
+        working-directory: server
+        env:
+          MARKETPLACE_PG_TEST: "1"
+        run: node --test tests/marketplace-postgres.test.js
+
       - name: Verify Matrix schema invariants
         run: psql -h 127.0.0.1 -U postgres -d heycar_matrix -v ON_ERROR_STOP=1 -f server/matrix-schema-check.sql
 
