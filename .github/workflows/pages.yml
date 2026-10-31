@@ -94,6 +94,32 @@ jobs:
       - name: Verify branded Flutter call screen source patch
         run: python3 -m unittest discover -s tool -p test_callkit_flutter_route_patch.py
 
+
+  marketplace_flutter_check:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Resolve dependencies
+        run: flutter pub get
+      - name: Analyze marketplace entry points and pages
+        run: |
+          flutter analyze lib/cepqar_offers_page.dart lib/marketplace_service_page.dart lib/marketplace_appointments_page.dart lib/business_panel_page.dart lib/business_marketplace_page.dart lib/admin_marketplace_page.dart test/admin_marketplace_page_test.dart --no-fatal-infos --no-fatal-warnings
+      - name: Test marketplace admin UI
+        run: flutter test test/admin_marketplace_page_test.dart
+      - name: Prepare web platform
+        run: flutter create . --platforms=web --project-name heycar_app --no-pub
+      - name: Build marketplace business web
+        run: flutter build web --release --target lib/entry_business.dart --base-href /HeyCar/isletme/
+      - name: Build marketplace admin web
+        run: flutter build web --release --target lib/admin_v3.dart --base-href /HeyCar/admin/
+
   build:
     if: github.event_name != 'pull_request' || github.head_ref == 'rollback/owner-app-15oct-keep-backend-20261018'
     runs-on: ubuntu-latest
