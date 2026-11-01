@@ -21,7 +21,7 @@ test('staging preflight is read-only and never certifies backup existence as res
   const db=client();
   const report=await inspect({client:db,directory,stat:()=>({size:1024,mtime:new Date(0)}),
    request:async url=>({status:url.includes('/api/business')||url.includes('/api/admin')?401:200,
-    json:async()=>({environment:'staging',database:'heycar_staging',externalServicesDisabled:true})})});
+    json:async()=>url.includes('/api/marketplace/services')?({ok:true,services:[]}):({environment:'staging',database:'heycar_staging',externalServicesDisabled:true})})});
   assert.equal(report.database,'heycar_staging');
   assert.equal(report.backup_restore_verified,false);
   assert.equal(report.deployment_performed,false);

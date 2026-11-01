@@ -132,15 +132,19 @@ jobs:
         id: backup
         continue-on-error: true
         env:
+          RESTORE_DB_NAME: ${{ vars.STAGING_RESTORE_DB_NAME }}
           SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
           SSH_PORT: ${{ secrets.STAGING_SSH_PORT }}
           SSH_USER: ${{ secrets.STAGING_SSH_USER }}
         shell: bash
         run: |
           set -euo pipefail
+          if [ -n "$RESTORE_DB_NAME" ]; then
+            [[ "$RESTORE_DB_NAME" =~ ^heycar_recovery_test_[0-9a-f]{16}$ ]]
+          fi
           ssh -i "$HOME/.ssh/staging_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 \
             -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
-            'cd /home/cepqontag-deploy/app/server && node - --run-staging-backup' \
+            "cd /home/cepqontag-deploy/app/server && STAGING_RESTORE_DB_NAME='$RESTORE_DB_NAME' node - --run-staging-backup" \
             < deploy/marketplace-staging-backup.js > staging-backup-verification.json
       - name: Summarize backup and keep the deployment gate closed on unresolved history
         if: always()

@@ -30,5 +30,10 @@ test('PostgreSQL full dump restores schema, sequences, rows and critical data ha
   assert.match(report.dump_sha256,/^[0-9a-f]{64}$/);
   assert.equal(fs.statSync(path.join(report.directory,'database.dump')).mode & 0o777,0o600);
   assert.equal((await client.query('SELECT display_name FROM public.users')).rows[0].display_name,'Backup fixture');
+  const name='heycar_recovery_test_'+require('node:crypto').randomBytes(8).toString('hex');
+  await client.query('CREATE DATABASE "'+name+'" TEMPLATE template0');
+  const supplied=await backupAndRestore({client,Client,sourceDatabase:'heycar_matrix',backupRoot:path.join(os.homedir(),'cepqontag-backup-ci'),restoreDatabase:name});
+  assert.equal(supplied.restore_verified,true,JSON.stringify(supplied.blockers));
+  assert.equal(supplied.restore_database,name);
  }finally{await client.end();}
 });

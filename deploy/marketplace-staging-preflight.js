@@ -49,14 +49,21 @@ async function inspect({client,directory=process.cwd(),request=fetch,stat=fs.sta
   ['services','http://127.0.0.1:8091/api/marketplace/services',200],
   ['business_auth','http://127.0.0.1:8091/api/business/marketplace/services',401],
   ['admin_auth','http://127.0.0.1:8091/api/admin/manage/marketplace/services',401],
+  ['public_environment','https://staging-api-185-165-46-213.nip.io/api/environment',200],
+  ['public_services','https://staging-api-185-165-46-213.nip.io/api/marketplace/services',200],
  ]){
   try{
    const res=await request(url,{signal:AbortSignal.timeout(8000)});
    report.http[name]={status:res.status};
    if(res.status!==expected)report.blockers.push('HTTP_CHECK_FAILED:'+name);
-   if(name==='environment'&&res.status===200){
+   if((name==='environment'||name==='public_environment')&&res.status===200){
     const body=await res.json();
     if(body.environment!=='staging'||body.database!=='heycar_staging'||body.externalServicesDisabled!==true)report.blockers.push('HTTP_ENVIRONMENT_NOT_ISOLATED');
+   }
+   if((name==='services'||name==='public_services')&&res.status===200){
+    const body=await res.json();
+    if(body.ok!==true||!Array.isArray(body.services))report.blockers.push('HTTP_SERVICE_LIST_INVALID:'+name);
+    else report.http[name].service_count=body.services.length;
    }
   }catch(_){report.http[name]={unreachable:true};report.blockers.push('HTTP_UNREACHABLE:'+name);}
  }

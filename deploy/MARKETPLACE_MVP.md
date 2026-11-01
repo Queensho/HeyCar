@@ -176,3 +176,19 @@ must provide a separate empty verification DB or perform the restore; do not gra
 CREATEDB to the application role just to bypass this gate. The workflow's manual
 `verify_backup` input controls future backup attempts; push events only audit.
 The staging readiness job remains blocked and never deploys automatically.
+
+
+The latest live audit (2026-11-01) supersedes the old uploaded schema: all four
+marketplace tables, schema_migrations, towing_messages and both custom-reminder
+tables are present, while schema_migrations has zero rows. The deployed
+047_cleanup_deleted_vehicle_dependents.sql differs from the candidate checksum.
+Do not repair tables based on the old dump or replay that cleanup migration.
+
+An administrator can pre-create an empty DB named heycar_recovery_test_<16 hex>
+owned by the existing application DB role, then set the non-secret staging
+Actions variable STAGING_RESTORE_DB_NAME to that name. A manual readiness run
+with verify_backup=true uses it only after checking its exact name, ownership,
+empty relations/functions and schema state. No CREATEDB grant to the runtime
+role is needed. Alternatively the administrator can restore the saved dump with
+the appropriate owner/ACL privileges and provide the verification evidence.
+No existing populated DB will be overwritten and no DB will be dropped.
