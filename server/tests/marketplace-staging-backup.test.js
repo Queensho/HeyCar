@@ -35,5 +35,15 @@ test('PostgreSQL full dump restores schema, sequences, rows and critical data ha
   const supplied=await backupAndRestore({client,Client,sourceDatabase:'heycar_matrix',backupRoot:path.join(os.homedir(),'cepqontag-backup-ci'),restoreDatabase:name});
   assert.equal(supplied.restore_verified,true,JSON.stringify(supplied.blockers));
   assert.equal(supplied.restore_database,name);
+  const limited={connectionParameters:client.connectionParameters,query(sql,args){
+   if(sql.startsWith('SELECT rolcreatedb'))return Promise.resolve({rows:[{allowed:false}]});
+   return client.query(sql,args);
+  }};
+  const isolated=await backupAndRestore({client:limited,Client,sourceDatabase:'heycar_matrix',backupRoot:path.join(os.homedir(),'cepqontag-backup-ci')});
+  assert.equal(isolated.restore_verified,true,JSON.stringify(isolated.blockers));
+  assert.equal(isolated.restore_mode,'private_local_cluster');
+  assert.equal(isolated.restore_cluster_stopped,true);
+  assert.deepEqual(isolated.restore_data_hashes,isolated.source_data_hashes);
+
  }finally{await client.end();}
 });

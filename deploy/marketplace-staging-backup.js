@@ -2,6 +2,7 @@
 const fs=require('node:fs');
 const path=require('node:path');
 const crypto=require('node:crypto');
+const os=require('node:os');
 const {spawn,execFileSync}=require('node:child_process');
 const ident=value=>'"'+String(value).replace(/"/g,'""')+'"';
 const literal=value=>"'"+String(value).replace(/'/g,"''")+"'";
@@ -25,15 +26,15 @@ async function command(binary,args,env,hashOutput=false){
 }
 async function schema(client){
  const result={};
- result.relations=(await client.query("SELECT n.nspname,c.relname,c.relkind,pg_get_userbyid(c.relowner) AS owner,c.relacl::text AS acl FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname<>'information_schema' AND c.relkind IN ('r','p','v','m','S') ORDER BY n.nspname,c.relname")).rows;
- result.columns=(await client.query("SELECT n.nspname,c.relname,a.attname,format_type(a.atttypid,a.atttypmod) AS type,a.attnotnull,pg_get_expr(d.adbin,d.adrelid) AS default_expression FROM pg_attribute a JOIN pg_class c ON c.oid=a.attrelid JOIN pg_namespace n ON n.oid=c.relnamespace LEFT JOIN pg_attrdef d ON d.adrelid=c.oid AND d.adnum=a.attnum WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname<>'information_schema' AND c.relkind IN ('r','p','v','m') AND a.attnum>0 AND NOT a.attisdropped ORDER BY n.nspname,c.relname,a.attnum")).rows;
- result.constraints=(await client.query("SELECT n.nspname,c.relname,k.conname,k.convalidated,pg_get_constraintdef(k.oid,true) AS definition FROM pg_constraint k JOIN pg_class c ON c.oid=k.conrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname<>'information_schema' ORDER BY n.nspname,c.relname,k.conname")).rows;
- result.indexes=(await client.query("SELECT n.nspname,t.relname,c.relname AS name,i.indisvalid,i.indisready,pg_get_indexdef(i.indexrelid) AS definition FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid JOIN pg_class t ON t.oid=i.indrelid JOIN pg_namespace n ON n.oid=t.relnamespace WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname<>'information_schema' ORDER BY n.nspname,t.relname,c.relname")).rows;
- result.sequences=(await client.query("SELECT schemaname,sequencename,start_value,min_value,max_value,increment_by,cycle,cache_size,last_value FROM pg_sequences WHERE schemaname NOT LIKE 'pg_%' ORDER BY schemaname,sequencename")).rows;
+ result.relations=(await client.query("SELECT n.nspname,c.relname,c.relkind,pg_get_userbyid(c.relowner) AS owner,c.relacl::text AS acl FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname !~ '^pg_' AND n.nspname<>'information_schema' AND c.relkind IN ('r','p','v','m','S') ORDER BY n.nspname,c.relname")).rows;
+ result.columns=(await client.query("SELECT n.nspname,c.relname,a.attname,format_type(a.atttypid,a.atttypmod) AS type,a.attnotnull,pg_get_expr(d.adbin,d.adrelid) AS default_expression FROM pg_attribute a JOIN pg_class c ON c.oid=a.attrelid JOIN pg_namespace n ON n.oid=c.relnamespace LEFT JOIN pg_attrdef d ON d.adrelid=c.oid AND d.adnum=a.attnum WHERE n.nspname !~ '^pg_' AND n.nspname<>'information_schema' AND c.relkind IN ('r','p','v','m') AND a.attnum>0 AND NOT a.attisdropped ORDER BY n.nspname,c.relname,a.attnum")).rows;
+ result.constraints=(await client.query("SELECT n.nspname,c.relname,k.conname,k.convalidated,pg_get_constraintdef(k.oid,true) AS definition FROM pg_constraint k JOIN pg_class c ON c.oid=k.conrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname !~ '^pg_' AND n.nspname<>'information_schema' ORDER BY n.nspname,c.relname,k.conname")).rows;
+ result.indexes=(await client.query("SELECT n.nspname,t.relname,c.relname AS name,i.indisvalid,i.indisready,pg_get_indexdef(i.indexrelid) AS definition FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid JOIN pg_class t ON t.oid=i.indrelid JOIN pg_namespace n ON n.oid=t.relnamespace WHERE n.nspname !~ '^pg_' AND n.nspname<>'information_schema' ORDER BY n.nspname,t.relname,c.relname")).rows;
+ result.sequences=(await client.query("SELECT schemaname,sequencename,start_value,min_value,max_value,increment_by,cycle,cache_size,last_value FROM pg_sequences WHERE schemaname !~ '^pg_' ORDER BY schemaname,sequencename")).rows;
  return result;
 }
 async function counts(client){
- const tables=(await client.query("SELECT schemaname,tablename FROM pg_tables WHERE schemaname NOT LIKE 'pg_%' AND schemaname<>'information_schema' ORDER BY schemaname,tablename")).rows;
+ const tables=(await client.query("SELECT schemaname,tablename FROM pg_tables WHERE schemaname !~ '^pg_' AND schemaname<>'information_schema' ORDER BY schemaname,tablename")).rows;
  const rows=[];
  for(const t of tables){const r=await client.query('SELECT count(*)::text AS n FROM '+ident(t.schemaname)+'.'+ident(t.tablename));rows.push({schema:t.schemaname,table:t.tablename,count:r.rows[0].n});}
  return rows;
@@ -49,9 +50,61 @@ async function dataHashes(binary,env,rows,snapshot){
  }
  return hashes;
 }
+async function startPrivateRestoreCluster({Client,directory,client,report}){
+ if(process.getuid?.()===0)throw Error('RESTORE_CLUSTER_REQUIRES_UNPRIVILEGED_USER');
+ const initdb=tool('initdb'),pgctl=tool('pg_ctl');
+ const available=Number((fs.readFileSync('/proc/meminfo','utf8').match(/^MemAvailable:\s+(\d+)/m)||[])[1]||0)*1024;
+ if(available<384*1024*1024)throw Error('RESTORE_CLUSTER_MEMORY_INSUFFICIENT');
+ const disk=fs.statfsSync(directory);
+ if(disk.bavail*disk.bsize<Math.max(512*1024*1024,(report.dump_bytes||0)*32))throw Error('RESTORE_CLUSTER_DISK_INSUFFICIENT');
+ const nonce=crypto.randomBytes(8).toString('hex');
+ const data=path.join(directory,'verification-cluster');
+ const socketRoot=path.join(os.homedir(),'.cepqontag-restore-sockets');
+ fs.mkdirSync(socketRoot,{recursive:true,mode:0o700});
+ if(fs.lstatSync(socketRoot).isSymbolicLink())throw Error('RESTORE_CLUSTER_SOCKET_PATH_REJECTED');
+ const socket=path.join(socketRoot,nonce);fs.mkdirSync(socket,{mode:0o700});
+ if(!/^[A-Za-z0-9_./-]+$/.test(socket)||socket.length>85)throw Error('RESTORE_CLUSTER_SOCKET_PATH_REJECTED');
+ const user='verify_admin_'+nonce,port=6543;
+ const env={...process.env,PGHOST:socket,PGPORT:String(port),PGUSER:user,PGPASSWORD:'',PGDATABASE:'postgres',PGSSLMODE:'disable',PGCTLTIMEOUT:'30'};
+ delete env.PGSERVICE;delete env.PGSERVICEFILE;
+ const locale=(await client.query('SELECT datcollate,datctype,datlocprovider,daticulocale FROM pg_database WHERE datname=current_database()')).rows[0];
+ const initArgs=['-D',data,'-U',user,'--auth-local=trust','--auth-host=reject','--encoding=UTF8','--locale='+locale.datcollate,'--lc-ctype='+locale.datctype];
+ if(locale.datlocprovider==='i')initArgs.push('--locale-provider=icu','--icu-locale='+locale.daticulocale);
+ report.private_restore_phase='initializing';
+ await command(initdb,initArgs,env);
+ const options='-c listen_addresses= -c unix_socket_directories='+socket+' -p '+port+
+  ' -c shared_buffers=16MB -c work_mem=2MB -c maintenance_work_mem=16MB -c max_connections=8'+
+  ' -c max_worker_processes=0 -c max_parallel_workers=0 -c autovacuum=off -c max_locks_per_transaction=256';
+ let started=false,admin;
+ async function stop(){
+  if(admin){await admin.end().catch(()=>{});admin=null;}
+  if(started){await command(pgctl,['-D',data,'-m','fast','-w','stop'],env);started=false;}
+ }
+ const signal=async()=>{try{await stop();}finally{process.exit(2);}};
+ try{
+  report.private_restore_phase='starting';
+  started=true;
+  await command(pgctl,['-D',data,'-l',path.join(directory,'restore-postgres.log'),'-o',options,'-w','start'],env);
+  for(const name of ['SIGTERM','SIGINT','SIGHUP'])process.once(name,signal);
+  admin=new Client({host:socket,port,user,database:'postgres',ssl:false,connectionTimeoutMillis:10000});
+  await admin.connect();
+  const actual=(await admin.query('SHOW data_directory')).rows[0].data_directory;
+  if(fs.realpathSync(actual)!==fs.realpathSync(data))throw Error('RESTORE_CLUSTER_IDENTITY_MISMATCH');
+  report.private_restore_phase='roles';
+  const roles=(await client.query("SELECT rolname FROM pg_roles WHERE rolname !~ '^pg_' ORDER BY rolname")).rows;
+  for(const role of roles){
+   const exists=await admin.query('SELECT 1 FROM pg_roles WHERE rolname=$1',[role.rolname]);
+   if(!exists.rowCount)await admin.query('CREATE ROLE '+ident(role.rolname)+' NOLOGIN');
+  }
+  report.private_restore_phase='ready';
+  report.restore_mode='private_local_cluster';report.restore_cluster=data;
+  return {admin,params:{host:socket,port,user,password:'',ssl:false},env,
+   async close(){for(const name of ['SIGTERM','SIGINT','SIGHUP'])process.removeListener(name,signal);await stop();report.restore_cluster_stopped=true;}};
+ }catch(error){for(const name of ['SIGTERM','SIGINT','SIGHUP'])process.removeListener(name,signal);await stop().catch(()=>{});throw error;}
+}
 async function backupAndRestore({client,Client,sourceDatabase='heycar_staging',backupRoot='/home/cepqontag-deploy/backups',restoreDatabase=''}){
  const report={database:sourceDatabase,backup_complete:false,restore_verified:false,offhost_backup_verified:false,source_modified:false,blockers:[]};
- let open=false,restore;
+ let open=false,restore,privateCluster;
  try{
   const id=(await client.query('SELECT current_database() AS database')).rows[0].database;
   if(!['heycar_staging','heycar_matrix'].includes(sourceDatabase)||id!==sourceDatabase)throw Error('BACKUP_DATABASE_IDENTITY_MISMATCH');
@@ -82,20 +135,29 @@ async function backupAndRestore({client,Client,sourceDatabase='heycar_staging',b
   const fd=fs.openSync(dump,'r+');try{fs.fsyncSync(fd);}finally{fs.closeSync(fd);}
   report.dump_sha256=await new Promise((resolve,reject)=>{const h=crypto.createHash('sha256');const s=fs.createReadStream(dump);s.on('data',c=>h.update(c));s.on('error',reject);s.on('end',()=>resolve(h.digest('hex')));});
   report.dump_bytes=fs.statSync(dump).size;report.backup_complete=true;
-  if(!privilege&&!restoreDatabase){report.blockers.push('RESTORE_DATABASE_CREATE_PRIVILEGE_REQUIRED');return report;}
+  let restoreAdmin=client,restoreParams=params,restoreBaseEnv=env;
+  if(!privilege&&!restoreDatabase){
+   try{
+    privateCluster=await startPrivateRestoreCluster({Client,directory,client,report});
+    restoreAdmin=privateCluster.admin;restoreParams=privateCluster.params;restoreBaseEnv=privateCluster.env;
+   }catch(error){
+    report.blockers.push(/^(RESTORE_|POSTGRESQL_)[A-Z_]+$/.test(error.message||'')?error.message:'RESTORE_LOCAL_CLUSTER_UNAVAILABLE');
+    return report;
+   }
+  }
   const name=restoreDatabase||'heycar_recovery_test_'+crypto.randomBytes(8).toString('hex');report.restore_database=name;
   if(restoreDatabase){
    const owner=(await client.query('SELECT pg_get_userbyid(datdba)=current_user AS owned FROM pg_database WHERE datname=$1',[name])).rows[0];
    if(!owner?.owned){report.blockers.push('RESTORE_DATABASE_OWNER_MISMATCH');return report;}
-  }else await client.query('CREATE DATABASE '+ident(name)+' TEMPLATE template0');
-  restore=new Client({host:params.host,port:params.port,user:params.user,password:params.password,database:name,ssl:params.ssl,connectionTimeoutMillis:10000});
+  }else await restoreAdmin.query('CREATE DATABASE '+ident(name)+' TEMPLATE template0');
+  restore=new Client({host:restoreParams.host,port:restoreParams.port,user:restoreParams.user,password:restoreParams.password,database:name,ssl:restoreParams.ssl,connectionTimeoutMillis:10000});
   await restore.connect();
   if((await restore.query('SELECT current_database() AS database')).rows[0].database!==name)throw Error('RESTORE_DATABASE_IDENTITY_MISMATCH');
-  const objects=(await restore.query("SELECT count(*)::int AS n FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname<>'information_schema' AND c.relkind IN ('r','p','v','m','S','f')")).rows[0].n;
-  const routines=(await restore.query("SELECT count(*)::int AS n FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname<>'information_schema'")).rows[0].n;
+  const objects=(await restore.query("SELECT count(*)::int AS n FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname !~ '^pg_' AND n.nspname<>'information_schema' AND c.relkind IN ('r','p','v','m','S','f')")).rows[0].n;
+  const routines=(await restore.query("SELECT count(*)::int AS n FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname !~ '^pg_' AND n.nspname<>'information_schema'")).rows[0].n;
   const namespaces=(await restore.query("SELECT count(*)::int AS n FROM pg_namespace WHERE nspname NOT LIKE 'pg_%' AND nspname NOT IN ('public','information_schema')")).rows[0].n;
   if(objects||routines||namespaces){report.blockers.push('RESTORE_TARGET_NOT_EMPTY');return report;}
-  const restoreEnv={...env,PGDATABASE:name};
+  const restoreEnv={...restoreBaseEnv,PGDATABASE:name};
   try{await command(pgrestore,['--exit-on-error','--dbname='+name,dump],restoreEnv);}
   catch(_){report.blockers.push('RESTORE_FAILED_REQUIRES_DATABASE_ADMIN');return report;}
   await restore.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
@@ -112,6 +174,7 @@ async function backupAndRestore({client,Client,sourceDatabase='heycar_staging',b
  }finally{
   if(open)await client.query('ROLLBACK').catch(()=>{});
   if(restore)await restore.end().catch(()=>{});
+  if(privateCluster){try{await privateCluster.close();}catch(_){report.restore_verified=false;report.restore_cluster_stopped=false;report.blockers.push('RESTORE_CLUSTER_STOP_FAILED');}}
   if(report.directory)fs.writeFileSync(path.join(report.directory,'verification.json'),JSON.stringify(report,null,2),{mode:0o600});
   // The new verification DB and backup are retained. Never drop a DB/schema or overwrite an old backup.
  }

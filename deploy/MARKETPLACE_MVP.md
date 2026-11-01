@@ -209,3 +209,18 @@ scanner. Automated tests prove the disabled senders cannot query registrations,
 load service-account credentials or contact a provider. Production defaults remain
 compatible. These candidate changes are not installed on the VPS until the backup,
 schema/history and live lifecycle gates are satisfied.
+
+
+Private-cluster restore fallback: when the application DB role cannot create a
+verification DB and no admin-prepared empty target is supplied, the backup tool
+can initialize a separate PostgreSQL 16 cluster under the private backup directory.
+It uses the unprivileged deploy OS user, a private 0700 Unix-socket directory and
+no TCP listener. Source role names are recreated as NOLOGIN roles; passwords and
+superuser attributes are not copied. Source collation/encoding, table data,
+constraints/indexes, sequences and object ACL definitions are checked. Memory/disk
+headroom is required, buffers/connections/workers are limited, and the private
+cluster is stopped after verification. Files are retained rather than deleted.
+The existing PostgreSQL cluster, roles, schema and data are not changed.
+This fallback is exercised against PostgreSQL 16 in CI before any VPS attempt.
+Push-triggered readiness runs can attempt this verified backup path; the final
+release gate still blocks deployment on unresolved history/schema evidence.
