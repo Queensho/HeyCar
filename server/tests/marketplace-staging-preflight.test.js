@@ -10,6 +10,7 @@ function client(database='heycar_staging'){
  return {seen,async query(sql){seen.push(sql);
   if(sql.startsWith('SELECT current_database'))return {rows:[{database,version:160015}]};
   if(sql.includes('to_regclass'))return {rows:[{present:false}]};
+  if(sql.includes('count(*)'))return {rows:[{n:0,display_name:0,password_hash:0,duplicate_groups:0,normalized_duplicate_groups:0,noncanonical:0}]};
   return {rows:[]};
  }};
 }
@@ -30,7 +31,7 @@ test('staging preflight is read-only and never certifies backup existence as res
   assert.equal(report.migrations.length,1);
   assert.equal(db.seen[0],'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
   assert.equal(db.seen.at(-1),'ROLLBACK');
-  assert.ok(db.seen.every(sql=>/^(SELECT|BEGIN|ROLLBACK)/.test(sql)));
+  assert.ok(db.seen.every(sql=>/^(SELECT|WITH|BEGIN|ROLLBACK)/.test(sql)));
  }finally{fs.rmSync(directory,{recursive:true,force:true});}
 });
 test('staging preflight rejects a different database before inspection and HTTP',async()=>{

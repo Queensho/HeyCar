@@ -13,6 +13,23 @@ async function inspect({client,directory=process.cwd(),request=fetch,stat=fs.sta
   if(id.database!=='heycar_staging')throw Error('STAGING_DATABASE_IDENTITY_MISMATCH');
   if(Math.floor(id.version/10000)!==16)throw Error('STAGING_POSTGRESQL_VERSION_MISMATCH');
   report.database=id.database;
+  report.recovery_diagnostics={};
+  report.recovery_diagnostics.nulls=(await client.query(`SELECT
+   count(*) FILTER (WHERE display_name IS NULL)::int AS display_name,
+   count(*) FILTER (WHERE password_hash IS NULL)::int AS password_hash FROM public.users`)).rows[0];
+  report.recovery_diagnostics.nulls.vehicle_owner=(await client.query('SELECT count(*)::int AS n FROM public.vehicles WHERE owner_id IS NULL')).rows[0].n;
+  report.recovery_diagnostics.phones=(await client.query(`WITH normalized AS (
+    SELECT phone,CASE
+      WHEN regexp_replace(phone,'[^0-9]','','g') ~ '^90[5][0-9]{9}$' THEN '+'||regexp_replace(phone,'[^0-9]','','g')
+      WHEN regexp_replace(phone,'[^0-9]','','g') ~ '^0[5][0-9]{9}$' THEN '+90'||substring(regexp_replace(phone,'[^0-9]','','g') from 2)
+      WHEN regexp_replace(phone,'[^0-9]','','g') ~ '^[5][0-9]{9}$' THEN '+90'||regexp_replace(phone,'[^0-9]','','g')
+      ELSE phone END AS canonical FROM public.users WHERE phone IS NOT NULL)
+    SELECT (SELECT count(*)::int FROM (SELECT phone FROM normalized GROUP BY phone HAVING count(*)>1) d) AS duplicate_groups,
+    (SELECT count(*)::int FROM (SELECT canonical FROM normalized GROUP BY canonical HAVING count(*)>1) d) AS normalized_duplicate_groups,
+    (SELECT count(*)::int FROM normalized WHERE phone IS DISTINCT FROM canonical) AS noncanonical`)).rows[0];
+  report.recovery_diagnostics.user_indexes=(await client.query("SELECT indexname,indexdef FROM pg_indexes WHERE schemaname='public' AND tablename='users' ORDER BY indexname")).rows;
+  const cleanupPath=path.join(directory,'migrations','047_cleanup_deleted_vehicle_dependents.sql');
+  report.recovery_diagnostics.cleanup047=fs.existsSync(cleanupPath)?fs.readFileSync(cleanupPath,'utf8'):'';
   const privilege=(await client.query('SELECT rolcreatedb OR rolsuper AS allowed FROM pg_roles WHERE rolname=current_user')).rows[0];
   const sudo=spawnSync('sudo',['-n','-l'],{encoding:'utf8',timeout:5000});
   const sudoText=sudo.status===0?sudo.stdout:'';

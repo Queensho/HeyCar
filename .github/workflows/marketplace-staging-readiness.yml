@@ -71,7 +71,7 @@ jobs:
           psql -h 127.0.0.1 -U postgres -d heycar_matrix -v ON_ERROR_STOP=1 -c "CREATE ROLE heycar_user LOGIN PASSWORD 'reference-test-only'"
           createdb -h 127.0.0.1 -U postgres heycar_reference_test
           DB_NAME=heycar_reference_test node server/migrate.js --expect-database=heycar_reference_test
-          DB_NAME=heycar_reference_test node server/marketplace-schema.js > expected-marketplace-schema.json
+          SCHEMA_AUDIT_ALL=1 DB_NAME=heycar_reference_test node server/marketplace-schema.js > expected-marketplace-schema.json
       - uses: actions/upload-artifact@v4
         with:
           name: expected-marketplace-schema
@@ -104,7 +104,7 @@ jobs:
           prefix=prefix.replace('if(require.main===module){','if(false){')
           source=source.replace("const crypto=require('node:crypto');", "const crypto=require('node:crypto');\n"+prefix)
           marker='  report.database=id.database;'
-          comparison='  report.candidate_schema_differences=schemaTools.compareSchema('+json.dumps(reference)+',await schemaTools.readSchema(client));\n'
+          comparison='  report.candidate_schema_differences=schemaTools.compareSchema('+json.dumps(reference)+',await schemaTools.readSchema(client,null));\n'
           # Finish the inspection transaction before the schema helper opens its own read-only snapshot.
           source=source.replace(" }finally{await client.query('ROLLBACK');}"," }finally{await client.query('ROLLBACK');}\n"+comparison)
           Path('staging-preflight-bundle.js').write_text(source)
@@ -150,7 +150,7 @@ jobs:
         shell: bash
         run: |
           python3 - <<'PYTHON'
-          import hashlib, json, os
+          import difflib, hashlib, json, os
           from pathlib import Path
           try:
               report=json.loads(Path('staging-readiness.json').read_text())
@@ -167,6 +167,11 @@ jobs:
                   'only_candidate':sorted(candidate.keys()-deployed.keys()),
                   'changed_common':sorted(n for n in deployed.keys() & candidate.keys() if deployed[n]!=candidate[n])}))
               print('CANDIDATE_SCHEMA_DIFFERENCES',json.dumps(report.get('candidate_schema_differences',[])))
+              diagnostics=report.get('recovery_diagnostics',{})
+              deployed_cleanup=diagnostics.pop('cleanup047','')
+              print('RECOVERY_DIAGNOSTICS',json.dumps(diagnostics))
+              expected_cleanup=Path('server/migrations/047_cleanup_deleted_vehicle_dependents.sql').read_text()
+              print('CLEANUP047_DIFF',''.join(difflib.unified_diff(expected_cleanup.splitlines(True),deployed_cleanup.splitlines(True),fromfile='candidate047',tofile='deployed047')))
               print('TABLES_PRESENT',json.dumps(report.get('schema',{}).get('tables',[])))
               with open(os.environ['GITHUB_OUTPUT'],'a') as out:
                   out.write('identity_verified='+str(report.get('database')=='heycar_staging').lower()+'\n')
