@@ -1,226 +1,176 @@
 # CepQontag marketplace release gate
 
-Payment is made at the business. This release does not collect payments,
-commissions or payouts. Do not deploy or run migrations on a real database
-without the operator's explicit approval.
+PR #299 is the existing marketplace integration review. PR #300 is unchanged and
+unmerged. Production is out of scope. No candidate deployment, service restart,
+live DDL, baseline or live data repair has been performed.
 
-## Scope
+## Candidate behavior
 
-Existing owner discovery/category filters, service detail, gallery, reviews,
-appointment listing/cancellation and business catalog/hours/history are retained.
-The detail screen now offers advisory 15-minute start slots in the business's
-timezone, with duration and on-site payment information. Booking remains the
-authority: it locks the business and rechecks publication, hours and conflicts.
+Owner discovery, service details, gallery, reviews, availability and appointment
+creation/cancellation are wired to the marketplace API. Businesses manage services,
+weekly hours and appointment confirmation/rejection/completion. Administration can
+hide/restore listings independently of a business's active switch. Payment remains
+at the business; there are no commissions, payouts or online payment collection.
 
-Admin → campaign section → Hizmetler lists services and appointment status
-counts. Administrators can remove/restore a service with a reason. Removal is
-independent of the business's active toggle and suppresses discovery, availability,
-gallery, reviews and new bookings. Existing appointments remain manageable.
-Business statistics explicitly describe their limit of the latest 100 appointments.
+The shared CEPQONTAG_API_BASE_URL selects the API for marketplace, business and
+linked admin panels. Business session preference keys are scoped to the selected
+API origin. Existing timezones survive hours edits. Booking locks the business,
+rechecks vehicle ownership inside the transaction and holds the vehicle row until
+commit. The backend refuses an incorrectly configured staging DB/port, disables
+staging FCM/WebPush delivery and its background route scanner.
 
-## Environment
-
-Use the existing backend configuration (no new secrets): `DB_HOST`, `DB_PORT`,
-`DB_NAME`, `DB_USER`, `DB_PASSWORD`, separate `JWT_SECRET`, `OWNER_AUTH_SECRET`,
-`DRIVER_AUTH_SECRET`, and the existing session/security secrets required by
-`server/server.js`. Retain `BUSINESS_PASSWORD_SALT` when legacy business passwords
-exist. Configure `PUBLIC_API_BASE_URL` and persistent writable
-`BUSINESS_UPLOAD_DIR` for business media. Never copy test credentials to production.
-Preserve the existing proxy/CORS, HTTPS, Firebase and notification configuration.
-
-Owner and business/admin entry points must use the intended API environment;
-existing business/admin hosts are still compiled into those applications. Verify
-them before distributing a build to staging users.
-
-## Build-time API environment selection
-
-Business and admin panels accept `CEPQONTAG_API_BASE_URL` through Flutter
-`--dart-define`. Use the **staging API origin** for staging builds and the
-approved production origin for production builds. Never embed credentials in
-this value. For example, replace the placeholder below with the actual HTTPS
-staging API origin (without a trailing slash):
+Candidate web builds use:
 
 ```sh
-flutter build web --release --target lib/entry_business.dart --base-href /HeyCar/isletme/ --dart-define=CEPQONTAG_API_BASE_URL=https://STAGING_API_HOST
-flutter build web --release --target lib/admin_v3.dart --base-href /HeyCar/admin/ --dart-define=CEPQONTAG_API_BASE_URL=https://STAGING_API_HOST
+flutter build web --release --target lib/entry_business.dart --base-href /HeyCar/isletme-staging/ --dart-define=CEPQONTAG_API_BASE_URL=https://staging-api-185-165-46-213.nip.io
+flutter build web --release --target lib/admin_v3.dart --base-href /HeyCar/admin-staging/ --dart-define=CEPQONTAG_API_BASE_URL=https://staging-api-185-165-46-213.nip.io
 ```
 
-When the define is omitted, both panels retain the existing production API
-origin for backward compatibility. The owner marketplace uses
-`OnboardingBackend.baseUrl` and must be independently checked against the
-intended staging environment. CI builds without this define only prove the
-fallback build compiles; they do not validate staging connectivity.
+CI uploads reviewable business/admin web artifacts without publishing them.
+The owner ARM64 APK is a compile smoke check. Its complete API/session/Firebase
+isolation has not been certified; it is not distributed as a staging APK.
 
-## Migration and deployment order (approval required)
+## Real staging evidence: 2026-11-01
 
-1. Record the currently deployed commit, service configuration and web artifacts.
-   Back up PostgreSQL with `pg_dump -Fc` and the upload directory; test restoration
-   on a disposable database first.
-2. Rehearse on a separate test database restored from a verified staging backup and the deployed database role.
-   Check pending/confirmed appointments, ownership and legacy sessions.
-3. Stop if migration history is absent, checksums differ, or the deployed source
-   uses the legacy marketplace filenames 123-127. The integration candidate uses
-   128-132 plus main's 123 custom reminders; this requires per-file reconciliation.
-   Do not blanket-baseline or replay the historical chain on existing data. PR #300
-   contains the backup/schema review procedure; no baseline is authorized by this PR.
-   Only after all pending operations are individually reviewed, from the complete
-   release checkout, install backend dependencies with the
-   repository's existing install procedure. Run `cd server && npm run migrate`
-   using the migration role. The tracked chain applies 128 (catalog/appointments),
-   129 (hours/timezone), 130 (reviews), 131 (gallery), then 132 (admin moderation).
-   Retain every earlier migration; never alter tracked files or their checksums.
-4. Run the migrator again: it must report success without reapplying migrations.
-   Confirm both `admin_hidden` and `moderation_reason` exist and the new partial
-   public-list index exists. Migration 132 defaults existing listings to visible.
-5. Deploy backend modules together, including `marketplace-availability.js`,
-   `business-image.js`, `admin-marketplace-routes.js` and the updated server entry.
-   Restart through the VPS's existing service manager and verify `/health`.
-6. Build/distribute owner Android/web, business web (`lib/entry_business.dart`) and
-   admin web (`lib/admin_v3.dart`) using the existing platform/Firebase patches and
-   hosting base paths. Publish the backend first; old clients remain supported.
-7. Run the smoke checklist below on staging. Production deployment is out of scope.
+Actions SSH and the pinned host fingerprint were verified. The local 8091 and
+public HTTPS environment endpoints identify staging / heycar_staging with external
+services disabled. Health and service listing return 200; the list contains zero
+active services at audit time. Anonymous business and admin requests return 401.
 
-## Rollback
+Existing addresses, serving the previous release:
 
-Restore the recorded backend commit and matching web/Android release. Keep additive
-migration 132 and its data in place; the older backend ignores the new columns.
-An older backend does **not** enforce admin takedowns: disable marketplace exposure
-or prevent new bookings during rollback until a moderation-aware version is restored.
-Do not drop appointment/review/gallery tables. Restore a database backup only with
-separate approval, a maintenance window and a plan for writes since the backup.
-Restore uploads only if damaged; do not discard newer user files automatically.
+- API: https://staging-api-185-165-46-213.nip.io
+- Business: https://queensho.github.io/HeyCar/isletme-staging/
 
-## Automated verification
+The old /tmp dump (800223 bytes) and schema (205595 bytes) still exist, but are not
+durable backups. A new private persistent backup was restored successfully:
 
-- Local dependency-free tests: run each with `node server/tests/<file>`:
-  `marketplace-hours.test.js`, `marketplace-availability.test.js`,
-  `marketplace-routes.test.js`, `business-image.test.js`.
-- Matrix Backend Integrity runs these tests, the existing regression suite, full
-  tracked migrations twice, schema checks and canonical API security smoke checks.
-- Its PostgreSQL HTTP test (`marketplace-postgres.test.js`) explicitly requires
-  `MARKETPLACE_PG_TEST=1` and a database name ending `_test` or `_matrix`. It uses
-  an isolated temporary schema and tests concurrent bookings, role/tenant boundaries,
-  cancellation, confirmation, rejection, completion, reviews, gallery deletion and
-  admin removal. It does not target production or replace canonical auth tests.
-- Flutter PR CI analyzes marketplace code and builds owner, business and admin web
-  entry points plus the owner Android debug APK. Require success on the final SHA.
+- Directory: /home/cepqontag-deploy/backups/marketplace-1793529338991-f818f1408573c01e/
+- File: database.dump, 813118 bytes, mode 0600.
+- SHA-256: 40e78e05d0f5c5279b990c6f2e2d88ab53334f6308a55b53fe3d6f1ddef088fa
+- Restore: separate private unprivileged PostgreSQL 16 cluster; no TCP listener.
+- Schema, owner/ACL, constraints/indexes, sequences, all table counts and critical
+  record hashes matched. The verification cluster was stopped and retained.
+- No source DB data, schema, roles or privileges were modified. No private dump was
+  uploaded to GitHub. An off-host backup copy is not yet verified.
 
-## Release checklist
+Evidence: https://github.com/Queensho/HeyCar/actions/runs/41298105733
 
-- [ ] Final SHA passes backend matrix, PostgreSQL lifecycle and all Flutter builds.
-- [ ] Staging migration rehearsal and rerun pass with the deployed roles.
-- [ ] At 360px and desktop widths, browse/filter services and inspect gallery,
-      business address, price, duration and on-site payment wording.
-- [ ] Set business hours; verify closed days, timezone and fully booked days.
-- [ ] Book an owned vehicle; reject a foreign vehicle and foreign/expired tokens.
-- [ ] Submit two overlapping requests simultaneously; exactly one succeeds.
-- [ ] Confirm, reject, cancel and complete an eligible appointment; verify history.
-- [ ] Review a completed service once; reject a duplicate/foreign review.
-- [ ] Add/delete gallery references; reject HTTP, IP/local-host and invalid URLs.
-- [ ] Upload a real JPEG/PNG/WebP; reject disguised executable data and oversized files.
-- [ ] Admin removes a service; it disappears from all public reads/new booking.
-      Business reactivation cannot bypass the removal; existing bookings still work.
-- [ ] Verify notifications, QR calls, owner/driver login and other modules on devices.
-- [ ] Verify backup restoration and rollback, API host/base paths and persistent media.
-- [ ] Obtain explicit production deployment/migration approval.
+The app DB role lacks CREATEDB. This is no longer a restore-verification blocker:
+the helper uses a resource-limited private cluster under the backup directory,
+recreates source role names as NOLOGIN without passwords or superuser attributes,
+checks the exact private data directory and stops the cluster in finally. An
+admin-prepared empty heycar_recovery_test_<16 hex> DB remains an optional alternative.
+No application-role privilege grant is needed.
 
-Do not mark the release ready from passing unit tests alone. Device/browser smoke,
-production-data migration rehearsal and final-SHA CI remain separate gates.
+## Migration and schema findings
 
+There are 123 deployed SQL files, 124 candidate SQL files and zero tracking rows.
+The live schema now contains schema_migrations, towing_messages,
+vehicle_custom_reminders and vehicle_custom_reminder_deliveries. The older uploaded
+schema does not establish that these live tables are missing. Do not unconditionally
+apply the old towing repair.
 
-## November 1 candidate fixes and staging evidence gate
+| Deployed only | Candidate counterpart |
+| --- | --- |
+| 123_marketplace_services.sql | 128_marketplace_services.sql |
+| 124_marketplace_weekly_hours.sql | 129_marketplace_weekly_hours.sql |
+| 125_marketplace_reviews.sql | 130_marketplace_reviews.sql |
+| 126_marketplace_service_images.sql | 131_marketplace_service_images.sql |
+| 127_marketplace_moderation.sql | 132_marketplace_moderation.sql |
 
-- Owner discovery, owner onboarding/auth refresh, business sign-in/management and
-  admin share `api_base_url.dart` / `CEPQONTAG_API_BASE_URL`. The production default
-  is retained. This does not certify isolation of every unrelated owner APK module;
-  do not distribute an APK as a staging build without the broader environment gates.
-- Hours edits preserve and display the existing business timezone; changing a Berlin
-  schedule no longer silently reinterprets it as Istanbul time.
-- Booking rechecks vehicle ownership under the business transaction and holds the
-  vehicle row until commit. The PostgreSQL lifecycle tests simulate a transfer
-  between the initial ownership read and booking; the request must roll back.
-- The full backend suite and migration atomicity tests run in Matrix. Flutter tests
-  verify the hours payload and API origin under an explicit non-production define.
-- `marketplace-staging-readiness.yml` attempts a fingerprint-verified SSH connection
-  using the existing staging environment secrets, on this integration branch only.
-  The remote script runs catalog SELECTs in a READ ONLY transaction and calls only
-  the local 8091 staging API. It reports the deployed filename/SHA-256 list, tracking,
-  schema and backup existence. It never deploys, migrates, baselines, restarts or
-  certifies a dump merely because the file exists.
-- A missing SSH secret/host authorization is an access blocker, not a successful
-  deployment. A successful SSH audit still requires a current durable backup and
-  complete restore/schema reconciliation before deployment. The read-only check
-  deliberately remains blocked until that separate evidence is established.
-- Previously reported public staging API: https://staging-api-185-165-46-213.nip.io
-  and business panel: https://queensho.github.io/HeyCar/isletme-staging/ . These are
-  historical endpoints, not proof this candidate has been deployed there.
+Candidate-only 123_vehicle_custom_reminders.sql has no deployed filename counterpart;
+its tables exist, which alone does not prove the complete migration was applied.
+Among 118 common filenames, 117 checksums match and
+047_cleanup_deleted_vehicle_dependents.sql differs. Do not replay this historical
+cleanup: it deletes orphaned rows and rewrites QR state. Its data effects cannot be
+certified from current table existence or schema equality.
 
-PR #299 is the existing marketplace integration review; PR #300 remains separate
-and unmerged. No automatic merge or production publication is configured here.
+A fresh PostgreSQL 16 reference built from all 124 candidate migrations was compared
+read-only against the four live marketplace tables and seven related business,
+owner and vehicle tables. Expected marketplace columns, types, defaults,
+constraints/foreign keys and valid/ready indexes have no differences. Additional
+live objects are preserved and never converted into DROP operations.
 
+The related-table comparison found:
 
-Staging evidence on 2026-11-01: Actions SSH/fingerprint verification succeeded.
-The read-only audit found 123 deployed migration files and zero tracked files.
-The previous `/tmp` dump (800223 bytes) and schema file (205595 bytes) still exist.
-A new 813118-byte custom dump was created under the deploy user's private
-`backups/marketplace-1793524954022-27c1cea08192e714/` directory. SHA-256:
-`4e4ff7572e6fa96d2e70cc62ab9e83b28f887c4dda79b97bf8774f40e6addffd`.
-The DB role lacks CREATEDB, so **full restore is not verified**. The dump and its
-verification.json remain on the VPS; no private dump is uploaded to GitHub.
-Evidence: https://github.com/Queensho/HeyCar/actions/runs/41292810676 .
+- users.display_name and users.password_hash are nullable live, NOT NULL in reference.
+- vehicles.owner_id is nullable live, NOT NULL in reference.
+- The expected users.uq_users_phone index name is absent live. Any equivalent live
+  unique index must be checked before treating this as missing uniqueness.
 
-The backup utility passed a full snapshot/dump/restore/schema/sequence/data-hash test
-on disposable PostgreSQL 16 before it was used on staging. This does not substitute
-for restoration of the real staging dump. An existing authorized PostgreSQL admin
-must provide a separate empty verification DB or perform the restore; do not grant
-CREATEDB to the application role just to bypass this gate. The workflow's manual
-`verify_backup` input controls future backup attempts; push events only audit.
-The staging readiness job remains blocked and never deploys automatically.
+This is an eleven-table marketplace compatibility comparison, not certification of
+every historical migration or the entire staging schema.
 
+## Safe remaining order
 
-The latest live audit (2026-11-01) supersedes the old uploaded schema: all four
-marketplace tables, schema_migrations, towing_messages and both custom-reminder
-tables are present, while schema_migrations has zero rows. The deployed
-047_cleanup_deleted_vehicle_dependents.sql differs from the candidate checksum.
-Do not repair tables based on the old dump or replay that cleanup migration.
+1. Retain the verified dump and verification.json; copy them to an approved private
+   off-host backup destination and verify SHA-256 there. Before a later change,
+   take a current snapshot and repeat the full isolated restore verification.
+2. Export deployed filenames/checksums and exact 047 source. Compare full schema and
+   data postconditions for each migration on the isolated restored DB. Investigate
+   the legacy marketplace filename mapping without renaming applied history.
+3. Investigate the related-table differences using read-only aggregate queries on
+   staging; do not log phone numbers, hashes or records:
 
-An administrator can pre-create an empty DB named heycar_recovery_test_<16 hex>
-owned by the existing application DB role, then set the non-secret staging
-Actions variable STAGING_RESTORE_DB_NAME to that name. A manual readiness run
-with verify_backup=true uses it only after checking its exact name, ownership,
-empty relations/functions and schema state. No CREATEDB grant to the runtime
-role is needed. Alternatively the administrator can restore the saved dump with
-the appropriate owner/ACL privileges and provide the verification evidence.
-No existing populated DB will be overwritten and no DB will be dropped.
+```sql
+BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY;
+SELECT current_database(); -- must be heycar_staging
+SELECT count(*) FILTER (WHERE display_name IS NULL) AS null_display_names,
+       count(*) FILTER (WHERE password_hash IS NULL) AS null_password_hashes
+FROM public.users;
+SELECT count(*) FILTER (WHERE owner_id IS NULL) AS null_vehicle_owners
+FROM public.vehicles;
+SELECT count(*) AS duplicate_nonnull_phone_groups
+FROM (SELECT phone FROM public.users WHERE phone IS NOT NULL
+      GROUP BY phone HAVING count(*) > 1) AS duplicates;
+SELECT indexname,indexdef FROM pg_indexes
+WHERE schemaname='public' AND tablename='users';
+ROLLBACK;
+```
 
+4. Rehearse individually reviewed additive repairs on the restored DB. Do not invent
+   passwords/owners, delete duplicates, or impose NOT NULL on existing null data.
+   A table's existence is insufficient evidence for baseline. Establish an explicit
+   per-file/checksum allowlist only after schema and data effects are verified;
+   range/blanket baselines remain disabled. No live repair/baseline SQL is currently
+   authorized by successful readiness evidence.
+5. From the candidate checkout with staging-only environment, run the read-only
+   runner checks; neither creates history nor applies SQL:
 
-Additional release isolation checks: linked admin panels and business valet now
-share the selected API; business preference keys are scoped to the API origin so
-staging cannot restore or overwrite a production business session. Marketplace
-PR web builds explicitly target the public staging API and staging base paths;
-reviewable business/admin artifacts are uploaded without publishing Pages.
-The owner ARM64 build remains a compile smoke check and is not distributed as
-an isolated staging APK.
+```sh
+cd server
+node migrate.js --audit --expect-database=heycar_staging
+node migrate.js --dry-run --expect-database=heycar_staging
+```
 
-The candidate server now preserves staging identity and startup DB/port validation,
-including DATABASE_URL precedence, disables staging FCM/WebPush delivery before
-credential parsing or provider requests, and stops the staging background route
-scanner. Automated tests prove the disabled senders cannot query registrations,
-load service-account credentials or contact a provider. Production defaults remain
-compatible. These candidate changes are not installed on the VPS until the backup,
-schema/history and live lifecycle gates are satisfied.
+6. Once history/schema risks are resolved, record deployed service configuration,
+   commit and web artifacts, back up uploads, and use staging-only service identity
+   checks before installation/restart. Preserve staging DB/port and disabled
+   external services. Never point a candidate or staging test at production.
+7. Run authenticated owner/business/admin lifecycle tests against the deployed
+   staging candidate with dedicated fixtures: service create/edit/visibility,
+   hours/timezones, availability/conflicts, appointment confirm/cancel/reject/
+   complete, review/gallery, admin hide/restore, cross-account authorization and
+   QR regression. This real deployed authenticated/UI verification remains pending.
+8. Keep main unmerged until CI and all staging gates pass. The readiness workflow
+   intentionally fails its final gate while history/schema review is unresolved.
 
+## Validation
 
-Private-cluster restore fallback: when the application DB role cannot create a
-verification DB and no admin-prepared empty target is supplied, the backup tool
-can initialize a separate PostgreSQL 16 cluster under the private backup directory.
-It uses the unprivileged deploy OS user, a private 0700 Unix-socket directory and
-no TCP listener. Source role names are recreated as NOLOGIN roles; passwords and
-superuser attributes are not copied. Source collation/encoding, table data,
-constraints/indexes, sequences and object ACL definitions are checked. Memory/disk
-headroom is required, buffers/connections/workers are limited, and the private
-cluster is stopped after verification. Files are retained rather than deleted.
-The existing PostgreSQL cluster, roles, schema and data are not changed.
-This fallback is exercised against PostgreSQL 16 in CI before any VPS attempt.
-Push-triggered readiness runs can attempt this verified backup path; the final
-release gate still blocks deployment on unresolved history/schema evidence.
+At candidate d141edb7b54a178c964026c313d59cd93df3c095, Matrix succeeded:
+https://github.com/Queensho/HeyCar/actions/runs/41298109170
+
+- Complete backend: 164 tests, 161 pass, 0 fail, three opt-in PG checks run separately.
+- Migration safety: 11/11; fresh application and rerun: MIGRATIONS_OK count=124.
+- Marketplace rules: 21/21; PostgreSQL HTTP lifecycle: 10/10, including ownership race.
+- Backup helper: real snapshot/dump/restore tests, supplied empty target and forced
+  private-cluster fallback pass before VPS use.
+- QR, canonical authorization and backend integrity checks pass in Matrix.
+- Previous commit 5e923e6de4042346ddc2712769850b8c71b73e55 passed Flutter widget,
+  business/admin web and owner ARM64 compilation. Check the latest PR checks for
+  the current commit; successful compilation is not live staging acceptance.
+
+The live public probes and backup/restore succeed. Release readiness deliberately
+fails because migration provenance/schema review and deployed authenticated testing
+are incomplete. Do not report the marketplace as fully staging-ready.
