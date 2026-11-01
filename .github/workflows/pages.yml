@@ -125,9 +125,21 @@ jobs:
       - name: Prepare web platform
         run: flutter create . --platforms=web --project-name heycar_app --no-pub
       - name: Build marketplace business web
-        run: flutter build web --release --target lib/entry_business.dart --base-href /HeyCar/isletme/
+        run: flutter build web --release --target lib/entry_business.dart --base-href /HeyCar/isletme-staging/ --dart-define=CEPQONTAG_API_BASE_URL=https://staging-api-185-165-46-213.nip.io
+      - name: Preserve business staging candidate build
+        uses: actions/upload-artifact@v4
+        with:
+          name: marketplace-candidate-business-web
+          path: build/web
+          retention-days: 7
       - name: Build marketplace admin web
-        run: flutter build web --release --target lib/admin_v3.dart --base-href /HeyCar/admin/
+        run: flutter build web --release --target lib/admin_v3.dart --base-href /HeyCar/admin-staging/ --dart-define=CEPQONTAG_API_BASE_URL=https://staging-api-185-165-46-213.nip.io
+      - name: Preserve admin staging candidate build
+        uses: actions/upload-artifact@v4
+        with:
+          name: marketplace-candidate-admin-web
+          path: build/web
+          retention-days: 7
       - name: Generate Android platform for marketplace smoke build
         run: flutter create . --platforms=android --project-name app --org com.cepqar --no-pub
       - name: Enable Android core library desugaring for notifications

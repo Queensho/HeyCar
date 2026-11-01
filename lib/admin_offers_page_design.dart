@@ -1,3 +1,4 @@
+import 'api_base_url.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -9,7 +10,7 @@ class AdminOffersPageDesign extends StatefulWidget {
  @override State<AdminOffersPageDesign> createState()=>_AdminOffersPageDesignState();
 }
 class _AdminOffersPageDesignState extends State<AdminOffersPageDesign>{
- static const api='https://heycar-api-185-165-46-213.nip.io';
+ static const api=cepqontagApiBaseUrl;
  final fields=<String,TextEditingController>{};
  bool loading=true,busy=false,search=true,categories=true;
  String? error;

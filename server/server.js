@@ -1,4 +1,6 @@
 require('dotenv').config();
+const {validateStagingEnvironment,registerStagingIdentity}=require('./staging-safety');
+validateStagingEnvironment();
 
 const express=require('express');
 const {Pool}=require('pg');
@@ -91,6 +93,7 @@ function databaseConfig(){
 
 const pool=new Pool(databaseConfig());
 app.locals.heycarPool=pool;
+registerStagingIdentity(app,pool);
 
 // Enforce account/session liveness for signed Owner/Driver access tokens before
 // any API route runs. Route-level ownership checks remain the second layer.
@@ -156,7 +159,7 @@ require('./admin-marketplace-routes')(app,pool,adminAuth);
 registerStoryRoutes(app,pool,adminAuth);
 registerAppBuilderRoutes(app,pool,adminAuth);
 registerSmartRouteRoutes(app,pool);
-const stopSmartRouteScan=startSmartRouteScan(app,pool);
+const stopSmartRouteScan=process.env.APP_ENV==='staging'?()=>{}:startSmartRouteScan(app,pool);
 registerVehicleBrandRoutes(app,pool,adminAuth);
 registerMotorcycleProfileRoutes(app,pool);
 registerMotorcycleEmergencyRoutes(app,pool);

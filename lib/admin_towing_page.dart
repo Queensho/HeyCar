@@ -1,10 +1,11 @@
+import 'api_base_url.dart';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'admin_ui.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-const _api='https://heycar-api-185-165-46-213.nip.io';
+const _api=cepqontagApiBaseUrl;
 const _purple=AdminUi.purple,_bg=AdminUi.bg,_card=AdminUi.surface,_muted=AdminUi.muted,_lime=AdminUi.green,_ink=AdminUi.ink,_line=AdminUi.line;
 
 class AdminTowingPage extends StatefulWidget{

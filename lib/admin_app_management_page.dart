@@ -1,3 +1,4 @@
+import 'api_base_url.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -26,7 +27,7 @@ class AdminAppManagementPage extends StatefulWidget{
 }
 
 class _AdminAppManagementPageState extends State<AdminAppManagementPage>{
-  static const api='https://heycar-api-185-165-46-213.nip.io';
+  static const api=cepqontagApiBaseUrl;
   static const actions=<String,String>{
     'NONE':'İşlem yok',
     'OPEN_TOWING':'Çekici',

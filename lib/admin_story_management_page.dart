@@ -1,3 +1,4 @@
+import 'api_base_url.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -15,7 +16,7 @@ class AdminStoryManagementPage extends StatefulWidget{
 }
 
 class _AdminStoryManagementPageState extends State<AdminStoryManagementPage>{
-  static const api='https://heycar-api-185-165-46-213.nip.io';
+  static const api=cepqontagApiBaseUrl;
   List<Map<String,dynamic>> stories=[];
   List<Map<String,dynamic>> categories=[];
   bool loading=true,reordering=false;

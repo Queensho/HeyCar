@@ -1,3 +1,4 @@
+import 'api_base_url.dart';
 
 import 'dart:convert';
 
@@ -15,7 +16,7 @@ const _amber=AdminUi.amber;
 const _muted=AdminUi.muted;
 const _line=AdminUi.line;
 const _ink=AdminUi.ink;
-const _api='https://heycar-api-185-165-46-213.nip.io';
+const _api=cepqontagApiBaseUrl;
 
 class AdminStorePage extends StatefulWidget{
   const AdminStorePage({super.key,required this.token,required this.admin});

@@ -1,9 +1,10 @@
+import 'api_base_url.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'admin_ui.dart';
 import 'package:http/http.dart' as http;
 
-const _baseUrl = 'https://heycar-api-185-165-46-213.nip.io';
+const _baseUrl = cepqontagApiBaseUrl;
 const _navy = AdminUi.bg;
 const _orange = AdminUi.purple;
 const _card = AdminUi.surface;

@@ -244,6 +244,7 @@ module.exports=function registerPushRoutes(app,pool){
     };
   }
   async function sendRole(userId,{tokenTable,idColumn,webSend},data,title,body){
+    if(process.env.APP_ENV==='staging')return {attempted:0,delivered:0,skipped:'staging'};
     const webFcm=await pool.query(
       `SELECT 1 FROM ${tokenTable} WHERE ${idColumn}=$1 AND active=TRUE AND LOWER(COALESCE(platform,''))='web' LIMIT 1`,
       [String(userId)]
@@ -259,6 +260,7 @@ module.exports=function registerPushRoutes(app,pool){
   const sendOwner=(owner,data,title,body)=>sendRole(owner,{tokenTable:'owner_push_tokens',idColumn:'owner_id',webSend:webPush.sendOwner},data,title,body);
   const sendDriver=(driver,data,title,body)=>sendRole(driver,{tokenTable:'driver_push_tokens',idColumn:'driver_id',webSend:webPush.sendDriver},data,title,body);
   const sendToken=async(token,data,title,body)=>{
+    if(process.env.APP_ENV==='staging')return false;
     try{
       const sa=serviceAccount(),key=await accessToken();if(!sa||!key)return false;
       const fcmData=Object.fromEntries(Object.entries({...data,title,body}).map(([k,v])=>[k,String(v??'')]));

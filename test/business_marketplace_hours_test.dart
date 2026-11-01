@@ -4,8 +4,28 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import '../lib/business_marketplace_page.dart';
+import '../lib/api_base_url.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  test('staging business session storage cannot overwrite production sessions', () async {
+    SharedPreferences.setMockInitialValues({'business_token':'production-fixture-token'});
+    final prefs=await SharedPreferences.getInstance();
+    final scoped=apiScopedPreferenceKey('business_token');
+    if(cepqontagApiBaseUrl=='https://heycar-api-185-165-46-213.nip.io'){
+      expect(scoped,'business_token');
+      expect(prefs.getString(scoped),'production-fixture-token');
+      return;
+    }
+    expect(scoped,isNot('business_token'));
+    expect(prefs.getString(scoped),isNull);
+    await prefs.setString(scoped,'staging-fixture-token');
+    expect(prefs.getString('business_token'),'production-fixture-token');
+    expect(prefs.getString(scoped),'staging-fixture-token');
+    await prefs.remove(scoped);
+    expect(prefs.getString('business_token'),'production-fixture-token');
+  });
   testWidgets('hours edits preserve the business timezone and use the selected API', (tester) async {
     Map<String,dynamic>? submitted;
     final hours={for(var i=1;i<=7;i++)'$i':{'open':'09:00','close':'18:00'}};
@@ -24,7 +44,7 @@ void main() {
       expect(submitted?['weeklyHours'],hours);
       expect(tester.takeException(),isNull);
     },()=>MockClient((request) async {
-      expect(request.url.host,'marketplace-test.invalid');
+      expect(request.url.host,Uri.parse(cepqontagApiBaseUrl).host);
       expect(request.headers['Authorization'],'Bearer test-business-token');
       if(request.method=='PATCH'){
         submitted=Map<String,dynamic>.from(jsonDecode(request.body) as Map);

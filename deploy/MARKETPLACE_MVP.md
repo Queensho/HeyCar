@@ -192,3 +192,20 @@ empty relations/functions and schema state. No CREATEDB grant to the runtime
 role is needed. Alternatively the administrator can restore the saved dump with
 the appropriate owner/ACL privileges and provide the verification evidence.
 No existing populated DB will be overwritten and no DB will be dropped.
+
+
+Additional release isolation checks: linked admin panels and business valet now
+share the selected API; business preference keys are scoped to the API origin so
+staging cannot restore or overwrite a production business session. Marketplace
+PR web builds explicitly target the public staging API and staging base paths;
+reviewable business/admin artifacts are uploaded without publishing Pages.
+The owner ARM64 build remains a compile smoke check and is not distributed as
+an isolated staging APK.
+
+The candidate server now preserves staging identity and startup DB/port validation,
+including DATABASE_URL precedence, disables staging FCM/WebPush delivery before
+credential parsing or provider requests, and stops the staging background route
+scanner. Automated tests prove the disabled senders cannot query registrations,
+load service-account credentials or contact a provider. Production defaults remain
+compatible. These candidate changes are not installed on the VPS until the backup,
+schema/history and live lifecycle gates are satisfied.
