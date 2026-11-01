@@ -70,7 +70,8 @@ BEGIN
   IF NOT EXISTS(SELECT 1 FROM pg_index i JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=i.indkey[0]
     WHERE i.indexrelid='public.uq_users_phone'::regclass AND i.indrelid='public.users'::regclass
      AND i.indisunique AND i.indisvalid AND i.indisready AND i.indnkeyatts=1 AND i.indnatts=1
-     AND a.attname='phone' AND pg_get_expr(i.indpred,i.indrelid)='(phone IS NOT NULL)') THEN
+     AND a.attname='phone' AND pg_get_expr(i.indpred,i.indrelid)='(phone IS NOT NULL)'
+     AND pg_get_indexdef(i.indexrelid)='CREATE UNIQUE INDEX uq_users_phone ON public.users USING btree (phone) WHERE (phone IS NOT NULL)') THEN
    RAISE EXCEPTION 'PHONE_INDEX_DEFINITION_MISMATCH';
   END IF;
  ELSE CREATE UNIQUE INDEX uq_users_phone ON public.users(phone) WHERE phone IS NOT NULL;

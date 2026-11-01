@@ -67,6 +67,7 @@ async function rehearse({restore,database,sqlTemplate}){
  const before=await rowFingerprint(restore),checks=[];
  const rolesBefore=(await restore.query("SELECT roleid,member,grantor,admin_option,inherit_option,set_option FROM pg_auth_members ORDER BY roleid,member,grantor")).rows;
  const dbAclBefore=(await restore.query('SELECT datname,datacl::text AS acl FROM pg_database ORDER BY datname')).rows;
+ const schemaAclBefore=(await restore.query("SELECT nspacl::text AS acl FROM pg_namespace WHERE nspname='public'")).rows;
  await restore.query(renderSql(sqlTemplate,database));
  async function asRole(role,sql,expectedCode){
   await restore.query('SET ROLE "'+role+'"');
@@ -84,14 +85,32 @@ async function rehearse({restore,database,sqlTemplate}){
  for(const [name,sql,codes] of [
   ['phone','SELECT staging_migration_control.apply_phone_index() AS result',['23505','23514']],
   ['password','SELECT staging_migration_control.apply_password_constraint() AS result',['23514']]]){
-  try{checks.push({name:name+'_owner_precondition',...await asRole('heycar_user',sql)});}
-  catch(error){if(!codes.includes(error.code))throw error;blocked.push({operation:name,sqlstate:error.code});}
+  try{
+   if(name==='phone'){
+    // CREATE INDEX needs CREATE on its table's namespace as well as ownership.
+    // Grant/revoke in one DBA transaction: no other session sees an added grant.
+    await restore.query('BEGIN');
+    try{
+     const needsCreate=!(await restore.query("SELECT has_schema_privilege('heycar_user','public','CREATE') AS allowed")).rows[0].allowed;
+     if(needsCreate)await restore.query('GRANT CREATE ON SCHEMA public TO heycar_user');
+     await restore.query('SET LOCAL ROLE heycar_user');
+     const result={ok:true,result:(await restore.query(sql)).rows[0]?.result};
+     // Recheck the existing-index branch; IF NOT EXISTS must not mask wrong DDL.
+     await restore.query(sql);
+     await restore.query('RESET ROLE');
+     if(needsCreate)await restore.query('REVOKE CREATE ON SCHEMA public FROM heycar_user');
+     await restore.query('COMMIT');checks.push({name:name+'_owner_precondition',temporary_schema_create:needsCreate,...result});
+    }catch(error){await restore.query('ROLLBACK');throw error;}
+   }else checks.push({name:name+'_owner_precondition',...await asRole('heycar_user',sql)});
+  }catch(error){if(!codes.includes(error.code))throw error;blocked.push({operation:name,sqlstate:error.code});}
  }
  const after=await rowFingerprint(restore);
  if(JSON.stringify(before)!==JSON.stringify(after))throw Error('RESTORE_ACCOUNT_DATA_CHANGED');
  const rolesAfter=(await restore.query('SELECT roleid,member,grantor,admin_option,inherit_option,set_option FROM pg_auth_members ORDER BY roleid,member,grantor')).rows;
  const dbAclAfter=(await restore.query('SELECT datname,datacl::text AS acl FROM pg_database ORDER BY datname')).rows;
+ const schemaAclAfter=(await restore.query("SELECT nspacl::text AS acl FROM pg_namespace WHERE nspname='public'")).rows;
  if(JSON.stringify(rolesBefore)!==JSON.stringify(rolesAfter)||JSON.stringify(dbAclBefore)!==JSON.stringify(dbAclAfter))throw Error('DATABASE_OR_GLOBAL_ROLE_GRANTS_CHANGED');
- return {success:true,checks,blocked,account_data_unchanged:true,global_role_memberships_unchanged:true,database_acls_unchanged:true,source_ddl_attempted:false};
+ if(JSON.stringify(schemaAclBefore)!==JSON.stringify(schemaAclAfter))throw Error('PUBLIC_SCHEMA_PRIVILEGES_CHANGED');
+ return {success:true,checks,blocked,account_data_unchanged:true,global_role_memberships_unchanged:true,database_acls_unchanged:true,public_schema_acl_unchanged:true,source_ddl_attempted:false};
 }
 module.exports={renderSql,accountReview,orphanReview,rehearse};

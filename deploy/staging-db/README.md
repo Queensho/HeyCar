@@ -135,6 +135,17 @@ a fake number. No normalization SQL is supplied for execution while ownership is
 unknown. Even when the unique index is later safe, 098 also contains a data update:
 the index alone is not proof that the entire migration was applied.
 
+Creating the phone index also requires CREATE on public for its table owner. This
+is not granted permanently or to the runtime. The rehearsal DBA starts a transaction,
+checks the owner's existing schema privilege, grants CREATE to heycar_user only if
+absent, calls the owner-only guarded function, then revokes that newly added grant
+before commit. A failed call rolls the whole transaction back. Other sessions never
+observe an added committed privilege. Existing CREATE grants are left intact. The
+rehearsal verifies public schema ACLs are identical before/after, including when the
+phone collision guard rejects the operation. The same bounded DBA transaction must
+be reviewed before any eventual live index operation; the template installation
+alone deliberately grants no CREATE privilege.
+
 Additional full-schema drift (invite lockout fields/check, store order FK behavior,
 reminder type check and other uniqueness indexes) also needs per-file proof and
 isolated rehearsal before a complete baseline/release can be approved.

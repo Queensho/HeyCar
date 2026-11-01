@@ -33,6 +33,7 @@ test('PostgreSQL capability rehearsal preserves accounts, rejects blocked repair
    const report=await rehearse({restore:client,database,sqlTemplate:template});
    assert.equal(report.success,true);assert.equal(report.account_data_unchanged,true);
    assert.equal(report.global_role_memberships_unchanged,true);assert.equal(report.database_acls_unchanged,true);
+   assert.equal(report.public_schema_acl_unchanged,true);
    assert.deepEqual(report.blocked,blocked?[{operation:'phone',sqlstate:'23505'},{operation:'password',sqlstate:'23514'}]:[]);
    assert.equal((await client.query("SELECT count(*)::int AS n FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='staging_migration_control' AND p.prosecdef AND p.pronargs=0 AND pg_get_userbyid(p.proowner)='heycar_user' AND p.proconfig @> ARRAY['search_path=pg_catalog'] AND NOT EXISTS(SELECT 1 FROM aclexplode(p.proacl) a WHERE a.grantee=0 AND a.privilege_type='EXECUTE')")).rows[0].n,3);
    assert.equal((await client.query("SELECT to_regclass('public.uq_users_phone') IS NOT NULL AS present")).rows[0].present,!blocked);
