@@ -10,6 +10,7 @@ function client(database='heycar_staging'){
  return {seen,async query(sql){seen.push(sql);
   if(sql.startsWith('SELECT current_database'))return {rows:[{database,version:160015}]};
   if(sql.includes('to_regclass'))return {rows:[{present:false}]};
+  if(sql.includes('private_id'))return {rows:[]};
   if(sql.includes('count(*)'))return {rows:[{n:0,display_name:0,password_hash:0,duplicate_groups:0,normalized_duplicate_groups:0,noncanonical:0}]};
   return {rows:[]};
  }};

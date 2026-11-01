@@ -3,7 +3,7 @@ on:
   workflow_call:
     inputs:
       verify_backup:
-        description: Verify a fresh backup and rehearse null-free constraint repairs before applying them
+        description: Verify a fresh backup and rehearse repairs only in an isolated restore
         type: boolean
         default: true
   push:
@@ -12,13 +12,14 @@ on:
       - 'deploy/marketplace-staging-preflight.js'
       - 'deploy/marketplace-staging-backup.js'
       - 'deploy/marketplace-staging-recovery.js'
+      - 'deploy/staging-db/**'
       - 'server/tests/marketplace-staging-backup.test.js'
       - 'server/marketplace-schema.js'
       - '.github/workflows/marketplace-staging-readiness.yml'
   workflow_dispatch:
     inputs:
       verify_backup:
-        description: Verify backup/restore and apply only rehearsed null-free NOT NULL repairs
+        description: Verify backup and rehearse least-privilege repair SQL only on the restore
         type: boolean
         default: false
 permissions:
@@ -63,7 +64,7 @@ jobs:
             sudo apt-get install -y postgresql-16 postgresql-client-16
           fi
       - name: Prove dump, snapshot and full restore on disposable PostgreSQL
-        run: node --test server/tests/marketplace-staging-backup.test.js
+        run: node --test server/tests/marketplace-staging-backup.test.js server/tests/marketplace-staging-preflight.test.js
 
       - name: Build an authoritative candidate schema on disposable PostgreSQL
         env:
@@ -73,6 +74,10 @@ jobs:
           createdb -h 127.0.0.1 -U postgres heycar_reference_test
           DB_NAME=heycar_reference_test node server/migrate.js --expect-database=heycar_reference_test
           SCHEMA_AUDIT_ALL=1 DB_NAME=heycar_reference_test node server/marketplace-schema.js > expected-marketplace-schema.json
+      - name: Test constrained migration capability and data-preserving repair guards on PostgreSQL 16
+        env:
+          STAGING_DB_REHEARSAL_TEST: '1'
+        run: node --test deploy/staging-db/inspection.test.js
       - uses: actions/upload-artifact@v4
         with:
           name: expected-marketplace-schema
@@ -80,7 +85,7 @@ jobs:
           retention-days: 7
 
   staging-readonly-preflight:
-    name: Staging backup, targeted nullability repair and readiness
+    name: Staging read-only audit, isolated repair rehearsal and readiness
     needs: backup-tool-test
     runs-on: ubuntu-latest
     environment: staging
@@ -101,10 +106,13 @@ jobs:
           reference=json.loads(Path('expected-marketplace-schema.json').read_text())
           source=Path('deploy/marketplace-staging-preflight.js').read_text()
           schema_module=Path('server/marketplace-schema.js').read_text()
+          inspection=Path('deploy/staging-db/inspection.js').read_text()
+          inspection_prefix='const inspectionTools=(()=>{const module={exports:{}};\n'+inspection+'\nreturn module.exports;})();\n'
           prefix='const schemaTools=(()=>{const module={exports:{}};\n'+schema_module+'\nreturn module.exports;})();\n'
           # The embedded module must not run its CLI main branch.
           prefix=prefix.replace('if(require.main===module){','if(false){')
-          source=source.replace("const crypto=require('node:crypto');", "const crypto=require('node:crypto');\n"+prefix)
+          source=source.replace("const crypto=require('node:crypto');", "const crypto=require('node:crypto');\n"+prefix+inspection_prefix)
+          source=source.replace("require('./staging-db/inspection')",'inspectionTools')
           marker='  report.database=id.database;'
           comparison='  report.candidate_schema_differences=schemaTools.compareSchema('+json.dumps(reference)+',await schemaTools.readSchema(client,null));\n'
           # Finish the inspection transaction before the schema helper opens its own read-only snapshot.
@@ -114,7 +122,10 @@ jobs:
           backup=backup.replace("if(require.main===module||process.argv.includes('--run-staging-backup'))",'if(false)')
           recovery=Path('deploy/marketplace-staging-recovery.js').read_text()
           recovery=recovery.replace("require('./marketplace-staging-backup')",'backupTools')
-          Path('staging-recovery-bundle.js').write_text('const backupTools=(()=>{const module={exports:{}};\n'+backup+'\nreturn module.exports;})();\n'+recovery)
+          recovery=recovery.replace("require('./staging-db/inspection')",'inspectionTools')
+          recovery=recovery.replace('sqlTemplate:loadTemplate()','sqlTemplate:recoveryTemplate')
+          template='const recoveryTemplate='+json.dumps(Path('deploy/staging-db/least-privilege.sql').read_text())+';\n'
+          Path('staging-recovery-bundle.js').write_text('const backupTools=(()=>{const module={exports:{}};\n'+backup+'\nreturn module.exports;})();\n'+inspection_prefix+template+recovery)
           PYTHON
       - name: Verify staging SSH credentials and host identity
         env:
@@ -173,6 +184,22 @@ jobs:
                   'only_deployed':sorted(deployed.keys()-candidate.keys()),
                   'only_candidate':sorted(candidate.keys()-deployed.keys()),
                   'changed_common':sorted(n for n in deployed.keys() & candidate.keys() if deployed[n]!=candidate[n])}))
+              checksums=[{'filename':n,'candidate_sha256':candidate[n],'deployed_sha256':deployed[n]}
+                 for n in sorted(deployed.keys() & candidate.keys()) if deployed[n]!=candidate[n]]
+              mappings=[]
+              for old,new,suffix in [(123,128,'services'),(124,129,'weekly_hours'),(125,130,'reviews'),(126,131,'service_images'),(127,132,'moderation')]:
+                  a=f'{old}_marketplace_{suffix}.sql'; b=f'{new}_marketplace_{suffix}.sql'
+                  mappings.append({'deployed':a,'candidate':b,'deployed_sha256':deployed.get(a),'candidate_sha256':candidate.get(b),'same_bytes':deployed.get(a)==candidate.get(b)})
+              selected={'vehicle_custom_reminders','vehicle_custom_reminder_deliveries'}
+              custom_differences=[d for d in report.get('candidate_schema_differences',[]) if d['key'].split('.')[0] in selected]
+              manifest={'baseline_written':False,'changed_common':checksums,'marketplace_filename_map':mappings,
+                  'custom_reminder_file':{'filename':'123_vehicle_custom_reminders.sql','candidate_sha256':candidate.get('123_vehicle_custom_reminders.sql'),
+                    'deployed_filename_present':'123_vehicle_custom_reminders.sql' in deployed,'schema_differences':custom_differences,
+                    'acl':report.get('recovery_diagnostics',{}).get('custom_reminder_acl'),
+                    'sequence':report.get('recovery_diagnostics',{}).get('custom_reminder_sequence'),
+                    'execution_history':'unknown_do_not_claim_executed'}}
+              Path('migration-baseline-review.json').write_text(json.dumps(manifest,indent=2))
+              print('MIGRATION_BASELINE_REVIEW',json.dumps(manifest))
               print('CANDIDATE_SCHEMA_DIFFERENCES',json.dumps(report.get('candidate_schema_differences',[])))
               diagnostics=report.get('recovery_diagnostics',{})
               deployed_cleanup=diagnostics.pop('cleanup047','')
@@ -183,7 +210,7 @@ jobs:
               with open(os.environ['GITHUB_OUTPUT'],'a') as out:
                   out.write('identity_verified='+str(report.get('database')=='heycar_staging').lower()+'\n')
           PYTHON
-      - name: Back up, verify restore, rehearse and apply only null-free NOT NULL repairs
+      - name: Back up, verify restore and rehearse repairs only inside the isolated copy
         if: steps.summary.outputs.identity_verified == 'true' && (inputs.verify_backup == true || github.event_name == 'push')
         id: backup
         continue-on-error: true
@@ -202,7 +229,7 @@ jobs:
             -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
             "cd /home/cepqontag-deploy/app/server && STAGING_RESTORE_DB_NAME='$RESTORE_DB_NAME' node - --run-staging-recovery" \
             < staging-recovery-bundle.js > staging-backup-verification.json
-      - name: Re-audit after targeted repairs without migration or deployment
+      - name: Re-audit live staging to verify no source changes after isolated rehearsal
         if: always() && steps.summary.outputs.identity_verified == 'true'
         continue-on-error: true
         env:
@@ -226,7 +253,7 @@ jobs:
           except (OSError, ValueError):
               print('STAGING_BACKUP_VERIFICATION_NOT_AVAILABLE')
           else:
-              print(json.dumps({key:report.get(key) for key in ['database','directory','backup_complete','dump_sha256','dump_bytes','restore_database','restore_mode','restore_cluster','restore_cluster_stopped','private_restore_phase','restore_verified','offhost_backup_verified','source_modified','source_row_data_modified','rehearsal','live','baseline_applied','phone_index_created','remaining','blockers']},indent=2))
+              print(json.dumps({key:report.get(key) for key in ['database','directory','backup_complete','dump_sha256','dump_bytes','restore_database','restore_mode','restore_cluster','restore_cluster_stopped','private_restore_phase','restore_verified','offhost_backup_verified','mode','source_modified','source_row_data_modified','rehearsal','owner_bootstrap_installed_live','baseline_applied','phone_index_created','remaining','blockers']},indent=2))
           after=Path('staging-readiness-after-recovery.json')
           if after.exists():
               result=json.loads(after.read_text())
@@ -246,5 +273,6 @@ jobs:
             staging-readiness.json
             staging-backup-verification.json
             staging-readiness-after-recovery.json
+            migration-baseline-review.json
           if-no-files-found: ignore
           retention-days: 7

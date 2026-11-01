@@ -3,6 +3,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const crypto=require('node:crypto');
 const {spawnSync}=require('node:child_process');
+const {accountReview,orphanReview}=require('./staging-db/inspection');
 
 async function inspect({client,directory=process.cwd(),request=fetch,stat=fs.statSync}){
  const report={database:null,migrations:[],tracking:[],schema:{},http:{},backups:[],
@@ -14,6 +15,29 @@ async function inspect({client,directory=process.cwd(),request=fetch,stat=fs.sta
   if(Math.floor(id.version/10000)!==16)throw Error('STAGING_POSTGRESQL_VERSION_MISMATCH');
   report.database=id.database;
   report.recovery_diagnostics={};
+  const accounts=await accountReview(client);
+  report.recovery_diagnostics.account_review=accounts.accounts;
+  if(accounts.privateReferences.length){
+   const root='/home/cepqontag-deploy/backups';
+   if(fs.realpathSync(root)!==root||fs.lstatSync(root).isSymbolicLink())throw Error('STAGING_PRIVATE_REVIEW_PATH_REJECTED');
+   const privateDir=fs.mkdtempSync(path.join(root,'account-review-'));
+   fs.chmodSync(privateDir,0o700);
+   const filename=path.join(privateDir,'references.json');
+   fs.writeFileSync(filename,JSON.stringify({created_at:new Date().toISOString(),accounts:accounts.privateReferences},null,2),{mode:0o600,flag:'wx'});
+   report.recovery_diagnostics.private_account_reference_file=filename;
+  }
+  report.recovery_diagnostics.cleanup047_orphans=await orphanReview(client);
+  report.recovery_diagnostics.custom_reminder_acl=(await client.query(`SELECT name,
+   has_table_privilege('heycar_user','public.'||name,'SELECT') AND has_table_privilege('heycar_user','public.'||name,'INSERT')
+   AND has_table_privilege('heycar_user','public.'||name,'UPDATE') AND has_table_privilege('heycar_user','public.'||name,'DELETE') AS owner_dml,
+   has_table_privilege(current_user,'public.'||name,'SELECT') AND has_table_privilege(current_user,'public.'||name,'INSERT')
+   AND has_table_privilege(current_user,'public.'||name,'UPDATE') AND has_table_privilege(current_user,'public.'||name,'DELETE') AS runtime_dml
+   FROM unnest(ARRAY['vehicle_custom_reminders','vehicle_custom_reminder_deliveries']) AS name`)).rows;
+  report.recovery_diagnostics.custom_reminder_sequence=(await client.query(`SELECT
+   pg_get_serial_sequence('public.vehicle_custom_reminder_deliveries','id') AS name,
+   has_sequence_privilege('heycar_user',pg_get_serial_sequence('public.vehicle_custom_reminder_deliveries','id'),'USAGE') AS owner_usage,
+   has_sequence_privilege('heycar_user',pg_get_serial_sequence('public.vehicle_custom_reminder_deliveries','id'),'SELECT') AS owner_select,
+   has_sequence_privilege(current_user,pg_get_serial_sequence('public.vehicle_custom_reminder_deliveries','id'),'USAGE') AS runtime_usage`)).rows[0];
   report.recovery_diagnostics.nulls=(await client.query(`SELECT
    count(*) FILTER (WHERE display_name IS NULL)::int AS display_name,
    count(*) FILTER (WHERE password_hash IS NULL)::int AS password_hash FROM public.users`)).rows[0];

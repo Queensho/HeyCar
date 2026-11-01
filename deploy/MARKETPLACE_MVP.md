@@ -2,9 +2,9 @@
 
 PR #299 is the existing marketplace integration review. PR #300 is unchanged and
 unmerged. Production is out of scope. No candidate application deployment, service
-restart, baseline or live row-data repair has been performed. The targeted recovery
-tool can set NOT NULL only when a locked count proves there are no null rows, after
-fresh backup/restore verification and rehearsal with the source role on the clone.
+restart, baseline or live row-data repair has been performed. The current recovery tool runs SQL only on an isolated verified restore. Live
+account or schema changes are not attempted. See staging-db/README.md for the
+047/123 provenance plan, private account review and least-privilege capability.
 
 ## Candidate behavior
 
@@ -144,16 +144,14 @@ the release stopped until this distinction and the account-data blockers are res
 Evidence for the expanded diagnosis and a fresh successful isolated restore:
 https://github.com/Queensho/HeyCar/actions/runs/41299404054 .
 
-The recovery workflow tests its tool on disposable PostgreSQL before VPS use. It
-takes another snapshot backup and verifies its complete restore. Only then does it
-rehearse the fixed nullability DDL on that restore using SET ROLE for the source DB
-role, stop the private cluster, recheck live database identity, lock users/vehicles,
-recount nulls and set only eligible NOT NULL constraints. It cannot modify row
-values, create a baseline, run historical SQL, create the phone index or deploy.
-Each transaction has short lock/statement timeouts; failed DDL rolls back. Evidence
-records both the rehearsal and live result, and a second read-only schema audit
-runs afterward. Password/phone and migration postcondition failures keep readiness
-red and prevent application deployment.
+The current recovery workflow tests its tool on disposable PostgreSQL before VPS
+use, takes a fresh backup, verifies restoration, and rehearses the reviewed SQL and
+fixed capabilities only inside that isolated restore. It never calls a live repair.
+The source-role direct-ALTER rejection remains a safety check; a narrowly scoped
+owner-installed capability is tested instead. Source data is re-audited afterward.
+The current plan and installation/approval boundaries are in
+[staging-db/README.md](staging-db/README.md). Password/phone and migration evidence
+failures keep readiness red and block application deployment.
 
 ## Safe remaining order
 

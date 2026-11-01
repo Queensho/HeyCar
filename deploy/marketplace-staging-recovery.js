@@ -1,5 +1,7 @@
 'use strict';
 const {backupAndRestore}=require('./marketplace-staging-backup');
+const {rehearse}=require('./staging-db/inspection');
+function loadTemplate(){return require('node:fs').readFileSync(require('node:path').join(__dirname,'staging-db/least-privilege.sql'),'utf8');}
 async function diagnostics(client){
  const nulls=(await client.query(`SELECT
  (SELECT count(*)::int FROM public.users WHERE display_name IS NULL) AS display_name,
@@ -34,40 +36,24 @@ async function repairNullability(client,expectedDatabase){
   return {before,applied,blocked,row_data_modified:false};
  }catch(error){await client.query('ROLLBACK').catch(()=>{});throw error;}
 }
-async function recover({client,Client,backupRoot,restoreDatabase}){
+async function recover({client,Client,backupRoot,restoreDatabase,sqlTemplate}){
  let rehearsal;
  const report=await backupAndRestore({client,Client,backupRoot,restoreDatabase,
   afterVerifiedRestore:async({restore,report:proof})=>{
    if(!proof.restore_verified)throw Error('RECOVERY_RESTORE_PROOF_REQUIRED');
-   const sourceUser=client.connectionParameters.user;
-   // Rehearse using the source role, not the private cluster's privileged admin.
-   try{
-    await restore.query('SET ROLE "'+String(sourceUser).replace(/"/g,'""')+'"');
-    rehearsal={success:true,...await repairNullability(restore,proof.restore_database)};
-   }catch(error){rehearsal={success:false,stage:'restored_source_role',sqlstate:/^[A-Z0-9]{5}$/.test(error.code||'')?error.code:'GUARD',live_attempted:false};}
-   finally{await restore.query('RESET ROLE');}
+   try{rehearsal=await rehearse({restore,database:proof.restore_database,sqlTemplate});}
+   catch(error){rehearsal={success:false,stage:'isolated_least_privilege_rehearsal',sqlstate:/^[A-Z0-9]{5}$/.test(error.code||'')?error.code:'GUARD',source_ddl_attempted:false};}
   }});
  report.rehearsal=rehearsal;
- if(!report.restore_verified||(report.restore_mode==='private_local_cluster'&&!report.restore_cluster_stopped)||!rehearsal)throw Error('RECOVERY_RESTORE_PROOF_REQUIRED');
- if(!rehearsal.success){
-  report.source_schema_modified=false;report.source_row_data_modified=false;
-  report.baseline_applied=false;report.phone_index_created=false;
-  report.remaining=['RESTORE_REHEARSAL_FAILED_NO_LIVE_DDL','PASSWORD_NULL_REQUIRES_ACCOUNT_REVIEW',
-   'NORMALIZED_PHONE_COLLISION_REQUIRES_ACCOUNT_REVIEW','PER_FILE_BASELINE_NOT_VERIFIED'];
-  require('node:fs').writeFileSync(require('node:path').join(report.directory,'recovery-verification.json'),JSON.stringify(report,null,2),{mode:0o600});
-  return report;
- }
- report.live=await repairNullability(client,'heycar_staging');
- report.source_schema_modified=report.live.applied.length>0;
- report.source_row_data_modified=false;
- report.source_modified=report.source_schema_modified;
- report.baseline_applied=false;
- report.phone_index_created=false;
- // Current audit has a canonical phone collision. Raw uniqueness is insufficient
- // evidence for 098's normalization+unique-index postcondition. Never replay it.
- report.remaining=['PASSWORD_NULL_REQUIRES_ACCOUNT_REVIEW','NORMALIZED_PHONE_COLLISION_REQUIRES_ACCOUNT_REVIEW',
-  'PER_FILE_BASELINE_NOT_VERIFIED','ADDITIONAL_SCHEMA_DRIFT_REQUIRES_REVIEW'];
- require('node:fs').writeFileSync(require('node:path').join(report.directory,'recovery-verification.json'),JSON.stringify(report,null,2),{mode:0o600});
+ report.mode='isolated_rehearsal_only';
+ report.source_schema_modified=false;report.source_row_data_modified=false;
+ report.source_modified=false;report.baseline_applied=false;report.phone_index_created=false;
+ report.owner_bootstrap_installed_live=false;
+ report.remaining=['LIVE_OWNER_BOOTSTRAP_REQUIRES_REVIEW','PASSWORD_ACCOUNT_REVIEW_REQUIRED',
+  'PHONE_ACCOUNT_REVIEW_REQUIRED','PER_FILE_BASELINE_NOT_VERIFIED','ADDITIONAL_SCHEMA_DRIFT_REQUIRES_REVIEW'];
+ if(!report.restore_verified)report.remaining.unshift('RESTORE_VERIFICATION_FAILED');
+ if(!rehearsal?.success)report.remaining.unshift('ISOLATED_REHEARSAL_FAILED');
+ if(report.directory)require('node:fs').writeFileSync(require('node:path').join(report.directory,'recovery-verification.json'),JSON.stringify(report,null,2),{mode:0o600});
  return report;
 }
 module.exports={diagnostics,repairNullability,recover};
@@ -77,7 +63,7 @@ if(require.main===module||process.argv.includes('--run-staging-recovery')){
   if(process.env.DATABASE_URL){const u=new URL(process.env.DATABASE_URL);if(decodeURIComponent(u.pathname)!=='/heycar_staging')throw Error('RECOVERY_DATABASE_REJECTED');config={connectionString:process.env.DATABASE_URL};}
   else{if(process.env.DB_NAME!=='heycar_staging')throw Error('RECOVERY_DATABASE_REJECTED');config={host:process.env.DB_HOST,port:Number(process.env.DB_PORT||5432),database:process.env.DB_NAME,user:process.env.DB_USER,password:process.env.DB_PASSWORD};}
   const pool=new Pool({...config,connectionTimeoutMillis:10000});let client;
-  try{client=await pool.connect();const report=await recover({client,Client,restoreDatabase:process.env.STAGING_RESTORE_DB_NAME||''});console.log(JSON.stringify(report,null,2));if(report.remaining.length)process.exitCode=2;}
+  try{client=await pool.connect();const report=await recover({client,Client,restoreDatabase:process.env.STAGING_RESTORE_DB_NAME||'',sqlTemplate:loadTemplate()});console.log(JSON.stringify(report,null,2));if(report.remaining.length)process.exitCode=2;}
   finally{if(client)client.release();await pool.end();}
  })().catch(error=>{console.error('STAGING_RECOVERY_FAILED_NO_DEPLOY code='+(/^[A-Z0-9]{5}$/.test(error.code||'')?error.code:'GUARD'));process.exitCode=2;});
 }
