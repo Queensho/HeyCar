@@ -2,6 +2,7 @@
 const fs=require('node:fs');
 const path=require('node:path');
 const crypto=require('node:crypto');
+const {spawnSync}=require('node:child_process');
 
 async function inspect({client,directory=process.cwd(),request=fetch,stat=fs.statSync}){
  const report={database:null,migrations:[],tracking:[],schema:{},http:{},backups:[],
@@ -12,6 +13,13 @@ async function inspect({client,directory=process.cwd(),request=fetch,stat=fs.sta
   if(id.database!=='heycar_staging')throw Error('STAGING_DATABASE_IDENTITY_MISMATCH');
   if(Math.floor(id.version/10000)!==16)throw Error('STAGING_POSTGRESQL_VERSION_MISMATCH');
   report.database=id.database;
+  const privilege=(await client.query('SELECT rolcreatedb OR rolsuper AS allowed FROM pg_roles WHERE rolname=current_user')).rows[0];
+  const sudo=spawnSync('sudo',['-n','-l'],{encoding:'utf8',timeout:5000});
+  const sudoText=sudo.status===0?sudo.stdout:'';
+  report.restore_capabilities={database_create_allowed:privilege?.allowed===true,
+   sudo_listing_available:sudo.status===0,
+   sudo_passwordless_all:/NOPASSWD:\s*ALL(?:\s|$)/.test(sudoText),
+   sudo_command_paths:[...new Set(sudoText.match(/\/(?:usr|bin|sbin|opt)\/[A-Za-z0-9_.\/-]+/g)||[])]};
   const names=fs.readdirSync(path.join(directory,'migrations')).filter(n=>n.endsWith('.sql')).sort();
   report.migrations=names.map(filename=>({filename,sha256:crypto.createHash('sha256').update(fs.readFileSync(path.join(directory,'migrations',filename))).digest('hex')}));
   const tracked=(await client.query("SELECT to_regclass('public.schema_migrations') IS NOT NULL AS present")).rows[0].present;

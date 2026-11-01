@@ -8,6 +8,11 @@ on:
       - 'server/tests/marketplace-staging-backup.test.js'
       - '.github/workflows/marketplace-staging-readiness.yml'
   workflow_dispatch:
+    inputs:
+      verify_backup:
+        description: Create a new staging backup and attempt its restore on an isolated database
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -102,21 +107,28 @@ jobs:
         shell: bash
         run: |
           python3 - <<'PYTHON'
-          import json, os
+          import hashlib, json, os
           from pathlib import Path
           try:
               report=json.loads(Path('staging-readiness.json').read_text())
           except (OSError, ValueError):
               print('STAGING_AUDIT_NOT_AVAILABLE')
           else:
-              print(json.dumps({key:report.get(key) for key in ['database','blockers','backups','http']},indent=2))
+              print(json.dumps({key:report.get(key) for key in ['database','blockers','backups','http','restore_capabilities']},indent=2))
               print('DEPLOYED_MIGRATION_COUNT',len(report.get('migrations',[])))
               print('TRACKED_MIGRATION_COUNT',len(report.get('tracking',[])))
+              deployed={row['filename']:row['sha256'] for row in report.get('migrations',[])}
+              candidate={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in Path('server/migrations').glob('*.sql')}
+              print('MIGRATION_DIFF',json.dumps({
+                  'only_deployed':sorted(deployed.keys()-candidate.keys()),
+                  'only_candidate':sorted(candidate.keys()-deployed.keys()),
+                  'changed_common':sorted(n for n in deployed.keys() & candidate.keys() if deployed[n]!=candidate[n])}))
+              print('TABLES_PRESENT',json.dumps(report.get('schema',{}).get('tables',[])))
               with open(os.environ['GITHUB_OUTPUT'],'a') as out:
                   out.write('identity_verified='+str(report.get('database')=='heycar_staging').lower()+'\n')
           PYTHON
       - name: Take a new durable local backup and attempt isolated restore verification
-        if: steps.summary.outputs.identity_verified == 'true'
+        if: steps.summary.outputs.identity_verified == 'true' && inputs.verify_backup == true
         id: backup
         continue-on-error: true
         env:

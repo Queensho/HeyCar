@@ -99,6 +99,13 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
+      - name: Free unused hosted-runner SDK disk space
+        shell: bash
+        run: |
+          if [ "$RUNNER_ENVIRONMENT" = github-hosted ]; then
+            sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup
+          fi
+          df -h .
       - name: Checkout
         uses: actions/checkout@v4
       - name: Setup Flutter
@@ -136,7 +143,7 @@ jobs:
           p.write_text(s)
           PY
       - name: Build marketplace owner Android debug APK
-        run: flutter build apk --debug --target lib/entry_theme_live.dart
+        run: flutter build apk --debug --target-platform android-arm64 --target lib/entry_theme_live.dart
 
   build:
     if: github.event_name != 'pull_request' || github.head_ref == 'rollback/owner-app-15oct-keep-backend-20261018'

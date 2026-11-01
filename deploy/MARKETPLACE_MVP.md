@@ -157,3 +157,22 @@ production-data migration rehearsal and final-SHA CI remain separate gates.
 
 PR #299 is the existing marketplace integration review; PR #300 remains separate
 and unmerged. No automatic merge or production publication is configured here.
+
+
+Staging evidence on 2026-11-01: Actions SSH/fingerprint verification succeeded.
+The read-only audit found 123 deployed migration files and zero tracked files.
+The previous `/tmp` dump (800223 bytes) and schema file (205595 bytes) still exist.
+A new 813118-byte custom dump was created under the deploy user's private
+`backups/marketplace-1793524954022-27c1cea08192e714/` directory. SHA-256:
+`4e4ff7572e6fa96d2e70cc62ab9e83b28f887c4dda79b97bf8774f40e6addffd`.
+The DB role lacks CREATEDB, so **full restore is not verified**. The dump and its
+verification.json remain on the VPS; no private dump is uploaded to GitHub.
+Evidence: https://github.com/Queensho/HeyCar/actions/runs/41292810676 .
+
+The backup utility passed a full snapshot/dump/restore/schema/sequence/data-hash test
+on disposable PostgreSQL 16 before it was used on staging. This does not substitute
+for restoration of the real staging dump. An existing authorized PostgreSQL admin
+must provide a separate empty verification DB or perform the restore; do not grant
+CREATEDB to the application role just to bypass this gate. The workflow's manual
+`verify_backup` input controls future backup attempts; push events only audit.
+The staging readiness job remains blocked and never deploys automatically.
