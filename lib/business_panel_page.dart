@@ -1,3 +1,4 @@
+import 'api_base_url.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
@@ -7,10 +8,11 @@ import 'package:latlong2/latlong.dart';
 import 'package:image_picker/image_picker.dart';
 import 'admin_promo_banner.dart';
 import 'business_valet_page.dart';
+import 'business_marketplace_page.dart';
 
 const _bg=Color(0xFF07111F),_panel=Color(0xFF101A30),_line=Color(0xFF27355D),_purple=Color(0xFF713BFF),_muted=Color(0xFFA7B0C7);
 
-const _businessApi='https://heycar-api-185-165-46-213.nip.io';
+const _businessApi=cepqontagApiBaseUrl;
 const _offerCategories=['Oto Yıkama','Detailing','Lastik','Otopark','Servis','Akaryakıt'];
 
 class BusinessPanelPage extends StatefulWidget{const BusinessPanelPage({super.key});@override State<BusinessPanelPage> createState()=>_BusinessPanelPageState();}
@@ -18,10 +20,10 @@ class _BusinessPanelPageState extends State<BusinessPanelPage>{
  Future<String?> _pickDataImage({String kind='campaign'})async{final x=await ImagePicker().pickImage(source:ImageSource.gallery,maxWidth:1600,imageQuality:82);if(x==null)return null;final bytes=await x.readAsBytes();if(bytes.length>1800000){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Fotoğraf çok büyük. Daha küçük bir fotoğraf seç.')));return null;}if(token.isEmpty){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Fotoğraf yüklemek için önce işletme hesabına giriş yap.')));return null;}final ext=x.name.toLowerCase().endsWith('.png')?'png':'jpeg',data='data:image/$ext;base64,${base64Encode(bytes)}';try{final r=await http.post(Uri.parse('$_businessApi/api/business/media'),headers:{'Content-Type':'application/json','Authorization':'Bearer $token'},body:jsonEncode({'kind':kind,'data':data}));final j=jsonDecode(r.body);if(r.statusCode>=200&&r.statusCode<300&&j is Map&&j['url']!=null)return j['url'].toString();if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Fotoğraf yüklenemedi.')));}catch(_){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Fotoğraf yüklenemedi.')));}return null;}
  int tab=0; String token=''; bool loading=false; Map<String,dynamic>? business,stats; List<Map<String,dynamic>> liveCampaigns=[];
  @override void initState(){super.initState();_restore();}
- Future<void> _restore()async{final p=await SharedPreferences.getInstance();token=p.getString('business_token')??'';if(token.isNotEmpty)await _loadAll();else if(mounted)setState((){});}
+ Future<void> _restore()async{final p=await SharedPreferences.getInstance();token=p.getString(apiScopedPreferenceKey('business_token'))??'';if(token.isNotEmpty)await _loadAll();else if(mounted)setState((){});}
  Future<Map<String,dynamic>?> _get(String path)async{final r=await http.get(Uri.parse('$_businessApi$path'),headers:{'Authorization':'Bearer $token'});if(r.statusCode==401){await _logout();return null;}if(r.statusCode<200||r.statusCode>=300)return null;return Map<String,dynamic>.from(jsonDecode(r.body));}
  Future<void> _loadAll()async{if(token.isEmpty)return;if(mounted)setState(()=>loading=true);final rs=await Future.wait([_get('/api/business/me'),_get('/api/business/campaigns'),_get('/api/business/stats')]);if(!mounted)return;setState((){business=rs[0]?['business'] is Map?Map<String,dynamic>.from(rs[0]!['business']):null;liveCampaigns=(rs[1]?['campaigns'] as List? ?? []).whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).toList();stats=rs[2]?['stats'] is Map?Map<String,dynamic>.from(rs[2]!['stats']):null;loading=false;});}
- Future<void> _logout()async{if(token.isNotEmpty){try{await http.post(Uri.parse('$_businessApi/api/business/auth/logout'),headers:{'Authorization':'Bearer $token'});}catch(_){}}final p=await SharedPreferences.getInstance();await p.remove('business_token');if(mounted)setState((){token='';business=null;stats=null;liveCampaigns=[];tab=0;});}
+ Future<void> _logout()async{if(token.isNotEmpty){try{await http.post(Uri.parse('$_businessApi/api/business/auth/logout'),headers:{'Authorization':'Bearer $token'});}catch(_){}}final p=await SharedPreferences.getInstance();await p.remove(apiScopedPreferenceKey('business_token'));if(mounted)setState((){token='';business=null;stats=null;liveCampaigns=[];tab=0;});}
 
  @override
  Widget build(BuildContext context){
@@ -33,6 +35,8 @@ class _BusinessPanelPageState extends State<BusinessPanelPage>{
   final home=Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
    _Header(desktop:desktop,onLogin:token.isEmpty?()=>_showAuth(context):_logout),
    const SizedBox(height:16),if(loading)const LinearProgressIndicator(color:_purple),if(loading)const SizedBox(height:10),_Hero(name:(business?['name']??'İşletmen').toString()),const SizedBox(height:16),const AdminPromoBanner(audience:'business'),const SizedBox(height:16),_Stats(desktop:desktop,stats:stats),const SizedBox(height:16),
+   SizedBox(width:double.infinity,height:46,child:OutlinedButton.icon(onPressed:()=>Navigator.of(context).push(MaterialPageRoute(builder:(_)=>BusinessMarketplacePage(token:token))),icon:const Icon(Icons.handyman_rounded),label:const Text('Hizmetlerim ve Randevular'),style:OutlinedButton.styleFrom(foregroundColor:Colors.white,side:const BorderSide(color:_purple)))),
+   const SizedBox(height:10),
    SizedBox(width:double.infinity,height:48,child:FilledButton.icon(onPressed:()=>_showCampaign(context),style:FilledButton.styleFrom(backgroundColor:_purple,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15))),icon:const Icon(Icons.add_circle_rounded),label:const Text('Yeni Kampanya Oluştur',style:TextStyle(fontWeight:FontWeight.w900)))),
    const SizedBox(height:16),
    if(!desktop)...[_Quick(onTap:(i){if(i==0){_editProfile(context);}else if(i==1){setState(()=>tab=desktop?2:0);_showCampaign(context);}else if(i==2){_showVerify(context);}else{setState(()=>tab=desktop?4:1);}}),const SizedBox(height:16)],
@@ -110,7 +114,7 @@ class _BusinessPanelPageState extends State<BusinessPanelPage>{
     }
     final body=register?{'email':email.text.trim(),'password':pw.text,'name':name.text.trim(),'category':selectedServices.join(','),'services':selectedServices,'phone':phone.text.trim(),'openingHours':openingHours.text.trim(),'address':selectedAddress,'street':street.text.trim(),'houseNumber':houseNumber.text.trim(),'district':district.text.trim(),'city':city.text.trim(),'latitude':selectedLat,'longitude':selectedLon,'logoUrl':registerLogo}:{'email':email.text.trim(),'password':pw.text};
     final r=await http.post(Uri.parse('$_businessApi/api/business/auth/$path'),headers:{'Content-Type':'application/json'},body:jsonEncode(body));
-    if(r.statusCode==200||r.statusCode==201){final j=jsonDecode(r.body);token=(j['token']??'').toString();final p=await SharedPreferences.getInstance();await p.setString('business_token',token);await _loadAll();return null;}
+    if(r.statusCode==200||r.statusCode==201){final j=jsonDecode(r.body);token=(j['token']??'').toString();final p=await SharedPreferences.getInstance();await p.setString(apiScopedPreferenceKey('business_token'),token);await _loadAll();return null;}
     if(r.statusCode==409)return 'Bu e-posta ile daha önce kayıt olunmuş.';
     if(register&&r.statusCode==400&&r.body.contains('ADDRESS_NOT_FOUND'))return 'Adres bulunamadı. Mahalle, cadde/sokak, bina no, ilçe ve il bilgilerini kontrol et.';
     if(register&&r.statusCode==503)return 'Adres konumu şu anda doğrulanamadı. Biraz sonra tekrar dene.';

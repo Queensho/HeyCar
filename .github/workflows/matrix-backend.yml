@@ -60,6 +60,10 @@ jobs:
       - name: Install backend dependencies
         run: npm install --prefix server --ignore-scripts --no-audit --no-fund
 
+      - name: Run complete backend regressions
+        working-directory: server
+        run: npm test
+
       - name: Syntax-check every backend module
         shell: bash
         run: |
@@ -182,6 +186,12 @@ jobs:
           $$;
           SQL
 
+      - name: Verify migration audit and atomic rollback
+        working-directory: server
+        env:
+          MIGRATION_PG_TEST: '1'
+        run: node --test tests/migration-safety.test.js
+
       - name: Apply tracked migration chain from scratch
         working-directory: server
         run: npm run migrate
@@ -198,6 +208,17 @@ jobs:
           actual=$(psql -h 127.0.0.1 -U postgres -d heycar_matrix -Atqc "SELECT COUNT(*) FROM public.schema_migrations")
           test "$actual" = "$expected"
           echo "MATRIX_MIGRATION_TRACKING_OK count=$actual"
+
+      - name: Test marketplace rules and request boundaries
+        working-directory: server
+        run: |
+          node --test tests/marketplace-hours.test.js tests/marketplace-availability.test.js tests/marketplace-routes.test.js tests/business-image.test.js
+
+      - name: Verify marketplace PostgreSQL HTTP lifecycle on disposable matrix database
+        working-directory: server
+        env:
+          MARKETPLACE_PG_TEST: "1"
+        run: node --test tests/marketplace-postgres.test.js
 
       - name: Verify Matrix schema invariants
         run: psql -h 127.0.0.1 -U postgres -d heycar_matrix -v ON_ERROR_STOP=1 -f server/matrix-schema-check.sql
@@ -259,6 +280,8 @@ jobs:
           assert_status 401 http://127.0.0.1:8090/api/admin/manage/towing/providers
           assert_status 401 http://127.0.0.1:8090/api/admin/manage/towing/pricing
           assert_status 401 -X PATCH -H 'Content-Type: application/json' -d '{"status":"approved"}' http://127.0.0.1:8090/api/admin/manage/towing/providers/00000000-0000-4000-8000-000000000001/status
+          assert_status 401 http://127.0.0.1:8090/api/admin/manage/marketplace/services
+          assert_status 401 http://127.0.0.1:8090/api/business/marketplace/services
           echo "MATRIX_TOWING_ADMIN_AUTH_BOUNDARIES_OK"
 
           echo "MATRIX_AUTH_BOUNDARIES_OK"

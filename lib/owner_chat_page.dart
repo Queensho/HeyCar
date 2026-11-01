@@ -1,3 +1,4 @@
+import 'api_base_url.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -22,7 +23,7 @@ class OwnerChatPage extends StatefulWidget {
 }
 
 class _OwnerChatPageState extends State<OwnerChatPage> {
-  static const baseUrl = 'https://heycar-api-185-165-46-213.nip.io';
+  static const baseUrl = cepqontagApiBaseUrl;
   final input = TextEditingController();
   final scroll = ScrollController();
   List<Map<String, dynamic>> messages = [];
@@ -152,7 +153,7 @@ class _OwnerChatPageState extends State<OwnerChatPage> {
       builder: (c) => AlertDialog(
         backgroundColor: CepqarTheme.panel,
         title: Text('Oturumu engelle?', style: TextStyle(color: CepqarTheme.text, fontWeight: FontWeight.w900)),
-        content: const Text(
+        content: Text(
           'Bu tarama oturumu anında kapanır. QR etiketiniz değişmez ve diğer kişiler QR’ı kullanmaya devam edebilir.',
           style: TextStyle(color: CepqarTheme.muted, height: 1.35),
         ),

@@ -1,3 +1,4 @@
+import 'api_base_url.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -9,7 +10,7 @@ class AdminOfferEditorialPage extends StatefulWidget{
  @override State<AdminOfferEditorialPage> createState()=>_AdminOfferEditorialPageState();
 }
 class _AdminOfferEditorialPageState extends State<AdminOfferEditorialPage>{
- static const base='https://heycar-api-185-165-46-213.nip.io';
+ static const base=cepqontagApiBaseUrl;
  List<Map<String,dynamic>> offers=[];
  bool loading=false;String? error;
  Map<String,String> get headers=>{'Authorization':'Bearer ${widget.token}','Content-Type':'application/json'};

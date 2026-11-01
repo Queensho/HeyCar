@@ -230,7 +230,7 @@ class _ParkingLocationCardState extends State<ParkingLocationCard> {
           if (locked) ...[
             const Icon(Icons.lock_rounded, color: Color(0xFFFFB800), size: 17),
             const SizedBox(width: 5),
-            const Text(
+            Text(
               widget.driverMode ? 'Aile' : 'Premium',
               style: TextStyle(
                 color: Color(0xFFFFB800),
