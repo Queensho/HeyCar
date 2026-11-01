@@ -6,6 +6,7 @@ on:
       - 'deploy/marketplace-staging-preflight.js'
       - 'deploy/marketplace-staging-backup.js'
       - 'server/tests/marketplace-staging-backup.test.js'
+      - 'server/marketplace-schema.js'
       - '.github/workflows/marketplace-staging-readiness.yml'
   workflow_dispatch:
     inputs:
@@ -57,6 +58,20 @@ jobs:
       - name: Prove dump, snapshot and full restore on disposable PostgreSQL
         run: node --test server/tests/marketplace-staging-backup.test.js
 
+      - name: Build an authoritative candidate schema on disposable PostgreSQL
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d heycar_matrix -v ON_ERROR_STOP=1 -c "CREATE ROLE heycar_user LOGIN PASSWORD 'reference-test-only'"
+          createdb -h 127.0.0.1 -U postgres heycar_reference_test
+          DB_NAME=heycar_reference_test node server/migrate.js --expect-database=heycar_reference_test
+          DB_NAME=heycar_reference_test node server/marketplace-schema.js > expected-marketplace-schema.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: expected-marketplace-schema
+          path: expected-marketplace-schema.json
+          retention-days: 7
+
   staging-readonly-preflight:
     needs: backup-tool-test
     runs-on: ubuntu-latest
@@ -66,6 +81,28 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: expected-marketplace-schema
+      - name: Prepare read-only live/candidate schema comparison
+        shell: bash
+        run: |
+          python3 - <<'PYTHON'
+          import json
+          from pathlib import Path
+          reference=json.loads(Path('expected-marketplace-schema.json').read_text())
+          source=Path('deploy/marketplace-staging-preflight.js').read_text()
+          schema_module=Path('server/marketplace-schema.js').read_text()
+          prefix='const schemaTools=(()=>{const module={exports:{}};\n'+schema_module+'\nreturn module.exports;})();\n'
+          # The embedded module must not run its CLI main branch.
+          prefix=prefix.replace('if(require.main===module){','if(false){')
+          source=source.replace("const crypto=require('node:crypto');", "const crypto=require('node:crypto');\n"+prefix)
+          marker='  report.database=id.database;'
+          comparison='  report.candidate_schema_differences=schemaTools.compareSchema('+json.dumps(reference)+',await schemaTools.readSchema(client));\n'
+          # Finish the inspection transaction before the schema helper opens its own read-only snapshot.
+          source=source.replace(" }finally{await client.query('ROLLBACK');}"," }finally{await client.query('ROLLBACK');}\n"+comparison)
+          Path('staging-preflight-bundle.js').write_text(source)
+          PYTHON
       - name: Verify staging SSH credentials and host identity
         env:
           SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
@@ -100,7 +137,7 @@ jobs:
           ssh -i "$HOME/.ssh/staging_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 \
             -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
             'cd /home/cepqontag-deploy/app/server && node - --run-staging-preflight' \
-            < deploy/marketplace-staging-preflight.js > staging-readiness.json
+            < staging-preflight-bundle.js > staging-readiness.json
       - name: Summarize read-only audit without exposing credentials
         id: summary
         if: always()
@@ -123,6 +160,7 @@ jobs:
                   'only_deployed':sorted(deployed.keys()-candidate.keys()),
                   'only_candidate':sorted(candidate.keys()-deployed.keys()),
                   'changed_common':sorted(n for n in deployed.keys() & candidate.keys() if deployed[n]!=candidate[n])}))
+              print('CANDIDATE_SCHEMA_DIFFERENCES',json.dumps(report.get('candidate_schema_differences',[])))
               print('TABLES_PRESENT',json.dumps(report.get('schema',{}).get('tables',[])))
               with open(os.environ['GITHUB_OUTPUT'],'a') as out:
                   out.write('identity_verified='+str(report.get('database')=='heycar_staging').lower()+'\n')
