@@ -15,6 +15,16 @@ async function inspect({client,directory=process.cwd(),request=fetch,stat=fs.sta
   if(Math.floor(id.version/10000)!==16)throw Error('STAGING_POSTGRESQL_VERSION_MISMATCH');
   report.database=id.database;
   report.recovery_diagnostics={};
+  report.recovery_diagnostics.auth_sources=fs.readdirSync(directory).filter(n=>n.endsWith('.js')).map(filename=>{
+   const data=fs.readFileSync(path.join(directory,filename)),text=data.toString('utf8');
+   return {filename,sha256:crypto.createHash('sha256').update(data).digest('hex'),
+    inserts_users:/\bINSERT\s+INTO\s+(?:public\.)?users\b/i.test(text),
+    password_comparison:/password_hash\s*=\s*crypt\(/i.test(text),
+    bcrypt_creation:/crypt\([^;]+gen_salt\(/i.test(text),
+    otp_marker:/\botpCode\b|verify-otp|send-otp|request-otp/.test(text),
+    social_verification_marker:/verifyIdToken|signInWithCredential|passport\.authenticate|\/oauth\/callback/.test(text)};
+  }).filter(item=>item.inserts_users||item.password_comparison||item.otp_marker||item.social_verification_marker||/^(?:onboarding-routes|owner-auth-routes|driver-routes|server)\.js$/.test(item.filename));
+  report.recovery_diagnostics.identity_catalog=(await client.query("SELECT table_name,column_name,data_type FROM information_schema.columns WHERE table_schema='public' AND (table_name=ANY($1::text[]) OR (table_name IN ('users','owner_auth_sessions','driver_auth_sessions','owner_security_sessions') AND column_name~'(verified|provider|method|oauth|social|firebase|otp)')) ORDER BY table_name,ordinal_position",[['auth_identities','user_identities','oauth_accounts','social_accounts','firebase_users','phone_verifications','otp_verifications']])).rows;
   const accounts=await accountReview(client);
   report.recovery_diagnostics.account_review=accounts.accounts;
   if(accounts.privateReferences.length){

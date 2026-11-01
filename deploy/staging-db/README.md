@@ -27,6 +27,12 @@ PostgreSQL backup, permissions, SQL-guard and restored-copy checks.
 5. Stop the private cluster, retain dump/evidence and re-audit live staging.
    Failed live readiness remains red; do not deploy or claim accounts are fixed.
 
+The final gate evaluates current post-rehearsal evidence rather than failing
+unconditionally. Missing evidence, schema/filename/checksum/history differences,
+blocked repairs, nonzero NULL/phone counts, failed HTTP isolation or changed source
+state all block readiness. A successful backup replaces only the audit's backup
+warning; it does not waive migration or account-data requirements.
+
 The live database role cepqontag_staging is not the owner/member of heycar_user.
 SSH authorization does not confer table ownership. A previous rehearsal of direct
 ALTER as the runtime role correctly failed with SQLSTATE 42501.
@@ -149,3 +155,50 @@ alone deliberately grants no CREATE privilege.
 Additional full-schema drift (invite lockout fields/check, store order FK behavior,
 reminder type check and other uniqueness indexes) also needs per-file proof and
 isolated rehearsal before a complete baseline/release can be approved.
+
+## Expanded account investigation and independent schema rehearsal
+
+The account owner is currently unknown. Do not delete/merge either account, change
+its phone, create a password, transfer its vehicle or force phone uniqueness.
+The read-only report now includes creation timestamps; all/revoked/expired owner
+and driver session counts and timestamp ranges; device/login/security history;
+legal/recovery metadata without code hashes; and vehicle creation, current owner
+match, QR status counts and transfer history without plates, tokens or transfer
+codes. Known phone-verification/provider columns and identity-table metadata are
+inspected. Session existence is not treated as proof of a provider or verified
+phone. Missing records cannot prove that a historical method never existed.
+
+The deployed authentication source hashes and structural flags are compared with
+the candidate before interpreting code. Current onboarding requires a password
+and creates a bcrypt hash; phone login compares that hash. Relevant history:
+
+- dc87d35baf1c81fdf0f8566fc947f6eb06d26505 (2026-09-13): temporary fixed-code
+  owner-login check. It is not evidence that a phone was verified by SMS.
+- 585f1e71a6c48158db42ea9745e09b4c30b0a46e (2026-09-14): password phone login.
+- da969742391ad1d8bf1f4b4a314f72bd32aeb0b0: initial onboarding already required
+  a password and stored a bcrypt hash, including the later temporary OTP version.
+
+The old Dart OTP screen/field alone does not establish how either account was
+created. Neither current nor inspected early registration code explains a NULL
+password as a supported signup result. Do not infer a manual import or social
+login without positive evidence. No recovery flow is initiated during inspection.
+
+schema-repairs.js supplies seven independent, fixed DDL-only rehearsals:
+
+1. Add invite lockout columns and validate the bounded-attempt check (092 effects).
+2. Add/validate only the reminder type check when all stored values are valid;
+   never replay 041 ownership rewrites, spelling normalization or deletion.
+3. Create the active recipient call index only without conflicting active calls.
+4. Create the global active-valet index only without duplicate active custody.
+5. Create the pending owner/campaign redemption index only without duplicates.
+6. Reconcile the reviewed store-order owner FK/delete behavior and nullability
+   transactionally; preserve every existing order value and validate the FK.
+7. Set the expected maintenance-message default without updating existing messages.
+
+Every operation verifies the table owner, locks with short timeouts, checks its
+postcondition, fingerprints existing values before/after and rolls back on failure.
+New invite columns use migration-defined defaults; all pre-existing column values
+are preserved. Index namespace CREATE is temporary within the DBA transaction.
+Operations continue independently after a blocked precondition, with no row repair
+or forced duplicate cancellation. These are isolated-copy tests, not live changes
+or proof that an entire historical migration (especially 041) was executed.

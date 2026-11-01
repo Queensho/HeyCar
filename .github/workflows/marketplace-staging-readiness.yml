@@ -77,7 +77,7 @@ jobs:
       - name: Test constrained migration capability and data-preserving repair guards on PostgreSQL 16
         env:
           STAGING_DB_REHEARSAL_TEST: '1'
-        run: node --test deploy/staging-db/inspection.test.js
+        run: node --test deploy/staging-db/inspection.test.js deploy/staging-db/readiness.test.js
       - uses: actions/upload-artifact@v4
         with:
           name: expected-marketplace-schema
@@ -107,7 +107,10 @@ jobs:
           source=Path('deploy/marketplace-staging-preflight.js').read_text()
           schema_module=Path('server/marketplace-schema.js').read_text()
           inspection=Path('deploy/staging-db/inspection.js').read_text()
-          inspection_prefix='const inspectionTools=(()=>{const module={exports:{}};\n'+inspection+'\nreturn module.exports;})();\n'
+          schema_repairs=Path('deploy/staging-db/schema-repairs.js').read_text()
+          repair_prefix='const schemaRepairTools=(()=>{const module={exports:{}};\n'+schema_repairs+'\nreturn module.exports;})();\n'
+          inspection=inspection.replace("require('./schema-repairs')",'schemaRepairTools')
+          inspection_prefix=repair_prefix+'const inspectionTools=(()=>{const module={exports:{}};\n'+inspection+'\nreturn module.exports;})();\n'
           prefix='const schemaTools=(()=>{const module={exports:{}};\n'+schema_module+'\nreturn module.exports;})();\n'
           # The embedded module must not run its CLI main branch.
           prefix=prefix.replace('if(require.main===module){','if(false){')
@@ -203,6 +206,9 @@ jobs:
               print('CANDIDATE_SCHEMA_DIFFERENCES',json.dumps(report.get('candidate_schema_differences',[])))
               diagnostics=report.get('recovery_diagnostics',{})
               deployed_cleanup=diagnostics.pop('cleanup047','')
+              for source in diagnostics.get('auth_sources',[]):
+                  local=Path('server')/source['filename']
+                  source['matches_candidate']=local.is_file() and hashlib.sha256(local.read_bytes()).hexdigest()==source['sha256']
               print('RECOVERY_DIAGNOSTICS',json.dumps(diagnostics))
               expected_cleanup=Path('server/migrations/047_cleanup_deleted_vehicle_dependents.sql').read_text()
               print('CLEANUP047_DIFF',''.join(difflib.unified_diff(expected_cleanup.splitlines(True),deployed_cleanup.splitlines(True),fromfile='candidate047',tofile='deployed047')))
@@ -263,7 +269,7 @@ jobs:
               print('AFTER_RECOVERY_DIAGNOSTICS',json.dumps(diagnostics))
           print('No deployment, data repair, baseline or service restart. Failed password/phone controls block release.')
           PYTHON
-          exit 1
+          node deploy/staging-db/readiness.js
       - name: Preserve staging audit evidence
         if: always()
         uses: actions/upload-artifact@v4

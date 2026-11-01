@@ -1,5 +1,6 @@
 'use strict';
 const crypto=require('node:crypto');
+const {rehearseIndependent}=require('./schema-repairs');
 function renderSql(template,database){
  if(database!=='heycar_staging'&&!/^heycar_recovery_test_[0-9a-f]{16}$/.test(database))throw Error('REHEARSAL_DATABASE_REJECTED');
  return template.replaceAll('__TARGET_DATABASE__',database);
@@ -14,7 +15,7 @@ async function accountReview(client){
  ELSE phone END AS canonical FROM public.users u),
  duplicates AS (SELECT canonical,dense_rank() OVER(ORDER BY canonical)::int AS group_no
  FROM normalized WHERE phone IS NOT NULL GROUP BY canonical HAVING count(*)>1)
- SELECT u.id::text AS private_id,u.role,u.status,u.password_hash IS NULL AS null_password,
+ SELECT u.id::text AS private_id,u.role,u.status,u.created_at,u.password_hash IS NULL AS null_password,
  u.email IS NOT NULL AND length(btrim(u.email))>0 AS has_email,u.phone IS NOT NULL AS has_phone,
  CASE WHEN u.phone ~ '^[+]905[0-9]{9}$' THEN 'TR_E164'
  WHEN u.phone ~ '^05[0-9]{9}$' THEN 'TR_LOCAL_0'
@@ -26,10 +27,42 @@ async function accountReview(client){
  (SELECT count(*)::int FROM public.driver_auth_sessions s WHERE s.driver_id=u.id AND s.revoked_at IS NULL AND s.expires_at>now()) AS active_driver_sessions
  FROM normalized u LEFT JOIN duplicates d ON d.canonical=u.canonical
  WHERE u.password_hash IS NULL OR d.group_no IS NOT NULL ORDER BY u.id`)).rows;
- const privateReferences=[],accounts=profiles.map((row,i)=>{
+ const privateReferences=[],accounts=[];
+ const verificationColumns=(await client.query("SELECT column_name,data_type FROM information_schema.columns WHERE table_schema='public' AND table_name='users' AND column_name=ANY($1::text[])",[
+  ['phone_verified_at','phone_verified','is_phone_verified','auth_provider','social_provider','firebase_uid','google_id','apple_id']])).rows;
+ for(const [i,row] of profiles.entries()){
   const {private_id,...facts}=row,reference='account-review-'+(i+1);
-  privateReferences.push({reference,id:private_id});return {reference,...facts};
- });
+  privateReferences.push({reference,id:private_id,type:'account'});
+  const history={};
+  for(const [name,table,column] of [['owner','owner_auth_sessions','owner_id'],['driver','driver_auth_sessions','driver_id']]){
+   history[name]=(await client.query('SELECT count(*)::int AS total,count(*) FILTER(WHERE revoked_at IS NOT NULL)::int AS revoked,count(*) FILTER(WHERE expires_at<=now())::int AS expired,min(created_at) AS first_created,max(created_at) AS last_created,max(expires_at) AS last_expiry FROM public.'+table+' WHERE '+column+'::text=$1',[private_id])).rows[0];
+  }
+  history.device_sessions=(await client.query('SELECT count(*)::int AS total,min(created_at) AS first_created,max(last_seen_at) AS last_seen,count(*) FILTER(WHERE revoked_at IS NOT NULL)::int AS revoked FROM public.owner_security_sessions WHERE owner_id=$1',[private_id])).rows[0];
+  history.login_events=(await client.query('SELECT count(*)::int AS total,min(created_at) AS first_recorded,max(created_at) AS last_recorded FROM public.owner_login_events WHERE owner_id=$1',[private_id])).rows[0];
+  history.security_events=(await client.query('SELECT event_type,count(*)::int AS total,min(created_at) AS first_recorded,max(created_at) AS last_recorded FROM public.admin_security_events WHERE owner_id=$1 GROUP BY event_type ORDER BY event_type',[private_id])).rows;
+  history.owner_events=(await client.query('SELECT type,count(*)::int AS total,min(created_at) AS first_recorded,max(created_at) AS last_recorded FROM public.owner_security_events WHERE owner_id=$1 GROUP BY type ORDER BY type',[private_id])).rows;
+  history.legal_acceptances=(await client.query('SELECT role,document_version,created_at,terms_accepted_at FROM public.legal_acceptances WHERE user_id::text=$1 ORDER BY created_at',[private_id])).rows;
+  history.recovery_code=(await client.query('SELECT count(*)::int AS count,min(created_at) AS created_at FROM public.account_recovery_codes WHERE user_id::text=$1',[private_id])).rows[0];
+  const verification=[];
+  for(const col of verificationColumns){
+   const value=(await client.query('SELECT to_jsonb(u)->$2 AS value FROM public.users u WHERE id::text=$1',[private_id,col.column_name])).rows[0]?.value;
+   const item={field:col.column_name,present:value!==null&&value!==undefined};
+   if(col.column_name==='phone_verified_at'&&typeof value==='string'&&!Number.isNaN(Date.parse(value)))item.timestamp=new Date(value).toISOString();
+   else if(['phone_verified','is_phone_verified'].includes(col.column_name)&&typeof value==='boolean')item.verified=value;
+   else if(['auth_provider','social_provider'].includes(col.column_name))item.provider=['google','apple','firebase','otp','password'].includes(String(value).toLowerCase())?String(value).toLowerCase():'not_recognized';
+   verification.push(item);
+  }
+  const vehicles=[];
+  const owned=(await client.query('SELECT id::text AS private_id,created_at,vehicle_type,owner_id::text=$1 AS owner_matches FROM public.vehicles WHERE owner_id::text=$1 ORDER BY created_at,id',[private_id])).rows;
+  for(const [vi,vehicle] of owned.entries()){
+   const vehicleRef=reference+'-vehicle-'+(vi+1),{private_id:vehicleId,...vehicleFacts}=vehicle;
+   privateReferences.push({reference:vehicleRef,id:vehicleId,type:'vehicle'});
+   const transfers=(await client.query('SELECT status,created_at,accepted_at,from_owner_id::text=$1 AS from_this_account,accepted_by::text=$1 AS to_this_account FROM public.vehicle_transfers WHERE vehicle_id::text=$2 ORDER BY created_at',[private_id,vehicleId])).rows;
+   const qr=(await client.query('SELECT status,count(*)::int AS count FROM public.qr_tags WHERE vehicle_id::text=$1 GROUP BY status ORDER BY status',[vehicleId])).rows;
+   vehicles.push({reference:vehicleRef,...vehicleFacts,transfers,qr_status_counts:qr});
+  }
+  accounts.push({reference,...facts,verification_columns:verification,phone_verification_evidence:verification.length?'review_recorded_fields':'no_known_persisted_marker',session_method_evidence:'not_inferred_from_session_existence',history,owned_vehicles:vehicles});
+ }
  return {accounts,privateReferences};
 }
 async function orphanReview(client){
@@ -106,11 +139,13 @@ async function rehearse({restore,database,sqlTemplate}){
  }
  const after=await rowFingerprint(restore);
  if(JSON.stringify(before)!==JSON.stringify(after))throw Error('RESTORE_ACCOUNT_DATA_CHANGED');
+ const independent_schema_repairs=await rehearseIndependent(restore,database);
+ if(JSON.stringify(before)!==JSON.stringify(await rowFingerprint(restore)))throw Error('RESTORE_ACCOUNT_DATA_CHANGED');
  const rolesAfter=(await restore.query('SELECT roleid,member,grantor,admin_option,inherit_option,set_option FROM pg_auth_members ORDER BY roleid,member,grantor')).rows;
  const dbAclAfter=(await restore.query('SELECT datname,datacl::text AS acl FROM pg_database ORDER BY datname')).rows;
  const schemaAclAfter=(await restore.query("SELECT nspacl::text AS acl FROM pg_namespace WHERE nspname='public'")).rows;
  if(JSON.stringify(rolesBefore)!==JSON.stringify(rolesAfter)||JSON.stringify(dbAclBefore)!==JSON.stringify(dbAclAfter))throw Error('DATABASE_OR_GLOBAL_ROLE_GRANTS_CHANGED');
  if(JSON.stringify(schemaAclBefore)!==JSON.stringify(schemaAclAfter))throw Error('PUBLIC_SCHEMA_PRIVILEGES_CHANGED');
- return {success:true,checks,blocked,account_data_unchanged:true,global_role_memberships_unchanged:true,database_acls_unchanged:true,public_schema_acl_unchanged:true,source_ddl_attempted:false};
+ return {success:true,checks,blocked,independent_schema_repairs,account_data_unchanged:true,global_role_memberships_unchanged:true,database_acls_unchanged:true,public_schema_acl_unchanged:true,source_ddl_attempted:false};
 }
 module.exports={renderSql,accountReview,orphanReview,rehearse};
