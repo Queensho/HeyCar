@@ -27,6 +27,9 @@ flutter build web --release --target lib/admin_v3.dart --base-href /HeyCar/admin
 ```
 
 CI uploads reviewable business/admin web artifacts without publishing them.
+The legacy manual staging deploy dispatcher now calls the same gated readiness
+workflow. Its unrelated fixed-branch checkout, direct rsync and restart path were
+removed from this candidate; dispatch cannot bypass unresolved release gates.
 The owner ARM64 APK is a compile smoke check. Its complete API/session/Firebase
 isolation has not been certified; it is not distributed as a staging APK.
 

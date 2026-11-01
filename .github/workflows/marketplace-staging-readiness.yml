@@ -1,5 +1,11 @@
 name: Marketplace Staging Readiness
 on:
+  workflow_call:
+    inputs:
+      verify_backup:
+        description: Verify a fresh staging backup before assessing release readiness
+        type: boolean
+        default: true
   push:
     branches: [integration/marketplace-main-20261031]
     paths:
