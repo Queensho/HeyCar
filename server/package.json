@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "check": "node --check server.js && node --check admin-auth-routes.js",
-    "migrate": "node migrate.js"
+    "migrate": "node migrate.js",
+    "test": "node --test tests/*.test.js *.test.js"
   },
   "dependencies": {
     "cors": "^2.8.6",

@@ -1,3 +1,4 @@
+import 'api_base_url.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -40,7 +41,7 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
    }catch(_){}
   }
 
-  static const apiBase='https://heycar-api-185-165-46-213.nip.io';
+  static const apiBase=cepqontagApiBaseUrl;
   final categories=const ['Tümü','Oto Yıkama','Detailing','Lastik','Otopark','Servis','Akaryakıt'];
   final offers=const [
     _Offer('Oto Yıkama','CleanDrive Oto Yıkama','Premium oto yıkamada %30 indirim','%30 İndirim','1.2 km','4.8','320',Icons.local_car_wash_rounded,['İç - Dış Temizlik']),

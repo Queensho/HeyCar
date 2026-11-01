@@ -276,6 +276,10 @@ module.exports=function registerBusinessRoutes(app,pool){
    // Recheck under the business lock: a listing can be disabled while a booking waits.
    const current=await client.query("SELECT s.duration_minutes,s.weekly_hours,s.booking_timezone FROM marketplace_services s JOIN businesses b ON b.id=s.business_id WHERE s.id=$1 AND s.active=true AND NOT s.admin_hidden AND b.is_active=true AND b.approval_status='approved'",[serviceId]);
    if(!current.rowCount){await client.query('ROLLBACK');return res.status(409).json({error:'SERVICE_UNAVAILABLE'});}
+   // Ownership can change while this request waits for the business lock.
+   // Hold the vehicle row through commit, so a concurrent transfer cannot pass us.
+   const stillOwned=await client.query("SELECT 1 FROM vehicles WHERE owner_id::text=$1 AND upper(replace(plate,' ',''))=$2 FOR SHARE",[String(owner),normalizedPlate]);
+   if(!stillOwned.rowCount){await client.query('ROLLBACK');return res.status(403).json({error:'VEHICLE_NOT_OWNED'});}
    if(useLocal){date=resolveLocalBookingTime(localDate,localTime,current.rows[0].booking_timezone||'Europe/Istanbul');if(!date){await client.query('ROLLBACK');return res.status(400).json({error:'INVALID_LOCAL_TIME'});}}
    if(date.getTime()<=Date.now()||date.getTime()>Date.now()+90*86400000){await client.query('ROLLBACK');return res.status(400).json({error:'INVALID_APPOINTMENT'});}
    const duration=current.rows[0].duration_minutes||60;

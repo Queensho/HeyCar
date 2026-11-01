@@ -113,6 +113,8 @@ jobs:
           flutter analyze lib/cepqar_offers_page.dart lib/marketplace_service_page.dart lib/marketplace_appointments_page.dart lib/business_panel_page.dart lib/business_marketplace_page.dart lib/admin_marketplace_page.dart test/admin_marketplace_page_test.dart --no-fatal-infos --no-fatal-warnings
       - name: Test marketplace admin UI
         run: flutter test test/admin_marketplace_page_test.dart
+      - name: Verify business timezone and staging API requests
+        run: flutter test test/business_marketplace_hours_test.dart --dart-define=CEPQONTAG_API_BASE_URL=https://marketplace-test.invalid
       - name: Prepare web platform
         run: flutter create . --platforms=web --project-name heycar_app --no-pub
       - name: Build marketplace business web

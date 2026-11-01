@@ -43,7 +43,7 @@ if(fs.existsSync('reminder-routes.js')){
 }
 
 requireText(
-  'migrate.js',
+  'migration-plan.js',
   'MIGRATION_CHECKSUM_MISMATCH',
   'MIGRATION_CHECKSUM_GUARD_MISSING'
 );

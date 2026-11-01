@@ -7,7 +7,8 @@ const path=require('node:path');
 
 // Opt-in only, on a disposable database. Never run against production.
 test('marketplace HTTP lifecycle with PostgreSQL', {skip:process.env.MARKETPLACE_PG_TEST!=='1'},async t=>{
- assert.match(process.env.DB_NAME||'',/_(test|matrix)$/,'Requires disposable test database');
+ assert.equal(process.env.DB_NAME,'heycar_matrix','Only the disposable Matrix database is allowed');
+ assert.equal(process.env.DB_HOST,'127.0.0.1','Only the local CI PostgreSQL service is allowed');
  const {Pool}=require('pg');
  const express=require('express');
  const config={host:process.env.DB_HOST,port:Number(process.env.DB_PORT||5432),database:process.env.DB_NAME,user:process.env.DB_USER,password:process.env.DB_PASSWORD};
@@ -23,6 +24,7 @@ test('marketplace HTTP lifecycle with PostgreSQL', {skip:process.env.MARKETPLACE
   return h+'.'+b+'.'+crypto.createHmac('sha256',process.env.OWNER_AUTH_SECRET).update(h+'.'+b).digest('base64url');
  }
  try{
+  assert.equal((await root.query('SELECT current_database() AS db')).rows[0].db,'heycar_matrix');
   await root.query('CREATE SCHEMA '+schema);
   pool=new Pool({...config,options:'-c search_path='+schema+',public'});
   await pool.query(`CREATE TABLE business_accounts(id uuid PRIMARY KEY);
@@ -43,7 +45,16 @@ test('marketplace HTTP lifecycle with PostgreSQL', {skip:process.env.MARKETPLACE
   await pool.query("INSERT INTO businesses(id,account_id,name) VALUES($1,$2,'Test Business')",[business,account]);
   await pool.query("INSERT INTO vehicles VALUES('owner-a','34ABC123'),('owner-b','34ABC456')");
   const app=express();app.use(express.json());
-  require('../business-routes')(app,pool);
+  let transferOnOwnershipCheck=false;
+  const routePool={connect:()=>pool.connect(),async query(sql,values){
+   const result=await pool.query(sql,values);
+   if(transferOnOwnershipCheck&&sql.startsWith('SELECT 1 FROM vehicles')){
+    transferOnOwnershipCheck=false;
+    await pool.query("UPDATE vehicles SET owner_id='owner-b' WHERE plate='34ABC123'");
+   }
+   return result;
+  }};
+  require('../business-routes')(app,routePool);
   // The canonical server supplies its real adminGuard; here exercise the same
   // middleware boundary with an explicit test-only guard.
   require('../admin-marketplace-routes')(app,pool,(req,res,next)=>req.headers.authorization==='Bearer test-admin'?next():res.status(401).json({error:'AUTH_REQUIRED'}));
@@ -68,6 +79,13 @@ test('marketplace HTTP lifecycle with PostgreSQL', {skip:process.env.MARKETPLACE
    assert.equal((await request('PATCH',`/api/business/marketplace/services/${service.id}/hours`,otherToken,{weeklyHours:weekly})).status,404);
   });
   const day=new Date(Date.now()+2*86400000).toISOString().slice(0,10);
+  await t.test('ownership transfer between precheck and booking rolls back the request',async()=>{
+   transferOnOwnershipCheck=true;
+   const r=await request('POST','/api/marketplace/appointments',a,{serviceId:service.id,plate:'34ABC123',localDate:day,localTime:'09:00'});
+   assert.equal(r.status,403);assert.equal(r.data.error,'VEHICLE_NOT_OWNED');
+   assert.equal((await pool.query('SELECT count(*)::int AS n FROM marketplace_appointments')).rows[0].n,0);
+   await pool.query("UPDATE vehicles SET owner_id='owner-a' WHERE plate='34ABC123'");
+  });
   await t.test('availability excludes conflicts and only one simultaneous booking wins',async()=>{
    const before=await request('GET',`/api/marketplace/services/${service.id}/availability?date=${day}`);
    assert.equal(before.status,200);assert(before.data.slots.some(s=>s.local_time==='10:00'));
@@ -140,7 +158,7 @@ test('marketplace HTTP lifecycle with PostgreSQL', {skip:process.env.MARKETPLACE
  }finally{
   if(server)await new Promise((resolve,reject)=>server.close(e=>e?reject(e):resolve()));
   if(pool)await pool.end();
-  await root.query('DROP SCHEMA IF EXISTS '+schema+' CASCADE');
+  // Leave fixtures in this disposable CI cluster; never issue DROP SCHEMA here.
   await root.end();
  }
 });

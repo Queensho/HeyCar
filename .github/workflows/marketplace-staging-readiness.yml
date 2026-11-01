@@ -1,0 +1,63 @@
+name: Marketplace Staging Readiness
+on:
+  push:
+    branches: [integration/marketplace-main-20261031]
+    paths:
+      - 'deploy/marketplace-staging-preflight.js'
+      - '.github/workflows/marketplace-staging-readiness.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: cepqontag-staging-deploy
+  cancel-in-progress: false
+jobs:
+  staging-readonly-preflight:
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify staging SSH credentials and host identity
+        env:
+          SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+          SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+          SSH_PORT: ${{ secrets.STAGING_SSH_PORT }}
+          SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+          FINGERPRINT: ${{ secrets.STAGING_SSH_HOST_FINGERPRINT }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in SSH_KEY SSH_HOST SSH_PORT SSH_USER FINGERPRINT; do
+            if [ -z "${!name}" ]; then echo "::error::Missing staging credential: $name"; exit 1; fi
+          done
+          test "$SSH_USER" = cepqontag-deploy
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$SSH_KEY" > "$HOME/.ssh/staging_key"
+          chmod 600 "$HOME/.ssh/staging_key"
+          ssh-keyscan -T 10 -t ed25519 -p "$SSH_PORT" -H "$SSH_HOST" > "$HOME/.ssh/known_hosts"
+          actual=$(ssh-keygen -lf "$HOME/.ssh/known_hosts" -E sha256 | awk 'NR==1 {print $2}')
+          test "$actual" = "$FINGERPRINT"
+          chmod 600 "$HOME/.ssh/known_hosts"
+      - name: Audit staging without deployment, migration or baseline
+        env:
+          SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+          SSH_PORT: ${{ secrets.STAGING_SSH_PORT }}
+          SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -i "$HOME/.ssh/staging_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 \
+            -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
+            'cd /home/cepqontag-deploy/app/server && node - --run-staging-preflight' \
+            < deploy/marketplace-staging-preflight.js > staging-readiness.json
+      - name: Preserve staging audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: marketplace-staging-readiness
+          path: staging-readiness.json
+          if-no-files-found: ignore
+          retention-days: 7

@@ -1,3 +1,4 @@
+import 'api_base_url.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -22,7 +23,7 @@ class OwnerChatPage extends StatefulWidget {
 }
 
 class _OwnerChatPageState extends State<OwnerChatPage> {
-  static const baseUrl = 'https://heycar-api-185-165-46-213.nip.io';
+  static const baseUrl = cepqontagApiBaseUrl;
   final input = TextEditingController();
   final scroll = ScrollController();
   List<Map<String, dynamic>> messages = [];

@@ -56,9 +56,15 @@ fallback build compiles; they do not validate staging connectivity.
 1. Record the currently deployed commit, service configuration and web artifacts.
    Back up PostgreSQL with `pg_dump -Fc` and the upload directory; test restoration
    on a disposable database first.
-2. Rehearse on staging with a copy of production data and the deployed database role.
+2. Rehearse on a separate test database restored from a verified staging backup and the deployed database role.
    Check pending/confirmed appointments, ownership and legacy sessions.
-3. From the complete release checkout, install backend dependencies with the
+3. Stop if migration history is absent, checksums differ, or the deployed source
+   uses the legacy marketplace filenames 123-127. The integration candidate uses
+   128-132 plus main's 123 custom reminders; this requires per-file reconciliation.
+   Do not blanket-baseline or replay the historical chain on existing data. PR #300
+   contains the backup/schema review procedure; no baseline is authorized by this PR.
+   Only after all pending operations are individually reviewed, from the complete
+   release checkout, install backend dependencies with the
    repository's existing install procedure. Run `cd server && npm run migrate`
    using the migration role. The tracked chain applies 128 (catalog/appointments),
    129 (hours/timezone), 130 (reviews), 131 (gallery), then 132 (admin moderation).
@@ -72,7 +78,7 @@ fallback build compiles; they do not validate staging connectivity.
 6. Build/distribute owner Android/web, business web (`lib/entry_business.dart`) and
    admin web (`lib/admin_v3.dart`) using the existing platform/Firebase patches and
    hosting base paths. Publish the backend first; old clients remain supported.
-7. Run the smoke checklist below on staging and then, with approval, production.
+7. Run the smoke checklist below on staging. Production deployment is out of scope.
 
 ## Rollback
 
@@ -120,3 +126,34 @@ Restore uploads only if damaged; do not discard newer user files automatically.
 
 Do not mark the release ready from passing unit tests alone. Device/browser smoke,
 production-data migration rehearsal and final-SHA CI remain separate gates.
+
+
+## November 1 candidate fixes and staging evidence gate
+
+- Owner discovery, owner onboarding/auth refresh, business sign-in/management and
+  admin share `api_base_url.dart` / `CEPQONTAG_API_BASE_URL`. The production default
+  is retained. This does not certify isolation of every unrelated owner APK module;
+  do not distribute an APK as a staging build without the broader environment gates.
+- Hours edits preserve and display the existing business timezone; changing a Berlin
+  schedule no longer silently reinterprets it as Istanbul time.
+- Booking rechecks vehicle ownership under the business transaction and holds the
+  vehicle row until commit. The PostgreSQL lifecycle tests simulate a transfer
+  between the initial ownership read and booking; the request must roll back.
+- The full backend suite and migration atomicity tests run in Matrix. Flutter tests
+  verify the hours payload and API origin under an explicit non-production define.
+- `marketplace-staging-readiness.yml` attempts a fingerprint-verified SSH connection
+  using the existing staging environment secrets, on this integration branch only.
+  The remote script runs catalog SELECTs in a READ ONLY transaction and calls only
+  the local 8091 staging API. It reports the deployed filename/SHA-256 list, tracking,
+  schema and backup existence. It never deploys, migrates, baselines, restarts or
+  certifies a dump merely because the file exists.
+- A missing SSH secret/host authorization is an access blocker, not a successful
+  deployment. A successful SSH audit still requires a current durable backup and
+  complete restore/schema reconciliation before deployment. The read-only check
+  deliberately remains blocked until that separate evidence is established.
+- Previously reported public staging API: https://staging-api-185-165-46-213.nip.io
+  and business panel: https://queensho.github.io/HeyCar/isletme-staging/ . These are
+  historical endpoints, not proof this candidate has been deployed there.
+
+PR #299 is the existing marketplace integration review; PR #300 remains separate
+and unmerged. No automatic merge or production publication is configured here.

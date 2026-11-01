@@ -38,10 +38,9 @@ jobs:
       MARKETPLACE_PG_TEST: '1'
       NODE_ENV: test
     steps:
-      - name: Checkout marketplace feature branch
+      - name: Checkout the selected candidate revision
         uses: actions/checkout@v4
         with:
-          ref: feature/offers-services-unified-ux-20261020
           persist-credentials: false
 
       - name: Setup Node.js

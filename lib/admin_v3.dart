@@ -1,3 +1,4 @@
+import 'api_base_url.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -39,7 +40,7 @@ const _card2 = AdminUi.surfaceSoft;
 const _muted = AdminUi.muted;
 const _line = AdminUi.line;
 const _ink = AdminUi.ink;
-const _baseUrl = String.fromEnvironment('CEPQONTAG_API_BASE_URL',defaultValue:'https://heycar-api-185-165-46-213.nip.io');
+const _baseUrl = cepqontagApiBaseUrl;
 const _publicBase = 'https://queensho.github.io/HeyCar/';
 
 void main() => runApp(const AdminV3App());
