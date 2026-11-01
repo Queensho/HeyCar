@@ -1,8 +1,10 @@
 # CepQontag marketplace release gate
 
 PR #299 is the existing marketplace integration review. PR #300 is unchanged and
-unmerged. Production is out of scope. No candidate deployment, service restart,
-live DDL, baseline or live data repair has been performed.
+unmerged. Production is out of scope. No candidate application deployment, service
+restart, baseline or live row-data repair has been performed. The targeted recovery
+tool can set NOT NULL only when a locked count proves there are no null rows, after
+fresh backup/restore verification and rehearsal with the source role on the clone.
 
 ## Candidate behavior
 
@@ -104,6 +106,45 @@ The related-table comparison found:
 
 This is an eleven-table marketplace compatibility comparison, not certification of
 every historical migration or the entire staging schema.
+
+## Recovery diagnosis: 2026-11-01
+
+An expanded read-only audit of the entire expected table schema found more drift
+than the original eleven-table marketplace audit. There is one null password hash,
+zero null display names and zero null vehicle owners. Raw phones are unique, but
+there are two noncanonical phones and one duplicate group after 098 normalization.
+Do not invent a password, merge/delete accounts, normalize colliding phones, or
+certify 098 from the presence of its unique index alone. The phone index is withheld
+until canonical account identity is resolved.
+
+The deployed 047 file omits exactly the vehicle_reminder_delivery_claims cleanup
+block; the canonical file contains it. Preserve both checksums and the deployed
+source in audit/backup evidence rather than rewriting historical SQL. Do not replay
+the destructive cleanup to obtain a matching checksum.
+
+Other genuine drift includes missing towing driver invite lockout columns/check,
+store order ownership nullability/delete behavior, the vehicle reminder type check,
+and active-call, pending redemption and global active-valet unique indexes. Some
+smart-route expression strings also differ in PostgreSQL cast placement; these
+must be assessed semantically rather than changed merely to match text. Current
+table existence and matching SQL source do not establish complete migration effects.
+No live history rows are fabricated. A partial baseline would expose unverified
+historical files to the existing deployed runner, so it is withheld while these
+postconditions remain unresolved.
+
+Evidence for the expanded diagnosis and a fresh successful isolated restore:
+https://github.com/Queensho/HeyCar/actions/runs/41299404054 .
+
+The recovery workflow tests its tool on disposable PostgreSQL before VPS use. It
+takes another snapshot backup and verifies its complete restore. Only then does it
+rehearse the fixed nullability DDL on that restore using SET ROLE for the source DB
+role, stop the private cluster, recheck live database identity, lock users/vehicles,
+recount nulls and set only eligible NOT NULL constraints. It cannot modify row
+values, create a baseline, run historical SQL, create the phone index or deploy.
+Each transaction has short lock/statement timeouts; failed DDL rolls back. Evidence
+records both the rehearsal and live result, and a second read-only schema audit
+runs afterward. Password/phone and migration postcondition failures keep readiness
+red and prevent application deployment.
 
 ## Safe remaining order
 

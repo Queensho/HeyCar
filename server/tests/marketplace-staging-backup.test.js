@@ -17,7 +17,7 @@ test('PostgreSQL full dump restores schema, sequences, rows and critical data ha
  const config={host:process.env.DB_HOST,port:Number(process.env.DB_PORT||5432),user:process.env.DB_USER,password:process.env.DB_PASSWORD,database:'heycar_matrix'};
  const client=new Client(config);await client.connect();
  try{
-  await client.query(`CREATE TABLE public.users(id bigserial PRIMARY KEY,display_name text NOT NULL);
+  await client.query(`CREATE TABLE public.users(id bigserial PRIMARY KEY,display_name text NOT NULL,password_hash text);
     CREATE TABLE public.vehicles(id bigserial PRIMARY KEY,owner_id bigint REFERENCES public.users(id),plate text);
     INSERT INTO public.users(display_name) VALUES('Backup fixture');
     INSERT INTO public.vehicles(owner_id,plate) VALUES(1,'34TEST123');`);
@@ -39,11 +39,21 @@ test('PostgreSQL full dump restores schema, sequences, rows and critical data ha
    if(sql.startsWith('SELECT rolcreatedb'))return Promise.resolve({rows:[{allowed:false}]});
    return client.query(sql,args);
   }};
-  const isolated=await backupAndRestore({client:limited,Client,sourceDatabase:'heycar_matrix',backupRoot:path.join(os.homedir(),'cepqontag-backup-ci')});
+  let rehearsal;
+  const isolated=await backupAndRestore({client:limited,Client,sourceDatabase:'heycar_matrix',backupRoot:path.join(os.homedir(),'cepqontag-backup-ci'),
+   afterVerifiedRestore:async({restore,report})=>{
+    assert.equal(report.restore_verified,true);
+    await restore.query('SET ROLE postgres');
+    rehearsal=await require('../../deploy/marketplace-staging-recovery').repairNullability(restore,report.restore_database);
+    await restore.query('RESET ROLE');
+   }});
   assert.equal(isolated.restore_verified,true,JSON.stringify(isolated.blockers));
   assert.equal(isolated.restore_mode,'private_local_cluster');
   assert.equal(isolated.restore_cluster_stopped,true);
   assert.deepEqual(isolated.restore_data_hashes,isolated.source_data_hashes);
+  assert.deepEqual(rehearsal.applied,['vehicles.owner_id']);
+  assert.deepEqual(rehearsal.blocked,['PASSWORD_HASH_NULL_ROWS']);
+  assert.equal((await client.query("SELECT attnotnull FROM pg_attribute WHERE attrelid='public.vehicles'::regclass AND attname='owner_id'")).rows[0].attnotnull,false);
 
  }finally{await client.end();}
 });

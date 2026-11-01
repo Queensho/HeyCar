@@ -102,7 +102,7 @@ async function startPrivateRestoreCluster({Client,directory,client,report}){
    async close(){for(const name of ['SIGTERM','SIGINT','SIGHUP'])process.removeListener(name,signal);await stop();report.restore_cluster_stopped=true;}};
  }catch(error){for(const name of ['SIGTERM','SIGINT','SIGHUP'])process.removeListener(name,signal);await stop().catch(()=>{});throw error;}
 }
-async function backupAndRestore({client,Client,sourceDatabase='heycar_staging',backupRoot='/home/cepqontag-deploy/backups',restoreDatabase=''}){
+async function backupAndRestore({client,Client,sourceDatabase='heycar_staging',backupRoot='/home/cepqontag-deploy/backups',restoreDatabase='',afterVerifiedRestore}){
  const report={database:sourceDatabase,backup_complete:false,restore_verified:false,offhost_backup_verified:false,source_modified:false,blockers:[]};
  let open=false,restore,privateCluster;
  try{
@@ -170,6 +170,7 @@ async function backupAndRestore({client,Client,sourceDatabase='heycar_staging',b
   if(JSON.stringify(expectedSchema)!==JSON.stringify(actualSchema))report.blockers.push('RESTORE_SCHEMA_OR_ACL_DIFFER');
   if(JSON.stringify(report.source_data_hashes)!==JSON.stringify(report.restore_data_hashes))report.blockers.push('RESTORE_DATA_HASHES_DIFFER');
   report.restore_verified=report.blockers.length===0;
+  if(report.restore_verified && afterVerifiedRestore)await afterVerifiedRestore({restore,report});
   return report;
  }finally{
   if(open)await client.query('ROLLBACK').catch(()=>{});

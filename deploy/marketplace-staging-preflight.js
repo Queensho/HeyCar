@@ -28,6 +28,7 @@ async function inspect({client,directory=process.cwd(),request=fetch,stat=fs.sta
     (SELECT count(*)::int FROM (SELECT canonical FROM normalized GROUP BY canonical HAVING count(*)>1) d) AS normalized_duplicate_groups,
     (SELECT count(*)::int FROM normalized WHERE phone IS DISTINCT FROM canonical) AS noncanonical`)).rows[0];
   report.recovery_diagnostics.user_indexes=(await client.query("SELECT indexname,indexdef FROM pg_indexes WHERE schemaname='public' AND tablename='users' ORDER BY indexname")).rows;
+  report.recovery_diagnostics.claims_columns=(await client.query("SELECT column_name,data_type FROM information_schema.columns WHERE table_schema='public' AND table_name='vehicle_reminder_delivery_claims' ORDER BY ordinal_position")).rows;
   const cleanupPath=path.join(directory,'migrations','047_cleanup_deleted_vehicle_dependents.sql');
   report.recovery_diagnostics.cleanup047=fs.existsSync(cleanupPath)?fs.readFileSync(cleanupPath,'utf8'):'';
   const privilege=(await client.query('SELECT rolcreatedb OR rolsuper AS allowed FROM pg_roles WHERE rolname=current_user')).rows[0];

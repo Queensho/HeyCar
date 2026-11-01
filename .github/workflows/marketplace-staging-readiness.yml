@@ -3,7 +3,7 @@ on:
   workflow_call:
     inputs:
       verify_backup:
-        description: Verify a fresh staging backup before assessing release readiness
+        description: Verify a fresh backup and rehearse null-free constraint repairs before applying them
         type: boolean
         default: true
   push:
@@ -11,13 +11,14 @@ on:
     paths:
       - 'deploy/marketplace-staging-preflight.js'
       - 'deploy/marketplace-staging-backup.js'
+      - 'deploy/marketplace-staging-recovery.js'
       - 'server/tests/marketplace-staging-backup.test.js'
       - 'server/marketplace-schema.js'
       - '.github/workflows/marketplace-staging-readiness.yml'
   workflow_dispatch:
     inputs:
       verify_backup:
-        description: Create a new staging backup and attempt its restore on an isolated database
+        description: Verify backup/restore and apply only rehearsed null-free NOT NULL repairs
         type: boolean
         default: false
 permissions:
@@ -79,6 +80,7 @@ jobs:
           retention-days: 7
 
   staging-readonly-preflight:
+    name: Staging backup, targeted nullability repair and readiness
     needs: backup-tool-test
     runs-on: ubuntu-latest
     environment: staging
@@ -108,6 +110,11 @@ jobs:
           # Finish the inspection transaction before the schema helper opens its own read-only snapshot.
           source=source.replace(" }finally{await client.query('ROLLBACK');}"," }finally{await client.query('ROLLBACK');}\n"+comparison)
           Path('staging-preflight-bundle.js').write_text(source)
+          backup=Path('deploy/marketplace-staging-backup.js').read_text()
+          backup=backup.replace("if(require.main===module||process.argv.includes('--run-staging-backup'))",'if(false)')
+          recovery=Path('deploy/marketplace-staging-recovery.js').read_text()
+          recovery=recovery.replace("require('./marketplace-staging-backup')",'backupTools')
+          Path('staging-recovery-bundle.js').write_text('const backupTools=(()=>{const module={exports:{}};\n'+backup+'\nreturn module.exports;})();\n'+recovery)
           PYTHON
       - name: Verify staging SSH credentials and host identity
         env:
@@ -176,7 +183,7 @@ jobs:
               with open(os.environ['GITHUB_OUTPUT'],'a') as out:
                   out.write('identity_verified='+str(report.get('database')=='heycar_staging').lower()+'\n')
           PYTHON
-      - name: Take a new durable local backup and attempt isolated restore verification
+      - name: Back up, verify restore, rehearse and apply only null-free NOT NULL repairs
         if: steps.summary.outputs.identity_verified == 'true' && (inputs.verify_backup == true || github.event_name == 'push')
         id: backup
         continue-on-error: true
@@ -193,8 +200,20 @@ jobs:
           fi
           ssh -i "$HOME/.ssh/staging_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 \
             -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
-            "cd /home/cepqontag-deploy/app/server && STAGING_RESTORE_DB_NAME='$RESTORE_DB_NAME' node - --run-staging-backup" \
-            < deploy/marketplace-staging-backup.js > staging-backup-verification.json
+            "cd /home/cepqontag-deploy/app/server && STAGING_RESTORE_DB_NAME='$RESTORE_DB_NAME' node - --run-staging-recovery" \
+            < staging-recovery-bundle.js > staging-backup-verification.json
+      - name: Re-audit after targeted repairs without migration or deployment
+        if: steps.backup.outcome == 'success'
+        continue-on-error: true
+        env:
+          SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+          SSH_PORT: ${{ secrets.STAGING_SSH_PORT }}
+          SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+        run: |
+          ssh -i "$HOME/.ssh/staging_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 \
+            -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
+            'cd /home/cepqontag-deploy/app/server && node - --run-staging-preflight' \
+            < staging-preflight-bundle.js > staging-readiness-after-recovery.json
       - name: Summarize backup and keep the deployment gate closed on unresolved history
         if: always()
         shell: bash
@@ -207,8 +226,15 @@ jobs:
           except (OSError, ValueError):
               print('STAGING_BACKUP_VERIFICATION_NOT_AVAILABLE')
           else:
-              print(json.dumps({key:report.get(key) for key in ['database','directory','backup_complete','dump_sha256','dump_bytes','restore_database','restore_mode','restore_cluster','restore_cluster_stopped','private_restore_phase','restore_verified','offhost_backup_verified','source_modified','blockers']},indent=2))
-          print('No deploy, migration, baseline or service restart. Per-file history/schema review remains required.')
+              print(json.dumps({key:report.get(key) for key in ['database','directory','backup_complete','dump_sha256','dump_bytes','restore_database','restore_mode','restore_cluster','restore_cluster_stopped','private_restore_phase','restore_verified','offhost_backup_verified','source_modified','source_row_data_modified','rehearsal','live','baseline_applied','phone_index_created','remaining','blockers']},indent=2))
+          after=Path('staging-readiness-after-recovery.json')
+          if after.exists():
+              result=json.loads(after.read_text())
+              print('AFTER_RECOVERY_SCHEMA_DIFFERENCES',json.dumps(result.get('candidate_schema_differences',[])))
+              diagnostics=result.get('recovery_diagnostics',{})
+              diagnostics.pop('cleanup047',None)
+              print('AFTER_RECOVERY_DIAGNOSTICS',json.dumps(diagnostics))
+          print('No deployment, data repair, baseline or service restart. Failed password/phone controls block release.')
           PYTHON
           exit 1
       - name: Preserve staging audit evidence
@@ -219,5 +245,6 @@ jobs:
           path: |
             staging-readiness.json
             staging-backup-verification.json
+            staging-readiness-after-recovery.json
           if-no-files-found: ignore
           retention-days: 7
