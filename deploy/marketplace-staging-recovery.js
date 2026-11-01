@@ -41,12 +41,22 @@ async function recover({client,Client,backupRoot,restoreDatabase}){
    if(!proof.restore_verified)throw Error('RECOVERY_RESTORE_PROOF_REQUIRED');
    const sourceUser=client.connectionParameters.user;
    // Rehearse using the source role, not the private cluster's privileged admin.
-   await restore.query('SET ROLE "'+String(sourceUser).replace(/"/g,'""')+'"');
-   try{rehearsal=await repairNullability(restore,proof.restore_database);}
+   try{
+    await restore.query('SET ROLE "'+String(sourceUser).replace(/"/g,'""')+'"');
+    rehearsal={success:true,...await repairNullability(restore,proof.restore_database)};
+   }catch(error){rehearsal={success:false,stage:'restored_source_role',sqlstate:/^[A-Z0-9]{5}$/.test(error.code||'')?error.code:'GUARD',live_attempted:false};}
    finally{await restore.query('RESET ROLE');}
   }});
  report.rehearsal=rehearsal;
  if(!report.restore_verified||(report.restore_mode==='private_local_cluster'&&!report.restore_cluster_stopped)||!rehearsal)throw Error('RECOVERY_RESTORE_PROOF_REQUIRED');
+ if(!rehearsal.success){
+  report.source_schema_modified=false;report.source_row_data_modified=false;
+  report.baseline_applied=false;report.phone_index_created=false;
+  report.remaining=['RESTORE_REHEARSAL_FAILED_NO_LIVE_DDL','PASSWORD_NULL_REQUIRES_ACCOUNT_REVIEW',
+   'NORMALIZED_PHONE_COLLISION_REQUIRES_ACCOUNT_REVIEW','PER_FILE_BASELINE_NOT_VERIFIED'];
+  require('node:fs').writeFileSync(require('node:path').join(report.directory,'recovery-verification.json'),JSON.stringify(report,null,2),{mode:0o600});
+  return report;
+ }
  report.live=await repairNullability(client,'heycar_staging');
  report.source_schema_modified=report.live.applied.length>0;
  report.source_row_data_modified=false;
@@ -67,7 +77,7 @@ if(require.main===module||process.argv.includes('--run-staging-recovery')){
   if(process.env.DATABASE_URL){const u=new URL(process.env.DATABASE_URL);if(decodeURIComponent(u.pathname)!=='/heycar_staging')throw Error('RECOVERY_DATABASE_REJECTED');config={connectionString:process.env.DATABASE_URL};}
   else{if(process.env.DB_NAME!=='heycar_staging')throw Error('RECOVERY_DATABASE_REJECTED');config={host:process.env.DB_HOST,port:Number(process.env.DB_PORT||5432),database:process.env.DB_NAME,user:process.env.DB_USER,password:process.env.DB_PASSWORD};}
   const pool=new Pool({...config,connectionTimeoutMillis:10000});let client;
-  try{client=await pool.connect();console.log(JSON.stringify(await recover({client,Client,restoreDatabase:process.env.STAGING_RESTORE_DB_NAME||''}),null,2));}
+  try{client=await pool.connect();const report=await recover({client,Client,restoreDatabase:process.env.STAGING_RESTORE_DB_NAME||''});console.log(JSON.stringify(report,null,2));if(report.remaining.length)process.exitCode=2;}
   finally{if(client)client.release();await pool.end();}
  })().catch(error=>{console.error('STAGING_RECOVERY_FAILED_NO_DEPLOY code='+(/^[A-Z0-9]{5}$/.test(error.code||'')?error.code:'GUARD'));process.exitCode=2;});
 }

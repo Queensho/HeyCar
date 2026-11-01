@@ -29,6 +29,12 @@ async function inspect({client,directory=process.cwd(),request=fetch,stat=fs.sta
     (SELECT count(*)::int FROM normalized WHERE phone IS DISTINCT FROM canonical) AS noncanonical`)).rows[0];
   report.recovery_diagnostics.user_indexes=(await client.query("SELECT indexname,indexdef FROM pg_indexes WHERE schemaname='public' AND tablename='users' ORDER BY indexname")).rows;
   report.recovery_diagnostics.claims_columns=(await client.query("SELECT column_name,data_type FROM information_schema.columns WHERE table_schema='public' AND table_name='vehicle_reminder_delivery_claims' ORDER BY ordinal_position")).rows;
+  report.recovery_diagnostics.repair_privileges=(await client.query(`SELECT current_user AS actor,
+   c.relname AS table_name,pg_get_userbyid(c.relowner) AS owner,
+   pg_has_role(current_user,c.relowner,'USAGE') AS effective_owner,
+   pg_has_role(current_user,c.relowner,'MEMBER') AS owner_membership
+   FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+   WHERE n.nspname='public' AND c.relname IN ('users','vehicles') ORDER BY c.relname`)).rows;
   const cleanupPath=path.join(directory,'migrations','047_cleanup_deleted_vehicle_dependents.sql');
   report.recovery_diagnostics.cleanup047=fs.existsSync(cleanupPath)?fs.readFileSync(cleanupPath,'utf8'):'';
   const privilege=(await client.query('SELECT rolcreatedb OR rolsuper AS allowed FROM pg_roles WHERE rolname=current_user')).rows[0];

@@ -203,7 +203,7 @@ jobs:
             "cd /home/cepqontag-deploy/app/server && STAGING_RESTORE_DB_NAME='$RESTORE_DB_NAME' node - --run-staging-recovery" \
             < staging-recovery-bundle.js > staging-backup-verification.json
       - name: Re-audit after targeted repairs without migration or deployment
-        if: steps.backup.outcome == 'success'
+        if: always() && steps.summary.outputs.identity_verified == 'true'
         continue-on-error: true
         env:
           SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}

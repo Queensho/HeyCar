@@ -132,6 +132,15 @@ No live history rows are fabricated. A partial baseline would expose unverified
 historical files to the existing deployed runner, so it is withheld while these
 postconditions remain unresolved.
 
+The claims table has reminder_id, days_before and sent_at, but no vehicle_id.
+This explains why the canonical 047 cleanup block is incompatible with this legacy
+table and why simply copying the canonical file or replaying it is not a repair.
+The first nullability rehearsal with the source role failed with SQLSTATE 42501;
+no live DDL was attempted. Effective live table ownership and owner-role membership
+are collected separately: a private restore recreates role names, not memberships,
+so a clone privilege failure alone is not proof of missing live privileges. Keep
+the release stopped until this distinction and the account-data blockers are resolved.
+
 Evidence for the expanded diagnosis and a fresh successful isolated restore:
 https://github.com/Queensho/HeyCar/actions/runs/41299404054 .
 
