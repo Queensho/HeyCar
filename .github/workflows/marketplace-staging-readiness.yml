@@ -4,6 +4,8 @@ on:
     branches: [integration/marketplace-main-20261031]
     paths:
       - 'deploy/marketplace-staging-preflight.js'
+      - 'deploy/marketplace-staging-backup.js'
+      - 'server/tests/marketplace-staging-backup.test.js'
       - '.github/workflows/marketplace-staging-readiness.yml'
   workflow_dispatch:
 permissions:
@@ -12,7 +14,46 @@ concurrency:
   group: cepqontag-staging-deploy
   cancel-in-progress: false
 jobs:
+  backup-tool-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: heycar_matrix
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d heycar_matrix"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: '5432'
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: heycar_matrix
+      BACKUP_PG_TEST: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix server --ignore-scripts --no-audit --no-fund
+      - name: Ensure PostgreSQL 16 command-line tools
+        run: |
+          if [ ! -x /usr/lib/postgresql/16/bin/pg_dump ]; then
+            sudo apt-get update -qq
+            sudo apt-get install -y postgresql-client-16
+          fi
+      - name: Prove dump, snapshot and full restore on disposable PostgreSQL
+        run: node --test server/tests/marketplace-staging-backup.test.js
+
   staging-readonly-preflight:
+    needs: backup-tool-test
     runs-on: ubuntu-latest
     environment: staging
     timeout-minutes: 10
@@ -42,6 +83,8 @@ jobs:
           test "$actual" = "$FINGERPRINT"
           chmod 600 "$HOME/.ssh/known_hosts"
       - name: Audit staging without deployment, migration or baseline
+        id: audit
+        continue-on-error: true
         env:
           SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
           SSH_PORT: ${{ secrets.STAGING_SSH_PORT }}
@@ -53,11 +96,63 @@ jobs:
             -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
             'cd /home/cepqontag-deploy/app/server && node - --run-staging-preflight' \
             < deploy/marketplace-staging-preflight.js > staging-readiness.json
+      - name: Summarize read-only audit without exposing credentials
+        id: summary
+        if: always()
+        shell: bash
+        run: |
+          python3 - <<'PYTHON'
+          import json, os
+          from pathlib import Path
+          try:
+              report=json.loads(Path('staging-readiness.json').read_text())
+          except (OSError, ValueError):
+              print('STAGING_AUDIT_NOT_AVAILABLE')
+          else:
+              print(json.dumps({key:report.get(key) for key in ['database','blockers','backups','http']},indent=2))
+              print('DEPLOYED_MIGRATION_COUNT',len(report.get('migrations',[])))
+              print('TRACKED_MIGRATION_COUNT',len(report.get('tracking',[])))
+              with open(os.environ['GITHUB_OUTPUT'],'a') as out:
+                  out.write('identity_verified='+str(report.get('database')=='heycar_staging').lower()+'\n')
+          PYTHON
+      - name: Take a new durable local backup and attempt isolated restore verification
+        if: steps.summary.outputs.identity_verified == 'true'
+        id: backup
+        continue-on-error: true
+        env:
+          SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+          SSH_PORT: ${{ secrets.STAGING_SSH_PORT }}
+          SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -i "$HOME/.ssh/staging_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 \
+            -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
+            'cd /home/cepqontag-deploy/app/server && node - --run-staging-backup' \
+            < deploy/marketplace-staging-backup.js > staging-backup-verification.json
+      - name: Summarize backup and keep the deployment gate closed on unresolved history
+        if: always()
+        shell: bash
+        run: |
+          python3 - <<'PYTHON'
+          import json
+          from pathlib import Path
+          try:
+              report=json.loads(Path('staging-backup-verification.json').read_text())
+          except (OSError, ValueError):
+              print('STAGING_BACKUP_VERIFICATION_NOT_AVAILABLE')
+          else:
+              print(json.dumps({key:report.get(key) for key in ['database','directory','backup_complete','dump_sha256','dump_bytes','restore_database','restore_verified','offhost_backup_verified','source_modified','blockers']},indent=2))
+          print('No deploy, migration, baseline or service restart. Per-file history/schema review remains required.')
+          PYTHON
+          exit 1
       - name: Preserve staging audit evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: marketplace-staging-readiness
-          path: staging-readiness.json
+          path: |
+            staging-readiness.json
+            staging-backup-verification.json
           if-no-files-found: ignore
           retention-days: 7
