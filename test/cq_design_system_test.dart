@@ -66,6 +66,37 @@ void main() {
     expect(scale.scale, 1);
   });
 
+  testWidgets('reduced motion hides reveal without a transition', (tester) async {
+    await tester.pumpWidget(const MediaQuery(
+      data: MediaQueryData(disableAnimations: true),
+      child: MaterialApp(
+        home: Scaffold(
+          body: CQReveal(visible: false, child: Text('Hidden content')),
+        ),
+      ),
+    ));
+    expect(find.text('Hidden content'), findsNothing);
+    expect(find.byType(AnimatedSwitcher), findsNothing);
+  });
+
+  testWidgets('long-press-only control remains enabled', (tester) async {
+    var longPresses = 0;
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: CQPressable(
+            onTap: null,
+            onLongPress: () => longPresses++,
+            child: const Text('Manage'),
+          ),
+        ),
+      ),
+    ));
+    await tester.longPress(find.text('Manage'));
+    await tester.pumpAndSettle();
+    expect(longPresses, 1);
+  });
+
   testWidgets('reveal hides content when invisible', (tester) async {
     await tester.pumpWidget(const MaterialApp(
       home: Scaffold(body: CQReveal(visible: false, child: Text('Secret'))),
