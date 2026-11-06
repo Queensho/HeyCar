@@ -105,7 +105,7 @@ class OwnerHomeServicesPromo extends StatelessWidget {
     return LayoutBuilder(builder:(context,box){
       final narrow=box.maxWidth<330;
       return Material(
-        color:Colors.white,borderRadius:BorderRadius.circular(24),
+        color:Colors.white,borderRadius:BorderRadius.circular(CQLayout.cardRadius),
         child:CQPressable(
           key:const ValueKey('owner-home-services-promo'),
           onTap:onOpenServices,
@@ -114,7 +114,7 @@ class OwnerHomeServicesPromo extends StatelessWidget {
             constraints:const BoxConstraints(minHeight:124),
             padding:EdgeInsets.symmetric(horizontal:narrow?10:12,vertical:10),
             decoration:BoxDecoration(
-              borderRadius:BorderRadius.circular(24),
+              borderRadius:BorderRadius.circular(CQLayout.cardRadius),
               border:Border.all(color:const Color(0xFFECECF3)),
               boxShadow:const [BoxShadow(
                 color:Color(0x10101426),blurRadius:15,offset:Offset(0,5)),
