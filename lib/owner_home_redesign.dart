@@ -2104,30 +2104,75 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                 onTap:(){Navigator.pop(sheetContext);_openHowToGuide(guides[i]);}),
             ))),child:const Text('Tümü')),
         ])),
-        SizedBox(height:138*(MediaQuery.textScalerOf(context).scale(14)/14).clamp(1.0,5.0),child:ListView.separated(
-          key:const ValueKey('home-how-to-carousel'),scrollDirection:Axis.horizontal,
-          padding:const EdgeInsets.only(right:16),itemCount:guides.length,
-          separatorBuilder:(_,__)=>const SizedBox(width:9),
-          itemBuilder:(context,i){
-            final guide=guides[i];
-            return SizedBox(width:116,child:Material(
-              borderRadius:BorderRadius.circular(13),clipBehavior:Clip.antiAlias,
-              color:const Color(0xFF241448),
-              child:InkWell(onTap:()=>_openHowToGuide(guide),
-                child:Stack(fit:StackFit.expand,children:[
-                  if(guide.imageUrl.isNotEmpty)Image.network(guide.imageUrl,
-                    fit:BoxFit.cover,errorBuilder:(_,__,___)=>const SizedBox.shrink()),
-                  const DecoratedBox(decoration:BoxDecoration(gradient:LinearGradient(
-                    begin:Alignment.topCenter,end:Alignment.bottomCenter,
-                    colors:[Colors.transparent,Color(0xDD000000)]))),
-                  Positioned(left:9,right:8,bottom:9,child:Text(guide.title,
-                    maxLines:3,overflow:TextOverflow.ellipsis,
-                    style:const TextStyle(color:Colors.white,fontSize:11,
-                      height:1.15,fontWeight:FontWeight.w800))),
-                ])),
-            ));
-          },
-        )),
+        SizedBox(
+          height:260*(MediaQuery.textScalerOf(context).scale(14)/14).clamp(1.0,3.0),
+          child:ListView.separated(
+            key:const ValueKey('home-how-to-carousel'),
+            scrollDirection:Axis.horizontal,
+            padding:const EdgeInsets.only(right:16),
+            itemCount:guides.length,
+            separatorBuilder:(_,__)=>const SizedBox(width:12),
+            itemBuilder:(context,i){
+              final guide=guides[i];
+              return SizedBox(width:170,child:Material(
+                color:Colors.white,
+                elevation:0,
+                borderRadius:BorderRadius.circular(22),
+                clipBehavior:Clip.antiAlias,
+                child:InkWell(
+                  onTap:()=>_openHowToGuide(guide),
+                  child:Container(
+                    decoration:BoxDecoration(
+                      border:Border.all(color:const Color(0xFFECE9F2)),
+                      borderRadius:BorderRadius.circular(22)),
+                    child:Column(
+                      crossAxisAlignment:CrossAxisAlignment.start,
+                      children:[
+                        Padding(
+                          padding:const EdgeInsets.fromLTRB(12,10,12,5),
+                          child:Container(
+                            width:36,height:36,
+                            alignment:Alignment.center,
+                            decoration:const BoxDecoration(
+                              shape:BoxShape.circle,
+                              gradient:LinearGradient(colors:[
+                                Color(0xFFAA20FF),Color(0xFF5900D8)])),
+                            child:Text('${i+1}',style:const TextStyle(
+                              color:Colors.white,fontSize:18,
+                              fontWeight:FontWeight.w900)))),
+                        Padding(
+                          padding:const EdgeInsets.symmetric(horizontal:12),
+                          child:Text(guide.title,
+                            maxLines:2,overflow:TextOverflow.ellipsis,
+                            style:const TextStyle(
+                              color:Color(0xFF151326),fontSize:15,
+                              fontWeight:FontWeight.w900))),
+                        const SizedBox(height:5),
+                        Expanded(child:Padding(
+                          padding:const EdgeInsets.symmetric(horizontal:12),
+                          child:Text(guide.subtitle,
+                            maxLines:4,overflow:TextOverflow.ellipsis,
+                            style:const TextStyle(
+                              color:Color(0xFF555367),fontSize:12,height:1.25)))),
+                        SizedBox(height:112,width:double.infinity,
+                          child:guide.imageUrl.isEmpty
+                            ?const ColoredBox(
+                              color:Color(0xFFF0E8FF),
+                              child:Icon(Icons.qr_code_scanner_rounded,
+                                color:Color(0xFF6D15EA),size:54))
+                            :Image.network(guide.imageUrl,fit:BoxFit.cover,
+                              errorBuilder:(_,__,___)=>const ColoredBox(
+                                color:Color(0xFFF0E8FF),
+                                child:Icon(Icons.qr_code_scanner_rounded,
+                                  color:Color(0xFF6D15EA),size:54)))),
+                      ],
+                    ),
+                  ),
+                ),
+              ));
+            },
+          ),
+        ),
       ],
     ));
   }
