@@ -90,7 +90,6 @@ class ThemeOwnerApp extends StatelessWidget{
           colorScheme:ColorScheme.fromSeed(seedColor:tokens.primary,brightness:Brightness.light,surface:tokens.surface),
           cardColor:tokens.surface,
           dividerColor:CepqarTheme.lightLine,
-          fontFamily:'sans',
           extensions:<ThemeExtension<dynamic>>[tokens],
         )),
         darkTheme:CQTheme.apply(ThemeData(
@@ -100,7 +99,6 @@ class ThemeOwnerApp extends StatelessWidget{
           colorScheme:ColorScheme.fromSeed(seedColor:tokens.primary,brightness:Brightness.dark,surface:CepqarTheme.darkPanel),
           cardColor:CepqarTheme.darkPanel,
           dividerColor:CepqarTheme.darkLine,
-          fontFamily:'sans',
           extensions:<ThemeExtension<dynamic>>[tokens],
         )),
         home:const ThemeOwnerEntry(),

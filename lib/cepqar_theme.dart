@@ -24,8 +24,8 @@ class CepqarTheme {
     await setDarkMode(isLight);
   }
 
-  static const purple = Color(0xFF713BFF);
-  static const lime = Color(0xFFC8FC06);
+  static const purple = Color(0xFF651FFF);
+  static const lime = Color(0xFFB9FF45);
   static const darkBg = Color(0xFF07111F);
   static const darkPanel = Color(0xFF101A30);
   static const darkLine = Color(0xFF27355D);
@@ -34,7 +34,7 @@ class CepqarTheme {
   static const lightPanel = Colors.white;
   static const lightLine = Color(0xFFE7E9F2);
   static const lightText = Color(0xFF0B1530);
-  static const lightMuted = Color(0xFF6E7890);
+  static const lightMuted = Color(0xFF626C83);
 
   // Shared owner-app sizing scale. Keep authenticated screens visually consistent.
   static const double pageTitle = 25;

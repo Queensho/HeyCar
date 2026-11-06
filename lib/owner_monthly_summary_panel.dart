@@ -60,7 +60,7 @@ class OwnerMonthlySummaryPanel extends StatelessWidget {
           ConstrainedBox(constraints:const BoxConstraints(minHeight:64),child:Row(
             mainAxisAlignment:MainAxisAlignment.center,children:[
               const Flexible(child:Text('İstatistikler yüklenemedi.',
-                style:TextStyle(color:Color(0xFF737B94),fontSize:12))),
+                style:TextStyle(color:Color(0xFF626C83),fontSize:12))),
               if(onRetry!=null)TextButton(
                 onPressed:onRetry,child:const Text('Tekrar dene')),
             ],
@@ -68,7 +68,7 @@ class OwnerMonthlySummaryPanel extends StatelessWidget {
         else if(metrics.isEmpty)
           const Padding(padding:EdgeInsets.symmetric(vertical:16),child:Center(child:Text(
             'Henüz istatistik bulunmuyor.',
-            style:TextStyle(color:Color(0xFF737B94),fontSize:12),
+            style:TextStyle(color:Color(0xFF626C83),fontSize:12),
           )))
         else LayoutBuilder(builder:(context,box){
           final scaled=MediaQuery.textScalerOf(context).scale(12);
@@ -138,7 +138,7 @@ class _MonthlyMetricTile extends StatelessWidget{
           ]),
           const SizedBox(height:5),
           Text(metric.label,maxLines:2,overflow:TextOverflow.ellipsis,
-            style:TextStyle(color:const Color(0xFF737B94),
+            style:TextStyle(color:const Color(0xFF626C83),
               fontSize:compact?10:11,fontWeight:FontWeight.w600,height:1.07)),
           if(showChange)...[
             const SizedBox(height:2),
@@ -149,7 +149,7 @@ class _MonthlyMetricTile extends StatelessWidget{
               style:TextStyle(fontSize:compact?8:9,fontWeight:FontWeight.w700,height:1,
                 color:change>0?const Color(0xFF29964B):
                   change<0?const Color(0xFFD84D63):
-                  const Color(0xFF737B94)),
+                  const Color(0xFF626C83)),
             )),
           ],
         ]),

@@ -12,7 +12,10 @@ elif new not in s:
     # Do not fail the Android pipeline merely because the older exact
     # pre-redesign ColoredBox expression is no longer present.
     modern_scaffold = (
-        'return Scaffold(backgroundColor:OwnerReference.background,body:SafeArea(' in s
+        (
+            'return Scaffold(backgroundColor:OwnerReference.background,body:SafeArea(' in s
+            or 'return Scaffold(backgroundColor:_bg,body:SafeArea(bottom:false,child:CQContent(child:RefreshIndicator(' in s
+        )
         and 'Widget _card(Map<String,dynamic> n)' in s
         and 'Material(color:Colors.transparent' in s
     )
@@ -28,3 +31,4 @@ s = s.replace("icon:'@mipmap/ic_launcher',largeIcon:const DrawableResourceAndroi
 p.write_text(s)
 
 print('RUNTIME_ANDROID_FIX_OK')
+

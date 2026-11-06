@@ -137,7 +137,7 @@ class OwnerHomeServicesPromo extends StatelessWidget {
                   const SizedBox(height:3),
                   Text(descriptionFor(services),maxLines:veryLargeText?null:(largeText?4:2),
                     overflow:TextOverflow.ellipsis,
-                    style:TextStyle(color:const Color(0xFF737B94),
+                    style:TextStyle(color:const Color(0xFF626C83),
                       fontSize:narrow?10.1:11.2,height:1.13)),
                   const SizedBox(height:7),
                   SizedBox(
