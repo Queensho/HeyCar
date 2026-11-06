@@ -6,7 +6,7 @@ import 'package:heycar_app/design/cq_motion.dart';
 void main() {
   testWidgets('layout keeps touch targets at least 44 logical pixels',
       (tester) async {
-    await tester.pumpWidget(const MaterialApp(
+    await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: Center(
           child: ConstrainedBox(
