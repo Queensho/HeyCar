@@ -1,3 +1,5 @@
+import 'design/cq_layout.dart';
+import 'design/cq_motion.dart';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -256,7 +258,7 @@ class _CepqontagStorePageState extends State<CepqontagStorePage> {
 
   Widget _hero() => Container(
         margin: const EdgeInsets.fromLTRB(16, 8, 16, 14),
-        height: 166,
+        height:166*(MediaQuery.textScalerOf(context).scale(14)/14).clamp(1.0,5.0),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(24),
           gradient: const LinearGradient(
@@ -342,7 +344,8 @@ class _CepqontagStorePageState extends State<CepqontagStorePage> {
         onTap: () => setState(() => category = value),
         borderRadius: BorderRadius.circular(20),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
+          duration:CQMotion.duration(context,CQMotion.feedback),
+          constraints:CQLayout.touchConstraints,
           padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
           decoration: BoxDecoration(
             color: selected ? _purple : panel,
@@ -511,6 +514,7 @@ class _CepqontagStorePageState extends State<CepqontagStorePage> {
             clipBehavior: Clip.none,
             children: [
               IconButton(
+                tooltip:'Sepetim',
                 onPressed: _openCart,
                 icon: const Icon(Icons.shopping_bag_outlined),
               ),
@@ -573,7 +577,7 @@ class _CepqontagStorePageState extends State<CepqontagStorePage> {
           ),
           const SizedBox(height: 9),
           SizedBox(
-            height: 38,
+            height:(MediaQuery.textScalerOf(context).scale(10.5)+24).clamp(44.0,double.infinity),
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               scrollDirection: Axis.horizontal,
@@ -591,11 +595,13 @@ class _CepqontagStorePageState extends State<CepqontagStorePage> {
               itemCount: list.length,
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-                childAspectRatio: .72,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: MediaQuery.textScalerOf(context).scale(14)>19?1:2,
+                crossAxisSpacing: CQLayout.cardSpacing,
+                mainAxisSpacing: CQLayout.cardSpacing,
+                mainAxisExtent:160+MediaQuery.textScalerOf(context).scale(12.5)*2+
+                  MediaQuery.textScalerOf(context).scale(9.5)*3+
+                  MediaQuery.textScalerOf(context).scale(13)*2+48,
               ),
               itemBuilder: (_, i) => _productCard(list[i]),
             ),
@@ -878,8 +884,8 @@ class _ProductDetailSheetState extends State<_ProductDetailSheet> {
                   ),
                 ),
               const SizedBox(height: 12),
-              SizedBox(
-                height: 49,
+              ConstrainedBox(
+                constraints:const BoxConstraints(minHeight:CQLayout.buttonHeight),
                 child: FilledButton.icon(
                   onPressed: p.soldOut ? null : () => widget.onAdd(selected),
                   style: FilledButton.styleFrom(
@@ -1856,3 +1862,4 @@ class _CartLine {
         quantity: quantity ?? this.quantity,
       );
 }
+

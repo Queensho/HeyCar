@@ -403,32 +403,13 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
         ],
       );
 
-  Widget _label(String text, {String? trailing}) => Padding(
-        padding: const EdgeInsets.only(bottom: 6),
-        child: Row(
-          children: [
-            Text(
-              text,
-              style: TextStyle(
-                color: _text,
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            if (trailing != null) ...[
-              const Spacer(),
-              Text(
-                trailing,
-                style: TextStyle(
-                  color: Color(0xFF8390AE),
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ],
-        ),
-      );
+  Widget _label(String text,{String? trailing})=>Padding(
+    padding:const EdgeInsets.only(bottom:6),
+    child:Wrap(spacing:12,runSpacing:4,children:[
+      Text(text,style:TextStyle(color:_text,fontSize:12,fontWeight:FontWeight.w800)),
+      if(trailing!=null)Text(trailing,style:TextStyle(color:_muted,fontSize:10.5)),
+    ]),
+  );
 
   Widget _plateField() => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -498,7 +479,7 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
         children: [
           _label(label),
           Container(
-            height: 48,
+            constraints:const BoxConstraints(minHeight:56),
             padding: const EdgeInsets.only(left: 11, right: 8),
             decoration: BoxDecoration(
               color: _field,
@@ -573,7 +554,9 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
         onTap: _pickPhoto,
         borderRadius: BorderRadius.circular(14),
         child: Container(
-          height: 116,
+          height:photo==null?null:160,
+          constraints:const BoxConstraints(minHeight:116),
+          padding:const EdgeInsets.all(12),
           width: double.infinity,
           decoration: BoxDecoration(
             color: _field,

@@ -668,7 +668,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         Text('${QrDraft.make} ${QrDraft.model}'.trim()),
         if(QrDraft.vehicleId.trim().isNotEmpty&&_valetVehicleId==QrDraft.vehicleId.trim()&&valetSession!=null)...[
           Text('${valetSession!['business_name']??'CepQontag Vale'} • ${_valetStatusTitle('${valetSession!['status']??''}')}'),
-          if(valetDeliveryCode.isNotEmpty)Text('Teslimat kodu: $valetDeliveryCode'),
+          if(valetSession!['status']=='ready'&&valetDeliveryCode.isNotEmpty)Text('Teslimat kodu: $valetDeliveryCode'),
           TextButton(onPressed:_openValetTracking,child:const Text('Vale takibi')),
           if(valetSession!['status']=='parked')FilledButton(
             onPressed:valetRequesting?null:_requestValetVehicle,child:const Text('Aracımı getir')),

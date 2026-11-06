@@ -11,6 +11,9 @@ import 'package:heycar_app/owner_new_vehicle_page.dart';
 import 'package:heycar_app/roadside_help_page.dart';
 import 'package:heycar_app/owner_qr_dialog.dart';
 import 'package:heycar_app/qr_backend.dart';
+import 'package:heycar_app/cepqontag_store_page.dart';
+import 'package:heycar_app/valet_info_page.dart';
+import 'package:heycar_app/cepqar_offers_page.dart';
 import 'package:heycar_app/owner_settings_detail.dart';
 import 'package:heycar_app/owner_settings_page.dart';
 import 'package:heycar_app/owner_vehicles_page.dart';
@@ -35,6 +38,9 @@ void main() {
           const OwnerVehicleSummaryPage(),
           const OwnerNewVehiclePage(),
           const RoadsideHelpPage(),
+          const CepqontagStorePage(),
+          const ValetInfoPage(vehicleId:''),
+          const CepqarOffersPage(),
         ];
         for (final page in pages) {
           await tester.pumpWidget(MaterialApp(
@@ -51,7 +57,7 @@ void main() {
           expect(tester.takeException(), isNull, reason: '${page.runtimeType}');
           // Render lower sections too; checking just the first viewport misses
           // clipped settings rows and the vehicle action/banner area.
-          final scrollable = find.byType(Scrollable).first;
+          final scrollable = find.byWidgetPredicate((widget)=>widget is Scrollable&&widget.axisDirection==AxisDirection.down).first;
           await tester.drag(scrollable, const Offset(0, -500));
           await tester.pump();
           expect(tester.takeException(), isNull, reason: '${page.runtimeType}, scrolled');
