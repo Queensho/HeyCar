@@ -233,7 +233,6 @@ abstract final class CQTheme {
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
       ),
       bottomSheetTheme: base.bottomSheetTheme.copyWith(
-        showDragHandle: true,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
         clipBehavior: Clip.antiAlias,

@@ -1,6 +1,8 @@
 # CepQontag — Apple HIG responsive çalışma raporu
+
 Repository: Queensho/HeyCar · Dal: `design/apple-hig-responsive-20261106` · PR: #301
-Durum: Kısmen uygulandı; bütün ekranlar için tamamlanma koşulları karşılanmadı. Bu rapor bütün ekranların tamamlandığı anlamına gelmez. Canlı VPS/veritabanına erişilmedi; PR birleştirilmedi.
+
+Durum: Kısmen tamamlandı. Cihaz denetimi ve aşağıda listelenen ekran/işlev doğrulamaları eksik. Canlı VPS/veritabanına erişilmedi; PR birleştirilmedi.
 
 ## Uygulanan değişiklikler
 

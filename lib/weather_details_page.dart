@@ -720,13 +720,14 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
               ),
             ),
             const SizedBox(height: 11),
-            Row(
-              children: [
+            LayoutBuilder(builder:(context,box){
+              final columns=MediaQuery.textScalerOf(context).scale(14)>19?1:2;
+              final width=(box.maxWidth-8*(columns-1))/columns;
+              return Wrap(spacing:8,runSpacing:8,children:[
                 for (var i = 0; i < cells.length; i++) ...[
-                  if (i > 0) const SizedBox(width: 6),
-                  Expanded(
+                  SizedBox(width:width,
                     child: Container(
-                      height: 72,
+                      constraints:const BoxConstraints(minHeight:72),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 7,
                         vertical: 8,
@@ -758,22 +759,18 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
                               children: [
                                 Text(
                                   cells[i].$3,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                     color: muted,
-                                    fontSize: 8.2,
+                                    fontSize:11,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
                                   cells[i].$4,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                     color: text,
-                                    fontSize: 9.7,
+                                    fontSize:13,
                                     height: 1.05,
                                     fontWeight: FontWeight.w900,
                                   ),
@@ -786,8 +783,8 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
                     ),
                   ),
                 ],
-              ],
-            ),
+              ]);
+            }),
           ],
         ),
       ),
