@@ -1,3 +1,4 @@
+import 'cepqar_theme.dart';
 import 'design/cq_components.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -12,7 +13,7 @@ class MaintenanceV2Page extends StatefulWidget {
 }
 
 class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
-  static const purple = Color(0xFF651FFF);
+  static const purple = CepqarTheme.purple;
   int section = 0;
   String categoryFilter = 'all';
   int period = 0; // 0: this week, 1: last week, 2: this month, 3: all
@@ -287,7 +288,7 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
                 children: [
                   const Text.rich(TextSpan(children: [
                     TextSpan(text: 'Masraf ', style: TextStyle(color: Colors.white)),
-                    TextSpan(text: 'Kaydı', style: TextStyle(color: Color(0xFFB9FF45))),
+                    TextSpan(text: 'Kaydı', style: TextStyle(color: CepqarTheme.lime)),
                   ]), style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
                   Text('$categoryName detayları',
                     maxLines: 1, overflow: TextOverflow.ellipsis,
@@ -329,7 +330,7 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
                     icon: const Icon(Icons.delete_outline, size: 18),
                     label: const Text('Sil'),
                     style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFFB9FF45),
+                      backgroundColor: CepqarTheme.lime,
                       foregroundColor: const Color(0xFF10152D),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(11)))))),
@@ -348,13 +349,13 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
 
   Widget categoryIcon(bool fuel, String category) {
     final icon = fuel ? Icons.local_gas_station_rounded : category == 'insurance' ? Icons.verified_user_rounded : category == 'tax' ? Icons.receipt_long_rounded : category == 'repair' ? Icons.build_rounded : Icons.receipt_rounded;
-    return Container(width: 48, height: 48, decoration: BoxDecoration(color: const Color(0xFFF3EDFF), borderRadius: BorderRadius.circular(14)), child: Icon(icon, color: purple, size: 25));
+    return Container(width: 48, height: 48, decoration: BoxDecoration(color: CepqarTheme.purpleTint, borderRadius: BorderRadius.circular(14)), child: Icon(icon, color: purple, size: 25));
   }
 
   Widget pill(String label, bool selected, VoidCallback onTap) => InkWell(
     borderRadius: BorderRadius.circular(14), onTap: onTap,
     child: Container(height: 40, padding: const EdgeInsets.symmetric(horizontal: 13), alignment: Alignment.center,
-      decoration: BoxDecoration(color: selected ? const Color(0xFFF3EDFF) : Colors.white, borderRadius: BorderRadius.circular(14),
+      decoration: BoxDecoration(color: selected ? CepqarTheme.purpleTint : Colors.white, borderRadius: BorderRadius.circular(14),
         border: Border.all(color: selected ? purple : const Color(0xFFE4E2EB))),
       child: Text(label, maxLines: 1, style: TextStyle(color: selected ? purple : const Color(0xFF10152D), fontSize: 12, fontWeight: selected ? FontWeight.w700 : FontWeight.w500)),
     ),
@@ -367,7 +368,7 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
     return Container(
       constraints: const BoxConstraints(minHeight: 122), width: double.infinity,
       padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(color: const Color(0xFFF3EDFF), borderRadius: BorderRadius.circular(18)),
+      decoration: BoxDecoration(color: CepqarTheme.purpleTint, borderRadius: BorderRadius.circular(18)),
       child: Row(children: [
         Container(width: 46, height: 46, decoration: BoxDecoration(color: const Color(0xFFE9DDFF), borderRadius: BorderRadius.circular(13)),
           child: const Icon(Icons.bar_chart_rounded, color: purple, size: 27)),
@@ -426,7 +427,7 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
     decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10),
       border: Border.all(color: const Color(0xFFECE9F1))),
     child: Row(children: [
-      Container(width: 29, height: 29, decoration: BoxDecoration(color: const Color(0xFFF3EDFF),
+      Container(width: 29, height: 29, decoration: BoxDecoration(color: CepqarTheme.purpleTint,
         borderRadius: BorderRadius.circular(8)), child: Icon(icon, size: 19, color: purple)),
       const SizedBox(width: 9),
       Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF10152D))),
@@ -454,7 +455,7 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
               Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
                 const Text.rich(TextSpan(children: [
                   TextSpan(text: 'Yakıt ', style: TextStyle(color: Colors.white)),
-                  TextSpan(text: 'Kaydı', style: TextStyle(color: Color(0xFFB9FF45))),
+                  TextSpan(text: 'Kaydı', style: TextStyle(color: CepqarTheme.lime)),
                 ]), style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
                 const Text('Yakıt alım detayları', style: TextStyle(color: Colors.white, fontSize: 11)),
               ])),
@@ -480,7 +481,7 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
                 Expanded(child: SizedBox(height: 42, child: CQButton(
                   onPressed: () => deleteFuelEntry(entry),
                   icon: const Icon(Icons.delete_outline, size: 18), label: const Text('Sil'),
-                  style: FilledButton.styleFrom(backgroundColor: const Color(0xFFB9FF45),
+                  style: FilledButton.styleFrom(backgroundColor: CepqarTheme.lime,
                     foregroundColor: const Color(0xFF10152D),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)))))),
               ]),
@@ -513,7 +514,7 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
               style: const TextStyle(color: Color(0xFF778096), fontSize: 12)),
             const SizedBox(height: 6),
             Container(padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-              decoration: BoxDecoration(color: const Color(0xFFF3EDFF), borderRadius: BorderRadius.circular(12)),
+              decoration: BoxDecoration(color: CepqarTheme.purpleTint, borderRadius: BorderRadius.circular(12)),
               child: Text(fuel ? 'Yakıt' : (categories[category] ?? 'Diğer'),
                 style: const TextStyle(color: purple, fontSize: 11))),
           ])),
@@ -535,7 +536,7 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton: SafeArea(child: Container(
         constraints:const BoxConstraints(minHeight:54),
-        decoration: BoxDecoration(color: const Color(0xFFB9FF45), borderRadius: BorderRadius.circular(20),
+        decoration: BoxDecoration(color: CepqarTheme.lime, borderRadius: BorderRadius.circular(20),
           boxShadow: const [BoxShadow(color: Color(0x30000000), blurRadius: 14, offset: Offset(0, 5))]),
         child: CQButton.text(onPressed: add, icon: const Icon(Icons.add, color: Color(0xFF10152D), size: 26),
           label: Text(section == 0 ? 'Yakıt Ekle' : 'Masraf Ekle',
@@ -546,7 +547,7 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
         headerSliverBuilder:(context,innerScrolled)=>[
           SliverToBoxAdapter(child:Container(
           width:double.infinity,constraints:const BoxConstraints(minHeight:210),
-          decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xFF651FFF), Color(0xFF4912C8)],
+          decoration: const BoxDecoration(gradient: LinearGradient(colors: [CepqarTheme.purple, CepqarTheme.deepPurple],
             begin: Alignment.topLeft, end: Alignment.bottomRight)),
           child: SafeArea(bottom: false, child: Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -559,7 +560,7 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
               const SizedBox(height: 12),
               const Text.rich(TextSpan(children: [
                 TextSpan(text: 'Araç ', style: TextStyle(color: Colors.white)),
-                TextSpan(text: 'Giderleri', style: TextStyle(color: Color(0xFFB9FF45))),
+                TextSpan(text: 'Giderleri', style: TextStyle(color: CepqarTheme.lime)),
               ]), style: TextStyle(fontSize: 29, fontWeight: FontWeight.w800)),
               const SizedBox(height: 6),
               const Text('Yakıt, bakım, sigorta ve diğer tüm araç masraflarınızı takip edin.', style:TextStyle(fontSize:12,color:Colors.white,height:1.45)),
@@ -579,7 +580,7 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
                   Expanded(child: SizedBox(child:CQButton(
                     onPressed: () => setState(() { section = i; categoryFilter = 'all'; entries = i == 0 ? fuelEntries : expenseEntries; }),
                     style: FilledButton.styleFrom(
-                      backgroundColor: section == i ? purple : const Color(0xFFF3EDFF),
+                      backgroundColor: section == i ? purple : CepqarTheme.purpleTint,
                       foregroundColor: section == i ? Colors.white : purple,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
                       padding: EdgeInsets.zero),
@@ -600,7 +601,7 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
               const SizedBox(height: 16),
               spendingCard(),
               const SizedBox(height: 24),
-              Row(children: [
+              CQAdaptiveRow(children: [
                 const Expanded(child: Text('Harcama Geçmişi', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800, color: Color(0xFF10152D)))),
                 PopupMenuButton<String>(
                   tooltip: 'Filtrele',
@@ -617,7 +618,7 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
                   child: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
                     decoration: BoxDecoration(border: Border.all(color: const Color(0xFFE4E2EB)),
                       borderRadius: BorderRadius.circular(22)),
-                    child: const Row(children: [Icon(Icons.filter_alt_outlined, color: purple, size: 19),
+                    child: const CQAdaptiveRow(children: [Icon(Icons.filter_alt_outlined, color: purple, size: 19),
                       SizedBox(width: 5), Text('Filtrele', style: TextStyle(color: purple, fontSize: 12)),
                       Icon(Icons.keyboard_arrow_down_rounded, color: purple)])),
                 ),
@@ -649,7 +650,7 @@ class _FuelEntryDialog extends StatefulWidget {
 }
 
 class _FuelEntryDialogState extends State<_FuelEntryDialog> {
-  static const purple = Color(0xFF651FFF);
+  static const purple = CepqarTheme.purple;
   bool saving = false;
   String? error;
   void showError(String message) { if (mounted) setState(() => error = message); }
@@ -669,7 +670,7 @@ class _FuelEntryDialogState extends State<_FuelEntryDialog> {
             constraints: const BoxConstraints(minWidth: 45),
             margin: const EdgeInsets.all(3),
             padding: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(color: const Color(0xFFF3EDFF), borderRadius: BorderRadius.circular(10)),
+            decoration: BoxDecoration(color: CepqarTheme.purpleTint, borderRadius: BorderRadius.circular(10)),
             child: Center(widthFactor: 1, child: Text(unit, style: const TextStyle(fontSize: 13, color: Color(0xFF10152D)))),
           ),
           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
@@ -683,7 +684,7 @@ class _FuelEntryDialogState extends State<_FuelEntryDialog> {
       );
       final label = Row(mainAxisSize: MainAxisSize.min, children: [
         Container(width: 44, height: 44, decoration: BoxDecoration(
-          color: const Color(0xFFF3EDFF), borderRadius: BorderRadius.circular(13)),
+          color: CepqarTheme.purpleTint, borderRadius: BorderRadius.circular(13)),
           child: Icon(icon, color: purple, size: 23)),
         const SizedBox(width: 10),
         Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF10152D))),
@@ -715,19 +716,19 @@ class _FuelEntryDialogState extends State<_FuelEntryDialog> {
             Container(
               height: 124, width: double.infinity,
               decoration: const BoxDecoration(gradient: LinearGradient(
-                colors: [Color(0xFF651FFF), Color(0xFF4912C8)])),
+                colors: [CepqarTheme.purple, CepqarTheme.deepPurple])),
               child: Stack(children: [
                 Positioned(left: 18, top: 24, right: 125, child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start, children: [
                     const Text.rich(TextSpan(children: [
                       TextSpan(text: 'Yakıt ', style: TextStyle(color: Colors.white)),
-                      TextSpan(text: 'Ekle', style: TextStyle(color: Color(0xFFB9FF45))),
+                      TextSpan(text: 'Ekle', style: TextStyle(color: CepqarTheme.lime)),
                     ]), style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
                     const SizedBox(height: 5),
                     const Text('Aracınıza yaptığınız yakıt alımını kaydedin.',
                       style: TextStyle(color: Colors.white, fontSize: 12, height: 1.4)),
                   ])),
-                Positioned(right: 12, bottom: 0, child: Image.asset('assets/images/services/Yakitust.png', width: 125, height: 102, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Icon(Icons.local_gas_station_rounded, color: Color(0xFFB9FF45), size: 58))),
+                Positioned(right: 12, bottom: 0, child: Image.asset('assets/images/services/Yakitust.png', width: 125, height: 102, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Icon(Icons.local_gas_station_rounded, color: CepqarTheme.lime, size: 58))),
                 Positioned(right: 8, top: 8, child: IconButton(
                   tooltip: 'Kapat', onPressed: saving ? null : () => Navigator.pop(context, false),
                   icon: const Icon(Icons.close, color: Colors.white))),
@@ -744,7 +745,7 @@ class _FuelEntryDialogState extends State<_FuelEntryDialog> {
                 field('İstasyon', Icons.local_gas_station_outlined, widget.station,
                   'İstasyon adı (isteğe bağlı)', '', TextInputType.text),
                 Container(width: double.infinity, padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(color: const Color(0xFFF3EDFF),
+                  decoration: BoxDecoration(color: CepqarTheme.purpleTint,
                     borderRadius: BorderRadius.circular(14)),
                   child: const Row(children: [
                     Icon(Icons.info_rounded, color: purple, size: 23),
@@ -765,7 +766,7 @@ class _FuelEntryDialogState extends State<_FuelEntryDialog> {
                   const SizedBox(width: 10),
                   Expanded(child: SizedBox(child:CQButton(
                     onPressed: saving ? null : () => widget.onSave(setSaving, showError),
-                    style: FilledButton.styleFrom(backgroundColor: const Color(0xFFB9FF45),
+                    style: FilledButton.styleFrom(backgroundColor: CepqarTheme.lime,
                       foregroundColor: const Color(0xFF10152D),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))),
                     icon: saving ? const SizedBox(width: 18, height: 18,
@@ -797,7 +798,7 @@ class _ExpenseEntryDialog extends StatefulWidget {
 }
 
 class _ExpenseEntryDialogState extends State<_ExpenseEntryDialog> {
-  static const purple = Color(0xFF651FFF);
+  static const purple = CepqarTheme.purple;
   late String category;
   bool saving = false;
   String? error;
@@ -815,7 +816,7 @@ class _ExpenseEntryDialogState extends State<_ExpenseEntryDialog> {
     builder: (context, constraints) {
       final label = Row(mainAxisSize: MainAxisSize.min, children: [
         Container(width: 36, height: 36, alignment: Alignment.center,
-          decoration: BoxDecoration(color: const Color(0xFFF3EDFF),
+          decoration: BoxDecoration(color: CepqarTheme.purpleTint,
             borderRadius: BorderRadius.circular(11)),
           child: Icon(icon, color: purple, size: 19)),
         const SizedBox(width: 7),
@@ -837,7 +838,7 @@ class _ExpenseEntryDialogState extends State<_ExpenseEntryDialog> {
     filled: true, fillColor: Colors.white,
     suffixIcon: unit == null ? null : Container(
       constraints: const BoxConstraints(minWidth: 40), margin: const EdgeInsets.all(3),
-      decoration: BoxDecoration(color: const Color(0xFFF3EDFF),
+      decoration: BoxDecoration(color: CepqarTheme.purpleTint,
         borderRadius: BorderRadius.circular(9)),
       child: Center(widthFactor: 1, child: Text(unit,
         style: const TextStyle(fontSize: 12, color: Color(0xFF10152D))))),
@@ -865,7 +866,7 @@ class _ExpenseEntryDialogState extends State<_ExpenseEntryDialog> {
             Container(height: 84, width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: const BoxDecoration(gradient: LinearGradient(
-                colors: [Color(0xFF651FFF), Color(0xFF4912C8)])),
+                colors: [CepqarTheme.purple, CepqarTheme.deepPurple])),
               child: Row(children: [
                 Container(width: 38, height: 38,
                   decoration: BoxDecoration(color: const Color(0x33FFFFFF),
@@ -876,7 +877,7 @@ class _ExpenseEntryDialogState extends State<_ExpenseEntryDialog> {
                   crossAxisAlignment: CrossAxisAlignment.start, children: [
                     const Text.rich(TextSpan(children: [
                       TextSpan(text: 'Masraf ', style: TextStyle(color: Colors.white)),
-                      TextSpan(text: 'Ekle', style: TextStyle(color: Color(0xFFB9FF45))),
+                      TextSpan(text: 'Ekle', style: TextStyle(color: CepqarTheme.lime)),
                     ]), style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
                     const SizedBox(height: 3),
                     const Text('Aracınıza ait diğer masrafları kaydedin.',
@@ -922,7 +923,7 @@ class _ExpenseEntryDialogState extends State<_ExpenseEntryDialog> {
                   const SizedBox(width: 8),
                   Expanded(child: SizedBox(height: 43, child: CQButton(
                     onPressed: saving ? null : () => widget.onSave(category, setSaving, showError),
-                    style: FilledButton.styleFrom(backgroundColor: const Color(0xFFB9FF45),
+                    style: FilledButton.styleFrom(backgroundColor: CepqarTheme.lime,
                       foregroundColor: const Color(0xFF10152D),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                     icon: saving ? const SizedBox(width: 16, height: 16,

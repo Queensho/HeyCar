@@ -214,7 +214,7 @@ class _OwnerChatPageState extends State<OwnerChatPage> {
           ? const Center(child: CircularProgressIndicator(color: _purple))
           : error != null
               ? Center(
-                  child: Padding(
+                  child: SingleChildScrollView(child: Padding(
                     padding: const EdgeInsets.all(24),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -226,7 +226,7 @@ class _OwnerChatPageState extends State<OwnerChatPage> {
                         FilledButton(onPressed: _resolve, style: FilledButton.styleFrom(backgroundColor: _purple), child: const Text('Tekrar dene')),
                       ],
                     ),
-                  ),
+                  )),
                 )
               : Column(
                   children: [

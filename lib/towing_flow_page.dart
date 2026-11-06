@@ -1090,7 +1090,7 @@ class _TowingFlowPageState extends State<TowingFlowPage> {
                       width: 37,
                       height: 37,
                       decoration: const BoxDecoration(
-                        color: Color(0xFFF3EDFF),
+                        color: CepqarTheme.purpleTint,
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
@@ -1924,7 +1924,7 @@ class _TowingTrackingPageState extends State<TowingTrackingPage> {
       height: 72,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3EDFF),
+        color: CepqarTheme.purpleTint,
         borderRadius: BorderRadius.circular(18),
       ),
       child: Row(
@@ -2599,3 +2599,4 @@ class _TowingTrackingPageState extends State<TowingTrackingPage> {
     );
   }
 }
+

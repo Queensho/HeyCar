@@ -220,7 +220,7 @@ class OwnerSettingsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     const navy = Color(0xFF10152D);
     return Theme(
-      data: Theme.of(context).copyWith(brightness: Brightness.light, scaffoldBackgroundColor: const Color(0xFFF8F9FC), colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF651FFF), brightness: Brightness.light)),
+      data: Theme.of(context).copyWith(brightness: Brightness.light, scaffoldBackgroundColor: const Color(0xFFF8F9FC), colorScheme: ColorScheme.fromSeed(seedColor: CepqarTheme.purple, brightness: Brightness.light)),
       child: Scaffold(
       backgroundColor: const Color(0xFFF8F9FC),
       body: SafeArea(
@@ -253,7 +253,7 @@ class OwnerSettingsPage extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF3EDFF),
+                          color: CepqarTheme.purpleTint,
                           borderRadius: BorderRadius.circular(22),
                           border: Border.all(color: const Color(0xFFE9E0FB)),
                         ),
@@ -275,7 +275,7 @@ class OwnerSettingsPage extends StatelessWidget {
                             Flexible(
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                                decoration: BoxDecoration(color: const Color(0xFFB9FF45), borderRadius: BorderRadius.circular(13)),
+                                decoration: BoxDecoration(color: CepqarTheme.lime, borderRadius: BorderRadius.circular(13)),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
@@ -348,7 +348,7 @@ class _ReferenceIdentityCard extends StatelessWidget {
       child: Row(children: [
         Stack(clipBehavior: Clip.none, children: [
           CircleAvatar(radius: 37, backgroundColor: const Color(0xFFF2EDFF), child: Text(initials, maxLines: 1, style: const TextStyle(color: Color(0xFF211751), fontSize: 23, fontWeight: FontWeight.w900))),
-          Positioned(right: -3, bottom: -2, child: CircleAvatar(radius: 13, backgroundColor: Colors.white, child: Icon(Icons.edit_rounded, size: 14, color: Color(0xFF651FFF)))),
+          Positioned(right: -3, bottom: -2, child: CircleAvatar(radius: 13, backgroundColor: Colors.white, child: Icon(Icons.edit_rounded, size: 14, color: CepqarTheme.purple))),
         ]),
         const SizedBox(width: 16),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -359,7 +359,7 @@ class _ReferenceIdentityCard extends StatelessWidget {
           Row(children: [const Icon(Icons.mail_outline_rounded, color: Colors.white70, size: 15), const SizedBox(width: 5), Expanded(child: Text(email, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70, fontSize: 11)))]),
         ])),
         Column(children: [
-          if (premium) Container(padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6), decoration: BoxDecoration(color: const Color(0xFFB9FF45), borderRadius: BorderRadius.circular(11)), child: const Row(children: [Icon(Icons.workspace_premium, size: 15, color: Color(0xFF10152D)), SizedBox(width: 3), Text('PRO', style: TextStyle(color: Color(0xFF10152D), fontSize: 12, fontWeight: FontWeight.w900))])),
+          if (premium) Container(padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6), decoration: BoxDecoration(color: CepqarTheme.lime, borderRadius: BorderRadius.circular(11)), child: const Row(children: [Icon(Icons.workspace_premium, size: 15, color: Color(0xFF10152D)), SizedBox(width: 3), Text('PRO', style: TextStyle(color: Color(0xFF10152D), fontSize: 12, fontWeight: FontWeight.w900))])),
           const SizedBox(height: 16),
           const Icon(Icons.chevron_right_rounded, color: Colors.white, size: 24),
         ]),
@@ -375,8 +375,8 @@ class _ReferenceIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     width: size, height: size,
-    decoration: BoxDecoration(color: const Color(0xFFF3EDFF), borderRadius: BorderRadius.circular(15)),
-    child: Icon(icon, size: size * .46, color: const Color(0xFF651FFF)),
+    decoration: BoxDecoration(color: CepqarTheme.purpleTint, borderRadius: BorderRadius.circular(15)),
+    child: Icon(icon, size: size * .46, color: CepqarTheme.purple),
   );
 }
 class _ReferenceMenuItem {

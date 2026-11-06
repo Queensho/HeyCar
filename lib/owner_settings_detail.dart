@@ -248,7 +248,7 @@ class _OwnerAccountSettingsPageState extends State<OwnerAccountSettingsPage> {
     return Theme(
       data: Theme.of(context).copyWith(
         brightness: Brightness.light,
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF651FFF), brightness: Brightness.light),
+        colorScheme: ColorScheme.fromSeed(seedColor: CepqarTheme.purple, brightness: Brightness.light),
       ),
       child: Scaffold(
         backgroundColor: const Color(0xFFF8F9FC),
@@ -262,8 +262,8 @@ class _OwnerAccountSettingsPageState extends State<OwnerAccountSettingsPage> {
             padding: const EdgeInsets.only(left: 15, top: 6, bottom: 6),
             child: IconButton.filledTonal(
               onPressed: () => Navigator.maybePop(context),
-              style: IconButton.styleFrom(backgroundColor: const Color(0xFFF3EDFF)),
-              icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF4912C8)),
+              style: IconButton.styleFrom(backgroundColor: CepqarTheme.purpleTint),
+              icon: const Icon(Icons.arrow_back_rounded, color: CepqarTheme.deepPurple),
             ),
           ),
         ),
@@ -276,9 +276,9 @@ class _OwnerAccountSettingsPageState extends State<OwnerAccountSettingsPage> {
                 child: Stack(clipBehavior: Clip.none, children: [
                   CircleAvatar(
                     radius: 64,
-                    backgroundColor: const Color(0xFFF3EDFF),
+                    backgroundColor: CepqarTheme.purpleTint,
                     child: Text(_nameValue.trim().split(RegExp(r'\s+')).where((x) => x.isNotEmpty).take(2).map((x) => x[0].toUpperCase()).join(),
-                      style: const TextStyle(fontSize: 37, color: Color(0xFF651FFF), fontWeight: FontWeight.w800)),
+                      style: const TextStyle(fontSize: 37, color: CepqarTheme.purple, fontWeight: FontWeight.w800)),
                   ),
                   Positioned(
                     right: -3, bottom: 0,
@@ -286,7 +286,7 @@ class _OwnerAccountSettingsPageState extends State<OwnerAccountSettingsPage> {
                       onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('Profil fotoğrafı yükleme henüz desteklenmiyor.')),
                       ),
-                      style: IconButton.styleFrom(backgroundColor: const Color(0xFF651FFF), foregroundColor: Colors.white),
+                      style: IconButton.styleFrom(backgroundColor: CepqarTheme.purple, foregroundColor: Colors.white),
                       icon: const Icon(Icons.camera_alt_rounded, size: 20),
                     ),
                   ),
@@ -302,8 +302,8 @@ class _OwnerAccountSettingsPageState extends State<OwnerAccountSettingsPage> {
                 CQButton.text(
                   onPressed: saving ? null : () => editing ? _cancelEdit() : setState(() => editing = true),
                   style: TextButton.styleFrom(
-                    foregroundColor: const Color(0xFF651FFF),
-                    backgroundColor: const Color(0xFFF3EDFF),
+                    foregroundColor: CepqarTheme.purple,
+                    backgroundColor: CepqarTheme.purpleTint,
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   ),
                   icon: Icon(editing ? Icons.close_rounded : Icons.edit_rounded, size: 18),
@@ -323,7 +323,7 @@ class _OwnerAccountSettingsPageState extends State<OwnerAccountSettingsPage> {
                   width: double.infinity,
                   child: CQButton(
                     onPressed: saving ? null : _saveProfile,
-                    style: FilledButton.styleFrom(backgroundColor: const Color(0xFF651FFF), foregroundColor: Colors.white),
+                    style: FilledButton.styleFrom(backgroundColor: CepqarTheme.purple, foregroundColor: Colors.white),
                     icon: const Icon(Icons.check_rounded),
                     label: Text(saving ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'),
                   ),
@@ -364,8 +364,8 @@ class _ReferenceAccountTile extends StatelessWidget {
           child: Row(children: [
             Container(
               width: 52, height: 52,
-              decoration: BoxDecoration(color: const Color(0xFFF3EDFF), borderRadius: BorderRadius.circular(14)),
-              child: Icon(icon, color: const Color(0xFF651FFF), size: 27),
+              decoration: BoxDecoration(color: CepqarTheme.purpleTint, borderRadius: BorderRadius.circular(14)),
+              child: Icon(icon, color: CepqarTheme.purple, size: 27),
             ),
             const SizedBox(width: 15),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

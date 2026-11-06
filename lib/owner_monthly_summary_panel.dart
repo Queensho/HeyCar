@@ -1,3 +1,4 @@
+import 'cepqar_theme.dart';
 import 'design/cq_components.dart';
 import 'package:flutter/material.dart';
 import 'design/cq_motion.dart';
@@ -54,7 +55,7 @@ class OwnerMonthlySummaryPanel extends StatelessWidget {
         if(isLoading)
           const SizedBox(height:64,child:Center(child:SizedBox(
             width:28,height:28,child:CircularProgressIndicator(
-              strokeWidth:2.5,color:Color(0xFF651FFF)),
+              strokeWidth:2.5,color:CepqarTheme.purple),
           )))
         else if(hasError)
           ConstrainedBox(constraints:const BoxConstraints(minHeight:64),child:Row(

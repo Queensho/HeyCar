@@ -1,3 +1,4 @@
+import 'cepqar_theme.dart';
 import 'package:flutter/material.dart';
 import 'design/cq_motion.dart';
 import 'design/cq_layout.dart';
@@ -38,8 +39,8 @@ class OwnerHomeServicesPromo extends StatelessWidget {
 
   Color _tagColor(AppUiServiceItem service) {
     return switch(service.id){
-      'towing' when service.iconToken=='warning'=>const Color(0xFF651FFF),
-      'roadside' when service.iconToken=='danger'=>const Color(0xFF651FFF),
+      'towing' when service.iconToken=='warning'=>CepqarTheme.purple,
+      'roadside' when service.iconToken=='danger'=>CepqarTheme.purple,
       'valet' when service.iconToken=='primary'=>const Color(0xFF2978D8),
       'offers' when service.iconToken=='success'=>const Color(0xFF478D19),
       _=>tokens.token(service.iconToken),
@@ -78,7 +79,7 @@ class OwnerHomeServicesPromo extends StatelessWidget {
         ))),
         if(url.isEmpty)
           Icon(Icons.fire_truck_rounded,size:narrow?37:49,
-            color:const Color(0xFF651FFF))
+            color:CepqarTheme.purple)
         else
           Transform.translate(
             offset:Offset(featured!.imageX*.2,featured.imageY*.2),
@@ -90,7 +91,7 @@ class OwnerHomeServicesPromo extends StatelessWidget {
                   url,fit:featured.fit=='cover'?BoxFit.cover:BoxFit.contain,
                   errorBuilder:(_,__,___)=>Icon(
                     Icons.fire_truck_rounded,size:narrow?37:49,
-                    color:const Color(0xFF651FFF)),
+                    color:CepqarTheme.purple),
                 ),
               ),
             ),
@@ -173,7 +174,7 @@ class OwnerHomeServicesPromo extends StatelessWidget {
                 decoration:const BoxDecoration(
                   color:Color(0xFFF1EAFF),shape:BoxShape.circle),
                 child:const Icon(Icons.chevron_right_rounded,
-                  color:Color(0xFF651FFF),size:25),
+                  color:CepqarTheme.purple,size:25),
               ),
             ]),
           ),

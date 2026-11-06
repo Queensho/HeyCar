@@ -1,3 +1,4 @@
+import 'design/cq_motion.dart';
 import 'design/cq_components.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -288,7 +289,7 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
     return Expanded(child:InkWell(
       borderRadius:BorderRadius.circular(24),
       onTap:()=>setState(()=>selectedFilter=index),
-      child:AnimatedContainer(duration:const Duration(milliseconds:180),
+      child:AnimatedContainer(duration:CQMotion.duration(context,CQMotion.feedback),
         padding:const EdgeInsets.symmetric(vertical:11,horizontal:3),
         decoration:BoxDecoration(
           gradient:selected?const LinearGradient(colors:[
@@ -321,7 +322,7 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
         alignment:Alignment.center,
         errorBuilder:(_,__,___)=>const Icon(
           Icons.directions_car_filled_rounded,
-          color:Color(0xFF713BFF),size:32)));
+          color:CepqarTheme.brightPurple,size:32)));
   }
   Widget card(String type,String title,String subtitle,IconData icon,
       DateTime? value,int index){
@@ -431,7 +432,7 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
                 gradient:LinearGradient(begin:Alignment.topLeft,
                   end:Alignment.bottomRight,colors:[
                     Color(0xFF140C38),Color(0xFF3E0F8C),
-                    Color(0xFF651FFF)]),
+                    CepqarTheme.purple]),
                 borderRadius:BorderRadius.only(
                   bottomLeft:Radius.circular(30),
                   bottomRight:Radius.circular(30))),
@@ -452,7 +453,7 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
                       const Text('Araç',style:TextStyle(color:Colors.white,
                         fontSize:26,fontWeight:FontWeight.w900,height:1)),
                       const Text('Hatırlatmaları',style:TextStyle(
-                        color:Color(0xFFB9FF45),fontSize:26,
+                        color:CepqarTheme.lime,fontSize:26,
                         fontWeight:FontWeight.w900,height:1.1)),
                       const SizedBox(height:7),
                       const SizedBox(width:200,child:Text(
@@ -507,7 +508,7 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
                     icon:const Icon(Icons.add_circle_outline_rounded),
                     label:const Text('Yeni Hatırlatma Ekle'),
                     style:FilledButton.styleFrom(
-                      backgroundColor:const Color(0xFF713BFF),
+                      backgroundColor:CepqarTheme.brightPurple,
                       foregroundColor:Colors.white,
                       shape:RoundedRectangleBorder(
                         borderRadius:BorderRadius.circular(23))))),
@@ -522,7 +523,7 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
       child:ListTile(
         contentPadding:const EdgeInsets.symmetric(horizontal:14,vertical:7),
         leading:const CircleAvatar(backgroundColor:Color(0xFFF0EAFF),
-          child:Icon(Icons.edit_calendar_rounded,color:Color(0xFF713BFF))),
+          child:Icon(Icons.edit_calendar_rounded,color:CepqarTheme.brightPurple)),
         title:Text('${item['title']}',style:const TextStyle(
           fontWeight:FontWeight.w800,fontSize:14)),
         subtitle:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
@@ -530,7 +531,7 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
           if('${item['description']??''}'.isNotEmpty)
             Text('${item['description']}',maxLines:2,overflow:TextOverflow.ellipsis),
           const Text('Özel Hatırlatma',style:TextStyle(
-            fontSize:10,color:Color(0xFF713BFF))),
+            fontSize:10,color:CepqarTheme.brightPurple)),
         ]),
         onTap:()=>_editCustom(index),
         trailing:PopupMenuButton<String>(
@@ -570,7 +571,7 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
                 ]),
                 const SizedBox(height:8),
                 const Text('Özel Hatırlatma',style:TextStyle(
-                  color:Color(0xFF713BFF),fontWeight:FontWeight.w800)),
+                  color:CepqarTheme.brightPurple,fontWeight:FontWeight.w800)),
                 const SizedBox(height:14),
                 TextFormField(controller:title,maxLength:80,
                   decoration:const InputDecoration(labelText:'Başlık *',
@@ -584,7 +585,7 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
                     border:OutlineInputBorder())),
                 const SizedBox(height:8),
                 ListTile(contentPadding:EdgeInsets.zero,
-                  leading:const Icon(Icons.calendar_month,color:Color(0xFF713BFF)),
+                  leading:const Icon(Icons.calendar_month,color:CepqarTheme.brightPurple),
                   title:Text(chosen==null?'Tarih seçin':date(chosen!)),
                   trailing:const Icon(Icons.chevron_right),
                   onTap:()async{
@@ -599,7 +600,7 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
                   fontWeight:FontWeight.w800)),
                 for(final n in [30,7,1,0])
                   SwitchListTile.adaptive(
-                    dense:true,activeColor:const Color(0xFF713BFF),
+                    dense:true,activeColor:CepqarTheme.brightPurple,
                     contentPadding:EdgeInsets.zero,
                     title:Text(n==0?'Aynı gün':'$n gün önce'),
                     value:offsets.contains(n),
@@ -632,7 +633,7 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
                       if(sheetContext.mounted)Navigator.pop(sheetContext);
                     }
                   },style:FilledButton.styleFrom(
-                    backgroundColor:const Color(0xFF713BFF)),
+                    backgroundColor:CepqarTheme.brightPurple),
                     child:Text(existingIndex==null?
                       'Hatırlatmayı Kaydet':'Değişiklikleri Kaydet'))),
               ])))))));
@@ -678,13 +679,13 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
               shape:RoundedRectangleBorder(
                 borderRadius:BorderRadius.circular(16)),
               leading:const Icon(Icons.add_circle_outline_rounded,
-                color:Color(0xFF713BFF)),
+                color:CepqarTheme.brightPurple),
               title:const Text('Özel Hatırlatma Oluştur',
                 style:TextStyle(fontWeight:FontWeight.w800,
                   color:Color(0xFF5724ED))),
               subtitle:const Text('Başlık, tarih ve bildirim günlerini seç'),
               trailing:const Icon(Icons.chevron_right_rounded,
-                color:Color(0xFF713BFF)),
+                color:CepqarTheme.brightPurple),
               onTap:(){
                 Navigator.pop(sheetContext);
                 WidgetsBinding.instance.addPostFrameCallback((_){

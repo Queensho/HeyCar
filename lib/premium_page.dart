@@ -4,11 +4,11 @@ import 'package:flutter/material.dart';
 import 'app_runtime_config.dart';
 import 'cepqar_theme.dart';
 
-const _purple=Color(0xFF651FFF);
+const _purple=CepqarTheme.purple;
 const _bright=Color(0xFF8337F6);
 const _lavender=Color(0xFFF2EAFE);
 const _ink=Color(0xFF10162F);
-const _lime=Color(0xFFB9FF45);
+const _lime=CepqarTheme.lime;
 const _gold=Color(0xFFFFC857);
 
 enum _PremiumKind{individual,family}
@@ -98,7 +98,7 @@ class _PremiumPageState extends State<PremiumPage>{
         foregroundColor:_foreground,
         elevation:0,
         centerTitle:true,
-        leading:Padding(padding:const EdgeInsets.only(left:10),child:IconButton.filledTonal(onPressed:()=>Navigator.maybePop(context),style:IconButton.styleFrom(backgroundColor:_lavender),icon:const Icon(Icons.arrow_back_rounded,color:Color(0xFF4912C8)))),
+        leading:Padding(padding:const EdgeInsets.only(left:10),child:IconButton.filledTonal(onPressed:()=>Navigator.maybePop(context),style:IconButton.styleFrom(backgroundColor:_lavender),icon:const Icon(Icons.arrow_back_rounded,color:CepqarTheme.deepPurple))),
         title:const Text('CepQontag Premium',style:TextStyle(fontSize:20,fontWeight:FontWeight.w900)),
       ),
       body:SafeArea(

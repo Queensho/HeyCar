@@ -77,9 +77,9 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
 
   String searchText='';
   final TextEditingController searchController=TextEditingController();
-  static const purple=Color(0xFF651FFF);
-  static const deepPurple=Color(0xFF4912C8);
-  static const lime=Color(0xFFB9FF45);
+  static const purple=CepqarTheme.purple;
+  static const deepPurple=CepqarTheme.deepPurple;
+  static const lime=CepqarTheme.lime;
   static const ink=Color(0xFF10152D);
   static const muted=Color(0xFF778096);
 
@@ -152,7 +152,7 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
   }
 
   Widget _offerPicture(_Offer o,String image)=>Stack(fit:StackFit.expand,children:[
-    Container(color:const Color(0xFFF3EDFF),child:image.isNotEmpty
+    Container(color:CepqarTheme.purpleTint,child:image.isNotEmpty
       ?Image.network(image,fit:BoxFit.cover,errorBuilder:(_,__,___)=>Icon(o.icon,size:45,color:purple))
       :Icon(o.icon,size:45,color:purple)),
     Positioned(left:8,bottom:8,child:Container(
@@ -177,7 +177,7 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
         border:Border.all(color:const Color(0xFFE8E3F1))),
       clipBehavior:Clip.antiAlias,
       child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-        Container(height:featured?110:82,width:double.infinity,color:const Color(0xFFF3EDFF),
+        Container(height:featured?110:82,width:double.infinity,color:CepqarTheme.purpleTint,
           child:const Icon(Icons.local_offer_outlined,color:Color(0xFFB6A0E9),size:29)),
         Padding(padding:const EdgeInsets.all(10),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
           const Text('Yakında',style:TextStyle(color:ink,fontSize:12,fontWeight:FontWeight.w800)),
@@ -263,7 +263,7 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
         child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
           SizedBox(height:featured?78:82,width:double.infinity,
             child:Stack(fit:StackFit.expand,children:[
-              Container(color:const Color(0xFFF3EDFF),
+              Container(color:CepqarTheme.purpleTint,
                 child:image.startsWith('https://')?Image.network(image,fit:BoxFit.cover,
                   errorBuilder:(_,__,___)=>const Icon(Icons.local_offer_rounded,color:purple,size:32))
                   :const Icon(Icons.local_offer_rounded,color:purple,size:32)),
@@ -414,7 +414,7 @@ class _OfferDetailPageState extends State<_OfferDetailPage>{
  Future<void> _review()async{int rating=5;final tc=TextEditingController();final ok=await showDialog<bool>(context:context,builder:(d)=>StatefulBuilder(builder:(d,setD)=>AlertDialog(scrollable:true,backgroundColor:CepqarTheme.panel,title:Text('Mağazayı Değerlendir',style:TextStyle(color:CepqarTheme.text)),content:Column(mainAxisSize:MainAxisSize.min,children:[Row(mainAxisAlignment:MainAxisAlignment.center,children:List.generate(5,(i)=>IconButton(onPressed:()=>setD(()=>rating=i+1),icon:Icon(i<rating?Icons.star_rounded:Icons.star_border_rounded,color:const Color(0xFFFFB72B)))),),TextField(controller:tc,maxLines:3,style:TextStyle(color:CepqarTheme.text),decoration:const InputDecoration(hintText:'Yorumun'))]),actions:[TextButton(onPressed:()=>Navigator.pop(d,false),child:const Text('Vazgeç')),FilledButton(onPressed:()=>Navigator.pop(d,true),child:const Text('Gönder'))])));if(ok!=true)return;final uri=Uri.parse('${_CepqarOffersPageState.apiBase}/api/offers/${o.id}/review');final body=jsonEncode({'rating':rating,'comment':tc.text.trim()});final r=widget.driverMode?await DriverHttp.post(uri,body:body):await OwnerHttp.post(uri,body:body);_msg(r.statusCode>=200&&r.statusCode<300?'Mağaza değerlendirmen kaydedildi.':'Değerlendirme kaydedilemedi.');if(r.statusCode>=200&&r.statusCode<300)await _loadReviews();}
  void _msg(String s){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(s)));}
  @override Widget build(BuildContext context){
-  const purple=Color(0xFF651FFF),lime=Color(0xFFB9FF45),ink=Color(0xFF10152D),muted=Color(0xFF778096);
+  const purple=CepqarTheme.purple,lime=CepqarTheme.lime,ink=Color(0xFF10152D),muted=Color(0xFF778096);
   final screen=MediaQuery.sizeOf(context),badge=o.badge.trim();
   Widget actionRow(IconData icon,String title,String subtitle,VoidCallback action)=>InkWell(
     onTap:action,child:Padding(padding:const EdgeInsets.symmetric(vertical:12,horizontal:12),child:Row(children:[
@@ -433,7 +433,7 @@ class _OfferDetailPageState extends State<_OfferDetailPage>{
     body:Stack(children:[
       ListView(padding:EdgeInsets.zero,children:[
         SizedBox(height:screen.height*.43,child:Stack(fit:StackFit.expand,children:[
-          Container(decoration:const BoxDecoration(gradient:LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:[Color(0xFF651FFF),Color(0xFF161A43)]))),
+          Container(decoration:const BoxDecoration(gradient:LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:[CepqarTheme.purple,Color(0xFF161A43)]))),
           if(o.imageUrl.isNotEmpty)Image.network(o.imageUrl,fit:BoxFit.cover,errorBuilder:(_,__,___)=>Center(child:Icon(o.icon,color:Colors.white,size:105)))
           else Center(child:Icon(o.icon,color:Colors.white,size:105)),
           const DecoratedBox(decoration:BoxDecoration(gradient:LinearGradient(begin:Alignment.topCenter,end:Alignment.bottomCenter,colors:[Color(0x55000000),Colors.transparent,Color(0xD9651FFF)]))),
@@ -455,7 +455,7 @@ class _OfferDetailPageState extends State<_OfferDetailPage>{
               Text(o.description.isEmpty?'İşletme kampanya açıklaması eklememiş.':o.description,style:const TextStyle(color:muted,fontSize:13,height:1.45))
             ])),
             const SizedBox(width:8),
-            Container(width:88,height:106,decoration:BoxDecoration(color:const Color(0xFFF3EDFF),borderRadius:BorderRadius.circular(17)),child:Image.asset('assets/Heycar3d.png',fit:BoxFit.contain,errorBuilder:(_,__,___)=>Icon(o.icon,color:purple,size:48)))
+            Container(width:88,height:106,decoration:BoxDecoration(color:CepqarTheme.purpleTint,borderRadius:BorderRadius.circular(17)),child:Image.asset('assets/Heycar3d.png',fit:BoxFit.contain,errorBuilder:(_,__,___)=>Icon(o.icon,color:purple,size:48)))
           ]),
           const SizedBox(height:16),
           Container(padding:const EdgeInsets.symmetric(horizontal:7,vertical:15),decoration:BoxDecoration(color:const Color(0xFFF5F0FF),borderRadius:BorderRadius.circular(17)),child:Row(children:[

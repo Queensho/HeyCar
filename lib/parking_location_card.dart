@@ -1,3 +1,4 @@
+import 'design/cq_components.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -191,7 +192,7 @@ class _ParkingLocationCardState extends State<ParkingLocationCard> {
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: CepqarTheme.line),
       ),
-      child: Row(
+      child: CQAdaptiveRow(
         children: [
           Container(
             width: 48,

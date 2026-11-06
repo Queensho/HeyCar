@@ -325,7 +325,7 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
   }
 
   Color get _accent =>
-      CepqarTheme.isLight ? const Color(0xFF713BFF) : const Color(0xFFB499FF);
+      CepqarTheme.isLight ? CepqarTheme.brightPurple : const Color(0xFFB499FF);
   Color get _warning =>
       CepqarTheme.isLight ? const Color(0xFF996000) : const Color(0xFFFFC66D);
 

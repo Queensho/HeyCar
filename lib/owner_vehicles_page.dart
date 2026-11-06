@@ -19,7 +19,7 @@ import 'vehicle_kind.dart';
 import 'owner_vehicle_brand_mark.dart';
 import 'design/cq_layout.dart';
 
-const _purple=Color(0xFF651FFF),_gold=Color(0xFFFFC857),_green=Color(0xFF38D178);
+const _purple=CepqarTheme.purple,_gold=Color(0xFFFFC857),_green=Color(0xFF38D178);
 const Color _bg=Colors.white; const Color _panel=Colors.white; const Color _line=Color(0xFFECECF2); const Color _muted=Color(0xFF737B90); const Color _text=Color(0xFF10162F);
 class OwnerVehiclesPage extends StatefulWidget{const OwnerVehiclesPage({super.key,this.onVehicleChanged});final VoidCallback? onVehicleChanged;@override State<OwnerVehiclesPage> createState()=>_S();}
 class _S extends State<OwnerVehiclesPage>{List<Map<String,dynamic>> vehicles=[];bool loading=true,premium=false;int limit=1;String? error;Timer? _logoRetryTimer;int _logoRetryAttempts=0;String get selected=>QrDraft.vehicleId.trim().isNotEmpty?QrDraft.vehicleId.trim():OnboardingDraft.vehicleId.trim();@override void initState(){super.initState();_load();}
@@ -184,16 +184,16 @@ Widget _bottomAction(IconData icon,String title,String subtitle,VoidCallback tap
               const SizedBox(height:12),
               Row(children:[
                 Expanded(child:FilledButton.icon(onPressed:loading?null:_add,
-                  style:FilledButton.styleFrom(backgroundColor:const Color(0xFFB9FF45),foregroundColor:const Color(0xFF10162F),
+                  style:FilledButton.styleFrom(backgroundColor:CepqarTheme.lime,foregroundColor:const Color(0xFF10162F),
                     minimumSize:const Size(0,47),padding:const EdgeInsets.symmetric(horizontal:4),
                     shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15))),
                   icon:const Icon(Icons.add_rounded,size:18),
                   label:const Text('Yeni Araç',maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(fontSize:12,fontWeight:FontWeight.w900)))),
                 const SizedBox(width:8),
                 Expanded(child:OutlinedButton.icon(onPressed:loading?null:_acceptTransfer,
-                  style:OutlinedButton.styleFrom(backgroundColor:Colors.white,foregroundColor:const Color(0xFF651FFF),
+                  style:OutlinedButton.styleFrom(backgroundColor:Colors.white,foregroundColor:CepqarTheme.purple,
                     minimumSize:const Size(0,47),padding:const EdgeInsets.symmetric(horizontal:4),
-                    side:const BorderSide(color:Color(0xFF651FFF)),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15))),
+                    side:const BorderSide(color:CepqarTheme.purple),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15))),
                   icon:const Icon(Icons.swap_horiz_rounded,size:17),
                   label:const Text('Araç Devir Al',maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(fontSize:12,fontWeight:FontWeight.w900)))),
               ]),
@@ -254,7 +254,7 @@ class _VehiclesHeaderWavePainter extends CustomPainter{
         radius:1.1,
         colors:[
           const Color(0xFF8D68FF).withValues(alpha:light ? .15 : .12),
-          const Color(0xFF713BFF).withValues(alpha:light ? .04 : .05),
+          CepqarTheme.brightPurple.withValues(alpha:light ? .04 : .05),
           Colors.transparent,
         ],
       ).createShader(rect),
@@ -271,7 +271,7 @@ class _VehiclesHeaderWavePainter extends CustomPainter{
       p,
       Paint()..shader=LinearGradient(
         colors:[
-          const Color(0xFF713BFF).withValues(alpha:0),
+          CepqarTheme.brightPurple.withValues(alpha:0),
           const Color(0xFF8C64FF).withValues(alpha:light ? .06 : .08),
           const Color(0xFFB29CFF).withValues(alpha:light ? .12 : .13),
         ],

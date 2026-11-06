@@ -11,7 +11,7 @@ Aşağıdaki tablo kaynak değişikliğini açıklar. Test kapsamı ve cihaz do�
 | `lib/design/cq_components.dart` | Ortak içerik genişliği, navigasyon, başlık/eylem akışı, form satırı, sheet gövdesi, büyük yazı toolbar çerçevesi, yeniden akan satırlar ve ikonlu native düğmeler. |
 | `lib/design/cq_layout.dart` | 600 dp ortak içerik sınırı; mevcut 44 dp ve boşluk tokenları korundu. |
 | `lib/design/cq_motion.dart` | TickerMode ve erişilebilirlik tercihleri; devre dışı kalan basılı kontrolün durumu; adlandırılmış kontrollerin semantik eylemleri. |
-| `lib/cepqar_theme.dart` | Mor/lime marka tokenları, ikincil metin kontrastı, 44 dp tema kontrolü ve Reduced Motion. |
+| `lib/cepqar_theme.dart` | Mor/lime ve mor tonlarının ortak marka tokenları (18 ekran dosyasındaki aynı renk değerleri bağlandı), ikincil metin kontrastı, 44 dp tema kontrolü ve Reduced Motion. |
 | `lib/entry_theme_live.dart` | Açık/koyu temalara ortak bileşen varsayılanları; platformun varsayılan yazı tipi. |
 | `lib/owner_dashboard_live.dart` | İçerikle büyüyen alt navigasyon; iki/tek sütun hızlı erişim sheet'i; QR kaydırma; Muayene kısayolunun mevcut hatırlatıcı rotasına bağlanması. |
 | `lib/owner_home_redesign.dart` | Büyük yazıda ana kartlar ve başlık yeniden akar; hizmet kartları büyür; ortak içerik genişliği. Vale teslimat kodu yalnızca hazır durumunda gösterilir. |
@@ -20,10 +20,10 @@ Aşağıdaki tablo kaynak değişikliğini açıklar. Test kapsamı ve cihaz do�
 | `lib/owner_settings_page.dart` | Profil ana listesinin ortak genişliği; eski hızlı eylem kartı sabit yüksekliğinin kaldırılması. |
 | `lib/owner_settings_detail.dart` | Paylaşılan ayar alt sayfası çerçevesinde SafeArea ve ortak genişlik; bütün alt sayfaların özel içerikleri doğrulanmış değildir. |
 | `lib/owner_new_vehicle_page.dart` | Eşlenmiş alanların tek sütuna geçişi; etiketler, dropdown ve fotoğraf isteminin içerikle büyümesi; dikey araç türü seçimi. |
-| `lib/vehicle_edit_sheet.dart` | Büyük yazıda alanların tek sütuna geçmesi ve değişken dropdown menü yüksekliği. |
+| `lib/vehicle_edit_sheet.dart` | Büyük yazıda alanların tek sütuna geçmesi, değişken dropdown yüksekliği ve başlık/form/kaydet eyleminin tek kaydırma akışında erişilebilir kalması. |
 | `lib/owner_qr_dialog.dart` | Kaydırılabilen dialog, güvenli kenar boşlukları, kare QR ve adlandırılmış kapatma kontrolü; QR üretim sözleşmesi korunur. |
 | `lib/owner_chat_page.dart` | Reduced Motion için anlık kaydırma, çok satırlı mesaj alanı, gönderme etiketi, büyüyen sohbet başlığı; mevcut mesaj API'leri korunur. |
-| `lib/parking_location_card.dart` | Genişletilen testlerin bulduğu, widget değerini const ifadede kullanan derleme hatası düzeltildi. |
+| `lib/parking_location_card.dart` | Widget değerini const ifadede kullanan derleme hatası düzeltildi; park seçeneği kartları büyük yazıda yeniden akar. |
 | `lib/owner_quick_access_panel.dart` | Gerçek metin ölçümüne dayanan kart yüksekliği; uzun adlar ve büyük yazı. |
 | `lib/owner_monthly_summary_panel.dart` | Başlığın eylemle yeniden akması; çok büyük yazıda tek sütun; büyüyen hata/boş durumlar; kontrast. |
 | `lib/owner_home_services_promo.dart` | Servis etiketleri için ölçeklenen satır yüksekliği ve metin kontrastı. |
@@ -46,6 +46,9 @@ Aşağıdaki tablo kaynak değişikliğini açıklar. Test kapsamı ve cihaz do�
 | `lib/premium_page.dart` | Paket kartları içerikle büyür; Reduced Motion için ortak süreler; ikonlu eylemler. Alt sayfa responsive matrisine alındı; işlevlerin tüm dalları doğrulanmış değildir. |
 | `lib/support_ticket_page.dart` | Üst çubuk ve form başlığı yeniden akar; eylem etiketleri büyüyebilir; canlı talep gönderilmedi. Alt sayfa responsive matrisine alındı; işlevlerin tüm dalları doğrulanmış değildir. |
 | `lib/vehicle_center_page.dart` | Mini eylemler ve silme kartı sabit yüksekliğe zorlanmaz; ikonlu düğmeler. Alt sayfa responsive matrisine alındı; işlevlerin tüm dalları doğrulanmış değildir. |
+| `lib/weather_details_page.dart` | Örnek hava durumu verisiyle responsive matris; büyüyen ana kart, yeniden akan metrikler ve tahmin şeritleri. Canlı konum ve tüm tahmin veri durumları doğrulanmadı. |
+| `lib/owner_vehicle_setup.dart` | Mor/lime/deep-purple sabitleri ortak marka tokenlarına bağlandı; kayıt akışının tüm durumları doğrulanmadı. |
+| `lib/towing_flow_page.dart` | Mevcut renkler korunarak ortak marka tokenlarına bağlandı; canlı çekici çağırma/takip akışı doğrulanmadı. |
 | `tool/fix_runtime_android.py` | Responsive bildirim Scaffold'u kabul edilir; tanınmayan kökler için hata vermeye devam eder. |
 | `tool/tests/test_fix_runtime_android.py` | Yeni Scaffold için regresyon; yerelde 4/4 başarılı. |
 | `.github/workflows/pages.yml` | Tüm Flutter testleri ve genel analyze eklendi; tasarım PR'ında Android debug/release APK işi açıldı; sürümler arası eşzamanlı işlerin birbirini iptal etmesi önlendi. |
@@ -109,7 +112,7 @@ Aşağıdaki dosyalar bu çalışmada ekran bazında tam uyarlama ve dört geni�
 | `lib/towing_flow_page.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
 | `lib/vehicle_identity_card.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
 | `lib/weather_card.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
-| `lib/weather_details_page.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
+
 
 ## CI sonuçları
 
