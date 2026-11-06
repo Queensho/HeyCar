@@ -61,6 +61,8 @@ jobs:
         run: flutter test test/owner_monthly_summary_panel_test.dart
       - name: Verify compact admin-driven home services promo
         run: flutter test test/owner_home_services_promo_test.dart
+      - name: Verify shared responsive layout and accessible motion
+        run: flutter test test/cq_design_system_test.dart
       - name: Verify guest purple lime welcome responsiveness and actions
         run: |
           flutter analyze lib/owner_welcome_overlay.dart test/owner_welcome_purple_lime_test.dart --no-fatal-infos --no-fatal-warnings
