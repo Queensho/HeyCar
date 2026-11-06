@@ -166,7 +166,7 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
   double _editorialHeight(bool featured){
     final scaler=MediaQuery.textScalerOf(context);
     return featured?110+scaler.scale(13)*2.8+scaler.scale(10)*4+40:
-      82+scaler.scale(12)*1.5+scaler.scale(10)*3+30;
+      82+scaler.scale(12)*3+scaler.scale(10)*3+40;
   }
 
   Widget _emptyOfferCard({bool featured=false}){

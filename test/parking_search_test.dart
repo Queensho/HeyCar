@@ -22,9 +22,31 @@ Map<String, dynamic> osm(
     };
 http.Response success(List<dynamic> rows) =>
     http.Response(jsonEncode({'elements': rows}), 200);
+// OSM regressions exercise the fallback provider explicitly. Backend calls
+// receive an unavailable response rather than masquerading as OSM payloads.
+http.Client overpassClient(Future<http.Response> Function(http.Request) handler)=>
+  MockClient((request)async=>request.method=='GET'
+    ?http.Response('primary unavailable',503):handler(request));
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() => SharedPreferences.setMockInitialValues({}));
+  test('primary requests in one cell are coalesced before provider access',()async{
+    var calls=0;
+    final gate=Completer<void>();
+    final service=ParkingSearchService(client:MockClient((request)async{
+      calls++;
+      expect(request.method,'GET');
+      await gate.future;
+      return http.Response(jsonEncode({'places':[{'id':'geoapify/1',
+        'latitude':41,'longitude':29,'tags':{'name':'Otopark'}}]}),200);
+    }));
+    final first=service.nearby(41,29),second=service.nearby(41.001,29.001);
+    await Future<void>.delayed(Duration.zero);
+    gate.complete();
+    expect((await first).places.single.id,'geoapify/1');
+    expect((await second).places.single.id,'geoapify/1');
+    expect(calls,1);
+  });
   test('parses nodes, way/relation centers; rejects invalid/private places',
       () {
     for (final type in ['node', 'way', 'relation']) {
@@ -65,7 +87,7 @@ void main() {
         '24 saat açık');
   });
   test('mall filter associates separately mapped nearby mall', () async {
-    final s = ParkingSearchService(client: MockClient((_) async => success([
+    final s = ParkingSearchService(client: overpassClient((_) async => success([
       osm(id: 1, lat: 41, lon: 29),
       {'type': 'way', 'id': 99, 'center': {'lat': 41.0005, 'lon': 29.0005},
        'tags': {'shop': 'mall', 'name': 'Torium AVM'}}
@@ -83,7 +105,7 @@ void main() {
       () async {
     var calls = 0;
     final gate = Completer<void>();
-    final service = ParkingSearchService(client: MockClient((r) async {
+    final service = ParkingSearchService(client: overpassClient((r) async {
       calls++;
       expect(r.method, 'POST');
       expect(r.url.host, 'overpass-api.de');
@@ -100,7 +122,7 @@ void main() {
     expect(calls, 1);
     await service.nearby(41, 29);
     expect(calls, 1);
-    final reopened = ParkingSearchService(client: MockClient((_) async {
+    final reopened = ParkingSearchService(client: overpassClient((_) async {
       fail('fresh disk cache should avoid network');
     }));
     expect((await reopened.nearby(41, 29)).places.length, 1);
@@ -110,12 +132,12 @@ void main() {
       () async {
     final s = ParkingSearchService(
         client:
-            MockClient((_) async => success([osm(), osm(id: 2, lat: 41.06)])));
+            overpassClient((_) async => success([osm(), osm(id: 2, lat: 41.06)])));
     expect((await s.nearby(41, 29)).places.map((p) => p.id), ['node/1']);
   });
   test('empty results are valid and cached', () async {
     var calls = 0;
-    final s = ParkingSearchService(client: MockClient((_) async {
+    final s = ParkingSearchService(client: overpassClient((_) async {
       calls++;
       return success([]);
     }));
@@ -133,7 +155,7 @@ void main() {
     test(
         'bad or partial response does not masquerade as empty success: ${bad.body}',
         () async {
-      final s = ParkingSearchService(client: MockClient((_) async => bad));
+      final s = ParkingSearchService(client: overpassClient((_) async => bad));
       await expectLater(
           s.nearby(41, 29), throwsA(isA<ParkingSearchException>()));
     });
@@ -143,7 +165,7 @@ void main() {
     var clock = DateTime.utc(2026, 9, 20), failNetwork = false, calls = 0;
     final s = ParkingSearchService(
         now: () => clock,
-        client: MockClient((_) async {
+        client: overpassClient((_) async {
           calls++;
           if (failNetwork) throw http.ClientException('offline');
           return success([osm()]);
@@ -154,14 +176,14 @@ void main() {
     final r = await s.nearby(41, 29);
     expect(r.stale, isTrue);
     expect(r.places.length, 1);
-    expect(calls, 2);
+    expect(calls, 4); // one success plus three offline mirrors
     clock = clock.add(const Duration(hours: 24));
     await expectLater(s.nearby(41, 29), throwsA(isA<ParkingSearchException>()));
   });
   test('429 establishes shared cooldown rather than hammering another area',
       () async {
     var calls = 0;
-    final s = ParkingSearchService(client: MockClient((_) async {
+    final s = ParkingSearchService(client: overpassClient((_) async {
       calls++;
       return http.Response('', 429);
     }));
@@ -172,7 +194,7 @@ void main() {
   test('corrupt disk cache falls through to live results', () async {
     SharedPreferences.setMockInitialValues({'cepqar_osm_parking_v1': 'broken'});
     final s =
-        ParkingSearchService(client: MockClient((_) async => success([osm()])));
+        ParkingSearchService(client: overpassClient((_) async => success([osm()])));
     expect((await s.nearby(41, 29)).places.length, 1);
   });
   test('request spacing is applied when moving between uncached areas',
@@ -185,7 +207,7 @@ void main() {
         delay: (d) async {
           waits.add(d);
         },
-        client: MockClient((_) async {
+        client: overpassClient((_) async {
           calls++;
           return success([]);
         }));
@@ -195,3 +217,4 @@ void main() {
     expect(waits, [const Duration(seconds: 5)]);
   });
 }
+

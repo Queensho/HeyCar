@@ -51,9 +51,11 @@ void main(){
       expect(find.byKey(const ValueKey('owner-home-services-promo')),findsNothing);
       expect(find.byKey(const ValueKey('owner-home-quick-panel')),findsNothing);
       await tester.ensureVisible(find.byKey(const ValueKey('premium-home-vehicle')));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('premium-home-vehicle')));
       expect(vehicles,1);
       await tester.ensureVisible(find.byKey(const ValueKey('premium-home-monthly-summary')));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('premium-home-monthly-summary')));
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('owner-monthly-summary-panel')),findsOneWidget);

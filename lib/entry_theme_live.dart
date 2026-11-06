@@ -75,6 +75,7 @@ class ThemeOwnerApp extends StatelessWidget{
       builder:(_,tokens,__)=>MaterialApp(
         navigatorKey:cepqarNavigatorKey,
         debugShowCheckedModeBanner:false,
+        builder:(context,child)=>CQAppFrame(child:child!),
         locale:const Locale('tr','TR'),
         supportedLocales:const [Locale('tr','TR')],
         localizationsDelegates:const [

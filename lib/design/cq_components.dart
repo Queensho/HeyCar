@@ -3,6 +3,25 @@ import 'package:flutter/material.dart';
 import 'cq_layout.dart';
 import 'cq_motion.dart';
 
+/// Keep navigation titles inside the toolbar at accessibility text sizes.
+class CQAppFrame extends StatelessWidget {
+  const CQAppFrame({super.key, required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final titleHeight = MediaQuery.textScalerOf(context).scale(20);
+    return Theme(
+      data: theme.copyWith(appBarTheme: theme.appBarTheme.copyWith(
+        toolbarHeight: titleHeight > 26 ? titleHeight * 2.4 + 16 :
+          theme.appBarTheme.toolbarHeight,
+      )),
+      child: child,
+    );
+  }
+}
+
 /// Constrain readable content using the space actually offered by the parent.
 /// Scrolling remains owned by the page, preserving its refresh/controller state.
 class CQContent extends StatelessWidget {

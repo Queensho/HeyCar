@@ -119,9 +119,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Burada Park Ettim'), findsOneWidget);
     expect(tester.takeException(), isNull);
-    await tester.drag(find.byType(ListView), const Offset(0, -350));
+    await tester.drag(find.byWidgetPredicate((w)=>w is Scrollable&&w.axisDirection==AxisDirection.down).first, const Offset(0, -350));
     await tester.pumpAndSettle();
     expect(find.text('Saat bilgisi eklenmemiş'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }
+
