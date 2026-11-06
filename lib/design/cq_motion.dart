@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'cq_layout.dart';
 
 /// Motion tokens: short, responsive transitions; no decorative perpetual loops.
 abstract final class CQMotion {
@@ -66,7 +67,7 @@ class _CQPressableState extends State<CQPressable> {
             onTap: widget.onTap,
             onHighlightChanged: _setPressed,
             child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 44),
+              constraints: CQLayout.touchConstraints,
               child: widget.child,
             ),
           ),
