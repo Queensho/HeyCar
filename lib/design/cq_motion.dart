@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 
 /// Motion tokens: short, responsive transitions; no decorative perpetual loops.
 abstract final class CQMotion {
