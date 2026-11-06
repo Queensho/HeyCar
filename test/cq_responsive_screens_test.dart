@@ -22,6 +22,12 @@ void main() {
   for (final width in [320.0, 360.0, 393.0, 430.0]) {
     for (final scale in [1.0, 1.5, 2.0, 3.0]) {
       testWidgets('owner screens at $width dp, text $scale', (tester) async {
+        final previousErrorHandler=FlutterError.onError;
+        FlutterError.onError=(details){
+          FlutterError.dumpErrorToConsole(details,forceReport:true);
+          previousErrorHandler?.call(details);
+        };
+        addTearDown(()=>FlutterError.onError=previousErrorHandler);
         SharedPreferences.setMockInitialValues({});
         OnboardingDraft.userId = '';
         tester.view.physicalSize = Size(width, 852);

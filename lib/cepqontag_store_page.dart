@@ -256,85 +256,29 @@ class _CepqontagStorePageState extends State<CepqontagStorePage> {
     );
   }
 
-  Widget _hero() => Container(
-        margin: const EdgeInsets.fromLTRB(16, 8, 16, 14),
-        height:166*(MediaQuery.textScalerOf(context).scale(14)/14).clamp(1.0,5.0),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF0E1020), Color(0xFF351281), Color(0xFF713BFF)],
-          ),
-        ),
-        child: Stack(
-          clipBehavior: Clip.hardEdge,
-          children: [
-            Positioned(
-              right: -12,
-              bottom: -8,
-              child: Opacity(
-                opacity: .42,
-                child: Image.asset(
-                  'assets/Etiket4.png',
-                  width: 170,
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                ),
-              ),
-            ),
-            Positioned(
-              left: 18,
-              top: 17,
-              right: 148,
-              bottom: 16,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: _lime,
-                      borderRadius: BorderRadius.circular(9),
-                    ),
-                    child: const Text(
-                      'CEPQONTAG MAĞAZA',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: .6,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    (storeConfig['heroTitle']??'Aracın için hazır.').toString(),
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 27,
-                      height: .95,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    (storeConfig['heroBody']??'Yeni araç, yedek etiket ve gelecek akıllı ürünler tek yerde.').toString(),
-                    maxLines: 2,
-                    style: TextStyle(
-                      color: Color(0xFFD7D0EA),
-                      fontSize: 10.5,
-                      height: 1.25,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
+  Widget _hero()=>Container(
+    margin:const EdgeInsets.fromLTRB(16,8,16,14),
+    constraints:const BoxConstraints(minHeight:166),
+    clipBehavior:Clip.antiAlias,
+    decoration:BoxDecoration(borderRadius:BorderRadius.circular(24),
+      gradient:const LinearGradient(begin:Alignment.centerLeft,end:Alignment.centerRight,
+        colors:[Color(0xFF0E1020),Color(0xFF351281),Color(0xFF713BFF)])),
+    child:Stack(children:[
+      Positioned(right:-12,bottom:-8,child:Opacity(opacity:.20,child:Image.asset(
+        'assets/Etiket4.png',width:170,fit:BoxFit.contain,
+        errorBuilder:(_,__,___)=>const SizedBox.shrink()))),
+      Padding(padding:const EdgeInsets.all(18),child:Column(
+        mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
+          const Text('CepQontag Mağaza',style:TextStyle(color:Color(0xFFB9FF45),fontSize:13,fontWeight:FontWeight.w700)),
+          const SizedBox(height:10),
+          Text((storeConfig['heroTitle']??'Aracın için hazır.').toString(),
+            style:const TextStyle(color:Colors.white,fontSize:27,fontWeight:FontWeight.w800)),
+          const SizedBox(height:12),
+          Text((storeConfig['heroBody']??'Yeni araç, yedek etiket ve gelecek akıllı ürünler tek yerde.').toString(),
+            style:const TextStyle(color:Color(0xFFE5DDFB),fontSize:13,height:1.35)),
+        ])),
+    ]),
+  );
 
   Widget _categoryChip(String value) {
     final selected = category == value;
