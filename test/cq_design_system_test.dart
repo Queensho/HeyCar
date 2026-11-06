@@ -39,6 +39,20 @@ void main() {
     expect(pressableSize.height, greaterThanOrEqualTo(44));
   });
 
+  testWidgets('pressable preserves long press callback', (tester) async {
+    var longPresses = 0;
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(body: CQPressable(
+        onTap: () {},
+        onLongPress: () => longPresses++,
+        child: const Text('Shortcut'),
+      )),
+    ));
+    await tester.longPress(find.text('Shortcut'));
+    await tester.pumpAndSettle();
+    expect(longPresses, 1);
+  });
+
   testWidgets('reveal hides content when invisible', (tester) async {
     await tester.pumpWidget(const MaterialApp(
       home: Scaffold(body: CQReveal(visible: false, child: Text('Secret'))),
