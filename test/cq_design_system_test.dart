@@ -34,6 +34,9 @@ void main() {
     await tester.tap(find.text('Open'));
     await tester.pumpAndSettle();
     expect(taps, 1);
+    final pressableSize = tester.getSize(find.byType(CQPressable));
+    expect(pressableSize.width, greaterThanOrEqualTo(44));
+    expect(pressableSize.height, greaterThanOrEqualTo(44));
   });
 
   testWidgets('reveal hides content when invisible', (tester) async {
