@@ -40,7 +40,7 @@ class ValetInfoPage extends StatelessWidget {
                           tooltip:'Geri',
                           onPressed: () => Navigator.pop(context),
                           padding: EdgeInsets.zero,
-                          constraints: const CQLayout.touchConstraints,
+                          constraints: CQLayout.touchConstraints,
                           icon: Icon(Icons.arrow_back_rounded, color: text, size: 25),
                         ),
                         const SizedBox(width: 6),
