@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 /// Apple does not prescribe universal card dimensions.
 abstract final class CQLayout {
   static const double minimumTouchTarget = 44;
+  static const double maximumContentWidth = 600;
   static const double horizontalInset = 16;
   static const double sectionSpacing = 24;
   static const double cardSpacing = 12;
@@ -15,7 +16,7 @@ abstract final class CQLayout {
 
   static double contentWidth(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
-    return (width - horizontalInset * 2).clamp(0.0, 600.0);
+    return (width - horizontalInset * 2).clamp(0.0, maximumContentWidth);
   }
 
   static EdgeInsets get screenInsets =>
@@ -55,3 +56,4 @@ class CQCard extends StatelessWidget {
     );
   }
 }
+

@@ -13,7 +13,8 @@ abstract final class CQMotion {
   /// Honor both platform accessibility preferences and Flutter's ticker policy.
   static bool reduceMotion(BuildContext context) {
     return MediaQuery.disableAnimationsOf(context) ||
-        MediaQuery.accessibleNavigationOf(context);
+        MediaQuery.accessibleNavigationOf(context) ||
+        !TickerMode.of(context);
   }
 
   static Duration duration(BuildContext context, Duration normal) =>
@@ -45,6 +46,12 @@ class CQPressable extends StatefulWidget {
 class _CQPressableState extends State<CQPressable> {
   bool _pressed = false;
 
+  @override
+  void didUpdateWidget(CQPressable oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.onTap == null && widget.onLongPress == null) _pressed = false;
+  }
+
   void _setPressed(bool value) {
     if ((widget.onTap == null && widget.onLongPress == null) || !mounted) return;
     setState(() => _pressed = value);
@@ -57,6 +64,9 @@ class _CQPressableState extends State<CQPressable> {
       button: true,
       enabled: widget.onTap != null || widget.onLongPress != null,
       label: widget.semanticLabel,
+      excludeSemantics: widget.semanticLabel != null,
+      onTap: widget.semanticLabel != null ? widget.onTap : null,
+      onLongPress: widget.semanticLabel != null ? widget.onLongPress : null,
       child: AnimatedScale(
         scale: reduce || !_pressed ? 1 : 0.985,
         duration: CQMotion.duration(context, CQMotion.press),
@@ -106,3 +116,4 @@ class CQReveal extends StatelessWidget {
     );
   }
 }
+

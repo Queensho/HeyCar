@@ -1,3 +1,4 @@
+import 'design/cq_motion.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -61,14 +62,15 @@ class CepqarThemeSwitch extends StatelessWidget {
       valueListenable: CepqarTheme.mode,
       builder: (_, mode, __) {
         final light = mode == ThemeMode.light;
-        return InkWell(
+        return CQPressable(
+          semanticLabel: light ? 'Koyu temaya geç' : 'Açık temaya geç',
           onTap: CepqarTheme.toggle,
-          borderRadius: BorderRadius.circular(30),
+          borderRadius: 30,
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 320),
+            duration: CQMotion.duration(context, CQMotion.feedback),
             curve: Curves.easeOutCubic,
             width: 64,
-            height: 36,
+            height: 44,
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
               color: light ? const Color(0xFFF0E9FF) : const Color(0xFF17223A),
@@ -80,8 +82,8 @@ class CepqarThemeSwitch extends StatelessWidget {
             child: Stack(
               children: [
                 AnimatedAlign(
-                  duration: const Duration(milliseconds: 320),
-                  curve: Curves.easeOutBack,
+                  duration: CQMotion.duration(context, CQMotion.feedback),
+                  curve: CQMotion.standard,
                   alignment: light ? Alignment.centerRight : Alignment.centerLeft,
                   child: Container(
                     width: 28,
@@ -97,7 +99,7 @@ class CepqarThemeSwitch extends StatelessWidget {
                       ],
                     ),
                     child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 250),
+                      duration: CQMotion.duration(context, CQMotion.feedback),
                       transitionBuilder: (child, animation) => RotationTransition(
                         turns: animation,
                         child: ScaleTransition(scale: animation, child: child),
@@ -119,3 +121,4 @@ class CepqarThemeSwitch extends StatelessWidget {
     );
   }
 }
+

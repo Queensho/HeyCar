@@ -23,6 +23,7 @@ import 'qr_security_page.dart';
 import 'driver_invite_page.dart';
 import 'driver_chat_page.dart';
 import 'cepqar_theme.dart';
+import 'design/cq_components.dart';
 import 'push_notifications.dart';
 import 'call_permission_setup.dart';
 import 'owner_auth.dart';
@@ -82,7 +83,7 @@ class ThemeOwnerApp extends StatelessWidget{
           GlobalCupertinoLocalizations.delegate,
         ],
         themeMode:mode,
-        theme:ThemeData(
+        theme:CQTheme.apply(ThemeData(
           useMaterial3:true,
           brightness:Brightness.light,
           scaffoldBackgroundColor:tokens.background,
@@ -91,8 +92,8 @@ class ThemeOwnerApp extends StatelessWidget{
           dividerColor:CepqarTheme.lightLine,
           fontFamily:'sans',
           extensions:<ThemeExtension<dynamic>>[tokens],
-        ),
-        darkTheme:ThemeData(
+        )),
+        darkTheme:CQTheme.apply(ThemeData(
           useMaterial3:true,
           brightness:Brightness.dark,
           scaffoldBackgroundColor:CepqarTheme.darkBg,
@@ -101,7 +102,7 @@ class ThemeOwnerApp extends StatelessWidget{
           dividerColor:CepqarTheme.darkLine,
           fontFamily:'sans',
           extensions:<ThemeExtension<dynamic>>[tokens],
-        ),
+        )),
         home:const ThemeOwnerEntry(),
       ),
     )),
@@ -384,3 +385,4 @@ Future<void> _saveSession()async{final p=await SharedPreferences.getInstance();a
 void next()=>setState(()=>index=(index+1).clamp(0,4));void back()=>setState(()=>index=(index-1).clamp(0,4));Future<void> done()async{await _saveSession();if(mounted){setState((){hasSession=true;loginMode=false;registerMode=false;});Future<void>.delayed(const Duration(milliseconds:350),(){if(mounted)_openPendingPush();});}}void resetToWelcome()=>setState((){loginMode=false;registerMode=false;index=0;});
 @override void dispose(){WidgetsBinding.instance.removeObserver(this);PushNotifications.onNavigationRequested=null;super.dispose();}
 @override Widget build(BuildContext context){if(runtimeLoading||restoring)return const CepqontagSplash();final cfg=runtimeConfig;if(cfg!=null&&(cfg.maintenanceMode||cfg.updateRequired))return AppAccessGatePage(config:cfg,onRetry:()=>_loadRuntimeConfig());if(!kIsWeb&&!callPermissionSetupDone)return CallPermissionSetupPage(onDone:()=>setState(()=>callPermissionSetupDone=true));if(driverId.isNotEmpty&&!hasSession)return DriverHomePage(userId:driverId);if(hasSession)return ownerHome();if(loginMode)return Stack(children:[PasswordOwnerLoginScreen(onDone:done,onBack:resetToWelcome),Positioned(left:20,right:20,bottom:16,child:SafeArea(child:SizedBox(height:46,child:OutlinedButton.icon(onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const DriverCodeEntryPage())),style:OutlinedButton.styleFrom(backgroundColor:Colors.white,foregroundColor:const Color(0xFF5E24F5),side:const BorderSide(color:Color(0xFF5E24F5),width:1.5),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15))),icon:const Icon(Icons.vpn_key_outlined,size:18),label:const Text('Davet kodum var',style:TextStyle(fontSize:12.5,fontWeight:FontWeight.w800))))))]);if(registerMode)return OwnerRegisterScreen(onBack:resetToWelcome,onContinue:()async{if(OnboardingDraft.transferCode.isNotEmpty){await done();}else if(mounted){setState((){registerMode=false;index=1;});}});final screens=<Widget>[OwnerWelcomeOverlay(onRegister:()=>setState(()=>registerMode=true),onLogin:()=>setState(()=>loginMode=true)),OwnerVehicleSetupPage(onDone:next,onBack:resetToWelcome),RealQrScanPage(onFound:next,onBack:back),RealQrConfirmPage(onDone:next,onBack:back),OwnerGuidePage(onDone:done,onBack:back)];return screens[index];}}
+

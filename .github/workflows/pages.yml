@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -28,6 +28,12 @@ jobs:
           cache: true
       - name: Resolve Flutter dependencies
         run: flutter pub get
+      - name: Analyze responsive design system and owner screens
+        run: flutter analyze lib/design lib/cepqar_theme.dart lib/entry_theme_live.dart lib/owner_dashboard_live.dart lib/owner_home_redesign.dart lib/owner_notifications_page.dart lib/owner_chat_page.dart lib/owner_vehicles_page.dart lib/owner_settings_page.dart lib/owner_settings_detail.dart test/cq_responsive_screens_test.dart --no-fatal-infos --no-fatal-warnings
+      - name: Verify 320 360 393 430 dp and accessibility text sizes
+        run: flutter test test/cq_responsive_screens_test.dart
+      - name: Run complete Flutter test suite
+        run: flutter test
       - name: Check redesigned notifications compatibility with Android runtime patch
         run: python3 -m unittest discover -s tool/tests -p test_fix_runtime_android.py -v
       - name: Analyze Maintenance V2 screens
@@ -97,7 +103,7 @@ jobs:
         run: python3 -m unittest discover -s tool -p test_callkit_flutter_route_patch.py
 
   build:
-    if: github.event_name != 'pull_request' || github.head_ref == 'rollback/owner-app-15oct-keep-backend-20261018'
+    if: github.event_name != 'pull_request' || github.head_ref == 'rollback/owner-app-15oct-keep-backend-20261018' || github.head_ref == 'design/apple-hig-responsive-20261106'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -379,4 +385,5 @@ jobs:
           name: cepqontag-owner-android-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
           retention-days: 14
+
 

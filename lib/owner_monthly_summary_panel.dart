@@ -1,3 +1,4 @@
+import 'design/cq_components.dart';
 import 'package:flutter/material.dart';
 import 'design/cq_motion.dart';
 import 'design/cq_layout.dart';
@@ -42,25 +43,13 @@ class OwnerMonthlySummaryPanel extends StatelessWidget {
         ],
       ),
       child:Column(mainAxisSize:MainAxisSize.min,children:[
-        Row(children:[
-          const Icon(Icons.bar_chart_rounded,color:Color(0xFF651FFF),size:24),
-          const SizedBox(width:7),
-          const Expanded(child:Text('Bu Ayki Özetim',
-            maxLines:1,overflow:TextOverflow.ellipsis,
-            style:TextStyle(color:Color(0xFF101426),fontSize:16,
-              fontWeight:FontWeight.w800))),
-          InkWell(
-            key:const ValueKey('owner-monthly-view-all'),onTap:onViewAll,
-            borderRadius:BorderRadius.circular(10),
-            child:const Padding(padding:EdgeInsets.symmetric(vertical:7,horizontal:2),
-              child:Row(mainAxisSize:MainAxisSize.min,children:[
-                Text('Tümünü Gör',style:TextStyle(color:Color(0xFF651FFF),
-                  fontSize:11,fontWeight:FontWeight.w700)),
-                Icon(Icons.chevron_right_rounded,color:Color(0xFF651FFF),size:19),
-              ]),
-            ),
-          ),
-        ]),
+        CQSectionHeading(
+          title:const Text('Bu Ayki Özetim',style:TextStyle(
+            color:Color(0xFF101426),fontSize:16,fontWeight:FontWeight.w800)),
+          action:TextButton(
+            key:const ValueKey('owner-monthly-view-all'),onPressed:onViewAll,
+            child:const Text('Tümünü Gör')),
+        ),
         const SizedBox(height:12),
         if(isLoading)
           const SizedBox(height:64,child:Center(child:SizedBox(
@@ -68,7 +57,7 @@ class OwnerMonthlySummaryPanel extends StatelessWidget {
               strokeWidth:2.5,color:Color(0xFF651FFF)),
           )))
         else if(hasError)
-          SizedBox(height:64,child:Row(
+          ConstrainedBox(constraints:const BoxConstraints(minHeight:64),child:Row(
             mainAxisAlignment:MainAxisAlignment.center,children:[
               const Flexible(child:Text('İstatistikler yüklenemedi.',
                 style:TextStyle(color:Color(0xFF737B94),fontSize:12))),
@@ -77,12 +66,13 @@ class OwnerMonthlySummaryPanel extends StatelessWidget {
             ],
           ))
         else if(metrics.isEmpty)
-          const SizedBox(height:64,child:Center(child:Text(
+          const Padding(padding:EdgeInsets.symmetric(vertical:16),child:Center(child:Text(
             'Henüz istatistik bulunmuyor.',
             style:TextStyle(color:Color(0xFF737B94),fontSize:12),
           )))
         else LayoutBuilder(builder:(context,box){
-          final columns=box.maxWidth>=320 && MediaQuery.textScalerOf(context).scale(12)<16 ?4:2;
+          final scaled=MediaQuery.textScalerOf(context).scale(12);
+          final columns=scaled>24?1:(box.maxWidth>=320 && scaled<16?4:2);
           const gap=7.0;
           final count=metrics.length>4?4:metrics.length;
           return Column(children:[
@@ -167,3 +157,4 @@ class _MonthlyMetricTile extends StatelessWidget{
     );
   }
 }
+

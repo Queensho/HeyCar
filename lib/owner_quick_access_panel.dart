@@ -49,14 +49,23 @@ class OwnerQuickAccessPanel extends StatelessWidget {
     final visible=items;
     return LayoutBuilder(builder:(context,c){
       final compact=c.maxWidth<348;
-      final scaledLabel=MediaQuery.textScalerOf(context).scale(12);
-      final largeText=scaledLabel>15;
-      final extremeText=scaledLabel>28;
+      final scaler=MediaQuery.textScalerOf(context);
       final side=compact?42.0:48.0;
       final fontSize=compact?10.2:11.5;
+      final itemWidth=scaler.scale(12)>15
+        ?(scaler.scale(12)*6).clamp(108.0,220.0):(compact?82.0:90.0);
+      var labelHeight=0.0;
+      for(final item in visible){
+        final painter=TextPainter(text:TextSpan(text:item.title,
+          style:TextStyle(fontSize:fontSize,fontWeight:FontWeight.w600,height:1.05)),
+          textScaler:scaler,textDirection:Directionality.of(context))..layout(maxWidth:itemWidth-4);
+        if(painter.height>labelHeight)labelHeight=painter.height;
+        painter.dispose();
+      }
+      final panelHeight=(side+8+labelHeight+24).clamp(116.0,double.infinity);
       return Container(
         key:const ValueKey('owner-home-quick-panel'),
-        height:extremeText?220:(largeText?(scaledLabel>22?180:148):116),
+        height:panelHeight,
         clipBehavior:Clip.antiAlias,
         decoration:BoxDecoration(
           color:const Color(0xFFFFFFFF),
@@ -79,7 +88,7 @@ class OwnerQuickAccessPanel extends StatelessWidget {
             color:const Color(0xFFE7E7EF),
           ),
           itemBuilder:(context,i)=>SizedBox(
-            width:extremeText?156:(largeText?(scaledLabel>22?132:108):(compact?82:90)),
+            width:itemWidth,
             child:
               CQPressable(
                 key:ValueKey('owner-quick-'+visible[i].id),
@@ -123,9 +132,9 @@ class OwnerQuickAccessPanel extends StatelessWidget {
                               color:visible[i].iconColor,size:24),
                       ),
                       const SizedBox(height:8),
-                      Flexible(child:Text(
+                      Text(
                         visible[i].title,
-                        maxLines:2,softWrap:true,
+                        softWrap:true,
                         overflow:TextOverflow.ellipsis,
                         textAlign:TextAlign.center,
                         style:TextStyle(
@@ -134,7 +143,7 @@ class OwnerQuickAccessPanel extends StatelessWidget {
                           fontWeight:FontWeight.w600,
                           height:1.05,
                         ),
-                      )),
+                      ),
                     ],
                   ),
                 ),
@@ -145,3 +154,4 @@ class OwnerQuickAccessPanel extends StatelessWidget {
     });
   }
 }
+

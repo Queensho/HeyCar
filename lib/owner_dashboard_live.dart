@@ -4,7 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'onboarding_backend.dart';import 'qr_backend.dart';import 'vehicle_api.dart';import 'owner_notifications_page.dart';import 'owner_settings_page.dart';import 'owner_vehicles_page.dart';import 'owner_dashboard_stats.dart';import 'parking_location_card.dart';import 'owner_shortcuts.dart';import 'cepqar_theme.dart';import 'maintenance_page.dart';import 'vehicle_reminders_page.dart';import 'cepqar_offers_page.dart';
+import 'onboarding_backend.dart';import 'qr_backend.dart';import 'vehicle_api.dart';import 'owner_notifications_page.dart';import 'owner_settings_page.dart';import 'owner_vehicles_page.dart';import 'owner_dashboard_stats.dart';import 'parking_location_card.dart';import 'owner_shortcuts.dart';import 'cepqar_theme.dart';
+import 'design/cq_components.dart';
+import 'design/cq_layout.dart';
+import 'design/cq_motion.dart';import 'maintenance_page.dart';import 'vehicle_reminders_page.dart';import 'cepqar_offers_page.dart';
 import 'owner_auth.dart';
 import 'qr_security_page.dart';
 import 'admin_promo_banner.dart';
@@ -32,7 +35,7 @@ void _apply(Map v,{bool notify=true}){QrDraft.vehicleId='${v['id']??''}';Onboard
 Future<void> _persistVehicle()async{final p=await SharedPreferences.getInstance();await p.setString('owner_vehicle_id',QrDraft.vehicleId);await p.setString('owner_plate',QrDraft.plate);await p.setString('owner_make',QrDraft.make);await p.setString('owner_model',QrDraft.model);await p.setString('owner_vehicle_type',QrDraft.vehicleType);await p.setString('owner_qr_token',QrDraft.token);await p.setString('owner_qr_scan_secret',QrDraft.scanSecret);}
 Future<void> _vehicleChanged()async{setState(()=>parked=false);await _loadVehicle();if(mounted)setState((){});}
 Future<void> _parking()async{if(vid.isEmpty)return;bool garage=false,street=false;try{final p=await SharedPreferences.getInstance(),prefix='street_park_${vid}_';street=p.getDouble('${prefix}lat')!=null&&p.getDouble('${prefix}lng')!=null&&p.getString('${prefix}time')!=null;}catch(_){}try{final r=await OwnerHttp.get(Uri.parse('${QrBackend.baseUrl}/api/vehicles/$vid/parking'),json:false);if(r.statusCode>=200&&r.statusCode<300){final d=jsonDecode(r.body);garage=d is Map&&d['parking'] is Map;}}catch(_){}if(mounted)setState(()=>parked=garage||street);}
-void _qr(){final t=QrDraft.token.trim();if(t.isEmpty){ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('${QrDraft.plate.trim().isEmpty?'Seçili araç':QrDraft.plate} için QR aktif değil. Araçlarım bölümünden QR Aktif Et’e bas.')));return;}final secret=QrDraft.scanSecret.trim();final u='https://queensho.github.io/HeyCar/?tag=${Uri.encodeComponent(t)}${secret.isEmpty?'':'&s=${Uri.encodeComponent(secret)}'}';showModalBottomSheet(context:context,backgroundColor:CepqarTheme.panel,builder:(c)=>Padding(padding:const EdgeInsets.all(22),child:Column(mainAxisSize:MainAxisSize.min,children:[Text('${QrDraft.plate} QR',style:TextStyle(color:CepqarTheme.text,fontSize:23,fontWeight:FontWeight.w900)),const SizedBox(height:14),Container(width:225,height:225,padding:const EdgeInsets.all(12),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(22)),child:QrImageView(data:u,version:QrVersions.auto,backgroundColor:Colors.white)),const SizedBox(height:10),Text(t,style:TextStyle(color:CepqarTheme.muted,fontWeight:FontWeight.w700))])));}
+void _qr(){final t=QrDraft.token.trim();if(t.isEmpty){ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('${QrDraft.plate.trim().isEmpty?'Seçili araç':QrDraft.plate} için QR aktif değil. Araçlarım bölümünden QR Aktif Et’e bas.')));return;}final secret=QrDraft.scanSecret.trim();final u='https://queensho.github.io/HeyCar/?tag=${Uri.encodeComponent(t)}${secret.isEmpty?'':'&s=${Uri.encodeComponent(secret)}'}';showModalBottomSheet(context:context,isScrollControlled:true,useSafeArea:true,backgroundColor:CepqarTheme.panel,builder:(c)=>CQSheetBody(padding:const EdgeInsets.all(22),child:Column(mainAxisSize:MainAxisSize.min,children:[Text('${QrDraft.plate} QR',style:TextStyle(color:CepqarTheme.text,fontSize:23,fontWeight:FontWeight.w900)),const SizedBox(height:14),Container(width:225,height:225,padding:const EdgeInsets.all(12),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(22)),child:QrImageView(data:u,version:QrVersions.auto,backgroundColor:Colors.white)),const SizedBox(height:10),Text(t,style:TextStyle(color:CepqarTheme.muted,fontWeight:FontWeight.w700))])));}
 Future<void> _park()async{if(vid.isEmpty)return;await showModalBottomSheet(context:context,isScrollControlled:true,backgroundColor:CepqarTheme.bg,builder:(c)=>Padding(padding:const EdgeInsets.all(18),child:ParkingLocationCard(vehicleId:vid)));await _parking();}
 void action(String a){
   if(a=='qr')_qr();
@@ -52,7 +55,7 @@ void action(String a){
   else if(a=='app_offers')Navigator.push(context,MaterialPageRoute(builder:(_)=>const CepqarOffersPage()));
   else if(a=='app_roadside_help')Navigator.push(context,MaterialPageRoute(builder:(_)=>const RoadsideHelpPage(initialTab:0)));
   else if(a=='maintenance')Navigator.push(context,MaterialPageRoute(builder:(_)=>MaintenancePage(plate:QrDraft.plate,title:'${QrDraft.make} ${QrDraft.model}'.trim())));
-  else if(a=='reminders'&&vid.isNotEmpty)Navigator.push(context,MaterialPageRoute(builder:(_)=>VehicleRemindersPage(vehicleId:vid)));
+  else if((a=='reminders'||a=='inspection')&&vid.isNotEmpty)Navigator.push(context,MaterialPageRoute(builder:(_)=>VehicleRemindersPage(vehicleId:vid)));
   else if(a=='weather'){
     final weatherService=WeatherService();
     Navigator.push(context,MaterialPageRoute(builder:(_)=>WeatherDetailsPage(service:weatherService))).whenComplete(weatherService.dispose);
@@ -69,33 +72,25 @@ void _showQuickAccess(){
   ];
   showModalBottomSheet<void>(
     context:context,isScrollControlled:true,showDragHandle:true,
-    builder:(sheetContext)=>SafeArea(child:Padding(
-      padding:const EdgeInsets.fromLTRB(18,8,18,24),
+    useSafeArea:true,
+    sheetAnimationStyle:AnimationStyle(
+      duration:CQMotion.duration(context,CQMotion.sheet),
+      reverseDuration:CQMotion.duration(context,CQMotion.feedback)),
+    builder:(sheetContext)=>CQSheetBody(
       child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
-        const Text('Hızlı Erişim',style:TextStyle(fontSize:22,fontWeight:FontWeight.w900)),
+        const Text('Hızlı Erişim',style:TextStyle(fontSize:22,fontWeight:FontWeight.w800)),
         const SizedBox(height:16),
-        GridView.builder(shrinkWrap:true,physics:const NeverScrollableScrollPhysics(),
-          gridDelegate:const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount:3,mainAxisSpacing:10,crossAxisSpacing:10,childAspectRatio:1.1),
-          itemCount:actions.length,itemBuilder:(_,i){
-            final item=actions[i];
-            return InkWell(
-              onTap:(){Navigator.pop(sheetContext);action(item.action);},
-              borderRadius:BorderRadius.circular(18),
-              child:Container(
-                decoration:BoxDecoration(color:const Color(0xFFF3EDFF),
-                  borderRadius:BorderRadius.circular(18)),
-                child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[
-                  Icon(item.icon,color:const Color(0xFF651FFF),size:27),
-                  const SizedBox(height:8),
-                  Text(item.title,textAlign:TextAlign.center,
-                    style:const TextStyle(fontSize:11,fontWeight:FontWeight.w700)),
-                ]),
-              ),
-            );
-          }),
+        LayoutBuilder(builder:(context,box){
+          final columns=MediaQuery.textScalerOf(context).scale(14)>20?1:2;
+          final width=(box.maxWidth-CQLayout.cardSpacing*(columns-1))/columns;
+          return Wrap(spacing:CQLayout.cardSpacing,runSpacing:CQLayout.cardSpacing,
+            children:actions.map((item)=>SizedBox(width:width,child:FilledButton.tonalIcon(
+              onPressed:(){Navigator.pop(sheetContext);action(item.action);},
+              icon:Icon(item.icon),label:Text(item.title),
+            ))).toList());
+        }),
       ]),
-    )),
+    ),
   );
 }
 @override Widget build(BuildContext context)=>ValueListenableBuilder<ThemeMode>(
@@ -132,46 +127,13 @@ void _showQuickAccess(){
       return Scaffold(
         backgroundColor:CepqarTheme.bg,
         body:IndexedStack(index:tab,children:pages),
-        bottomNavigationBar:SafeArea(
-          top:false,
-          child:Container(
-            height:66,
-            margin:const EdgeInsets.fromLTRB(14,0,14,8),
-            padding:const EdgeInsets.symmetric(horizontal:5,vertical:5),
-            decoration:BoxDecoration(
-              color:(tab==4||CepqarTheme.isLight)?Colors.white:const Color(0xFF090F1D),
-              borderRadius:BorderRadius.circular(25),
-              border:Border.all(color:(tab==4||CepqarTheme.isLight)?const Color(0xFFE6E6F0):const Color(0xFF1B2540)),
-              boxShadow:[BoxShadow(color:Colors.black.withValues(alpha:(tab==4||CepqarTheme.isLight) ? 0.08 : 0.30),blurRadius:22,offset:const Offset(0,8))],
-            ),
-            child:Row(children:List.generate(navTabs.length,(i){
-              final active=tab==navTabs[i];
-              return Expanded(
-                child:InkWell(
-                  onTap:()=>navTabs[i]==-1?_showQuickAccess():setState(()=>tab=navTabs[i]),
-                  borderRadius:BorderRadius.circular(18),
-                  child:AnimatedContainer(
-                    duration:const Duration(milliseconds:180),
-                    decoration:BoxDecoration(
-                      color:active?CepqarTheme.purple.withValues(alpha:(tab==4||CepqarTheme.isLight) ? 0.10 : 0.18):Colors.transparent,
-                      borderRadius:BorderRadius.circular(20),
-                    ),
-                    child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[
-                      Stack(clipBehavior:Clip.none,children:[
-                        Icon(icons[i],size:22,color:active?const Color(0xFF651FFF):(tab==4?const Color(0xFF778096):CepqarTheme.muted)),
-                        
-                      ]),
-                      const SizedBox(height:3),
-                      Text(labels[i],maxLines:1,style:TextStyle(fontSize:CepqarTheme.navText,fontWeight:active?FontWeight.w800:FontWeight.w600,color:active?CepqarTheme.purple:CepqarTheme.muted)),
-                    ]),
-                  ),
-                ),
-              );
-            })),
-          ),
+        bottomNavigationBar:CQNavigationBar(
+          labels:labels,icons:icons,selectedIndex:navTabs.indexOf(tab),
+          onSelected:(i)=>navTabs[i]==-1?_showQuickAccess():setState(()=>tab=navTabs[i]),
         ),
       );
     },
   ),
 );
 }
+

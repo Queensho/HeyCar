@@ -1,3 +1,4 @@
+import 'design/cq_components.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -42,7 +43,7 @@ void _select(Map<String,dynamic> v,{bool notify=true}){final id='${v['id']??''}'
 Future<void> _persistSelection()async{final p=await SharedPreferences.getInstance();await p.setString('owner_vehicle_id',QrDraft.vehicleId);await p.setString('owner_plate',QrDraft.plate);await p.setString('owner_make',QrDraft.make);await p.setString('owner_model',QrDraft.model);await p.setString('owner_vehicle_type',QrDraft.vehicleType);await p.setString('owner_qr_token',QrDraft.token);await p.setString('owner_qr_scan_secret',QrDraft.scanSecret);}
 Future<void> _qr(Map<String,dynamic> v)async{_select(v);if('${v['qr_token']??''}'.trim().isNotEmpty){_showQr(v);return;}await Navigator.push(context,MaterialPageRoute(builder:(c)=>RealQrScanPage(onBack:()=>Navigator.pop(c),onFound:(){Navigator.pop(c);_activate(v);})));}
 Future<void> _activate(Map<String,dynamic> v)async{try{await QrBackend.activate(token:QrDraft.token,vehicleId:'${v['id']}',plate:'${v['plate']}',make:'${v['make']}',model:'${v['model']??''}');if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('${v['plate']} için QR aktif edildi.')));await _load();widget.onVehicleChanged?.call();}catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString().replaceFirst('Exception: ',''))));}}
-void _showQr(Map<String,dynamic> v){final t='${v['qr_token']??''}'.trim(),secret='${v['qr_scan_secret']??''}'.trim(),u='https://queensho.github.io/HeyCar/?tag=${Uri.encodeComponent(t)}${secret.isEmpty?'':'&s=${Uri.encodeComponent(secret)}'}';showModalBottomSheet(context:context,backgroundColor:_panel,builder:(c)=>Padding(padding:const EdgeInsets.all(22),child:Column(mainAxisSize:MainAxisSize.min,children:[Text('${v['plate']} QR',style:TextStyle(color:_text,fontSize:22,fontWeight:FontWeight.w900)),const SizedBox(height:14),Container(width:220,height:220,padding:const EdgeInsets.all(12),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(20)),child:QrImageView(data:u,version:QrVersions.auto,backgroundColor:Colors.white,eyeStyle:const QrEyeStyle(eyeShape:QrEyeShape.square,color:Colors.black),dataModuleStyle:const QrDataModuleStyle(dataModuleShape:QrDataModuleShape.square,color:Colors.black))),const SizedBox(height:10),Text(t,style:TextStyle(color:_muted,fontWeight:FontWeight.w700))])));}
+void _showQr(Map<String,dynamic> v){final t='${v['qr_token']??''}'.trim(),secret='${v['qr_scan_secret']??''}'.trim(),u='https://queensho.github.io/HeyCar/?tag=${Uri.encodeComponent(t)}${secret.isEmpty?'':'&s=${Uri.encodeComponent(secret)}'}';showModalBottomSheet(context:context,isScrollControlled:true,useSafeArea:true,backgroundColor:_panel,builder:(c)=>CQSheetBody(padding:const EdgeInsets.all(22),child:Column(mainAxisSize:MainAxisSize.min,children:[Text('${v['plate']} QR',style:TextStyle(color:_text,fontSize:22,fontWeight:FontWeight.w900)),const SizedBox(height:14),Container(width:220,height:220,padding:const EdgeInsets.all(12),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(20)),child:QrImageView(data:u,version:QrVersions.auto,backgroundColor:Colors.white,eyeStyle:const QrEyeStyle(eyeShape:QrEyeShape.square,color:Colors.black),dataModuleStyle:const QrDataModuleStyle(dataModuleShape:QrDataModuleShape.square,color:Colors.black))),const SizedBox(height:10),Text(t,style:TextStyle(color:_muted,fontWeight:FontWeight.w700))])));}
 void _open(Map<String,dynamic> v){final wasPrimary='${v['id']??''}'==selected;_select(v);final make='${v['make']??''}',model='${v['model']??''}';Navigator.push(context,MaterialPageRoute(builder:(_)=>VehicleCenterPage(plate:'${v['plate']??''}',title:model.trim().isEmpty?make:'$make $model',initialVehicle:Map<String,dynamic>.from(v),isPrimary:wasPrimary))).then((_){widget.onVehicleChanged?.call();_load();});}
 Future<void> _remove(Map<String,dynamic> v)async{final yes=await showDialog<bool>(context:context,builder:(c)=>AlertDialog(backgroundColor:_panel,title:Text('Aracı Kaldır',style:TextStyle(color:_text)),content:Text('Bu işlem aracın QR kodunu kalıcı olarak iptal eder. Satış yaptıysan Aracı Devret seçeneğini kullan.',style:TextStyle(color:_muted)),actions:[TextButton(onPressed:()=>Navigator.pop(c,false),child:const Text('Vazgeç')),FilledButton(onPressed:()=>Navigator.pop(c,true),child:const Text('Aracı Kaldır'))]));if(yes!=true)return;final r=await OwnerHttp.delete(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/vehicles/${v['id']}'),json:false);if(r.statusCode>=200&&r.statusCode<300){await _load();widget.onVehicleChanged?.call();}else if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Araç kaldırılamadı.')));}
 Future<void> _transfer(Map<String,dynamic> v)async{
@@ -88,7 +89,7 @@ Widget _brandHeader(){
 
 Widget _qrBanner(){
   return Container(
-    height:78,
+    height:MediaQuery.textScalerOf(context).scale(14)>19?240:130,
     clipBehavior:Clip.antiAlias,
     decoration:BoxDecoration(
       gradient:const LinearGradient(begin:Alignment.centerLeft,end:Alignment.centerRight,colors:[Color(0xFF3D0DAE),Color(0xFF6E22EA),Color(0xFF9746FF)]),
@@ -144,7 +145,7 @@ Widget _bottomAction(IconData icon,String title,String subtitle,VoidCallback tap
     onTap:tap,
     borderRadius:BorderRadius.circular(16),
     child:Container(
-      height:58,
+      constraints:const BoxConstraints(minHeight:58),
       padding:const EdgeInsets.symmetric(horizontal:9),
       decoration:BoxDecoration(color:_panel,borderRadius:BorderRadius.circular(16),border:Border.all(color:_line)),
       child:Row(children:[
@@ -306,6 +307,23 @@ class _VehicleReferenceCard extends StatelessWidget{
     final isActive=rawActive is bool?rawActive:(rawActive is num?rawActive!=0:hasQr);
     final details=[if(trim.isNotEmpty)trim,if(year.isNotEmpty)year,if(color.isNotEmpty)color].join(' • ');
     const dark=false;
+
+    if(MediaQuery.textScalerOf(context).scale(14)>19){
+      return CQCard(child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+        Text('${v['plate']??''}',style:const TextStyle(fontSize:20,fontWeight:FontWeight.w800)),
+        Text([make,model,details].where((x)=>x.isNotEmpty).join(' • ')),
+        Text(isActive?'Aktif':'Pasif'),
+        if(selected)const Text('Ana Araç'),
+        TextButton(onPressed:open,child:const Text('Araç detayları')),
+        if(!selected)TextButton(onPressed:select,child:const Text('Ana araç yap')),
+        Wrap(spacing:8,runSpacing:8,children:[
+          TextButton(onPressed:qr,child:const Text('QR Etiket')),
+          TextButton(onPressed:open,child:const Text('Düzenle / Geçmiş')),
+          TextButton(onPressed:transfer,child:const Text('Satış / Devir')),
+          TextButton(onPressed:remove,child:const Text('Aracı Kaldır')),
+        ]),
+      ]));
+    }
 
     return Container(
       // Keep the model/details and "Ana araç yap" row above the action strip.
@@ -568,3 +586,4 @@ class _D extends State<_Dialog>{
   );
  }
 }
+

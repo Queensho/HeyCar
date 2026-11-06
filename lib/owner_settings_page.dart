@@ -1,3 +1,4 @@
+import 'design/cq_components.dart';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -224,7 +225,7 @@ class OwnerSettingsPage extends StatelessWidget {
       backgroundColor: const Color(0xFFF8F9FC),
       body: SafeArea(
         bottom: false,
-        child: ListView(
+        child: CQContent(child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
           children: [
             _ProfileBrandHeader(
@@ -321,7 +322,7 @@ class OwnerSettingsPage extends StatelessWidget {
               ),
             ),
           ],
-        ),
+        )),
       ),
       ),
     );
@@ -687,7 +688,7 @@ class _QuickProfileAction extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(14),
         child: Container(
-          height: 74,
+          constraints: const BoxConstraints(minHeight: 74),
           padding: const EdgeInsets.fromLTRB(3, 8, 3, 6),
           decoration: BoxDecoration(
             color: panel,
@@ -890,3 +891,4 @@ class _ReferenceAppSettingsPage extends StatelessWidget {
     ]),
   );
 }
+

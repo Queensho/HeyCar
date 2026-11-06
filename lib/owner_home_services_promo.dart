@@ -141,7 +141,7 @@ class OwnerHomeServicesPromo extends StatelessWidget {
                       fontSize:narrow?10.1:11.2,height:1.13)),
                   const SizedBox(height:7),
                   SizedBox(
-                    height:20,
+                    height:MediaQuery.textScalerOf(context).scale(10)+12,
                     child:ListView.separated(
                       key:const ValueKey('owner-home-service-tags'),
                       scrollDirection:Axis.horizontal,
@@ -182,3 +182,4 @@ class OwnerHomeServicesPromo extends StatelessWidget {
     });
   }
 }
+

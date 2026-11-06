@@ -1,3 +1,4 @@
+import 'design/cq_components.dart';
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
@@ -1041,10 +1042,10 @@ class _SettingsScaffold extends StatelessWidget {
           elevation: 0,
           title: Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
         ),
-        body: ListView(
+        body: SafeArea(top: false, child: CQContent(child: ListView(
           padding: const EdgeInsets.fromLTRB(18, 18, 18, 32),
           children: [child],
-        ),
+        ))),
       );
 }
 
@@ -1231,3 +1232,4 @@ class _EmptyBox extends StatelessWidget {
         ),
       );
 }
+
