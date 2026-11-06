@@ -51,11 +51,12 @@ class OwnerQuickAccessPanel extends StatelessWidget {
       final compact=c.maxWidth<348;
       final scaledLabel=MediaQuery.textScalerOf(context).scale(12);
       final largeText=scaledLabel>15;
+      final extremeText=scaledLabel>28;
       final side=compact?42.0:48.0;
       final fontSize=compact?10.2:11.5;
       return Container(
         key:const ValueKey('owner-home-quick-panel'),
-        height:largeText?(scaledLabel>22?180:148):116,
+        height:extremeText?220:(largeText?(scaledLabel>22?180:148):116),
         clipBehavior:Clip.antiAlias,
         decoration:BoxDecoration(
           color:const Color(0xFFFFFFFF),
@@ -78,7 +79,7 @@ class OwnerQuickAccessPanel extends StatelessWidget {
             color:const Color(0xFFE7E7EF),
           ),
           itemBuilder:(context,i)=>SizedBox(
-            width:largeText?(scaledLabel>22?132:108):(compact?82:90),
+            width:extremeText?156:(largeText?(scaledLabel>22?132:108):(compact?82:90)),
             child:
               CQPressable(
                 key:ValueKey('owner-quick-'+visible[i].id),
