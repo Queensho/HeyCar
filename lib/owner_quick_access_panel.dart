@@ -82,6 +82,7 @@ class OwnerQuickAccessPanel extends StatelessWidget {
               CQPressable(
                 key:ValueKey('owner-quick-'+visible[i].id),
                 onTap:visible[i].onTap,
+                onLongPress:visible[i].onLongPress,
                 semanticLabel:visible[i].title,
                 borderRadius:15,
                 child:Padding(
