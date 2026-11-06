@@ -21,22 +21,27 @@ void main() {
     expect(size.height, greaterThanOrEqualTo(44));
   });
 
-  testWidgets('responsive content width respects insets and max width', (tester) async {
-    double? measured;
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(body: Builder(
-        builder: (context) {
-          measured = CQLayout.contentWidth(context);
-          return const SizedBox.shrink();
-        },
-      )),
-    ));
-    expect(measured, 600);
+  testWidgets('responsive content width respects insets and max width',
+      (tester) async {
+    Future<double> measureAt(double width) async {
+      double? measured;
+      await tester.pumpWidget(MaterialApp(
+        home: MediaQuery(
+          data: MediaQueryData(size: Size(width, 700)),
+          child: Scaffold(body: Builder(
+            builder: (context) {
+              measured = CQLayout.contentWidth(context);
+              return const SizedBox.shrink();
+            },
+          )),
+        ),
+      ));
+      return measured!;
+    }
 
-    await tester.binding.setSurfaceSize(const Size(320, 700));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.pump();
-    expect(measured, 288);
+    expect(await measureAt(800), 600);
+    expect(await measureAt(320), 288);
+    expect(await measureAt(393), 361);
   });
 
   testWidgets('pressable invokes callback', (tester) async {
