@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'design/cq_motion.dart';
+import 'design/cq_layout.dart';
 
 import 'app_ui_config.dart';
 
@@ -104,12 +106,12 @@ class OwnerHomeServicesPromo extends StatelessWidget {
       final narrow=box.maxWidth<330;
       return Material(
         color:Colors.white,borderRadius:BorderRadius.circular(24),
-        child:InkWell(
+        child:CQPressable(
           key:const ValueKey('owner-home-services-promo'),
           onTap:onOpenServices,
-          borderRadius:BorderRadius.circular(24),
+          borderRadius:CQLayout.cardRadius,
           child:Container(
-            height:124,
+            constraints:const BoxConstraints(minHeight:124),
             padding:EdgeInsets.symmetric(horizontal:narrow?10:12,vertical:10),
             decoration:BoxDecoration(
               borderRadius:BorderRadius.circular(24),
