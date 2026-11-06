@@ -16,6 +16,7 @@ import 'active_driver_card.dart';
 import 'owner_new_vehicle_page.dart';
 import 'vehicle_kind.dart';
 import 'owner_vehicle_brand_mark.dart';
+import 'design/cq_layout.dart';
 
 const _purple=Color(0xFF651FFF),_gold=Color(0xFFFFC857),_green=Color(0xFF38D178);
 const Color _bg=Colors.white; const Color _panel=Colors.white; const Color _line=Color(0xFFECECF2); const Color _muted=Color(0xFF737B90); const Color _text=Color(0xFF10162F);
@@ -58,7 +59,7 @@ void _limit()=>showDialog<void>(context:context,builder:(c)=>AlertDialog(backgro
 
 Widget _brandHeader(){
   return SizedBox(
-    height:42,
+    height:CQLayout.minimumTouchTarget,
     child:Row(children:[
       Image.asset(
         'assets/file_00000000b130820abb8d411e67ab0d25.png',
@@ -68,7 +69,7 @@ Widget _brandHeader(){
       ),
       const Spacer(),
       Container(
-        width:36,height:36,alignment:Alignment.center,
+        width:CQLayout.minimumTouchTarget,height:CQLayout.minimumTouchTarget,alignment:Alignment.center,
         decoration:BoxDecoration(
           shape:BoxShape.circle,
           gradient:const LinearGradient(colors:[Color(0xFF4B1EC9),Color(0xFF8B5CFF)]),
