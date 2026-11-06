@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:heycar/design/cq_layout.dart';
-import 'package:heycar/design/cq_motion.dart';
+import 'package:heycar_app/design/cq_layout.dart';
+import 'package:heycar_app/design/cq_motion.dart';
 
 void main() {
   testWidgets('layout keeps touch targets at least 44 logical pixels',
