@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'design/cq_motion.dart';
+import 'design/cq_layout.dart';
 
 /// Data-only presentation model; existing authenticated owner API supplies counts.
 @immutable
@@ -33,7 +35,7 @@ class OwnerMonthlySummaryPanel extends StatelessWidget {
       key:const ValueKey('owner-monthly-summary-panel'),
       padding:const EdgeInsets.fromLTRB(13,13,13,14),
       decoration:BoxDecoration(
-        color:Colors.white,borderRadius:BorderRadius.circular(24),
+        color:Colors.white,borderRadius:BorderRadius.circular(CQLayout.cardRadius),
         border:Border.all(color:const Color(0xFFECECF3)),
         boxShadow:const [
           BoxShadow(color:Color(0x0C101426),blurRadius:17,offset:Offset(0,5)),
@@ -80,7 +82,7 @@ class OwnerMonthlySummaryPanel extends StatelessWidget {
             style:TextStyle(color:Color(0xFF737B94),fontSize:12),
           )))
         else LayoutBuilder(builder:(context,box){
-          final columns=box.maxWidth>=320?4:2;
+          final columns=box.maxWidth>=320 && MediaQuery.textScalerOf(context).scale(12)<16 ?4:2;
           const gap=7.0;
           final count=metrics.length>4?4:metrics.length;
           return Column(children:[
@@ -112,12 +114,12 @@ class _MonthlyMetricTile extends StatelessWidget{
     final change=metric.changePercent;
     final showChange=change!=null&&change.isFinite;
     final side=compact?30.0:34.0;
-    return Material(color:Colors.transparent,child:InkWell(
+    return CQPressable(
       key:ValueKey('owner-monthly-'+metric.id),
       onTap:metric.onTap,
-      borderRadius:BorderRadius.circular(17),
+      borderRadius:17,
       child:Container(
-        height:88,
+        constraints:const BoxConstraints(minHeight:88),
         padding:EdgeInsets.symmetric(horizontal:compact?4:10,vertical:6),
         decoration:BoxDecoration(
           color:metric.background,borderRadius:BorderRadius.circular(17),
@@ -162,6 +164,6 @@ class _MonthlyMetricTile extends StatelessWidget{
           ],
         ]),
       ),
-    ));
+    );
   }
 }
