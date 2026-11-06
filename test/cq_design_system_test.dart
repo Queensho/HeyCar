@@ -21,6 +21,24 @@ void main() {
     expect(size.height, greaterThanOrEqualTo(44));
   });
 
+  testWidgets('responsive content width respects insets and max width', (tester) async {
+    double? measured;
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(body: Builder(
+        builder: (context) {
+          measured = CQLayout.contentWidth(context);
+          return const SizedBox.shrink();
+        },
+      )),
+    ));
+    expect(measured, 600);
+
+    await tester.binding.setSurfaceSize(const Size(320, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pump();
+    expect(measured, 288);
+  });
+
   testWidgets('pressable invokes callback', (tester) async {
     var taps = 0;
     await tester.pumpWidget(MaterialApp(
