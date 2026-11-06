@@ -104,6 +104,7 @@ class OwnerHomeServicesPromo extends StatelessWidget {
     if(services.isEmpty)return const SizedBox.shrink();
     return LayoutBuilder(builder:(context,box){
       final narrow=box.maxWidth<330;
+      final largeText=MediaQuery.textScalerOf(context).scale(12)>16;
       return Material(
         color:Colors.white,borderRadius:BorderRadius.circular(CQLayout.cardRadius),
         child:CQPressable(
@@ -127,13 +128,13 @@ class OwnerHomeServicesPromo extends StatelessWidget {
                 mainAxisAlignment:MainAxisAlignment.center,
                 crossAxisAlignment:CrossAxisAlignment.start,
                 children:[
-                  Text('CepQontag Hizmetleri',maxLines:2,
+                  Text('CepQontag Hizmetleri',maxLines:largeText?3:2,
                     overflow:TextOverflow.ellipsis,
                     style:TextStyle(color:const Color(0xFF101426),
                       fontSize:narrow?13.5:15.3,
                       fontWeight:FontWeight.w700,height:1.05)),
                   const SizedBox(height:3),
-                  Text(descriptionFor(services),maxLines:2,
+                  Text(descriptionFor(services),maxLines:largeText?4:2,
                     overflow:TextOverflow.ellipsis,
                     style:TextStyle(color:const Color(0xFF737B94),
                       fontSize:narrow?10.1:11.2,height:1.13)),
