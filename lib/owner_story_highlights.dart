@@ -1,9 +1,9 @@
+import 'design/cq_motion.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 
 import 'cepqar_theme.dart';
-import 'design/cq_layout.dart';
 import 'story_service.dart';
 
 class OwnerStoryHighlights extends StatefulWidget{
@@ -69,7 +69,8 @@ class _OwnerStoryHighlightsState extends State<OwnerStoryHighlights>{
     if(!mounted)return;
     await Navigator.push(context,PageRouteBuilder(
       opaque:true,
-      transitionDuration:const Duration(milliseconds:220),
+      transitionDuration:CQMotion.duration(context,CQMotion.feedback),
+      reverseTransitionDuration:CQMotion.duration(context,CQMotion.feedback),
       pageBuilder:(_,animation,__)=>FadeTransition(
         opacity:animation,
         child:StoryViewerPage(
@@ -200,7 +201,16 @@ class StoryViewerPage extends StatefulWidget{
 }
 class _StoryViewerPageState extends State<StoryViewerPage> with SingleTickerProviderStateMixin{
   int index=0;
+  bool _reduceMotion=false;
   late final AnimationController progress;
+
+  @override void didChangeDependencies(){
+    super.didChangeDependencies();
+    final reduce=CQMotion.reduceMotion(context);
+    if(reduce){progress.stop();}
+    else if(_reduceMotion&&!progress.isAnimating){progress.forward();}
+    _reduceMotion=reduce;
+  }
 
   StoryItem get item=>widget.items[index];
 
@@ -216,7 +226,7 @@ class _StoryViewerPageState extends State<StoryViewerPage> with SingleTickerProv
   void _showCurrent(){
     widget.service.mark(item.id,'open');
     widget.service.mark(item.id,'view');
-    progress.forward(from:0);
+    if(!_reduceMotion)progress.forward(from:0);
   }
   void _next(){
     if(index>=widget.items.length-1){Navigator.pop(context);return;}
@@ -224,7 +234,7 @@ class _StoryViewerPageState extends State<StoryViewerPage> with SingleTickerProv
     _showCurrent();
   }
   void _previous(){
-    if(index<=0){progress.forward(from:0);return;}
+    if(index<=0){if(!_reduceMotion)progress.forward(from:0);return;}
     setState(()=>index--);
     _showCurrent();
   }
@@ -233,7 +243,7 @@ class _StoryViewerPageState extends State<StoryViewerPage> with SingleTickerProv
     await widget.service.mark(item.id,'click');
     if(!mounted)return;
     await StoryActionHandler.handle(context,item,widget.shortcut);
-    if(mounted)progress.forward();
+    if(mounted&&!_reduceMotion)progress.forward();
   }
 
   @override Widget build(BuildContext context)=>Scaffold(
@@ -277,9 +287,12 @@ class _StoryViewerPageState extends State<StoryViewerPage> with SingleTickerProv
             const SizedBox(height:10),
             Row(children:[
               Expanded(child:Text(item.categoryName.isNotEmpty?item.categoryName:item.title,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Colors.white,fontSize:13,fontWeight:FontWeight.w900))),
-              IconButton(onPressed:()=>Navigator.pop(context),icon:const Icon(Icons.close_rounded,color:Colors.white,size:26)),
+              IconButton(tooltip:'Önceki',onPressed:_previous,icon:const Icon(Icons.chevron_left_rounded,color:Colors.white)),
+              IconButton(tooltip:'Sonraki',onPressed:_next,icon:const Icon(Icons.chevron_right_rounded,color:Colors.white)),
+              IconButton(tooltip:'Kapat',onPressed:()=>Navigator.pop(context),icon:const Icon(Icons.close_rounded,color:Colors.white,size:26)),
             ]),
-            const Spacer(),
+            Expanded(child:Align(alignment:Alignment.bottomCenter,child:SingleChildScrollView(
+              child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
             if(item.badgeType!='none'&&item.badgeText.isNotEmpty)
               Container(
                 margin:const EdgeInsets.only(bottom:9),
@@ -295,7 +308,7 @@ class _StoryViewerPageState extends State<StoryViewerPage> with SingleTickerProv
             if(item.ctaEnabled&&item.actionType!='NONE')...[
               const SizedBox(height:16),
               SizedBox(
-                width:double.infinity,height:CQLayout.buttonHeight,
+                width:double.infinity,
                 child:FilledButton(
                   onPressed:_cta,
                   style:FilledButton.styleFrom(
@@ -307,9 +320,11 @@ class _StoryViewerPageState extends State<StoryViewerPage> with SingleTickerProv
                 ),
               ),
             ],
+          ])))),
           ]),
         ),
       ),
     ]),
   );
 }
+

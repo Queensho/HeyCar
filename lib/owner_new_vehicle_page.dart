@@ -1,3 +1,5 @@
+import 'design/cq_components.dart';
+import 'design/cq_layout.dart';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -433,7 +435,7 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
         children: [
           _label('Plaka', trailing: 'Örn. 34 ABC 123'),
           Container(
-            height: 48,
+            constraints: const BoxConstraints(minHeight: CQLayout.minimumTouchTarget),
             padding: const EdgeInsets.symmetric(horizontal: 10),
             decoration: BoxDecoration(
               color: _field,
@@ -524,6 +526,7 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
                           child: DropdownButton<T>(
                             value: value,
                             isExpanded: true,
+                            itemHeight:null,
                             dropdownColor: _light ? Colors.white : const Color(0xFF111A2F),
                             icon: Icon(
                               Icons.keyboard_arrow_down_rounded,
@@ -699,9 +702,8 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
         ),
       );
 
-  Widget _submitButton() => SizedBox(
-        width: double.infinity,
-        height: 50,
+  Widget _submitButton() => ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: CQLayout.buttonHeight),
         child: DecoratedBox(
           decoration: BoxDecoration(
             gradient: const LinearGradient(
@@ -786,16 +788,14 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
                     ],
                     selected:{vehicleType},
                     onSelectionChanged:(v)=>_changeType(v.first),
-                    style:ButtonStyle(visualDensity:VisualDensity.compact),
+                    direction:MediaQuery.textScalerOf(context).scale(14)>19?Axis.vertical:Axis.horizontal,
+                    style:const ButtonStyle(visualDensity:VisualDensity.standard),
                   ),
                   const SizedBox(height:16),
                   _plateField(),
                   const SizedBox(height: 13),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: _selector<String>(
+                  CQFormRow(children:[
+_selector<String>(
                           label: 'Marka',
                           value: make,
                           items: makes,
@@ -805,10 +805,7 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
                             ?Icons.two_wheeler_rounded:Icons.directions_car_outlined,
                           loading: loadingMakes,
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child:vehicleType==VehicleKind.motorcycle
+vehicleType==VehicleKind.motorcycle
                           ?TextField(
                             controller:motorcycleModel,
                             onChanged:(_)=>setState((){}),
@@ -830,16 +827,11 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
                               : (x) => setState(() => model = x),
                           icon: Icons.directions_car_outlined,
                           loading: loadingModels,
-                        ),
-                      ),
-                    ],
-                  ),
+                        )
+                  ]),
                   const SizedBox(height: 13),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: _selector<int>(
+                  CQFormRow(children:[
+_selector<int>(
                           label: 'Yıl',
                           value: year,
                           items: years,
@@ -847,20 +839,15 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
                           onChanged: (x) => setState(() => year = x),
                           icon: Icons.calendar_month_outlined,
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _selector<String>(
+_selector<String>(
                           label: 'Renk',
                           value: color,
                           items: colors,
                           hint: 'Renk seçin',
                           onChanged: (x) => setState(() => color = x),
                           icon: Icons.palette_outlined,
-                        ),
-                      ),
-                    ],
-                  ),
+                        )
+                  ]),
                   const SizedBox(height: 14),
                   _photoBox(),
                   const SizedBox(height: 12),
@@ -876,3 +863,4 @@ class _OwnerNewVehiclePageState extends State<OwnerNewVehiclePage> {
     );
   }
 }
+

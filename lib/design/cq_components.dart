@@ -43,12 +43,35 @@ class CQSectionHeading extends StatelessWidget {
   final Widget action;
 
   @override
+  Widget build(BuildContext context) => OverflowBar(
+    alignment: MainAxisAlignment.spaceBetween,
+    overflowAlignment: OverflowBarAlignment.start,
+    spacing: 8,
+    overflowSpacing: 4,
+    children: [title, action],
+  );
+}
+
+/// Fields use a single column on compact screens and at large text sizes.
+class CQFormRow extends StatelessWidget {
+  const CQFormRow({super.key, required this.children});
+  final List<Widget> children;
+
+  @override
   Widget build(BuildContext context) => LayoutBuilder(builder: (context, box) {
-    if (box.maxWidth < 300 || MediaQuery.textScalerOf(context).scale(14) > 19) {
-      return Column(crossAxisAlignment: CrossAxisAlignment.start,
-        children: [title, action]);
+    final stacked = box.maxWidth < 360 ||
+      MediaQuery.textScalerOf(context).scale(14) > 19;
+    final spaced = <Widget>[];
+    for (final child in children) {
+      if (spaced.isNotEmpty) {
+        spaced.add(stacked ? const SizedBox(height: CQLayout.cardSpacing) :
+          const SizedBox(width: CQLayout.cardSpacing));
+      }
+      spaced.add(stacked ? child : Expanded(child: child));
     }
-    return Row(children: [Expanded(child: title), action]);
+    return stacked
+      ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: spaced)
+      : Row(crossAxisAlignment: CrossAxisAlignment.start, children: spaced);
   });
 }
 

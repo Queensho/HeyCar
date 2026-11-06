@@ -218,7 +218,7 @@ Widget _bottomAction(IconData icon,String title,String subtitle,VoidCallback tap
             else
               ...vehicles.map((v)=>Padding(
                 padding:const EdgeInsets.only(bottom:8),
-                child:_VehicleReferenceCard(
+                child:OwnerVehicleCard(
                   v:v,
                   selected:'${v['id']}'==selected,
                   open:()=>_open(v),
@@ -282,8 +282,8 @@ class _VehiclesHeaderWavePainter extends CustomPainter{
   bool shouldRepaint(covariant _VehiclesHeaderWavePainter oldDelegate)=>oldDelegate.light!=light;
 }
 
-class _VehicleReferenceCard extends StatelessWidget{
-  const _VehicleReferenceCard({
+class OwnerVehicleCard extends StatelessWidget{
+  const OwnerVehicleCard({
     required this.v,
     required this.selected,
     required this.open,

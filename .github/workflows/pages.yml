@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: pages-${{ github.ref }}
+  group: pages-${{ github.ref }}-${{ github.sha }}
   cancel-in-progress: true
 
 jobs:
@@ -34,6 +34,8 @@ jobs:
         run: flutter test test/cq_responsive_screens_test.dart
       - name: Run complete Flutter test suite
         run: flutter test
+      - name: Analyze complete source tree
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
       - name: Check redesigned notifications compatibility with Android runtime patch
         run: python3 -m unittest discover -s tool/tests -p test_fix_runtime_android.py -v
       - name: Analyze Maintenance V2 screens

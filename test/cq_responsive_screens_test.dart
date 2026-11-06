@@ -7,6 +7,10 @@ import 'package:heycar_app/design/cq_motion.dart';
 import 'package:heycar_app/onboarding_backend.dart';
 import 'package:heycar_app/owner_home_redesign.dart';
 import 'package:heycar_app/owner_notifications_page.dart';
+import 'package:heycar_app/owner_new_vehicle_page.dart';
+import 'package:heycar_app/roadside_help_page.dart';
+import 'package:heycar_app/owner_qr_dialog.dart';
+import 'package:heycar_app/qr_backend.dart';
 import 'package:heycar_app/owner_settings_detail.dart';
 import 'package:heycar_app/owner_settings_page.dart';
 import 'package:heycar_app/owner_vehicles_page.dart';
@@ -29,6 +33,8 @@ void main() {
           OwnerServicesRedesign(active: false, onVale: () {}, onTowing: () {},
             onPark: () {}, onOffers: () {}, onMaintenance: () {}, onReminders: () {}),
           const OwnerVehicleSummaryPage(),
+          const OwnerNewVehiclePage(),
+          const RoadsideHelpPage(),
         ];
         for (final page in pages) {
           await tester.pumpWidget(MaterialApp(
@@ -52,6 +58,41 @@ void main() {
           await tester.pumpWidget(const SizedBox.shrink());
           await tester.pump();
         }
+      });
+
+      testWidgets('populated vehicle card and QR dialog at $width dp, text $scale', (tester) async {
+        tester.view.physicalSize=Size(width,700);
+        tester.view.devicePixelRatio=1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        var qrTaps=0;
+        QrDraft.token='TEST-QR-TOKEN';
+        QrDraft.scanSecret='TEST-SCAN-SECRET';
+        await tester.pumpWidget(MaterialApp(
+          theme:CQTheme.apply(ThemeData(useMaterial3:true)),
+          builder:(context,child)=>MediaQuery(data:MediaQuery.of(context).copyWith(
+            textScaler:TextScaler.linear(scale),disableAnimations:true),child:child!),
+          home:Scaffold(body:Builder(builder:(context)=>SingleChildScrollView(
+            padding:const EdgeInsets.all(16),child:Column(children:[
+              OwnerVehicleCard(v:const {'plate':'34 ABC 123','make':'BMW',
+                'model':'Çok uzun araç modeli ve donanım paketi','year':2025,'active':true},
+                selected:false,open:(){},select:(){},qr:()=>qrTaps++,transfer:(){},remove:(){}),
+              TextButton(onPressed:()=>showOwnerQrDialog(context),child:const Text('QR aç')),
+            ])))),
+        ));
+        await tester.pump();
+        expect(tester.takeException(),isNull);
+        await tester.ensureVisible(find.text('QR Etiket'));
+        await tester.tap(find.text('QR Etiket'));
+        expect(qrTaps,1);
+        await tester.ensureVisible(find.text('QR aç'));
+        await tester.tap(find.text('QR aç'));
+        await tester.pumpAndSettle();
+        expect(find.text('QR Kodum'),findsOneWidget);
+        expect(tester.takeException(),isNull);
+        await tester.tap(find.byTooltip('Kapat'));
+        await tester.pumpAndSettle();
+        expect(find.text('QR Kodum'),findsNothing);
       });
 
       testWidgets('navigation keeps all actions at $width dp, text $scale', (tester) async {

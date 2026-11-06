@@ -1,3 +1,4 @@
+import 'design/cq_layout.dart';
 import 'package:flutter/material.dart';
 
 import 'cepqar_theme.dart';
@@ -36,9 +37,10 @@ class ValetInfoPage extends StatelessWidget {
                     Row(
                       children: [
                         IconButton(
+                          tooltip:'Geri',
                           onPressed: () => Navigator.pop(context),
                           padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(minWidth: 38, minHeight: 38),
+                          constraints: const CQLayout.touchConstraints,
                           icon: Icon(Icons.arrow_back_rounded, color: text, size: 25),
                         ),
                         const SizedBox(width: 6),
@@ -300,7 +302,7 @@ class _BenefitCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        height: 132,
+        constraints:const BoxConstraints(minHeight:132),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: panel,
@@ -322,12 +324,7 @@ class _BenefitCard extends StatelessWidget {
             const SizedBox(height: 9),
             Text(title, style: TextStyle(color: text, fontSize: 12, fontWeight: FontWeight.w900)),
             const SizedBox(height: 3),
-            Expanded(
-              child: Text(
-                subtitle,
-                style: TextStyle(color: muted, fontSize: 9.6, height: 1.3),
-              ),
-            ),
+            Text(subtitle,style:TextStyle(color:muted,fontSize:9.6,height:1.3)),
           ],
         ),
       );
@@ -413,3 +410,4 @@ class _StepCard extends StatelessWidget {
         ),
       );
 }
+
