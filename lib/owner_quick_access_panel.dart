@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'design/cq_layout.dart';
+import 'design/cq_motion.dart';
 
 /// Presentation-only data for a server-driven or locally customized shortcut.
 /// The calling home page owns all action and navigation mappings.
@@ -78,11 +79,11 @@ class OwnerQuickAccessPanel extends StatelessWidget {
           itemBuilder:(context,i)=>SizedBox(
             width:largeText?108:(compact?82:90),
             child:
-              InkWell(
+              CQPressable(
                 key:ValueKey('owner-quick-'+visible[i].id),
                 onTap:visible[i].onTap,
-                onLongPress:visible[i].onLongPress,
-                borderRadius:BorderRadius.circular(15),
+                semanticLabel:visible[i].title,
+                borderRadius:15,
                 child:Padding(
                   padding:const EdgeInsets.symmetric(horizontal:2),
                   child:Column(
