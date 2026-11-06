@@ -46,7 +46,7 @@ class _CQPressableState extends State<CQPressable> {
   bool _pressed = false;
 
   void _setPressed(bool value) {
-    if (widget.onTap == null || !mounted) return;
+    if ((widget.onTap == null && widget.onLongPress == null) || !mounted) return;
     setState(() => _pressed = value);
   }
 
