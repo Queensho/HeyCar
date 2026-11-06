@@ -467,7 +467,7 @@ class _VehicleAction extends StatelessWidget{
           padding:const EdgeInsets.symmetric(vertical:1),
           child:Column(children:[
             Container(
-              width:36,height:36,
+              width:CQLayout.minimumTouchTarget,height:CQLayout.minimumTouchTarget,
               decoration:BoxDecoration(
                 color:const Color(0xFFF2EAFF),
                 borderRadius:BorderRadius.circular(7),
