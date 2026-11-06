@@ -33,7 +33,7 @@ Aşağıdaki tablo kaynak değişikliğini açıklar. Test kapsamı ve cihaz do�
 | `lib/cepqar_offers_page.dart` | Fırsat bannerı ve boş/dolu editoryal kartlar için büyüyen yükseklikler; kategori dokunma alanları; kaydırılabilen dialoglar. Gerçek kupon/yorum işlemleri doğrulanmadı. |
 | `lib/cepqontag_store_page.dart` | Büyük yazıda tek sütun ürün ızgarası, ölçeklenen ürün alanları, kategori dokunma alanları, Reduced Motion ve büyüyen ürün CTA'sı. Canlı sipariş verilmedi. |
 | `lib/maintenance_page.dart` | Bakım formunda genişleyen ikonlu düğmeler ve işlem seçimi etiketleri. Alt sayfa responsive matrisine alındı; işlevlerin tüm dalları doğrulanmış değildir. |
-| `lib/maintenance_v2_page.dart` | Yakıt/masraf başlığında sabit yüksekliğin kaldırılması; ölçeklenen düğme etiketleri. Alt sayfa responsive matrisine alındı; işlevlerin tüm dalları doğrulanmış değildir. |
+| `lib/maintenance_v2_page.dart` | Yakıt/masraf başlığı büyük yazıda kaydırma akışına katılır; ölçeklenen düğme etiketleri. Alt sayfa responsive matrisine alındı; işlevlerin tüm dalları doğrulanmış değildir. |
 | `lib/maintenance_detail_page.dart` | Detay başlığı yeniden akar; ikonlu eylemler ortak bileşeni kullanır. Alt sayfa responsive matrisine alındı; işlevlerin tüm dalları doğrulanmış değildir. |
 | `lib/maintenance_share_page.dart` | Paylaşım seçenekleri ve başlık satırlarının yeniden akması. Alt sayfa responsive matrisine alındı; işlevlerin tüm dalları doğrulanmış değildir. |
 | `lib/vehicle_reminders_page.dart` | Hatırlatıcı başlığının içerikle büyümesi; ikonlu eylemler. Alt sayfa responsive matrisine alındı; işlevlerin tüm dalları doğrulanmış değildir. |
@@ -51,7 +51,7 @@ Aşağıdaki tablo kaynak değişikliğini açıklar. Test kapsamı ve cihaz do�
 | `.github/workflows/pages.yml` | Tüm Flutter testleri ve genel analyze eklendi; tasarım PR'ında Android debug/release APK işi açıldı; sürümler arası eşzamanlı işlerin birbirini iptal etmesi önlendi. |
 | `test/cq_responsive_screens_test.dart` | 320/360/393/430 dp × 1/1.5/2/3 metin ölçeği; ekranları kaydırma, dolu araç kartı/QR/navigasyon eylemleri, klavye üstünde sheet CTA. |
 | `test/owner_home_premium_layout_test.dart` | 360 dp ve büyük yazı matrisinin eklenmesi; ekran dışındaki eylemlere kaydırma. |
-| `test/cq_owner_subpages_test.dart` | 25 alt sayfa × dört genişlik × üç metin ölçeği = 300 senaryo; başlangıç/hata durumları, örnek bakım/araç kaydı ve aşağı kaydırma. Tüm canlı veri durumlarını kapsamaz. |
+| `test/cq_owner_subpages_test.dart` | 33 alt sayfa × dört genişlik × üç metin ölçeği = 396 senaryo; başlangıç/hata durumları, örnek bakım/araç kaydı ve aşağı kaydırma. Tüm canlı veri durumlarını kapsamaz. |
 | `lib/parking_search_service.dart` | Birincil sağlayıcı çağrısı ortak istek/önbellek/bekleme yoluna alındı; 429 yanıtında ayna sunucularına gereksiz tekrar durduruldu. Sunucu ve API sözleşmesi değiştirilmedi. |
 | `test/parking_search_test.dart` | Birincil sağlayıcıda ortak istek regresyonu; OSM fallback testleri ayrı mock yanıtlarıyla çalışır. Ağ hatasında üç ayna denemesi açıkça doğrulanır. |
 | `test/parking_ui_test.dart` | Gerçekte kullanılan CustomScrollView/Scrollable üstünden kaydırma doğrulanır. |

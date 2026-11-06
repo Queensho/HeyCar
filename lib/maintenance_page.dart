@@ -1,3 +1,4 @@
+import 'design/cq_motion.dart';
 import 'design/cq_components.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -196,7 +197,7 @@ class _MaintenanceAddPageState extends State<MaintenanceAddPage>{
     _dateCard(),
     const SizedBox(height:9),
     _panel(Icons.build_rounded,'Yapılan İşlemler *',Wrap(spacing:6,runSpacing:6,children:choices.map((x){
-      final active=selected.contains(x);return InkWell(onTap:()=>setState(()=>active?selected.remove(x):selected.add(x)),borderRadius:BorderRadius.circular(12),
+      final active=selected.contains(x);return CQPressable(onTap:()=>setState(()=>active?selected.remove(x):selected.add(x)),borderRadius:12,
        child:Container(padding:const EdgeInsets.symmetric(horizontal:10,vertical:8),decoration:BoxDecoration(color:active?purple:pale,borderRadius:BorderRadius.circular(12)),
         child:CQAdaptiveRow(mainAxisSize:MainAxisSize.min,children:[if(active)...[const Icon(Icons.check_circle,color:Colors.white,size:15),const SizedBox(width:5)],
          Text(x,style:TextStyle(color:active?Colors.white:purple,fontSize:11.5,fontWeight:FontWeight.w700))])));}).toList())),

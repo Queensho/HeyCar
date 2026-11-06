@@ -278,11 +278,11 @@ class _Plan extends StatelessWidget{
  final String title,price,note;
  final VoidCallback onTap;
  @override Widget build(BuildContext context)=>InkWell(onTap:onTap,borderRadius:BorderRadius.circular(20),child:AnimatedContainer(
-   duration:CQMotion.duration(context,CQMotion.feedback),height:112,padding:const EdgeInsets.all(12),
+   duration:CQMotion.duration(context,CQMotion.feedback),constraints:const BoxConstraints(minHeight:112),padding:const EdgeInsets.all(12),
    decoration:BoxDecoration(color:dark?const Color(0xFF201A39):Colors.white,borderRadius:BorderRadius.circular(20),border:Border.all(color:selected?_purple:dark?const Color(0xFF4D3A70):const Color(0xFFE8DFF5),width:selected?2:1)),
    child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
      Row(children:[Expanded(child:Text(title,style:TextStyle(color:dark?Colors.white:_ink,fontSize:13,fontWeight:FontWeight.w900))),Icon(selected?Icons.check_circle_rounded:Icons.radio_button_unchecked_rounded,color:selected?_purple:const Color(0xFFA6A9BE),size:20)]),
-     const Spacer(),
+     const SizedBox(height:10),
      FittedBox(fit:BoxFit.scaleDown,alignment:Alignment.centerLeft,child:Text(price,style:TextStyle(color:dark?Colors.white:_ink,fontSize:22,fontWeight:FontWeight.w900))),
      Text(note,maxLines:2,overflow:TextOverflow.ellipsis,style:TextStyle(color:note.contains('tasarruf')?_lime:dark?const Color(0xFFC9BFE0):const Color(0xFF656C84),fontSize:10.5,fontWeight:FontWeight.w700)),
    ]),

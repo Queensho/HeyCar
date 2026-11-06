@@ -91,7 +91,7 @@ Widget _header()=>SizedBox(height:56,child:Row(children:[
 ]));
 Widget _roundAction(IconData icon,Color bg,Color fg,VoidCallback action)=>Material(color:bg,
  borderRadius:BorderRadius.circular(14),child:InkWell(onTap:action,borderRadius:BorderRadius.circular(14),
- child:SizedBox(width:39,height:39,child:Icon(icon,color:fg,size:21))));
+ child:SizedBox(width:44,height:44,child:Icon(icon,color:fg,size:21))));
 Widget _title()=>CQAdaptiveRow(children:[
  const Text('Bakım ',style:TextStyle(color:_ink,fontSize:26,fontWeight:FontWeight.w900)),
  Column(mainAxisSize:MainAxisSize.min,children:[

@@ -435,7 +435,7 @@ class _VehicleAnalyticsPageState extends State<VehicleAnalyticsPage> {
                       borderRadius: BorderRadius.circular(17),
                       border: Border.all(color: line),
                     ),
-                    child: Row(
+                    child: CQAdaptiveRow(
                       children: [
                         Container(
                           width: 45,

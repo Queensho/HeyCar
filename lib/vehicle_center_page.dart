@@ -1068,13 +1068,13 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
 
   Widget _stat(IconData icon,String value,String label,Color color)=>Expanded(
     child:Container(
-      height:81,
+      constraints:const BoxConstraints(minHeight:81),
       padding:const EdgeInsets.symmetric(horizontal:6,vertical:9),
       decoration:_compactCard(),
       child:Column(
         mainAxisAlignment:MainAxisAlignment.center,
         children:[
-          Row(
+          CQAdaptiveRow(
             mainAxisAlignment:MainAxisAlignment.center,
             children:[
               Container(
@@ -1125,8 +1125,8 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
       opacity:enabled?1:.72,
       child:InkWell(
         onTap:enabled?tap:null,
-        child:SizedBox(
-          height:52,
+        child:ConstrainedBox(
+          constraints:const BoxConstraints(minHeight:52),
           child:Padding(
             padding:const EdgeInsets.symmetric(horizontal:11),
             child:Row(children:[

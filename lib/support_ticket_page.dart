@@ -577,7 +577,7 @@ class _SupportTicketPageState extends State<SupportTicketPage> {
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(color: _line),
                   ),
-                  child: const Row(
+                  child: const CQAdaptiveRow(
                     children: [
                       Icon(
                         Icons.lock_rounded,
@@ -1000,8 +1000,8 @@ class _SupportTopBar extends StatelessWidget {
             onPressed: onBack,
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(
-              minWidth: 38,
-              minHeight: 38,
+              minWidth: 44,
+              minHeight: 44,
             ),
             icon: const Icon(
               Icons.arrow_back_rounded,

@@ -1,3 +1,13 @@
+import 'package:heycar_app/weather_details_page.dart';
+import 'package:heycar_app/weather_service.dart';
+import 'package:heycar_app/owner_chat_page.dart';
+import 'package:heycar_app/parking_places_page.dart';
+import 'package:heycar_app/parking_place_detail_page.dart';
+import 'package:heycar_app/parking_location_card.dart';
+import 'package:heycar_app/parking_place.dart';
+import 'package:heycar_app/saved_parking_card.dart';
+import 'package:heycar_app/street_parking_card.dart';
+import 'package:heycar_app/vehicle_edit_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -25,6 +35,25 @@ import 'package:heycar_app/vehicle_center_page.dart';
 
 void main(){
   final pages=<String,Widget Function()>{
+    'chat':()=>const OwnerChatPage(notificationId:'test',plate:'34 ABC 123'),
+    'weather':(){
+      final service=WeatherService();
+      addTearDown(service.dispose);
+      return WeatherDetailsPage(service:service,initialWeather:WeatherSnapshot.fromJson({
+        'conditionCode':2,'location':'İstanbul / Küçükçekmece','description':'Parçalı bulutlu',
+        'fetchedAt':'2026-11-06T12:00:00Z','temperature':19,'feelsLike':17,
+        'minTemperature':16,'maxTemperature':24,'humidity':72,'windSpeed':12,
+        'visibility':10000,'precipitationProbability':30,
+      }));
+    },
+    'parking-places':()=>const ParkingPlacesPage(vehicleId:'test'),
+    'parking-detail':()=>const ParkingPlaceDetailPage(
+      place:ParkingPlace(id:'node/1',latitude:41,longitude:29,tags:{'name':'Uzun İsimli Belediye Otoparkı','amenity':'parking'}),
+      vehicleId:'test',userLatitude:41,userLongitude:29),
+    'parking-options':()=>const Scaffold(body:CQSheetBody(child:ParkingLocationCard(vehicleId:'test'))),
+    'parking-saved':()=>const Scaffold(body:CQSheetBody(child:SavedParkingCard(vehicleId:'test'))),
+    'parking-street':()=>const Scaffold(body:CQSheetBody(child:StreetParkingCard(vehicleId:'test'))),
+    'vehicle-edit':()=>const Scaffold(body:VehicleEditSheet(vehicle:{'id':'test','make':'BMW','model':'135i','plate':'34 ABC 123'},currentKm:15000,isPrimary:false)),
     'maintenance':()=>const MaintenancePage(plate:'34 ABC 123',title:'BMW 135i'),
     'maintenance-add':()=>const MaintenanceAddPage(vehicleId:'test',ownerId:'',currentKm:15000),
     'maintenance-v2':()=>const MaintenanceV2Page(vehicleId:'test'),

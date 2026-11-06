@@ -534,7 +534,7 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
       backgroundColor: const Color(0xFFF8F9FC),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton: SafeArea(child: Container(
-        height: 54,
+        constraints:const BoxConstraints(minHeight:54),
         decoration: BoxDecoration(color: const Color(0xFFB9FF45), borderRadius: BorderRadius.circular(20),
           boxShadow: const [BoxShadow(color: Color(0x30000000), blurRadius: 14, offset: Offset(0, 5))]),
         child: CQButton.text(onPressed: add, icon: const Icon(Icons.add, color: Color(0xFF10152D), size: 26),
@@ -542,8 +542,9 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
             style: const TextStyle(color: Color(0xFF10152D), fontWeight: FontWeight.bold)),
           style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 21))),
       )),
-      body: Column(children: [
-        Container(
+      body:NestedScrollView(
+        headerSliverBuilder:(context,innerScrolled)=>[
+          SliverToBoxAdapter(child:Container(
           width:double.infinity,constraints:const BoxConstraints(minHeight:210),
           decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xFF651FFF), Color(0xFF4912C8)],
             begin: Alignment.topLeft, end: Alignment.bottomRight)),
@@ -563,8 +564,9 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
               const SizedBox(height: 6),
               const Text('Yakıt, bakım, sigorta ve diğer tüm araç masraflarınızı takip edin.', style:TextStyle(fontSize:12,color:Colors.white,height:1.45)),
             ]))),
-        ),
-        Expanded(child: Container(
+        )),
+        ],
+        body:Container(
           transform: Matrix4.translationValues(0, -1, 0),
           decoration: const BoxDecoration(color: Color(0xFFF8F9FC),
             borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
@@ -628,8 +630,8 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
               if (!loading && error == null) for (final e in allHistory) historyCard(e),
             ],
           )),
-        )),
-      ]),
+        ),
+      ),
     );
   }
 }

@@ -195,7 +195,7 @@ class _OwnerChatPageState extends State<OwnerChatPage> {
       appBar: AppBar(
         backgroundColor: CepqarTheme.bg,
         foregroundColor: CepqarTheme.text,
-        toolbarHeight:MediaQuery.textScalerOf(context).scale(20)+MediaQuery.textScalerOf(context).scale(11)*2+20,
+        toolbarHeight:MediaQuery.textScalerOf(context).scale(20)*1.5+MediaQuery.textScalerOf(context).scale(11)*3+20,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

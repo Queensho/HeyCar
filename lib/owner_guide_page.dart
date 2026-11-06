@@ -58,7 +58,7 @@ class OwnerGuidePage extends StatelessWidget {
                         color: const Color(0xFFEAF8EF),
                         borderRadius: BorderRadius.circular(18),
                       ),
-                      child: const Row(
+                      child: const CQAdaptiveRow(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
@@ -184,8 +184,8 @@ class OwnerGuidePage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 14),
-                SizedBox(
-                  height: 52,
+                ConstrainedBox(
+                  constraints:const BoxConstraints(minHeight:52),
                   child: FilledButton(
                     onPressed: onDone,
                     style: FilledButton.styleFrom(
@@ -205,7 +205,7 @@ class OwnerGuidePage extends StatelessWidget {
                         borderRadius: BorderRadius.circular(17),
                       ),
                       child: const Center(
-                        child: Row(
+                        child: CQAdaptiveRow(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
@@ -342,7 +342,7 @@ class _StageItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return CQAdaptiveRow(
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
