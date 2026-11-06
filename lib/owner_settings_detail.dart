@@ -96,7 +96,7 @@ class _AccountDeletedPage extends StatelessWidget{
       const SizedBox(height:10),
       const Text('Hesabın ve bağlı verilerin silindi. Yeni hesap oluşturmak için CepQontag uygulamasını yeniden açabilirsin.',textAlign:TextAlign.center,style:TextStyle(color:_muted,height:1.4)),
       const SizedBox(height:22),
-      OutlinedButton.icon(onPressed:SystemNavigator.pop,icon:const Icon(Icons.close_rounded),label:const Text('Uygulamayı Kapat')),
+      CQButton.outlined(onPressed:SystemNavigator.pop,icon:const Icon(Icons.close_rounded),label:const Text('Uygulamayı Kapat')),
     ])))),
   );
 }
@@ -297,9 +297,9 @@ class _OwnerAccountSettingsPageState extends State<OwnerAccountSettingsPage> {
               const SizedBox(height: 3),
               Center(child: Text(_phoneValue, style: const TextStyle(color: Color(0xFF778096), fontSize: 15))),
               const SizedBox(height: 24),
-              Row(children: [
+              CQAdaptiveRow(children: [
                 Expanded(child: Text(editing ? 'Bilgilerini düzenle' : 'Kişisel bilgiler', style: const TextStyle(color: dark, fontSize: 22, fontWeight: FontWeight.w900))),
-                TextButton.icon(
+                CQButton.text(
                   onPressed: saving ? null : () => editing ? _cancelEdit() : setState(() => editing = true),
                   style: TextButton.styleFrom(
                     foregroundColor: const Color(0xFF651FFF),
@@ -321,7 +321,7 @@ class _OwnerAccountSettingsPageState extends State<OwnerAccountSettingsPage> {
                 _EditableAccountField(controller: email, icon: Icons.mail_outline_rounded, label: 'E-posta', keyboardType: TextInputType.emailAddress, enabled: !saving),
                 SizedBox(
                   width: double.infinity,
-                  child: FilledButton.icon(
+                  child: CQButton(
                     onPressed: saving ? null : _saveProfile,
                     style: FilledButton.styleFrom(backgroundColor: const Color(0xFF651FFF), foregroundColor: Colors.white),
                     icon: const Icon(Icons.check_rounded),

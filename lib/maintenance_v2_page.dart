@@ -1,3 +1,4 @@
+import 'design/cq_components.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'owner_auth.dart';
@@ -310,7 +311,7 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
               const SizedBox(height: 7),
               Row(children: [
                 Expanded(child: SizedBox(height: 42,
-                  child: OutlinedButton.icon(
+                  child: CQButton.outlined(
                     onPressed: () {
                       Navigator.pop(sheetContext);
                       showExpenseModal(entry);
@@ -323,7 +324,7 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
                         borderRadius: BorderRadius.circular(11)))))),
                 const SizedBox(width: 8),
                 Expanded(child: SizedBox(height: 42,
-                  child: FilledButton.icon(
+                  child: CQButton(
                     onPressed: () => deleteExpenseEntry(entry),
                     icon: const Icon(Icons.delete_outline, size: 18),
                     label: const Text('Sil'),
@@ -470,13 +471,13 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
                 fuelDetailRow(Icons.local_gas_station_outlined, 'İstasyon', '${entry['station']}'),
               const SizedBox(height: 7),
               Row(children: [
-                Expanded(child: SizedBox(height: 42, child: OutlinedButton.icon(
+                Expanded(child: SizedBox(height: 42, child: CQButton.outlined(
                   onPressed: () { Navigator.pop(sheetContext); showFuelModal(entry); },
                   icon: const Icon(Icons.edit_outlined, size: 18), label: const Text('Düzenle'),
                   style: OutlinedButton.styleFrom(foregroundColor: purple, side: const BorderSide(color: purple),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)))))),
                 const SizedBox(width: 8),
-                Expanded(child: SizedBox(height: 42, child: FilledButton.icon(
+                Expanded(child: SizedBox(height: 42, child: CQButton(
                   onPressed: () => deleteFuelEntry(entry),
                   icon: const Icon(Icons.delete_outline, size: 18), label: const Text('Sil'),
                   style: FilledButton.styleFrom(backgroundColor: const Color(0xFFB9FF45),
@@ -536,14 +537,14 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
         height: 54,
         decoration: BoxDecoration(color: const Color(0xFFB9FF45), borderRadius: BorderRadius.circular(20),
           boxShadow: const [BoxShadow(color: Color(0x30000000), blurRadius: 14, offset: Offset(0, 5))]),
-        child: TextButton.icon(onPressed: add, icon: const Icon(Icons.add, color: Color(0xFF10152D), size: 26),
+        child: CQButton.text(onPressed: add, icon: const Icon(Icons.add, color: Color(0xFF10152D), size: 26),
           label: Text(section == 0 ? 'Yakıt Ekle' : 'Masraf Ekle',
             style: const TextStyle(color: Color(0xFF10152D), fontWeight: FontWeight.bold)),
           style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 21))),
       )),
       body: Column(children: [
         Container(
-          width: double.infinity, height: 210,
+          width:double.infinity,constraints:const BoxConstraints(minHeight:210),
           decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xFF651FFF), Color(0xFF4912C8)],
             begin: Alignment.topLeft, end: Alignment.bottomRight)),
           child: SafeArea(bottom: false, child: Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
@@ -560,10 +561,7 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
                 TextSpan(text: 'Giderleri', style: TextStyle(color: Color(0xFFB9FF45))),
               ]), style: TextStyle(fontSize: 29, fontWeight: FontWeight.w800)),
               const SizedBox(height: 6),
-              SizedBox(height: 78, child: Stack(children: [
-                const Positioned(left: 0, top: 0, child: Text('Yakıt, bakım, sigorta ve diğer tüm araç\nmasraflarınızı takip edin.', style: TextStyle(fontSize: 12, color: Colors.white, height: 1.45))),
-                Positioned(right: 0, bottom: 0, child: Image.asset('assets/images/services/Yakitust.png', width: 145, height: 94, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const SizedBox.shrink())),
-              ])),
+              const Text('Yakıt, bakım, sigorta ve diğer tüm araç masraflarınızı takip edin.', style:TextStyle(fontSize:12,color:Colors.white,height:1.45)),
             ]))),
         ),
         Expanded(child: Container(
@@ -576,7 +574,7 @@ class _MaintenanceV2PageState extends State<MaintenanceV2Page> {
               Row(children: [
                 for (var i = 0; i < 2; i++) ...[
                   if (i == 1) const SizedBox(width: 10),
-                  Expanded(child: SizedBox(height: 48, child: FilledButton.icon(
+                  Expanded(child: SizedBox(child:CQButton(
                     onPressed: () => setState(() { section = i; categoryFilter = 'all'; entries = i == 0 ? fuelEntries : expenseEntries; }),
                     style: FilledButton.styleFrom(
                       backgroundColor: section == i ? purple : const Color(0xFFF3EDFF),
@@ -763,7 +761,7 @@ class _FuelEntryDialogState extends State<_FuelEntryDialog> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))),
                     child: const Text('İptal', style: TextStyle(fontWeight: FontWeight.w700))))),
                   const SizedBox(width: 10),
-                  Expanded(child: SizedBox(height: 50, child: FilledButton.icon(
+                  Expanded(child: SizedBox(child:CQButton(
                     onPressed: saving ? null : () => widget.onSave(setSaving, showError),
                     style: FilledButton.styleFrom(backgroundColor: const Color(0xFFB9FF45),
                       foregroundColor: const Color(0xFF10152D),
@@ -920,7 +918,7 @@ class _ExpenseEntryDialogState extends State<_ExpenseEntryDialog> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                     child: const Text('İptal', style: TextStyle(fontWeight: FontWeight.w700))))),
                   const SizedBox(width: 8),
-                  Expanded(child: SizedBox(height: 43, child: FilledButton.icon(
+                  Expanded(child: SizedBox(height: 43, child: CQButton(
                     onPressed: saving ? null : () => widget.onSave(category, setSaving, showError),
                     style: FilledButton.styleFrom(backgroundColor: const Color(0xFFB9FF45),
                       foregroundColor: const Color(0xFF10152D),
@@ -939,3 +937,4 @@ class _ExpenseEntryDialogState extends State<_ExpenseEntryDialog> {
     );
   }
 }
+

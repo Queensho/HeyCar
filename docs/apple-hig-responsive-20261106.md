@@ -1,7 +1,5 @@
 # CepQontag — Apple HIG responsive çalışma raporu
-
 Repository: Queensho/HeyCar · Dal: `design/apple-hig-responsive-20261106` · PR: #301
-
 Durum: Kısmen uygulandı; bütün ekranlar için tamamlanma koşulları karşılanmadı. Bu rapor bütün ekranların tamamlandığı anlamına gelmez. Canlı VPS/veritabanına erişilmedi; PR birleştirilmedi.
 
 ## Uygulanan değişiklikler
@@ -10,7 +8,7 @@ Aşağıdaki tablo kaynak değişikliğini açıklar. Test kapsamı ve cihaz do�
 
 | Dosya | Değişiklik |
 |---|---|
-| `lib/design/cq_components.dart` | Ortak içerik genişliği, navigasyon, başlık/eylem akışı, form satırı, sheet gövdesi ve tema varsayılanları. |
+| `lib/design/cq_components.dart` | Ortak içerik genişliği, navigasyon, başlık/eylem akışı, form satırı, sheet gövdesi, büyük yazı toolbar çerçevesi, yeniden akan satırlar ve ikonlu native düğmeler. |
 | `lib/design/cq_layout.dart` | 600 dp ortak içerik sınırı; mevcut 44 dp ve boşluk tokenları korundu. |
 | `lib/design/cq_motion.dart` | TickerMode ve erişilebilirlik tercihleri; devre dışı kalan basılı kontrolün durumu; adlandırılmış kontrollerin semantik eylemleri. |
 | `lib/cepqar_theme.dart` | Mor/lime marka tokenları, ikincil metin kontrastı, 44 dp tema kontrolü ve Reduced Motion. |
@@ -34,11 +32,29 @@ Aşağıdaki tablo kaynak değişikliğini açıklar. Test kapsamı ve cihaz do�
 | `lib/valet_info_page.dart` | Geri kontrolünde 44 dp; bilgi kartlarının içerikle büyümesi. Canlı vale oturumu test edilmedi. |
 | `lib/cepqar_offers_page.dart` | Fırsat bannerı ve boş/dolu editoryal kartlar için büyüyen yükseklikler; kategori dokunma alanları; kaydırılabilen dialoglar. Gerçek kupon/yorum işlemleri doğrulanmadı. |
 | `lib/cepqontag_store_page.dart` | Büyük yazıda tek sütun ürün ızgarası, ölçeklenen ürün alanları, kategori dokunma alanları, Reduced Motion ve büyüyen ürün CTA'sı. Canlı sipariş verilmedi. |
+| `lib/maintenance_page.dart` | Bakım formunda genişleyen ikonlu düğmeler ve işlem seçimi etiketleri. Alt sayfa responsive matrisine alındı; işlevlerin tüm dalları doğrulanmış değildir. |
+| `lib/maintenance_v2_page.dart` | Yakıt/masraf başlığında sabit yüksekliğin kaldırılması; ölçeklenen düğme etiketleri. Alt sayfa responsive matrisine alındı; işlevlerin tüm dalları doğrulanmış değildir. |
+| `lib/maintenance_detail_page.dart` | Detay başlığı yeniden akar; ikonlu eylemler ortak bileşeni kullanır. Alt sayfa responsive matrisine alındı; işlevlerin tüm dalları doğrulanmış değildir. |
+| `lib/maintenance_share_page.dart` | Paylaşım seçenekleri ve başlık satırlarının yeniden akması. Alt sayfa responsive matrisine alındı; işlevlerin tüm dalları doğrulanmış değildir. |
+| `lib/vehicle_reminders_page.dart` | Hatırlatıcı başlığının içerikle büyümesi; ikonlu eylemler. Alt sayfa responsive matrisine alındı; işlevlerin tüm dalları doğrulanmış değildir. |
+| `lib/vehicle_analytics_page.dart` | Metriklerin içerik yüksekliğiyle tek/iki sütunda gösterilmesi; filtre satırı. Alt sayfa responsive matrisine alındı; işlevlerin tüm dalları doğrulanmış değildir. |
+| `lib/nfc_setup_page.dart` | Durum satırları ve çok satıra geçen ikonlu eylemler; fiziksel NFC yazımı denenmedi. Alt sayfa responsive matrisine alındı; işlevlerin tüm dalları doğrulanmış değildir. |
+| `lib/motorcycle_profile_page.dart` | Genişleyen dropdown menüsü ve bakım başlığı; ikonlu eylemler. Alt sayfa responsive matrisine alındı; işlevlerin tüm dalları doğrulanmış değildir. |
+| `lib/motorcycle_emergency_page.dart` | Kan grubu dropdown genişliği ve büyüyen eylemler; kayıt işlemi canlı ortamda denenmedi. Alt sayfa responsive matrisine alındı; işlevlerin tüm dalları doğrulanmış değildir. |
+| `lib/owner_dnd_card.dart` | Uzun Premium/başlık satırının yeniden akması; retry düğmesi. Alt sayfa responsive matrisine alındı; işlevlerin tüm dalları doğrulanmış değildir. |
+| `lib/owner_guide_page.dart` | Büyük yazıda aşamaların dikey okunması ve başlığın yeniden akması. Alt sayfa responsive matrisine alındı; işlevlerin tüm dalları doğrulanmış değildir. |
+| `lib/premium_page.dart` | Paket kartları içerikle büyür; Reduced Motion için ortak süreler; ikonlu eylemler. Alt sayfa responsive matrisine alındı; işlevlerin tüm dalları doğrulanmış değildir. |
+| `lib/support_ticket_page.dart` | Üst çubuk ve form başlığı yeniden akar; eylem etiketleri büyüyebilir; canlı talep gönderilmedi. Alt sayfa responsive matrisine alındı; işlevlerin tüm dalları doğrulanmış değildir. |
+| `lib/vehicle_center_page.dart` | Mini eylemler ve silme kartı sabit yüksekliğe zorlanmaz; ikonlu düğmeler. Alt sayfa responsive matrisine alındı; işlevlerin tüm dalları doğrulanmış değildir. |
 | `tool/fix_runtime_android.py` | Responsive bildirim Scaffold'u kabul edilir; tanınmayan kökler için hata vermeye devam eder. |
 | `tool/tests/test_fix_runtime_android.py` | Yeni Scaffold için regresyon; yerelde 4/4 başarılı. |
 | `.github/workflows/pages.yml` | Tüm Flutter testleri ve genel analyze eklendi; tasarım PR'ında Android debug/release APK işi açıldı; sürümler arası eşzamanlı işlerin birbirini iptal etmesi önlendi. |
 | `test/cq_responsive_screens_test.dart` | 320/360/393/430 dp × 1/1.5/2/3 metin ölçeği; ekranları kaydırma, dolu araç kartı/QR/navigasyon eylemleri, klavye üstünde sheet CTA. |
 | `test/owner_home_premium_layout_test.dart` | 360 dp ve büyük yazı matrisinin eklenmesi; ekran dışındaki eylemlere kaydırma. |
+| `test/cq_owner_subpages_test.dart` | 25 alt sayfa × dört genişlik × üç metin ölçeği = 300 senaryo; başlangıç/hata durumları, örnek bakım/araç kaydı ve aşağı kaydırma. Tüm canlı veri durumlarını kapsamaz. |
+| `lib/parking_search_service.dart` | Birincil sağlayıcı çağrısı ortak istek/önbellek/bekleme yoluna alındı; 429 yanıtında ayna sunucularına gereksiz tekrar durduruldu. Sunucu ve API sözleşmesi değiştirilmedi. |
+| `test/parking_search_test.dart` | Birincil sağlayıcıda ortak istek regresyonu; OSM fallback testleri ayrı mock yanıtlarıyla çalışır. Ağ hatasında üç ayna denemesi açıkça doğrulanır. |
+| `test/parking_ui_test.dart` | Gerçekte kullanılan CustomScrollView/Scrollable üstünden kaydırma doğrulanır. |
 | `test/cq_story_motion_test.dart` | Ağ kullanmayan hikâye servisiyle Reduced Motion, önceki/sonraki ve CTA regresyonu. |
 
 ## Doğrulama sınırları
@@ -53,7 +69,6 @@ Aşağıdaki tablo kaynak değişikliğini açıklar. Test kapsamı ve cihaz do�
 ## Henüz tamamlandı sayılmayan ekran dosyaları
 
 Aşağıdaki dosyalar bu çalışmada ekran bazında tam uyarlama ve dört genişlikte doğrulama kapsamına alınmış değildir. Bazıları mevcut ortak temadan yararlanır; bu tamamlanma kanıtı değildir.
-
 | Dosya | Durum |
 |---|---|
 | `lib/account_recovery_page.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
@@ -61,7 +76,6 @@ Aşağıdaki dosyalar bu çalışmada ekran bazında tam uyarlama ve dört geni�
 | `lib/business_panel_page.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
 | `lib/business_valet_page.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
 | `lib/call_permission_setup.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
-
 | `lib/correction_request_page.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
 | `lib/driver_account_page.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
 | `lib/driver_chat_page.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
@@ -69,18 +83,9 @@ Aşağıdaki dosyalar bu çalışmada ekran bazında tam uyarlama ve dört geni�
 | `lib/driver_services_page.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
 | `lib/guest_chat_page.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
 | `lib/legal_pages.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
-| `lib/maintenance_page.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
-| `lib/maintenance_v2_page.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
-| `lib/maintenance_detail_page.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
-| `lib/maintenance_share_page.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
 | `lib/upcoming_maintenance_page.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
-| `lib/motorcycle_emergency_page.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
-| `lib/motorcycle_profile_page.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
 | `lib/nearest_vehicle_reminder_card.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
-| `lib/nfc_setup_page.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
 | `lib/owner_call_page.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
-| `lib/owner_dnd_card.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
-| `lib/owner_guide_page.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
 | `lib/owner_login.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
 | `lib/owner_password_login.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
 | `lib/owner_valet_card.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
@@ -88,7 +93,6 @@ Aşağıdaki dosyalar bu çalışmada ekran bazında tam uyarlama ve dört geni�
 | `lib/owner_welcome_overlay.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
 | `lib/parking_place_detail_page.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
 | `lib/parking_places_page.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
-| `lib/premium_page.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
 | `lib/public_call_page.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
 | `lib/public_menu_pages.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
 | `lib/public_motorcycle_emergency_card.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
@@ -101,13 +105,9 @@ Aşağıdaki dosyalar bu çalışmada ekran bazında tam uyarlama ve dört geni�
 | `lib/qr_security_page.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
 | `lib/saved_parking_card.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
 | `lib/street_parking_card.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
-| `lib/support_ticket_page.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
 | `lib/towing_driver_pages.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
 | `lib/towing_flow_page.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
-| `lib/vehicle_analytics_page.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
-| `lib/vehicle_center_page.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
 | `lib/vehicle_identity_card.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
-| `lib/vehicle_reminders_page.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
 | `lib/weather_card.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
 | `lib/weather_details_page.dart` | Tam ekran/alt akış denetimi ve responsive doğrulama bekliyor. |
 

@@ -1,3 +1,4 @@
+import 'design/cq_components.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -57,7 +58,7 @@ void _viewPhoto(String url)=>showDialog<void>(context:context,builder:(_)=>Dialo
     Row(children:[Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
      if(_serviceName.isNotEmpty)Text(_serviceName,style:const TextStyle(color:_ink,fontWeight:FontWeight.w800,fontSize:13)),
      if(_serviceAddress.isNotEmpty)Text(_serviceAddress,style:const TextStyle(color:_secondary,fontSize:12))
-    ])),if(_servicePhone.isNotEmpty)TextButton.icon(onPressed:_callService,
+    ])),if(_servicePhone.isNotEmpty)CQButton.text(onPressed:_callService,
      icon:const Icon(Icons.call_rounded,size:17),label:const Text('Ara'))]))],
    const SizedBox(height:12),
    _section(Icons.speed_rounded,'Araç Bilgileri',Row(children:[
@@ -91,7 +92,7 @@ Widget _header()=>SizedBox(height:56,child:Row(children:[
 Widget _roundAction(IconData icon,Color bg,Color fg,VoidCallback action)=>Material(color:bg,
  borderRadius:BorderRadius.circular(14),child:InkWell(onTap:action,borderRadius:BorderRadius.circular(14),
  child:SizedBox(width:39,height:39,child:Icon(icon,color:fg,size:21))));
-Widget _title()=>Row(children:[
+Widget _title()=>CQAdaptiveRow(children:[
  const Text('Bakım ',style:TextStyle(color:_ink,fontSize:26,fontWeight:FontWeight.w900)),
  Column(mainAxisSize:MainAxisSize.min,children:[
   const Text('Detayı',style:TextStyle(color:_brand,fontSize:26,fontWeight:FontWeight.w900)),
@@ -135,3 +136,4 @@ Widget _info(String label,String value)=>Column(crossAxisAlignment:CrossAxisAlig
 
 class _EditDialog extends StatefulWidget{const _EditDialog({required this.record});final Map<String,dynamic> record;@override State<_EditDialog> createState()=>_EditDialogState();}
 class _EditDialogState extends State<_EditDialog>{late final TextEditingController mileage=TextEditingController(text:'${widget.record['mileage']??''}'),notes=TextEditingController(text:'${widget.record['notes']??''}'),cost=TextEditingController(text:'${widget.record['total_cost']??''}'),interval=TextEditingController(text:_interval());late final Set<String> selected=((widget.record['items'] as List?)??[]).map((e)=>e.toString()).toSet();final choices=['Motor yağı','Yağ filtresi','Hava filtresi','Fren balatası','Buji','Kayış / Varyatör','Genel bakım','Diğer'];String _interval(){final n=int.tryParse('${widget.record['next_service_km']}')??0,m=int.tryParse('${widget.record['mileage']}')??0;return n>m?'${n-m}':'5000';}@override Widget build(BuildContext context)=>AlertDialog(backgroundColor:Colors.white,title:const Text('Bakım Kaydını Düzenle',style:TextStyle(color:Color(0xFF10152D),fontSize:19,fontWeight:FontWeight.w900)),content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[field(mileage,'Kilometre'),const SizedBox(height:10),Wrap(spacing:5,runSpacing:5,children:choices.map((x)=>FilterChip(label:Text(x,style:const TextStyle(fontSize:11)),selected:selected.contains(x),onSelected:(v)=>setState(()=>v?selected.add(x):selected.remove(x)),selectedColor:_purple)).toList()),const SizedBox(height:10),field(notes,'Açıklama'),const SizedBox(height:10),field(cost,'Toplam Tutar'),const SizedBox(height:10),field(interval,'Bakım aralığı (km)')])),actions:[TextButton(onPressed:()=>Navigator.pop(context),child:const Text('Vazgeç')),FilledButton(onPressed:()=>Navigator.pop(context,{'mileage':int.tryParse(mileage.text),'items':selected.toList(),'notes':notes.text,'totalCost':double.tryParse(cost.text.replaceAll(',','.'))??0,'intervalKm':int.tryParse(interval.text)??0}),child:const Text('Kaydet'))]);Widget field(TextEditingController c,String label)=>TextField(controller:c,style:const TextStyle(color:Color(0xFF10152D)),decoration:InputDecoration(labelText:label,labelStyle:const TextStyle(color:Color(0xFF778096)),filled:true,fillColor:const Color(0xFFF8F9FC),isDense:true));}
+

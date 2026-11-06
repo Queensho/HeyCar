@@ -1,3 +1,4 @@
+import 'design/cq_components.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -554,7 +555,7 @@ class _SupportTicketPageState extends State<SupportTicketPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
+            CQAdaptiveRow(
               children: [
                 const Expanded(
                   child: Text(
@@ -797,7 +798,7 @@ class _SupportTicketPageState extends State<SupportTicketPage> {
                   ),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: FilledButton.icon(
+                child: CQButton(
                   onPressed: _sending ? null : _send,
                   style: FilledButton.styleFrom(
                     backgroundColor: Colors.transparent,
@@ -993,7 +994,7 @@ class _SupportTopBar extends StatelessWidget {
   final VoidCallback onHelp;
 
   @override
-  Widget build(BuildContext context) => Row(
+  Widget build(BuildContext context) => CQAdaptiveRow(
         children: [
           IconButton(
             onPressed: onBack,
@@ -1015,7 +1016,7 @@ class _SupportTopBar extends StatelessWidget {
             fit: BoxFit.contain,
           ),
           const Spacer(),
-          OutlinedButton.icon(
+          CQButton.outlined(
             onPressed: onHelp,
             style: OutlinedButton.styleFrom(
               foregroundColor: _purple,
@@ -1372,3 +1373,4 @@ class _EmptyCard extends StatelessWidget {
         ),
       );
 }
+

@@ -94,6 +94,68 @@ class CQFormRow extends StatelessWidget {
   });
 }
 
+/// Preserve the same controls when a horizontal group needs more room.
+class CQAdaptiveRow extends StatelessWidget {
+  const CQAdaptiveRow({super.key, required this.children,
+    this.mainAxisAlignment = MainAxisAlignment.start,
+    this.crossAxisAlignment = CrossAxisAlignment.center,
+    this.mainAxisSize = MainAxisSize.max});
+  final List<Widget> children;
+  final MainAxisAlignment mainAxisAlignment;
+  final CrossAxisAlignment crossAxisAlignment;
+  final MainAxisSize mainAxisSize;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(builder: (context, box) {
+    if (box.hasBoundedWidth && (box.maxWidth < 400 ||
+        MediaQuery.textScalerOf(context).scale(14) > 19)) {
+      return Column(mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: children.map((child) {
+          if (child is Spacer) return const SizedBox(height: 8);
+          if (child is Flexible) return child.child;
+          if (child is SizedBox && child.width != null && child.height == null) {
+            return const SizedBox(height: 8);
+          }
+          return child;
+        }).toList());
+    }
+    return Row(mainAxisAlignment: mainAxisAlignment,
+      crossAxisAlignment: crossAxisAlignment, mainAxisSize: mainAxisSize,
+      children: children);
+  });
+}
+
+/// Native button behavior with a label that can wrap beside its icon.
+class CQButton extends StatelessWidget {
+  const CQButton({super.key, required this.onPressed, required this.icon,
+    required this.label, this.style, this.onLongPress}) : _kind = 0;
+  const CQButton.outlined({super.key, required this.onPressed, required this.icon,
+    required this.label, this.style, this.onLongPress}) : _kind = 1;
+  const CQButton.text({super.key, required this.onPressed, required this.icon,
+    required this.label, this.style, this.onLongPress}) : _kind = 2;
+  final VoidCallback? onPressed, onLongPress;
+  final Widget icon, label;
+  final ButtonStyle? style;
+  final int _kind;
+
+  @override
+  Widget build(BuildContext context) {
+    final content = LayoutBuilder(builder: (context, box) => box.hasBoundedWidth
+      ? Row(mainAxisSize: MainAxisSize.min, children: [icon,
+          const SizedBox(width: 8), Flexible(child: label)])
+      : Wrap(spacing: 8, crossAxisAlignment: WrapCrossAlignment.center,
+          children: [icon, label]));
+    return ConstrainedBox(constraints: CQLayout.touchConstraints, child:
+      _kind == 1 ? OutlinedButton(onPressed: onPressed, onLongPress: onLongPress,
+        style: style, child: content) : _kind == 2
+      ? TextButton(onPressed: onPressed, onLongPress: onLongPress,
+        style: style, child: content)
+      : FilledButton(onPressed: onPressed, onLongPress: onLongPress,
+        style: style, child: content));
+  }
+}
+
 /// Navigation grows with text; the full destination is always in semantics.
 class CQNavigationBar extends StatelessWidget {
   const CQNavigationBar({super.key, required this.labels, required this.icons,

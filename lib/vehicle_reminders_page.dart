@@ -1,3 +1,4 @@
+import 'design/cq_components.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -425,7 +426,7 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
       body:loading?const Center(child:CircularProgressIndicator()):
         RefreshIndicator(onRefresh:load,child:ListView(
           padding:EdgeInsets.zero,children:[
-            Container(height:185,clipBehavior:Clip.antiAlias,
+            Container(constraints:const BoxConstraints(minHeight:185),clipBehavior:Clip.antiAlias,
               decoration:const BoxDecoration(
                 gradient:LinearGradient(begin:Alignment.topLeft,
                   end:Alignment.bottomRight,colors:[
@@ -501,7 +502,7 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
                   ])),
                 const SizedBox(height:12),
                 SizedBox(width:double.infinity,height:45,
-                  child:FilledButton.icon(
+                  child:CQButton(
                     onPressed:saving?null:()=>_showAddReminder(context),
                     icon:const Icon(Icons.add_circle_outline_rounded),
                     label:const Text('Yeni Hatırlatma Ekle'),
@@ -697,3 +698,4 @@ class _VehicleRemindersPageState extends State<VehicleRemindersPage> {
     );
   }
 }
+
