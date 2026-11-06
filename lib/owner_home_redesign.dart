@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'cepqar_theme.dart';
+import 'design/cq_layout.dart';
 import 'onboarding_backend.dart';
 import 'qr_backend.dart';
 import 'public_qr_link.dart';
@@ -650,7 +651,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
           child:InkWell(
             onTap:()=>widget.shortcut('settings'),
             customBorder:const CircleBorder(),
-            child:SizedBox(width:43,height:43,child:Center(child:
+            child:SizedBox(width:CQLayout.minimumTouchTarget,height:CQLayout.minimumTouchTarget,child:Center(child:
               Text(initials,style:const TextStyle(color:Colors.white,fontSize:15,
                 fontWeight:FontWeight.w800)),
             )),
@@ -735,7 +736,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   Widget _homeCircleButton(IconData icon,VoidCallback action,{int unreadCount=0})=>
     Material(color:_homeCardBackground,shape:const CircleBorder(),
       child:InkWell(onTap:action,customBorder:const CircleBorder(),
-        child:SizedBox(width:43,height:43,child:Stack(children:[
+        child:SizedBox(width:CQLayout.minimumTouchTarget,height:CQLayout.minimumTouchTarget,child:Stack(children:[
           Center(child:Icon(icon,color:_homeText,size:24)),
           if(unreadCount>0)Positioned(top:1,right:0,
             child:Container(padding:const EdgeInsets.symmetric(horizontal:4,vertical:1),
