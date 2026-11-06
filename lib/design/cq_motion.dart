@@ -27,12 +27,14 @@ class CQPressable extends StatefulWidget {
     super.key,
     required this.child,
     required this.onTap,
+    this.onLongPress,
     this.borderRadius = 18,
     this.semanticLabel,
   });
 
   final Widget child;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
   final double borderRadius;
   final String? semanticLabel;
 
@@ -53,7 +55,7 @@ class _CQPressableState extends State<CQPressable> {
     final reduce = CQMotion.reduceMotion(context);
     return Semantics(
       button: true,
-      enabled: widget.onTap != null,
+      enabled: widget.onTap != null || widget.onLongPress != null,
       label: widget.semanticLabel,
       child: AnimatedScale(
         scale: reduce || !_pressed ? 1 : 0.985,
@@ -65,6 +67,7 @@ class _CQPressableState extends State<CQPressable> {
           child: InkWell(
             borderRadius: BorderRadius.circular(widget.borderRadius),
             onTap: widget.onTap,
+            onLongPress: widget.onLongPress,
             onHighlightChanged: _setPressed,
             child: ConstrainedBox(
               constraints: CQLayout.touchConstraints,
