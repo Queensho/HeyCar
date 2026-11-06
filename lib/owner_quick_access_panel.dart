@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'design/cq_layout.dart';
 
 /// Presentation-only data for a server-driven or locally customized shortcut.
 /// The calling home page owns all action and navigation mappings.
@@ -47,15 +48,16 @@ class OwnerQuickAccessPanel extends StatelessWidget {
     final visible=items;
     return LayoutBuilder(builder:(context,c){
       final compact=c.maxWidth<348;
+      final largeText=MediaQuery.textScalerOf(context).scale(12)>15;
       final side=compact?42.0:48.0;
       final fontSize=compact?10.2:11.5;
       return Container(
         key:const ValueKey('owner-home-quick-panel'),
-        height:116,
+        height:largeText?148:116,
         clipBehavior:Clip.antiAlias,
         decoration:BoxDecoration(
           color:const Color(0xFFFFFFFF),
-          borderRadius:BorderRadius.circular(22),
+          borderRadius:BorderRadius.circular(CQLayout.cardRadius),
           border:Border.all(color:const Color(0xFFE9EAF1)),
           boxShadow:const [BoxShadow(
             color:Color(0x0D101426),blurRadius:14,offset:Offset(0,5),
@@ -74,7 +76,7 @@ class OwnerQuickAccessPanel extends StatelessWidget {
             color:const Color(0xFFE7E7EF),
           ),
           itemBuilder:(context,i)=>SizedBox(
-            width:compact?82:90,
+            width:largeText?108:(compact?82:90),
             child:
               InkWell(
                 key:ValueKey('owner-quick-'+visible[i].id),
