@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'cepqar_theme.dart';
+import 'design/cq_layout.dart';
 import 'story_service.dart';
 
 class OwnerStoryHighlights extends StatefulWidget{
@@ -294,7 +295,7 @@ class _StoryViewerPageState extends State<StoryViewerPage> with SingleTickerProv
             if(item.ctaEnabled&&item.actionType!='NONE')...[
               const SizedBox(height:16),
               SizedBox(
-                width:double.infinity,height:50,
+                width:double.infinity,height:CQLayout.buttonHeight,
                 child:FilledButton(
                   onPressed:_cta,
                   style:FilledButton.styleFrom(
