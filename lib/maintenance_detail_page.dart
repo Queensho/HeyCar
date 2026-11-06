@@ -1,3 +1,4 @@
+import 'design/cq_components.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -13,7 +14,7 @@ class _MaintenanceDetailPageState extends State<MaintenanceDetailPage>{late Map<
 Future<void> refresh()async{final uri=Uri.parse('${QrBackend.baseUrl}/api/vehicles/$vehicleId/maintenance/${record['id']}');final r=widget.driverMode?await DriverHttp.get(uri):await OwnerHttp.get(uri);if(r.statusCode==200&&mounted){final x=jsonDecode(r.body);setState(()=>record=Map<String,dynamic>.from(x['record']));}}
 Future<void> edit()async{final result=await showDialog<Map<String,dynamic>>(context:context,builder:(_)=>_EditDialog(record:record));if(result==null)return;setState(()=>busy=true);try{final uri=Uri.parse('${QrBackend.baseUrl}/api/vehicles/$vehicleId/maintenance/${record['id']}');final r=widget.driverMode?await DriverHttp.put(uri,body:jsonEncode(result)):await OwnerHttp.put(uri,body:jsonEncode(result));if(r.statusCode==200){final x=jsonDecode(r.body);if(mounted)setState(()=>record=Map<String,dynamic>.from(x['record']));if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Bakım kaydı güncellendi.')));}else if(mounted){ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(r.statusCode==402?(widget.driverMode?'Bu işlem Aile Premium gerektiriyor.':'Bu işlem Premium gerektiriyor.'):'Kayıt güncellenemedi.')));}}finally{if(mounted)setState(()=>busy=false);}}
 Future<void> remove()async{final ok=await showDialog<bool>(context:context,builder:(_)=>AlertDialog(backgroundColor:Colors.white,title:const Text('Bakım kaydını sil?',style:TextStyle(color:Color(0xFF10152D))),content:Text('Bu işlem geri alınamaz.',style:const TextStyle(color:Color(0xFF778096))),actions:[TextButton(onPressed:()=>Navigator.pop(context,false),child:const Text('Vazgeç')),FilledButton(style:FilledButton.styleFrom(backgroundColor:_red),onPressed:()=>Navigator.pop(context,true),child:const Text('Sil'))]));if(ok!=true)return;setState(()=>busy=true);try{final uri=Uri.parse('${QrBackend.baseUrl}/api/vehicles/$vehicleId/maintenance/${record['id']}');final r=widget.driverMode?await DriverHttp.delete(uri):await OwnerHttp.delete(uri);if(r.statusCode==200&&mounted){Navigator.pop(context,true);}else if(mounted){ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(r.statusCode==402?'Bu işlem Premium gerektiriyor.':'Kayıt silinemedi.')));}}finally{if(mounted)setState(()=>busy=false);}}
-static const _bg=Colors.white,_ink=Color(0xFF10152D),_secondary=Color(0xFF778096),_brand=Color(0xFF651FFF),_pale=Color(0xFFF3EDFF),_border=Color(0xFFE8EAF2),_accent=Color(0xFFB9FF45);
+static const _bg=Colors.white,_ink=Color(0xFF10152D),_secondary=Color(0xFF778096),_brand=CepqarTheme.purple,_pale=CepqarTheme.purpleTint,_border=Color(0xFFE8EAF2),_accent=CepqarTheme.lime;
 String get _serviceName=>(record['service_name']??record['serviceName']??'').toString().trim();
 String get _serviceAddress=>(record['service_address']??record['serviceAddress']??'').toString().trim();
 String get _servicePhone=>(record['service_phone']??record['servicePhone']??'').toString().trim();
@@ -40,7 +41,7 @@ void _viewPhoto(String url)=>showDialog<void>(context:context,builder:(_)=>Dialo
  final cost=d(record['total_cost']);
  final photos=_photos;
  final hasService=_serviceName.isNotEmpty||_serviceAddress.isNotEmpty||_servicePhone.isNotEmpty;
- return Theme(data:Theme.of(context).copyWith(brightness:Brightness.light,scaffoldBackgroundColor:Colors.white,colorScheme:const ColorScheme.light(primary:Color(0xFF651FFF),surface:Colors.white,onSurface:Color(0xFF10152D)),textTheme:Theme.of(context).textTheme.apply(bodyColor:const Color(0xFF10152D),displayColor:const Color(0xFF10152D))),child:Scaffold(backgroundColor:_bg,body:SafeArea(child:Column(children:[
+ return Theme(data:Theme.of(context).copyWith(brightness:Brightness.light,scaffoldBackgroundColor:Colors.white,colorScheme:const ColorScheme.light(primary:CepqarTheme.purple,surface:Colors.white,onSurface:Color(0xFF10152D)),textTheme:Theme.of(context).textTheme.apply(bodyColor:const Color(0xFF10152D),displayColor:const Color(0xFF10152D))),child:Scaffold(backgroundColor:_bg,body:SafeArea(child:Column(children:[
   _header(),
   Expanded(child:ListView(padding:const EdgeInsets.fromLTRB(16,14,16,28),children:[
    _title(),const SizedBox(height:16),_hero(cost),const SizedBox(height:12),
@@ -57,7 +58,7 @@ void _viewPhoto(String url)=>showDialog<void>(context:context,builder:(_)=>Dialo
     Row(children:[Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
      if(_serviceName.isNotEmpty)Text(_serviceName,style:const TextStyle(color:_ink,fontWeight:FontWeight.w800,fontSize:13)),
      if(_serviceAddress.isNotEmpty)Text(_serviceAddress,style:const TextStyle(color:_secondary,fontSize:12))
-    ])),if(_servicePhone.isNotEmpty)TextButton.icon(onPressed:_callService,
+    ])),if(_servicePhone.isNotEmpty)CQButton.text(onPressed:_callService,
      icon:const Icon(Icons.call_rounded,size:17),label:const Text('Ara'))]))],
    const SizedBox(height:12),
    _section(Icons.speed_rounded,'Araç Bilgileri',Row(children:[
@@ -90,8 +91,8 @@ Widget _header()=>SizedBox(height:56,child:Row(children:[
 ]));
 Widget _roundAction(IconData icon,Color bg,Color fg,VoidCallback action)=>Material(color:bg,
  borderRadius:BorderRadius.circular(14),child:InkWell(onTap:action,borderRadius:BorderRadius.circular(14),
- child:SizedBox(width:39,height:39,child:Icon(icon,color:fg,size:21))));
-Widget _title()=>Row(children:[
+ child:SizedBox(width:44,height:44,child:Icon(icon,color:fg,size:21))));
+Widget _title()=>CQAdaptiveRow(children:[
  const Text('Bakım ',style:TextStyle(color:_ink,fontSize:26,fontWeight:FontWeight.w900)),
  Column(mainAxisSize:MainAxisSize.min,children:[
   const Text('Detayı',style:TextStyle(color:_brand,fontSize:26,fontWeight:FontWeight.w900)),
@@ -135,3 +136,4 @@ Widget _info(String label,String value)=>Column(crossAxisAlignment:CrossAxisAlig
 
 class _EditDialog extends StatefulWidget{const _EditDialog({required this.record});final Map<String,dynamic> record;@override State<_EditDialog> createState()=>_EditDialogState();}
 class _EditDialogState extends State<_EditDialog>{late final TextEditingController mileage=TextEditingController(text:'${widget.record['mileage']??''}'),notes=TextEditingController(text:'${widget.record['notes']??''}'),cost=TextEditingController(text:'${widget.record['total_cost']??''}'),interval=TextEditingController(text:_interval());late final Set<String> selected=((widget.record['items'] as List?)??[]).map((e)=>e.toString()).toSet();final choices=['Motor yağı','Yağ filtresi','Hava filtresi','Fren balatası','Buji','Kayış / Varyatör','Genel bakım','Diğer'];String _interval(){final n=int.tryParse('${widget.record['next_service_km']}')??0,m=int.tryParse('${widget.record['mileage']}')??0;return n>m?'${n-m}':'5000';}@override Widget build(BuildContext context)=>AlertDialog(backgroundColor:Colors.white,title:const Text('Bakım Kaydını Düzenle',style:TextStyle(color:Color(0xFF10152D),fontSize:19,fontWeight:FontWeight.w900)),content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[field(mileage,'Kilometre'),const SizedBox(height:10),Wrap(spacing:5,runSpacing:5,children:choices.map((x)=>FilterChip(label:Text(x,style:const TextStyle(fontSize:11)),selected:selected.contains(x),onSelected:(v)=>setState(()=>v?selected.add(x):selected.remove(x)),selectedColor:_purple)).toList()),const SizedBox(height:10),field(notes,'Açıklama'),const SizedBox(height:10),field(cost,'Toplam Tutar'),const SizedBox(height:10),field(interval,'Bakım aralığı (km)')])),actions:[TextButton(onPressed:()=>Navigator.pop(context),child:const Text('Vazgeç')),FilledButton(onPressed:()=>Navigator.pop(context,{'mileage':int.tryParse(mileage.text),'items':selected.toList(),'notes':notes.text,'totalCost':double.tryParse(cost.text.replaceAll(',','.'))??0,'intervalKm':int.tryParse(interval.text)??0}),child:const Text('Kaydet'))]);Widget field(TextEditingController c,String label)=>TextField(controller:c,style:const TextStyle(color:Color(0xFF10152D)),decoration:InputDecoration(labelText:label,labelStyle:const TextStyle(color:Color(0xFF778096)),filled:true,fillColor:const Color(0xFFF8F9FC),isDense:true));}
+

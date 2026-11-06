@@ -1,3 +1,4 @@
+import 'design/cq_components.dart';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -385,7 +386,7 @@ class _VehicleAnalyticsPageState extends State<VehicleAnalyticsPage> {
                     ],
                   ),
                   const SizedBox(height: 14),
-                  Row(
+                  CQAdaptiveRow(
                     children: [
                       _periodButton(7, '7 gün'),
                       const SizedBox(width: 7),
@@ -416,20 +417,16 @@ class _VehicleAnalyticsPageState extends State<VehicleAnalyticsPage> {
                     ),
                   ],
                   const SizedBox(height: 14),
-                  GridView.count(
-                    crossAxisCount: 2,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisSpacing: 9,
-                    mainAxisSpacing: 9,
-                    childAspectRatio: 2.05,
-                    children: [
-                      _metric('Toplam okutma','$scans',Icons.touch_app_outlined),
-                      _metric('Tekil ziyaretçi','$unique',Icons.person_outline_rounded),
-                      _metric('Mesaj','$messages',Icons.chat_bubble_outline_rounded),
-                      _metric('Arama','$calls',Icons.phone_in_talk_outlined),
-                    ],
-                  ),
+                  LayoutBuilder(builder:(context,box){
+                    final columns=box.maxWidth>=400&&MediaQuery.textScalerOf(context).scale(14)<20?2:1;
+                    final width=(box.maxWidth-10*(columns-1))/columns;
+                    return Wrap(spacing:10,runSpacing:10,children:[
+                      SizedBox(width:width,child:_metric('Toplam okutma','$scans',Icons.touch_app_outlined)),
+                      SizedBox(width:width,child:_metric('Tekil ziyaretçi','$unique',Icons.person_outline_rounded)),
+                      SizedBox(width:width,child:_metric('Mesaj','$messages',Icons.chat_bubble_outline_rounded)),
+                      SizedBox(width:width,child:_metric('Arama','$calls',Icons.phone_in_talk_outlined)),
+                    ]);
+                  }),
                   const SizedBox(height: 10),
                   Container(
                     padding: const EdgeInsets.all(14),
@@ -438,7 +435,7 @@ class _VehicleAnalyticsPageState extends State<VehicleAnalyticsPage> {
                       borderRadius: BorderRadius.circular(17),
                       border: Border.all(color: line),
                     ),
-                    child: Row(
+                    child: CQAdaptiveRow(
                       children: [
                         Container(
                           width: 45,
@@ -576,3 +573,4 @@ class _VehicleAnalyticsPageState extends State<VehicleAnalyticsPage> {
     );
   }
 }
+

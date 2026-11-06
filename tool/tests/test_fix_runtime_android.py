@@ -40,6 +40,19 @@ class RuntimePatchTest(unittest.TestCase):
         self.assertEqual(notifications,source)
         self.assertIn("icon:'ic_stat_cepqar'",push)
 
+    def test_responsive_content_scaffold_is_accepted_without_alteration(self):
+        source=(
+            "Widget build(BuildContext c){return Scaffold("
+            "backgroundColor:_bg,body:SafeArea(bottom:false,child:CQContent(child:RefreshIndicator("
+            "onRefresh:_load))));}\n"
+            "Widget _card(Map<String,dynamic> n){return "
+            "Material(color:Colors.transparent,child:InkWell());}\n"
+        )
+        result,notifications,push=self.apply(source)
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertEqual(notifications,source)
+        self.assertIn("icon:'ic_stat_cepqar'",push)
+
     def test_legacy_material_patch_still_works(self):
         source="return ColoredBox(color:_bg,child:SafeArea(bottom:false,child:RefreshIndicator("
         result,notifications,_=self.apply(source)
@@ -54,3 +67,4 @@ class RuntimePatchTest(unittest.TestCase):
 
 if __name__=='__main__':
     unittest.main()
+

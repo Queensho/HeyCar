@@ -1,3 +1,4 @@
+import 'design/cq_components.dart';
 import 'package:flutter/material.dart';
 
 const _bg = Color(0xFFFDFDFF);
@@ -40,7 +41,7 @@ class OwnerGuidePage extends StatelessWidget {
                 const SizedBox(height: 9),
                 const _StageTrail(),
                 SizedBox(height: compact ? 15 : 18),
-                Row(
+                CQAdaptiveRow(
                   children: [
                     Image.asset(
                       'assets/file_00000000b130820abb8d411e67ab0d25.png',
@@ -57,7 +58,7 @@ class OwnerGuidePage extends StatelessWidget {
                         color: const Color(0xFFEAF8EF),
                         borderRadius: BorderRadius.circular(18),
                       ),
-                      child: const Row(
+                      child: const CQAdaptiveRow(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
@@ -183,8 +184,8 @@ class OwnerGuidePage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 14),
-                SizedBox(
-                  height: 52,
+                ConstrainedBox(
+                  constraints:const BoxConstraints(minHeight:52),
                   child: FilledButton(
                     onPressed: onDone,
                     style: FilledButton.styleFrom(
@@ -204,7 +205,7 @@ class OwnerGuidePage extends StatelessWidget {
                         borderRadius: BorderRadius.circular(17),
                       ),
                       child: const Center(
-                        child: Row(
+                        child: CQAdaptiveRow(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
@@ -300,6 +301,13 @@ class _StageTrail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if(MediaQuery.textScalerOf(context).scale(14)>19||MediaQuery.sizeOf(context).width<360){
+      return const Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        _StageItem(label:'Hesap',done:true),SizedBox(height:8),
+        _StageItem(label:'Araç',done:true),SizedBox(height:8),
+        _StageItem(label:'QR Etiket',active:true),
+      ]);
+    }
     return const Row(
       children: [
         _StageItem(
@@ -334,7 +342,7 @@ class _StageItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return CQAdaptiveRow(
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
@@ -456,3 +464,4 @@ class _GuideTip extends StatelessWidget {
     );
   }
 }
+

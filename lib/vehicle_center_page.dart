@@ -1,3 +1,4 @@
+import 'design/cq_components.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
@@ -324,7 +325,7 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
   }
 
   Color get _accent =>
-      CepqarTheme.isLight ? const Color(0xFF713BFF) : const Color(0xFFB499FF);
+      CepqarTheme.isLight ? CepqarTheme.brightPurple : const Color(0xFFB499FF);
   Color get _warning =>
       CepqarTheme.isLight ? const Color(0xFF996000) : const Color(0xFFFFC66D);
 
@@ -925,14 +926,14 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
       const SizedBox(height:8),
       Text(VehicleKind.maintenanceHint(VehicleKind.motorcycle),style:TextStyle(color:_muted,fontSize:12.5)),
       const SizedBox(height:10),
-      SizedBox(width:double.infinity,child:FilledButton.icon(
+      SizedBox(width:double.infinity,child:CQButton(
         onPressed:_openMotorcycleProfile,
         icon:const Icon(Icons.tune_rounded),
         label:const Text('Motor Profili ve Km Hatırlatmaları'),
         style:FilledButton.styleFrom(backgroundColor:_purple),
       )),
       const SizedBox(height:8),
-      SizedBox(width:double.infinity,child:OutlinedButton.icon(
+      SizedBox(width:double.infinity,child:CQButton.outlined(
         onPressed:_openMotorcycleEmergency,
         icon:const Icon(Icons.emergency_rounded,color:Color(0xFFE23A57)),
         label:const Text('Acil Durum Bilgileri'),
@@ -972,7 +973,7 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
         onTap:tap,
         borderRadius:BorderRadius.circular(14),
         child:Container(
-          height:102,
+          constraints:const BoxConstraints(minHeight:102),
           padding:const EdgeInsets.fromLTRB(8,9,7,9),
           decoration:_compactCard(),
           child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
@@ -985,7 +986,7 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
               const Spacer(),
               Icon(Icons.chevron_right_rounded,color:_muted,size:17),
             ]),
-            const Spacer(),
+            const SizedBox(height:8),
             Text(title,maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_detailInk,fontSize:11.2,height:1.06,fontWeight:FontWeight.w900)),
             const SizedBox(height:1),
             Text(subtitle,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_detailMuted,fontSize:9.3,fontWeight:FontWeight.w500)),
@@ -1035,7 +1036,7 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
       SizedBox(width:108,child:Column(children:[
         SizedBox(
           width:108,height:32,
-          child:FilledButton.icon(
+          child:CQButton(
             onPressed:qrBusy||editing?null:(_qrActive?_showQr:qr),
             style:FilledButton.styleFrom(
               backgroundColor:_purple,foregroundColor:Colors.white,
@@ -1049,7 +1050,7 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
         const SizedBox(height:5),
         SizedBox(
           width:108,height:29,
-          child:OutlinedButton.icon(
+          child:CQButton.outlined(
             onPressed:_qrActive?_shareQrLink:null,
             style:OutlinedButton.styleFrom(
               foregroundColor:CepqarTheme.text,
@@ -1067,13 +1068,13 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
 
   Widget _stat(IconData icon,String value,String label,Color color)=>Expanded(
     child:Container(
-      height:81,
+      constraints:const BoxConstraints(minHeight:81),
       padding:const EdgeInsets.symmetric(horizontal:6,vertical:9),
       decoration:_compactCard(),
       child:Column(
         mainAxisAlignment:MainAxisAlignment.center,
         children:[
-          Row(
+          CQAdaptiveRow(
             mainAxisAlignment:MainAxisAlignment.center,
             children:[
               Container(
@@ -1124,8 +1125,8 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
       opacity:enabled?1:.72,
       child:InkWell(
         onTap:enabled?tap:null,
-        child:SizedBox(
-          height:52,
+        child:ConstrainedBox(
+          constraints:const BoxConstraints(minHeight:52),
           child:Padding(
             padding:const EdgeInsets.symmetric(horizontal:11),
             child:Row(children:[
@@ -1336,7 +1337,7 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
                     onTap:_removeVehicle,
                     borderRadius:BorderRadius.circular(14),
                     child:Container(
-                      height:54,
+                      constraints:const BoxConstraints(minHeight:54),
                       padding:const EdgeInsets.symmetric(horizontal:11),
                       decoration:BoxDecoration(
                         color:const Color(0xFFD83C52).withValues(alpha:CepqarTheme.isLight ? .08 : .16),
@@ -1366,4 +1367,5 @@ class _VehicleCenterPageState extends State<VehicleCenterPage> {
   }
 
 }
+
 

@@ -1,3 +1,4 @@
+import 'design/cq_components.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -320,7 +321,7 @@ class _NfcSetupPageState extends State<NfcSetupPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
+                  CQAdaptiveRow(
                     children: [
                       Expanded(
                         child: Text(
@@ -458,9 +459,7 @@ class _NfcSetupPageState extends State<NfcSetupPage> {
                     ),
                   ],
                   const SizedBox(height: 16),
-                  SizedBox(
-                    height: 48,
-                    child: FilledButton.icon(
+                  SizedBox(child:CQButton(
                       onPressed: writing || nfcUrl.isEmpty ? null : writeNfc,
                       style: FilledButton.styleFrom(
                         backgroundColor: purple,
@@ -490,7 +489,7 @@ class _NfcSetupPageState extends State<NfcSetupPage> {
                     ),
                   ),
                   const SizedBox(height: 9),
-                  TextButton.icon(
+                  CQButton.text(
                     onPressed: rotating ? null : rotate,
                     icon: rotating
                         ? const SizedBox(
@@ -568,3 +567,4 @@ class _NfcSetupPageState extends State<NfcSetupPage> {
         ),
       );
 }
+

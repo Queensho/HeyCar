@@ -1,3 +1,4 @@
+import 'design/cq_motion.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -23,8 +24,11 @@ class CepqarTheme {
     await setDarkMode(isLight);
   }
 
-  static const purple = Color(0xFF713BFF);
-  static const lime = Color(0xFFC8FC06);
+  static const purple = Color(0xFF651FFF);
+  static const lime = Color(0xFFB9FF45);
+  static const deepPurple = Color(0xFF4912C8);
+  static const purpleTint = Color(0xFFF3EDFF);
+  static const brightPurple = Color(0xFF713BFF);
   static const darkBg = Color(0xFF07111F);
   static const darkPanel = Color(0xFF101A30);
   static const darkLine = Color(0xFF27355D);
@@ -33,7 +37,7 @@ class CepqarTheme {
   static const lightPanel = Colors.white;
   static const lightLine = Color(0xFFE7E9F2);
   static const lightText = Color(0xFF0B1530);
-  static const lightMuted = Color(0xFF6E7890);
+  static const lightMuted = Color(0xFF626C83);
 
   // Shared owner-app sizing scale. Keep authenticated screens visually consistent.
   static const double pageTitle = 25;
@@ -61,14 +65,15 @@ class CepqarThemeSwitch extends StatelessWidget {
       valueListenable: CepqarTheme.mode,
       builder: (_, mode, __) {
         final light = mode == ThemeMode.light;
-        return InkWell(
+        return CQPressable(
+          semanticLabel: light ? 'Koyu temaya geç' : 'Açık temaya geç',
           onTap: CepqarTheme.toggle,
-          borderRadius: BorderRadius.circular(30),
+          borderRadius: 30,
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 320),
+            duration: CQMotion.duration(context, CQMotion.feedback),
             curve: Curves.easeOutCubic,
             width: 64,
-            height: 36,
+            height: 44,
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
               color: light ? const Color(0xFFF0E9FF) : const Color(0xFF17223A),
@@ -80,8 +85,8 @@ class CepqarThemeSwitch extends StatelessWidget {
             child: Stack(
               children: [
                 AnimatedAlign(
-                  duration: const Duration(milliseconds: 320),
-                  curve: Curves.easeOutBack,
+                  duration: CQMotion.duration(context, CQMotion.feedback),
+                  curve: CQMotion.standard,
                   alignment: light ? Alignment.centerRight : Alignment.centerLeft,
                   child: Container(
                     width: 28,
@@ -97,7 +102,7 @@ class CepqarThemeSwitch extends StatelessWidget {
                       ],
                     ),
                     child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 250),
+                      duration: CQMotion.duration(context, CQMotion.feedback),
                       transitionBuilder: (child, animation) => RotationTransition(
                         turns: animation,
                         child: ScaleTransition(scale: animation, child: child),
@@ -119,3 +124,4 @@ class CepqarThemeSwitch extends StatelessWidget {
     );
   }
 }
+

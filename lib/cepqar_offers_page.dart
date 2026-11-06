@@ -1,3 +1,4 @@
+import 'design/cq_layout.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -76,9 +77,9 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
 
   String searchText='';
   final TextEditingController searchController=TextEditingController();
-  static const purple=Color(0xFF651FFF);
-  static const deepPurple=Color(0xFF4912C8);
-  static const lime=Color(0xFFB9FF45);
+  static const purple=CepqarTheme.purple;
+  static const deepPurple=CepqarTheme.deepPurple;
+  static const lime=CepqarTheme.lime;
   static const ink=Color(0xFF10152D);
   static const muted=Color(0xFF778096);
 
@@ -151,7 +152,7 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
   }
 
   Widget _offerPicture(_Offer o,String image)=>Stack(fit:StackFit.expand,children:[
-    Container(color:const Color(0xFFF3EDFF),child:image.isNotEmpty
+    Container(color:CepqarTheme.purpleTint,child:image.isNotEmpty
       ?Image.network(image,fit:BoxFit.cover,errorBuilder:(_,__,___)=>Icon(o.icon,size:45,color:purple))
       :Icon(o.icon,size:45,color:purple)),
     Positioned(left:8,bottom:8,child:Container(
@@ -162,15 +163,21 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
   ]);
 
 
+  double _editorialHeight(bool featured){
+    final scaler=MediaQuery.textScalerOf(context);
+    return featured?110+scaler.scale(13)*2.8+scaler.scale(10)*4+40:
+      82+scaler.scale(12)*3+scaler.scale(10)*3+40;
+  }
+
   Widget _emptyOfferCard({bool featured=false}){
     return Container(
-      width:featured?176:116,height:featured?110:154,
+      width:featured?176:116,height:_editorialHeight(featured),
       margin:const EdgeInsets.only(right:10),
       decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(17),
         border:Border.all(color:const Color(0xFFE8E3F1))),
       clipBehavior:Clip.antiAlias,
       child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-        Container(height:featured?110:82,width:double.infinity,color:const Color(0xFFF3EDFF),
+        Container(height:featured?110:82,width:double.infinity,color:CepqarTheme.purpleTint,
           child:const Icon(Icons.local_offer_outlined,color:Color(0xFFB6A0E9),size:29)),
         Padding(padding:const EdgeInsets.all(10),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
           const Text('Yakında',style:TextStyle(color:ink,fontSize:12,fontWeight:FontWeight.w800)),
@@ -193,14 +200,14 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
           if(url.isEmpty)return;
           final parsed=Uri.tryParse(url);
           if(parsed==null||parsed.scheme!='https')return;
-          showDialog<void>(context:context,builder:(ctx)=>AlertDialog(
+          showDialog<void>(context:context,builder:(ctx)=>AlertDialog(scrollable:true,
             title:Text(title),content:Text(subtitle),
             actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Kapat'))],
           ));
         },
         borderRadius:BorderRadius.circular(17),
         child:Container(
-          width:176,height:110,margin:const EdgeInsets.only(right:10),
+          width:176,height:_editorialHeight(true),margin:const EdgeInsets.only(right:10),
           clipBehavior:Clip.antiAlias,
           decoration:BoxDecoration(
             color:deepPurple,borderRadius:BorderRadius.circular(17)),
@@ -242,7 +249,7 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
         final parsed=Uri.tryParse(url);
         if(parsed==null||parsed.scheme!='https')return;
         // Editorial cards must not claim an in-app redemption code.
-        showDialog<void>(context:context,builder:(ctx)=>AlertDialog(
+        showDialog<void>(context:context,builder:(ctx)=>AlertDialog(scrollable:true,
           title:Text(title),content:Text(subtitle),
           actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Kapat'))],
         ));
@@ -256,7 +263,7 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
         child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
           SizedBox(height:featured?78:82,width:double.infinity,
             child:Stack(fit:StackFit.expand,children:[
-              Container(color:const Color(0xFFF3EDFF),
+              Container(color:CepqarTheme.purpleTint,
                 child:image.startsWith('https://')?Image.network(image,fit:BoxFit.cover,
                   errorBuilder:(_,__,___)=>const Icon(Icons.local_offer_rounded,color:purple,size:32))
                   :const Icon(Icons.local_offer_rounded,color:purple,size:32)),
@@ -276,7 +283,7 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
   }
   Widget _editorialStrip(String placement,{bool featured=false}){
     final items=editorial.where((x)=>x['placement']==placement).toList();
-    return SizedBox(height:featured?110:154,child:ListView.builder(scrollDirection:Axis.horizontal,
+    return SizedBox(height:_editorialHeight(featured),child:ListView.builder(scrollDirection:Axis.horizontal,
       itemCount:items.isEmpty?3:items.length,
       itemBuilder:(_,i)=>items.isEmpty?_emptyOfferCard(featured:featured):_editorialCard(items[i],featured:featured)));
   }
@@ -316,7 +323,7 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
                   contentPadding:const EdgeInsets.symmetric(vertical:8),
                 )),
               const SizedBox(height:12),
-              if(designVisible('show_categories'))SizedBox(height:38,child:ListView.separated(scrollDirection:Axis.horizontal,itemCount:categories.length,
+              if(designVisible('show_categories'))SizedBox(height:MediaQuery.textScalerOf(context).scale(12)*1.4+28,child:ListView.separated(scrollDirection:Axis.horizontal,itemCount:categories.length,
                 separatorBuilder:(_,__)=>const SizedBox(width:8),itemBuilder:(_,i){
                   final c=categories[i],selected=c==category;
                   return ChoiceChip(
@@ -334,7 +341,7 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
           )),
         )),
         SliverPadding(padding:const EdgeInsets.fromLTRB(16,14,16,24),sliver:SliverList(delegate:SliverChildListDelegate([
-          Container(height:148,decoration:BoxDecoration(
+          Container(constraints:const BoxConstraints(minHeight:148),decoration:BoxDecoration(
             color:deepPurple,
             image:designText('banner_image_url','').startsWith('https://')?DecorationImage(image:NetworkImage(designText('banner_image_url','')),fit:BoxFit.cover):null,
             borderRadius:BorderRadius.circular(22)),
@@ -345,7 +352,7 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
                 Text(designText('banner_highlight','İlk 3 ay Premium ücretsiz!'),style:const TextStyle(color:lime,fontSize:18,fontWeight:FontWeight.w900)),
                 const SizedBox(height:6),
                 Text(designText('banner_subtitle','Aracınız da, siz de daha güvendesiniz.'),style:const TextStyle(color:Colors.white70,fontSize:11)),
-                const Spacer(),
+                const SizedBox(height:12),
                 Container(padding:const EdgeInsets.symmetric(horizontal:15,vertical:9),
                   decoration:BoxDecoration(color:lime,borderRadius:BorderRadius.circular(20)),
                   child:Text(designText('banner_button','CepQontag Premium'),style:const TextStyle(color:ink,fontSize:11,fontWeight:FontWeight.w800))),
@@ -362,7 +369,7 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
           _sectionHeading('Yakınımdaki Fırsatlar'),
           if(loading)const Padding(padding:EdgeInsets.symmetric(vertical:20),child:Center(child:CircularProgressIndicator(color:purple)))
           else if(error!=null)Padding(padding:const EdgeInsets.all(12),child:Text(error!,style:const TextStyle(color:muted,fontSize:12)))
-          else if(nearby.isEmpty)SizedBox(height:108,child:ListView(scrollDirection:Axis.horizontal,
+          else if(nearby.isEmpty)SizedBox(height:108*(MediaQuery.textScalerOf(context).scale(14)/14).clamp(1.0,5.0),child:ListView(scrollDirection:Axis.horizontal,
             children:List.generate(2,(_)=>Container(width:210,margin:const EdgeInsets.only(right:10),
               padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(16)),
               child:const Row(children:[Icon(Icons.storefront_outlined,color:purple),SizedBox(width:12),
@@ -384,7 +391,7 @@ class _OfferCard extends StatelessWidget{
  const _OfferCard({required this.o,required this.driverMode,required this.vehiclePlate});final _Offer o;final bool driverMode;final String vehiclePlate;
  @override Widget build(BuildContext context)=>Container(margin:const EdgeInsets.only(bottom:11),padding:const EdgeInsets.all(10),decoration:BoxDecoration(color:CepqarTheme.panel,borderRadius:BorderRadius.circular(20),border:Border.all(color:CepqarTheme.line)),child:Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
    Stack(children:[Container(width:78,height:92,decoration:BoxDecoration(color:CepqarTheme.purple.withValues(alpha:.12),borderRadius:BorderRadius.circular(15)),child:Icon(o.icon,color:CepqarTheme.purple,size:34)),Positioned(left:6,top:6,child:Container(padding:const EdgeInsets.symmetric(horizontal:7,vertical:5),decoration:BoxDecoration(color:const Color(0xFFFF416C),borderRadius:BorderRadius.circular(10)),child:Text(o.badge,style:const TextStyle(color:Colors.white,fontSize:9,fontWeight:FontWeight.w900))))]),const SizedBox(width:11),
-   Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Row(children:[Expanded(child:Text(o.name,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:CepqarTheme.text,fontSize:12.5,fontWeight:FontWeight.w900))),const Icon(Icons.location_on_outlined,color:CepqarTheme.purple,size:15),Text(o.distance,style:TextStyle(color:CepqarTheme.muted,fontSize:10))]),const SizedBox(height:3),Row(children:[const Icon(Icons.star_rounded,color:Color(0xFFFFB72B),size:16),const SizedBox(width:3),Text('${o.rating} (${o.reviews})',style:TextStyle(color:CepqarTheme.muted,fontSize:10))]),const SizedBox(height:5),Text(o.description,maxLines:2,overflow:TextOverflow.ellipsis,style:TextStyle(color:CepqarTheme.muted,fontSize:10,height:1.2)),const SizedBox(height:5),Wrap(spacing:5,runSpacing:5,children:[...([...o.categories,...o.tags].take(3)).map((x)=>Container(padding:const EdgeInsets.symmetric(horizontal:7,vertical:4),decoration:BoxDecoration(color:CepqarTheme.line.withValues(alpha:.6),borderRadius:BorderRadius.circular(9)),child:Text(x,style:TextStyle(color:CepqarTheme.text,fontSize:8.5))))]),const SizedBox(height:5),Align(alignment:Alignment.centerRight,child:SizedBox(height:30,child:FilledButton(onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>_OfferDetailPage(o:o,driverMode:driverMode,vehiclePlate:vehiclePlate))),style:FilledButton.styleFrom(backgroundColor:CepqarTheme.purple,padding:const EdgeInsets.symmetric(horizontal:10)),child:const Row(mainAxisSize:MainAxisSize.min,children:[Text('Detayları Gör',style:TextStyle(fontSize:8.5,fontWeight:FontWeight.w800)),SizedBox(width:2),Icon(Icons.chevron_right_rounded,size:15)]))))]))
+   Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Row(children:[Expanded(child:Text(o.name,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:CepqarTheme.text,fontSize:12.5,fontWeight:FontWeight.w900))),const Icon(Icons.location_on_outlined,color:CepqarTheme.purple,size:15),Text(o.distance,style:TextStyle(color:CepqarTheme.muted,fontSize:10))]),const SizedBox(height:3),Row(children:[const Icon(Icons.star_rounded,color:Color(0xFFFFB72B),size:16),const SizedBox(width:3),Text('${o.rating} (${o.reviews})',style:TextStyle(color:CepqarTheme.muted,fontSize:10))]),const SizedBox(height:5),Text(o.description,maxLines:2,overflow:TextOverflow.ellipsis,style:TextStyle(color:CepqarTheme.muted,fontSize:10,height:1.2)),const SizedBox(height:5),Wrap(spacing:5,runSpacing:5,children:[...([...o.categories,...o.tags].take(3)).map((x)=>Container(padding:const EdgeInsets.symmetric(horizontal:7,vertical:4),decoration:BoxDecoration(color:CepqarTheme.line.withValues(alpha:.6),borderRadius:BorderRadius.circular(9)),child:Text(x,style:TextStyle(color:CepqarTheme.text,fontSize:8.5))))]),const SizedBox(height:5),Align(alignment:Alignment.centerRight,child:ConstrainedBox(constraints:CQLayout.touchConstraints,child:FilledButton(onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>_OfferDetailPage(o:o,driverMode:driverMode,vehiclePlate:vehiclePlate))),style:FilledButton.styleFrom(backgroundColor:CepqarTheme.purple,padding:const EdgeInsets.symmetric(horizontal:10)),child:const Row(mainAxisSize:MainAxisSize.min,children:[Text('Detayları Gör',style:TextStyle(fontSize:8.5,fontWeight:FontWeight.w800)),SizedBox(width:2),Icon(Icons.chevron_right_rounded,size:15)]))))]))
  ]));}
 
 
@@ -404,10 +411,10 @@ class _OfferDetailPageState extends State<_OfferDetailPage>{
  Future<void> _share()async{final link='https://queensho.github.io/HeyCar/?offer=${Uri.encodeComponent(o.id)}';await SharePlus.instance.share(ShareParams(title:'CepQontag Fırsatı',text:'${o.name} • ${o.badge}\n${o.description}\n$link'));}
  Future<void> _useOffer()async{if(busy||o.id.isEmpty)return;final session=await _ownerVehicle(),owner=session.owner,plate=session.plate;if(owner.isEmpty){_msg('Fırsatı kullanmak için giriş yapmalısın.');return;}if(plate.isEmpty){_msg('Önce hesabına bir araç/plaka eklemelisin.');return;}setState(()=>busy=true);try{final uri=Uri.parse('${_CepqarOffersPageState.apiBase}/api/offers/${o.id}/redeem');final body=jsonEncode({'plate':plate});final r=widget.driverMode?await DriverHttp.post(uri,body:body):await OwnerHttp.post(uri,body:body);final d=jsonDecode(r.body);if(r.statusCode<200||r.statusCode>=300||d is! Map||d['redemption'] is! Map)throw Exception();redemption=Map<String,dynamic>.from(d['redemption']);if(mounted){setState((){});_showCode();}}catch(_){_msg('Kullanım kodu oluşturulamadı.');}finally{if(mounted)setState(()=>busy=false);}}
  void _showCode(){final r=redemption;if(r==null)return;final code='${r['usage_code']??''}',plate='${r['plate']??''}';showModalBottomSheet(context:context,backgroundColor:CepqarTheme.panel,isScrollControlled:true,builder:(c)=>SafeArea(child:Padding(padding:const EdgeInsets.all(22),child:Column(mainAxisSize:MainAxisSize.min,children:[Text(r['status']=='redeemed'?'Fırsat Kullanıldı':'İşletmeye Göster',style:TextStyle(color:CepqarTheme.text,fontSize:21,fontWeight:FontWeight.w900)),const SizedBox(height:8),Text('Plaka: $plate',style:TextStyle(color:CepqarTheme.muted,fontWeight:FontWeight.w700)),const SizedBox(height:16),if(code.isNotEmpty)Container(width:210,height:210,padding:const EdgeInsets.all(10),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(18)),child:Image.network('https://quickchart.io/qr?text=${Uri.encodeComponent(code)}&size=420',errorBuilder:(_,__,___)=>const Icon(Icons.qr_code_2,color:Colors.black,size:150))),const SizedBox(height:12),SelectableText(code,style:TextStyle(color:CepqarTheme.text,fontSize:25,fontWeight:FontWeight.w900,letterSpacing:3)),const SizedBox(height:8),Text('İşletme plaka + bu kodu doğruladıktan sonra fırsat kullanılmış sayılır.',textAlign:TextAlign.center,style:TextStyle(color:CepqarTheme.muted,fontSize:11))]))));}
- Future<void> _review()async{int rating=5;final tc=TextEditingController();final ok=await showDialog<bool>(context:context,builder:(d)=>StatefulBuilder(builder:(d,setD)=>AlertDialog(backgroundColor:CepqarTheme.panel,title:Text('Mağazayı Değerlendir',style:TextStyle(color:CepqarTheme.text)),content:Column(mainAxisSize:MainAxisSize.min,children:[Row(mainAxisAlignment:MainAxisAlignment.center,children:List.generate(5,(i)=>IconButton(onPressed:()=>setD(()=>rating=i+1),icon:Icon(i<rating?Icons.star_rounded:Icons.star_border_rounded,color:const Color(0xFFFFB72B)))),),TextField(controller:tc,maxLines:3,style:TextStyle(color:CepqarTheme.text),decoration:const InputDecoration(hintText:'Yorumun'))]),actions:[TextButton(onPressed:()=>Navigator.pop(d,false),child:const Text('Vazgeç')),FilledButton(onPressed:()=>Navigator.pop(d,true),child:const Text('Gönder'))])));if(ok!=true)return;final uri=Uri.parse('${_CepqarOffersPageState.apiBase}/api/offers/${o.id}/review');final body=jsonEncode({'rating':rating,'comment':tc.text.trim()});final r=widget.driverMode?await DriverHttp.post(uri,body:body):await OwnerHttp.post(uri,body:body);_msg(r.statusCode>=200&&r.statusCode<300?'Mağaza değerlendirmen kaydedildi.':'Değerlendirme kaydedilemedi.');if(r.statusCode>=200&&r.statusCode<300)await _loadReviews();}
+ Future<void> _review()async{int rating=5;final tc=TextEditingController();final ok=await showDialog<bool>(context:context,builder:(d)=>StatefulBuilder(builder:(d,setD)=>AlertDialog(scrollable:true,backgroundColor:CepqarTheme.panel,title:Text('Mağazayı Değerlendir',style:TextStyle(color:CepqarTheme.text)),content:Column(mainAxisSize:MainAxisSize.min,children:[Row(mainAxisAlignment:MainAxisAlignment.center,children:List.generate(5,(i)=>IconButton(onPressed:()=>setD(()=>rating=i+1),icon:Icon(i<rating?Icons.star_rounded:Icons.star_border_rounded,color:const Color(0xFFFFB72B)))),),TextField(controller:tc,maxLines:3,style:TextStyle(color:CepqarTheme.text),decoration:const InputDecoration(hintText:'Yorumun'))]),actions:[TextButton(onPressed:()=>Navigator.pop(d,false),child:const Text('Vazgeç')),FilledButton(onPressed:()=>Navigator.pop(d,true),child:const Text('Gönder'))])));if(ok!=true)return;final uri=Uri.parse('${_CepqarOffersPageState.apiBase}/api/offers/${o.id}/review');final body=jsonEncode({'rating':rating,'comment':tc.text.trim()});final r=widget.driverMode?await DriverHttp.post(uri,body:body):await OwnerHttp.post(uri,body:body);_msg(r.statusCode>=200&&r.statusCode<300?'Mağaza değerlendirmen kaydedildi.':'Değerlendirme kaydedilemedi.');if(r.statusCode>=200&&r.statusCode<300)await _loadReviews();}
  void _msg(String s){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(s)));}
  @override Widget build(BuildContext context){
-  const purple=Color(0xFF651FFF),lime=Color(0xFFB9FF45),ink=Color(0xFF10152D),muted=Color(0xFF778096);
+  const purple=CepqarTheme.purple,lime=CepqarTheme.lime,ink=Color(0xFF10152D),muted=Color(0xFF778096);
   final screen=MediaQuery.sizeOf(context),badge=o.badge.trim();
   Widget actionRow(IconData icon,String title,String subtitle,VoidCallback action)=>InkWell(
     onTap:action,child:Padding(padding:const EdgeInsets.symmetric(vertical:12,horizontal:12),child:Row(children:[
@@ -426,7 +433,7 @@ class _OfferDetailPageState extends State<_OfferDetailPage>{
     body:Stack(children:[
       ListView(padding:EdgeInsets.zero,children:[
         SizedBox(height:screen.height*.43,child:Stack(fit:StackFit.expand,children:[
-          Container(decoration:const BoxDecoration(gradient:LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:[Color(0xFF651FFF),Color(0xFF161A43)]))),
+          Container(decoration:const BoxDecoration(gradient:LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:[CepqarTheme.purple,Color(0xFF161A43)]))),
           if(o.imageUrl.isNotEmpty)Image.network(o.imageUrl,fit:BoxFit.cover,errorBuilder:(_,__,___)=>Center(child:Icon(o.icon,color:Colors.white,size:105)))
           else Center(child:Icon(o.icon,color:Colors.white,size:105)),
           const DecoratedBox(decoration:BoxDecoration(gradient:LinearGradient(begin:Alignment.topCenter,end:Alignment.bottomCenter,colors:[Color(0x55000000),Colors.transparent,Color(0xD9651FFF)]))),
@@ -448,7 +455,7 @@ class _OfferDetailPageState extends State<_OfferDetailPage>{
               Text(o.description.isEmpty?'İşletme kampanya açıklaması eklememiş.':o.description,style:const TextStyle(color:muted,fontSize:13,height:1.45))
             ])),
             const SizedBox(width:8),
-            Container(width:88,height:106,decoration:BoxDecoration(color:const Color(0xFFF3EDFF),borderRadius:BorderRadius.circular(17)),child:Image.asset('assets/Heycar3d.png',fit:BoxFit.contain,errorBuilder:(_,__,___)=>Icon(o.icon,color:purple,size:48)))
+            Container(width:88,height:106,decoration:BoxDecoration(color:CepqarTheme.purpleTint,borderRadius:BorderRadius.circular(17)),child:Image.asset('assets/Heycar3d.png',fit:BoxFit.contain,errorBuilder:(_,__,___)=>Icon(o.icon,color:purple,size:48)))
           ]),
           const SizedBox(height:16),
           Container(padding:const EdgeInsets.symmetric(horizontal:7,vertical:15),decoration:BoxDecoration(color:const Color(0xFFF5F0FF),borderRadius:BorderRadius.circular(17)),child:Row(children:[
@@ -463,7 +470,7 @@ class _OfferDetailPageState extends State<_OfferDetailPage>{
             const Divider(height:1,indent:12,endIndent:12),
             actionRow(Icons.calendar_month_rounded,'Geçerlilik Tarihi','Kampanya tarihleri işletme tarafından belirtilir.',()=>_msg('Kampanya tarihleri henüz bu API yanıtında bulunmuyor.')),
             const Divider(height:1,indent:12,endIndent:12),
-            actionRow(Icons.receipt_long_rounded,'Kampanya Koşulları','Kampanya detaylarını ve şartlarını inceleyin.',()=>showDialog<void>(context:context,builder:(c)=>AlertDialog(title:const Text('Kampanya Koşulları'),content:Text(o.description.isEmpty?'İşletme koşul belirtmemiş.':o.description),actions:[TextButton(onPressed:()=>Navigator.pop(c),child:const Text('Kapat'))]))),
+            actionRow(Icons.receipt_long_rounded,'Kampanya Koşulları','Kampanya detaylarını ve şartlarını inceleyin.',()=>showDialog<void>(context:context,builder:(c)=>AlertDialog(scrollable:true,title:const Text('Kampanya Koşulları'),content:Text(o.description.isEmpty?'İşletme koşul belirtmemiş.':o.description),actions:[TextButton(onPressed:()=>Navigator.pop(c),child:const Text('Kapat'))]))),
             const Divider(height:1,indent:12,endIndent:12),
             actionRow(Icons.share_rounded,'Arkadaşınla Paylaş','Bu fırsatı arkadaşlarınla paylaş.',_share)
           ]))
@@ -499,3 +506,4 @@ class _Pill extends StatelessWidget{const _Pill(this.text,this.color);final Stri
 class _InfoCard extends StatelessWidget{const _InfoCard({required this.child});final Widget child;@override Widget build(BuildContext c)=>Container(padding:const EdgeInsets.all(12),decoration:BoxDecoration(color:CepqarTheme.panel,borderRadius:BorderRadius.circular(16),border:Border.all(color:CepqarTheme.line)),child:child);}
 class _Title extends StatelessWidget{const _Title(this.text);final String text;@override Widget build(BuildContext c)=>Text(text,style:TextStyle(color:CepqarTheme.text,fontSize:15,fontWeight:FontWeight.w900));}
 class _Service extends StatelessWidget{const _Service(this.icon,this.text);final IconData icon;final String text;@override Widget build(BuildContext c)=>Container(width:76,height:72,padding:const EdgeInsets.all(7),decoration:BoxDecoration(color:CepqarTheme.panel,borderRadius:BorderRadius.circular(14),border:Border.all(color:CepqarTheme.line)),child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[Icon(icon,color:CepqarTheme.purple,size:22),const SizedBox(height:5),Text(text,maxLines:2,textAlign:TextAlign.center,style:TextStyle(color:CepqarTheme.text,fontSize:8.5,fontWeight:FontWeight.w700))]));}
+

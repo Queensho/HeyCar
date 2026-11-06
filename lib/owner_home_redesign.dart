@@ -1,3 +1,4 @@
+import 'design/cq_components.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -6,6 +7,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'cepqar_theme.dart';
+import 'design/cq_layout.dart';
+import 'design/cq_motion.dart';
 import 'onboarding_backend.dart';
 import 'qr_backend.dart';
 import 'public_qr_link.dart';
@@ -47,7 +50,7 @@ class OwnerHomeRedesign extends StatefulWidget{
 }
 
 class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
-  static const purple=Color(0xFF713BFF);
+  static const purple=CepqarTheme.brightPurple;
   Timer? timer;
   Timer? valetTimer;
   Timer? storyTimer;
@@ -307,7 +310,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   Color _quickColor(String id)=>switch(id){
     'roadside_help'=>const Color(0xFFFF775F),
     'offers'=>const Color(0xFFFF9D47),
-    'qr'=>const Color(0xFF713BFF),
+    'qr'=>CepqarTheme.brightPurple,
     'qr_security'=>const Color(0xFF2AD879),
     'vehicle'=>const Color(0xFF347DFF),
     'parking'=>const Color(0xFF22C775),
@@ -610,7 +613,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   }
 
 
-  static const _homePurple=Color(0xFF651FFF);
+  static const _homePurple=CepqarTheme.purple;
   static const _homeDarkPurple=Color(0xFF4C16C9);
   static const _homeLime=Color(0xFFB9FF4A);
   static const _homeInk=Color(0xFF101426);
@@ -637,10 +640,57 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     _=>Icons.cloud_outlined,
   };
 
-  Widget header()=>Padding(
+  bool get _largeHomeText=>MediaQuery.textScalerOf(context).scale(14)>19;
+
+  Widget _accessibleHeader()=>Padding(
+    padding:EdgeInsets.fromLTRB(16,MediaQuery.paddingOf(context).top+8,16,8),
+    child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+      Row(children:[Expanded(child:brand()),
+        _homeCircleButton(Icons.notifications_none_rounded,widget.notifications,unreadCount:unread),
+        IconButton(tooltip:'Profil',onPressed:()=>widget.shortcut('settings'),icon:const Icon(Icons.person_outline_rounded)),
+      ]),
+      Text(_welcomeText,style:TextStyle(color:_homeSecondary)),
+      Text(_displayNameParts.join(' '),style:TextStyle(color:_homeText,fontSize:24,fontWeight:FontWeight.w800)),
+      const Text('Aracınızla dünya sizinle iletişimde.'),
+      if(premium)const Text('PRO'),
+      TextButton.icon(onPressed:_openWeatherDetails,
+        icon:Icon(_homeWeatherIcon),
+        label:Text('${weather?.location??'Konum'} • ${weather?.temperature?.round()??'--'}° • ${weather?.description??'Hava durumu'}')),
+    ]),
+  );
+
+  Widget _accessibleVehicleOverview()=>Padding(
+    padding:const EdgeInsets.fromLTRB(16,0,16,12),
+    child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+      CQCard(child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+        TextButton(key:const ValueKey('premium-home-vehicle'),onPressed:widget.vehicles,
+          child:Text('Aracım • ${QrDraft.plate.trim().isEmpty?'Araç ekleyin':QrDraft.plate}')),
+        Text('${QrDraft.make} ${QrDraft.model}'.trim()),
+        if(QrDraft.vehicleId.trim().isNotEmpty&&_valetVehicleId==QrDraft.vehicleId.trim()&&valetSession!=null)...[
+          Text('${valetSession!['business_name']??'CepQontag Vale'} • ${_valetStatusTitle('${valetSession!['status']??''}')}'),
+          if(valetSession!['status']=='ready'&&valetDeliveryCode.isNotEmpty)Text('Teslimat kodu: $valetDeliveryCode'),
+          TextButton(onPressed:_openValetTracking,child:const Text('Vale takibi')),
+          if(valetSession!['status']=='parked')FilledButton(
+            onPressed:valetRequesting?null:_requestValetVehicle,child:const Text('Aracımı getir')),
+        ],
+      ])),
+      const SizedBox(height:CQLayout.cardSpacing),
+      CQCard(child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+        TextButton.icon(onPressed:()=>widget.shortcut('reminders'),
+          icon:const Icon(Icons.calendar_month_rounded),label:const Text('Yaklaşan Servis • Bakım hatırlatmaları')),
+        TextButton.icon(key:const ValueKey('premium-home-monthly-summary'),
+          onPressed:()=>showModalBottomSheet<void>(
+            context:context,isScrollControlled:true,useSafeArea:true,
+            builder:(_)=>CQSheetBody(child:monthly())),
+          icon:const Icon(Icons.bar_chart_rounded),label:const Text('Bu Ayki Özetim')),
+      ])),
+    ]),
+  );
+
+  Widget header()=>_largeHomeText?_accessibleHeader():Padding(
     padding:EdgeInsets.fromLTRB(20,MediaQuery.paddingOf(context).top+8,20,4),
     child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-      SizedBox(height:42,child:Row(children:[
+      SizedBox(height:44,child:Row(children:[
         Expanded(child:Align(alignment:Alignment.centerLeft,child:brand())),
         _homeCircleButton(Icons.notifications_none_rounded,
           widget.notifications,unreadCount:unread),
@@ -650,7 +700,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
           child:InkWell(
             onTap:()=>widget.shortcut('settings'),
             customBorder:const CircleBorder(),
-            child:SizedBox(width:43,height:43,child:Center(child:
+            child:SizedBox(width:CQLayout.minimumTouchTarget,height:CQLayout.minimumTouchTarget,child:Center(child:
               Text(initials,style:const TextStyle(color:Colors.white,fontSize:15,
                 fontWeight:FontWeight.w800)),
             )),
@@ -735,7 +785,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   Widget _homeCircleButton(IconData icon,VoidCallback action,{int unreadCount=0})=>
     Material(color:_homeCardBackground,shape:const CircleBorder(),
       child:InkWell(onTap:action,customBorder:const CircleBorder(),
-        child:SizedBox(width:43,height:43,child:Stack(children:[
+        child:SizedBox(width:CQLayout.minimumTouchTarget,height:CQLayout.minimumTouchTarget,child:Stack(children:[
           Center(child:Icon(icon,color:_homeText,size:24)),
           if(unreadCount>0)Positioned(top:1,right:0,
             child:Container(padding:const EdgeInsets.symmetric(horizontal:4,vertical:1),
@@ -842,7 +892,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     'ready'=>const Color(0xFF28D879),
     'retrieving'=>const Color(0xFFFFB347),
     'requested'=>const Color(0xFF8C5CFF),
-    _=>const Color(0xFF713BFF),
+    _=>CepqarTheme.brightPurple,
   };
 
   Widget _valetVehicleCard(Map<String,dynamic> session){
@@ -856,7 +906,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       'accepted'=>'Park ediliyor',
       _=>'Araç Çağır',
     };
-    const purple=Color(0xFF651FFF);
+    const purple=CepqarTheme.purple;
     const lime=Color(0xFFB7FF3B);
     return LayoutBuilder(builder:(context,constraints){
       final compact=constraints.maxWidth<360;
@@ -982,7 +1032,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     final selectedId=QrDraft.vehicleId.trim();
     if(selectedId.isNotEmpty&&(_valetVehicleId!=selectedId||!_valetVerified||_valetLoadFailed)){
       if(_valetVehicleId==selectedId&&valetSession!=null)return Padding(padding:const EdgeInsets.fromLTRB(16,7,16,0),child:_valetVehicleCard(valetSession!));
-      return Padding(padding:const EdgeInsets.fromLTRB(16,7,16,0),child:Container(constraints:const BoxConstraints(minHeight:120),padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:panel,borderRadius:BorderRadius.circular(24)),child:Row(children:[const Icon(Icons.sync_rounded,color:Color(0xFF713BFF)),const SizedBox(width:10),Expanded(child:Text(_valetLoadFailed?'Vale durumu doğrulanamadı.':'Araç durumu kontrol ediliyor...',style:TextStyle(color:text))),if(_valetLoadFailed)TextButton(onPressed:_loadValetStatus,child:const Text('Yenile'))])));
+      return Padding(padding:const EdgeInsets.fromLTRB(16,7,16,0),child:Container(constraints:const BoxConstraints(minHeight:120),padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:panel,borderRadius:BorderRadius.circular(24)),child:Row(children:[const Icon(Icons.sync_rounded,color:CepqarTheme.brightPurple),const SizedBox(width:10),Expanded(child:Text(_valetLoadFailed?'Vale durumu doğrulanamadı.':'Araç durumu kontrol ediliyor...',style:TextStyle(color:text))),if(_valetLoadFailed)TextButton(onPressed:_loadValetStatus,child:const Text('Yenile'))])));
     }
     if(selectedId.isNotEmpty&&valetSession!=null)return Padding(padding:const EdgeInsets.fromLTRB(16,7,16,0),child:_valetVehicleCard(valetSession!));
     final motorcycle=VehicleKind.isMotorcycle(QrDraft.vehicleType);
@@ -1118,7 +1168,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   // The existing shortcut and server-driven action definitions are reused.
   // Only their presentation changes to the reference's shared white panel.
   Color _quickPanelTint(String id)=>id=='parking'
-    ?const Color(0xFF478D19):const Color(0xFF651FFF);
+    ?const Color(0xFF478D19):CepqarTheme.purple;
 
   Color _quickPanelBackground(String id)=>id=='parking'
     ?const Color(0xFFEEFFD8):const Color(0xFFF1EAFF);
@@ -1234,8 +1284,8 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       metrics:[
         OwnerMonthlyMetric(
           id:'messages',label:'Mesaj Talebi',icon:Icons.chat_bubble_rounded,
-          tint:const Color(0xFF651FFF),
-          background:const Color(0xFFF3EDFF),
+          tint:CepqarTheme.purple,
+          background:CepqarTheme.purpleTint,
           count:messages,
           onTap:widget.notifications,
         ),
@@ -1715,7 +1765,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             Container(width:38,height:42,
               decoration:BoxDecoration(color:const Color(0xFFF1E9FF),
                 borderRadius:BorderRadius.circular(14)),
-              child:Icon(icon,color:const Color(0xFF651FFF),size:26)),
+              child:Icon(icon,color:CepqarTheme.purple,size:26)),
             const SizedBox(width:7),
             Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,
               mainAxisAlignment:MainAxisAlignment.center,children:[
@@ -1727,7 +1777,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                   color:urgent?const Color(0xFFD32F2F):const Color(0xFF737B90))),
             ])),
             const SizedBox(width:2),
-            const Icon(Icons.chevron_right_rounded,color:Color(0xFF651FFF),size:17),
+            const Icon(Icons.chevron_right_rounded,color:CepqarTheme.purple,size:17),
           ]))));
   }
 
@@ -1758,7 +1808,15 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     return _ridezDefaultHero();
   }
 
-  Widget _ridezDefaultHero()=>Padding(
+  Widget _ridezDefaultHero()=>_largeHomeText?Padding(
+    padding:const EdgeInsets.fromLTRB(16,8,16,12),
+    child:CQCard(color:CepqarTheme.purple,child:Column(
+      crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+        const Text('Yola Daha Güvenli Çıkın',style:TextStyle(color:Colors.white,fontSize:22,fontWeight:FontWeight.w800)),
+        const Text('Bakım, sigorta, vale ve daha fazlası CepQontag’da.',style:TextStyle(color:Colors.white)),
+        FilledButton.tonal(onPressed:widget.services,child:const Text('Fırsatları Keşfet')),
+      ])),
+  ):Padding(
     padding:const EdgeInsets.fromLTRB(16,8,16,10),
     child:InkWell(
       onTap:widget.services,
@@ -1771,7 +1829,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             decoration:const BoxDecoration(
               gradient:LinearGradient(
                 begin:Alignment.centerLeft,end:Alignment.centerRight,
-                colors:[Color(0xFF21104E),Color(0xFF651FFF),Color(0xFF301276)])),
+                colors:[Color(0xFF21104E),CepqarTheme.purple,Color(0xFF301276)])),
             child:Stack(fit:StackFit.expand,children:[
               Positioned(right:-8,bottom:-24,
                 child:Opacity(opacity:.15,
@@ -1801,7 +1859,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                             fontWeight:FontWeight.w800,fontSize:10)),
                         const SizedBox(width:8),
                         const CircleAvatar(radius:10,
-                          backgroundColor:Color(0xFF651FFF),
+                          backgroundColor:CepqarTheme.purple,
                           child:Icon(Icons.chevron_right_rounded,
                             color:Colors.white,size:17)),
                       ]),
@@ -1858,7 +1916,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
         child:Stack(fit:StackFit.expand,children:[
           const DecoratedBox(decoration:BoxDecoration(gradient:LinearGradient(
             begin:Alignment.topLeft,end:Alignment.bottomRight,
-            colors:[Color(0xFF20083E),Color(0xFF651FFF),Color(0xFF210073)]))),
+            colors:[Color(0xFF20083E),CepqarTheme.purple,Color(0xFF210073)]))),
           Image.asset(_homeValetArt(status),fit:BoxFit.cover,
             errorBuilder:(_,__,___)=>const SizedBox.shrink()),
           const DecoratedBox(decoration:BoxDecoration(gradient:LinearGradient(
@@ -1869,7 +1927,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             crossAxisAlignment:CrossAxisAlignment.start,children:[
               Row(children:[
                 const Icon(Icons.local_parking_rounded,
-                  color:Color(0xFFB9FF45),size:19),
+                  color:CepqarTheme.lime,size:19),
                 const SizedBox(width:4),
                 const Expanded(child:Text('VALE',style:TextStyle(
                   color:Colors.white,fontSize:15,fontWeight:FontWeight.w900))),
@@ -1897,7 +1955,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
               const SizedBox(height:7),
               Container(width:double.infinity,
                 padding:const EdgeInsets.symmetric(horizontal:8,vertical:7),
-                decoration:BoxDecoration(color:const Color(0xFFB9FF45),
+                decoration:BoxDecoration(color:CepqarTheme.lime,
                   borderRadius:BorderRadius.circular(18)),
                 child:Row(mainAxisAlignment:MainAxisAlignment.center,children:[
                   Flexible(child:Text(parked?
@@ -1968,7 +2026,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                   style:const TextStyle(fontSize:11,fontWeight:FontWeight.w800,
                     color:Colors.white)),
                 const SizedBox(height:4),
-                const CircleAvatar(radius:11,backgroundColor:Color(0xFFB9FF45),
+                const CircleAvatar(radius:11,backgroundColor:CepqarTheme.lime,
                   child:Icon(Icons.arrow_forward_rounded,color:Color(0xFF25104F),size:15)),
               ])),
           ]),
@@ -2009,10 +2067,10 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       body:ListView(padding:const EdgeInsets.fromLTRB(20,20,20,32),children:[
         ClipRRect(borderRadius:BorderRadius.circular(18),child:AspectRatio(
           aspectRatio:1.9,
-          child:guide.imageUrl.isEmpty?const ColoredBox(color:Color(0xFF713BFF),
+          child:guide.imageUrl.isEmpty?const ColoredBox(color:CepqarTheme.brightPurple,
             child:Icon(Icons.help_outline,color:Colors.white,size:52)):
             Image.network(guide.imageUrl,fit:BoxFit.cover,
-              errorBuilder:(_,__,___)=>const ColoredBox(color:Color(0xFF713BFF),
+              errorBuilder:(_,__,___)=>const ColoredBox(color:CepqarTheme.brightPurple,
                 child:Icon(Icons.help_outline,color:Colors.white,size:52))))),
         const SizedBox(height:26),
         Text(guide.title,style:const TextStyle(fontSize:25,fontWeight:FontWeight.w900,
@@ -2046,7 +2104,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                 onTap:(){Navigator.pop(sheetContext);_openHowToGuide(guides[i]);}),
             ))),child:const Text('Tümü')),
         ])),
-        SizedBox(height:138,child:ListView.separated(
+        SizedBox(height:138*(MediaQuery.textScalerOf(context).scale(14)/14).clamp(1.0,5.0),child:ListView.separated(
           key:const ValueKey('home-how-to-carousel'),scrollDirection:Axis.horizontal,
           padding:const EdgeInsets.only(right:16),itemCount:guides.length,
           separatorBuilder:(_,__)=>const SizedBox(width:9),
@@ -2086,7 +2144,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
           child:Text('Kampanyalar',
             style:TextStyle(fontSize:19,fontWeight:FontWeight.w900,color:Color(0xFF10152D))),
         ),
-        SizedBox(height:138,child:ListView.separated(
+        SizedBox(height:138*(MediaQuery.textScalerOf(context).scale(14)/14).clamp(1.0,5.0),child:ListView.separated(
           key:const ValueKey('home-campaign-carousel'),
           scrollDirection:Axis.horizontal,
           padding:const EdgeInsets.only(right:16),
@@ -2110,7 +2168,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                       alignment:Alignment.center,
                       errorBuilder:(_,__,___)=>const Center(
                         child:Icon(Icons.campaign_rounded,
-                          color:Color(0xFFB9FF45),size:58)),
+                          color:CepqarTheme.lime,size:58)),
                     )),
                   Positioned(left:0,right:0,bottom:0,child:Container(
                     padding:const EdgeInsets.fromLTRB(8,14,6,8),
@@ -2159,17 +2217,17 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   Widget _ridezMetrics()=>Padding(
     padding:const EdgeInsets.fromLTRB(16,0,16,10),
     child:Row(children:[
-      Expanded(child:_ridezMetric('Toplam Sürüş','Veri yok',Icons.route_rounded,const Color(0xFF651FFF))),
+      Expanded(child:_ridezMetric('Toplam Sürüş','Veri yok',Icons.route_rounded,CepqarTheme.purple)),
       const SizedBox(width:7),
       Expanded(child:_ridezMetric('Toplam Mesafe','Veri yok',Icons.location_on_rounded,const Color(0xFF81D719))),
       const SizedBox(width:7),
-      Expanded(child:_ridezMetric('Toplam Yakıt','Veri yok',Icons.local_gas_station_rounded,const Color(0xFF651FFF))),
+      Expanded(child:_ridezMetric('Toplam Yakıt','Veri yok',Icons.local_gas_station_rounded,CepqarTheme.purple)),
     ]),
   );
 
   @override Widget build(BuildContext context)=>ColoredBox(
     color:const Color(0xFFF9FAFD),
-    child:RefreshIndicator(
+    child:CQContent(child:RefreshIndicator(
       onRefresh:_refreshAll,color:_homePurple,
       child:ListView(
         padding:EdgeInsets.zero,
@@ -2180,7 +2238,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
           Column(mainAxisSize:MainAxisSize.min,children:[
             header(),
             _ridezHero(),
-            _ridezVehicleGrid(),
+            if(_largeHomeText)_accessibleVehicleOverview()else _ridezVehicleGrid(),
             _homeStoreCarousel(),
             _howToCarousel(),
           ]),
@@ -2192,7 +2250,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
           const SizedBox(height:22),
         ],
       ),
-    ),
+    )),
   );
 }
 
@@ -2257,7 +2315,7 @@ class _OwnerSafetyCardPainter extends CustomPainter{
       Paint()
         ..shader=LinearGradient(
           colors:[
-            const Color(0xFF713BFF).withValues(alpha:0),
+            CepqarTheme.brightPurple.withValues(alpha:0),
             const Color(0xFF8E63FF).withValues(alpha:light ? .05 : .10),
             const Color(0xFFB69CFF).withValues(alpha:light ? .11 : .18),
           ],
@@ -2279,7 +2337,7 @@ class _OwnerSafetyCardPainter extends CustomPainter{
           begin:Alignment.centerLeft,
           end:Alignment.centerRight,
           colors:[
-            const Color(0xFF713BFF).withValues(alpha:0),
+            CepqarTheme.brightPurple.withValues(alpha:0),
             const Color(0xFF8A56FF).withValues(alpha:light ? .06 : .12),
             const Color(0xFF9D79FF).withValues(alpha:light ? .12 : .20),
           ],
@@ -2307,7 +2365,7 @@ class _OwnerHeaderWavePainter extends CustomPainter{
         radius:1.0,
         colors:[
           const Color(0xFF8B63FF).withValues(alpha:light ? .16 : .24),
-          const Color(0xFF713BFF).withValues(alpha:light ? .06 : .10),
+          CepqarTheme.brightPurple.withValues(alpha:light ? .06 : .10),
           Colors.transparent,
         ],
         stops:const [0,.50,1],
@@ -2355,8 +2413,8 @@ class _OwnerHeaderWavePainter extends CustomPainter{
           begin:Alignment.centerLeft,
           end:Alignment.centerRight,
           colors:[
-            const Color(0xFF713BFF).withValues(alpha:0),
-            const Color(0xFF713BFF).withValues(alpha:light ? .07 : .13),
+            CepqarTheme.brightPurple.withValues(alpha:0),
+            CepqarTheme.brightPurple.withValues(alpha:light ? .07 : .13),
             const Color(0xFF8C5CFF).withValues(alpha:light ? .13 : .23),
             const Color(0xFF6C35E5).withValues(alpha:light ? .08 : .16),
           ],
@@ -2380,8 +2438,8 @@ class _OwnerHeaderWavePainter extends CustomPainter{
           begin:Alignment.centerLeft,
           end:Alignment.centerRight,
           colors:[
-            const Color(0xFF713BFF).withValues(alpha:0),
-            const Color(0xFF713BFF).withValues(alpha:light ? .04 : .08),
+            CepqarTheme.brightPurple.withValues(alpha:0),
+            CepqarTheme.brightPurple.withValues(alpha:light ? .04 : .08),
             const Color(0xFF9B72FF).withValues(alpha:light ? .10 : .17),
             const Color(0xFF5B22D6).withValues(alpha:light ? .05 : .10),
           ],
@@ -2418,7 +2476,7 @@ class OwnerServicesRedesign extends StatelessWidget{
   @override Widget build(BuildContext context){
     const text=Color(0xFF10162F),muted=Color(0xFF737B90),panel=Colors.white,line=Color(0xFFEEEEF3);
     final items=<({IconData icon,String title,String subtitle,Color color,VoidCallback tap,bool comingSoon,bool enabled})>[
-      (icon:Icons.storefront_rounded,title:'CepQontag Mağaza',subtitle:'Araç etiketi, yedek ürünler ve yeni CepQontag ürünleri.',color:const Color(0xFF713BFF),tap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const CepqontagStorePage())),comingSoon:false,enabled:true),
+      (icon:Icons.storefront_rounded,title:'CepQontag Mağaza',subtitle:'Araç etiketi, yedek ürünler ve yeni CepQontag ürünleri.',color:CepqarTheme.brightPurple,tap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const CepqontagStorePage())),comingSoon:false,enabled:true),
       (icon:Icons.fire_truck_rounded,title:'Çekici',subtitle:'Yolda kaldığınızda çekici çağırın ve canlı takip edin.',color:const Color(0xFFFF8A43),tap:onTowing,comingSoon:true,enabled:_ownerServicesTestAccount),
       (icon:Icons.sos_rounded,title:'Yol Yardım',subtitle:'Akü, lastik, yakıt ve yerinde müdahale desteği.',color:const Color(0xFFFF775F),tap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const RoadsideHelpPage(initialTab:0))),comingSoon:true,enabled:_ownerServicesTestAccount),
       (icon:Icons.support_agent_rounded,title:'Vale',subtitle:'Aracınızı güvenle teslim edin, zaman kazanın.',color:const Color(0xFF8B36FF),tap:onVale,comingSoon:true,enabled:_ownerServicesTestAccount),
@@ -2442,7 +2500,7 @@ class OwnerServicesRedesign extends StatelessWidget{
         Text('CepQontag ile aracınız için tüm hizmetler tek yerde.',style:TextStyle(color:muted,fontSize:13)),
         const SizedBox(height:18),
         FutureBuilder<AppUiConfig>(
-          future:() async{final config=AppUiConfigService();return await config.refresh()??await config.cachedOrDefault();}(),
+          future:() async{final config=AppUiConfigService();return active?(await config.refresh()??await config.cachedOrDefault()):await config.cachedOrDefault();}(),
           builder:(context,snapshot){
             final configured=snapshot.data?.services??const <AppUiServiceItem>[];
             final keys=<String,String>{'CepQontag Mağaza':'store','Çekici':'towing','Yol Yardım':'roadside','Vale':'valet','Fırsatlar':'offers'};
@@ -2452,9 +2510,9 @@ class OwnerServicesRedesign extends StatelessWidget{
               for(final service in configured){
                 if(service.id==keys[x.title]){custom=service;break;}
               }
-              return Padding(padding:const EdgeInsets.only(bottom:12),child:InkWell(
+              return Padding(padding:const EdgeInsets.only(bottom:CQLayout.cardSpacing),child:CQPressable(
                 onTap:x.enabled?x.tap:null,
-                borderRadius:BorderRadius.circular(24),
+                borderRadius:CQLayout.cardRadius,
                 child:Container(
                   constraints:const BoxConstraints(minHeight:118),
                   padding:const EdgeInsets.all(12),
@@ -2462,22 +2520,23 @@ class OwnerServicesRedesign extends StatelessWidget{
                     border:Border.all(color:line),
                     boxShadow:[BoxShadow(color:Colors.black.withValues(alpha:.055),blurRadius:15,offset:const Offset(0,5))]),
                   child:Row(children:[
+                    if(MediaQuery.textScalerOf(context).scale(14)<20)
                     Container(width:83,height:83,alignment:Alignment.center,
                       decoration:BoxDecoration(color:const Color(0xFFF4EFFF),borderRadius:BorderRadius.circular(20)),
                       child:ServiceIconAsset(name:assets[x.title]!,customUrl:custom?.iconUrl??'',
                         fallback:x.icon,size:76)),
-                    const SizedBox(width:12),
+                    if(MediaQuery.textScalerOf(context).scale(14)<20)const SizedBox(width:12),
                     Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisAlignment:MainAxisAlignment.center,children:[
                       Wrap(spacing:7,runSpacing:4,crossAxisAlignment:WrapCrossAlignment.center,children:[
                         Text(x.title,style:const TextStyle(color:text,fontSize:16,fontWeight:FontWeight.w900)),
                         if(x.comingSoon)Container(
                           padding:const EdgeInsets.symmetric(horizontal:9,vertical:5),
-                          decoration:BoxDecoration(color:const Color(0xFFF3EDFF),borderRadius:BorderRadius.circular(20)),
-                          child:const Text('Yakında',style:TextStyle(color:Color(0xFF651FFF),fontSize:10,fontWeight:FontWeight.w800)),
+                          decoration:BoxDecoration(color:CepqarTheme.purpleTint,borderRadius:BorderRadius.circular(20)),
+                          child:const Text('Yakında',style:TextStyle(color:CepqarTheme.purple,fontSize:10,fontWeight:FontWeight.w800)),
                         ),
                       ]),
                       const SizedBox(height:6),
-                      Text(x.subtitle,maxLines:3,overflow:TextOverflow.ellipsis,
+                      Text(x.subtitle,
                         style:const TextStyle(color:muted,fontSize:12.3,height:1.35)),
                     ])),
                     const SizedBox(width:5),
@@ -2568,7 +2627,7 @@ class _VehicleCardWavePainter extends CustomPainter {
       ..lineTo(w*1.05,h*1.05)..close();
     canvas.drawPath(lime,Paint()..shader=const LinearGradient(
       begin:Alignment.topLeft,end:Alignment.bottomRight,
-      colors:[Color(0xFFDCFF63),Color(0xFFB9FF45)])
+      colors:[Color(0xFFDCFF63),CepqarTheme.lime])
       .createShader(Rect.fromLTWH(0,0,w,h)));
     final highlight=Path()
       ..moveTo(w*.58,h*1.05)
@@ -2593,8 +2652,8 @@ class _ValetTrackingScreen extends StatefulWidget{
 class _ValetTrackingScreenState extends State<_ValetTrackingScreen>{
   late Map<String,dynamic> session=widget.session;
   bool refreshing=false;
-  static const lime=Color(0xFFB9FF45);
-  static const purple=Color(0xFF651FFF);
+  static const lime=CepqarTheme.lime;
+  static const purple=CepqarTheme.purple;
   static const stages=['Araç teslim alındı','Araç park edildi',
     'Araç çağrıldı','Araç getiriliyor','Teslimata hazır'];
   int step(String status)=>switch(status){
@@ -2728,3 +2787,4 @@ class _ValetTrackingScreenState extends State<_ValetTrackingScreen>{
       ]));
   }
 }
+

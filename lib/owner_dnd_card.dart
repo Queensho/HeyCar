@@ -1,3 +1,4 @@
+import 'design/cq_components.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -135,13 +136,13 @@ class _OwnerDndCardState extends State<OwnerDndCard> {
           Container(width:44,height:44,decoration:BoxDecoration(color:_dndPurple.withValues(alpha:.13),borderRadius:BorderRadius.circular(14)),child:Icon(active?Icons.nightlight_round:Icons.do_not_disturb_on_outlined,color:_dndPurple)),
           const SizedBox(width:12),
           Expanded(child: Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-            Row(children:[
+            CQAdaptiveRow(children:[
               Flexible(child:Text('Rahatsız Etmeyin',style:TextStyle(color:CepqarTheme.text,fontWeight:FontWeight.w900,fontSize:15))),
               if (!loading && !premium) ...[const SizedBox(width:7),const Icon(Icons.lock_rounded,color:_dndPurple,size:14),const SizedBox(width:3),const Text('Premium',style:TextStyle(color:_dndPurple,fontSize:10,fontWeight:FontWeight.w900))],
             ]),
             const SizedBox(height:4),
             Text(error ?? subtitle,style:TextStyle(color:error==null?CepqarTheme.muted:Colors.redAccent,fontSize:11.5)),
-            if (error != null) TextButton.icon(onPressed:_load,icon:const Icon(Icons.refresh_rounded,size:15),label:const Text('Tekrar dene')),
+            if (error != null) CQButton.text(onPressed:_load,icon:const Icon(Icons.refresh_rounded,size:15),label:const Text('Tekrar dene')),
           ])),
           if (loading)
             const Padding(padding:EdgeInsets.all(12),child:SizedBox(width:20,height:20,child:CircularProgressIndicator(strokeWidth:2,color:_dndPurple)))
@@ -179,3 +180,4 @@ class OwnerDndPage extends StatelessWidget {
     )),
   );
 }
+

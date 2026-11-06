@@ -1,3 +1,4 @@
+import 'design/cq_components.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -16,8 +17,9 @@ import 'active_driver_card.dart';
 import 'owner_new_vehicle_page.dart';
 import 'vehicle_kind.dart';
 import 'owner_vehicle_brand_mark.dart';
+import 'design/cq_layout.dart';
 
-const _purple=Color(0xFF651FFF),_gold=Color(0xFFFFC857),_green=Color(0xFF38D178);
+const _purple=CepqarTheme.purple,_gold=Color(0xFFFFC857),_green=Color(0xFF38D178);
 const Color _bg=Colors.white; const Color _panel=Colors.white; const Color _line=Color(0xFFECECF2); const Color _muted=Color(0xFF737B90); const Color _text=Color(0xFF10162F);
 class OwnerVehiclesPage extends StatefulWidget{const OwnerVehiclesPage({super.key,this.onVehicleChanged});final VoidCallback? onVehicleChanged;@override State<OwnerVehiclesPage> createState()=>_S();}
 class _S extends State<OwnerVehiclesPage>{List<Map<String,dynamic>> vehicles=[];bool loading=true,premium=false;int limit=1;String? error;Timer? _logoRetryTimer;int _logoRetryAttempts=0;String get selected=>QrDraft.vehicleId.trim().isNotEmpty?QrDraft.vehicleId.trim():OnboardingDraft.vehicleId.trim();@override void initState(){super.initState();_load();}
@@ -41,7 +43,7 @@ void _select(Map<String,dynamic> v,{bool notify=true}){final id='${v['id']??''}'
 Future<void> _persistSelection()async{final p=await SharedPreferences.getInstance();await p.setString('owner_vehicle_id',QrDraft.vehicleId);await p.setString('owner_plate',QrDraft.plate);await p.setString('owner_make',QrDraft.make);await p.setString('owner_model',QrDraft.model);await p.setString('owner_vehicle_type',QrDraft.vehicleType);await p.setString('owner_qr_token',QrDraft.token);await p.setString('owner_qr_scan_secret',QrDraft.scanSecret);}
 Future<void> _qr(Map<String,dynamic> v)async{_select(v);if('${v['qr_token']??''}'.trim().isNotEmpty){_showQr(v);return;}await Navigator.push(context,MaterialPageRoute(builder:(c)=>RealQrScanPage(onBack:()=>Navigator.pop(c),onFound:(){Navigator.pop(c);_activate(v);})));}
 Future<void> _activate(Map<String,dynamic> v)async{try{await QrBackend.activate(token:QrDraft.token,vehicleId:'${v['id']}',plate:'${v['plate']}',make:'${v['make']}',model:'${v['model']??''}');if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('${v['plate']} için QR aktif edildi.')));await _load();widget.onVehicleChanged?.call();}catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString().replaceFirst('Exception: ',''))));}}
-void _showQr(Map<String,dynamic> v){final t='${v['qr_token']??''}'.trim(),secret='${v['qr_scan_secret']??''}'.trim(),u='https://queensho.github.io/HeyCar/?tag=${Uri.encodeComponent(t)}${secret.isEmpty?'':'&s=${Uri.encodeComponent(secret)}'}';showModalBottomSheet(context:context,backgroundColor:_panel,builder:(c)=>Padding(padding:const EdgeInsets.all(22),child:Column(mainAxisSize:MainAxisSize.min,children:[Text('${v['plate']} QR',style:TextStyle(color:_text,fontSize:22,fontWeight:FontWeight.w900)),const SizedBox(height:14),Container(width:220,height:220,padding:const EdgeInsets.all(12),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(20)),child:QrImageView(data:u,version:QrVersions.auto,backgroundColor:Colors.white,eyeStyle:const QrEyeStyle(eyeShape:QrEyeShape.square,color:Colors.black),dataModuleStyle:const QrDataModuleStyle(dataModuleShape:QrDataModuleShape.square,color:Colors.black))),const SizedBox(height:10),Text(t,style:TextStyle(color:_muted,fontWeight:FontWeight.w700))])));}
+void _showQr(Map<String,dynamic> v){final t='${v['qr_token']??''}'.trim(),secret='${v['qr_scan_secret']??''}'.trim(),u='https://queensho.github.io/HeyCar/?tag=${Uri.encodeComponent(t)}${secret.isEmpty?'':'&s=${Uri.encodeComponent(secret)}'}';showModalBottomSheet(context:context,isScrollControlled:true,useSafeArea:true,showDragHandle:true,backgroundColor:_panel,builder:(c)=>CQSheetBody(padding:const EdgeInsets.all(22),child:Column(mainAxisSize:MainAxisSize.min,children:[Text('${v['plate']} QR',style:TextStyle(color:_text,fontSize:22,fontWeight:FontWeight.w900)),const SizedBox(height:14),Container(width:220,height:220,padding:const EdgeInsets.all(12),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(20)),child:QrImageView(data:u,version:QrVersions.auto,backgroundColor:Colors.white,eyeStyle:const QrEyeStyle(eyeShape:QrEyeShape.square,color:Colors.black),dataModuleStyle:const QrDataModuleStyle(dataModuleShape:QrDataModuleShape.square,color:Colors.black))),const SizedBox(height:10),Text(t,style:TextStyle(color:_muted,fontWeight:FontWeight.w700))])));}
 void _open(Map<String,dynamic> v){final wasPrimary='${v['id']??''}'==selected;_select(v);final make='${v['make']??''}',model='${v['model']??''}';Navigator.push(context,MaterialPageRoute(builder:(_)=>VehicleCenterPage(plate:'${v['plate']??''}',title:model.trim().isEmpty?make:'$make $model',initialVehicle:Map<String,dynamic>.from(v),isPrimary:wasPrimary))).then((_){widget.onVehicleChanged?.call();_load();});}
 Future<void> _remove(Map<String,dynamic> v)async{final yes=await showDialog<bool>(context:context,builder:(c)=>AlertDialog(backgroundColor:_panel,title:Text('Aracı Kaldır',style:TextStyle(color:_text)),content:Text('Bu işlem aracın QR kodunu kalıcı olarak iptal eder. Satış yaptıysan Aracı Devret seçeneğini kullan.',style:TextStyle(color:_muted)),actions:[TextButton(onPressed:()=>Navigator.pop(c,false),child:const Text('Vazgeç')),FilledButton(onPressed:()=>Navigator.pop(c,true),child:const Text('Aracı Kaldır'))]));if(yes!=true)return;final r=await OwnerHttp.delete(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/vehicles/${v['id']}'),json:false);if(r.statusCode>=200&&r.statusCode<300){await _load();widget.onVehicleChanged?.call();}else if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Araç kaldırılamadı.')));}
 Future<void> _transfer(Map<String,dynamic> v)async{
@@ -58,7 +60,7 @@ void _limit()=>showDialog<void>(context:context,builder:(c)=>AlertDialog(backgro
 
 Widget _brandHeader(){
   return SizedBox(
-    height:42,
+    height:CQLayout.minimumTouchTarget,
     child:Row(children:[
       Image.asset(
         'assets/file_00000000b130820abb8d411e67ab0d25.png',
@@ -68,7 +70,7 @@ Widget _brandHeader(){
       ),
       const Spacer(),
       Container(
-        width:36,height:36,alignment:Alignment.center,
+        width:CQLayout.minimumTouchTarget,height:CQLayout.minimumTouchTarget,alignment:Alignment.center,
         decoration:BoxDecoration(
           shape:BoxShape.circle,
           gradient:const LinearGradient(colors:[Color(0xFF4B1EC9),Color(0xFF8B5CFF)]),
@@ -87,7 +89,7 @@ Widget _brandHeader(){
 
 Widget _qrBanner(){
   return Container(
-    height:78,
+    height:MediaQuery.textScalerOf(context).scale(14)>19?240:130,
     clipBehavior:Clip.antiAlias,
     decoration:BoxDecoration(
       gradient:const LinearGradient(begin:Alignment.centerLeft,end:Alignment.centerRight,colors:[Color(0xFF3D0DAE),Color(0xFF6E22EA),Color(0xFF9746FF)]),
@@ -143,7 +145,7 @@ Widget _bottomAction(IconData icon,String title,String subtitle,VoidCallback tap
     onTap:tap,
     borderRadius:BorderRadius.circular(16),
     child:Container(
-      height:58,
+      constraints:const BoxConstraints(minHeight:58),
       padding:const EdgeInsets.symmetric(horizontal:9),
       decoration:BoxDecoration(color:_panel,borderRadius:BorderRadius.circular(16),border:Border.all(color:_line)),
       child:Row(children:[
@@ -182,16 +184,16 @@ Widget _bottomAction(IconData icon,String title,String subtitle,VoidCallback tap
               const SizedBox(height:12),
               Row(children:[
                 Expanded(child:FilledButton.icon(onPressed:loading?null:_add,
-                  style:FilledButton.styleFrom(backgroundColor:const Color(0xFFB9FF45),foregroundColor:const Color(0xFF10162F),
+                  style:FilledButton.styleFrom(backgroundColor:CepqarTheme.lime,foregroundColor:const Color(0xFF10162F),
                     minimumSize:const Size(0,47),padding:const EdgeInsets.symmetric(horizontal:4),
                     shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15))),
                   icon:const Icon(Icons.add_rounded,size:18),
                   label:const Text('Yeni Araç',maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(fontSize:12,fontWeight:FontWeight.w900)))),
                 const SizedBox(width:8),
                 Expanded(child:OutlinedButton.icon(onPressed:loading?null:_acceptTransfer,
-                  style:OutlinedButton.styleFrom(backgroundColor:Colors.white,foregroundColor:const Color(0xFF651FFF),
+                  style:OutlinedButton.styleFrom(backgroundColor:Colors.white,foregroundColor:CepqarTheme.purple,
                     minimumSize:const Size(0,47),padding:const EdgeInsets.symmetric(horizontal:4),
-                    side:const BorderSide(color:Color(0xFF651FFF)),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15))),
+                    side:const BorderSide(color:CepqarTheme.purple),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15))),
                   icon:const Icon(Icons.swap_horiz_rounded,size:17),
                   label:const Text('Araç Devir Al',maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(fontSize:12,fontWeight:FontWeight.w900)))),
               ]),
@@ -216,7 +218,7 @@ Widget _bottomAction(IconData icon,String title,String subtitle,VoidCallback tap
             else
               ...vehicles.map((v)=>Padding(
                 padding:const EdgeInsets.only(bottom:8),
-                child:_VehicleReferenceCard(
+                child:OwnerVehicleCard(
                   v:v,
                   selected:'${v['id']}'==selected,
                   open:()=>_open(v),
@@ -252,7 +254,7 @@ class _VehiclesHeaderWavePainter extends CustomPainter{
         radius:1.1,
         colors:[
           const Color(0xFF8D68FF).withValues(alpha:light ? .15 : .12),
-          const Color(0xFF713BFF).withValues(alpha:light ? .04 : .05),
+          CepqarTheme.brightPurple.withValues(alpha:light ? .04 : .05),
           Colors.transparent,
         ],
       ).createShader(rect),
@@ -269,7 +271,7 @@ class _VehiclesHeaderWavePainter extends CustomPainter{
       p,
       Paint()..shader=LinearGradient(
         colors:[
-          const Color(0xFF713BFF).withValues(alpha:0),
+          CepqarTheme.brightPurple.withValues(alpha:0),
           const Color(0xFF8C64FF).withValues(alpha:light ? .06 : .08),
           const Color(0xFFB29CFF).withValues(alpha:light ? .12 : .13),
         ],
@@ -280,8 +282,8 @@ class _VehiclesHeaderWavePainter extends CustomPainter{
   bool shouldRepaint(covariant _VehiclesHeaderWavePainter oldDelegate)=>oldDelegate.light!=light;
 }
 
-class _VehicleReferenceCard extends StatelessWidget{
-  const _VehicleReferenceCard({
+class OwnerVehicleCard extends StatelessWidget{
+  const OwnerVehicleCard({
     required this.v,
     required this.selected,
     required this.open,
@@ -305,6 +307,23 @@ class _VehicleReferenceCard extends StatelessWidget{
     final isActive=rawActive is bool?rawActive:(rawActive is num?rawActive!=0:hasQr);
     final details=[if(trim.isNotEmpty)trim,if(year.isNotEmpty)year,if(color.isNotEmpty)color].join(' • ');
     const dark=false;
+
+    if(MediaQuery.textScalerOf(context).scale(14)>19){
+      return CQCard(child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+        Text('${v['plate']??''}',style:const TextStyle(fontSize:20,fontWeight:FontWeight.w800)),
+        Text([make,model,details].where((x)=>x.isNotEmpty).join(' • ')),
+        Text(isActive?'Aktif':'Pasif'),
+        if(selected)const Text('Ana Araç'),
+        TextButton(onPressed:open,child:const Text('Araç detayları')),
+        if(!selected)TextButton(onPressed:select,child:const Text('Ana araç yap')),
+        Wrap(spacing:8,runSpacing:8,children:[
+          TextButton(onPressed:qr,child:const Text('QR Etiket')),
+          TextButton(onPressed:open,child:const Text('Düzenle / Geçmiş')),
+          TextButton(onPressed:transfer,child:const Text('Satış / Devir')),
+          TextButton(onPressed:remove,child:const Text('Aracı Kaldır')),
+        ]),
+      ]));
+    }
 
     return Container(
       // Keep the model/details and "Ana araç yap" row above the action strip.
@@ -466,7 +485,7 @@ class _VehicleAction extends StatelessWidget{
           padding:const EdgeInsets.symmetric(vertical:1),
           child:Column(children:[
             Container(
-              width:36,height:36,
+              width:CQLayout.minimumTouchTarget,height:CQLayout.minimumTouchTarget,
               decoration:BoxDecoration(
                 color:const Color(0xFFF2EAFF),
                 borderRadius:BorderRadius.circular(7),
@@ -567,3 +586,4 @@ class _D extends State<_Dialog>{
   );
  }
 }
+

@@ -1,3 +1,4 @@
+import 'design/cq_components.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -30,8 +31,8 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
   Color get line => const Color(0xFFE8EAF1);
   Color get text => const Color(0xFF10152D);
   Color get muted => const Color(0xFF778096);
-  Color get purple => const Color(0xFF651FFF);
-  Color get lime => const Color(0xFFB9FF45);
+  Color get purple => CepqarTheme.purple;
+  Color get lime => CepqarTheme.lime;
 
   @override
   void initState() {
@@ -245,30 +246,31 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
         child: Stack(alignment: Alignment.center, children: [
           Align(alignment: Alignment.centerLeft, child: IconButton.filledTonal(
             onPressed: () => Navigator.maybePop(context),
-            style: IconButton.styleFrom(backgroundColor: const Color(0xFFF3EDFF)),
-            icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF4912C8)),
+            style: IconButton.styleFrom(backgroundColor: CepqarTheme.purpleTint),
+            icon: const Icon(Icons.arrow_back_rounded, color: CepqarTheme.deepPurple),
           )),
           Image.asset('assets/file_00000000b130820abb8d411e67ab0d25.png', height: 33, fit: BoxFit.contain),
         ]),
       )),
       Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 0), child: Container(
-        height: 315,
+        constraints:const BoxConstraints(minHeight:315),
         clipBehavior: Clip.antiAlias,
         decoration: const BoxDecoration(
           borderRadius: BorderRadius.all(Radius.circular(24)),
           gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
-            colors: [Color(0xFF8139F8), Color(0xFF4912C8), Color(0xFF651FFF)]),
+            colors: [Color(0xFF8139F8), CepqarTheme.deepPurple, CepqarTheme.purple]),
         ),
         child: Stack(children: [
           Positioned(right: -95, bottom: -105, child: Container(width: 340, height: 300,
             decoration: BoxDecoration(color: Colors.white.withValues(alpha: .08), shape: BoxShape.circle))),
+          if(MediaQuery.textScalerOf(context).scale(20)<=28)
           Positioned(right: 8, top: 36, width: 175, height: 180, child: IgnorePointer(child: _WeatherGlyph(
             condition: w.condition, size: 166,
           ))),
           Padding(padding: const EdgeInsets.fromLTRB(17, 21, 17, 14), child: Column(
             crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
-                const Icon(Icons.location_on_rounded, color: Color(0xFFB9FF45), size: 25),
+                const Icon(Icons.location_on_rounded, color: CepqarTheme.lime, size: 25),
                 const SizedBox(width: 5),
                 Expanded(child: Text(w.location.isEmpty ? 'Konum' : w.location,
                   maxLines: 1, overflow: TextOverflow.ellipsis,
@@ -281,7 +283,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
                 color: Colors.white, fontSize: 72, height: 1, fontWeight: FontWeight.w900)),
               Text(w.description, maxLines: 2, overflow: TextOverflow.ellipsis,
                 style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
-              const Spacer(),
+              const SizedBox(height:14),
               _metrics(w, Colors.white, Colors.white70),
             ],
           )),
@@ -290,83 +292,66 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
     ]);
   }
 
-  Widget _metrics(
-    WeatherSnapshot w,
-    Color foreground,
-    Color secondary,
-  ) {
-    return Container(
-      height: 69,
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: .16),
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: Row(
-        children: [
-          _metric(
+  Widget _metrics(WeatherSnapshot w,Color foreground,Color secondary)=>Container(
+    constraints:const BoxConstraints(minHeight:69),
+    padding:const EdgeInsets.all(8),
+    decoration:BoxDecoration(color:Colors.white.withValues(alpha:.16),borderRadius:BorderRadius.circular(15)),
+    child:LayoutBuilder(builder:(context,box){
+      final scaled=MediaQuery.textScalerOf(context).scale(12);
+      final columns=scaled>24?1:(box.maxWidth>=360&&scaled<17?3:2);
+      final width=(box.maxWidth-8*(columns-1))/columns;
+      return Wrap(spacing:8,runSpacing:12,children:[
+        SizedBox(width:width,child:_metric(
             icon: Icons.arrow_upward_rounded,
             iconColor: const Color(0xFFFF3E48),
             value: _degree(w.maxTemperature),
             label: 'En yüksek',
             foreground: foreground,
             secondary: secondary,
-          ),
-          _divider(),
-          _metric(
+          )),
+        SizedBox(width:width,child:_metric(
             icon: Icons.arrow_downward_rounded,
             iconColor: const Color(0xFF1976FF),
             value: _degree(w.minTemperature),
             label: 'En düşük',
             foreground: foreground,
             secondary: secondary,
-          ),
-          _divider(),
-          _metric(
+          )),
+        SizedBox(width:width,child:_metric(
             icon: Icons.thermostat_rounded,
             iconColor: purple,
             value: _degree(w.feelsLike),
             label: 'Hissedilen',
             foreground: foreground,
             secondary: secondary,
-          ),
-          _divider(),
-          _metric(
+          )),
+        SizedBox(width:width,child:_metric(
             icon: Icons.water_drop_outlined,
             iconColor: purple,
             value: _percent(w.humidity),
             label: 'Nem',
             foreground: foreground,
             secondary: secondary,
-          ),
-          _divider(),
-          _metric(
+          )),
+        SizedBox(width:width,child:_metric(
             icon: Icons.air_rounded,
             iconColor: purple,
             value: _wind(w.windSpeed),
             label: 'Rüzgar',
             foreground: foreground,
             secondary: secondary,
-          ),
-          _divider(),
-          _metric(
+          )),
+        SizedBox(width:width,child:_metric(
             icon: Icons.visibility_outlined,
             iconColor: purple,
             value: _visibility(w.visibility),
             label: 'Görüş',
             foreground: foreground,
             secondary: secondary,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _divider() => Container(
-        width: 1,
-        height: 42,
-        color: Colors.white.withValues(alpha: .24),
-      );
+          ))
+      ]);
+    }),
+  );
 
   Widget _metric({
     required IconData icon,
@@ -376,8 +361,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
     required Color foreground,
     required Color secondary,
   }) {
-    return Expanded(
-      child: Column(
+    return Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Row(
@@ -411,8 +395,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
             ),
           ),
         ],
-      ),
-    );
+      );
   }
 
   Widget _drivingCard(_DrivingGuidance guidance) => Padding(
@@ -482,7 +465,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
                 width: 34,
                 height: 34,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFB9FF45),
+                  color: CepqarTheme.lime,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -520,7 +503,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
           ),
           child: Column(
             children: [
-              Row(
+              CQAdaptiveRow(
                 children: [
                   Expanded(
                     child: Text(
@@ -559,7 +542,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
     final items = w.hourlyForecast;
     if (items.isEmpty) {
       return SizedBox(
-        height: 94,
+        height:94*(MediaQuery.textScalerOf(context).scale(14)/14).clamp(1.0,double.infinity),
         child: Center(
           child: Text(
             'Saatlik tahmin alınamıyor.',
@@ -569,7 +552,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
       );
     }
     return SizedBox(
-      height: 94,
+      height:94*(MediaQuery.textScalerOf(context).scale(14)/14).clamp(1.0,double.infinity),
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: items.length,
@@ -583,7 +566,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
             width: 58,
             padding: const EdgeInsets.symmetric(vertical: 7),
             decoration: BoxDecoration(
-              color: now ? const Color(0xFFF3EDFF) : const Color(0xFFF8F9FC),
+              color: now ? CepqarTheme.purpleTint : const Color(0xFFF8F9FC),
               borderRadius: BorderRadius.circular(16),
               border: now
                   ? Border.all(color: purple.withValues(alpha: .12))
@@ -624,7 +607,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
     final items = w.dailyForecast;
     if (items.isEmpty) {
       return SizedBox(
-        height: 112,
+        height:112*(MediaQuery.textScalerOf(context).scale(14)/14).clamp(1.0,double.infinity),
         child: Center(
           child: Text(
             '7 günlük tahmin alınamıyor.',
@@ -634,7 +617,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
       );
     }
     return SizedBox(
-      height: 108,
+      height:108*(MediaQuery.textScalerOf(context).scale(14)/14).clamp(1.0,double.infinity),
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: items.length,
@@ -645,7 +628,7 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
             width: 69,
             padding: const EdgeInsets.fromLTRB(5, 7, 5, 6),
             decoration: BoxDecoration(
-              color: index == 0 ? const Color(0xFFF3EDFF) : const Color(0xFFF8F9FC),
+              color: index == 0 ? CepqarTheme.purpleTint : const Color(0xFFF8F9FC),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Column(
@@ -737,13 +720,14 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
               ),
             ),
             const SizedBox(height: 11),
-            Row(
-              children: [
+            LayoutBuilder(builder:(context,box){
+              final columns=MediaQuery.textScalerOf(context).scale(14)>19?1:2;
+              final width=(box.maxWidth-8*(columns-1))/columns;
+              return Wrap(spacing:8,runSpacing:8,children:[
                 for (var i = 0; i < cells.length; i++) ...[
-                  if (i > 0) const SizedBox(width: 6),
-                  Expanded(
+                  SizedBox(width:width,
                     child: Container(
-                      height: 72,
+                      constraints:const BoxConstraints(minHeight:72),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 7,
                         vertical: 8,
@@ -775,22 +759,18 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
                               children: [
                                 Text(
                                   cells[i].$3,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                     color: muted,
-                                    fontSize: 8.2,
+                                    fontSize:11,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
                                   cells[i].$4,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                     color: text,
-                                    fontSize: 9.7,
+                                    fontSize:13,
                                     height: 1.05,
                                     fontWeight: FontWeight.w900,
                                   ),
@@ -803,8 +783,8 @@ class _WeatherDetailsPageState extends State<WeatherDetailsPage> {
                     ),
                   ),
                 ],
-              ],
-            ),
+              ]);
+            }),
           ],
         ),
       ),
@@ -1426,3 +1406,4 @@ class _WeatherHeroPainter extends CustomPainter {
       oldDelegate.lime != lime ||
       oldDelegate.purple != purple;
 }
+

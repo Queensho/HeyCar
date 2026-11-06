@@ -11,10 +11,12 @@ void main(){
 
   for(final size in <Size>[
     const Size(320,690),
+    const Size(360,780),
     const Size(393,852),
     const Size(430,932),
   ]){
-    testWidgets('premium owner home is responsive at ${size.width}dp',(tester)async{
+    for(final scale in [1.0,1.5,2.0,3.0]){
+    testWidgets('premium owner home is responsive at ${size.width}dp text $scale',(tester)async{
       SharedPreferences.setMockInitialValues(<String,Object>{});
       tester.view.physicalSize=size;
       tester.view.devicePixelRatio=1;
@@ -31,6 +33,8 @@ void main(){
       var vehicles=0;
       String? lastShortcut;
       await tester.pumpWidget(MaterialApp(
+        builder:(context,child)=>MediaQuery(data:MediaQuery.of(context).copyWith(
+          textScaler:TextScaler.linear(scale),disableAnimations:true),child:child!),
         home:Scaffold(body:OwnerHomeRedesign(
           active:false,
           notifications:(){},
@@ -42,16 +46,22 @@ void main(){
       ));
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('premium-home-vehicle')),findsOneWidget);
-      expect(find.byKey(const ValueKey('owner-brand-logo-bmw')),findsOneWidget);
+      if(scale==1)expect(find.byKey(const ValueKey('owner-brand-logo-bmw')),findsOneWidget);
       expect(find.byKey(const ValueKey('premium-home-monthly-summary')),findsOneWidget);
       expect(find.byKey(const ValueKey('owner-home-services-promo')),findsNothing);
       expect(find.byKey(const ValueKey('owner-home-quick-panel')),findsNothing);
+      await tester.ensureVisible(find.byKey(const ValueKey('premium-home-vehicle')));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('premium-home-vehicle')));
       expect(vehicles,1);
+      await tester.ensureVisible(find.byKey(const ValueKey('premium-home-monthly-summary')));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('premium-home-monthly-summary')));
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('owner-monthly-summary-panel')),findsOneWidget);
       expect(tester.takeException(),isNull);
     });
+    }
   }
 }
+

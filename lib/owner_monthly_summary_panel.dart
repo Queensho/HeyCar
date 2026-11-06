@@ -1,4 +1,8 @@
+import 'cepqar_theme.dart';
+import 'design/cq_components.dart';
 import 'package:flutter/material.dart';
+import 'design/cq_motion.dart';
+import 'design/cq_layout.dart';
 
 /// Data-only presentation model; existing authenticated owner API supplies counts.
 @immutable
@@ -33,54 +37,43 @@ class OwnerMonthlySummaryPanel extends StatelessWidget {
       key:const ValueKey('owner-monthly-summary-panel'),
       padding:const EdgeInsets.fromLTRB(13,13,13,14),
       decoration:BoxDecoration(
-        color:Colors.white,borderRadius:BorderRadius.circular(24),
+        color:Colors.white,borderRadius:BorderRadius.circular(CQLayout.cardRadius),
         border:Border.all(color:const Color(0xFFECECF3)),
         boxShadow:const [
           BoxShadow(color:Color(0x0C101426),blurRadius:17,offset:Offset(0,5)),
         ],
       ),
       child:Column(mainAxisSize:MainAxisSize.min,children:[
-        Row(children:[
-          const Icon(Icons.bar_chart_rounded,color:Color(0xFF651FFF),size:24),
-          const SizedBox(width:7),
-          const Expanded(child:Text('Bu Ayki Özetim',
-            maxLines:1,overflow:TextOverflow.ellipsis,
-            style:TextStyle(color:Color(0xFF101426),fontSize:16,
-              fontWeight:FontWeight.w800))),
-          InkWell(
-            key:const ValueKey('owner-monthly-view-all'),onTap:onViewAll,
-            borderRadius:BorderRadius.circular(10),
-            child:const Padding(padding:EdgeInsets.symmetric(vertical:7,horizontal:2),
-              child:Row(mainAxisSize:MainAxisSize.min,children:[
-                Text('Tümünü Gör',style:TextStyle(color:Color(0xFF651FFF),
-                  fontSize:11,fontWeight:FontWeight.w700)),
-                Icon(Icons.chevron_right_rounded,color:Color(0xFF651FFF),size:19),
-              ]),
-            ),
-          ),
-        ]),
+        CQSectionHeading(
+          title:const Text('Bu Ayki Özetim',style:TextStyle(
+            color:Color(0xFF101426),fontSize:16,fontWeight:FontWeight.w800)),
+          action:TextButton(
+            key:const ValueKey('owner-monthly-view-all'),onPressed:onViewAll,
+            child:const Text('Tümünü Gör')),
+        ),
         const SizedBox(height:12),
         if(isLoading)
           const SizedBox(height:64,child:Center(child:SizedBox(
             width:28,height:28,child:CircularProgressIndicator(
-              strokeWidth:2.5,color:Color(0xFF651FFF)),
+              strokeWidth:2.5,color:CepqarTheme.purple),
           )))
         else if(hasError)
-          SizedBox(height:64,child:Row(
+          ConstrainedBox(constraints:const BoxConstraints(minHeight:64),child:Row(
             mainAxisAlignment:MainAxisAlignment.center,children:[
               const Flexible(child:Text('İstatistikler yüklenemedi.',
-                style:TextStyle(color:Color(0xFF737B94),fontSize:12))),
+                style:TextStyle(color:Color(0xFF626C83),fontSize:12))),
               if(onRetry!=null)TextButton(
                 onPressed:onRetry,child:const Text('Tekrar dene')),
             ],
           ))
         else if(metrics.isEmpty)
-          const SizedBox(height:64,child:Center(child:Text(
+          const Padding(padding:EdgeInsets.symmetric(vertical:16),child:Center(child:Text(
             'Henüz istatistik bulunmuyor.',
-            style:TextStyle(color:Color(0xFF737B94),fontSize:12),
+            style:TextStyle(color:Color(0xFF626C83),fontSize:12),
           )))
         else LayoutBuilder(builder:(context,box){
-          final columns=box.maxWidth>=320?4:2;
+          final scaled=MediaQuery.textScalerOf(context).scale(12);
+          final columns=scaled>24?1:(box.maxWidth>=320 && scaled<16?4:2);
           const gap=7.0;
           final count=metrics.length>4?4:metrics.length;
           return Column(children:[
@@ -112,12 +105,12 @@ class _MonthlyMetricTile extends StatelessWidget{
     final change=metric.changePercent;
     final showChange=change!=null&&change.isFinite;
     final side=compact?30.0:34.0;
-    return Material(color:Colors.transparent,child:InkWell(
+    return CQPressable(
       key:ValueKey('owner-monthly-'+metric.id),
       onTap:metric.onTap,
-      borderRadius:BorderRadius.circular(17),
+      borderRadius:17,
       child:Container(
-        height:88,
+        constraints:const BoxConstraints(minHeight:88),
         padding:EdgeInsets.symmetric(horizontal:compact?4:10,vertical:6),
         decoration:BoxDecoration(
           color:metric.background,borderRadius:BorderRadius.circular(17),
@@ -146,7 +139,7 @@ class _MonthlyMetricTile extends StatelessWidget{
           ]),
           const SizedBox(height:5),
           Text(metric.label,maxLines:2,overflow:TextOverflow.ellipsis,
-            style:TextStyle(color:const Color(0xFF737B94),
+            style:TextStyle(color:const Color(0xFF626C83),
               fontSize:compact?10:11,fontWeight:FontWeight.w600,height:1.07)),
           if(showChange)...[
             const SizedBox(height:2),
@@ -157,11 +150,12 @@ class _MonthlyMetricTile extends StatelessWidget{
               style:TextStyle(fontSize:compact?8:9,fontWeight:FontWeight.w700,height:1,
                 color:change>0?const Color(0xFF29964B):
                   change<0?const Color(0xFFD84D63):
-                  const Color(0xFF737B94)),
+                  const Color(0xFF626C83)),
             )),
           ],
         ]),
       ),
-    ));
+    );
   }
 }
+

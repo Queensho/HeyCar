@@ -1,12 +1,14 @@
+import 'design/cq_components.dart';
+import 'design/cq_motion.dart';
 import 'package:flutter/material.dart';
 import 'app_runtime_config.dart';
 import 'cepqar_theme.dart';
 
-const _purple=Color(0xFF651FFF);
+const _purple=CepqarTheme.purple;
 const _bright=Color(0xFF8337F6);
 const _lavender=Color(0xFFF2EAFE);
 const _ink=Color(0xFF10162F);
-const _lime=Color(0xFFB9FF45);
+const _lime=CepqarTheme.lime;
 const _gold=Color(0xFFFFC857);
 
 enum _PremiumKind{individual,family}
@@ -96,7 +98,7 @@ class _PremiumPageState extends State<PremiumPage>{
         foregroundColor:_foreground,
         elevation:0,
         centerTitle:true,
-        leading:Padding(padding:const EdgeInsets.only(left:10),child:IconButton.filledTonal(onPressed:()=>Navigator.maybePop(context),style:IconButton.styleFrom(backgroundColor:_lavender),icon:const Icon(Icons.arrow_back_rounded,color:Color(0xFF4912C8)))),
+        leading:Padding(padding:const EdgeInsets.only(left:10),child:IconButton.filledTonal(onPressed:()=>Navigator.maybePop(context),style:IconButton.styleFrom(backgroundColor:_lavender),icon:const Icon(Icons.arrow_back_rounded,color:CepqarTheme.deepPurple))),
         title:const Text('CepQontag Premium',style:TextStyle(fontSize:20,fontWeight:FontWeight.w900)),
       ),
       body:SafeArea(
@@ -140,7 +142,7 @@ class _PremiumPageState extends State<PremiumPage>{
             ),
             const SizedBox(height:12),
             AnimatedSwitcher(
-              duration:const Duration(milliseconds:200),
+              duration:CQMotion.duration(context,CQMotion.feedback),
               child:Container(
                 key:ValueKey(kind),
                 padding:const EdgeInsets.fromLTRB(15,16,15,8),
@@ -190,7 +192,7 @@ class _PremiumPageState extends State<PremiumPage>{
                 child:Container(
                   height:56,
                   decoration:BoxDecoration(color:_lime,borderRadius:BorderRadius.circular(21)),
-                  child:TextButton.icon(
+                  child:CQButton.text(
                     onPressed:runtimeConfig?.featureEnabled('premium')==false?null:()=>ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(
                       kind==_PremiumKind.family
                         ?'Aile Premium seçildi. Ödeme entegrasyonu bağlandığında satın alma araç sahibi hesabından tamamlanacak.'
@@ -242,11 +244,11 @@ class _KindCard extends StatelessWidget{
  final String? badge;
  @override Widget build(BuildContext context)=>InkWell(
    onTap:onTap,borderRadius:BorderRadius.circular(22),
-   child:AnimatedContainer(duration:const Duration(milliseconds:200),height:116,padding:const EdgeInsets.all(11),
+   child:AnimatedContainer(duration:CQMotion.duration(context,CQMotion.feedback),constraints:const BoxConstraints(minHeight:116),padding:const EdgeInsets.all(11),
      decoration:BoxDecoration(gradient:selected?const LinearGradient(colors:[Color(0xFF321177),_purple,_bright]):null,color:selected?null:Colors.white,borderRadius:BorderRadius.circular(22),border:Border.all(color:selected?_bright:dark?const Color(0xFF4D3A70):const Color(0xFFE8DFF5))),
      child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
        Row(children:[Container(padding:const EdgeInsets.all(8),decoration:BoxDecoration(color:selected?Colors.white.withValues(alpha:.18):_lavender,borderRadius:BorderRadius.circular(11)),child:Icon(icon,color:selected?Colors.white:_purple,size:21)),const Spacer(),if(badge!=null&&!selected)Text(badge!,style:const TextStyle(color:Color(0xFFDB9A19),fontSize:10,fontWeight:FontWeight.w900)),const SizedBox(width:5),Icon(selected?Icons.check_circle_rounded:Icons.radio_button_unchecked_rounded,color:selected?Colors.white:const Color(0xFFA6A9BE),size:22)]),
-       const Spacer(),
+       const SizedBox(height:10),
        Text(title,style:TextStyle(color:selected?Colors.white:dark?Colors.white:_ink,fontSize:17,fontWeight:FontWeight.w900)),
        const SizedBox(height:4),
        Text(subtitle,maxLines:2,overflow:TextOverflow.ellipsis,style:TextStyle(color:selected?const Color(0xFFEAE0FF):dark?const Color(0xFFC9BFE0):const Color(0xFF656C84),fontSize:11)),
@@ -276,13 +278,14 @@ class _Plan extends StatelessWidget{
  final String title,price,note;
  final VoidCallback onTap;
  @override Widget build(BuildContext context)=>InkWell(onTap:onTap,borderRadius:BorderRadius.circular(20),child:AnimatedContainer(
-   duration:const Duration(milliseconds:200),height:112,padding:const EdgeInsets.all(12),
+   duration:CQMotion.duration(context,CQMotion.feedback),constraints:const BoxConstraints(minHeight:112),padding:const EdgeInsets.all(12),
    decoration:BoxDecoration(color:dark?const Color(0xFF201A39):Colors.white,borderRadius:BorderRadius.circular(20),border:Border.all(color:selected?_purple:dark?const Color(0xFF4D3A70):const Color(0xFFE8DFF5),width:selected?2:1)),
    child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
      Row(children:[Expanded(child:Text(title,style:TextStyle(color:dark?Colors.white:_ink,fontSize:13,fontWeight:FontWeight.w900))),Icon(selected?Icons.check_circle_rounded:Icons.radio_button_unchecked_rounded,color:selected?_purple:const Color(0xFFA6A9BE),size:20)]),
-     const Spacer(),
+     const SizedBox(height:10),
      FittedBox(fit:BoxFit.scaleDown,alignment:Alignment.centerLeft,child:Text(price,style:TextStyle(color:dark?Colors.white:_ink,fontSize:22,fontWeight:FontWeight.w900))),
      Text(note,maxLines:2,overflow:TextOverflow.ellipsis,style:TextStyle(color:note.contains('tasarruf')?_lime:dark?const Color(0xFFC9BFE0):const Color(0xFF656C84),fontSize:10.5,fontWeight:FontWeight.w700)),
    ]),
  ));
 }
+

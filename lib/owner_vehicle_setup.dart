@@ -1,3 +1,4 @@
+import 'cepqar_theme.dart';
 import 'package:flutter/material.dart';
 import 'vehicle_api.dart';
 import 'vehicle_kind.dart';
@@ -7,9 +8,9 @@ const _bg = Color(0xFFFDFDFF);
 const _panel = Colors.white;
 const _panel2 = Color(0xFFF7F5FC);
 const _line = Color(0xFFE5E7EF);
-const _purple = Color(0xFF651FFF);
+const _purple = CepqarTheme.purple;
 const _purple2 = Color(0xFF4810D8);
-const _orange = Color(0xFF651FFF);
+const _orange = CepqarTheme.purple;
 const _muted = Color(0xFF747A8D);
 const _text = Color(0xFF101426);
 
@@ -151,7 +152,7 @@ class _OwnerVehicleSetupPageState extends State<OwnerVehicleSetupPage> {
                   Positioned.fill(
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(24),
-                      child: const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF4810D8), Color(0xFF651FFF), Color(0xFFA77BFF)]))),
+                      child: const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF4810D8), CepqarTheme.purple, Color(0xFFA77BFF)]))),
                     ),
                   ),
                   Positioned.fill(
@@ -319,3 +320,4 @@ class _PickerSheetState extends State<_PickerSheet>{
   @override void dispose(){search.dispose();super.dispose();}
   @override Widget build(BuildContext context){final list=widget.values.where((e)=>e.toLowerCase().contains(q.toLowerCase())).toList(); return Container(height:MediaQuery.sizeOf(context).height*.72,decoration:const BoxDecoration(color:Colors.white,borderRadius:BorderRadius.vertical(top:Radius.circular(28))),child:Column(children:[const SizedBox(height:10),Container(width:46,height:5,decoration:BoxDecoration(color:const Color(0xFF4B5775),borderRadius:BorderRadius.circular(8))),Padding(padding:const EdgeInsets.fromLTRB(20,16,20,12),child:Row(children:[Expanded(child:Text(widget.title,style:const TextStyle(color:_text,fontSize:23,fontWeight:FontWeight.w900))),IconButton(onPressed:()=>Navigator.pop(context),icon:const Icon(Icons.close_rounded,color:_text))])),Padding(padding:const EdgeInsets.symmetric(horizontal:20),child:TextField(controller:search,onChanged:(v)=>setState(()=>q=v),style:const TextStyle(color:_text),decoration:InputDecoration(hintText:'Ara...',hintStyle:const TextStyle(color:_muted),prefixIcon:const Icon(Icons.search_rounded,color:_muted),filled:true,fillColor:_panel,border:OutlineInputBorder(borderRadius:BorderRadius.circular(16),borderSide:const BorderSide(color:_line)),enabledBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(16),borderSide:const BorderSide(color:_line))))),const SizedBox(height:12),Expanded(child:GridView.builder(padding:const EdgeInsets.fromLTRB(20,0,20,24),gridDelegate:const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount:3,mainAxisSpacing:10,crossAxisSpacing:10,childAspectRatio:1.12),itemCount:list.length,itemBuilder:(c,i){final value=list[i],selected=value==widget.selected;return InkWell(onTap:()=>Navigator.pop(context,value),borderRadius:BorderRadius.circular(18),child:Container(padding:const EdgeInsets.all(9),decoration:BoxDecoration(color:selected?_purple.withValues(alpha:.18):_panel,borderRadius:BorderRadius.circular(18),border:Border.all(color:selected?_purple:_line,width:selected?1.7:1)),child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[if(widget.showLogos)SizedBox(width:38,height:38,child:_BrandLogo(value))else const Icon(Icons.directions_car_filled_rounded,color:_purple,size:25),const SizedBox(height:7),Text(value,textAlign:TextAlign.center,maxLines:2,overflow:TextOverflow.ellipsis,style:TextStyle(color:selected?_purple:_muted,fontSize:11.5,fontWeight:FontWeight.w800))])));}))]));}
 }
+

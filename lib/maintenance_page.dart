@@ -1,3 +1,5 @@
+import 'design/cq_motion.dart';
+import 'design/cq_components.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -14,24 +16,24 @@ class _MaintenancePageState extends State<MaintenancePage>{Map<String,dynamic>? 
 bool get premium=>data?['premium']==true;
 int get km=>NumberX.i(data?['currentKm']);
 List<dynamic> get records=>(data?['records'] as List<dynamic>?)??<dynamic>[];
-static const _ink=Color(0xFF10152D),_secondary=Color(0xFF778096),_brand=Color(0xFF651FFF),_pale=Color(0xFFF3EDFF),_border=Color(0xFFE8EAF2),_accent=Color(0xFFB9FF45);
+static const _ink=Color(0xFF10152D),_secondary=Color(0xFF778096),_brand=CepqarTheme.purple,_pale=CepqarTheme.purpleTint,_border=Color(0xFFE8EAF2),_accent=CepqarTheme.lime;
 double get totalCost=>records.fold<double>(0,(sum,entry)=>sum+NumberX.d((entry as Map)['total_cost']));
 String _amount(double n){final parts=n.toStringAsFixed(n%1==0?0:2).split('.');final whole=parts.first.replaceAllMapped(RegExp(r'\\B(?=(\\d{3})+(?!\\d))'),(_)=>'.');return parts.length==1?whole:'$whole,${parts.last}';}
-@override Widget build(BuildContext context)=>Theme(data:Theme.of(context).copyWith(brightness:Brightness.light,scaffoldBackgroundColor:Colors.white,colorScheme:const ColorScheme.light(primary:Color(0xFF651FFF),surface:Colors.white,onSurface:Color(0xFF10152D)),textTheme:Theme.of(context).textTheme.apply(bodyColor:const Color(0xFF10152D),displayColor:const Color(0xFF10152D))),child:Scaffold(
+@override Widget build(BuildContext context)=>Theme(data:Theme.of(context).copyWith(brightness:Brightness.light,scaffoldBackgroundColor:Colors.white,colorScheme:const ColorScheme.light(primary:CepqarTheme.purple,surface:Colors.white,onSurface:Color(0xFF10152D)),textTheme:Theme.of(context).textTheme.apply(bodyColor:const Color(0xFF10152D),displayColor:const Color(0xFF10152D))),child:Scaffold(
   backgroundColor:Colors.white,
   body:SafeArea(child:Column(children:[
     _header(),
     Expanded(child:loading?const Center(child:CircularProgressIndicator(color:_brand)):
       error!=null?Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
         Text(error!,style:const TextStyle(color:_secondary)),
-        const SizedBox(height:12),TextButton.icon(onPressed:(){setState(()=>loading=true);load();},icon:const Icon(Icons.refresh),label:const Text('Yeniden Dene'))
+        const SizedBox(height:12),CQButton.text(onPressed:(){setState(()=>loading=true);load();},icon:const Icon(Icons.refresh),label:const Text('Yeniden Dene'))
       ])):
       RefreshIndicator(onRefresh:load,child:ListView(padding:const EdgeInsets.fromLTRB(16,16,16,28),children:[
         _title(),const SizedBox(height:20),_summary(),const SizedBox(height:18),
         if(records.isEmpty)_empty()else _timeline(),
         const SizedBox(height:18),
-        if(!widget.driverMode) Padding(padding:const EdgeInsets.only(bottom:12),child:SizedBox(width:double.infinity,height:48,child:OutlinedButton.icon(onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>MaintenanceV2Page(vehicleId:vid))),icon:const Icon(Icons.local_gas_station_outlined),label:const Text('Yakıt ve Masraflarım')))),
-        SizedBox(height:54,child:FilledButton.icon(
+        if(!widget.driverMode) Padding(padding:const EdgeInsets.only(bottom:12),child:SizedBox(width:double.infinity,child:CQButton.outlined(onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>MaintenanceV2Page(vehicleId:vid))),icon:const Icon(Icons.local_gas_station_outlined),label:const Text('Yakıt ve Masraflarım')))),
+        SizedBox(child:CQButton(
           style:FilledButton.styleFrom(backgroundColor:_brand,foregroundColor:Colors.white,
             shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(16))),
           onPressed:premium?_add:_locked,
@@ -167,7 +169,7 @@ String money(double n)=>n.toStringAsFixed(n%1==0?0:2).replaceAll('.',',');
 }
 class MaintenanceAddPage extends StatefulWidget{const MaintenanceAddPage({super.key,required this.vehicleId,required this.ownerId,required this.currentKm,this.driverMode=false});final String vehicleId,ownerId;final int currentKm;final bool driverMode;@override State<MaintenanceAddPage> createState()=>_MaintenanceAddPageState();}
 class _MaintenanceAddPageState extends State<MaintenanceAddPage>{
- static const ink=Color(0xFF10152D),muted=Color(0xFF778096),purple=Color(0xFF651FFF),pale=Color(0xFFF3EDFF),border=Color(0xFFE8EAF2),lime=Color(0xFFB9FF45);
+ static const ink=Color(0xFF10152D),muted=Color(0xFF778096),purple=CepqarTheme.purple,pale=CepqarTheme.purpleTint,border=Color(0xFFE8EAF2),lime=CepqarTheme.lime;
  late final TextEditingController mileage=TextEditingController(text:widget.currentKm.toString()),cost=TextEditingController(),notes=TextEditingController(),interval=TextEditingController(text:'5000');
  final choices=['Motor yağı','Yağ filtresi','Hava filtresi','Fren balatası','Buji','Kayış / Varyatör','Genel bakım','Diğer'];
  final selected=<String>{};bool saving=false;DateTime serviceDate=DateTime.now();
@@ -195,9 +197,9 @@ class _MaintenanceAddPageState extends State<MaintenanceAddPage>{
     _dateCard(),
     const SizedBox(height:9),
     _panel(Icons.build_rounded,'Yapılan İşlemler *',Wrap(spacing:6,runSpacing:6,children:choices.map((x){
-      final active=selected.contains(x);return InkWell(onTap:()=>setState(()=>active?selected.remove(x):selected.add(x)),borderRadius:BorderRadius.circular(12),
+      final active=selected.contains(x);return CQPressable(onTap:()=>setState(()=>active?selected.remove(x):selected.add(x)),borderRadius:12,
        child:Container(padding:const EdgeInsets.symmetric(horizontal:10,vertical:8),decoration:BoxDecoration(color:active?purple:pale,borderRadius:BorderRadius.circular(12)),
-        child:Row(mainAxisSize:MainAxisSize.min,children:[if(active)...[const Icon(Icons.check_circle,color:Colors.white,size:15),const SizedBox(width:5)],
+        child:CQAdaptiveRow(mainAxisSize:MainAxisSize.min,children:[if(active)...[const Icon(Icons.check_circle,color:Colors.white,size:15),const SizedBox(width:5)],
          Text(x,style:TextStyle(color:active?Colors.white:purple,fontSize:11.5,fontWeight:FontWeight.w700))])));}).toList())),
     const SizedBox(height:9),
     _panel(Icons.description_outlined,'Açıklama',TextField(controller:notes,minLines:2,maxLines:4,maxLength:500,
@@ -211,7 +213,7 @@ class _MaintenanceAddPageState extends State<MaintenanceAddPage>{
     const SizedBox(height:9),
     _panel(Icons.image_outlined,'Fotoğraflar (isteğe bağlı)',const Text('Fotoğraf yükleme bu sürümde desteklenmiyor.',style:TextStyle(color:muted,fontSize:12))),
     const SizedBox(height:17),
-    SizedBox(height:52,child:FilledButton.icon(onPressed:saving?null:save,
+    SizedBox(child:CQButton(onPressed:saving?null:save,
      style:FilledButton.styleFrom(backgroundColor:purple,foregroundColor:Colors.white,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(16))),
      icon:saving?const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)):const Icon(Icons.save_outlined,size:20),
      label:Text(saving?'Kaydediliyor...':'Kaydı Kaydet',style:const TextStyle(fontSize:15,fontWeight:FontWeight.w800))))
@@ -264,5 +266,6 @@ class _MaintenanceAddPageState extends State<MaintenanceAddPage>{
   finally{if(mounted)setState(()=>saving=false);}
  }
 }
-class _MaintenanceSuccessDialog extends StatelessWidget{const _MaintenanceSuccessDialog();@override Widget build(BuildContext context){final w=MediaQuery.sizeOf(context).width;return Dialog(backgroundColor:Colors.transparent,insetPadding:const EdgeInsets.symmetric(horizontal:28),child:ConstrainedBox(constraints:BoxConstraints(maxWidth:w<430?350:370),child:Container(padding:const EdgeInsets.fromLTRB(22,24,22,20),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(23),border:Border.all(color:const Color(0xFFE8EAF2))),child:Column(mainAxisSize:MainAxisSize.min,children:[Container(width:92,height:92,decoration:BoxDecoration(shape:BoxShape.circle,color:const Color(0xFFF3EDFF),border:Border.all(color:_lime,width:4),boxShadow:[BoxShadow(color:_lime.withValues(alpha:.22),blurRadius:20)]),child:const Icon(Icons.check_rounded,color:_lime,size:58)),const SizedBox(height:23),const Text('Bakım kaydı eklendi!',textAlign:TextAlign.center,style:TextStyle(color:Color(0xFF10152D),fontSize:20,fontWeight:FontWeight.w900)),const SizedBox(height:6),const Text('Aracınızın bakım geçmişi\ngüncellendi.',textAlign:TextAlign.center,style:TextStyle(color:Color(0xFF778096),fontSize:12,height:1.35,fontWeight:FontWeight.w600)),const SizedBox(height:25),SizedBox(width:double.infinity,height:48,child:FilledButton(onPressed:()=>Navigator.pop(context,false),style:FilledButton.styleFrom(backgroundColor:_purple,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15))),child:const Text('Tamam',style:TextStyle(fontSize:14,fontWeight:FontWeight.w900)))),const SizedBox(height:11),SizedBox(width:double.infinity,height:48,child:OutlinedButton(onPressed:()=>Navigator.pop(context,true),style:OutlinedButton.styleFrom(foregroundColor:const Color(0xFF651FFF),side:const BorderSide(color:_purple,width:1.5),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15))),child:const Text('Başka Kayıt Ekle',style:TextStyle(fontSize:14,fontWeight:FontWeight.w900))))]))));}}
+class _MaintenanceSuccessDialog extends StatelessWidget{const _MaintenanceSuccessDialog();@override Widget build(BuildContext context){final w=MediaQuery.sizeOf(context).width;return Dialog(backgroundColor:Colors.transparent,insetPadding:const EdgeInsets.symmetric(horizontal:28),child:ConstrainedBox(constraints:BoxConstraints(maxWidth:w<430?350:370),child:Container(padding:const EdgeInsets.fromLTRB(22,24,22,20),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(23),border:Border.all(color:const Color(0xFFE8EAF2))),child:Column(mainAxisSize:MainAxisSize.min,children:[Container(width:92,height:92,decoration:BoxDecoration(shape:BoxShape.circle,color:CepqarTheme.purpleTint,border:Border.all(color:_lime,width:4),boxShadow:[BoxShadow(color:_lime.withValues(alpha:.22),blurRadius:20)]),child:const Icon(Icons.check_rounded,color:_lime,size:58)),const SizedBox(height:23),const Text('Bakım kaydı eklendi!',textAlign:TextAlign.center,style:TextStyle(color:Color(0xFF10152D),fontSize:20,fontWeight:FontWeight.w900)),const SizedBox(height:6),const Text('Aracınızın bakım geçmişi\ngüncellendi.',textAlign:TextAlign.center,style:TextStyle(color:Color(0xFF778096),fontSize:12,height:1.35,fontWeight:FontWeight.w600)),const SizedBox(height:25),SizedBox(width:double.infinity,height:48,child:FilledButton(onPressed:()=>Navigator.pop(context,false),style:FilledButton.styleFrom(backgroundColor:_purple,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15))),child:const Text('Tamam',style:TextStyle(fontSize:14,fontWeight:FontWeight.w900)))),const SizedBox(height:11),SizedBox(width:double.infinity,height:48,child:OutlinedButton(onPressed:()=>Navigator.pop(context,true),style:OutlinedButton.styleFrom(foregroundColor:CepqarTheme.purple,side:const BorderSide(color:_purple,width:1.5),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15))),child:const Text('Başka Kayıt Ekle',style:TextStyle(fontSize:14,fontWeight:FontWeight.w900))))]))));}}
 class NumberX{static int i(dynamic x)=>x is num?x.toInt():int.tryParse('$x')??0;static double d(dynamic x)=>x is num?x.toDouble():double.tryParse('$x')??0;}
+

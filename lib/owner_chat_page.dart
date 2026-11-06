@@ -1,3 +1,4 @@
+import 'design/cq_motion.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -50,8 +51,12 @@ class _OwnerChatPageState extends State<OwnerChatPage> {
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !scroll.hasClients) return;
-      scroll.animateTo(scroll.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 220), curve: Curves.easeOut);
+      if(CQMotion.reduceMotion(context)){
+        scroll.jumpTo(scroll.position.maxScrollExtent);
+      }else{
+        scroll.animateTo(scroll.position.maxScrollExtent,
+          duration:CQMotion.feedback,curve:CQMotion.standard);
+      }
     });
   }
 
@@ -152,7 +157,7 @@ class _OwnerChatPageState extends State<OwnerChatPage> {
       builder: (c) => AlertDialog(
         backgroundColor: CepqarTheme.panel,
         title: Text('Oturumu engelle?', style: TextStyle(color: CepqarTheme.text, fontWeight: FontWeight.w900)),
-        content: const Text(
+        content: Text(
           'Bu tarama oturumu anında kapanır. QR etiketiniz değişmez ve diğer kişiler QR’ı kullanmaya devam edebilir.',
           style: TextStyle(color: CepqarTheme.muted, height: 1.35),
         ),
@@ -190,11 +195,12 @@ class _OwnerChatPageState extends State<OwnerChatPage> {
       appBar: AppBar(
         backgroundColor: CepqarTheme.bg,
         foregroundColor: CepqarTheme.text,
+        toolbarHeight:MediaQuery.textScalerOf(context).scale(20)*1.5+MediaQuery.textScalerOf(context).scale(11)*3+20,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(widget.plate.isEmpty ? 'Anonim Sohbet' : widget.plate, style: const TextStyle(fontWeight: FontWeight.w900)),
-            Text(blocked ? 'Oturum engellendi' : 'Kimlik bilgileri karşılıklı gizlidir', style: TextStyle(color: blocked ? _danger : CepqarTheme.muted, fontSize: 11)),
+            Text(widget.plate.isEmpty ? 'Anonim Sohbet' : widget.plate, maxLines:1,overflow:TextOverflow.ellipsis,style: const TextStyle(fontWeight: FontWeight.w900)),
+            Text(blocked ? 'Oturum engellendi' : 'Kimlik bilgileri karşılıklı gizlidir',maxLines:2,overflow:TextOverflow.ellipsis, style: TextStyle(color: blocked ? _danger : CepqarTheme.muted, fontSize: 11)),
           ],
         ),
         actions: [
@@ -208,7 +214,7 @@ class _OwnerChatPageState extends State<OwnerChatPage> {
           ? const Center(child: CircularProgressIndicator(color: _purple))
           : error != null
               ? Center(
-                  child: Padding(
+                  child: SingleChildScrollView(child: Padding(
                     padding: const EdgeInsets.all(24),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -220,7 +226,7 @@ class _OwnerChatPageState extends State<OwnerChatPage> {
                         FilledButton(onPressed: _resolve, style: FilledButton.styleFrom(backgroundColor: _purple), child: const Text('Tekrar dene')),
                       ],
                     ),
-                  ),
+                  )),
                 )
               : Column(
                   children: [
@@ -277,6 +283,7 @@ class _OwnerChatPageState extends State<OwnerChatPage> {
                               Expanded(
                                 child: TextField(
                                   controller: input,
+                                  minLines:1,maxLines:5,textInputAction:TextInputAction.send,
                                   style: TextStyle(color: CepqarTheme.text),
                                   decoration: InputDecoration(
                                     hintText: 'Mesaj yaz...',
@@ -290,6 +297,7 @@ class _OwnerChatPageState extends State<OwnerChatPage> {
                               ),
                               const SizedBox(width: 8),
                               IconButton.filled(
+                                tooltip:'Mesaj gönder',
                                 onPressed: sending ? null : _send,
                                 style: IconButton.styleFrom(backgroundColor: _purple),
                                 icon: sending
@@ -305,3 +313,4 @@ class _OwnerChatPageState extends State<OwnerChatPage> {
     );
   }
 }
+

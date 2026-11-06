@@ -1,3 +1,4 @@
+import 'design/cq_components.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'onboarding_backend.dart';
@@ -146,7 +147,7 @@ class _MotorcycleEmergencyPageState extends State<MotorcycleEmergencyPage>{
               icon:Icons.person_outline_rounded),
           ),
           const SizedBox(height:10),
-          DropdownButtonFormField<String>(
+          DropdownButtonFormField<String>(isExpanded:true,itemHeight:null,
             value:blood,
             decoration:_dec('Kan grubu','Bilinmiyor',
               icon:Icons.bloodtype_outlined),
@@ -234,7 +235,7 @@ class _MotorcycleEmergencyPageState extends State<MotorcycleEmergencyPage>{
             Text(error!,style:const TextStyle(color:Colors.redAccent)),
           ],
           const SizedBox(height:18),
-          FilledButton.icon(
+          CQButton(
             onPressed:saving?null:_save,
             style:FilledButton.styleFrom(
               backgroundColor:const Color(0xFF762FF5),
@@ -246,3 +247,4 @@ class _MotorcycleEmergencyPageState extends State<MotorcycleEmergencyPage>{
     );
   }
 }
+

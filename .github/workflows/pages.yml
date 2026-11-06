@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}-${{ github.sha }}
   cancel-in-progress: true
 
 jobs:
@@ -28,6 +28,16 @@ jobs:
           cache: true
       - name: Resolve Flutter dependencies
         run: flutter pub get
+      - name: Analyze responsive design system and owner screens
+        run: flutter analyze lib/design lib/cepqar_theme.dart lib/entry_theme_live.dart lib/owner_dashboard_live.dart lib/owner_home_redesign.dart lib/owner_notifications_page.dart lib/owner_chat_page.dart lib/owner_vehicles_page.dart lib/owner_settings_page.dart lib/owner_settings_detail.dart test/cq_responsive_screens_test.dart --no-fatal-infos --no-fatal-warnings
+      - name: Verify 320 360 393 430 dp and accessibility text sizes
+        run: flutter test test/cq_responsive_screens_test.dart
+      - name: Run complete Flutter test suite
+        if: ${{ !cancelled() }}
+        run: flutter test
+      - name: Analyze complete source tree
+        if: ${{ !cancelled() }}
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
       - name: Check redesigned notifications compatibility with Android runtime patch
         run: python3 -m unittest discover -s tool/tests -p test_fix_runtime_android.py -v
       - name: Analyze Maintenance V2 screens
@@ -61,6 +71,8 @@ jobs:
         run: flutter test test/owner_monthly_summary_panel_test.dart
       - name: Verify compact admin-driven home services promo
         run: flutter test test/owner_home_services_promo_test.dart
+      - name: Verify shared responsive layout and accessible motion
+        run: flutter test test/cq_design_system_test.dart
       - name: Verify guest purple lime welcome responsiveness and actions
         run: |
           flutter analyze lib/owner_welcome_overlay.dart test/owner_welcome_purple_lime_test.dart --no-fatal-infos --no-fatal-warnings
@@ -95,8 +107,10 @@ jobs:
         run: python3 -m unittest discover -s tool -p test_callkit_flutter_route_patch.py
 
   build:
-    if: github.event_name != 'pull_request' || github.head_ref == 'rollback/owner-app-15oct-keep-backend-20261018'
+    needs: validate_owner_light_theme
+    if: ${{ !cancelled() && (needs.validate_owner_light_theme.result == 'success' || needs.validate_owner_light_theme.result == 'skipped') && (github.event_name != 'pull_request' || github.head_ref == 'rollback/owner-app-15oct-keep-backend-20261018' || github.head_ref == 'design/apple-hig-responsive-20261106') }}
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -377,4 +391,5 @@ jobs:
           name: cepqontag-owner-android-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
           retention-days: 14
+
 

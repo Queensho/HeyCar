@@ -1,3 +1,5 @@
+import 'design/cq_layout.dart';
+import 'design/cq_motion.dart';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -14,7 +16,7 @@ class CepqontagStorePage extends StatefulWidget {
 }
 
 class _CepqontagStorePageState extends State<CepqontagStorePage> {
-  static const _purple = Color(0xFF713BFF);
+  static const _purple = CepqarTheme.brightPurple;
   static const _lime = Color(0xFFB6FF2A);
 
   static const List<_StoreProduct> _fallbackProducts = [
@@ -254,85 +256,29 @@ class _CepqontagStorePageState extends State<CepqontagStorePage> {
     );
   }
 
-  Widget _hero() => Container(
-        margin: const EdgeInsets.fromLTRB(16, 8, 16, 14),
-        height: 166,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF0E1020), Color(0xFF351281), Color(0xFF713BFF)],
-          ),
-        ),
-        child: Stack(
-          clipBehavior: Clip.hardEdge,
-          children: [
-            Positioned(
-              right: -12,
-              bottom: -8,
-              child: Opacity(
-                opacity: .42,
-                child: Image.asset(
-                  'assets/Etiket4.png',
-                  width: 170,
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                ),
-              ),
-            ),
-            Positioned(
-              left: 18,
-              top: 17,
-              right: 148,
-              bottom: 16,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: _lime,
-                      borderRadius: BorderRadius.circular(9),
-                    ),
-                    child: const Text(
-                      'CEPQONTAG MAĞAZA',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: .6,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    (storeConfig['heroTitle']??'Aracın için hazır.').toString(),
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 27,
-                      height: .95,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    (storeConfig['heroBody']??'Yeni araç, yedek etiket ve gelecek akıllı ürünler tek yerde.').toString(),
-                    maxLines: 2,
-                    style: TextStyle(
-                      color: Color(0xFFD7D0EA),
-                      fontSize: 10.5,
-                      height: 1.25,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
+  Widget _hero()=>Container(
+    margin:const EdgeInsets.fromLTRB(16,8,16,14),
+    constraints:const BoxConstraints(minHeight:166),
+    clipBehavior:Clip.antiAlias,
+    decoration:BoxDecoration(borderRadius:BorderRadius.circular(24),
+      gradient:const LinearGradient(begin:Alignment.centerLeft,end:Alignment.centerRight,
+        colors:[Color(0xFF0E1020),Color(0xFF351281),CepqarTheme.brightPurple])),
+    child:Stack(children:[
+      Positioned(right:-12,bottom:-8,child:Opacity(opacity:.20,child:Image.asset(
+        'assets/Etiket4.png',width:170,fit:BoxFit.contain,
+        errorBuilder:(_,__,___)=>const SizedBox.shrink()))),
+      Padding(padding:const EdgeInsets.all(18),child:Column(
+        mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
+          const Text('CepQontag Mağaza',style:TextStyle(color:CepqarTheme.lime,fontSize:13,fontWeight:FontWeight.w700)),
+          const SizedBox(height:10),
+          Text((storeConfig['heroTitle']??'Aracın için hazır.').toString(),
+            style:const TextStyle(color:Colors.white,fontSize:27,fontWeight:FontWeight.w800)),
+          const SizedBox(height:12),
+          Text((storeConfig['heroBody']??'Yeni araç, yedek etiket ve gelecek akıllı ürünler tek yerde.').toString(),
+            style:const TextStyle(color:Color(0xFFE5DDFB),fontSize:13,height:1.35)),
+        ])),
+    ]),
+  );
 
   Widget _categoryChip(String value) {
     final selected = category == value;
@@ -342,7 +288,8 @@ class _CepqontagStorePageState extends State<CepqontagStorePage> {
         onTap: () => setState(() => category = value),
         borderRadius: BorderRadius.circular(20),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
+          duration:CQMotion.duration(context,CQMotion.feedback),
+          constraints:CQLayout.touchConstraints,
           padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
           decoration: BoxDecoration(
             color: selected ? _purple : panel,
@@ -511,6 +458,7 @@ class _CepqontagStorePageState extends State<CepqontagStorePage> {
             clipBehavior: Clip.none,
             children: [
               IconButton(
+                tooltip:'Sepetim',
                 onPressed: _openCart,
                 icon: const Icon(Icons.shopping_bag_outlined),
               ),
@@ -573,7 +521,7 @@ class _CepqontagStorePageState extends State<CepqontagStorePage> {
           ),
           const SizedBox(height: 9),
           SizedBox(
-            height: 38,
+            height:(MediaQuery.textScalerOf(context).scale(10.5)+24).clamp(44.0,double.infinity),
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               scrollDirection: Axis.horizontal,
@@ -591,11 +539,13 @@ class _CepqontagStorePageState extends State<CepqontagStorePage> {
               itemCount: list.length,
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-                childAspectRatio: .72,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: MediaQuery.textScalerOf(context).scale(14)>19?1:2,
+                crossAxisSpacing: CQLayout.cardSpacing,
+                mainAxisSpacing: CQLayout.cardSpacing,
+                mainAxisExtent:160+MediaQuery.textScalerOf(context).scale(12.5)*2+
+                  MediaQuery.textScalerOf(context).scale(9.5)*3+
+                  MediaQuery.textScalerOf(context).scale(13)*2+48,
               ),
               itemBuilder: (_, i) => _productCard(list[i]),
             ),
@@ -704,7 +654,7 @@ class _ProductDetailSheetState extends State<_ProductDetailSheet> {
             Container(
               height: 190,
               decoration: BoxDecoration(
-                color: const Color(0xFF713BFF).withValues(alpha: .06),
+                color: CepqarTheme.brightPurple.withValues(alpha: .06),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: line),
               ),
@@ -737,7 +687,7 @@ class _ProductDetailSheetState extends State<_ProductDetailSheet> {
                       ? 'Yakında'
                       : '${p.price!.toStringAsFixed(2).replaceAll('.', ',')} TL',
                   style: const TextStyle(
-                    color: Color(0xFF713BFF),
+                    color: CepqarTheme.brightPurple,
                     fontSize: 16,
                     fontWeight: FontWeight.w900,
                   ),
@@ -830,7 +780,7 @@ class _ProductDetailSheetState extends State<_ProductDetailSheet> {
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
                             color: selected?.id == v.id
-                                ? const Color(0xFF713BFF)
+                                ? CepqarTheme.brightPurple
                                 : line,
                           ),
                         ),
@@ -838,7 +788,7 @@ class _ProductDetailSheetState extends State<_ProductDetailSheet> {
                           children: [
                             const Icon(
                               Icons.directions_car_filled_rounded,
-                              color: Color(0xFF713BFF),
+                              color: CepqarTheme.brightPurple,
                               size: 20,
                             ),
                             const SizedBox(width: 9),
@@ -869,7 +819,7 @@ class _ProductDetailSheetState extends State<_ProductDetailSheet> {
                               value: v.id,
                               groupValue: selected?.id,
                               onChanged: (_) => setState(() => selected = v),
-                              activeColor: const Color(0xFF713BFF),
+                              activeColor: CepqarTheme.brightPurple,
                             ),
                           ],
                         ),
@@ -878,12 +828,12 @@ class _ProductDetailSheetState extends State<_ProductDetailSheet> {
                   ),
                 ),
               const SizedBox(height: 12),
-              SizedBox(
-                height: 49,
+              ConstrainedBox(
+                constraints:const BoxConstraints(minHeight:CQLayout.buttonHeight),
                 child: FilledButton.icon(
                   onPressed: p.soldOut ? null : () => widget.onAdd(selected),
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF713BFF),
+                    backgroundColor: CepqarTheme.brightPurple,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(15),
@@ -901,18 +851,18 @@ class _ProductDetailSheetState extends State<_ProductDetailSheet> {
               Container(
                 padding: const EdgeInsets.all(13),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF713BFF).withValues(alpha: .08),
+                  color: CepqarTheme.brightPurple.withValues(alpha: .08),
                   borderRadius: BorderRadius.circular(15),
                 ),
                 child: const Row(
                   children: [
-                    Icon(Icons.schedule_rounded, color: Color(0xFF713BFF)),
+                    Icon(Icons.schedule_rounded, color: CepqarTheme.brightPurple),
                     SizedBox(width: 9),
                     Expanded(
                       child: Text(
                         'Bu ürün henüz satışta değil. Hazır olduğunda mağazada aktif hale gelecek.',
                         style: TextStyle(
-                          color: Color(0xFF713BFF),
+                          color: CepqarTheme.brightPurple,
                           fontSize: 10.5,
                           height: 1.35,
                           fontWeight: FontWeight.w700,
@@ -1032,7 +982,7 @@ class _CartSheet extends StatelessWidget {
                                 height: 60,
                                 padding: const EdgeInsets.all(7),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF713BFF)
+                                  color: CepqarTheme.brightPurple
                                       .withValues(alpha: .06),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -1147,7 +1097,7 @@ class _CartSheet extends StatelessWidget {
                       child: FilledButton(
                         onPressed: onCheckout,
                         style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFF713BFF),
+                          backgroundColor: CepqarTheme.brightPurple,
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(15),
@@ -1307,8 +1257,8 @@ class _StoreCheckoutPageState extends State<StoreCheckoutPage> {
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: active
-                  ? const Color(0xFF713BFF)
-                  : const Color(0xFF713BFF).withValues(alpha: .08),
+                  ? CepqarTheme.brightPurple
+                  : CepqarTheme.brightPurple.withValues(alpha: .08),
               shape: BoxShape.circle,
             ),
             child: Text(
@@ -1351,7 +1301,7 @@ class _StoreCheckoutPageState extends State<StoreCheckoutPage> {
           decoration: InputDecoration(
             labelText: label,
             labelStyle: TextStyle(color: muted, fontSize: 11),
-            prefixIcon: Icon(icon, color: const Color(0xFF713BFF), size: 19),
+            prefixIcon: Icon(icon, color: CepqarTheme.brightPurple, size: 19),
             filled: true,
             fillColor: panel,
             enabledBorder: OutlineInputBorder(
@@ -1360,7 +1310,7 @@ class _StoreCheckoutPageState extends State<StoreCheckoutPage> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: Color(0xFF713BFF)),
+              borderSide: const BorderSide(color: CepqarTheme.brightPurple),
             ),
           ),
         ),
@@ -1452,7 +1402,7 @@ class _StoreCheckoutPageState extends State<StoreCheckoutPage> {
                     height: 52,
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF713BFF).withValues(alpha: .06),
+                      color: CepqarTheme.brightPurple.withValues(alpha: .06),
                       borderRadius: BorderRadius.circular(11),
                     ),
                     child: _storeProductImage(
@@ -1531,7 +1481,7 @@ class _StoreCheckoutPageState extends State<StoreCheckoutPage> {
                     const Text(
                       'Siparişte hesaplanacak',
                       style: TextStyle(
-                        color: Color(0xFF713BFF),
+                        color: CepqarTheme.brightPurple,
                         fontSize: 10.5,
                         fontWeight: FontWeight.w800,
                       ),
@@ -1591,12 +1541,12 @@ class _StoreCheckoutPageState extends State<StoreCheckoutPage> {
                   width: 52,
                   height: 52,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF713BFF).withValues(alpha: .10),
+                    color: CepqarTheme.brightPurple.withValues(alpha: .10),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
                     Icons.credit_card_rounded,
-                    color: Color(0xFF713BFF),
+                    color: CepqarTheme.brightPurple,
                     size: 27,
                   ),
                 ),
@@ -1623,13 +1573,13 @@ class _StoreCheckoutPageState extends State<StoreCheckoutPage> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF713BFF).withValues(alpha: .08),
+                    color: CepqarTheme.brightPurple.withValues(alpha: .08),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Text(
                     'Yakında',
                     style: TextStyle(
-                      color: Color(0xFF713BFF),
+                      color: CepqarTheme.brightPurple,
                       fontSize: 10,
                       fontWeight: FontWeight.w900,
                     ),
@@ -1707,7 +1657,7 @@ class _StoreCheckoutPageState extends State<StoreCheckoutPage> {
                     child: FilledButton(
                       onPressed: step < 2 && !creatingOrder ? _next : null,
                       style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF713BFF),
+                        backgroundColor: CepqarTheme.brightPurple,
                         foregroundColor: Colors.white,
                         minimumSize: const Size.fromHeight(48),
                         shape: RoundedRectangleBorder(
@@ -1811,7 +1761,7 @@ Widget _storeProductImage(
       fit: fit,
       errorBuilder: (_, __, ___) => Icon(
         Icons.qr_code_2_rounded,
-        color: const Color(0xFF713BFF),
+        color: CepqarTheme.brightPurple,
         size: fallbackSize,
       ),
     );
@@ -1821,7 +1771,7 @@ Widget _storeProductImage(
     fit: fit,
     errorBuilder: (_, __, ___) => Icon(
       Icons.qr_code_2_rounded,
-      color: const Color(0xFF713BFF),
+      color: CepqarTheme.brightPurple,
       size: fallbackSize,
     ),
   );
@@ -1856,3 +1806,4 @@ class _CartLine {
         quantity: quantity ?? this.quantity,
       );
 }
+

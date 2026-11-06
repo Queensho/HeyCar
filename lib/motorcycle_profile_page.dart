@@ -1,3 +1,4 @@
+import 'design/cq_components.dart';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -256,7 +257,7 @@ class _MotorcycleProfilePageState extends State<MotorcycleProfilePage> {
             _field('Yağ kapasitesi',_oilCapacity,
               hint:'Örn. 800',suffix:'ml'),
             const SizedBox(height:12),
-            DropdownButtonFormField<String>(
+            DropdownButtonFormField<String>(isExpanded:true,itemHeight:null,
               value:const ['chain','belt','shaft','other'].contains(driveType)
                 ?driveType:null,
               decoration:InputDecoration(
@@ -291,7 +292,7 @@ class _MotorcycleProfilePageState extends State<MotorcycleProfilePage> {
             _field('Zincir/kayış bakım aralığı',_driveInterval,
               hint:'Kılavuzunuzdaki bakım aralığı',suffix:'km'),
             const SizedBox(height:14),
-            FilledButton.icon(
+            CQButton(
               onPressed:saving?null:save,
               style:FilledButton.styleFrom(backgroundColor:primary,
                 padding:const EdgeInsets.symmetric(vertical:16)),
@@ -306,7 +307,7 @@ class _MotorcycleProfilePageState extends State<MotorcycleProfilePage> {
               Text(error!,style:const TextStyle(color:Colors.redAccent)),
             ],
             const SizedBox(height:24),
-            Row(children:[
+            CQAdaptiveRow(children:[
               Icon(Icons.speed_rounded,color:primary),
               const SizedBox(width:8),
               Expanded(child:Text('Bakım takibi',style:TextStyle(
@@ -327,3 +328,4 @@ class _MotorcycleProfilePageState extends State<MotorcycleProfilePage> {
     );
   }
 }
+

@@ -1,3 +1,4 @@
+import 'design/cq_components.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -191,7 +192,7 @@ class _ParkingLocationCardState extends State<ParkingLocationCard> {
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: CepqarTheme.line),
       ),
-      child: Row(
+      child: CQAdaptiveRow(
         children: [
           Container(
             width: 48,
@@ -230,7 +231,7 @@ class _ParkingLocationCardState extends State<ParkingLocationCard> {
           if (locked) ...[
             const Icon(Icons.lock_rounded, color: Color(0xFFFFB800), size: 17),
             const SizedBox(width: 5),
-            const Text(
+            Text(
               widget.driverMode ? 'Aile' : 'Premium',
               style: TextStyle(
                 color: Color(0xFFFFB800),
@@ -245,3 +246,4 @@ class _ParkingLocationCardState extends State<ParkingLocationCard> {
     ),
   );
 }
+

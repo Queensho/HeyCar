@@ -54,40 +54,12 @@ class ParkingSearchService {
         lon = (longitude * 100).round() / 100,
         key = '$lat,$lon';
     await (_hydration ??= _hydrate());
-    // Geoapify is primary; the API key remains on the Cepqar VPS.
-    try {
-      final uri = Uri.parse('https://heycar-api-185-165-46-213.nip.io/api/parking/nearby')
-          .replace(queryParameters: {'lat':'$latitude','lon':'$longitude'});
-      final response = await _client.get(uri, headers: const {'Accept':'application/json'})
-          .timeout(const Duration(seconds: 10));
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data is Map && data['places'] is List) {
-          final places = <ParkingPlace>[];
-          for (final raw in data['places'] as List) {
-            if (raw is! Map) continue;
-            final m = Map<String,dynamic>.from(raw);
-            final tags = <String,String>{};
-            if (m['tags'] is Map) {
-              (m['tags'] as Map).forEach((k,v){ if(v is String) tags['$k']=v; });
-            }
-            final la=m['latitude'], lo=m['longitude'], id=(m['id'] ?? '').toString();
-            if (la is num && lo is num && id.startsWith('geoapify/')) {
-              places.add(ParkingPlace(id:id,latitude:la.toDouble(),longitude:lo.toDouble(),tags:Map.unmodifiable(tags)));
-            }
-          }
-          if (places.isNotEmpty) return _within(ParkingSearchResult(places), latitude, longitude);
-        }
-      }
-    } catch (_) {
-      // Geoapify unavailable: continue with OSM/Overpass fallback.
-    }
     final saved = _cache[key];
     if (saved != null && _fresh(saved, ttl))
       return _within(ParkingSearchResult(saved.places), latitude, longitude);
     final pending = _pending[key];
     if (pending != null) return _within(await pending, latitude, longitude);
-    final task = _fetch(key, lat, lon, saved);
+    final task = _fetch(key, latitude, longitude, saved);
     _pending[key] = task;
     try {
       return _within(await task, latitude, longitude);
@@ -136,6 +108,34 @@ class ParkingSearchService {
         if (wait > Duration.zero) await _delay(wait);
       }
       _lastRequest = _now();
+      // Geoapify is primary; the API key remains on the Cepqar VPS.
+    try {
+      final uri = Uri.parse('https://heycar-api-185-165-46-213.nip.io/api/parking/nearby')
+          .replace(queryParameters: {'lat':'$lat','lon':'$lon'});
+      final response = await _client.get(uri, headers: const {'Accept':'application/json'})
+          .timeout(const Duration(seconds: 10));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data is Map && data['places'] is List) {
+          final places = <ParkingPlace>[];
+          for (final raw in data['places'] as List) {
+            if (raw is! Map) continue;
+            final m = Map<String,dynamic>.from(raw);
+            final tags = <String,String>{};
+            if (m['tags'] is Map) {
+              (m['tags'] as Map).forEach((k,v){ if(v is String) tags['$k']=v; });
+            }
+            final la=m['latitude'], lo=m['longitude'], id=(m['id'] ?? '').toString();
+            if (la is num && lo is num && id.startsWith('geoapify/')) {
+              places.add(ParkingPlace(id:id,latitude:la.toDouble(),longitude:lo.toDouble(),tags:Map.unmodifiable(tags)));
+            }
+          }
+          if (places.isNotEmpty) return ParkingSearchResult(places);
+        }
+      }
+    } catch (_) {
+        // Geoapify unavailable: continue with OSM/Overpass fallback.
+    }
       // 4 km query covers 3 km radius plus 0.01-degree cache-grid rounding.
       final query =
           '[out:json][timeout:20][maxsize:8388608];('
@@ -158,7 +158,7 @@ class ParkingSearchService {
                 body: 'data=${Uri.encodeQueryComponent(query)}',
               )
               .timeout(const Duration(seconds: 10));
-          if (candidate.statusCode == 200) {
+          if (candidate.statusCode == 200 || candidate.statusCode == 429) {
             response = candidate;
             break;
           }
@@ -300,3 +300,4 @@ class _Cache {
   final DateTime at;
   final List<ParkingPlace> places;
 }
+

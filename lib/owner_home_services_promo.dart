@@ -1,4 +1,7 @@
+import 'cepqar_theme.dart';
 import 'package:flutter/material.dart';
+import 'design/cq_motion.dart';
+import 'design/cq_layout.dart';
 
 import 'app_ui_config.dart';
 
@@ -36,8 +39,8 @@ class OwnerHomeServicesPromo extends StatelessWidget {
 
   Color _tagColor(AppUiServiceItem service) {
     return switch(service.id){
-      'towing' when service.iconToken=='warning'=>const Color(0xFF651FFF),
-      'roadside' when service.iconToken=='danger'=>const Color(0xFF651FFF),
+      'towing' when service.iconToken=='warning'=>CepqarTheme.purple,
+      'roadside' when service.iconToken=='danger'=>CepqarTheme.purple,
       'valet' when service.iconToken=='primary'=>const Color(0xFF2978D8),
       'offers' when service.iconToken=='success'=>const Color(0xFF478D19),
       _=>tokens.token(service.iconToken),
@@ -76,7 +79,7 @@ class OwnerHomeServicesPromo extends StatelessWidget {
         ))),
         if(url.isEmpty)
           Icon(Icons.fire_truck_rounded,size:narrow?37:49,
-            color:const Color(0xFF651FFF))
+            color:CepqarTheme.purple)
         else
           Transform.translate(
             offset:Offset(featured!.imageX*.2,featured.imageY*.2),
@@ -88,7 +91,7 @@ class OwnerHomeServicesPromo extends StatelessWidget {
                   url,fit:featured.fit=='cover'?BoxFit.cover:BoxFit.contain,
                   errorBuilder:(_,__,___)=>Icon(
                     Icons.fire_truck_rounded,size:narrow?37:49,
-                    color:const Color(0xFF651FFF)),
+                    color:CepqarTheme.purple),
                 ),
               ),
             ),
@@ -102,17 +105,19 @@ class OwnerHomeServicesPromo extends StatelessWidget {
     if(services.isEmpty)return const SizedBox.shrink();
     return LayoutBuilder(builder:(context,box){
       final narrow=box.maxWidth<330;
+      final largeText=MediaQuery.textScalerOf(context).scale(12)>16;
+      final veryLargeText=MediaQuery.textScalerOf(context).scale(12)>22;
       return Material(
-        color:Colors.white,borderRadius:BorderRadius.circular(24),
-        child:InkWell(
+        color:Colors.white,borderRadius:BorderRadius.circular(CQLayout.cardRadius),
+        child:CQPressable(
           key:const ValueKey('owner-home-services-promo'),
           onTap:onOpenServices,
-          borderRadius:BorderRadius.circular(24),
+          borderRadius:CQLayout.cardRadius,
           child:Container(
-            height:124,
+            constraints:const BoxConstraints(minHeight:124),
             padding:EdgeInsets.symmetric(horizontal:narrow?10:12,vertical:10),
             decoration:BoxDecoration(
-              borderRadius:BorderRadius.circular(24),
+              borderRadius:BorderRadius.circular(CQLayout.cardRadius),
               border:Border.all(color:const Color(0xFFECECF3)),
               boxShadow:const [BoxShadow(
                 color:Color(0x10101426),blurRadius:15,offset:Offset(0,5)),
@@ -125,19 +130,19 @@ class OwnerHomeServicesPromo extends StatelessWidget {
                 mainAxisAlignment:MainAxisAlignment.center,
                 crossAxisAlignment:CrossAxisAlignment.start,
                 children:[
-                  Text('CepQontag Hizmetleri',maxLines:2,
+                  Text('CepQontag Hizmetleri',maxLines:veryLargeText?null:(largeText?3:2),
                     overflow:TextOverflow.ellipsis,
                     style:TextStyle(color:const Color(0xFF101426),
                       fontSize:narrow?13.5:15.3,
                       fontWeight:FontWeight.w700,height:1.05)),
                   const SizedBox(height:3),
-                  Text(descriptionFor(services),maxLines:2,
+                  Text(descriptionFor(services),maxLines:veryLargeText?null:(largeText?4:2),
                     overflow:TextOverflow.ellipsis,
-                    style:TextStyle(color:const Color(0xFF737B94),
+                    style:TextStyle(color:const Color(0xFF626C83),
                       fontSize:narrow?10.1:11.2,height:1.13)),
                   const SizedBox(height:7),
                   SizedBox(
-                    height:20,
+                    height:MediaQuery.textScalerOf(context).scale(10)+12,
                     child:ListView.separated(
                       key:const ValueKey('owner-home-service-tags'),
                       scrollDirection:Axis.horizontal,
@@ -169,7 +174,7 @@ class OwnerHomeServicesPromo extends StatelessWidget {
                 decoration:const BoxDecoration(
                   color:Color(0xFFF1EAFF),shape:BoxShape.circle),
                 child:const Icon(Icons.chevron_right_rounded,
-                  color:Color(0xFF651FFF),size:25),
+                  color:CepqarTheme.purple,size:25),
               ),
             ]),
           ),
@@ -178,3 +183,4 @@ class OwnerHomeServicesPromo extends StatelessWidget {
     });
   }
 }
+

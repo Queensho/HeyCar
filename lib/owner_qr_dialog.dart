@@ -1,3 +1,4 @@
+import 'design/cq_layout.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -67,10 +68,10 @@ Future<void> showOwnerQrDialog(BuildContext context) async {
     barrierColor: Colors.black.withValues(alpha: .72),
     builder: (dialogContext) => Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 34),
+      insetPadding: CQLayout.screenInsets,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 360),
-        child: Container(
+        child: SingleChildScrollView(child: Container(
           padding: const EdgeInsets.fromLTRB(22, 18, 22, 22),
           decoration: BoxDecoration(
             color: CepqarTheme.panel,
@@ -92,6 +93,7 @@ Future<void> showOwnerQrDialog(BuildContext context) async {
                     ),
                   ),
                   IconButton(
+                    tooltip:'Kapat',
                     onPressed: () => Navigator.pop(dialogContext),
                     icon: Icon(Icons.close_rounded, color: CepqarTheme.muted),
                   ),
@@ -99,16 +101,16 @@ Future<void> showOwnerQrDialog(BuildContext context) async {
               ),
               const SizedBox(height: 8),
               if (publicUrl.isNotEmpty) ...[
-                Container(
-                  width: 224,
-                  height: 224,
+                ConstrainedBox(
+                  constraints:const BoxConstraints(maxWidth:224),
+                  child:AspectRatio(aspectRatio:1,child:Container(
                   padding: const EdgeInsets.all(13),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(22),
                   ),
                   child: QrImageView(data:publicUrl,version:QrVersions.auto,backgroundColor:Colors.white),
-                ),
+                ))),
                 const SizedBox(height: 14),
                 Text(
                   token,
@@ -132,8 +134,9 @@ Future<void> showOwnerQrDialog(BuildContext context) async {
               ],
             ],
           ),
-        ),
+        )),
       ),
     ),
   );
 }
+
