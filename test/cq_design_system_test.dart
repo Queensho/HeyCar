@@ -53,6 +53,19 @@ void main() {
     expect(longPresses, 1);
   });
 
+  testWidgets('reduced motion disables press animation', (tester) async {
+    await tester.pumpWidget(const MediaQuery(
+      data: MediaQueryData(disableAnimations: true),
+      child: MaterialApp(home: Scaffold(body: CQPressable(
+        onTap: null,
+        child: Text('No motion'),
+      ))),
+    ));
+    final scale = tester.widget<AnimatedScale>(find.byType(AnimatedScale));
+    expect(scale.duration, Duration.zero);
+    expect(scale.scale, 1);
+  });
+
   testWidgets('reveal hides content when invisible', (tester) async {
     await tester.pumpWidget(const MaterialApp(
       home: Scaffold(body: CQReveal(visible: false, child: Text('Secret'))),
