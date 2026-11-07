@@ -21,6 +21,8 @@ import 'weather_details_page.dart';
 class OwnerDashboardLive extends StatefulWidget{const OwnerDashboardLive({super.key});@override State<OwnerDashboardLive> createState()=>_S();}
 class _S extends State<OwnerDashboardLive>{
 int tab=0;bool parked=false,vehicleLoading=true;
+final Set<int> _visitedTabs={0};
+void _selectTab(int next){if(next==tab)return;setState((){tab=next;_visitedTabs.add(next);});}
 String get vid=>QrDraft.vehicleId.trim().isNotEmpty?QrDraft.vehicleId.trim():OnboardingDraft.vehicleId.trim();
 String get oid=>OnboardingDraft.userId.trim();
 bool get testAccount{
@@ -41,10 +43,10 @@ void action(String a){
   if(a=='qr')_qr();
   else if(a=='qr_security'&&vid.isNotEmpty)Navigator.push(context,MaterialPageRoute(builder:(_)=>QrSecurityPage(vehicleId:vid,plate:QrDraft.plate)));
   else if(a=='parking')_park();
-  else if(a=='notifications')setState(()=>tab=3);
-  else if(a=='vehicles'||a=='drivers')setState(()=>tab=1);
-  else if(a=='services')setState(()=>tab=2);
-  else if(a=='settings')setState(()=>tab=4);
+  else if(a=='notifications')_selectTab(3);
+  else if(a=='vehicles'||a=='drivers')_selectTab(1);
+  else if(a=='services')_selectTab(2);
+  else if(a=='settings')_selectTab(4);
   else if(a=='premium')Navigator.push(context,MaterialPageRoute(builder:(_)=>const PremiumPage()));
   else if(a=='valet'&&testAccount&&vid.isNotEmpty)Navigator.push(context,MaterialPageRoute(builder:(_)=>ValetInfoPage(vehicleId:vid)));
   else if(a=='towing'&&testAccount)Navigator.push(context,MaterialPageRoute(builder:(_)=>const RoadsideHelpPage(initialTab:1)));
@@ -101,15 +103,15 @@ void _showQuickAccess(){
       final pages=[
         OwnerHomeRedesign(
           key:ValueKey('home-$vid-${QrDraft.token}-${QrDraft.vehicleType}'),
-          notifications:()=>setState(()=>tab=3),
-          vehicles:()=>setState(()=>tab=1),
-          services:()=>setState(()=>tab=2),
+          notifications:()=>_selectTab(3),
+          vehicles:()=>_selectTab(1),
+          services:()=>_selectTab(2),
           park:_park,
           shortcut:action,
           active:tab==0,
         ),
-        OwnerVehiclesPage(onVehicleChanged:_vehicleChanged),
-        OwnerServicesRedesign(
+        if(_visitedTabs.contains(1))OwnerVehiclesPage(onVehicleChanged:_vehicleChanged) else const SizedBox.shrink(),
+        if(_visitedTabs.contains(2))OwnerServicesRedesign(
           onVale:()=>testAccount?Navigator.push(context,MaterialPageRoute(builder:(_)=>ValetInfoPage(vehicleId:vid))):null,
           onTowing:()=>action('towing'),
           onPark:_park,
@@ -117,9 +119,9 @@ void _showQuickAccess(){
           onMaintenance:()=>action('maintenance'),
           onReminders:()=>action('reminders'),
           active:tab==2,
-        ),
-        OwnerNotificationsPage(key:ValueKey('notifications-$vid'),vehicleId:vid,plate:QrDraft.plate,active:tab==3),
-        OwnerSettingsPage(onOpenVehicles:()=>setState(()=>tab=1),onOpenQr:_qr),
+        ) else const SizedBox.shrink(),
+        if(_visitedTabs.contains(3))OwnerNotificationsPage(key:ValueKey('notifications-$vid'),vehicleId:vid,plate:QrDraft.plate,active:tab==3) else const SizedBox.shrink(),
+        if(_visitedTabs.contains(4))OwnerSettingsPage(onOpenVehicles:()=>_selectTab(1),onOpenQr:_qr) else const SizedBox.shrink(),
       ];
       const labels=['Anasayfa','Araçlarım','Hizmetler','Hızlı Erişim','Profil'];
       const icons=[Icons.home_rounded,Icons.directions_car_outlined,Icons.grid_view_rounded,Icons.grid_view_rounded,Icons.person_outline_rounded];
@@ -129,7 +131,7 @@ void _showQuickAccess(){
         body:IndexedStack(index:tab,children:pages),
         bottomNavigationBar:CQNavigationBar(
           labels:labels,icons:icons,selectedIndex:navTabs.indexOf(tab),
-          onSelected:(i)=>navTabs[i]==-1?_showQuickAccess():setState(()=>tab=navTabs[i]),
+          onSelected:(i)=>navTabs[i]==-1?_showQuickAccess():_selectTab(navTabs[i]),
         ),
       );
     },
