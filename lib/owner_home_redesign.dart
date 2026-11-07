@@ -677,12 +677,13 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       const SizedBox(height:CQLayout.cardSpacing),
       CQCard(child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
         TextButton.icon(onPressed:()=>widget.shortcut('reminders'),
-          icon:const Icon(Icons.calendar_month_rounded),label:const Text('Yaklaşan Servis • Bakım hatırlatmaları')),
-        TextButton.icon(key:const ValueKey('premium-home-monthly-summary'),
-          onPressed:()=>showModalBottomSheet<void>(
-            context:context,isScrollControlled:true,useSafeArea:true,
-            builder:(_)=>CQSheetBody(child:monthly())),
-          icon:const Icon(Icons.bar_chart_rounded),label:const Text('Bu Ayki Özetim')),
+          icon:Image.asset('assets/images/services/Muayene.png',width:32,height:32,
+            errorBuilder:(_,__,___)=>const Icon(Icons.calendar_month_rounded)),
+          label:const Text('Yaklaşan Servis • Bakım hatırlatmaları')),
+        TextButton.icon(key:const ValueKey('premium-home-offers'),
+          onPressed:()=>widget.shortcut('app_offers'),
+          icon:const ServiceIconAsset(name:'firsatlar',fallback:Icons.local_offer_rounded,size:32),
+          label:const Text('Fırsatlar • Size özel kampanyalar')),
       ])),
     ]),
   );
