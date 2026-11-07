@@ -47,18 +47,18 @@ void main(){
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('premium-home-vehicle')),findsOneWidget);
       if(scale==1)expect(find.byKey(const ValueKey('owner-brand-logo-bmw')),findsOneWidget);
-      expect(find.byKey(const ValueKey('premium-home-monthly-summary')),findsOneWidget);
+      expect(find.byKey(const ValueKey('premium-home-offers')),findsOneWidget);
       expect(find.byKey(const ValueKey('owner-home-services-promo')),findsNothing);
       expect(find.byKey(const ValueKey('owner-home-quick-panel')),findsNothing);
       await tester.ensureVisible(find.byKey(const ValueKey('premium-home-vehicle')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('premium-home-vehicle')));
       expect(vehicles,1);
-      await tester.ensureVisible(find.byKey(const ValueKey('premium-home-monthly-summary')));
+      await tester.ensureVisible(find.byKey(const ValueKey('premium-home-offers')));
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey('premium-home-monthly-summary')));
+      await tester.tap(find.byKey(const ValueKey('premium-home-offers')));
       await tester.pumpAndSettle();
-      expect(find.byKey(const ValueKey('owner-monthly-summary-panel')),findsOneWidget);
+      expect(lastShortcut,'app_offers');
       expect(tester.takeException(),isNull);
     });
     }

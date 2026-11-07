@@ -677,12 +677,13 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       const SizedBox(height:CQLayout.cardSpacing),
       CQCard(child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
         TextButton.icon(onPressed:()=>widget.shortcut('reminders'),
-          icon:const Icon(Icons.calendar_month_rounded),label:const Text('Yaklaşan Servis • Bakım hatırlatmaları')),
-        TextButton.icon(key:const ValueKey('premium-home-monthly-summary'),
-          onPressed:()=>showModalBottomSheet<void>(
-            context:context,isScrollControlled:true,useSafeArea:true,
-            builder:(_)=>CQSheetBody(child:monthly())),
-          icon:const Icon(Icons.bar_chart_rounded),label:const Text('Bu Ayki Özetim')),
+          icon:Image.asset('assets/images/services/Muayene.png',width:32,height:32,
+            errorBuilder:(_,__,___)=>const Icon(Icons.calendar_month_rounded)),
+          label:const Text('Yaklaşan Servis • Bakım hatırlatmaları')),
+        TextButton.icon(key:const ValueKey('premium-home-offers'),
+          onPressed:()=>widget.shortcut('app_offers'),
+          icon:const ServiceIconAsset(name:'firsatlar',fallback:Icons.local_offer_rounded,size:32),
+          label:const Text('Fırsatlar • Size özel kampanyalar')),
       ])),
     ]),
   );
@@ -1755,7 +1756,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     }catch(_){}
   }
 
-  Widget _ridezTile(String title,String subtitle,IconData icon,VoidCallback onTap,{Key? key,bool urgent=false}){
+  Widget _ridezTile(String title,String subtitle,IconData icon,VoidCallback onTap,{Key? key,bool urgent=false,String? assetPath,bool offersIcon=false}){
     return Material(color:Colors.white,borderRadius:BorderRadius.circular(20),
       child:InkWell(key:key,onTap:onTap,borderRadius:BorderRadius.circular(20),
         child:Container(padding:const EdgeInsets.symmetric(horizontal:9,vertical:8),
@@ -1765,7 +1766,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             Container(width:38,height:42,
               decoration:BoxDecoration(color:const Color(0xFFF1E9FF),
                 borderRadius:BorderRadius.circular(14)),
-              child:Icon(icon,color:CepqarTheme.purple,size:26)),
+              child:assetPath!=null?Padding(padding:const EdgeInsets.all(3),child:Image.asset(assetPath,fit:BoxFit.contain,errorBuilder:(_,__,___)=>Icon(icon,color:CepqarTheme.purple,size:26))):offersIcon?const ServiceIconAsset(name:'firsatlar',fallback:Icons.local_offer_rounded,size:35):Icon(icon,color:CepqarTheme.purple,size:26)),
             const SizedBox(width:7),
             Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,
               mainAxisAlignment:MainAxisAlignment.center,children:[
@@ -2039,14 +2040,11 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             ?(_nearestServiceDays==0?'Bugün son gün':'Son $_nearestServiceDays gün kaldı')
             :'Bakım hatırlatmaları',
           Icons.calendar_month_rounded,()=>widget.shortcut('reminders'),
-          urgent:_serviceReminderVehicleId==QrDraft.vehicleId.trim()&&_nearestServiceDays!=null&&_nearestServiceDays!<=15)),
+          assetPath:'assets/images/services/Muayene.png',urgent:_serviceReminderVehicleId==QrDraft.vehicleId.trim()&&_nearestServiceDays!=null&&_nearestServiceDays!<=15)),
         const SizedBox(height:8),
-        Expanded(child:_ridezTile('Bu Ayki Özetim','Aylık araç istatistikleri',
-          Icons.bar_chart_rounded,()=>showModalBottomSheet<void>(
-            context:context,isScrollControlled:true,showDragHandle:true,
-            builder:(sheetContext)=>SafeArea(child:SingleChildScrollView(
-              padding:const EdgeInsets.symmetric(vertical:16),child:monthly()))),
-          key:const ValueKey('premium-home-monthly-summary'))),
+        Expanded(child:_ridezTile('Fırsatlar','Size özel kampanyalar',
+          Icons.local_offer_rounded,()=>widget.shortcut('app_offers'),
+          offersIcon:true,key:const ValueKey('premium-home-offers'))),
       ]))),
     ]),
   );
