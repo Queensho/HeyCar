@@ -2161,6 +2161,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                               child:Icon(Icons.qr_code_scanner_rounded,
                                 color:Color(0xFF6D15EA),size:54))
                             :Image.network(guide.imageUrl,fit:BoxFit.cover,
+                              cacheWidth:512,filterQuality:FilterQuality.low,
                               errorBuilder:(_,__,___)=>const ColoredBox(
                                 color:Color(0xFFF0E8FF),
                                 child:Icon(Icons.qr_code_scanner_rounded,
