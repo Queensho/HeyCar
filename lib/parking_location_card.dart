@@ -100,7 +100,7 @@ class _ParkingLocationCardState extends State<ParkingLocationCard> {
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 12, 18, 20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(28),
       ),
       child: Column(
