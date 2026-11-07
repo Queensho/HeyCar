@@ -98,10 +98,10 @@ class _ParkingLocationCardState extends State<ParkingLocationCard> {
     if (selected == 1)
       return _back(SavedParkingCard(vehicleId: widget.vehicleId, driverMode: widget.driverMode));
     return Container(
-      padding: const EdgeInsets.fromLTRB(18, 10, 18, 22),
+      padding: const EdgeInsets.fromLTRB(18, 12, 18, 20),
       decoration: BoxDecoration(
-        color: CepqarTheme.panel,
-        borderRadius: BorderRadius.circular(24),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -112,14 +112,25 @@ class _ParkingLocationCardState extends State<ParkingLocationCard> {
               width: 44,
               height: 4,
               decoration: BoxDecoration(
-                color: CepqarTheme.line,
+                color: const Color(0xFFAAA5B7),
                 borderRadius: BorderRadius.circular(9),
               ),
             ),
           ),
-          const SizedBox(height: 16),
-          Text(
-            'Park',
+          const SizedBox(height: 14),
+          Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Park', style: const TextStyle(color: Color(0xFF190D30), fontSize: 25, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 5),
+              Text('Aracını nerede bıraktın?', style: const TextStyle(color: Color(0xFF6B6578), fontSize: 13)),
+            ])),
+            const SizedBox(width: 8),
+            Image.asset('assets/images/services/Parkyerim.png', width: 90, height: 76, fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => const Icon(Icons.local_parking_rounded, color: Color(0xFF7124F5), size: 44)),
+          ]),
+          const SizedBox(height: 12),
+          /* Text(
+            'Park'
             style: TextStyle(
               color: CepqarTheme.text,
               fontSize: 23,
@@ -131,7 +142,7 @@ class _ParkingLocationCardState extends State<ParkingLocationCard> {
             'Aracını nerede bıraktın?',
             style: TextStyle(color: CepqarTheme.muted, fontSize: 14),
           ),
-          const SizedBox(height: 16),
+          */
           _choice(
             Icons.map_outlined,
             'Yakındaki Otoparklar',
@@ -190,9 +201,9 @@ class _ParkingLocationCardState extends State<ParkingLocationCard> {
         constraints: const BoxConstraints(minHeight: 92),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: CepqarTheme.bg,
+          color: const Color(0xFFFAF9FD),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: CepqarTheme.line),
+          border: Border.all(color: const Color(0xFFE5DDF2)),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -201,7 +212,7 @@ class _ParkingLocationCardState extends State<ParkingLocationCard> {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: CepqarTheme.purple.withValues(alpha: .13),
+                color: const Color(0xFFEDE3FF),
                 borderRadius: BorderRadius.circular(15),
               ),
               child: Icon(icon, color: CepqarTheme.purple, size: 27),
@@ -215,14 +226,14 @@ class _ParkingLocationCardState extends State<ParkingLocationCard> {
                   Text(title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: CepqarTheme.text,
-                      fontSize: 15.5, fontWeight: FontWeight.w900)),
+                    style: const TextStyle(color: Color(0xFF190D30),
+                      fontSize: 15, fontWeight: FontWeight.w700)),
                   const SizedBox(height: 4),
                   Text(sub,
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: CepqarTheme.muted,
-                      fontSize: 11.5, height: 1.25)),
+                    style: const TextStyle(color: Color(0xFF696477),
+                      fontSize: 12, height: 1.3)),
                   if (locked) ...[
                     const SizedBox(height: 5),
                     Text(widget.driverMode ? 'Aile Premium' : 'Premium',
