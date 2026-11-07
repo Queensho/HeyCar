@@ -129,20 +129,6 @@ class _ParkingLocationCardState extends State<ParkingLocationCard> {
               errorBuilder: (_, __, ___) => const Icon(Icons.local_parking_rounded, color: Color(0xFF7124F5), size: 44)),
           ]),
           const SizedBox(height: 12),
-          /* Text(
-            'Park'
-            style: TextStyle(
-              color: CepqarTheme.text,
-              fontSize: 23,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Aracını nerede bıraktın?',
-            style: TextStyle(color: CepqarTheme.muted, fontSize: 14),
-          ),
-          */
           _choice(
             Icons.map_outlined,
             'Yakındaki Otoparklar',
