@@ -17,8 +17,39 @@ import 'package:heycar_app/cepqar_offers_page.dart';
 import 'package:heycar_app/owner_settings_detail.dart';
 import 'package:heycar_app/owner_settings_page.dart';
 import 'package:heycar_app/owner_vehicles_page.dart';
+import 'package:heycar_app/parking_location_card.dart';
 
 void main() {
+  for (final width in [320.0, 393.0]) {
+    for (final scale in [1.0, 2.0, 3.0]) {
+      testWidgets('park options remain horizontal at $width dp and $scale text scale', (tester) async {
+        tester.view.physicalSize = Size(width, 1000);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        await tester.pumpWidget(MaterialApp(
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(scale)),
+            child: child!,
+          ),
+          home: const Scaffold(body: SingleChildScrollView(
+            child: ParkingLocationCard(vehicleId: 'test-vehicle'),
+          )),
+        ));
+        await tester.pump();
+        expect(find.text('Yakındaki Otoparklar'), findsOneWidget);
+        expect(find.text('Sokakta Park Ettim'), findsOneWidget);
+        expect(find.text('Park Yerim'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        if (scale == 1.0) {
+          final icon = tester.getCenter(find.byIcon(Icons.map_outlined));
+          final title = tester.getCenter(find.text('Yakındaki Otoparklar'));
+          expect((icon.dy - title.dy).abs(), lessThan(35),
+            reason: 'Park icon and title should share a horizontal card row');
+        }
+      });
+    }
+  }
   for (final width in [320.0, 360.0, 393.0, 430.0]) {
     for (final scale in [1.0, 1.5, 2.0, 3.0]) {
       testWidgets('owner screens at $width dp, text $scale', (tester) async {
