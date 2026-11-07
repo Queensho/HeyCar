@@ -124,9 +124,9 @@ void _showQuickAccess(){
                         Text(item.title,textAlign:TextAlign.center,maxLines:2,overflow:TextOverflow.ellipsis,
                           style:TextStyle(color:const Color(0xFF180B33),fontSize:textScale>20?14:13,
                             fontWeight:FontWeight.w800,height:1.1)),
-                        const Spacer(),
+                        const SizedBox(height:2),
                         const Align(alignment:Alignment.centerRight,child:CircleAvatar(
-                          radius:22,backgroundColor:Color(0xFF7124F5),
+                          radius:13,backgroundColor:Color(0xFF7124F5),
                           child:Icon(Icons.arrow_forward_rounded,color:Colors.white,size:17))),
                       ])),
                     ]),
