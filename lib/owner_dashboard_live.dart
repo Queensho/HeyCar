@@ -64,32 +64,76 @@ void action(String a){
   }
 }
 void _showQuickAccess(){
-  final actions=<({String title,IconData icon,String action})>[
-    (title:'Park Yerim',icon:Icons.local_parking_rounded,action:'parking'),
-    (title:'Bakım Geçmişi',icon:Icons.build_circle_outlined,action:'maintenance'),
-    (title:'Sürücüler',icon:Icons.people_outline_rounded,action:'drivers'),
-    (title:'Muayene',icon:Icons.fact_check_outlined,action:'inspection'),
-    (title:'Bildirimler',icon:Icons.notifications_outlined,action:'notifications'),
-    (title:'QR Güvenliği',icon:Icons.qr_code_rounded,action:'qr_security'),
+  const shortcuts=<({String title,String image,String action})>[
+    (title:'Park Yerim',image:'assets/images/services/Parkyerim.png',action:'parking'),
+    (title:'Bakım Geçmişi',image:'assets/images/services/Bakimgecmisi.png',action:'maintenance'),
+    (title:'Sürücüler',image:'assets/images/services/Sürücüler.png',action:'drivers'),
+    (title:'Muayene',image:'assets/images/services/Muayene.png',action:'inspection'),
+    (title:'Bildirimler',image:'assets/images/services/Bildirimler.png',action:'notifications'),
+    (title:'QR Güvenliği',image:'assets/images/services/Qrgüvenliği.png',action:'qr_security'),
   ];
   showModalBottomSheet<void>(
-    context:context,isScrollControlled:true,showDragHandle:true,
-    useSafeArea:true,
+    context:context,isScrollControlled:true,useSafeArea:true,
+    backgroundColor:Colors.white,showDragHandle:true,
     sheetAnimationStyle:AnimationStyle(
       duration:CQMotion.duration(context,CQMotion.sheet),
       reverseDuration:CQMotion.duration(context,CQMotion.feedback)),
     builder:(sheetContext)=>CQSheetBody(
       child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
-        const Text('Hızlı Erişim',style:TextStyle(fontSize:22,fontWeight:FontWeight.w800)),
-        const SizedBox(height:16),
+        Row(children:[
+          Container(width:42,height:42,
+            decoration:BoxDecoration(color:const Color(0xFFF0E5FF),borderRadius:BorderRadius.circular(13)),
+            child:const Icon(Icons.bolt_rounded,color:Color(0xFF7124F5),size:29)),
+          const SizedBox(width:12),
+          const Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+            Text('Hızlı Erişim',style:TextStyle(color:Color(0xFF180B33),fontSize:23,fontWeight:FontWeight.w900)),
+            SizedBox(height:2),
+            Text('En çok kullanılan işlemlere tek dokunuşla ulaşın.',
+              style:TextStyle(color:Color(0xFF645A76),fontSize:12)),
+          ])),
+        ]),
+        const SizedBox(height:20),
         LayoutBuilder(builder:(context,box){
-          final columns=MediaQuery.textScalerOf(context).scale(14)>20?1:2;
-          final width=(box.maxWidth-CQLayout.cardSpacing*(columns-1))/columns;
-          return Wrap(spacing:CQLayout.cardSpacing,runSpacing:CQLayout.cardSpacing,
-            children:actions.map((item)=>SizedBox(width:width,child:FilledButton.tonalIcon(
-              onPressed:(){Navigator.pop(sheetContext);action(item.action);},
-              icon:Icon(item.icon),label:Text(item.title),
-            ))).toList());
+          final textScale=MediaQuery.textScalerOf(context).scale(14);
+          final columns=box.maxWidth>=600&&textScale<=20?3:(textScale>20?1:2);
+          const gap=12.0;
+          final width=(box.maxWidth-gap*(columns-1))/columns;
+          final tileHeight=textScale>20?148.0:166.0;
+          return Wrap(spacing:gap,runSpacing:gap,children:[
+            for(final item in shortcuts)
+              SizedBox(width:width,height:tileHeight,child:Material(
+                color:Colors.white,borderRadius:BorderRadius.circular(22),
+                child:InkWell(
+                  key:ValueKey('quick-sheet-'+item.action),
+                  borderRadius:BorderRadius.circular(22),
+                  onTap:(){Navigator.pop(sheetContext);action(item.action);},
+                  child:Container(
+                    decoration:BoxDecoration(
+                      borderRadius:BorderRadius.circular(22),
+                      border:Border.all(color:const Color(0xFFE8DDF9)),
+                      boxShadow:const [BoxShadow(color:Color(0x0D33135E),blurRadius:12,offset:Offset(0,4))],
+                    ),
+                    child:Stack(children:[
+                      Positioned(bottom:0,right:0,child:ClipRRect(
+                        borderRadius:const BorderRadius.only(bottomRight:Radius.circular(21)),
+                        child:CustomPaint(size:const Size(76,27),painter:_QuickLimeCornerPainter()))),
+                      Padding(padding:const EdgeInsets.fromLTRB(8,10,8,12),child:Column(children:[
+                        Expanded(child:Image.asset(item.image,fit:BoxFit.contain,
+                          errorBuilder:(_,__,___)=>const Icon(Icons.apps_rounded,color:Color(0xFF7124F5),size:48))),
+                        const SizedBox(height:4),
+                        Text(item.title,textAlign:TextAlign.center,maxLines:2,overflow:TextOverflow.ellipsis,
+                          style:TextStyle(color:const Color(0xFF180B33),fontSize:textScale>20?14:13,
+                            fontWeight:FontWeight.w800,height:1.1)),
+                        const SizedBox(height:5),
+                        const Align(alignment:Alignment.centerRight,child:CircleAvatar(
+                          radius:13,backgroundColor:Color(0xFF7124F5),
+                          child:Icon(Icons.arrow_forward_rounded,color:Colors.white,size:17))),
+                      ])),
+                    ]),
+                  ),
+                ),
+              )),
+          ]);
         }),
       ]),
     ),
@@ -139,3 +183,13 @@ void _showQuickAccess(){
 );
 }
 
+
+/// Lime accent for the white quick-access shortcut tiles.
+class _QuickLimeCornerPainter extends CustomPainter {
+  const _QuickLimeCornerPainter();
+  @override void paint(Canvas canvas,Size size){
+    final path=Path()..moveTo(0,size.height)..quadraticBezierTo(size.width*.58,size.height*.92,size.width,0)..lineTo(size.width,size.height)..close();
+    canvas.drawPath(path,Paint()..color=const Color(0xFFC8FF24));
+  }
+  @override bool shouldRepaint(covariant CustomPainter oldDelegate)=>false;
+}
