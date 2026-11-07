@@ -139,6 +139,27 @@ void _showQuickAccess(){
     ),
   );
 }
+Widget _ownerNavItem(int index,String label,IconData icon){
+  final active=tab==index;
+  return Expanded(child:Semantics(
+    button:true,selected:active,label:label,
+    child:InkWell(
+      key:ValueKey('owner-nav-$index'),
+      onTap:()=>_selectTab(index),
+      borderRadius:BorderRadius.circular(16),
+      child:Padding(
+        padding:const EdgeInsets.symmetric(vertical:6,horizontal:2),
+        child:Column(mainAxisAlignment:MainAxisAlignment.center,mainAxisSize:MainAxisSize.min,children:[
+          Icon(icon,size:25,color:active?const Color(0xFF6412CE):const Color(0xFF3F3C49)),
+          const SizedBox(height:4),
+          Text(label,maxLines:1,overflow:TextOverflow.ellipsis,
+            style:TextStyle(fontSize:11,fontWeight:active?FontWeight.w700:FontWeight.w500,
+              color:active?const Color(0xFF6412CE):const Color(0xFF3F3C49))),
+        ]),
+      ),
+    ),
+  ));
+}
 @override Widget build(BuildContext context)=>ValueListenableBuilder<ThemeMode>(
   valueListenable:CepqarTheme.mode,
   builder:(_,__,___)=>ValueListenableBuilder<int>(
@@ -167,15 +188,39 @@ void _showQuickAccess(){
         if(_visitedTabs.contains(3))OwnerNotificationsPage(key:ValueKey('notifications-$vid'),vehicleId:vid,plate:QrDraft.plate,active:tab==3) else const SizedBox.shrink(),
         if(_visitedTabs.contains(4))OwnerSettingsPage(onOpenVehicles:()=>_selectTab(1),onOpenQr:_qr) else const SizedBox.shrink(),
       ];
-      const labels=['Anasayfa','Araçlarım','Hizmetler','Hızlı Erişim','Profil'];
-      const icons=[Icons.home_rounded,Icons.directions_car_outlined,Icons.grid_view_rounded,Icons.grid_view_rounded,Icons.person_outline_rounded];
-      const navTabs=[0,1,2,-1,4];
       return Scaffold(
         backgroundColor:CepqarTheme.bg,
         body:IndexedStack(index:tab,children:pages),
-        bottomNavigationBar:CQNavigationBar(
-          labels:labels,icons:icons,selectedIndex:navTabs.indexOf(tab),
-          onSelected:(i)=>navTabs[i]==-1?_showQuickAccess():_selectTab(navTabs[i]),
+        extendBody:true,
+        floatingActionButtonLocation:FloatingActionButtonLocation.centerDocked,
+        floatingActionButton:Semantics(
+          button:true,label:'Hızlı Erişim menüsünü aç',
+          child:FloatingActionButton.large(
+            key:const ValueKey('quick-access-center-button'),
+            heroTag:'owner-quick-access',
+            onPressed:_showQuickAccess,
+            backgroundColor:const Color(0xFF6412CE),
+            foregroundColor:Colors.white,
+            shape:const CircleBorder(side:BorderSide(color:Colors.white,width:5)),
+            elevation:5,
+            child:const Icon(Icons.qr_code_scanner_rounded,size:32,color:Color(0xFFC8FF24)),
+          ),
+        ),
+        bottomNavigationBar:BottomAppBar(
+          color:Colors.white,
+          elevation:8,
+          shadowColor:const Color(0x220F0922),
+          shape:const CircularNotchedRectangle(),
+          notchMargin:7,
+          padding:EdgeInsets.zero,
+          height:76,
+          child:Row(children:[
+            _ownerNavItem(0,'Anasayfa',Icons.home_rounded),
+            _ownerNavItem(1,'Araçlarım',Icons.directions_car_outlined),
+            const Expanded(child:SizedBox.shrink()),
+            _ownerNavItem(2,'Hizmetler',Icons.grid_view_rounded),
+            _ownerNavItem(4,'Profil',Icons.person_outline_rounded),
+          ]),
         ),
       );
     },
