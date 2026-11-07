@@ -65,7 +65,9 @@ for filename, replacements in TARGETS.items():
     text = text.replace('Colors.white60', 'CepqarTheme.muted')
     text = text.replace('Colors.white54', 'CepqarTheme.muted')
     text = text.replace('Colors.white38', 'CepqarTheme.muted')
-    text = text.replace('Colors.white', 'CepqarTheme.text')
+    # Preserve explicit white surfaces in the parking sheet; only legacy text colors
+# should be migrated individually. Global replacement breaks light-theme contrast.
+# text = text.replace('Colors.white', 'CepqarTheme.text')
     text = re.sub(r'\bconst\s+(?=[A-Z][A-Za-z0-9_]*(?:<[^>]+>)?\s*\()', '', text)
 
     constructors = {
