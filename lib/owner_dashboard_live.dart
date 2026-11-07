@@ -195,7 +195,7 @@ Widget _ownerNavItem(int index,String label,IconData icon){
         floatingActionButtonLocation:FloatingActionButtonLocation.centerDocked,
         floatingActionButton:Semantics(
           button:true,label:'Hızlı Erişim menüsünü aç',
-          child:FloatingActionButton.large(
+          child:FloatingActionButton(
             key:const ValueKey('quick-access-center-button'),
             heroTag:'owner-quick-access',
             onPressed:_showQuickAccess,
@@ -203,7 +203,7 @@ Widget _ownerNavItem(int index,String label,IconData icon){
             foregroundColor:Colors.white,
             shape:const CircleBorder(side:BorderSide(color:Colors.white,width:5)),
             elevation:5,
-            child:const Icon(Icons.qr_code_scanner_rounded,size:32,color:Color(0xFFC8FF24)),
+            child:const Icon(Icons.qr_code_scanner_rounded,size:24,color:Color(0xFFC8FF24)),
           ),
         ),
         bottomNavigationBar:BottomAppBar(
@@ -211,9 +211,9 @@ Widget _ownerNavItem(int index,String label,IconData icon){
           elevation:8,
           shadowColor:const Color(0x220F0922),
           shape:const CircularNotchedRectangle(),
-          notchMargin:7,
+          notchMargin:5,
           padding:EdgeInsets.zero,
-          height:76,
+          height:70,
           child:Row(children:[
             _ownerNavItem(0,'Anasayfa',Icons.home_rounded),
             _ownerNavItem(1,'Araçlarım',Icons.directions_car_outlined),
