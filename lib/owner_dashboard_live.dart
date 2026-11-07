@@ -118,7 +118,7 @@ void _showQuickAccess(){
                         borderRadius:const BorderRadius.only(bottomRight:Radius.circular(17)),
                         child:CustomPaint(size:const Size(54,18),painter:_QuickLimeCornerPainter()))),
                       Padding(padding:const EdgeInsets.fromLTRB(8,6,8,7),child:Column(children:[
-                        SizedBox(height:textScale>20?66:64,child:Image.asset(item.image,fit:BoxFit.contain,
+                        SizedBox(height:textScale>20?66:56,child:Image.asset(item.image,fit:BoxFit.contain,
                           errorBuilder:(_,__,___)=>const Icon(Icons.apps_rounded,color:Color(0xFF7124F5),size:48))),
                         const SizedBox(height:3),
                         Text(item.title,textAlign:TextAlign.center,maxLines:2,overflow:TextOverflow.ellipsis,
