@@ -65,9 +65,7 @@ for filename, replacements in TARGETS.items():
     text = text.replace('Colors.white60', 'CepqarTheme.muted')
     text = text.replace('Colors.white54', 'CepqarTheme.muted')
     text = text.replace('Colors.white38', 'CepqarTheme.muted')
-    # Preserve explicit white surfaces in the parking sheet; only legacy text colors
-# should be migrated individually. Global replacement breaks light-theme contrast.
-# text = text.replace('Colors.white', 'CepqarTheme.text')
+    text = text.replace('Colors.white', 'CepqarTheme.text')
     text = re.sub(r'\bconst\s+(?=[A-Z][A-Za-z0-9_]*(?:<[^>]+>)?\s*\()', '', text)
 
     constructors = {
@@ -118,7 +116,7 @@ if "import 'cepqar_theme.dart';" not in text:
     text = text.replace("import 'onboarding_backend.dart';", "import 'onboarding_backend.dart';\nimport 'cepqar_theme.dart';")
 text = text.replace("const _panel=Color(0xFF0E172A),_line=Color(0xFF263657),_purple=Color(0xFF813CFF),_muted=Color(0xFFA7B0C7),_bg=Color(0xFF07111F),_red=Color(0xFFFF6B74);", "Color get _panel=>CepqarTheme.panel; Color get _line=>CepqarTheme.line; const _purple=Color(0xFF813CFF); Color get _muted=>CepqarTheme.muted; Color get _bg=>CepqarTheme.bg; const _red=Color(0xFFFF6B74);")
 text = text.replace("child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:", "child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:", 1)
-text = text.replace('Colors.white', 'CepqarTheme.text')
+# Keep white background surfaces in the updated parking sheet.
 text = re.sub(r'\bconst\s+(?=[A-Z_][A-Za-z0-9_]*(?:<[^>]+>)?\s*\()', '', text)
 text = re.sub(r'(?<!const )\bParkingLocationCard(\s*\(\{)', r'const ParkingLocationCard\1', text, count=1)
 text = text.replace("backgroundColor:_purple,shape:", "backgroundColor:_purple,foregroundColor:Colors.white,shape:")
