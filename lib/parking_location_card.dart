@@ -1,4 +1,3 @@
-import 'design/cq_components.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -182,66 +181,65 @@ class _ParkingLocationCardState extends State<ParkingLocationCard> {
     String sub,
     bool locked,
     VoidCallback? tap,
-  ) => InkWell(
-    onTap: tap,
-    borderRadius: BorderRadius.circular(18),
-    child: Container(
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: CepqarTheme.bg,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: CepqarTheme.line),
-      ),
-      child: CQAdaptiveRow(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: CepqarTheme.purple.withValues(alpha: .13),
-              borderRadius: BorderRadius.circular(15),
+  ) => Material(
+    color: Colors.transparent,
+    child: InkWell(
+      onTap: tap,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 92),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: CepqarTheme.bg,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: CepqarTheme.line),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: CepqarTheme.purple.withValues(alpha: .13),
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: Icon(icon, color: CepqarTheme.purple, size: 27),
             ),
-            child: Icon(icon, color: CepqarTheme.purple, size: 28),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: CepqarTheme.text,
-                    fontSize: 15.5,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  sub,
-                  style: TextStyle(
-                    color: CepqarTheme.muted,
-                    fontSize: 11.5,
-                    height: 1.25,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (locked) ...[
-            const Icon(Icons.lock_rounded, color: Color(0xFFFFB800), size: 17),
-            const SizedBox(width: 5),
-            Text(
-              widget.driverMode ? 'Aile' : 'Premium',
-              style: TextStyle(
-                color: Color(0xFFFFB800),
-                fontSize: 10,
-                fontWeight: FontWeight.w900,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: CepqarTheme.text,
+                      fontSize: 15.5, fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 4),
+                  Text(sub,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: CepqarTheme.muted,
+                      fontSize: 11.5, height: 1.25)),
+                  if (locked) ...[
+                    const SizedBox(height: 5),
+                    Text(widget.driverMode ? 'Aile Premium' : 'Premium',
+                      style: const TextStyle(color: Color(0xFFFFB800),
+                        fontSize: 11, fontWeight: FontWeight.w900)),
+                  ],
+                ],
               ),
             ),
-          ] else
-            Icon(Icons.chevron_right_rounded, color: CepqarTheme.muted),
-        ],
+            const SizedBox(width: 6),
+            SizedBox(
+              width: 32,
+              child: Icon(locked ? Icons.lock_rounded : Icons.chevron_right_rounded,
+                color: locked ? const Color(0xFFFFB800) : CepqarTheme.purple),
+            ),
+          ],
+        ),
       ),
     ),
   );
