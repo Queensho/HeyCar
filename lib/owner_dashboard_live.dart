@@ -92,39 +92,39 @@ void _showQuickAccess(){
               style:TextStyle(color:Color(0xFF645A76),fontSize:12)),
           ])),
         ]),
-        const SizedBox(height:20),
+        const SizedBox(height:12),
         LayoutBuilder(builder:(context,box){
           final textScale=MediaQuery.textScalerOf(context).scale(14);
           final columns=box.maxWidth>=600&&textScale<=20?3:(textScale>20?1:2);
-          const gap=12.0;
+          const gap=10.0;
           final width=(box.maxWidth-gap*(columns-1))/columns;
-          final tileHeight=textScale>20?148.0:166.0;
+          final tileHeight=textScale>20?156.0:120.0;
           return Wrap(spacing:gap,runSpacing:gap,children:[
             for(final item in shortcuts)
               SizedBox(width:width,height:tileHeight,child:Material(
-                color:Colors.white,borderRadius:BorderRadius.circular(22),
+                color:Colors.white,borderRadius:BorderRadius.circular(18),
                 child:InkWell(
                   key:ValueKey('quick-sheet-'+item.action),
-                  borderRadius:BorderRadius.circular(22),
+                  borderRadius:BorderRadius.circular(18),
                   onTap:(){Navigator.pop(sheetContext);action(item.action);},
                   child:Container(
                     decoration:BoxDecoration(
-                      borderRadius:BorderRadius.circular(22),
+                      borderRadius:BorderRadius.circular(18),
                       border:Border.all(color:const Color(0xFFE8DDF9)),
                       boxShadow:const [BoxShadow(color:Color(0x0D33135E),blurRadius:12,offset:Offset(0,4))],
                     ),
                     child:Stack(children:[
                       Positioned(bottom:0,right:0,child:ClipRRect(
-                        borderRadius:const BorderRadius.only(bottomRight:Radius.circular(21)),
-                        child:CustomPaint(size:const Size(76,27),painter:_QuickLimeCornerPainter()))),
-                      Padding(padding:const EdgeInsets.fromLTRB(8,10,8,12),child:Column(children:[
-                        Expanded(child:Image.asset(item.image,fit:BoxFit.contain,
+                        borderRadius:const BorderRadius.only(bottomRight:Radius.circular(17)),
+                        child:CustomPaint(size:const Size(54,18),painter:_QuickLimeCornerPainter()))),
+                      Padding(padding:const EdgeInsets.fromLTRB(8,6,8,7),child:Column(children:[
+                        SizedBox(height:textScale>20?66:56,child:Image.asset(item.image,fit:BoxFit.contain,
                           errorBuilder:(_,__,___)=>const Icon(Icons.apps_rounded,color:Color(0xFF7124F5),size:48))),
-                        const SizedBox(height:4),
+                        const SizedBox(height:3),
                         Text(item.title,textAlign:TextAlign.center,maxLines:2,overflow:TextOverflow.ellipsis,
                           style:TextStyle(color:const Color(0xFF180B33),fontSize:textScale>20?14:13,
                             fontWeight:FontWeight.w800,height:1.1)),
-                        const SizedBox(height:5),
+                        const SizedBox(height:2),
                         const Align(alignment:Alignment.centerRight,child:CircleAvatar(
                           radius:13,backgroundColor:Color(0xFF7124F5),
                           child:Icon(Icons.arrow_forward_rounded,color:Colors.white,size:17))),
