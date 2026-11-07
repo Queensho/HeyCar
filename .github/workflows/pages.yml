@@ -108,7 +108,7 @@ jobs:
 
   build:
     needs: validate_owner_light_theme
-    if: ${{ !cancelled() && (needs.validate_owner_light_theme.result == 'success' || needs.validate_owner_light_theme.result == 'skipped') && (github.event_name != 'pull_request' || github.head_ref == 'rollback/owner-app-15oct-keep-backend-20261018' || github.head_ref == 'design/apple-hig-responsive-20261106') }}
+    if: ${{ !cancelled() && (needs.validate_owner_light_theme.result == 'success' || needs.validate_owner_light_theme.result == 'skipped') && (github.event_name != 'pull_request' || github.head_ref == 'rollback/owner-app-15oct-keep-backend-20261018' || github.head_ref == 'design/apple-hig-responsive-20261106' || github.head_ref == 'test/android-apk-verification-20261107') }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
