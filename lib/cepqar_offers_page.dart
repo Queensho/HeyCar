@@ -76,6 +76,9 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
   }
 
   String searchText='';
+  final Set<String> favoriteOfferIds=<String>{};
+  String _favoriteKey(_Offer o)=>o.id.isNotEmpty?o.id:'${o.name}|${o.category}';
+  void _toggleFavorite(_Offer o)=>setState((){final key=_favoriteKey(o);if(!favoriteOfferIds.add(key))favoriteOfferIds.remove(key);});
   final TextEditingController searchController=TextEditingController();
   static const purple=CepqarTheme.purple;
   static const deepPurple=CepqarTheme.deepPurple;
@@ -113,41 +116,53 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
   ));
 
   Widget _offerTile(_Offer o,{bool compact=false}){
-    final image=o.imageUrl.trim();
-    return InkWell(
-      onTap:()=>_showOffer(o),borderRadius:BorderRadius.circular(20),
-      child:Container(
-        width:compact?214:null,
-        margin:EdgeInsets.only(right:compact?12:0,bottom:compact?0:12),
-        decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(20),
-          boxShadow:[BoxShadow(color:deepPurple.withValues(alpha:.07),blurRadius:16,offset:const Offset(0,5))]),
-        clipBehavior:Clip.antiAlias,
-        child:compact?Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-          SizedBox(height:116,width:double.infinity,child:_offerPicture(o,image)),
-          Padding(padding:const EdgeInsets.all(12),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-            Text(o.name,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:ink,fontSize:14,fontWeight:FontWeight.w900)),
+    final key=_favoriteKey(o);
+    final saved=favoriteOfferIds.contains(key);
+    return Container(
+      margin:EdgeInsets.only(bottom:compact?0:16,right:compact?12:0),
+      width:compact?250:null,
+      decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(22),
+        border:Border.all(color:const Color(0xFFEAE8F0)),
+        boxShadow:[BoxShadow(color:deepPurple.withValues(alpha:.06),blurRadius:18,offset:const Offset(0,6))]),
+      clipBehavior:Clip.antiAlias,
+      child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+        SizedBox(height:compact?138:174,child:Stack(fit:StackFit.expand,children:[
+          _offerPicture(o,o.imageUrl.trim()),
+          Positioned(top:10,right:10,child:Material(color:Colors.white,shape:const CircleBorder(),
+            child:IconButton(
+              key:ValueKey('offer-favorite-$key'),
+              tooltip:saved?'Favorilerden çıkar':'Favorilere ekle',
+              onPressed:()=>_toggleFavorite(o),
+              icon:Icon(saved?Icons.favorite_rounded:Icons.favorite_border_rounded,
+                color:saved?const Color(0xFFE43D78):purple),iconSize:21))),
+        ])),
+        Padding(padding:const EdgeInsets.fromLTRB(14,12,14,14),child:Column(
+          crossAxisAlignment:CrossAxisAlignment.start,children:[
+            Text(o.name,maxLines:1,overflow:TextOverflow.ellipsis,
+              style:const TextStyle(fontSize:16,fontWeight:FontWeight.w900,color:ink)),
             const SizedBox(height:5),
-            Text(o.description,maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:muted,fontSize:11,height:1.25)),
-            const SizedBox(height:12),
-            Row(children:[Icon(o.icon,color:purple,size:15),const SizedBox(width:4),
-              Expanded(child:Text(o.category,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:10,color:ink,fontWeight:FontWeight.w700))),
-              const Icon(Icons.location_on_rounded,size:13,color:muted),
-              Text(o.distance,style:const TextStyle(fontSize:10,color:muted)),
-            ]),
-          ])),
-        ]):Row(children:[
-          SizedBox(width:106,height:110,child:_offerPicture(o,image)),
-          Expanded(child:Padding(padding:const EdgeInsets.all(12),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-            Text(o.name,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:ink,fontSize:14,fontWeight:FontWeight.w900)),
-            const SizedBox(height:5),
-            Text(o.description,maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:muted,fontSize:11)),
-            const SizedBox(height:8),
-            Row(children:[const Icon(Icons.location_on_rounded,color:purple,size:15),
+            Row(children:[
+              const Icon(Icons.star_rounded,color:Color(0xFFFFB020),size:17),
+              const SizedBox(width:3),
+              Text(o.rating,style:const TextStyle(fontSize:12,fontWeight:FontWeight.w800,color:ink)),
+              const SizedBox(width:4),
+              Text('(${o.reviews})',style:const TextStyle(fontSize:11,color:muted)),
+              const Spacer(),
+              const Icon(Icons.location_on_outlined,color:purple,size:15),
               Text(o.distance,style:const TextStyle(fontSize:11,color:muted)),
-              const Spacer(),const Icon(Icons.chevron_right_rounded,color:purple)]),
-          ]))),
-        ]),
-      ),
+            ]),
+            const SizedBox(height:7),
+            Text(o.description,maxLines:compact?1:2,overflow:TextOverflow.ellipsis,
+              style:const TextStyle(fontSize:12,color:muted,height:1.35)),
+            const SizedBox(height:12),
+            SizedBox(width:double.infinity,height:44,child:FilledButton(
+              key:ValueKey('offer-detail-$key'),
+              onPressed:()=>_showOffer(o),
+              style:FilledButton.styleFrom(backgroundColor:purple,foregroundColor:Colors.white,
+                shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(14))),
+              child:const Text('Fırsatı İncele',style:TextStyle(fontWeight:FontWeight.w800)))),
+          ])),
+      ]),
     );
   }
 
@@ -313,14 +328,14 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
               Text(designText('header_subtitle','Size özel avantajlar ve kampanyalar'),style:const TextStyle(color:Colors.white70,fontSize:13)),
               const SizedBox(height:12),
               if(designVisible('show_search'))TextField(controller:searchController,onChanged:(v)=>setState(()=>searchText=v),
-                style:const TextStyle(color:Colors.white),
+                style:const TextStyle(color:ink),
                 decoration:InputDecoration(
-                  hintText:'Fırsat ara...',hintStyle:const TextStyle(color:Colors.white70),
-                  prefixIcon:const Icon(Icons.search_rounded,color:Colors.white),
-                  suffixIcon:searchText.isNotEmpty?IconButton(icon:const Icon(Icons.close_rounded,color:Colors.white),onPressed:(){searchController.clear();setState(()=>searchText='');}):null,
-                  filled:true,fillColor:Colors.white.withValues(alpha:.17),
-                  border:OutlineInputBorder(borderSide:BorderSide.none,borderRadius:BorderRadius.circular(28)),
-                  contentPadding:const EdgeInsets.symmetric(vertical:8),
+                  hintText:'İşletme veya kampanya ara',hintStyle:const TextStyle(color:muted),
+                  prefixIcon:const Icon(Icons.search_rounded,color:purple),
+                  suffixIcon:searchText.isNotEmpty?IconButton(icon:const Icon(Icons.close_rounded,color:purple),onPressed:(){searchController.clear();setState(()=>searchText='');}):null,
+                  filled:true,fillColor:Colors.white,
+                  border:OutlineInputBorder(borderSide:BorderSide.none,borderRadius:BorderRadius.circular(16)),
+                  contentPadding:const EdgeInsets.symmetric(vertical:12),
                 )),
               const SizedBox(height:12),
               if(designVisible('show_categories'))SizedBox(height:MediaQuery.textScalerOf(context).scale(12)*1.4+28,child:ListView.separated(scrollDirection:Axis.horizontal,itemCount:categories.length,
@@ -366,7 +381,7 @@ class _CepqarOffersPageState extends State<CepqarOffersPage>{
           _sectionHeading('Öne Çıkanlar'),
           _editorialStrip('featured',featured:true),
           const SizedBox(height:14),
-          _sectionHeading('Yakınımdaki Fırsatlar'),
+          _sectionHeading('Yakınımdaki İşletmeler'),
           if(loading)const Padding(padding:EdgeInsets.symmetric(vertical:20),child:Center(child:CircularProgressIndicator(color:purple)))
           else if(error!=null)Padding(padding:const EdgeInsets.all(12),child:Text(error!,style:const TextStyle(color:muted,fontSize:12)))
           else if(nearby.isEmpty)SizedBox(height:108*(MediaQuery.textScalerOf(context).scale(14)/14).clamp(1.0,5.0),child:ListView(scrollDirection:Axis.horizontal,
