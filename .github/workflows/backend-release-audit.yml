@@ -24,6 +24,8 @@ jobs:
       STAGING_DISABLE_EXTERNAL_SERVICES: 'true'
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -33,6 +35,10 @@ jobs:
         working-directory: server
       - run: npm run check
         working-directory: server
+      - name: Staging deployment safety (no VPS/database access)
+        run: python3 deploy/staging-pr318/deploy-staging-pr318.py --self-test
+      - name: Test actual pinned staging release package
+        run: python3 deploy/staging-pr318/test-release-packaging.py
       - name: Full backend suite including PostgreSQL (zero skips required)
         working-directory: server
         run: |
