@@ -81,6 +81,14 @@ jobs:
         run: python3 tool/fix_runtime_android.py
       - name: Generate Android platform
         run: flutter create . --platforms=android --project-name app --org com.cepqar --no-pub
+      - name: Use official Gradle binary distribution
+        run: |
+          python3 - <<'PYGRADLE'
+          from pathlib import Path
+          p=Path('android/gradle/wrapper/gradle-wrapper.properties')
+          s=p.read_text().replace('services.gradle.org/distributions/','downloads.gradle.org/distributions/').replace('-all.zip','-bin.zip')
+          p.write_text(s)
+          PYGRADLE
       - name: Add Android system settings bridge
         run: |
           cat > android/app/src/main/kotlin/com/cepqar/app/MainActivity.kt <<'EOF'
@@ -291,9 +299,7 @@ jobs:
           python3 -m unittest discover -s tool -p test_callkit_flutter_route_patch.py
           python3 tool/callkit_flutter_route_patch.py
       - name: Analyze app
-        run: flutter analyze lib --no-fatal-infos --no-fatal-warnings || true
-      - name: Verify owner weather card analyze
-        run: flutter analyze lib --no-fatal-infos --no-fatal-warnings || true
+        run: flutter analyze lib/entry_theme_live.dart lib/cepqar_offers_page.dart lib/offers lib/business_panel_page.dart lib/business_marketplace_tools.dart lib/business_campaign_edit.dart lib/admin_marketplace_tools.dart lib/admin_v3.dart --no-fatal-infos --no-fatal-warnings
       - name: Test owner weather and story models
         run: flutter test test/weather_service_test.dart test/story_service_test.dart
       - name: Enable Flutter web platform
@@ -310,6 +316,15 @@ jobs:
         run: |
           mkdir -p business-site/admin
           cp -R build/web/. business-site/admin/
+      - name: Build owner PWA compatibility
+        run: flutter build web --release --target lib/entry_theme_live.dart --base-href /HeyCar/
+      - name: Upload owner PWA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cepqontag-offers-owner-pwa
+          path: build/web
+          retention-days: 14
+          if-no-files-found: error
       - name: Upload business web artifact
         continue-on-error: true
         uses: actions/upload-artifact@v4

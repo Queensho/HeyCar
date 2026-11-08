@@ -9,6 +9,7 @@ class FakeMarketplace extends MarketplaceApi {
   final favoriteIds = <String>{};
   final calls = <String>[];
   bool fail = false;
+  Map<String, dynamic> design = {};
   Map<String, dynamic>? redemption;
   List<Map<String, dynamic>> get offers => [
         {
@@ -67,7 +68,7 @@ class FakeMarketplace extends MarketplaceApi {
         ]
       };
     if (path == '/api/offers/editorial') return {'offers': []};
-    if (path == '/api/offers/page-design') return {'design': {}};
+    if (path == '/api/offers/page-design') return {'design': design};
     if (path == '/api/offers/favorites')
       return {'favorites': <String>[], 'businesses': favoriteIds.toList()};
     if (path == '/api/offers/saved')
@@ -263,5 +264,60 @@ void main() {
     expect(api.calls.lastWhere((e) => e.contains('discover')),
         contains('city=Kad%C4%B1k%C3%B6y'));
     expect(tester.takeException(), isNull);
+  });
+  for (final width in [393.0, 430.0])
+    testWidgets('detail remains scrollable with large text at $width',
+        (tester) async {
+      final api = FakeMarketplace();
+      tester.view.physicalSize = Size(width, 852);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(MaterialApp(
+          builder: (c, child) => MediaQuery(
+              data: MediaQuery.of(c).copyWith(textScaler: TextScaler.linear(2)),
+              child: child!),
+          home: OfferDetailPage(offer: api.offers.first, api: api)));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      await tester.scrollUntilVisible(find.text('Onaylı değerlendirmeler'), 500,
+          scrollable: find.byType(Scrollable).first);
+      expect(find.text('Fırsatı kullan'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  testWidgets('history allows review only for a completed use', (tester) async {
+    final api = FakeMarketplace()
+      ..redemption = {
+        'id': 'completed',
+        'campaign_id': 'campaign-one',
+        'plate': '34ABC123',
+        'status': 'redeemed'
+      };
+    await mount(tester, api);
+    await tester.tap(find.byTooltip('Kullanım geçmişim'));
+    await tester.pumpAndSettle();
+    expect(find.text('Kodu göster'), findsNothing);
+    await tester.tap(find.text('Değerlendir'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+        find.byType(TextField), 'Gerçek kullanım sonrası yorum');
+    await tester.tap(find.text('Gönder'));
+    await tester.pumpAndSettle();
+    expect(api.calls, contains('POST /api/offers/campaign-one/review'));
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('published admin design controls remain connected',
+      (tester) async {
+    final api = FakeMarketplace()
+      ..design = {
+        'header_title': 'Admin başlığı',
+        'header_color': '#4912C8',
+        'show_search': false,
+        'show_categories': false
+      };
+    await mount(tester, api);
+    expect(find.text('Admin başlığı'), findsOneWidget);
+    expect(find.byType(TextField), findsNothing);
+    expect(find.byType(ChoiceChip), findsNothing);
   });
 }

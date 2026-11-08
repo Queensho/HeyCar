@@ -26,6 +26,7 @@ test('offers marketplace on isolated PostgreSQL',{skip:!url},async t=>{
  process.env.OWNER_AUTH_SECRET='test-only-owner-secret-at-least-32-characters';process.env.DRIVER_AUTH_SECRET='test-only-driver-secret-at-least-32-characters';process.env.JWT_SECRET='test-only-admin-secret-at-least-32-characters';process.env.BUSINESS_UPLOAD_DIR=path.join('/tmp',schema);
  const app=express();app.use(express.json({limit:'3500kb'}));require('../business-routes')(app,pool);
  require('../admin-offers-marketplace-routes')(app,pool,require('../admin-auth-routes').createAdminGuard(pool));
+ require('../admin-business-premium-routes')(app,pool,require('../admin-auth-routes').createAdminGuard(pool));
  server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const base=`http://127.0.0.1:${server.address().port}`;
  const ownerToken=id=>jwt.sign({sub:id,typ:'owner'},process.env.OWNER_AUTH_SECRET,{expiresIn:'15m'});
  const aliceToken=ownerToken('alice'),bobToken=ownerToken('bob'),adminToken=jwt.sign({sub:'admin-one',role:'admin'},process.env.JWT_SECRET,{expiresIn:'15m'});
@@ -100,6 +101,38 @@ test('offers marketplace on isolated PostgreSQL',{skip:!url},async t=>{
  await t.test('media rejects forged and oversized images; real image becomes WebP',async()=>{
   assert.equal((await api('/api/business/media',{method:'POST',token:businessToken,body:{data:'data:image/png;base64,SGVsbG8='}})).status,400);assert.equal((await api('/api/business/media',{method:'POST',token:businessToken,body:{data:'data:image/png;base64,'+Buffer.alloc(2500001).toString('base64')}})).status,413);
   const image=await require('sharp')({create:{width:2,height:2,channels:3,background:'#651fff'}}).png().toBuffer();const r=await api('/api/business/media',{method:'POST',token:businessToken,body:{data:'data:image/png;base64,'+image.toString('base64')}});assert.equal(r.status,201);assert.match(r.body.url,/\.webp$/);
+ });
+ await t.test('business favorites work without a campaign and remain actor scoped',async()=>{
+  const route='/api/offers/businesses/'+business2+'/favorite';
+  for(let i=0;i<2;i++)assert.equal((await api(route,{method:'POST',token:aliceToken})).status,200);
+  assert.ok((await api('/api/offers/favorites',{token:aliceToken})).body.businesses.includes(business2));
+  assert.ok(!(await api('/api/offers/favorites',{token:bobToken})).body.businesses.includes(business2));
+  assert.ok((await api('/api/offers/saved',{token:aliceToken})).body.offers.some(x=>x.business_id===business2&&x.id==null));
+  await api(route,{method:'DELETE',token:aliceToken});assert.ok(!(await api('/api/offers/favorites',{token:aliceToken})).body.businesses.includes(business2));
+ });
+ await t.test('business campaign create, admin approval, content edit requeue and limit clearing',async()=>{
+  const r=await api('/api/business/campaigns',{method:'POST',token:businessToken,body:{title:'New offer',terms:'One vehicle',startsAt:new Date(Date.now()-1000).toISOString(),endsAt:new Date(Date.now()+86400000).toISOString(),dailyLimit:5,totalLimit:10}});
+  assert.equal(r.status,201);const fresh=r.body.campaign;assert.equal(fresh.moderation_status,'pending');assert.equal(fresh.terms,'One vehicle');
+  assert.equal((await api('/api/admin/manage/business-campaigns/'+fresh.id,{method:'PATCH',token:businessToken,body:{moderationStatus:'approved'}})).status,401);
+  assert.equal((await api('/api/admin/manage/business-campaigns/'+fresh.id,{method:'PATCH',token:adminToken,body:{moderationStatus:'approved'}})).body.campaign.is_active,true);
+  const edited=await api('/api/business/campaigns/'+fresh.id,{method:'PATCH',token:businessToken,body:{terms:'Updated conditions',dailyLimit:null,totalLimit:null}});
+  assert.equal(edited.status,200);assert.equal(edited.body.campaign.moderation_status,'pending');assert.equal(edited.body.campaign.is_active,false);assert.equal(edited.body.campaign.daily_limit,null);assert.equal(edited.body.campaign.total_limit,null);
+ });
+ await t.test('verification observes expiration after waiting on a campaign lock',async()=>{
+  const fresh=await campaign(),r=await issue(pool,alice,fresh.id,'34ABC123'),lock=await pool.connect();
+  try{await lock.query('BEGIN');await lock.query("UPDATE business_campaigns SET ends_at=clock_timestamp()+interval '100 milliseconds' WHERE id=$1",[fresh.id]);
+    const waiting=verify(pool,account,r.redemption.usage_code,'34ABC123');const assertion=assert.rejects(waiting,e=>e.code==='OFFER_NOT_AVAILABLE');
+    await lock.query('SELECT pg_sleep(0.2)');await lock.query('COMMIT');await assertion;
+  }finally{await lock.query('ROLLBACK');lock.release();}
+ });
+ await t.test('legacy history and pending codes stay with the same global user in both session modes',async()=>{
+  const fresh=await campaign(),r=await issue(pool,alice,fresh.id,'34ABC123');await pool.query("UPDATE offer_redemptions SET actor_role='legacy' WHERE id=$1",[r.redemption.id]);
+  const driverToken=jwt.sign({sub:'alice',typ:'driver'},process.env.DRIVER_AUTH_SECRET,{expiresIn:'15m'});
+  assert.equal((await api('/api/offers/'+fresh.id+'/redemption',{token:driverToken})).body.redemption.id,r.redemption.id);
+  assert.equal((await api('/api/offers/'+fresh.id+'/redemption',{token:bobToken})).body.redemption,null);
+  assert.equal((await issue(pool,alice,fresh.id,'34ABC123')).created,false);
+  assert.equal((await verify(pool,account,r.redemption.usage_code,'34ABC123')).status,'redeemed');
+  assert.equal((await api('/api/offers/'+fresh.id+'/review',{method:'POST',token:driverToken,body:{rating:5,redemptionId:r.redemption.id}})).status,200);
  });
  await t.test('category management and real campaign featuring',async()=>{
   assert.equal((await api('/api/admin/manage/offer-categories',{method:'POST',token:businessToken,body:{name:'No'}})).status,401);

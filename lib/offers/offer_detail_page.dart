@@ -1,3 +1,5 @@
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
@@ -270,6 +272,13 @@ class _OfferDetailPageState extends State<OfferDetailPage> {
                           ]),
                         const SizedBox(height: 8),
                         _text(marketText(business, 'address')),
+                        const SizedBox(height: 8),
+                        Text(
+                            '${details?['rating'] ?? '—'} ★ (${details?['reviewCount'] ?? 0} onaylı yorum)',
+                            style: const TextStyle(
+                                color: offerInk,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700)),
                         Wrap(spacing: 8, runSpacing: 8, children: [
                           OutlinedButton.icon(
                               onPressed: marketText(business, 'phone').isEmpty
@@ -283,9 +292,10 @@ class _OfferDetailPageState extends State<OfferDetailPage> {
                               onPressed: marketText(business, 'address').isEmpty
                                   ? null
                                   : () => _external(Uri.https(
-                                          'www.google.com', '/maps/search/', {
+                                          'www.google.com', '/maps/dir/', {
                                         'api': '1',
-                                        'query': marketText(business, 'address')
+                                        'destination':
+                                            marketText(business, 'address')
                                       })),
                               icon: const Icon(Icons.directions_outlined),
                               label: const Text('Yol tarifi')),
@@ -349,6 +359,44 @@ class _OfferDetailPageState extends State<OfferDetailPage> {
                                             subtitle: Text(
                                                 '${marketText(s, 'price')} TL')))
                                         .toList())),
+                        if (business['latitude'] is num &&
+                            business['longitude'] is num)
+                          MarketSection('Haritada göster',
+                              child: SizedBox(
+                                  height: 220,
+                                  child: FlutterMap(
+                                    options: MapOptions(
+                                        initialCenter: LatLng(
+                                            (business['latitude'] as num)
+                                                .toDouble(),
+                                            (business['longitude'] as num)
+                                                .toDouble()),
+                                        initialZoom: 14),
+                                    children: [
+                                      TileLayer(
+                                          urlTemplate:
+                                              'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                          userAgentPackageName:
+                                              'com.cepqontag.app'),
+                                      MarkerLayer(markers: [
+                                        Marker(
+                                            point: LatLng(
+                                                (business['latitude'] as num)
+                                                    .toDouble(),
+                                                (business['longitude'] as num)
+                                                    .toDouble()),
+                                            width: 48,
+                                            height: 48,
+                                            child: const Icon(Icons.location_on,
+                                                color: offerPurple, size: 40))
+                                      ]),
+                                      const RichAttributionWidget(
+                                          attributions: [
+                                            TextSourceAttribution(
+                                                'OpenStreetMap contributors')
+                                          ]),
+                                    ],
+                                  ))),
                         MarketSection('Çalışma saatleri',
                             child:
                                 _text(marketText(business, 'opening_hours'))),

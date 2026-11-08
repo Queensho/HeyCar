@@ -1,13 +1,13 @@
 BEGIN;
 -- Separate owner/driver identities even if the two auth systems issue equal IDs.
-ALTER TABLE offer_favorites ADD COLUMN actor_role text NOT NULL DEFAULT 'owner' CHECK(actor_role IN ('owner','driver'));
+ALTER TABLE offer_favorites ADD COLUMN actor_role text NOT NULL DEFAULT 'legacy' CHECK(actor_role IN ('owner','driver','legacy'));
 ALTER TABLE offer_favorites DROP CONSTRAINT offer_favorites_pkey;
 ALTER TABLE offer_favorites ADD PRIMARY KEY(owner_id,actor_role,campaign_id);
-ALTER TABLE offer_redemptions ADD COLUMN actor_role text NOT NULL DEFAULT 'owner' CHECK(actor_role IN ('owner','driver'));
+ALTER TABLE offer_redemptions ADD COLUMN actor_role text NOT NULL DEFAULT 'legacy' CHECK(actor_role IN ('owner','driver','legacy'));
 DROP INDEX IF EXISTS uq_offer_pending_owner_campaign;
 CREATE UNIQUE INDEX uq_offer_pending_actor_campaign ON offer_redemptions(owner_id,actor_role,campaign_id) WHERE status='pending';
 ALTER TABLE offer_reviews ADD COLUMN revision integer NOT NULL DEFAULT 1;
-ALTER TABLE offer_reviews ADD COLUMN actor_role text NOT NULL DEFAULT 'owner' CHECK(actor_role IN ('owner','driver'));
+ALTER TABLE offer_reviews ADD COLUMN actor_role text NOT NULL DEFAULT 'legacy' CHECK(actor_role IN ('owner','driver','legacy'));
 ALTER TABLE offer_reviews ADD COLUMN moderation_status text NOT NULL DEFAULT 'pending' CHECK(moderation_status IN ('pending','approved','rejected'));
 ALTER TABLE offer_reviews ADD COLUMN moderation_note text NOT NULL DEFAULT '';
 ALTER TABLE offer_reviews ADD COLUMN reviewed_at timestamptz;
@@ -44,7 +44,7 @@ CREATE TABLE business_services (
 -- A review can only describe one completed use by its authenticated actor.
 CREATE OR REPLACE FUNCTION validate_offer_review_redemption() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
- IF NOT EXISTS(SELECT 1 FROM offer_redemptions r WHERE r.id=NEW.redemption_id AND r.owner_id=NEW.owner_id AND r.actor_role=NEW.actor_role AND r.campaign_id=NEW.campaign_id AND r.status='redeemed') THEN
+ IF NOT EXISTS(SELECT 1 FROM offer_redemptions r WHERE r.id=NEW.redemption_id AND r.owner_id=NEW.owner_id AND (r.actor_role=NEW.actor_role OR r.actor_role='legacy') AND r.campaign_id=NEW.campaign_id AND r.status='redeemed') THEN
    RAISE EXCEPTION 'REDEMPTION_REQUIRED' USING ERRCODE='23514';
  END IF;
  RETURN NEW;

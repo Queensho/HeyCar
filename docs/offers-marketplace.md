@@ -22,12 +22,12 @@ unique per completed redemption and a database trigger validates the actor,
 campaign and completed use. New/edited reviews require approval. Historical
 reviews enter pending moderation; do not silently count unapproved reviews.
 
-Existing offer records default to actor_role=owner. The legacy system stored no
-role discriminator, so historical driver attribution cannot be reconstructed
-reliably from those records. Before production rollout, reconcile historical
-redemptions/favorites/reviews against owner and driver account records and audit
-ambiguous IDs. Do not guess actor ownership or bulk transfer records in production.
-
+Existing records retain actor_role=legacy. Both auth systems reference the same
+globally unique users.id, so legacy rows remain visible only to that signed user
+in either session mode. New records carry the explicit owner/driver role. Legacy
+pending codes still recheck that user's current vehicle ownership or driver
+assignment at verification. No historical role is guessed, and no records are
+transferred to another user.
 Deploy the additive migration and compatible backend before releasing the new
 client. The new client surfaces API errors against an old backend; it does not
 invent fallback businesses. Keep a database backup before deployment. Do not
@@ -136,3 +136,19 @@ platform_fee reporting is accounting metadata, not a collected payment.
 
 Release APK uses the repository's existing signing configuration for test
 artifacts; it is not a Play Store production release signing workflow.
+
+## Visual checks
+
+Chromium screenshots at 393/430 px use explicitly labeled **TEST VERİSİ** from the
+widget-test fixtures, not production businesses. Both discovery and detail views
+loaded without browser page errors. The preview harness is outside this repo;
+the production app has no fixture-data fallback.
+
+- [Discovery 393](offers-screenshots/discovery-393.png)
+- [Discovery 430](offers-screenshots/discovery-430.png)
+- [Detail 393](offers-screenshots/detail-393.png)
+- [Detail 430](offers-screenshots/detail-430.png)
+
+The first CI APK attempt stopped on an upstream HTTP 504 while fetching Gradle,
+before compiling application code. The build recipe now uses Gradle's official
+binary distribution endpoint, avoiding the failing GitHub `-all.zip` redirect.

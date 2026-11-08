@@ -22,6 +22,7 @@ class _BusinessCampaignEditState extends State<BusinessCampaignEdit> {
   final fields = <String, TextEditingController>{};
   late DateTime start, end;
   late String image;
+  late String offerType;
   bool busy = false;
   @override
   void initState() {
@@ -32,6 +33,9 @@ class _BusinessCampaignEditState extends State<BusinessCampaignEdit> {
       'badge',
       'terms',
       'daily_limit',
+      'regular_price',
+      'offer_price',
+      'discount_percent',
       'total_limit'
     ]) {
       fields[key] =
@@ -44,6 +48,7 @@ class _BusinessCampaignEditState extends State<BusinessCampaignEdit> {
         DateTime.tryParse(marketText(widget.campaign, 'ends_at'))?.toLocal() ??
             start.add(const Duration(days: 30));
     image = marketText(widget.campaign, 'image_url');
+    offerType = marketText(widget.campaign, 'offer_type', 'discount');
   }
 
   @override
@@ -64,6 +69,22 @@ class _BusinessCampaignEditState extends State<BusinessCampaignEdit> {
           context, 'Tarihleri ve pozitif tam sayı limitleri kontrol edin.');
       return;
     }
+    for (final key in ['regular_price', 'offer_price']) {
+      final value = fields[key]!.text.trim();
+      final amount = double.tryParse(value.replaceAll(',', '.'));
+      if (value.isNotEmpty && (amount == null || amount < 0)) {
+        marketMessage(context, 'Fiyatları geçerli bir sayı olarak girin.');
+        return;
+      }
+    }
+    final discount = fields['discount_percent']!.text.trim();
+    if (discount.isNotEmpty &&
+        (int.tryParse(discount) == null ||
+            int.parse(discount) < 1 ||
+            int.parse(discount) > 100)) {
+      marketMessage(context, 'İndirim oranı 1 ile 100 arasında olmalıdır.');
+      return;
+    }
     setState(() => busy = true);
     try {
       final r = await http.patch(
@@ -82,7 +103,13 @@ class _BusinessCampaignEditState extends State<BusinessCampaignEdit> {
             'totalLimit': int.tryParse(total),
             'startsAt': start.toUtc().toIso8601String(),
             'endsAt': end.toUtc().toIso8601String(),
-            'imageUrl': image
+            'imageUrl': image,
+            'offerType': offerType,
+            'regularPrice': double.tryParse(
+                fields['regular_price']!.text.replaceAll(',', '.')),
+            'offerPrice': double.tryParse(
+                fields['offer_price']!.text.replaceAll(',', '.')),
+            'discountPercent': int.tryParse(discount)
           }));
       if (r.statusCode != 200)
         throw Exception('Kampanya kaydedilemedi (${r.statusCode}).');
@@ -128,11 +155,25 @@ class _BusinessCampaignEditState extends State<BusinessCampaignEdit> {
                   },
             icon: const Icon(Icons.photo_outlined),
             label: const Text('Kampanya fotoğrafını değiştir')),
+        DropdownButtonFormField<String>(
+            initialValue: offerType,
+            decoration: const InputDecoration(labelText: 'Fırsat türü'),
+            items: const [
+              DropdownMenuItem(value: 'discount', child: Text('İndirim')),
+              DropdownMenuItem(
+                  value: 'special_price', child: Text('Özel fiyat')),
+              DropdownMenuItem(value: 'gift', child: Text('Avantaj / hediye'))
+            ],
+            onChanged: (v) => setState(() => offerType = v ?? 'discount')),
+        const SizedBox(height: 16),
         for (final entry in {
           'title': 'Başlık',
           'description': 'Açıklama',
           'badge': 'İndirim etiketi',
           'terms': 'Koşullar',
+          'regular_price': 'Normal fiyat (TL)',
+          'offer_price': 'Fırsat fiyatı (TL)',
+          'discount_percent': 'İndirim oranı (%)',
           'daily_limit': 'Günlük limit (boş: sınırsız)',
           'total_limit': 'Toplam limit (boş: sınırsız)'
         }.entries)

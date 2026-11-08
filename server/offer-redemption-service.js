@@ -4,6 +4,13 @@ class OfferError extends Error {
 }
 const normalizePlate = value => String(value || '').trim().toUpperCase().replace(/\s+/g, '');
 async function authorizedVehicle(db, actor, plate, lock = false) {
+  // Pre-migration rows used the globally unique users.id without an auth-role
+  // discriminator. Preserve that user's history/codes without guessing a role.
+  if (actor.role === 'legacy') {
+    try { return await authorizedVehicle(db, {...actor,role:'owner'}, plate, lock); }
+    catch(e) { if(e.code !== 'VEHICLE_NOT_OWNED') throw e; }
+    return authorizedVehicle(db, {...actor,role:'driver'}, plate, lock);
+  }
   const sql = actor.role === 'owner'
     ? `SELECT v.id FROM vehicles v WHERE v.owner_id::text=$1 AND regexp_replace(UPPER(v.plate),'[[:space:]]+','','g')=$2${lock ? ' FOR SHARE OF v' : ''}`
     : `SELECT v.id FROM vehicle_drivers d JOIN vehicles v ON v.id::text=d.vehicle_id::text WHERE d.driver_user_id::text=$1 AND regexp_replace(UPPER(v.plate),'[[:space:]]+','','g')=$2${lock ? ' FOR SHARE OF v,d' : ''}`;
@@ -41,7 +48,7 @@ async function issue(pool, actor, campaignId, rawPlate) {
   return transaction(pool, async db => {
     const c = await campaignLock(db, campaignId);
     await authorizedVehicle(db, actor, plate, true);
-    const old = await db.query(`SELECT * FROM offer_redemptions WHERE owner_id=$1 AND actor_role=$2 AND campaign_id=$3 AND status='pending'`, [actor.id, actor.role, campaignId]);
+    const old = await db.query(`SELECT * FROM offer_redemptions WHERE owner_id=$1 AND actor_role IN ($2,'legacy') AND campaign_id=$3 AND status='pending'`, [actor.id, actor.role, campaignId]);
     if (old.rowCount) {
       if (old.rows[0].plate !== plate) throw new OfferError('PENDING_VEHICLE_MISMATCH');
       return {redemption: old.rows[0], created: false};
