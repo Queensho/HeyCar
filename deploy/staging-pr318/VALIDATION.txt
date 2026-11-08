@@ -1,0 +1,21 @@
+LOCAL VALIDATION ONLY — NO VPS CONNECTION OR DEPLOYMENT
+
+test_application_rollback_commands (__main__.self_test.<locals>.Safety.test_application_rollback_commands) ... ok
+test_backup_failure_prevents_migration (__main__.self_test.<locals>.Safety.test_backup_failure_prevents_migration) ... ok
+test_database_command_guard (__main__.self_test.<locals>.Safety.test_database_command_guard) ... ok
+test_history (__main__.self_test.<locals>.Safety.test_history) ... ok
+test_no_rollback_database_operations (__main__.self_test.<locals>.Safety.test_no_rollback_database_operations) ... ok
+test_postgres_cast_normalization (__main__.self_test.<locals>.Safety.test_postgres_cast_normalization) ... ok
+test_sql_only_staging (__main__.self_test.<locals>.Safety.test_sql_only_staging) ... ok
+test_urls (__main__.self_test.<locals>.Safety.test_urls) ... ok
+test_valid (__main__.self_test.<locals>.Safety.test_valid) ... ok
+test_wrong_targets (__main__.self_test.<locals>.Safety.test_wrong_targets) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.028s
+
+OK
+
+Local PostgreSQL 16.15: backup/restore, 111 table counts/schema, 120->121, verified 121 retry and fixture preservation PASSED.
+Pinned backend local HTTP smoke: health, QR not-found, call validation, owner/valet/business/history auth and marketplace listing PASSED.
+Real systemd operations were not run; rollback commands were mocked.
