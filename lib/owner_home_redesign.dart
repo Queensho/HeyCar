@@ -2291,7 +2291,8 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             !{'weather_card','vehicle_security','quick_actions','services_grid','monthly_summary','recent_notifications','promo_banner'}.contains(c.type)))
             RepaintBoundary(key:ValueKey('extra-${component.id}-${_appUiConfig.version}'),
               child:_managedComponent(component)),
-          const SizedBox(height:22),
+          // Keep the final guide card scrollable above the docked navigation.
+          SizedBox(height:MediaQuery.paddingOf(context).bottom+112),
         ],
       ),
     )),
