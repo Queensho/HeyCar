@@ -150,5 +150,4 @@ the production app has no fixture-data fallback.
 - [Detail 430](offers-screenshots/detail-430.png)
 
 The first CI APK attempt stopped on an upstream HTTP 504 while fetching Gradle,
-before compiling application code. The build recipe now uses Gradle's official
-binary distribution endpoint, avoiding the failing GitHub `-all.zip` redirect.
+before compiling application code. The build recipe fetches the same official Gradle binary through GitHub's asset API, verifies its published SHA-256 digest and points the generated wrapper at that local archive. No Gradle version downgrade or third-party mirror is used.

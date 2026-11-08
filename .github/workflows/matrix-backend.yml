@@ -389,7 +389,7 @@ jobs:
           BEGIN
             SELECT count(*) INTO idx_count FROM pg_indexes
              WHERE schemaname='public'
-               AND indexname IN ('uq_offer_pending_owner_campaign','towing_one_active_request_per_vehicle');
+               AND indexname IN ('uq_offer_pending_actor_campaign','towing_one_active_request_per_vehicle');
             IF idx_count <> 2 THEN
               RAISE EXCEPTION 'Concurrency protection indexes missing: %',idx_count;
             END IF;

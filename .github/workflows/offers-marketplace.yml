@@ -81,14 +81,10 @@ jobs:
         run: python3 tool/fix_runtime_android.py
       - name: Generate Android platform
         run: flutter create . --platforms=android --project-name app --org com.cepqar --no-pub
-      - name: Use official Gradle binary distribution
-        run: |
-          python3 - <<'PYGRADLE'
-          from pathlib import Path
-          p=Path('android/gradle/wrapper/gradle-wrapper.properties')
-          s=p.read_text().replace('services.gradle.org/distributions/','downloads.gradle.org/distributions/').replace('-all.zip','-bin.zip')
-          p.write_text(s)
-          PYGRADLE
+      - name: Prepare verified official Gradle distribution
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tool/prepare_offers_gradle.py
       - name: Add Android system settings bridge
         run: |
           cat > android/app/src/main/kotlin/com/cepqar/app/MainActivity.kt <<'EOF'
