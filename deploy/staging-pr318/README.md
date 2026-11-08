@@ -1,14 +1,39 @@
 # CepQontag — PR #318 staging dağıtım paketi
 
-**Durum: Hazırlandı ve yerelde test edildi; VPS'ye dağıtılmadı.** Bu çalışma ortamında SSH anahtarı, SSH agent, VPS host/port bilgisi veya bağlı SSH kimliği bulunmuyor. VPS'ye bağlanılmadı. Gerçek `heycar_staging` veritabanının yedeği alınmış veya migrationı uygulanmış değildir.
+**Durum: TASLAK — gerçek 83. ifadenin SQL farkı bekleniyor; staging hatasının giderildiği iddia edilmiyor.** Bu çalışma ortamında SSH anahtarı, SSH agent, VPS host/port bilgisi veya bağlı SSH kimliği bulunmuyor. VPS'ye bağlanılmadı. Gerçek `heycar_staging` veritabanının yedeği alınmış veya migrationı uygulanmış değildir.
 
-GitHub branch: `fix/staging-restore-schema-verification`
+GitHub branch: `fix/pg16-restore-statement-diagnostics`
 
 Repository yolu: `deploy/staging-pr318/deploy-staging-pr318.py`
 
-Betik GitHub branch üzerinden veya paylaşılmış commit SHA’sına sabitlenmiş raw URL üzerinden indirilebilir. SHA-256: `5cc8ea9d129ae6fa55afe895df0ea3ba0b8e3d5933b2da8bfb1b02fe09037327`. İndirmek betiği çalıştırmaz.
+Betik GitHub branch üzerinden veya paylaşılmış commit SHA’sına sabitlenmiş raw URL üzerinden indirilebilir. SHA-256: `f3b76ecb8d1fec8d70f5aa1714b8d3642678a77c1726c7e8f19c1920298dd075`. İndirmek betiği çalıştırmaz.
 
 Tek otomasyon dosyası: **deploy-staging-pr318.py**. GitHub main üzerinde değişiklik yapılmadı; eski staging workflow'u tetiklenmedi. Paket veritabanı yedeği, kullanıcı verisi veya erişim anahtarı içermez.
+
+## Statement 83: teşhis geliştirmesi, kesin neden için eksik girdi
+
+**Bu taslak PR gerçek VPS hatasının giderildiği iddiasını taşımaz.** VPS'deki 83. CREATE TABLE'ın adı ve kaynak/restore SQL farkı verilmedi. 1003 ifade ve 113→111 token sayıları bu nesneyi veya dönüşümü tek başına belirlemez. Talep edilen kısa, maskelenmiş SQL farkı gelene kadar üretim normalizasyonu değiştirilmedi.
+
+Repository'nin 120 dosyalık zinciri PostgreSQL 16.15'te yeni yerel DB'ye kuruldu. Bu belirli fixture'da 955 ifade oluştu; 83. ifade `public.offer_categories` ve 60 token idi. Dolayısıyla bu tabloyu VPS'deki 113 tokenlık ifade olarak adlandırmak yanlış olur.
+
+Ayrı sentetik PostgreSQL 16 örneğinde `bpchar[] → text[]` tek elemanlı cast'i restore sırasında eleman bazlı yazıma dönüştü. Tabloya 26 nötr integer kolon eklenince gerçek dump/restore CREATE TABLE token sayıları tam **113→111** oldu. Bu tablo **`public.two_token_example`** adlı sentetik fixture'dır; gerçek VPS tablosu olduğu iddia edilmez. Teşhis numaralandırması ayrıca 1003 ifadelik sentetik çerçevede farkı 83. ifadede gösterecek şekilde test edildi. Bu çerçeve yalnız rapor konumu testidir, VPS şemasının yeniden üretimi değildir.
+
+Bu bilgiler yeni bir cast kuralı eklemek için kullanılmadı: bilinmeyen iki-token farkı hâlâ dağıtımı durduruyor. Karşılaştırıcı, lexer, mevcut dar normalleştirici, migration/isolation ve cleanup fonksiyonları #321 ile AST düzeyinde aynı kaldı.
+
+### Yeni özel teşhis alanları
+
+`schema-difference.json` artık SQL nesne metadata'sını da içerir:
+
+- `objectKind` ve `objectName`: örneğin `TABLE` / `public.offer_categories`; indekslerde ayrıca ilgili `tableName`.
+- `structuralChanges`: değişen token başlangıcı/adedi, sınırlı kaynak/restore token kesiti ve kısa bağlam.
+- SQL operatörleri, parantezler, bilinen anahtar kelimeler ve yerleşik tipler görünür.
+- Literal, sayı, fonksiyon gövdesi, rol adı ve bağlamdaki serbest identifier'lar geçici anahtarlı HMAC etiketleriyle maskelenir. Nesne adı ayrı, açık metadata alanıdır.
+
+Nesne adları yalnız bu **0600 izinli özel dosyada** bulunur; stdout'a veya GitHub artifact'ine yazılmaz. Kontrol karakterli veya aşırı uzun nesne adları aktarılmaz. Ham SQL, default değerleri, yorum metinleri ve kayıt verileri dosyaya eklenmez. `sqlTextIncluded:false` korunur; yeni `objectNamesIncluded:true` ve `literalValuesIncluded:false` alanları bu sınırı açıklar. Bu kayıt nesne adı içerdiğinden önceki tamamen anonim parmak izi kaydıyla aynı paylaşım düzeyinde kabul edilmemelidir.
+
+Kaynak/restore eşitliği maskelenmiş gösterim üzerinden hesaplanmaz; orijinal canonical SQL hâlâ eksiksiz karşılaştırılır. Böylece teşhiste iki literal gizlense bile gerçek değerleri farklıysa doğrulama başarısız olur. Kolon kaybı da gerçek PostgreSQL olumsuz testlerine eklendi. Geçici klon temizlense de özel teşhis ve orijinal yedek kalır; DB'yi otomatik geri almama politikası değişmez.
+
+Doğrulama: 9 restore/SQL safety test grubu, 14 standalone safety testi, 2 paketleme regresyonu ve izole tam backend paketinde 182 test. Tarihsel migration dosyası veya uygulama backend'i değişmedi. VPS'ye bağlantı/deploy yapılmadı. Kesin düzeltme için gereken girdi: gerçek 83. tablonun adı ve değişen kısa SQL/token parçası (literal değerler ve hassas alan adları maskelenebilir).
 
 ## Restore şeması karşılaştırma düzeltmesi (#320 sonrası)
 
@@ -40,7 +65,7 @@ Karşılaştırma başarısızsa klon temizlenmeden önce aynı private backup d
 - Her farklı ifadenin ve iki snapshot'ın HMAC-SHA256 parmak izi. Anahtar geçici rastgele üretilir; saklanmaz veya dosyaya yazılmaz.
 - Hazırlıkta tespit edilen PostgreSQL tool major sürümleri; DB özellik farkında yalnız özellik adı ve değerlerin anahtarlı parmak izi.
 
-**Ham SQL, nesne/rol adları, fonksiyon gövdeleri, literal değerler, yorum metinleri, kullanıcı kayıtları ve bağlantı sırları teşhis dosyasına yazılmaz.** Parmak izleri yalnız aynı teşhis içindeki ifadeleri karşılaştırmak içindir; farklı koşular arasında aynı olması beklenmez. İfade konumları lexer'ın oluşturduğu SQL statement sırasıdır, özgün dump'ın satır numarası değildir. Bu dosya da özel operasyon kaydıdır; yedek/ortam/log dosyalarını chat'e veya açık artifact'e yüklemeyin.
+**Ham SQL, rol adları, fonksiyon gövdeleri, literal değerler, yorum metinleri, kullanıcı kayıtları ve bağlantı sırları teşhis dosyasına yazılmaz.** Yeni özel teşhis nesne adını yukarıda açıklanan ayrı metadata alanında içerir. Parmak izleri yalnız aynı teşhis içindeki ifadeleri karşılaştırmak içindir; farklı koşular arasında aynı olması beklenmez. İfade konumları lexer'ın oluşturduğu SQL statement sırasıdır, özgün dump'ın satır numarası değildir. Bu dosya da özel operasyon kaydıdır; yedek/ortam/log dosyalarını chat'e veya açık artifact'e yüklemeyin.
 
 Klon normal cleanup ile silinse de teşhis dosyası ve özgün yedek korunur. Hata mesajı operatörü dosyaya yönlendirir; hatada uygulama rollback ve **DB'yi otomatik geri almama** politikası değişmez.
 
