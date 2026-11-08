@@ -37,3 +37,7 @@ No VPS service, PostgreSQL database, staging environment file or deployment is
 changed by this repository patch. The protection takes effect after an approved
 rollout of the updated backend code. Production deployment and PR merge are not
 part of this change.
+
+The two repository deployment allowlists that copy push-routes.js also include
+external-services-policy.js, so a later approved partial rollout cannot omit
+the new required module. These scripts were syntax-checked only, never executed.

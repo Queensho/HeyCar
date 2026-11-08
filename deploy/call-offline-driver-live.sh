@@ -8,7 +8,7 @@ SHA="${1:-}"
 ROOT="${HEYCAR_ROOT:-/opt/heycar}"
 SERVICE="${HEYCAR_SERVICE:-heycar}"
 PORT="${HEYCAR_PORT:-8090}"
-FILES=(call-recipient-selection.js call-routes.js push-routes.js)
+FILES=(call-recipient-selection.js call-routes.js push-routes.js external-services-policy.js)
 [[ -f "$ROOT/server.js" ]] || { echo "Server root not found: $ROOT" >&2; exit 2; }
 for bin in curl node systemctl cp install mktemp; do command -v "$bin" >/dev/null || { echo "Missing: $bin" >&2; exit 2; }; done
 TMP="$(mktemp -d)"
