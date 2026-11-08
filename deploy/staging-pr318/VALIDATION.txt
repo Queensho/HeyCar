@@ -1,25 +1,31 @@
-LOCAL VALIDATION ONLY — NO VPS CONNECTION OR DEPLOYMENT
+LOCAL/CI VALIDATION ONLY — NO VPS CONNECTION OR DEPLOYMENT
 
-Application target: 4a3cecdb15a60aabe494f6c11b94791172a8a8e4
-Fix branch: fix/staging-pr318-test-context
+Branch: fix/staging-restore-schema-verification
+Application target remains 4a3cecdb15a60aabe494f6c11b94791172a8a8e4.
+Historical migration files were not changed.
 
-Original server-only package: 148 tests, 141 passed, 5 failed, 2 skipped.
-All five failures: ENOENT reading missing deploy/matrix-live-sync.sh or deploy/call-offline-driver-live.sh.
+Reproduced with isolated PostgreSQL 16.15 and synthetic data:
+- Old stable_schema_dump(source) == stable_schema_dump(archive schema).
+- Old stable_schema_dump(source) != stable_schema_dump(restored schema).
+- Difference: NULL-containing unbounded varchar array -> text[] cast rewritten into per-element casts by PostgreSQL.
+- This is a reproduced cause; the exact deleted VPS probe's difference is not known.
 
-Corrected repository checkout:
-  npm run check: passed
-  npm test: 148 total, 146 passed, 0 failed, 2 existing PostgreSQL skips.
-Corrected actual pinned deployment package:
-  npm run check: passed
-  npm test: 148 total, 146 passed, 0 failed, 2 existing PostgreSQL skips.
-Pure staging safety/mock tests: 14 passed, 0 failed, 0 skipped.
-Package integration regressions: 2 passed, 0 failed, 0 skipped.
-  Missing context still makes all five original safety tests fail (expected negative case).
-  Complete pinned context passes original tests unchanged.
-Fresh disposable local PostgreSQL full release suite: 182 passed, 0 failed, 0 skipped.
+Current validations:
+- Standalone staging safety/mock tests: 14 passed, 0 failed, 0 skipped.
+- Actual pinned archive/package regressions: 2 passed, 0 failed, 0 skipped.
+- PostgreSQL restore/SQL safety groups: 7 passed, 0 failed, 0 skipped.
+  Includes real custom dump/restore, NULL-cast equivalence, literal/function-body preservation,
+  symlink-safe 0600 redacted diagnostics surviving clone cleanup, libc/ICU Turkish locale and owner,
+  LATIN1 text round trip without changing database encoding,
+  and rejection of missing table/index/constraint/default/ACL/owner differences.
+- Full historical 120-file source: backup/restore verified; migration 125 applied only to the probe.
+- Source remains 120 after positive restore verification and after deliberately broken probe index.
+- npm run check: passed.
+- npm test: 146 passed, 0 failed, 2 existing PostgreSQL skips (148 total).
+- Full backend release suite on another fresh disposable PostgreSQL: 182 passed, 0 failed, 0 skipped.
 
-Migration files 100 and 124 unchanged. Original five marketplace deploy tests and both deploy shell scripts unchanged.
-Legacy model applies 100; actor-scoped index skips 100; actor column without the required index still aborts with exit 9.
-No test or safety assertion removed. No production/staging DB connection, SSH, deployment, baseline or merge performed.
-
-Earlier preparation separately verified synthetic PostgreSQL backup/restore and local HTTP smoke; no new claim of VPS validation is made.
+Schema snapshots include ownership and ACLs. Only limited constant-array cast equivalence and
+SQL whitespace/comments outside literals are normalized. Real differences remain fatal.
+Diagnostic JSON includes only positions/categories/counts and ephemeral-key HMAC fingerprints;
+no SQL, object names, literal values, function bodies, user records or credentials are included.
+CI uses its own PostgreSQL service container's tools, verifies cluster identity and never accesses VPS.

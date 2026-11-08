@@ -136,16 +136,123 @@ END $audit$;
 COMMIT;
 """
 
+def schema_tokens(text):
+    """Tokenize SQL without altering literals, identifiers or function bodies."""
+    tokens=[]; i=0
+    while i<len(text):
+        ch=text[i]
+        if ch.isspace():i+=1;continue
+        if text.startswith('--',i):
+            end=text.find('\n',i);i=len(text) if end<0 else end+1;continue
+        if text.startswith('/*',i):
+            depth=1;i+=2
+            while i<len(text) and depth:
+                if text.startswith('/*',i):depth+=1;i+=2
+                elif text.startswith('*/',i):depth-=1;i+=2
+                else:i+=1
+            need(depth==0,'Unterminated schema SQL comment');continue
+        if ch=='\\' and (i==0 or text[i-1]=='\n'):
+            control=re.match(r'\\(?:un)?restrict [A-Za-z0-9]+[ \t]*(?:\n|$)',text[i:])
+            if control:i+=control.end();continue
+        dollar=re.match(r'\$(?:[A-Za-z_][A-Za-z_0-9]*)?\$',text[i:]) if ch=='$' else None
+        if dollar:
+            end=text.find(dollar.group(),i+dollar.end())
+            need(end>=0,'Unterminated schema SQL dollar body')
+            end+=len(dollar.group());tokens.append(('opaque',text[i:end]));i=end;continue
+        escape=ch in 'eE' and i+1<len(text) and text[i+1]=="'"
+        if ch in "'\"" or escape:
+            start=i
+            if escape:i+=1
+            quote=text[i];i+=1;closed=False
+            while i<len(text):
+                if escape and text[i]=='\\':i+=2;continue
+                if text[i]==quote:
+                    i+=1
+                    if i<len(text) and text[i]==quote:i+=1;continue
+                    closed=True;break
+                i+=1
+            need(closed,'Unterminated schema SQL literal')
+            tokens.append(('string' if quote=="'" else 'identifier',text[start:i]));continue
+        word=re.match(r'[A-Za-z_\u0080-\uffff][A-Za-z_0-9$\u0080-\uffff]*',text[i:])
+        if word:
+            tokens.append(('word',word.group()));i+=word.end();continue
+        number=re.match(r'(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?',text[i:])
+        if number:
+            tokens.append(('number',number.group()));i+=number.end();continue
+        operator=re.match(r'(?:::|->>|->|#>>|#>|<=|>=|<>|!=|:=|=>|\|\|)',text[i:])
+        if operator:
+            tokens.append(('operator',operator.group()));i+=operator.end();continue
+        tokens.append(('punctuation',ch));i+=1
+    return tokens
+
+
 def stable_schema_dump(text):
-    # PostgreSQL 16 may expand an ARRAY-varchar-to-text cast into per-element
-    # text casts while restoring. These constant-only forms are equivalent.
-    # Keep every other schema statement unchanged in the comparison.
-    value = r"'(?:[^']|'')*'::character varying"
-    pattern = r"\(ARRAY\[(" + value + r"(?:,\s*" + value + r")*)\]\)::text\[\]"
-    def expand(match):
-        return 'ARRAY[' + ', '.join('(' + item + ')::text' for item in re.findall(value, match.group(1))) + ']'
-    normalized = re.sub(pattern, expand, text)
-    return '\n'.join(line for line in normalized.splitlines() if line.strip() and not line.startswith(('--', '\\restrict', '\\unrestrict')))
+    # Only normalize a proven built-in cast equivalence: an unbounded varchar
+    # array of string/NULL constants cast to text[] equals per-element text
+    # casts. A SQL lexer prevents rewriting quoted identifiers/function text.
+    tokens=schema_tokens(text);normalized=[];i=0
+    def raw(at,value):return at<len(tokens) and tokens[at][1]==value
+    while i<len(tokens):
+        if raw(i,'(') and raw(i+1,'ARRAY') and raw(i+2,'['):
+            at=i+3;items=[]
+            while at<len(tokens):
+                kind,value=tokens[at]
+                if not (kind=='string' or (kind=='word' and value=='NULL')):break
+                if not (raw(at+1,'::') and raw(at+2,'character') and raw(at+3,'varying')):break
+                items.append(tokens[at:at+4]);at+=4
+                if not raw(at,','):break
+                at+=1
+            if items and all(raw(at+n,value) for n,value in enumerate([']',')','::','text','[',']'])):
+                normalized.extend([('word','ARRAY'),('punctuation','[')])
+                for number,item in enumerate(items):
+                    if number:normalized.append(('punctuation',','))
+                    normalized.append(('punctuation','('));normalized.extend(item)
+                    normalized.extend([('punctuation',')'),('operator','::'),('word','text')])
+                normalized.append(('punctuation',']'));i=at+6;continue
+        normalized.append(tokens[i]);i+=1
+    # One JSON token record per SQL statement: whitespace/comments outside
+    # literals are immaterial; whitespace/newlines inside literals stay exact.
+    statements=[];statement=[]
+    for kind,value in normalized:
+        statement.append(value)
+        if kind=='punctuation' and value==';':
+            statements.append(json.dumps(statement,ensure_ascii=False,separators=(',',':')));statement=[]
+    if statement:statements.append(json.dumps(statement,ensure_ascii=False,separators=(',',':')))
+    return '\n'.join(statements)
+
+
+def schema_difference_report(source, restored, key):
+    """Only positions, fixed SQL categories and keyed fingerprints, never SQL."""
+    import difflib
+    import hmac
+    def fingerprint(value):return hmac.new(key,value.encode(),hashlib.sha256).hexdigest()
+    categories={'CREATE','ALTER','DROP','GRANT','REVOKE','COMMENT','SET','SELECT','TABLE','INDEX','UNIQUE','CONSTRAINT','FUNCTION','PROCEDURE','SCHEMA','SEQUENCE','TYPE','DOMAIN','TRIGGER','POLICY','VIEW','MATERIALIZED','EXTENSION','DEFAULT','PRIVILEGES'}
+    def describe(statement):
+        values=json.loads(statement)
+        label=[]
+        for value in values[:4]:
+            if value not in categories:break
+            label.append(value)
+        return {'kind':' '.join(label) or 'SQL','tokenCount':len(values),'fingerprint':fingerprint(statement)}
+    a,b=source.splitlines(),restored.splitlines();differences=[]
+    for action,a0,a1,b0,b1 in difflib.SequenceMatcher(None,a,b,autojunk=False).get_opcodes():
+        if action=='equal':continue
+        differences.append({'action':action,'sourceStatementStart':a0+1,'sourceStatementCount':a1-a0,'restoredStatementStart':b0+1,'restoredStatementCount':b1-b0,
+                            'source':[describe(x) for x in a[a0:min(a1,a0+3)]],
+                            'restored':[describe(x) for x in b[b0:min(b1,b0+3)]]})
+        if len(differences)>=10:break
+    return {'sourceStatementCount':len(a),'restoredStatementCount':len(b),
+            'sourceFingerprint':fingerprint(source),'restoredFingerprint':fingerprint(restored),
+            'firstDifferences':differences,'sqlTextIncluded':False,'fingerprintAlgorithm':'HMAC-SHA256; ephemeral undisclosed key'}
+
+
+def write_private_json(path,value):
+    flags=os.O_WRONLY|os.O_CREAT|os.O_TRUNC|getattr(os,'O_NOFOLLOW',0)
+    descriptor=os.open(path,flags,0o600)
+    with os.fdopen(descriptor,'w',encoding='utf-8') as stream:
+        os.fchmod(stream.fileno(),0o600)
+        json.dump(value,stream,indent=2);stream.write('\n');stream.flush();os.fsync(stream.fileno())
+
 
 def extract_release_archive(archive, build_root, uid, gid):
     """Preserve server/ + deploy/ test layout; never execute a deploy script."""
@@ -215,7 +322,7 @@ class Deployment:
         need(self.db_port is not None, 'Database identity has not been validated')
         return ['/usr/sbin/runuser', '-u', 'postgres', '--', '/usr/bin/env', '-i',
                 'PATH=/usr/bin:/bin', 'LANG=C.UTF-8', 'PGHOST=/var/run/postgresql',
-                'PGPORT=' + str(self.db_port), 'PGUSER=postgres', 'PGAPPNAME=cepqontag-pr318-deploy',
+                'PGPORT=' + str(self.db_port), 'PGUSER=postgres', 'PGCLIENTENCODING=UTF8', 'PGAPPNAME=cepqontag-pr318-deploy',
                 shutil.which(executable), '--dbname=' + database]
 
     def pg(self, sql, database=DB):
@@ -352,6 +459,7 @@ class Deployment:
         dump_version = int(re.search(r'(\d+)\.', self.run(['pg_dump','--version'])).group(1))
         restore_version = int(re.search(r'(\d+)\.', self.run(['pg_restore','--version'])).group(1))
         need(dump_version >= version and restore_version >= dump_version, 'PostgreSQL dump/restore tools are older than the server/archive')
+        self.report['postgresqlTools']={'serverMajor':version,'dumpMajor':dump_version,'restoreMajor':restore_version}
         data_directory = self.pg('SHOW data_directory')
         need(shutil.disk_usage(data_directory).free > max(1024**3, size * 4), 'Insufficient PostgreSQL restore-volume disk headroom')
         need(shutil.disk_usage(self.backup).free > max(1024**3, size * 4), 'Insufficient backup/restore disk headroom')
@@ -413,16 +521,87 @@ class Deployment:
         need(bool(pieces), 'No public tables found')
         return self.query_json('SELECT json_object_agg(name,n) FROM (' + ' UNION ALL '.join(pieces) + ') x', database)
 
+    def schema_dump(self, database):
+        # Ownership and ACLs are part of the restore contract, not ignored.
+        return self.run(self.pg_args('pg_dump', database) + ['--schema-only','--encoding=UTF8'], timeout=300)
+
     def schema_digest(self, database):
-        text = self.run(self.pg_args('pg_dump', database) + ['--schema-only', '--no-owner', '--no-privileges'], timeout=300)
-        stable = stable_schema_dump(text)
-        return hashlib.sha256(stable.encode()).hexdigest()
+        return hashlib.sha256(stable_schema_dump(self.schema_dump(database)).encode()).hexdigest()
+
+    def compare_schema(self, source_sql, restored_sql, phase):
+        try:
+            source=stable_schema_dump(source_sql);restored=stable_schema_dump(restored_sql)
+        except Stop:
+            write_private_json(self.backup/'schema-difference.json',{'phase':phase,'verificationFailed':True,'reason':'SQL_TOKENIZATION_FAILED','sqlTextIncluded':False})
+            raise Stop('Schema SQL could not be compared; see private schema-difference.json') from None
+        if source==restored:return
+        diagnostic=schema_difference_report(source,restored,os.urandom(32))
+        diagnostic.update(phase=phase,verificationFailed=True,migrationAppliedByThisRun=bool(self.report.get('migrationApplied')),postgresqlTools=self.report.get('postgresqlTools',{}))
+        path=self.backup/'schema-difference.json'
+        write_private_json(path,diagnostic)
+        self.report['schemaVerification']={'passed':False,'phase':phase,'privateDiagnostic':str(path)}
+        raise Stop('Restored schema differs from source schema; see private schema-difference.json')
+
+    def database_properties(self, database=DB):
+        return self.query_json("""SELECT row_to_json(x) FROM (
+          SELECT pg_get_userbyid(d.datdba) owner,pg_encoding_to_char(d.encoding) encoding,
+                 d.datcollate collate,d.datctype ctype,
+                 coalesce(to_jsonb(d)->>'datlocprovider','c') provider,
+                 coalesce(to_jsonb(d)->>'datlocale',to_jsonb(d)->>'daticulocale') locale,
+                 to_jsonb(d)->>'daticurules' rules,to_jsonb(d)->>'datcollversion' collation_version,t.spcname tablespace
+          FROM pg_database d JOIN pg_tablespace t ON t.oid=d.dattablespace
+          WHERE d.datname=current_database()) x""",database)
+
+    def create_restore_probe(self):
+        properties=self.database_properties()
+        version=int(self.pg('SHOW server_version_num'))
+        options=['TEMPLATE template0','OWNER '+identifier(properties['owner']),
+                 'ENCODING '+literal(properties['encoding']),
+                 'LC_COLLATE '+literal(properties['collate']),'LC_CTYPE '+literal(properties['ctype']),
+                 'TABLESPACE '+identifier(properties['tablespace'])]
+        provider=properties['provider']
+        need(provider in ('c','i','b'),'Unsupported source database locale provider')
+        if version>=150000:
+            options.append('LOCALE_PROVIDER '+{'c':'libc','i':'icu','b':'builtin'}[provider])
+        else:need(provider=='c','Locale provider unsupported by this PostgreSQL version')
+        if provider=='i':
+            need(properties['locale'],'Source ICU locale is missing')
+            options.append('ICU_LOCALE '+literal(properties['locale']))
+            if properties['rules']:
+                need(version>=160000,'ICU rules need PostgreSQL 16+')
+                options.append('ICU_RULES '+literal(properties['rules']))
+        if provider=='b':
+            need(version>=170000 and properties['locale'],'Builtin locale needs PostgreSQL 17+')
+            options.append('BUILTIN_LOCALE '+literal(properties['locale']))
+        self.pg('CREATE DATABASE '+identifier(self.probe)+' WITH '+' '.join(options))
+        self.probe_created=True
+        self.pg('REVOKE CONNECT ON DATABASE '+identifier(self.probe)+' FROM PUBLIC')
+        restored=self.database_properties(self.probe)
+        if restored!=properties:
+            import hmac
+            key=os.urandom(32)
+            changes=[]
+            for name in properties:
+                if properties[name]!=restored.get(name):
+                    changes.append({'property':name,'sourceFingerprint':hmac.new(key,json.dumps(properties[name]).encode(),hashlib.sha256).hexdigest(),
+                                    'restoredFingerprint':hmac.new(key,json.dumps(restored.get(name)).encode(),hashlib.sha256).hexdigest()})
+            path=self.backup/'schema-difference.json'
+            write_private_json(path,{'phase':'probe-database-properties','firstDifferences':changes,'valuesIncluded':False,'verificationFailed':True})
+            raise Stop('Restore probe database properties differ from source; see private schema-difference.json')
+
+    def restore_archive(self,dump):
+        with open(dump,'rb') as stream:
+            args=self.pg_args('pg_restore',self.probe)+['--exit-on-error','--single-transaction']
+            result=subprocess.run([str(x) for x in args],stdin=stream,stdout=subprocess.PIPE,stderr=subprocess.PIPE,
+                                  timeout=1800,env={'PATH':'/usr/bin:/bin','LANG':'C.UTF-8'})
+        need(result.returncode==0,'Backup restore failed; original DB has not been migrated')
 
     def backup_and_restore_check(self):
+        source_sql=self.schema_dump(DB)
         self.before_counts = self.counts()
         dump = self.backup / 'heycar_staging.dump'
         with open(dump, 'xb') as stream:
-            self.run(self.pg_args('pg_dump') + ['--format=custom'], output=stream, timeout=1800)
+            self.run(self.pg_args('pg_dump') + ['--format=custom','--encoding=UTF8'], output=stream, timeout=1800)
             stream.flush(); os.fsync(stream.fileno())
         need(dump.stat().st_size > 0, 'Empty database backup')
         self.dump_sha = sha_file(dump)
@@ -430,17 +609,13 @@ class Deployment:
         listing = self.run(['pg_restore', '--list', dump])
         need(not re.search(r'^[^;\n].*\bDATABASE(?: PROPERTIES)?\b', listing, re.M), 'Database-level archive entries require manual restore review')
         (self.backup / 'backup-toc.txt').write_text(listing)
-        self.pg('CREATE DATABASE ' + identifier(self.probe) + ' TEMPLATE template0')
-        self.probe_created = True
-        self.pg('REVOKE CONNECT ON DATABASE ' + identifier(self.probe) + ' FROM PUBLIC')
-        # Restore to the explicitly named probe; NEVER --create or --clean.
-        with open(dump, 'rb') as stream:
-            args = self.pg_args('pg_restore', self.probe) + ['--exit-on-error', '--single-transaction']
-            # Keep the archive out of command output and arguments; stream on stdin.
-            p = subprocess.run([str(x) for x in args], stdin=stream, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=1800, env={'PATH':'/usr/bin:/bin','LANG':'C.UTF-8'})
-        need(p.returncode == 0, 'Backup restore failed; original DB has not been migrated')
+        archive_sql=self.run(['pg_restore','--schema-only','--file=-',dump],timeout=300)
+        self.compare_schema(source_sql,archive_sql,'source-versus-archive')
+        self.create_restore_probe()
+        self.restore_archive(dump)
+        self.compare_schema(source_sql,self.schema_dump(self.probe),'source-versus-restored')
         need(self.counts(self.probe) == self.before_counts, 'Restored table row counts differ from backup source')
-        need(self.schema_digest(self.probe) == self.schema_digest(DB), 'Restored schema differs from source schema')
+        self.report['schemaVerification']={'passed':True,'ownershipAndPrivilegesIncluded':True,'databasePropertiesMatched':True}
         validate_history(self.history(self.probe), self.expected, self.baseline_count)
         if self.baseline_count==120:
             self.pg(migration_sql(self.probe, self.expected, self.body), self.probe)
@@ -450,6 +625,7 @@ class Deployment:
         probe_counts = self.counts(self.probe)
         need({k:v for k,v in probe_counts.items() if k != 'schema_migrations'} == {k:v for k,v in self.before_counts.items() if k != 'schema_migrations'}, 'Probe migration changed application row counts')
         self.ensure_quiet()
+        self.compare_schema(source_sql,self.schema_dump(DB),'source-changed-during-verification')
         need(self.counts() == self.before_counts and sha_file(dump) == self.dump_sha, 'Backup/source changed during validation')
         self.report['backup'] = {'path': str(dump), 'sha256': self.dump_sha, 'restoreVerified': True, 'tableCountsCompared': len(self.before_counts), 'probeMigrationVerified': True}
         self.event('Custom-format backup restored successfully; full row counts/schema and migration 125 verified on clone')

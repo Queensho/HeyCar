@@ -39,6 +39,8 @@ jobs:
         run: python3 deploy/staging-pr318/deploy-staging-pr318.py --self-test
       - name: Test actual pinned staging release package
         run: python3 deploy/staging-pr318/test-release-packaging.py
+      - name: PostgreSQL backup/restore semantic verification
+        run: python3 deploy/staging-pr318/test-schema-restore.py --docker-container "${{ job.services.postgres.id }}"
       - name: Full backend suite including PostgreSQL (zero skips required)
         working-directory: server
         run: |
