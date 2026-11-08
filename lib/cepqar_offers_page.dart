@@ -421,6 +421,13 @@ class _CepqarOffersPageState extends State<CepqarOffersPage> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Row(children: [
+                                      if (Navigator.canPop(context))
+                                        IconButton(
+                                            tooltip: 'Geri',
+                                            onPressed: () =>
+                                                Navigator.pop(context),
+                                            icon: Icon(Icons.arrow_back_ios_new,
+                                                color: headerInk)),
                                       Expanded(
                                           child: TextButton.icon(
                                               onPressed:

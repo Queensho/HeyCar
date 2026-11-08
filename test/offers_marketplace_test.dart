@@ -332,4 +332,22 @@ void main() {
     expect(button, findsOneWidget);
     expect(tester.widget<FilledButton>(button).onPressed, isNull);
   });
+  testWidgets('offers opened as a route preserves the back action',
+      (tester) async {
+    final api = FakeMarketplace();
+    await tester.pumpWidget(MaterialApp(
+        home: Builder(
+            builder: (c) => Scaffold(
+                body: TextButton(
+                    onPressed: () => Navigator.push(
+                        c,
+                        MaterialPageRoute<void>(
+                            builder: (_) => CepqarOffersPage(api: api))),
+                    child: const Text('Fırsatları aç'))))));
+    await tester.tap(find.text('Fırsatları aç'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Geri'));
+    await tester.pumpAndSettle();
+    expect(find.text('Fırsatları aç'), findsOneWidget);
+  });
 }
