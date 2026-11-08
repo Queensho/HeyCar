@@ -1,3 +1,4 @@
+const {externalServicesDisabled,disabledDeliveryResult}=require('./external-services-policy');
 const webpush=require('web-push');
 const {ownerId:authenticatedOwnerId}=require('./owner-auth-service');
 const {driverId:authenticatedDriverId}=require('./driver-auth-service');
@@ -59,6 +60,7 @@ module.exports=function registerWebPush(app,pool){
   app.delete('/api/driver/web-push-subscription',async(req,res)=>{try{const driver=authenticatedDriverId(req);if(!driver)return res.status(401).json({error:'DRIVER_REQUIRED'});await pool.query('UPDATE driver_web_push_subscriptions SET active=FALSE,updated_at=NOW() WHERE driver_id=$1',[driver]);return res.json({ok:true});}catch(e){console.error('driver web push unsubscribe',e);return res.status(500).json({error:'SERVER_ERROR'});}});
 
   async function sendFrom(table,idColumn,userId,data,title,body){
+    if(externalServicesDisabled())return disabledDeliveryResult();
     if(!enabled)return {attempted:0,delivered:0,skipped:'WEB_PUSH_NOT_CONFIGURED'};
     const rows=(await pool.query(
       `SELECT id,endpoint,p256dh,auth FROM ${table} WHERE ${idColumn}=$1 AND active=TRUE ORDER BY updated_at DESC`,
@@ -76,6 +78,7 @@ module.exports=function registerWebPush(app,pool){
     let delivered=0;
     for(const row of rows){
       try{
+        if(externalServicesDisabled())return disabledDeliveryResult();
         await webpush.sendNotification(
           {endpoint:row.endpoint,keys:{p256dh:row.p256dh,auth:row.auth}},
           payload,
