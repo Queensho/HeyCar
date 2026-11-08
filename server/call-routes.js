@@ -12,6 +12,23 @@ function normalizeToken(raw) {
   return String(raw || '').trim().toUpperCase();
 }
 
+// A lock and count in a single SQL statement share the snapshot taken BEFORE
+// lock acquisition. Count in a separate statement after the lock instead.
+async function reserveCallAttempt(pool,sessionHash) {
+  if(!sessionHash)throw new Error('SCAN_SESSION_HASH_REQUIRED');
+  const client=await pool.connect();
+  try {
+    await client.query('BEGIN ISOLATION LEVEL READ COMMITTED');
+    await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[sessionHash]);
+    const result=await client.query(`INSERT INTO anonymous_call_attempts(scan_session_hash)
+      SELECT $1 WHERE (SELECT COUNT(*) FROM anonymous_call_attempts
+      WHERE scan_session_hash=$1 AND attempted_at>NOW()-INTERVAL '10 minutes')<5 RETURNING id`,[sessionHash]);
+    await client.query('COMMIT');
+    return result.rowCount===1;
+  }catch(err){await client.query('ROLLBACK').catch(()=>{});throw err;}
+  finally{client.release();}
+}
+
 module.exports = function registerCallRoutes(app, pool) {
   const pushService=registerPushRoutes(app, pool);
   async function expireCalls() {
@@ -106,9 +123,7 @@ module.exports = function registerCallRoutes(app, pool) {
       if(!security.ok)return res.status(security.status).json({error:security.error});
       const scan=await validateScanSession(pool,String(req.headers['x-scan-token']||''),token);
       if(!scan||String(scan.vehicle_id)!==String(vehicle.vehicle_id))return res.status(401).json({error:'SCAN_SESSION_REQUIRED'});
-      const rate=await pool.query(`WITH lock_key AS (SELECT pg_advisory_xact_lock(hashtextextended($1,0))), recent AS (SELECT COUNT(*)::int AS n FROM anonymous_call_attempts,lock_key WHERE scan_session_hash=$1 AND attempted_at>NOW()-INTERVAL '10 minutes'), inserted AS (INSERT INTO anonymous_call_attempts(scan_session_hash) SELECT $1 FROM lock_key,recent WHERE recent.n<5 RETURNING 1) SELECT n,(SELECT COUNT(*) FROM inserted)::int AS accepted FROM recent`,[scan.token_hash||'']);
-      if(Number(rate.rows[0]?.accepted||0)!==1)return res.status(429).json({error:'CALL_RATE_LIMITED'});
-      if(Number(rate.rows[0]?.attempts||0)>5)return res.status(429).json({error:'CALL_RATE_LIMITED'});
+      if(!await reserveCallAttempt(pool,scan.token_hash))return res.status(429).json({error:'CALL_RATE_LIMITED'});
 
       const recipient=await selectReachableCallRecipient(pool,vehicle.vehicle_id,vehicle.owner_id,{
         webPushEnabled:Boolean(process.env.WEB_PUSH_VAPID_PUBLIC_KEY&&process.env.WEB_PUSH_VAPID_PRIVATE_KEY),
@@ -302,3 +317,5 @@ module.exports = function registerCallRoutes(app, pool) {
     }
   });
 };
+
+module.exports.reserveCallAttempt=reserveCallAttempt;

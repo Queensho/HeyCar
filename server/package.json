@@ -7,8 +7,9 @@
     "start": "node server.js",
     "check": "node --check server.js && node --check admin-auth-routes.js && node --check business-routes.js && node --check offer-redemption-service.js && node --check offers-marketplace-routes.js && node --check admin-offers-marketplace-routes.js && node --check offer-validation.js",
     "migrate": "node migrate.js",
-    "test": "node --test tests/*.test.js",
-    "test:offers": "node --test tests/offers-marketplace-postgres.test.js"
+    "test": "node --test tests/*.test.js *.test.js",
+    "test:offers": "node --test tests/offers-marketplace-postgres.test.js",
+    "test:release": "node test-release.js"
   },
   "dependencies": {
     "cors": "^2.8.6",

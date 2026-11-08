@@ -4,6 +4,7 @@ const fs=require('fs');
 const path=require('path');
 const crypto=require('crypto');
 const {Pool}=require('pg');
+const {migrationBody}=require('./migration-sql');
 
 function databaseConfig(){
   const url=String(process.env.DATABASE_URL||'').trim();
@@ -67,6 +68,8 @@ async function baseline(client,files,through){
   const row=core.rows[0]||{};
   if(!row.users||!row.vehicles||!row.qr_tags)throw new Error('MIGRATION_BASELINE_CORE_SCHEMA_MISSING');
 
+  await client.query('BEGIN');
+  try{
   for(const file of files.slice(0,targetIndex+1)){
     const sql=fs.readFileSync(file.path,'utf8');
     await client.query(
@@ -76,6 +79,17 @@ async function baseline(client,files,through){
     );
     console.log(`BASELINED ${file.name}`);
   }
+  await client.query('COMMIT');
+  }catch(err){await client.query('ROLLBACK');throw err;}
+}
+
+async function applyMigration(client,name,sql,sha=checksum(sql)){
+  await client.query('BEGIN');
+  try{
+    await client.query(migrationBody(sql));
+    await client.query('INSERT INTO public.schema_migrations(filename,checksum_sha256) VALUES($1,$2)',[name,sha]);
+    await client.query('COMMIT');
+  }catch(err){await client.query('ROLLBACK').catch(()=>{});throw err;}
 }
 
 async function run(){
@@ -106,6 +120,14 @@ async function run(){
     );
     const applied=new Map(existing.rows.map(r=>[String(r.filename),String(r.checksum_sha256)]));
 
+    // Validate the entire history before applying any pending DDL.
+    const names=new Set(files.map(f=>f.name));
+    for(const [name,sha] of applied){
+      if(!names.has(name))throw new Error(`MIGRATION_UNKNOWN_HISTORY: ${name}`);
+      const file=files.find(f=>f.name===name);
+      if(checksum(fs.readFileSync(file.path,'utf8'))!==sha)throw new Error(`MIGRATION_CHECKSUM_MISMATCH: ${name}`);
+    }
+
     for(const file of files){
       const sql=fs.readFileSync(file.path,'utf8');
       const sha=checksum(sql);
@@ -116,19 +138,7 @@ async function run(){
       }
 
       console.log(`APPLY ${file.name}`);
-      await client.query('BEGIN');
-      try{
-        await client.query(sql);
-        await client.query(
-          `INSERT INTO public.schema_migrations(filename,checksum_sha256)
-           VALUES($1,$2)`,
-          [file.name,sha]
-        );
-        await client.query('COMMIT');
-      }catch(err){
-        await client.query('ROLLBACK').catch(()=>{});
-        throw err;
-      }
+      await applyMigration(client,file.name,sql,sha);
       console.log(`APPLIED ${file.name}`);
     }
 
@@ -144,7 +154,9 @@ async function run(){
   }
 }
 
-run().catch(err=>{
+if(require.main===module)run().catch(err=>{
   console.error(err?.stack||err);
   process.exit(1);
 });
+
+module.exports={run,baseline,applyMigration,checksum,migrationFiles,migrationBody};

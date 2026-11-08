@@ -4,6 +4,7 @@ const {issue,verify}=require('../offer-redemption-service');
 // Explicit test URL only. Never fall back to a production DATABASE_URL.
 const url=process.env.TEST_DATABASE_URL;
 test('offers marketplace on isolated PostgreSQL',{skip:!url},async t=>{
+ require('./test-database').testDatabaseUrl(url);
  const control=new Pool({connectionString:url}),schema='offers_test_'+crypto.randomBytes(6).toString('hex');
  await control.query(`CREATE SCHEMA ${schema}`);
  const pool=new Pool({connectionString:url,options:`-c search_path=${schema},public`,max:24});let server;

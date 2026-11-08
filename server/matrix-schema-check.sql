@@ -47,6 +47,14 @@ BEGIN
     RAISE EXCEPTION 'MISSING_MATRIX_TABLES: %', missing;
   END IF;
 
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='valet_sessions'
+      AND column_name='retrieving_at' AND data_type='timestamp with time zone'
+  ) THEN
+    RAISE EXCEPTION 'MISSING_VALET_RETRIEVING_TIMESTAMP';
+  END IF;
+
   SELECT COUNT(*) INTO bad_count
     FROM information_schema.columns
    WHERE table_schema='public'
