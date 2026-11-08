@@ -151,3 +151,14 @@ the production app has no fixture-data fallback.
 
 The first CI APK attempt stopped on an upstream HTTP 504 while fetching Gradle,
 before compiling application code. The build recipe fetches the same official Gradle binary through GitHub's asset API, verifies its published SHA-256 digest and points the generated wrapper at that local archive. No Gradle version downgrade or third-party mirror is used.
+
+
+Partial-rollout compatibility: `deploy/matrix-live-sync.sh` includes all four
+new marketplace modules and the shared push policy in its copy/backup list.
+When migration 124 is present it skips legacy migration 100, preventing the
+owner-only pending index from being recreated. An actor column without its
+required actor-scoped index aborts the rollout. Migration 124 still requires
+the separately approved migration-runner rollout; the script does not apply it.
+Repository tests cover file dependencies and this compatibility block using
+mocked shell functions only. No deploy script or database command was executed
+for these checks.

@@ -50,6 +50,7 @@ FILES=(
   admin-auth-routes.js
   admin-audit.js
   admin-management-routes.js
+  admin-offers-marketplace-routes.js
   story-routes.js
   app-builder-routes.js
   app-settings-routes.js
@@ -59,6 +60,9 @@ FILES=(
   support-routes.js
   active-driver-routes.js
   business-routes.js
+  offer-redemption-service.js
+  offers-marketplace-routes.js
+  offer-validation.js
   call-routes.js
   driver-auth-service.js
   driver-routes.js
@@ -479,7 +483,16 @@ sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$TMP/096_towing_active_veh
 sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$TMP/097_store_order_owner_detach.sql"
 sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$TMP/098_users_phone_unique.sql"
 sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$TMP/099_valet_phone_normalization.sql"
-sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$TMP/100_offer_redemption_limits.sql"
+# BEGIN offer pending-index compatibility
+# Migration 124 replaces the legacy owner-only index. Replaying migration 100
+# afterwards would reintroduce the old restriction and break owner/driver use.
+if [ "$(db_scalar "SELECT CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='offer_redemptions' AND column_name='actor_role') THEN 1 ELSE 0 END")" -eq 1 ]; then
+  [ "$(db_scalar "SELECT CASE WHEN to_regclass('public.uq_offer_pending_actor_campaign') IS NOT NULL THEN 1 ELSE 0 END")" -eq 1 ] || fail "Marketplace actor index missing; complete the approved migration 124 rollout first"
+  echo "Migration 100 skipped: actor-scoped pending index already installed"
+else
+  sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$TMP/100_offer_redemption_limits.sql"
+fi
+# END offer pending-index compatibility
 sudo -u postgres psql -d "$DB" -v ON_ERROR_STOP=1 -f "$TMP/093_runtime_schema_acl_hardening.sql"
 
 STAGE="schema_verify"
