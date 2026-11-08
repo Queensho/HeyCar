@@ -2,13 +2,59 @@
 
 **Durum: Hazırlandı ve yerelde test edildi; VPS'ye dağıtılmadı.** Bu çalışma ortamında SSH anahtarı, SSH agent, VPS host/port bilgisi veya bağlı SSH kimliği bulunmuyor. VPS'ye bağlanılmadı. Gerçek `heycar_staging` veritabanının yedeği alınmış veya migrationı uygulanmış değildir.
 
-GitHub branch: `fix/staging-pr318-test-context`
+GitHub branch: `fix/staging-restore-schema-verification`
 
 Repository yolu: `deploy/staging-pr318/deploy-staging-pr318.py`
 
-Betik GitHub branch üzerinden veya paylaşılmış commit SHA’sına sabitlenmiş raw URL üzerinden indirilebilir. SHA-256: `5e98e2abe60bd545c14e1cbe28a5dba1023268f1cb93c2e2d3b223627410d80c`. İndirmek betiği çalıştırmaz.
+Betik GitHub branch üzerinden veya paylaşılmış commit SHA’sına sabitlenmiş raw URL üzerinden indirilebilir. SHA-256: `5cc8ea9d129ae6fa55afe895df0ea3ba0b8e3d5933b2da8bfb1b02fe09037327`. İndirmek betiği çalıştırmaz.
 
 Tek otomasyon dosyası: **deploy-staging-pr318.py**. GitHub main üzerinde değişiklik yapılmadı; eski staging workflow'u tetiklenmedi. Paket veritabanı yedeği, kullanıcı verisi veya erişim anahtarı içermez.
+
+## Restore şeması karşılaştırma düzeltmesi (#320 sonrası)
+
+Bu sürüm #320'nin üzerine hazırlanmıştır. VPS'ye bağlanılmadı ve gerçek staging farkının kesin nedeni gözlenmedi; başarısız klon önceki çalışmada silinmiş olduğundan onu incelemiş gibi bir iddia yoktur.
+
+İzole PostgreSQL 16.15'te bildirilen koşullar yeniden üretildi: kaynak dump ve arşivden çıkarılan şema eski `stable_schema_dump()` ile eşitken, restore edilmiş klon eşit değildi. Sentetik örnekteki gerçek fark PostgreSQL'in şu eşdeğer dönüşümüdür:
+
+```sql
+(ARRAY['pending'::character varying, NULL::character varying])::text[]
+ARRAY[('pending'::character varying)::text, (NULL::character varying)::text]
+```
+
+Önceki regex yalnız string sabitlerini kapsıyor, `NULL` sabitini kaçırıyordu. Bu tekrar üretilebilen bir nedendir; staging'deki son hata aynı nedenden kaynaklanmış olabilir, fakat özel teşhis olmadan kesinleştirilemez. `public` şemasının boş yorumu da ayrıca denendi; test ortamında aynı hatayı üretmedi.
+
+Yeni normalleştirici SQL lexer kullanır. Sadece sınırsız `character varying` string/NULL sabitlerinden oluşan dizinin `text[]` cast'ini eleman bazlı eşdeğerine çevirir. Tip uzunlukları, farklı literal değerleri veya keyfi ifadeler eşdeğer sayılmaz. SQL dışı dump başlıkları, rastgele `\restrict` işaretleri ve SQL literalinin dışındaki boşluk/yorumlar etkisiz kabul edilir. Quoted identifier'lar, string içerikleri ve dollar-quoted fonksiyon gövdeleri; içlerindeki boş satır, yorum görünümlü içerik ve SQL metni dahil aynen korunur. İfade sırası veya nesneler topluca sıralanmaz/silinmez. Tanınamayan/yarım SQL dağıtımı durdurur.
+
+Şema dump'larında artık `--no-owner` veya `--no-privileges` yoktur. Tablo, indeks, constraint, default, fonksiyon, sahiplik ve ACL farkları karşılaştırmada kalır. Metadata **COMMENT ON** ifadeleri de korunur. Şema/arşiv text encoding'i UTF-8'e açıkça sabitlenir; kaynak DB'nin kendi encoding'i değişmez.
+
+Geçici veritabanı `template0` ile oluşturulurken kaynağın owner, encoding, LC_COLLATE, LC_CTYPE, locale provider, ICU/builtin locale ve rules, tablespace bilgileri kullanılır. Sonrasında bu özellikler ve collation version tekrar karşılaştırılır. Böylece sunucu varsayılanlarının kaynağın farklı locale/owner ayarlarını sessizce değiştirmesi önlenir. Locale sürümü veya başka gerçek bir özellik uyuşmazsa sürüm bilgisi sahte olarak düzeltilmez; işlem durur. Klonun **database-level PUBLIC CONNECT** izni bilinçli olarak kaldırılmış kalır; uygulama nesnelerinin şema/tablo/sequence/column/default ACL'leri ise karşılaştırılır.
+
+Doğrulama sırası kaynak şema → arşiv şeması → restore edilen şemadır. Klonda migration testi bitince kaynak şema tekrar okunur; doğrulama sırasında kaynak DDL'si değişmişse de durulur. Migration 125 kaynak üzerinde ancak tüm doğrulamalar başarılı olduktan sonra uygulanabilir.
+
+### Özel ve redakte teşhis
+
+Karşılaştırma başarısızsa klon temizlenmeden önce aynı private backup dizinine **`schema-difference.json`** yazılır (izin **0600**, symlink izlenmez). Kayıt şunları içerir:
+
+- Karşılaştırma aşaması, ifade sayıları ve ilk en fazla 10 farklı ifade grubu.
+- SQL ifade başlangıç konumu/adedi, sabit kategoriden işlem türü (`CREATE TABLE`, `CREATE INDEX`, `GRANT`, vb.) ve token sayısı.
+- Her farklı ifadenin ve iki snapshot'ın HMAC-SHA256 parmak izi. Anahtar geçici rastgele üretilir; saklanmaz veya dosyaya yazılmaz.
+- Hazırlıkta tespit edilen PostgreSQL tool major sürümleri; DB özellik farkında yalnız özellik adı ve değerlerin anahtarlı parmak izi.
+
+**Ham SQL, nesne/rol adları, fonksiyon gövdeleri, literal değerler, yorum metinleri, kullanıcı kayıtları ve bağlantı sırları teşhis dosyasına yazılmaz.** Parmak izleri yalnız aynı teşhis içindeki ifadeleri karşılaştırmak içindir; farklı koşular arasında aynı olması beklenmez. İfade konumları lexer'ın oluşturduğu SQL statement sırasıdır, özgün dump'ın satır numarası değildir. Bu dosya da özel operasyon kaydıdır; yedek/ortam/log dosyalarını chat'e veya açık artifact'e yüklemeyin.
+
+Klon normal cleanup ile silinse de teşhis dosyası ve özgün yedek korunur. Hata mesajı operatörü dosyaya yönlendirir; hatada uygulama rollback ve **DB'yi otomatik geri almama** politikası değişmez.
+
+### İzole restore testi
+
+CI, job'a ait geçici PostgreSQL 16 servis konteynerinin kendi `pg_dump`/`pg_restore` araçlarını kullanır; başka cluster'a yönelmeyi önlemek için Docker araçları ile URL'nin system identifier'ı eşleştirilir. Test URL'si loopback ve `heycar_test_*` adı taşımak zorundadır. Her fixture DB ve rol rastgele adla oluşturulur ve sadece kendi oluşturdukları temizlenir. Testler staging URL'sini kabul etmez.
+
+```bash
+TEST_DATABASE_URL=postgresql://postgres:TEST_PASSWORD@127.0.0.1:5432/heycar_test_release \
+  python3 deploy/staging-pr318/test-schema-restore.py
+# PG araçları test konteynerindeyse ayrıca: --docker-container LOCAL_TEST_CONTAINER
+```
+
+7 test grubu: lexer/literal güvenliği; kısıtlı cast normalizasyonu; özel dosya symlink reddi; NULL-cast gerçek restore; ICU/Türkçe locale, LATIN1 metin ve owner korunması; 6 gerçek şema/ACL bozulmasının reddi; 120 migrationlı tam yedek/restore ve yalnız klonda 125 doğrulaması. Son test bozuk indeksli restore'u da dener ve kaynağın 120'de kaldığını kanıtlar. Hiçbir mevcut migration dosyası değiştirilmez.
 
 ## Npm test paketleme düzeltmesi
 
