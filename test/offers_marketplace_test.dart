@@ -9,6 +9,7 @@ class FakeMarketplace extends MarketplaceApi {
   final favoriteIds = <String>{};
   final calls = <String>[];
   bool fail = false;
+  bool hideCampaign = false;
   Map<String, dynamic> design = {};
   Map<String, dynamic>? redemption;
   List<Map<String, dynamic>> get offers => [
@@ -94,7 +95,7 @@ class FakeMarketplace extends MarketplaceApi {
         'services': [
           {'name': 'İç dış temizlik', 'price': '500.00'}
         ],
-        'campaigns': [offers.first],
+        'campaigns': hideCampaign ? <Map<String, dynamic>>[] : [offers.first],
         'reviews': []
       };
     if (path == '/api/owner/vehicles')
@@ -319,5 +320,16 @@ void main() {
     expect(find.text('Admin başlığı'), findsOneWidget);
     expect(find.byType(TextField), findsNothing);
     expect(find.byType(ChoiceChip), findsNothing);
+  });
+  testWidgets('withdrawn campaign cannot stay active from cached list data',
+      (tester) async {
+    final api = FakeMarketplace()..hideCampaign = true;
+    await tester.pumpWidget(
+        MaterialApp(home: OfferDetailPage(offer: api.offers.first, api: api)));
+    await tester.pumpAndSettle();
+    final button =
+        find.widgetWithText(FilledButton, 'Kampanya kullanıma kapalı');
+    expect(button, findsOneWidget);
+    expect(tester.widget<FilledButton>(button).onPressed, isNull);
   });
 }

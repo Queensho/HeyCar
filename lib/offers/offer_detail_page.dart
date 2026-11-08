@@ -46,7 +46,11 @@ class _OfferDetailPageState extends State<OfferDetailPage> {
       final fresh = campaigns.where((e) => marketText(e, 'id') == id);
       setState(() {
         details = data;
-        if (fresh.isNotEmpty) offer.addAll(fresh.first);
+        if (fresh.isNotEmpty) {
+          offer.addAll(fresh.first);
+        } else if (id.isNotEmpty) {
+          offer['is_active'] = false;
+        }
         loading = false;
       });
     } catch (e) {
