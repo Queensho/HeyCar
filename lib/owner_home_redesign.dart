@@ -2529,7 +2529,7 @@ class OwnerServicesRedesign extends StatelessWidget{
     ];
     return ColoredBox(
       color:Colors.white,
-      child:SafeArea(bottom:false,child:ListView(padding:const EdgeInsets.fromLTRB(18,10,18,28),children:[
+      child:SafeArea(bottom:false,child:ListView(padding:EdgeInsets.fromLTRB(18,10,18,MediaQuery.paddingOf(context).bottom+112),children:[
         Align(
           alignment:Alignment.centerLeft,
           child:Image.asset(
