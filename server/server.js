@@ -66,6 +66,7 @@ app.use(cors({
   ],
 }));
 
+app.use('/api/business/media',express.json({limit:'3500kb'}));
 app.use(express.json({limit:'1mb'}));
 
 function databaseConfig(){

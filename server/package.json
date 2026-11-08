@@ -5,8 +5,10 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js && node --check admin-auth-routes.js",
-    "migrate": "node migrate.js"
+    "check": "node --check server.js && node --check admin-auth-routes.js && node --check business-routes.js && node --check offer-redemption-service.js && node --check offers-marketplace-routes.js && node --check admin-offers-marketplace-routes.js && node --check offer-validation.js",
+    "migrate": "node migrate.js",
+    "test": "node --test tests/*.test.js",
+    "test:offers": "node --test tests/offers-marketplace-postgres.test.js"
   },
   "dependencies": {
     "cors": "^2.8.6",
@@ -16,6 +18,7 @@
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
     "pg": "^8.23.0",
+    "sharp": "^0.35.5",
     "web-push": "^3.6.7"
   },
   "overrides": {

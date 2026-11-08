@@ -88,6 +88,7 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
   registerAdminCommunicationSecurityRoutes(app, pool, guard);
   registerAdminModerationOpsRoutes(app, pool, guard);
   registerAdminBusinessPremiumRoutes(app, pool, guard);
+  require('./admin-offers-marketplace-routes')(app,pool,guard);
   registerSupportRoutes(app, pool, guard);
   registerOfferEditorialRoutes(app, pool, guard);
   registerAppSettingsRoutes(app, pool, guard);
