@@ -226,7 +226,7 @@ class OwnerSettingsPage extends StatelessWidget {
       body: SafeArea(
         bottom: false,
         child: CQContent(child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+          padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.paddingOf(context).bottom+112),
           children: [
             _ProfileBrandHeader(
               initials: _initials,

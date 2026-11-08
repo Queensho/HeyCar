@@ -1,0 +1,338 @@
+name: Offers Marketplace Validation and Release APK
+
+on:
+  push:
+    branches: [feat/offers-marketplace-complete-20261108]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: offers-marketplace-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: local-test-only
+          POSTGRES_DB: offers_test
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - run: npm ci
+        working-directory: server
+      - run: npm run check
+        working-directory: server
+      - name: PostgreSQL marketplace integration and concurrency
+        run: node --test server/tests/offers-marketplace-postgres.test.js
+        env:
+          TEST_DATABASE_URL: postgresql://postgres:local-test-only@127.0.0.1:5432/offers_test
+      - name: All backend regression tests
+        run: node --test server/tests/*.test.js
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Analyze marketplace and existing integrations
+        run: flutter analyze lib/cepqar_offers_page.dart lib/offers lib/business_panel_page.dart lib/business_marketplace_tools.dart lib/business_campaign_edit.dart lib/admin_marketplace_tools.dart lib/admin_v3.dart --no-fatal-infos --no-fatal-warnings
+      - name: All Flutter tests including 393 and 430 dp
+        run: flutter test
+  release-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Apply CepQontag frontend branding
+        run: python3 tool/brand_frontend.py
+      - name: Apply owner light theme
+        run: python3 tool/owner_light_theme_patch.py
+      - name: Apply maintenance light theme
+        run: python3 tool/maintenance_light_theme_patch.py
+      - name: Apply call ringback
+        run: python3 tool/call_ringback_patch.py
+      - name: Apply driver light dark theme
+        run: python3 tool/driver_theme_patch.py
+      - name: Match owner header to driver
+        run: python3 tool/owner_header_size_patch.py
+      - name: Apply Android back navigation
+        run: python3 tool/back_navigation_patch.py
+      - name: Verify runtime Android fix supports five reference screens
+        run: python3 -m unittest discover -s tool/tests -p test_fix_runtime_android.py -v
+      - name: Apply runtime Android fixes
+        run: python3 tool/fix_runtime_android.py
+      - name: Generate Android platform
+        run: flutter create . --platforms=android --project-name app --org com.cepqar --no-pub
+      - name: Prepare verified official Gradle distribution
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tool/prepare_offers_gradle.py
+      - name: Add Android system settings bridge
+        run: |
+          cat > android/app/src/main/kotlin/com/cepqar/app/MainActivity.kt <<'EOF'
+          package com.cepqar.app
+
+          import android.content.ComponentName
+          import android.content.Intent
+          import android.net.Uri
+          import android.provider.Settings
+          import io.flutter.embedding.android.FlutterActivity
+          import io.flutter.embedding.engine.FlutterEngine
+          import io.flutter.plugin.common.MethodChannel
+
+          class MainActivity : FlutterActivity() {
+              private val channelName = "com.cepqar.app/system_settings"
+
+              override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+                  super.configureFlutterEngine(flutterEngine)
+                  MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName).setMethodCallHandler { call, result ->
+                      try {
+                          when (call.method) {
+                              "openAutoStart" -> openAutoStart()
+                              "openMiuiPermissions" -> openMiuiPermissions()
+                              "openBatterySettings" -> openBatterySettings()
+                              "openAppDetails" -> openAppDetails()
+                              else -> { result.notImplemented(); return@setMethodCallHandler }
+                          }
+                          result.success(true)
+                      } catch (e: Exception) {
+                          try { openAppDetails(); result.success(false) }
+                          catch (fallback: Exception) { result.error("SETTINGS", fallback.message, null) }
+                      }
+                  }
+              }
+
+              private fun openAutoStart() {
+                  val intent = Intent().apply {
+                      component = ComponentName(
+                          "com.miui.securitycenter",
+                          "com.miui.permcenter.autostart.AutoStartManagementActivity"
+                      )
+                      addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                  }
+                  startActivity(intent)
+              }
+
+              private fun openMiuiPermissions() {
+                  val candidates = listOf(
+                      "com.miui.permcenter.permissions.AppPermissionsEditorActivity",
+                      "com.miui.permcenter.permissions.PermissionsEditorActivity"
+                  )
+                  var last: Exception? = null
+                  for (activity in candidates) {
+                      try {
+                          val intent = Intent("miui.intent.action.APP_PERM_EDITOR").apply {
+                              component = ComponentName("com.miui.securitycenter", activity)
+                              putExtra("extra_pkgname", packageName)
+                              addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                          }
+                          startActivity(intent)
+                          return
+                      } catch (e: Exception) { last = e }
+                  }
+                  throw last ?: IllegalStateException("MIUI permission screen unavailable")
+              }
+
+              private fun openBatterySettings() {
+                  try {
+                      startActivity(Intent().apply {
+                          component = ComponentName(
+                              "com.miui.powerkeeper",
+                              "com.miui.powerkeeper.ui.HiddenAppsConfigActivity"
+                          )
+                          putExtra("package_name", packageName)
+                          putExtra("package_label", "CepQontag")
+                          addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                      })
+                  } catch (e: Exception) {
+                      startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                  }
+              }
+
+              private fun openAppDetails() {
+                  startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                      data = Uri.parse("package:$packageName")
+                      addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                  })
+              }
+          }
+          EOF
+      - name: Restore Firebase Android config
+        env:
+          GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
+        run: |
+          set -e
+          test -n "$GOOGLE_SERVICES_JSON_B64"
+          printf '%s' "$GOOGLE_SERVICES_JSON_B64" | base64 --decode > android/app/google-services.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('android/app/google-services.json'); data=json.loads(p.read_text())
+          project_id=data.get('project_info',{}).get('project_id','')
+          project_number=data.get('project_info',{}).get('project_number','')
+          packages=[c.get('client_info',{}).get('android_client_info',{}).get('package_name') for c in data.get('client',[])]
+          if 'com.cepqar.app' not in packages: raise SystemExit('Firebase config package mismatch: com.cepqar.app not found')
+          print(f'Firebase Android config restored for com.cepqar.app | project_id={project_id} | project_number={project_number}')
+          PY
+      - name: Enable Firebase and Android desugaring
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('android/app/build.gradle.kts'); text=p.read_text()
+          if 'com.google.gms.google-services' not in text:text=text.replace('plugins {','plugins {\n    id("com.google.gms.google-services") version "4.4.4"',1)
+          if 'com.google.firebase.crashlytics' not in text:text=text.replace('plugins {','plugins {\n    id("com.google.firebase.crashlytics") version "3.0.8"',1)
+          if 'isCoreLibraryDesugaringEnabled = true' not in text:text=text.replace('compileOptions {','compileOptions {\n        isCoreLibraryDesugaringEnabled = true',1)
+          if 'coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:' not in text:
+            if 'dependencies {' in text:text=text.replace('dependencies {','dependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")',1)
+            else:text+='\n\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")\n}\n'
+          p.write_text(text)
+          PY
+      - name: Add Android call and notification permissions
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('android/app/src/main/AndroidManifest.xml'); text=p.read_text(); marker='<application'
+          if 'xmlns:tools=' not in text:
+            text=text.replace('<manifest xmlns:android="http://schemas.android.com/apk/res/android">','<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">',1)
+          permissions='''    <uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />\n    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />\n    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />\n    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />\n    <uses-permission android:name="android.permission.WAKE_LOCK" />\n    <uses-permission android:name="android.permission.VIBRATE" />\n    <uses-permission android:name="android.permission.NFC" />\n    <uses-feature android:name="android.hardware.nfc" android:required="false" />\n'''
+          if 'android.permission.RECORD_AUDIO' not in text:text=text.replace(marker,permissions+'\n    '+marker,1)
+          text=text.replace('android:label="app"','android:label="CepQontag"')
+          text=text.replace('android:launchMode="singleTop"','android:launchMode="singleInstance"')
+          text=text.replace('android:name=".MainActivity"', 'android:name=".MainActivity"\n            android:showWhenLocked="true"\n            android:turnScreenOn="true"')
+          if 'com.google.firebase.messaging.default_notification_icon' not in text:
+            text=text.replace('</application>','''        <meta-data\n            android:name="com.google.firebase.messaging.default_notification_icon"\n            android:resource="@drawable/ic_stat_cepqar" />\n    </application>''')
+          if 'com.google.firebase.messaging.default_notification_channel_id' not in text:
+            text=text.replace('</application>','''        <meta-data\n            android:name="com.google.firebase.messaging.default_notification_channel_id"\n            android:value="cepqontag_notifications_v12" />\n    </application>''')
+          if 'com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver' not in text:
+            text=text.replace('</application>','''        <receiver\n            android:exported="false"\n            android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver" />\n    </application>''')
+          if 'com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver' not in text:
+            text=text.replace('</application>','''        <receiver\n            android:exported="false"\n            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />\n        <receiver\n            android:exported="false"\n            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">\n            <intent-filter>\n                <action android:name="android.intent.action.BOOT_COMPLETED"/>\n                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>\n                <action android:name="android.intent.action.QUICKBOOT_POWERON"/>\n                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>\n            </intent-filter>\n        </receiver>\n    </application>''')
+          p.write_text(text)
+          PY
+      - name: Apply CepQontag Android icons
+        run: |
+          set -e
+          ICON="assets/app_icons/cepqar_icon.png"; test -f "$ICON"
+          for dir in android/app/src/main/res/mipmap-mdpi android/app/src/main/res/mipmap-hdpi android/app/src/main/res/mipmap-xhdpi android/app/src/main/res/mipmap-xxhdpi android/app/src/main/res/mipmap-xxxhdpi; do mkdir -p "$dir"; cp "$ICON" "$dir/ic_launcher.png"; cp "$ICON" "$dir/ic_launcher_round.png"; done
+          mkdir -p android/app/src/main/res/drawable
+          python3 -m pip install --quiet pillow
+          python3 - <<'PY'
+          from PIL import Image
+          from pathlib import Path
+
+          src=Image.open("assets/app_icons/cepqar_icon.png").convert("RGBA")
+          mask=Image.new("L",src.size,0)
+          sp=src.load(); mp=mask.load()
+          for y in range(src.height):
+            for x in range(src.width):
+              r,g,b,a=sp[x,y]
+              # Extract the white pq/QR mark from the purple launcher icon.
+              # Android small notification icons must be a monochrome alpha mask.
+              if a>0 and min(r,g,b)>=175 and (max(r,g,b)-min(r,g,b))<=55:
+                strength=max(0,min(255,int((min(r,g,b)-165)*2.9)))
+                mp[x,y]=strength
+
+          bbox=mask.getbbox()
+          if not bbox:
+            raise SystemExit("Could not extract CepQontag pq mark from launcher icon")
+          mark=mask.crop(bbox)
+          canvas=Image.new("L",(96,96),0)
+          mark.thumbnail((76,76),Image.Resampling.LANCZOS)
+          x=(96-mark.width)//2; y=(96-mark.height)//2
+          canvas.paste(mark,(x,y))
+
+          out=Image.new("RGBA",(96,96),(255,255,255,0))
+          out.putalpha(canvas)
+          out.save("android/app/src/main/res/drawable/ic_stat_cepqar.png")
+          print("CepQontag pq notification mask generated")
+          PY
+      - name: Apply CepQontag native splash
+        run: |
+          python3 -m pip install --quiet pillow
+          python3 tool/native_splash_patch.py
+      - name: Install uploaded CepQontag notification sounds
+        run: |
+          set -e
+          test -f assets/Bildirim.wav
+          test -f assets/Arama.wav
+          mkdir -p android/app/src/main/res/raw
+          cp assets/Bildirim.wav android/app/src/main/res/raw/bildirim.wav
+          cp assets/Bildirim.wav android/app/src/main/res/raw/cepqar_notification.wav
+          cp assets/Arama.wav android/app/src/main/res/raw/arama.wav
+          cp assets/Arama.wav android/app/src/main/res/raw/cepqar_call.wav
+          cp assets/Arama.wav android/app/src/main/res/raw/ringtone_default.wav
+          test -s android/app/src/main/res/raw/bildirim.wav
+          test -s android/app/src/main/res/raw/cepqar_notification.wav
+          test -s android/app/src/main/res/raw/arama.wav
+          test -s android/app/src/main/res/raw/cepqar_call.wav
+          test -s android/app/src/main/res/raw/ringtone_default.wav
+          echo "Uploaded CepQontag sounds installed with compatibility aliases"
+
+      - name: Get dependencies
+        run: flutter pub get
+      - name: Patch CallKit locked-screen ringtone
+        run: python3 tool/callkit_locked_ringtone_patch.py
+      - name: Keep branded Flutter incoming call screen
+        run: |
+          python3 -m unittest discover -s tool -p test_callkit_flutter_route_patch.py
+          python3 tool/callkit_flutter_route_patch.py
+      - name: Analyze app
+        run: flutter analyze lib/entry_theme_live.dart lib/cepqar_offers_page.dart lib/offers lib/business_panel_page.dart lib/business_marketplace_tools.dart lib/business_campaign_edit.dart lib/admin_marketplace_tools.dart lib/admin_v3.dart --no-fatal-infos --no-fatal-warnings
+      - name: Test owner weather and story models
+        run: flutter test test/weather_service_test.dart test/story_service_test.dart
+      - name: Enable Flutter web platform
+        run: flutter create . --platforms=web --project-name heycar_app --no-pub
+      - name: Build business web panel
+        run: flutter build web --release --target lib/entry_business.dart --base-href /HeyCar/isletme/
+      - name: Prepare business web artifact
+        run: |
+          mkdir -p business-site/isletme
+          cp -R build/web/. business-site/isletme/
+      - name: Build admin web panel
+        run: flutter build web --release --target lib/admin_v3.dart --base-href /HeyCar/admin/
+      - name: Prepare admin web artifact
+        run: |
+          mkdir -p business-site/admin
+          cp -R build/web/. business-site/admin/
+      - name: Build owner PWA compatibility
+        run: flutter build web --release --target lib/entry_theme_live.dart --base-href /HeyCar/
+      - name: Upload owner PWA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cepqontag-offers-owner-pwa
+          path: build/web
+          retention-days: 14
+          if-no-files-found: error
+      - name: Upload business web artifact
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: cepqar-business-web
+          path: business-site
+          retention-days: 7
+      - name: Build Android optimized release test APK
+        run: flutter build apk --release --target lib/entry_theme_live.dart
+      - name: Upload Android optimized release test APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: cepqontag-offers-marketplace-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 14

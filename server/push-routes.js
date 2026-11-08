@@ -1,3 +1,4 @@
+const {externalServicesDisabled,disabledDeliveryResult}=require('./external-services-policy');
 const {ownerId: authenticatedOwnerId}=require('./owner-auth-service');
 const {driverId: authenticatedDriverId}=require('./driver-auth-service');
 const crypto=require('crypto');
@@ -13,6 +14,7 @@ function serviceAccount(){
 }
 
 async function accessToken(){
+  if(externalServicesDisabled())return null;
   const sa=serviceAccount();
   if(!sa) return null;
   const now=Math.floor(Date.now()/1000);
@@ -113,6 +115,7 @@ module.exports=function registerPushRoutes(app,pool){
   app.delete('/api/driver/push-token',async(req,res)=>{try{const driver=authenticatedDriverId(req);const device=String(req.query?.deviceId||req.body?.deviceId||'').trim();if(!driver)return res.status(401).json({error:'DRIVER_REQUIRED'});if(!device)return res.status(400).json({error:'DEVICE_REQUIRED'});await schema();await pool.query('UPDATE driver_push_tokens SET active=FALSE,updated_at=NOW() WHERE driver_id=$1 AND device_id=$2',[driver,device]);return res.json({ok:true});}catch(e){console.error('driver push token deactivate',e);return res.status(500).json({error:'SERVER_ERROR'});}});
 
   async function sendFrom(table,idColumn,userId,data,title,body){
+    if(externalServicesDisabled())return disabledDeliveryResult();
     health.lastAttemptAt=new Date().toISOString();
     health.lastError=null;
     await schema();
@@ -130,6 +133,7 @@ module.exports=function registerPushRoutes(app,pool){
       markFailure(e);
       throw e;
     }
+    if(externalServicesDisabled())return disabledDeliveryResult();
     if(!key||!sa){
       markFailure('Firebase service account missing');
       console.warn('Firebase service account missing; push skipped');
@@ -186,6 +190,7 @@ module.exports=function registerPushRoutes(app,pool){
         }
       }
       try{
+        if(externalServicesDisabled())return false;
         const r=await fetch(endpoint,{method:'POST',headers:{authorization:`Bearer ${key}`,'content-type':'application/json'},body:JSON.stringify({message})});
         if(r.ok){
           console.log('FCM delivery accepted',{platform,isWeb,userId:String(userId),type:String(data.type||'')});
@@ -244,6 +249,8 @@ module.exports=function registerPushRoutes(app,pool){
     };
   }
   async function sendRole(userId,{tokenTable,idColumn,webSend},data,title,body){
+    const skipped=()=>({...disabledDeliveryResult(),native:disabledDeliveryResult(),web:disabledDeliveryResult()});
+    if(externalServicesDisabled())return skipped();
     const webFcm=await pool.query(
       `SELECT 1 FROM ${tokenTable} WHERE ${idColumn}=$1 AND active=TRUE AND LOWER(COALESCE(platform,''))='web' LIMIT 1`,
       [String(userId)]
@@ -251,6 +258,7 @@ module.exports=function registerPushRoutes(app,pool){
     // A browser must use one push transport. Prefer Firebase when a live web
     // FCM registration exists; direct WebPush remains the fallback for Safari/
     // installations that do not have an FCM token.
+    if(externalServicesDisabled())return skipped();
     return combine(
       sendFrom(tokenTable,idColumn,userId,data,title,body),
       webFcm.rowCount?Promise.resolve({attempted:0,delivered:0,skipped:'WEB_FCM_ACTIVE'}):webSend(userId,data,title,body)
@@ -259,10 +267,12 @@ module.exports=function registerPushRoutes(app,pool){
   const sendOwner=(owner,data,title,body)=>sendRole(owner,{tokenTable:'owner_push_tokens',idColumn:'owner_id',webSend:webPush.sendOwner},data,title,body);
   const sendDriver=(driver,data,title,body)=>sendRole(driver,{tokenTable:'driver_push_tokens',idColumn:'driver_id',webSend:webPush.sendDriver},data,title,body);
   const sendToken=async(token,data,title,body)=>{
+    if(externalServicesDisabled())return false;
     try{
       const sa=serviceAccount(),key=await accessToken();if(!sa||!key)return false;
       const fcmData=Object.fromEntries(Object.entries({...data,title,body}).map(([k,v])=>[k,String(v??'')]));
       const message={token,data:fcmData,notification:{title,body},android:{priority:'HIGH',ttl:'120s',notification:{channel_id:'cepqontag_notifications_v11',sound:'bildirim',notification_priority:'PRIORITY_MAX',default_vibrate_timings:true,visibility:'PUBLIC'}}};
+      if(externalServicesDisabled())return false;
       const r=await fetch(`https://fcm.googleapis.com/v1/projects/${sa.project_id}/messages:send`,{method:'POST',headers:{authorization:`Bearer ${key}`,'content-type':'application/json'},body:JSON.stringify({message})});
       if(r.ok)return true;
       const detail=await r.text();

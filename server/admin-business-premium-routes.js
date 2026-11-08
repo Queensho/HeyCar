@@ -135,7 +135,7 @@ module.exports=function registerAdminBusinessPremiumRoutes(app,pool,adminGuard){
                 (SELECT COUNT(*)::int FROM offer_redemptions red WHERE red.campaign_id=c.id AND red.status='redeemed') AS redeemed_count,
                 (SELECT COUNT(*)::int FROM offer_redemptions red WHERE red.campaign_id=c.id AND red.status='pending') AS pending_redemptions,
                 (SELECT COALESCE(SUM(red.platform_fee),0)::numeric FROM offer_redemptions red WHERE red.campaign_id=c.id AND red.status='redeemed') AS earned_platform_fee,
-                (SELECT ROUND(AVG(rv.rating)::numeric,2) FROM offer_reviews rv WHERE rv.campaign_id=c.id) AS rating
+                (SELECT ROUND(AVG(rv.rating)::numeric,2) FROM offer_reviews rv WHERE rv.campaign_id=c.id AND rv.moderation_status='approved') AS rating
            FROM business_campaigns c
            JOIN businesses b ON b.id=c.business_id
           WHERE ($1='all')

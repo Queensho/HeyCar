@@ -1,509 +1,585 @@
-import 'design/cq_layout.dart';
-import 'dart:convert';
+import 'package:url_launcher/url_launcher.dart';
+import 'premium_page.dart';
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:share_plus/share_plus.dart';
-import 'cepqar_theme.dart';
-import 'onboarding_backend.dart';
-import 'owner_auth.dart';
-import 'driver_auth.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+import 'offers/marketplace_api.dart';
+import 'offers/marketplace_widgets.dart';
+import 'offers/offer_detail_page.dart';
+import 'offers/offer_library_page.dart';
 
+/// Marketplace discovery. Location is requested only after an explicit tap;
+/// manual city/district search works without location permission.
 class CepqarOffersPage extends StatefulWidget {
-  const CepqarOffersPage({super.key,this.driverMode=false,this.vehiclePlate=''});
+  const CepqarOffersPage(
+      {super.key, this.driverMode = false, this.vehiclePlate = '', this.api});
   final bool driverMode;
   final String vehiclePlate;
-  @override State<CepqarOffersPage> createState()=>_CepqarOffersPageState();
+  final MarketplaceApi? api;
+  @override
+  State<CepqarOffersPage> createState() => _CepqarOffersPageState();
 }
-class _CepqarOffersPageState extends State<CepqarOffersPage>{
-  String category='Tümü';
-  bool loading=true;
-  String? error;
-  List<_Offer> liveOffers=[];
-  List<Map<String,dynamic>> editorial=[];
-  bool editorialLoading=true;
-  Map<String,dynamic> pageDesign={};
-  String designText(String key,String fallback)=>(pageDesign[key] is String)?pageDesign[key] as String:fallback;
-  bool designVisible(String key)=>pageDesign[key]!=false;
-  Color get headerColor {
-   final hex=designText('header_color','#651FFF');
-   return Color(int.tryParse(hex.replaceFirst('#','0xFF'))??0xFF651FFF);
-  }
-  Future<void> _loadPageDesign()async{
-   try{
-    final r=await http.get(Uri.parse('$apiBase/api/offers/page-design')).timeout(const Duration(seconds:10));
-    if(r.statusCode!=200)return;
-    final data=jsonDecode(r.body) as Map;
-    if(mounted&&data['design'] is Map)setState(()=>pageDesign=Map<String,dynamic>.from(data['design'] as Map));
-   }catch(_){}
-  }
 
-  static const apiBase='https://heycar-api-185-165-46-213.nip.io';
-  final categories=const ['Tümü','Oto Yıkama','Detailing','Lastik','Otopark','Servis','Akaryakıt'];
-  final offers=const [
-    _Offer('Oto Yıkama','CleanDrive Oto Yıkama','Premium oto yıkamada %30 indirim','%30 İndirim','1.2 km','4.8','320',Icons.local_car_wash_rounded,['İç - Dış Temizlik']),
-    _Offer('Detailing','AutoDetailing Studio','Detaylı iç temizlikte %25 indirim','%25 İndirim','2.4 km','4.9','156',Icons.auto_awesome_rounded,['Seramik Kaplama']),
-    _Offer('Lastik','Lastikçim','Tüm lastik markalarında 3 al 2 öde','3 Al 2 Öde','3.1 km','4.7','189',Icons.tire_repair_rounded,['Montaj','Balans']),
-    _Offer('Otopark','CityPark Otopark','İlk 2 saat %50 indirimli','%50 İndirim','800 m','4.6','412',Icons.local_parking_rounded,['AVM','Güvenli']),
-    _Offer('Akaryakıt','Akaryakıt Fırsatı','Tüm yakıt türlerinde litre indirimi','₺1,5 İndirim','4.2 km','4.5','520',Icons.local_gas_station_rounded,['Market']),
-    _Offer('Servis','AutoServis','Periyodik bakımda CepQontag indirimi','%20 İndirim','5.6 km','4.7','98',Icons.build_rounded,['Periyodik Bakım']),
-  ];
-  @override void initState(){super.initState();_loadOffers();_loadEditorial();_loadPageDesign();}
-  Future<void> _loadEditorial()async{
-    try{final r=await http.get(Uri.parse('$apiBase/api/offers/editorial')).timeout(const Duration(seconds:12));
-      if(r.statusCode!=200)throw Exception('Vitrin yüklenemedi');
-      final d=jsonDecode(r.body) as Map<String,dynamic>;
-      if(mounted)setState(()=>editorial=(d['offers'] as List? ?? []).whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).toList());
-    }catch(_){if(mounted)setState(()=>editorial=[]);}finally{if(mounted)setState(()=>editorialLoading=false);}
-  }
-  Future<void> _loadOffers() async{
-    if(mounted)setState((){loading=true;error=null;});
-    try{
-      var permission=await Geolocator.checkPermission();
-      if(permission==LocationPermission.denied) permission=await Geolocator.requestPermission();
-      if(permission==LocationPermission.denied||permission==LocationPermission.deniedForever) throw Exception('Konum izni gerekli');
-      if(!await Geolocator.isLocationServiceEnabled()) throw Exception('Konum servisini açmalısın');
-      final p=await Geolocator.getCurrentPosition(locationSettings:const LocationSettings(accuracy:LocationAccuracy.high,timeLimit:Duration(seconds:15)));
-      final uri=Uri.parse('$apiBase/api/offers/nearby?lat=${p.latitude}&lon=${p.longitude}');
-      final res=await http.get(uri).timeout(const Duration(seconds:12));
-      if(res.statusCode!=200) throw Exception('Sunucu hatası (${res.statusCode})');
-      final body=jsonDecode(res.body) as Map<String,dynamic>;
-      final rows=(body['offers'] as List? ?? const []);
-      final parsed=rows.whereType<Map>().map((x)=>_Offer.fromApi(Map<String,dynamic>.from(x))).toList();
-      if(mounted)setState((){liveOffers=parsed;loading=false;});
-    }catch(e){if(mounted)setState((){loading=false;error=e.toString().replaceFirst('Exception: ','');});}
+class _CepqarOffersPageState extends State<CepqarOffersPage> {
+  late final MarketplaceApi api;
+  final search = TextEditingController();
+  final Set<String> favorites = {}, saving = {};
+  List<Map<String, dynamic>> offers = [], editorial = [], categories = [];
+  Map<String, dynamic> design = {};
+  bool loading = true, map = false, locating = false;
+  String category = '', city = '', location = 'Konum veya şehir seçin';
+  Object? error;
+  double? lat, lon;
+  int generation = 0;
+  Timer? debounce;
+  @override
+  void initState() {
+    super.initState();
+    api = widget.api ?? MarketplaceApi(driverMode: widget.driverMode);
+    _load();
+    _extras();
+    _favorites();
   }
 
-  String searchText='';
-  final TextEditingController searchController=TextEditingController();
-  static const purple=CepqarTheme.purple;
-  static const deepPurple=CepqarTheme.deepPurple;
-  static const lime=CepqarTheme.lime;
-  static const ink=Color(0xFF10152D);
-  static const muted=Color(0xFF778096);
+  @override
+  void dispose() {
+    debounce?.cancel();
+    search.dispose();
+    super.dispose();
+  }
 
-  @override void dispose(){searchController.dispose();super.dispose();}
-
-  IconData _categoryIcon(String c){
-    switch(c){
-      case 'Oto Yıkama':return Icons.local_car_wash_rounded;
-      case 'Detailing':return Icons.auto_awesome_rounded;
-      case 'Lastik':return Icons.tire_repair_rounded;
-      case 'Otopark':return Icons.local_parking_rounded;
-      case 'Servis':return Icons.build_rounded;
-      case 'Akaryakıt':return Icons.local_gas_station_rounded;
-      default:return Icons.grid_view_rounded;
+  Future<void> _extras() async {
+    for (final path in [
+      '/api/offers/categories',
+      '/api/offers/editorial',
+      '/api/offers/page-design'
+    ]) {
+      try {
+        final data = await api.request(path);
+        if (!mounted) return;
+        setState(() {
+          if (path.endsWith('categories'))
+            categories = marketRows(data['categories']);
+          if (path.endsWith('editorial'))
+            editorial = marketRows(data['offers']);
+          if (path.endsWith('page-design') && data['design'] is Map)
+            design = Map<String, dynamic>.from(data['design']);
+        });
+      } catch (_) {
+        /* Optional editorial is never replaced with invented offers. */
+      }
     }
   }
 
-  Widget _sectionHeading(String label,{VoidCallback? onAll})=>Padding(
-    padding:const EdgeInsets.only(bottom:12),
-    child:Row(children:[
-      Expanded(child:Text(label,style:const TextStyle(fontSize:20,fontWeight:FontWeight.w900,color:ink,letterSpacing:-.5))),
-      if(onAll!=null)TextButton(onPressed:onAll,child:const Row(mainAxisSize:MainAxisSize.min,children:[
-        Text('Tümünü Gör',style:TextStyle(color:purple,fontWeight:FontWeight.w700,fontSize:12)),
-        Icon(Icons.chevron_right_rounded,color:purple,size:18),
-      ])),
-    ]),
-  );
-
-  void _showOffer(_Offer o)=>Navigator.push(context,MaterialPageRoute(
-    builder:(_)=>_OfferDetailPage(o:o,driverMode:widget.driverMode,vehiclePlate:widget.vehiclePlate),
-  ));
-
-  Widget _offerTile(_Offer o,{bool compact=false}){
-    final image=o.imageUrl.trim();
-    return InkWell(
-      onTap:()=>_showOffer(o),borderRadius:BorderRadius.circular(20),
-      child:Container(
-        width:compact?214:null,
-        margin:EdgeInsets.only(right:compact?12:0,bottom:compact?0:12),
-        decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(20),
-          boxShadow:[BoxShadow(color:deepPurple.withValues(alpha:.07),blurRadius:16,offset:const Offset(0,5))]),
-        clipBehavior:Clip.antiAlias,
-        child:compact?Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-          SizedBox(height:116,width:double.infinity,child:_offerPicture(o,image)),
-          Padding(padding:const EdgeInsets.all(12),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-            Text(o.name,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:ink,fontSize:14,fontWeight:FontWeight.w900)),
-            const SizedBox(height:5),
-            Text(o.description,maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:muted,fontSize:11,height:1.25)),
-            const SizedBox(height:12),
-            Row(children:[Icon(o.icon,color:purple,size:15),const SizedBox(width:4),
-              Expanded(child:Text(o.category,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:10,color:ink,fontWeight:FontWeight.w700))),
-              const Icon(Icons.location_on_rounded,size:13,color:muted),
-              Text(o.distance,style:const TextStyle(fontSize:10,color:muted)),
-            ]),
-          ])),
-        ]):Row(children:[
-          SizedBox(width:106,height:110,child:_offerPicture(o,image)),
-          Expanded(child:Padding(padding:const EdgeInsets.all(12),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-            Text(o.name,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:ink,fontSize:14,fontWeight:FontWeight.w900)),
-            const SizedBox(height:5),
-            Text(o.description,maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:muted,fontSize:11)),
-            const SizedBox(height:8),
-            Row(children:[const Icon(Icons.location_on_rounded,color:purple,size:15),
-              Text(o.distance,style:const TextStyle(fontSize:11,color:muted)),
-              const Spacer(),const Icon(Icons.chevron_right_rounded,color:purple)]),
-          ]))),
-        ]),
-      ),
-    );
+  Future<void> _favorites() async {
+    try {
+      final data =
+          await api.request('/api/offers/favorites', authenticated: true);
+      if (mounted)
+        setState(() {
+          favorites
+            ..clear()
+            ..addAll(
+                (data['businesses'] as List? ?? []).map((e) => 'business:$e'));
+        });
+    } catch (_) {}
   }
 
-  Widget _offerPicture(_Offer o,String image)=>Stack(fit:StackFit.expand,children:[
-    Container(color:CepqarTheme.purpleTint,child:image.isNotEmpty
-      ?Image.network(image,fit:BoxFit.cover,errorBuilder:(_,__,___)=>Icon(o.icon,size:45,color:purple))
-      :Icon(o.icon,size:45,color:purple)),
-    Positioned(left:8,bottom:8,child:Container(
-      padding:const EdgeInsets.symmetric(horizontal:9,vertical:5),
-      decoration:BoxDecoration(color:purple,borderRadius:BorderRadius.circular(12)),
-      child:Text(o.badge,style:const TextStyle(color:Colors.white,fontSize:10,fontWeight:FontWeight.w800)),
-    )),
-  ]);
-
-
-  double _editorialHeight(bool featured){
-    final scaler=MediaQuery.textScalerOf(context);
-    return featured?110+scaler.scale(13)*2.8+scaler.scale(10)*4+40:
-      82+scaler.scale(12)*3+scaler.scale(10)*3+40;
-  }
-
-  Widget _emptyOfferCard({bool featured=false}){
-    return Container(
-      width:featured?176:116,height:_editorialHeight(featured),
-      margin:const EdgeInsets.only(right:10),
-      decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(17),
-        border:Border.all(color:const Color(0xFFE8E3F1))),
-      clipBehavior:Clip.antiAlias,
-      child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-        Container(height:featured?110:82,width:double.infinity,color:CepqarTheme.purpleTint,
-          child:const Icon(Icons.local_offer_outlined,color:Color(0xFFB6A0E9),size:29)),
-        Padding(padding:const EdgeInsets.all(10),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-          const Text('Yakında',style:TextStyle(color:ink,fontSize:12,fontWeight:FontWeight.w800)),
-          const SizedBox(height:4),
-          Text(featured?'Yeni kampanyalar burada':'Size özel fırsatlar burada',
-            maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:muted,fontSize:10)),
-        ])),
-      ]),
-    );
-  }
-  Widget _editorialCard(Map<String,dynamic> item,{bool featured=false}){
-    final image=(item['image_url']??'').toString();
-    final title=(item['title']??'').toString();
-    final subtitle=(item['description']??'').toString();
-    final badge=(item['badge']??'').toString();
-    final url=(item['target_url']??'').toString();
-    if(featured){
-      return InkWell(
-        onTap:(){
-          if(url.isEmpty)return;
-          final parsed=Uri.tryParse(url);
-          if(parsed==null||parsed.scheme!='https')return;
-          showDialog<void>(context:context,builder:(ctx)=>AlertDialog(scrollable:true,
-            title:Text(title),content:Text(subtitle),
-            actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Kapat'))],
-          ));
-        },
-        borderRadius:BorderRadius.circular(17),
-        child:Container(
-          width:176,height:_editorialHeight(true),margin:const EdgeInsets.only(right:10),
-          clipBehavior:Clip.antiAlias,
-          decoration:BoxDecoration(
-            color:deepPurple,borderRadius:BorderRadius.circular(17)),
-          child:Stack(fit:StackFit.expand,children:[
-            if(image.startsWith('https://'))
-              Image.network(image,fit:BoxFit.cover,
-                errorBuilder:(_,__,___)=>const Icon(Icons.local_offer_rounded,color:lime,size:48))
-            else const Icon(Icons.local_offer_rounded,color:lime,size:48),
-            const DecoratedBox(decoration:BoxDecoration(
-              gradient:LinearGradient(begin:Alignment.centerLeft,end:Alignment.centerRight,
-                colors:[Color(0xD9001025),Color(0x66001025),Colors.transparent],
-                stops:[0,.62,1]))),
-            Padding(padding:const EdgeInsets.all(10),child:Column(
-              crossAxisAlignment:CrossAxisAlignment.start,children:[
-                if(badge.isNotEmpty)Text(badge,maxLines:1,overflow:TextOverflow.ellipsis,
-                  style:const TextStyle(color:lime,fontSize:10,fontWeight:FontWeight.w800)),
-                const SizedBox(height:5),
-                SizedBox(width:135,child:Text(title,maxLines:2,overflow:TextOverflow.ellipsis,
-                  style:const TextStyle(color:Colors.white,fontSize:13,height:1.05,fontWeight:FontWeight.w900))),
-                const SizedBox(height:5),
-                SizedBox(width:135,child:Text(subtitle,maxLines:2,overflow:TextOverflow.ellipsis,
-                  style:const TextStyle(color:Colors.white,fontSize:10,height:1.15))),
-                const Spacer(),
-                Container(
-                  padding:const EdgeInsets.symmetric(horizontal:12,vertical:7),
-                  decoration:BoxDecoration(color:lime,borderRadius:BorderRadius.circular(18)),
-                  child:const Row(mainAxisSize:MainAxisSize.min,children:[
-                    Text('Fırsatı İncele',style:TextStyle(color:ink,fontSize:10,fontWeight:FontWeight.w800)),
-                    SizedBox(width:5),Icon(Icons.chevron_right_rounded,color:ink,size:15),
-                  ])),
-              ])),
-          ]),
-        ),
-      );
+  Future<void> _load() async {
+    final version = ++generation;
+    setState(() {
+      loading = true;
+      error = null;
+    });
+    final query = <String, String>{
+      'q': search.text.trim(),
+      'category': category,
+      'city': city,
+      if (lat != null) 'lat': '$lat',
+      if (lon != null) 'lon': '$lon'
+    };
+    try {
+      final data = await api
+          .request('/api/offers/discover?${Uri(queryParameters: query).query}');
+      if (mounted && version == generation)
+        setState(() {
+          offers = marketRows(data['offers']);
+          loading = false;
+        });
+    } catch (e) {
+      if (mounted && version == generation)
+        setState(() {
+          error = e;
+          loading = false;
+        });
     }
-    return InkWell(
-      onTap:(){
-        if(url.isEmpty)return;
-        final parsed=Uri.tryParse(url);
-        if(parsed==null||parsed.scheme!='https')return;
-        // Editorial cards must not claim an in-app redemption code.
-        showDialog<void>(context:context,builder:(ctx)=>AlertDialog(scrollable:true,
-          title:Text(title),content:Text(subtitle),
-          actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Kapat'))],
-        ));
-      },
-      borderRadius:BorderRadius.circular(17),
-      child:Container(
-        width:featured?176:116,margin:const EdgeInsets.only(right:10),
-        decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(17),
-          border:Border.all(color:const Color(0xFFE8E3F1))),
-        clipBehavior:Clip.antiAlias,
-        child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-          SizedBox(height:featured?78:82,width:double.infinity,
-            child:Stack(fit:StackFit.expand,children:[
-              Container(color:CepqarTheme.purpleTint,
-                child:image.startsWith('https://')?Image.network(image,fit:BoxFit.cover,
-                  errorBuilder:(_,__,___)=>const Icon(Icons.local_offer_rounded,color:purple,size:32))
-                  :const Icon(Icons.local_offer_rounded,color:purple,size:32)),
-              if(badge.isNotEmpty)Positioned(left:7,bottom:7,child:Container(
-                padding:const EdgeInsets.symmetric(horizontal:7,vertical:4),
-                decoration:BoxDecoration(color:purple,borderRadius:BorderRadius.circular(9)),
-                child:Text(badge,maxLines:1,style:const TextStyle(color:Colors.white,fontSize:9,fontWeight:FontWeight.w700)))),
-            ])),
-          Padding(padding:const EdgeInsets.all(10),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-            Text(title,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:ink,fontSize:12,fontWeight:FontWeight.w800)),
-            const SizedBox(height:4),
-            Text(subtitle,maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:muted,fontSize:10)),
-          ])),
-        ]),
-      ),
-    );
   }
-  Widget _editorialStrip(String placement,{bool featured=false}){
-    final items=editorial.where((x)=>x['placement']==placement).toList();
-    return SizedBox(height:_editorialHeight(featured),child:ListView.builder(scrollDirection:Axis.horizontal,
-      itemCount:items.isEmpty?3:items.length,
-      itemBuilder:(_,i)=>items.isEmpty?_emptyOfferCard(featured:featured):_editorialCard(items[i],featured:featured)));
+
+  Future<void> _locate() async {
+    setState(() => locating = true);
+    try {
+      if (!await Geolocator.isLocationServiceEnabled())
+        throw const MarketplaceException('LOCATION_DISABLED');
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied)
+        permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        if (mounted)
+          marketMessage(context,
+              'Konum izni verilmedi. Şehir veya ilçe girerek arayabilirsiniz.');
+        return;
+      }
+      final p = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.medium,
+              timeLimit: Duration(seconds: 15)));
+      if (!mounted) return;
+      setState(() {
+        lat = p.latitude;
+        lon = p.longitude;
+        city = '';
+        location = 'Yakınımdaki işletmeler';
+      });
+      await _load();
+    } catch (_) {
+      if (mounted)
+        marketMessage(
+            context, 'Konum alınamadı. Şehir veya ilçe ile arayabilirsiniz.');
+    } finally {
+      if (mounted) setState(() => locating = false);
+    }
   }
-  @override Widget build(BuildContext context){
-    final source=liveOffers.where((o){
-      final q=searchText.trim().toLowerCase();
-      return q.isEmpty||o.name.toLowerCase().contains(q)||o.description.toLowerCase().contains(q)||o.category.toLowerCase().contains(q);
-    }).toList();
-    final visible=category=='Tümü'?source:source.where((o)=>o.categories.any((x)=>x.toLowerCase()==category.toLowerCase())).toList();
-    final nearby=visible.where((o)=>o.distance.isNotEmpty).toList();
-    return Scaffold(
-      backgroundColor:const Color(0xFFF8F9FC),
-      body:CustomScrollView(slivers:[
-        SliverToBoxAdapter(child:Container(
-          decoration:BoxDecoration(color:headerColor,image:designText('header_image_url','').startsWith('https://')?DecorationImage(image:NetworkImage(designText('header_image_url','')),fit:BoxFit.cover,colorFilter:ColorFilter.mode(Colors.black.withValues(alpha:.35),BlendMode.darken)):null),
-          child:SafeArea(bottom:false,child:Padding(
-            padding:const EdgeInsets.fromLTRB(16,4,16,14),
-            child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-              Row(children:[
-                IconButton(onPressed:()=>Navigator.maybePop(context),icon:const Icon(Icons.arrow_back_ios_new_rounded,color:Colors.white)),
-                const Expanded(child:Center(child:Text('cepqontag',style:TextStyle(color:Colors.white,fontSize:25,fontWeight:FontWeight.w900,letterSpacing:-1.2)))),
-                IconButton(onPressed:(){_loadOffers();_loadEditorial();},tooltip:'Yenile',icon:const Icon(Icons.refresh_rounded,color:Colors.white)),
-              ]),
-              const SizedBox(height:8),
-              Text(designText('header_title','Fırsatlar'),style:const TextStyle(fontSize:25,color:Colors.white,fontWeight:FontWeight.w900)),
-              const SizedBox(height:4),
-              Text(designText('header_subtitle','Size özel avantajlar ve kampanyalar'),style:const TextStyle(color:Colors.white70,fontSize:13)),
-              const SizedBox(height:12),
-              if(designVisible('show_search'))TextField(controller:searchController,onChanged:(v)=>setState(()=>searchText=v),
-                style:const TextStyle(color:Colors.white),
-                decoration:InputDecoration(
-                  hintText:'Fırsat ara...',hintStyle:const TextStyle(color:Colors.white70),
-                  prefixIcon:const Icon(Icons.search_rounded,color:Colors.white),
-                  suffixIcon:searchText.isNotEmpty?IconButton(icon:const Icon(Icons.close_rounded,color:Colors.white),onPressed:(){searchController.clear();setState(()=>searchText='');}):null,
-                  filled:true,fillColor:Colors.white.withValues(alpha:.17),
-                  border:OutlineInputBorder(borderSide:BorderSide.none,borderRadius:BorderRadius.circular(28)),
-                  contentPadding:const EdgeInsets.symmetric(vertical:8),
-                )),
-              const SizedBox(height:12),
-              if(designVisible('show_categories'))SizedBox(height:MediaQuery.textScalerOf(context).scale(12)*1.4+28,child:ListView.separated(scrollDirection:Axis.horizontal,itemCount:categories.length,
-                separatorBuilder:(_,__)=>const SizedBox(width:8),itemBuilder:(_,i){
-                  final c=categories[i],selected=c==category;
-                  return ChoiceChip(
-                    selected:selected,label:Row(mainAxisSize:MainAxisSize.min,children:[
-                      Icon(_categoryIcon(c),size:16,color:selected?ink:Colors.white),
-                      const SizedBox(width:5),Text(c),
+
+  Future<void> _location() async {
+    final controller = TextEditingController(text: city);
+    final result = await showDialog<String>(
+        context: context,
+        builder: (c) => AlertDialog(
+                scrollable: true,
+                title: const Text('Nerede hizmet arıyorsunuz?'),
+                content: Column(mainAxisSize: MainAxisSize.min, children: [
+                  TextField(
+                      controller: controller,
+                      autofocus: true,
+                      decoration: const InputDecoration(
+                          labelText: 'Şehir veya ilçe',
+                          hintText: 'Örn. Kadıköy'),
+                      onSubmitted: (v) => Navigator.pop(c, v)),
+                  const SizedBox(height: 12),
+                  TextButton.icon(
+                      onPressed: () => Navigator.pop(c, '__gps__'),
+                      icon: const Icon(Icons.my_location),
+                      label: const Text('Mevcut konumumu kullan')),
+                ]),
+                actions: [
+                  TextButton(
+                      onPressed: () => Navigator.pop(c),
+                      child: const Text('Vazgeç')),
+                  FilledButton(
+                      onPressed: () => Navigator.pop(c, controller.text),
+                      child: const Text('Ara'))
+                ]));
+    // The controller stays alive until the dialog's closing transition finishes.
+    if (!mounted || result == null) return;
+    if (result == '__gps__') {
+      await _locate();
+      return;
+    }
+    setState(() {
+      city = result.trim();
+      lat = null;
+      lon = null;
+      location = city.isEmpty ? 'Tüm konumlar' : city;
+    });
+    await _load();
+  }
+
+  Future<void> _toggle(Map<String, dynamic> offer) async {
+    final id = 'business:${marketText(offer, 'business_id')}';
+    if (saving.contains(id)) return;
+    final next = !favorites.contains(id);
+    setState(() => saving.add(id));
+    try {
+      await api.request(
+          '/api/offers/businesses/${marketText(offer, 'business_id')}/favorite',
+          method: next ? 'POST' : 'DELETE',
+          authenticated: true);
+      if (mounted)
+        setState(() {
+          next ? favorites.add(id) : favorites.remove(id);
+        });
+    } catch (e) {
+      if (mounted) marketMessage(context, e);
+    } finally {
+      if (mounted) setState(() => saving.remove(id));
+    }
+  }
+
+  Future<void> _open(Map<String, dynamic> offer) async {
+    await Navigator.push(
+        context,
+        MaterialPageRoute<void>(
+            builder: (_) => OfferDetailPage(
+                offer: offer, api: api, vehiclePlate: widget.vehiclePlate)));
+    await _favorites();
+  }
+
+  Future<void> _library(bool history) async {
+    await Navigator.push(
+        context,
+        MaterialPageRoute<void>(
+            builder: (_) => OfferLibraryPage(
+                api: api,
+                history: history,
+                vehiclePlate: widget.vehiclePlate)));
+    await _favorites();
+  }
+
+  Widget _card(Map<String, dynamic> offer) => MarketCard(
+      offer: offer,
+      onOpen: () => _open(offer),
+      onFavorite: () => _toggle(offer),
+      favorite:
+          favorites.contains('business:${marketText(offer, 'business_id')}'),
+      busy: saving.contains('business:${marketText(offer, 'business_id')}'));
+  Widget _editorial(String placement) => Column(
+      children: editorial
+          .where((e) => e['placement'] == placement)
+          .map((e) => Card(
+                color: const Color(0xFFF3EDFF),
+                elevation: 0,
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (marketText(e, 'image_url').startsWith('https://'))
+                        MarketPhoto(marketText(e, 'image_url'), height: 150),
+                      Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (marketText(e, 'badge').isNotEmpty)
+                                  Chip(
+                                      label: Text(marketText(e, 'badge')),
+                                      backgroundColor: offerLime),
+                                Text(marketText(e, 'title'),
+                                    style: const TextStyle(
+                                        color: offerInk,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w800)),
+                                const SizedBox(height: 8),
+                                Text(marketText(e, 'description'),
+                                    style: const TextStyle(color: offerMuted)),
+                                if (marketText(e, 'target_url')
+                                    .startsWith('https://'))
+                                  TextButton.icon(
+                                      onPressed: () async {
+                                        try {
+                                          if (!await launchUrl(
+                                                  Uri.parse(marketText(
+                                                      e, 'target_url')),
+                                                  mode: LaunchMode
+                                                      .externalApplication) &&
+                                              mounted)
+                                            marketMessage(
+                                                context, 'Bağlantı açılamadı.');
+                                        } catch (_) {
+                                          if (mounted)
+                                            marketMessage(
+                                                context, 'Bağlantı açılamadı.');
+                                        }
+                                      },
+                                      icon: const Icon(Icons.open_in_new),
+                                      label: const Text(
+                                          'Kampanya bağlantısını aç')),
+                              ])),
                     ]),
-                    onSelected:(_)=>setState(()=>category=c),
-                    backgroundColor:const Color(0xFF7138DF),selectedColor:lime,showCheckmark:false,
-                    side:BorderSide.none,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(24)),
-                    labelStyle:TextStyle(color:selected?ink:Colors.white,fontWeight:FontWeight.w700,fontSize:12),
-                  );
-                })),
-            ]),
-          )),
-        )),
-        SliverPadding(padding:const EdgeInsets.fromLTRB(16,14,16,24),sliver:SliverList(delegate:SliverChildListDelegate([
-          Container(constraints:const BoxConstraints(minHeight:148),decoration:BoxDecoration(
-            color:deepPurple,
-            image:designText('banner_image_url','').startsWith('https://')?DecorationImage(image:NetworkImage(designText('banner_image_url','')),fit:BoxFit.cover):null,
-            borderRadius:BorderRadius.circular(22)),
-            child:Stack(children:[
-              if(designText('banner_image_url','').isEmpty)Positioned(right:-12,bottom:-15,child:Icon(Icons.directions_car_filled_rounded,color:lime.withValues(alpha:.65),size:170)),
-              Padding(padding:const EdgeInsets.all(14),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-                const Text('QR\'ınız aktif olsun',style:TextStyle(color:Colors.white,fontSize:17,fontWeight:FontWeight.w900)),
-                Text(designText('banner_highlight','İlk 3 ay Premium ücretsiz!'),style:const TextStyle(color:lime,fontSize:18,fontWeight:FontWeight.w900)),
-                const SizedBox(height:6),
-                Text(designText('banner_subtitle','Aracınız da, siz de daha güvendesiniz.'),style:const TextStyle(color:Colors.white70,fontSize:11)),
-                const SizedBox(height:12),
-                Container(padding:const EdgeInsets.symmetric(horizontal:15,vertical:9),
-                  decoration:BoxDecoration(color:lime,borderRadius:BorderRadius.circular(20)),
-                  child:Text(designText('banner_button','CepQontag Premium'),style:const TextStyle(color:ink,fontSize:11,fontWeight:FontWeight.w800))),
-              ])),
-            ]),
-          ),
-          const SizedBox(height:14),
-          _sectionHeading('Sana Özel Fırsatlar'),
-          _editorialStrip('personal'),
-          const SizedBox(height:14),
-          _sectionHeading('Öne Çıkanlar'),
-          _editorialStrip('featured',featured:true),
-          const SizedBox(height:14),
-          _sectionHeading('Yakınımdaki Fırsatlar'),
-          if(loading)const Padding(padding:EdgeInsets.symmetric(vertical:20),child:Center(child:CircularProgressIndicator(color:purple)))
-          else if(error!=null)Padding(padding:const EdgeInsets.all(12),child:Text(error!,style:const TextStyle(color:muted,fontSize:12)))
-          else if(nearby.isEmpty)SizedBox(height:108*(MediaQuery.textScalerOf(context).scale(14)/14).clamp(1.0,5.0),child:ListView(scrollDirection:Axis.horizontal,
-            children:List.generate(2,(_)=>Container(width:210,margin:const EdgeInsets.only(right:10),
-              padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(16)),
-              child:const Row(children:[Icon(Icons.storefront_outlined,color:purple),SizedBox(width:12),
-                Expanded(child:Text('Yakında yeni işletme fırsatları',style:TextStyle(color:muted,fontSize:11)))])))))
-          else ...nearby.take(5).map((o)=>_offerTile(o)),
-          const SizedBox(height:18),
-          const Text('Kampanyalar işletmeler tarafından sağlanır. Fiyat ve koşullar işletmeye göre değişebilir.',
-            textAlign:TextAlign.center,style:TextStyle(color:muted,fontSize:10)),
-        ]))),
-      ]),
-    );
+              ))
+          .toList());
+  Widget _banner() => Container(
+      margin: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: offerDeep,
+        borderRadius: BorderRadius.circular(20),
+        image: marketText(design, 'banner_image_url').startsWith('https://')
+            ? DecorationImage(
+                image: NetworkImage(marketText(design, 'banner_image_url')),
+                fit: BoxFit.cover,
+                colorFilter: ColorFilter.mode(
+                    Colors.black.withValues(alpha: .5), BlendMode.darken))
+            : null,
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(marketText(design, 'banner_title'),
+            style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w800)),
+        const SizedBox(height: 8),
+        Text(marketText(design, 'banner_highlight'),
+            style: const TextStyle(
+                color: offerLime, fontSize: 18, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 8),
+        Text(marketText(design, 'banner_subtitle'),
+            style: const TextStyle(color: Colors.white)),
+        const SizedBox(height: 12),
+        FilledButton(
+            style: FilledButton.styleFrom(
+                backgroundColor: offerLime, foregroundColor: offerInk),
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute<void>(builder: (_) => const PremiumPage())),
+            child: Text(
+                marketText(design, 'banner_button', 'Premium seçenekleri'))),
+      ]));
+  Widget _map() {
+    final points = offers
+        .where((e) => e['latitude'] is num && e['longitude'] is num)
+        .toList();
+    if (points.isEmpty)
+      return const MarketState(
+          'Bu sonuçlarda haritada gösterilebilen konum yok.');
+    final first = points.first;
+    return SizedBox(
+        height: 400,
+        child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: FlutterMap(
+                options: MapOptions(
+                    initialCenter: LatLng((first['latitude'] as num).toDouble(),
+                        (first['longitude'] as num).toDouble()),
+                    initialZoom: 12),
+                children: [
+                  TileLayer(
+                      urlTemplate:
+                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      userAgentPackageName: 'com.cepqontag.app'),
+                  MarkerLayer(
+                      markers: points
+                          .map((o) => Marker(
+                              point: LatLng((o['latitude'] as num).toDouble(),
+                                  (o['longitude'] as num).toDouble()),
+                              width: 48,
+                              height: 48,
+                              child: IconButton(
+                                  tooltip: marketText(o, 'name'),
+                                  onPressed: () => _open(o),
+                                  style: IconButton.styleFrom(
+                                      backgroundColor: Colors.white),
+                                  icon: const Icon(Icons.location_on,
+                                      color: offerPurple, size: 32))))
+                          .toList()),
+                  const RichAttributionWidget(attributions: [
+                    TextSourceAttribution('OpenStreetMap contributors')
+                  ]),
+                ])));
   }
 
+  @override
+  Widget build(BuildContext context) =>
+      Theme(data: offerTheme, child: Builder(builder: _build));
+  Widget _build(BuildContext context) {
+    final headerImage = marketText(design, 'header_image_url');
+    final colorText = marketText(design, 'header_color', '#651FFF');
+    final headerColor =
+        Color(int.tryParse(colorText.replaceFirst('#', '0xFF')) ?? 0xFF651FFF);
+    final headerInk =
+        headerImage.isNotEmpty || headerColor.computeLuminance() < .5
+            ? Colors.white
+            : offerInk;
+    final featured = offers.where((o) => o['is_featured'] == true).toList();
+    final bottom = MediaQuery.paddingOf(context).bottom + 112;
+    return Scaffold(
+        backgroundColor: Colors.white,
+        body: RefreshIndicator(
+            onRefresh: () async {
+              await _load();
+              await _favorites();
+            },
+            child: CustomScrollView(slivers: [
+              SliverToBoxAdapter(
+                  child: DecoratedBox(
+                      decoration: BoxDecoration(
+                          color: headerColor,
+                          image: headerImage.startsWith('https://')
+                              ? DecorationImage(
+                                  image: NetworkImage(headerImage),
+                                  fit: BoxFit.cover,
+                                  colorFilter: ColorFilter.mode(
+                                      Colors.black.withValues(alpha: .45),
+                                      BlendMode.darken))
+                              : null),
+                      child: SafeArea(
+                          bottom: false,
+                          child: Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+                              child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(children: [
+                                      if (Navigator.canPop(context))
+                                        IconButton(
+                                            tooltip: 'Geri',
+                                            onPressed: () =>
+                                                Navigator.pop(context),
+                                            icon: Icon(Icons.arrow_back_ios_new,
+                                                color: headerInk)),
+                                      Expanded(
+                                          child: TextButton.icon(
+                                              onPressed:
+                                                  locating ? null : _location,
+                                              style: TextButton.styleFrom(
+                                                  foregroundColor: headerInk,
+                                                  alignment:
+                                                      Alignment.centerLeft,
+                                                  minimumSize:
+                                                      const Size(44, 48)),
+                                              icon: const Icon(
+                                                  Icons.location_on_outlined),
+                                              label: Text(locating
+                                                  ? 'Konum alınıyor…'
+                                                  : location))),
+                                      IconButton(
+                                          tooltip: 'Favorilerim',
+                                          onPressed: () => _library(false),
+                                          icon: Icon(Icons.favorite_border,
+                                              color: headerInk)),
+                                      IconButton(
+                                          tooltip: 'Kullanım geçmişim',
+                                          onPressed: () => _library(true),
+                                          icon: Icon(Icons.history,
+                                              color: headerInk))
+                                    ]),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                        marketText(design, 'header_title',
+                                            'Aracınız için fırsatlar'),
+                                        style: TextStyle(
+                                            color: headerInk,
+                                            fontSize: 27,
+                                            fontWeight: FontWeight.w800)),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                        marketText(design, 'header_subtitle',
+                                            'Hizmetleri keşfedin, koşulları inceleyin, güvenle kullanın.'),
+                                        style: TextStyle(
+                                            color: headerInk, fontSize: 15)),
+                                    const SizedBox(height: 18),
+                                    if (design['show_search'] != false)
+                                      TextField(
+                                          controller: search,
+                                          onChanged: (_) {
+                                            debounce?.cancel();
+                                            debounce = Timer(
+                                                const Duration(
+                                                    milliseconds: 350),
+                                                _load);
+                                          },
+                                          style:
+                                              const TextStyle(color: offerInk),
+                                          decoration: InputDecoration(
+                                              hintText:
+                                                  'İşletme veya hizmet ara',
+                                              prefixIcon: const Icon(
+                                                  Icons.search,
+                                                  color: offerPurple),
+                                              filled: true,
+                                              fillColor: Colors.white,
+                                              border: OutlineInputBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(16),
+                                                  borderSide: BorderSide.none),
+                                              suffixIcon: IconButton(
+                                                  tooltip: 'Aramayı temizle',
+                                                  onPressed: () {
+                                                    search.clear();
+                                                    _load();
+                                                  },
+                                                  icon: const Icon(
+                                                      Icons.close)))),
+                                  ]))))),
+              if (design['show_categories'] != false)
+                SliverToBoxAdapter(
+                    child: Padding(
+                        padding: const EdgeInsets.only(top: 16, bottom: 8),
+                        child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Row(children: [
+                              for (final name in [
+                                '',
+                                ...categories.map((e) => marketText(e, 'name'))
+                              ])
+                                Padding(
+                                    padding: const EdgeInsets.only(right: 8),
+                                    child: ChoiceChip(
+                                        label:
+                                            Text(name.isEmpty ? 'Tümü' : name),
+                                        selected: category == name,
+                                        onSelected: (_) {
+                                          setState(() => category = name);
+                                          _load();
+                                        },
+                                        selectedColor: offerLime,
+                                        labelStyle:
+                                            const TextStyle(color: offerInk),
+                                        materialTapTargetSize:
+                                            MaterialTapTargetSize.padded)),
+                            ])))),
+              SliverPadding(
+                  padding: EdgeInsets.fromLTRB(16, 8, 16, bottom),
+                  sliver: SliverList(
+                      delegate: SliverChildListDelegate([
+                    if (marketText(design, 'banner_title').isNotEmpty)
+                      _banner(),
+                    if (editorial.any((e) => e['placement'] == 'personal'))
+                      MarketSection('Özel fırsatlar',
+                          child: _editorial('personal')),
+                    if (featured.isNotEmpty)
+                      MarketSection('Öne çıkan kampanyalar',
+                          child:
+                              Column(children: featured.map(_card).toList())),
+                    if (editorial.any((e) => e['placement'] == 'featured'))
+                      MarketSection('Vitrin', child: _editorial('featured')),
+                    Wrap(
+                        alignment: WrapAlignment.spaceBetween,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 16,
+                        children: [
+                          Text(
+                              lat == null
+                                  ? 'İşletmeler ve fırsatlar'
+                                  : 'Yakınımdaki işletmeler',
+                              style: const TextStyle(
+                                  color: offerInk,
+                                  fontSize: 21,
+                                  fontWeight: FontWeight.w800)),
+                          TextButton.icon(
+                              onPressed: () => setState(() => map = !map),
+                              icon: Icon(map ? Icons.list : Icons.map_outlined),
+                              label: Text(map ? 'Liste' : 'Harita')),
+                        ]),
+                    if (loading)
+                      const MarketState('Fırsatlar yükleniyor…', loading: true)
+                    else if (error != null)
+                      MarketState(error.toString(), retry: _load)
+                    else if (offers.isEmpty)
+                      const MarketState(
+                          'Aramanıza uygun aktif fırsat bulunamadı. Konumu veya filtreleri değiştirebilirsiniz.')
+                    else if (map)
+                      _map()
+                    else
+                      ...offers.map(_card),
+                    const SizedBox(height: 12),
+                    const Text(
+                        'Fiyatlar ve kampanya koşulları işletmeler tarafından sağlanır.',
+                        style: TextStyle(color: offerMuted),
+                        textAlign: TextAlign.center),
+                  ]))),
+            ])));
+  }
 }
-class _Offer{const _Offer(this.category,this.name,this.description,this.badge,this.distance,this.rating,this.reviews,this.icon,this.tags,{this.id='',this.address='',this.couponCode='',this.openingHours='',this.imageUrl='',this.logoUrl=''});final String category,name,description,badge,distance,rating,reviews,id,address,couponCode,openingHours,imageUrl,logoUrl; List<String> get categories=>category.split(',').map((x)=>x.trim()).where((x)=>x.isNotEmpty).toList();final IconData icon;final List<String> tags;
- factory _Offer.fromApi(Map<String,dynamic> x){final cat=(x['category']??'Servis').toString();final meters=double.tryParse('${x['distance_m']}')??0;final d=meters<1000?'${meters.round()} m':'${(meters/1000).toStringAsFixed(1)} km';IconData icon=Icons.build_rounded;if(cat.toLowerCase().contains('yıkama'))icon=Icons.local_car_wash_rounded;else if(cat.toLowerCase().contains('lastik'))icon=Icons.tire_repair_rounded;else if(cat.toLowerCase().contains('otopark'))icon=Icons.local_parking_rounded;else if(cat.toLowerCase().contains('akaryakıt'))icon=Icons.local_gas_station_rounded;else if(cat.toLowerCase().contains('detail'))icon=Icons.auto_awesome_rounded;return _Offer(cat,(x['name']??'CepQontag İşletmesi').toString(),(x['description']??'').toString(),(x['badge']??'Fırsat').toString(),d,(x['rating']??'—').toString(),(x['review_count']??0).toString(),icon,const [],imageUrl:(x['image_url']??'').toString(),logoUrl:(x['logo_url']??'').toString(),address:(x['address']??'').toString(),couponCode:(x['coupon_code']??'').toString(),openingHours:(x['opening_hours']??'').toString(),id:(x['id']??'').toString());}
-}
-class _OfferCard extends StatelessWidget{
- const _OfferCard({required this.o,required this.driverMode,required this.vehiclePlate});final _Offer o;final bool driverMode;final String vehiclePlate;
- @override Widget build(BuildContext context)=>Container(margin:const EdgeInsets.only(bottom:11),padding:const EdgeInsets.all(10),decoration:BoxDecoration(color:CepqarTheme.panel,borderRadius:BorderRadius.circular(20),border:Border.all(color:CepqarTheme.line)),child:Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
-   Stack(children:[Container(width:78,height:92,decoration:BoxDecoration(color:CepqarTheme.purple.withValues(alpha:.12),borderRadius:BorderRadius.circular(15)),child:Icon(o.icon,color:CepqarTheme.purple,size:34)),Positioned(left:6,top:6,child:Container(padding:const EdgeInsets.symmetric(horizontal:7,vertical:5),decoration:BoxDecoration(color:const Color(0xFFFF416C),borderRadius:BorderRadius.circular(10)),child:Text(o.badge,style:const TextStyle(color:Colors.white,fontSize:9,fontWeight:FontWeight.w900))))]),const SizedBox(width:11),
-   Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Row(children:[Expanded(child:Text(o.name,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:CepqarTheme.text,fontSize:12.5,fontWeight:FontWeight.w900))),const Icon(Icons.location_on_outlined,color:CepqarTheme.purple,size:15),Text(o.distance,style:TextStyle(color:CepqarTheme.muted,fontSize:10))]),const SizedBox(height:3),Row(children:[const Icon(Icons.star_rounded,color:Color(0xFFFFB72B),size:16),const SizedBox(width:3),Text('${o.rating} (${o.reviews})',style:TextStyle(color:CepqarTheme.muted,fontSize:10))]),const SizedBox(height:5),Text(o.description,maxLines:2,overflow:TextOverflow.ellipsis,style:TextStyle(color:CepqarTheme.muted,fontSize:10,height:1.2)),const SizedBox(height:5),Wrap(spacing:5,runSpacing:5,children:[...([...o.categories,...o.tags].take(3)).map((x)=>Container(padding:const EdgeInsets.symmetric(horizontal:7,vertical:4),decoration:BoxDecoration(color:CepqarTheme.line.withValues(alpha:.6),borderRadius:BorderRadius.circular(9)),child:Text(x,style:TextStyle(color:CepqarTheme.text,fontSize:8.5))))]),const SizedBox(height:5),Align(alignment:Alignment.centerRight,child:ConstrainedBox(constraints:CQLayout.touchConstraints,child:FilledButton(onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>_OfferDetailPage(o:o,driverMode:driverMode,vehiclePlate:vehiclePlate))),style:FilledButton.styleFrom(backgroundColor:CepqarTheme.purple,padding:const EdgeInsets.symmetric(horizontal:10)),child:const Row(mainAxisSize:MainAxisSize.min,children:[Text('Detayları Gör',style:TextStyle(fontSize:8.5,fontWeight:FontWeight.w800)),SizedBox(width:2),Icon(Icons.chevron_right_rounded,size:15)]))))]))
- ]));}
-
-
-class _OfferDetailPage extends StatefulWidget{
- const _OfferDetailPage({required this.o,required this.driverMode,required this.vehiclePlate});final _Offer o;final bool driverMode;final String vehiclePlate;
- @override State<_OfferDetailPage> createState()=>_OfferDetailPageState();
-}
-class _OfferDetailPageState extends State<_OfferDetailPage>{
- bool favorite=false,busy=false;Map<String,dynamic>? redemption;List<Map<String,dynamic>> storeReviews=[];String storeRating='—';int storeReviewCount=0;
- _Offer get o=>widget.o;
- @override void initState(){super.initState();_loadState();}
- Future<Map<String,String>> _ownerHeaders()async=>widget.driverMode?DriverAuth.headers():OwnerAuth.headers();
- Future<({String owner,String plate})> _ownerVehicle()async{if(widget.driverMode)return(owner:'driver',plate:widget.vehiclePlate.trim().toUpperCase());final p=await SharedPreferences.getInstance();final owner=OnboardingDraft.userId.trim().isNotEmpty?OnboardingDraft.userId.trim():(p.getString('owner_user_id')??'').trim();var plate=(p.getString('owner_plate')??'').trim().toUpperCase();if(owner.isEmpty)return(owner:'',plate:plate);try{final r=await OwnerHttp.get(Uri.parse('${OnboardingBackend.baseUrl}/api/owner/vehicles'),json:false).timeout(const Duration(seconds:10));if(r.statusCode>=200&&r.statusCode<300){final d=jsonDecode(r.body);if(d is Map&&d['vehicles'] is List){final vs=(d['vehicles'] as List).whereType<Map>().toList();if(vs.isNotEmpty){final selected=(p.getString('owner_vehicle_id')??'').trim();Map v=vs.first;for(final x in vs){if('${x['id']??''}'==selected){v=x;break;}}plate='${v['plate']??''}'.trim().toUpperCase();if(plate.isNotEmpty)await p.setString('owner_plate',plate);}}}}catch(_){}return(owner:owner,plate:plate);}
- Future<void> _loadState()async{if(o.id.isEmpty)return;try{await _loadReviews();if(!widget.driverMode&&OnboardingDraft.userId.trim().isEmpty)return;final fav=Uri.parse('${_CepqarOffersPageState.apiBase}/api/offers/favorites'),red=Uri.parse('${_CepqarOffersPageState.apiBase}/api/offers/${o.id}/redemption');final rs=widget.driverMode?await Future.wait([DriverHttp.get(fav,json:false),DriverHttp.get(red,json:false)]):await Future.wait([OwnerHttp.get(fav,json:false),OwnerHttp.get(red,json:false)]);if(!mounted)return;final f=jsonDecode(rs[0].body),r=jsonDecode(rs[1].body);setState((){favorite=f is Map&&f['favorites'] is List&&(f['favorites'] as List).map((e)=>e.toString()).contains(o.id);redemption=r is Map&&r['redemption'] is Map?Map<String,dynamic>.from(r['redemption']):null;});}catch(_){}}
- Future<void> _loadReviews()async{try{final r=await http.get(Uri.parse('${_CepqarOffersPageState.apiBase}/api/offers/${o.id}/reviews'));if(r.statusCode==200){final d=jsonDecode(r.body);if(d is Map&&mounted)setState((){storeReviews=(d['reviews'] as List? ?? []).whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).toList();storeRating=(d['rating']??'—').toString();storeReviewCount=int.tryParse('${d['reviewCount']??0}')??0;});}}catch(_){}}
- Future<void> _toggleFavorite()async{if(o.id.isEmpty)return;if(!widget.driverMode&&OnboardingDraft.userId.trim().isEmpty){_msg('Favori için giriş yapmalısın.');return;}final next=!favorite;setState(()=>favorite=next);try{final u=Uri.parse('${_CepqarOffersPageState.apiBase}/api/offers/${o.id}/favorite');final r=widget.driverMode?(next?await DriverHttp.post(u):await DriverHttp.delete(u)):(next?await OwnerHttp.post(u):await OwnerHttp.delete(u));if(r.statusCode<200||r.statusCode>=300)throw Exception();}catch(_){if(mounted)setState(()=>favorite=!next);_msg('Favori kaydedilemedi.');}}
- Future<void> _share()async{final link='https://queensho.github.io/HeyCar/?offer=${Uri.encodeComponent(o.id)}';await SharePlus.instance.share(ShareParams(title:'CepQontag Fırsatı',text:'${o.name} • ${o.badge}\n${o.description}\n$link'));}
- Future<void> _useOffer()async{if(busy||o.id.isEmpty)return;final session=await _ownerVehicle(),owner=session.owner,plate=session.plate;if(owner.isEmpty){_msg('Fırsatı kullanmak için giriş yapmalısın.');return;}if(plate.isEmpty){_msg('Önce hesabına bir araç/plaka eklemelisin.');return;}setState(()=>busy=true);try{final uri=Uri.parse('${_CepqarOffersPageState.apiBase}/api/offers/${o.id}/redeem');final body=jsonEncode({'plate':plate});final r=widget.driverMode?await DriverHttp.post(uri,body:body):await OwnerHttp.post(uri,body:body);final d=jsonDecode(r.body);if(r.statusCode<200||r.statusCode>=300||d is! Map||d['redemption'] is! Map)throw Exception();redemption=Map<String,dynamic>.from(d['redemption']);if(mounted){setState((){});_showCode();}}catch(_){_msg('Kullanım kodu oluşturulamadı.');}finally{if(mounted)setState(()=>busy=false);}}
- void _showCode(){final r=redemption;if(r==null)return;final code='${r['usage_code']??''}',plate='${r['plate']??''}';showModalBottomSheet(context:context,backgroundColor:CepqarTheme.panel,isScrollControlled:true,builder:(c)=>SafeArea(child:Padding(padding:const EdgeInsets.all(22),child:Column(mainAxisSize:MainAxisSize.min,children:[Text(r['status']=='redeemed'?'Fırsat Kullanıldı':'İşletmeye Göster',style:TextStyle(color:CepqarTheme.text,fontSize:21,fontWeight:FontWeight.w900)),const SizedBox(height:8),Text('Plaka: $plate',style:TextStyle(color:CepqarTheme.muted,fontWeight:FontWeight.w700)),const SizedBox(height:16),if(code.isNotEmpty)Container(width:210,height:210,padding:const EdgeInsets.all(10),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(18)),child:Image.network('https://quickchart.io/qr?text=${Uri.encodeComponent(code)}&size=420',errorBuilder:(_,__,___)=>const Icon(Icons.qr_code_2,color:Colors.black,size:150))),const SizedBox(height:12),SelectableText(code,style:TextStyle(color:CepqarTheme.text,fontSize:25,fontWeight:FontWeight.w900,letterSpacing:3)),const SizedBox(height:8),Text('İşletme plaka + bu kodu doğruladıktan sonra fırsat kullanılmış sayılır.',textAlign:TextAlign.center,style:TextStyle(color:CepqarTheme.muted,fontSize:11))]))));}
- Future<void> _review()async{int rating=5;final tc=TextEditingController();final ok=await showDialog<bool>(context:context,builder:(d)=>StatefulBuilder(builder:(d,setD)=>AlertDialog(scrollable:true,backgroundColor:CepqarTheme.panel,title:Text('Mağazayı Değerlendir',style:TextStyle(color:CepqarTheme.text)),content:Column(mainAxisSize:MainAxisSize.min,children:[Row(mainAxisAlignment:MainAxisAlignment.center,children:List.generate(5,(i)=>IconButton(onPressed:()=>setD(()=>rating=i+1),icon:Icon(i<rating?Icons.star_rounded:Icons.star_border_rounded,color:const Color(0xFFFFB72B)))),),TextField(controller:tc,maxLines:3,style:TextStyle(color:CepqarTheme.text),decoration:const InputDecoration(hintText:'Yorumun'))]),actions:[TextButton(onPressed:()=>Navigator.pop(d,false),child:const Text('Vazgeç')),FilledButton(onPressed:()=>Navigator.pop(d,true),child:const Text('Gönder'))])));if(ok!=true)return;final uri=Uri.parse('${_CepqarOffersPageState.apiBase}/api/offers/${o.id}/review');final body=jsonEncode({'rating':rating,'comment':tc.text.trim()});final r=widget.driverMode?await DriverHttp.post(uri,body:body):await OwnerHttp.post(uri,body:body);_msg(r.statusCode>=200&&r.statusCode<300?'Mağaza değerlendirmen kaydedildi.':'Değerlendirme kaydedilemedi.');if(r.statusCode>=200&&r.statusCode<300)await _loadReviews();}
- void _msg(String s){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(s)));}
- @override Widget build(BuildContext context){
-  const purple=CepqarTheme.purple,lime=CepqarTheme.lime,ink=Color(0xFF10152D),muted=Color(0xFF778096);
-  final screen=MediaQuery.sizeOf(context),badge=o.badge.trim();
-  Widget actionRow(IconData icon,String title,String subtitle,VoidCallback action)=>InkWell(
-    onTap:action,child:Padding(padding:const EdgeInsets.symmetric(vertical:12,horizontal:12),child:Row(children:[
-      Icon(icon,color:purple,size:29),const SizedBox(width:16),
-      Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-        Text(title,style:const TextStyle(color:ink,fontSize:14,fontWeight:FontWeight.w800)),
-        const SizedBox(height:3),Text(subtitle,maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:muted,fontSize:11.5))
-      ])),const Icon(Icons.chevron_right_rounded,color:purple,size:24)
-    ])));
-  Widget benefit(IconData icon,String title)=>Expanded(child:Column(children:[
-    Icon(icon,color:purple,size:31),const SizedBox(height:7),
-    Text(title,textAlign:TextAlign.center,style:const TextStyle(fontSize:10.5,color:ink,height:1.2))
-  ]));
-  return Scaffold(
-    backgroundColor:const Color(0xFFF8F7FC),
-    body:Stack(children:[
-      ListView(padding:EdgeInsets.zero,children:[
-        SizedBox(height:screen.height*.43,child:Stack(fit:StackFit.expand,children:[
-          Container(decoration:const BoxDecoration(gradient:LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:[CepqarTheme.purple,Color(0xFF161A43)]))),
-          if(o.imageUrl.isNotEmpty)Image.network(o.imageUrl,fit:BoxFit.cover,errorBuilder:(_,__,___)=>Center(child:Icon(o.icon,color:Colors.white,size:105)))
-          else Center(child:Icon(o.icon,color:Colors.white,size:105)),
-          const DecoratedBox(decoration:BoxDecoration(gradient:LinearGradient(begin:Alignment.topCenter,end:Alignment.bottomCenter,colors:[Color(0x55000000),Colors.transparent,Color(0xD9651FFF)]))),
-          Positioned(left:18,right:18,bottom:30,child:Row(crossAxisAlignment:CrossAxisAlignment.end,children:[
-            Container(width:55,height:55,decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(15)),child:Icon(o.icon,color:purple,size:34)),
-            const SizedBox(width:12),
-            Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-              Text(o.name,maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Colors.white,fontWeight:FontWeight.w900,fontSize:22)),
-              const SizedBox(height:4),Text('${o.category}  •  ${o.distance}',maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Colors.white,fontSize:12))
-            ])),
-            if(badge.isNotEmpty)Container(constraints:const BoxConstraints(maxWidth:110),padding:const EdgeInsets.symmetric(horizontal:12,vertical:14),decoration:BoxDecoration(color:lime,borderRadius:BorderRadius.circular(16)),child:Text(badge,textAlign:TextAlign.center,style:const TextStyle(color:ink,fontWeight:FontWeight.w900,fontSize:18)))
-          ]))
-        ])),
-        Transform.translate(offset:const Offset(0,-14),child:Container(margin:const EdgeInsets.symmetric(horizontal:12),padding:const EdgeInsets.fromLTRB(17,20,17,16),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(23),boxShadow:[BoxShadow(color:Colors.black.withValues(alpha:.035),blurRadius:15)]),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-          Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
-            Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-              const Text('Kampanya Detayları',style:TextStyle(color:ink,fontSize:21,fontWeight:FontWeight.w900)),
-              const SizedBox(height:10),
-              Text(o.description.isEmpty?'İşletme kampanya açıklaması eklememiş.':o.description,style:const TextStyle(color:muted,fontSize:13,height:1.45))
-            ])),
-            const SizedBox(width:8),
-            Container(width:88,height:106,decoration:BoxDecoration(color:CepqarTheme.purpleTint,borderRadius:BorderRadius.circular(17)),child:Image.asset('assets/Heycar3d.png',fit:BoxFit.contain,errorBuilder:(_,__,___)=>Icon(o.icon,color:purple,size:48)))
-          ]),
-          const SizedBox(height:16),
-          Container(padding:const EdgeInsets.symmetric(horizontal:7,vertical:15),decoration:BoxDecoration(color:const Color(0xFFF5F0FF),borderRadius:BorderRadius.circular(17)),child:Row(children:[
-            benefit(Icons.timer_outlined,'Hızlı & Güvenli\\nHizmet'),
-            benefit(Icons.water_drop_rounded,'Profesyonel\\nEkipman'),
-            benefit(Icons.eco_rounded,'Özenli\\nUygulama'),
-            benefit(Icons.auto_awesome_rounded,'Kaliteli\\nSonuç')
-          ])),
-          const SizedBox(height:15),
-          Container(decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(16),boxShadow:[BoxShadow(color:Colors.black.withValues(alpha:.035),blurRadius:12)]),child:Column(children:[
-            actionRow(Icons.location_on_rounded,'Geçerli Şubeler',o.address.isEmpty?o.name:o.address,()=>_msg(o.address.isEmpty?'Adres belirtilmemiş.':o.address)),
-            const Divider(height:1,indent:12,endIndent:12),
-            actionRow(Icons.calendar_month_rounded,'Geçerlilik Tarihi','Kampanya tarihleri işletme tarafından belirtilir.',()=>_msg('Kampanya tarihleri henüz bu API yanıtında bulunmuyor.')),
-            const Divider(height:1,indent:12,endIndent:12),
-            actionRow(Icons.receipt_long_rounded,'Kampanya Koşulları','Kampanya detaylarını ve şartlarını inceleyin.',()=>showDialog<void>(context:context,builder:(c)=>AlertDialog(scrollable:true,title:const Text('Kampanya Koşulları'),content:Text(o.description.isEmpty?'İşletme koşul belirtmemiş.':o.description),actions:[TextButton(onPressed:()=>Navigator.pop(c),child:const Text('Kapat'))]))),
-            const Divider(height:1,indent:12,endIndent:12),
-            actionRow(Icons.share_rounded,'Arkadaşınla Paylaş','Bu fırsatı arkadaşlarınla paylaş.',_share)
-          ]))
-        ]))),
-        Padding(padding:const EdgeInsets.fromLTRB(18,0,18,28),child:Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:const Color(0xFFF0E9FF),borderRadius:BorderRadius.circular(17)),child:const Row(children:[
-          Icon(Icons.info_rounded,color:purple,size:27),SizedBox(width:13),
-          Expanded(child:Text('Bu kampanya CepQontag ile anlaşmalı işletmelerde geçerlidir. Kullanım için şube çalışanına uygulamada oluşturduğunuz kuponu gösterin.',style:TextStyle(color:muted,fontSize:11.5,height:1.35)))
-        ])))
-      ]),
-      SafeArea(child:Padding(padding:const EdgeInsets.fromLTRB(18,7,18,0),child:Row(children:[
-        CircleAvatar(backgroundColor:purple.withValues(alpha:.8),child:IconButton(onPressed:()=>Navigator.pop(context),icon:const Icon(Icons.arrow_back_ios_new_rounded,color:Colors.white,size:19))),
-        const Expanded(child:Text('Fırsat Detayı',textAlign:TextAlign.center,style:TextStyle(color:Colors.white,fontSize:19,fontWeight:FontWeight.w900))),
-        CircleAvatar(backgroundColor:purple.withValues(alpha:.8),child:IconButton(onPressed:_toggleFavorite,icon:Icon(favorite?Icons.favorite_rounded:Icons.favorite_border_rounded,color:Colors.white,size:25)))
-      ])))
-    ]),
-    bottomNavigationBar:SafeArea(child:Padding(padding:const EdgeInsets.fromLTRB(18,7,18,10),child:SizedBox(height:54,child:FilledButton(
-      onPressed:busy?null:(redemption?['status']=='redeemed'?_review:(redemption!=null?_showCode:_useOffer)),
-      style:FilledButton.styleFrom(backgroundColor:lime,foregroundColor:ink,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(20))),
-      child:Row(mainAxisAlignment:MainAxisAlignment.center,children:[
-        const Icon(Icons.qr_code_2_rounded,size:25),const SizedBox(width:12),
-        Text(busy?'İşleniyor...':redemption?['status']=='redeemed'?'Puan ve Yorum Yap':redemption!=null?'Kullanım Kodunu Göster':'Fırsatı Kullan',style:const TextStyle(fontSize:17,fontWeight:FontWeight.w900)),
-        const SizedBox(width:12),const Icon(Icons.chevron_right_rounded,size:26)
-      ])
-    ))))
-  );
- }
-
-}
-IconData _serviceIcon(String x){final s=x.toLowerCase();if(s.contains('yıkama'))return Icons.local_car_wash_rounded;if(s.contains('detail'))return Icons.auto_awesome_rounded;if(s.contains('lastik'))return Icons.tire_repair_rounded;if(s.contains('otopark'))return Icons.local_parking_rounded;if(s.contains('akaryakıt'))return Icons.local_gas_station_rounded;return Icons.build_rounded;}
-bool _isOpenNow(String hours){final m=RegExp(r'(\\d{1,2}):(\\d{2})\\s*-\\s*(\\d{1,2}):(\\d{2})').firstMatch(hours);if(m==null)return false;final n=DateTime.now(),cur=n.hour*60+n.minute,a=int.parse(m.group(1)!)*60+int.parse(m.group(2)!),b=int.parse(m.group(3)!)*60+int.parse(m.group(4)!);return b>=a?cur>=a&&cur<=b:cur>=a||cur<=b;}
-class _Badge extends StatelessWidget{const _Badge(this.text);final String text;@override Widget build(BuildContext c)=>Container(padding:const EdgeInsets.symmetric(horizontal:10,vertical:7),decoration:BoxDecoration(color:const Color(0xFFFF416C),borderRadius:BorderRadius.circular(12)),child:Text(text,style:const TextStyle(color:Colors.white,fontSize:11,fontWeight:FontWeight.w900)));}
-class _Pill extends StatelessWidget{const _Pill(this.text,this.color);final String text;final Color color;@override Widget build(BuildContext c)=>Container(padding:const EdgeInsets.symmetric(horizontal:9,vertical:5),decoration:BoxDecoration(color:color.withValues(alpha:.13),borderRadius:BorderRadius.circular(12),border:Border.all(color:color.withValues(alpha:.28))),child:Text(text,style:TextStyle(color:color==CepqarTheme.purple?CepqarTheme.text:color,fontSize:9.5,fontWeight:FontWeight.w700)));}
-class _InfoCard extends StatelessWidget{const _InfoCard({required this.child});final Widget child;@override Widget build(BuildContext c)=>Container(padding:const EdgeInsets.all(12),decoration:BoxDecoration(color:CepqarTheme.panel,borderRadius:BorderRadius.circular(16),border:Border.all(color:CepqarTheme.line)),child:child);}
-class _Title extends StatelessWidget{const _Title(this.text);final String text;@override Widget build(BuildContext c)=>Text(text,style:TextStyle(color:CepqarTheme.text,fontSize:15,fontWeight:FontWeight.w900));}
-class _Service extends StatelessWidget{const _Service(this.icon,this.text);final IconData icon;final String text;@override Widget build(BuildContext c)=>Container(width:76,height:72,padding:const EdgeInsets.all(7),decoration:BoxDecoration(color:CepqarTheme.panel,borderRadius:BorderRadius.circular(14),border:Border.all(color:CepqarTheme.line)),child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[Icon(icon,color:CepqarTheme.purple,size:22),const SizedBox(height:5),Text(text,maxLines:2,textAlign:TextAlign.center,style:TextStyle(color:CepqarTheme.text,fontSize:8.5,fontWeight:FontWeight.w700))]));}
-
