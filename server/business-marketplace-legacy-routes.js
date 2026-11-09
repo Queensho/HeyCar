@@ -111,14 +111,14 @@ module.exports=function registerBusinessMarketplaceLegacyRoutes(app,pool,{auth})
  }catch(e){res.status(500).json({error:'SERVICES_UNAVAILABLE'});}});
  app.post('/api/business/marketplace/services',async(req,res)=>{const account=await auth(req,res);if(!account)return;try{
   const {title,description,category,priceCents,durationMinutes}=req.body||{};
-  if(typeof title!=='string'||title.trim().length<2||title.trim().length>120||typeof category!=='string'||!category.trim()||!Number.isSafeInteger(priceCents)||priceCents<0||!Number.isInteger(durationMinutes)||durationMinutes<15||durationMinutes>1440)return res.status(400).json({error:'INVALID_SERVICE'});
+  if(typeof title!=='string'||title.trim().length<2||title.trim().length>120||typeof category!=='string'||!category.trim()||!Number.isSafeInteger(priceCents)||priceCents<0||priceCents>2147483647||!Number.isInteger(durationMinutes)||durationMinutes<15||durationMinutes>1440)return res.status(400).json({error:'INVALID_SERVICE'});
   const q=await pool.query("INSERT INTO marketplace_services(business_id,title,description,category,price_cents,duration_minutes) SELECT id,$2,$3,$4,$5,$6 FROM businesses WHERE account_id=$1 AND approval_status='approved' RETURNING *",[account,title.trim(),String(description||'').slice(0,2000),category.trim().slice(0,80),priceCents,durationMinutes]);
   if(!q.rowCount)return res.status(403).json({error:'BUSINESS_NOT_APPROVED'});res.status(201).json({ok:true,service:q.rows[0]});
  }catch(e){console.error('marketplace create',e);res.status(500).json({error:'SERVICE_CREATE_FAILED'});}});
  app.patch('/api/business/marketplace/services/:id',async(req,res)=>{const account=await auth(req,res);if(!account)return;try{
   if(!galleryUuid.test(req.params.id))return res.status(400).json({error:'INVALID_SERVICE'});
   const {title,description,category,priceCents,durationMinutes,active}=req.body||{};
-  if(typeof title!=='string'||title.trim().length<2||title.trim().length>120||typeof category!=='string'||!category.trim()||category.length>80||typeof description!=='string'||description.length>2000||!Number.isSafeInteger(priceCents)||priceCents<0||!Number.isInteger(durationMinutes)||durationMinutes<15||durationMinutes>1440||typeof active!=='boolean')return res.status(400).json({error:'INVALID_SERVICE'});
+  if(typeof title!=='string'||title.trim().length<2||title.trim().length>120||typeof category!=='string'||!category.trim()||category.length>80||typeof description!=='string'||description.length>2000||!Number.isSafeInteger(priceCents)||priceCents<0||priceCents>2147483647||!Number.isInteger(durationMinutes)||durationMinutes<15||durationMinutes>1440||typeof active!=='boolean')return res.status(400).json({error:'INVALID_SERVICE'});
   const client=await pool.connect();let q;
   try{await client.query('BEGIN');
    const lock=await client.query("SELECT b.id FROM businesses b JOIN marketplace_services s ON s.business_id=b.id WHERE s.id=$1 AND b.account_id=$2 AND b.approval_status='approved' FOR UPDATE OF b",[req.params.id,account]);
@@ -167,6 +167,9 @@ module.exports=function registerBusinessMarketplaceLegacyRoutes(app,pool,{auth})
    const service=await client.query("SELECT s.id,s.business_id,s.duration_minutes,b.opening_hours FROM marketplace_services s JOIN businesses b ON b.id=s.business_id WHERE s.id=$1 AND s.active AND NOT s.admin_hidden AND b.is_active AND b.approval_status='approved'",[serviceId]);
    if(!service.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'SERVICE_NOT_FOUND'});}
    await client.query('SELECT id FROM businesses WHERE id=$1 FOR UPDATE',[service.rows[0].business_id]);
+   // Hold vehicle authorization through commit, not only before waiting for capacity.
+   const stillOwned=await client.query("SELECT 1 FROM vehicles v WHERE v.owner_id::text=$1 AND upper(replace(v.plate,' ',''))=$2 FOR SHARE OF v",[String(owner),normalizedPlate]);
+   if(!stillOwned.rowCount){await client.query('ROLLBACK');return res.status(403).json({error:'VEHICLE_NOT_OWNED'});}
    // Recheck under the business lock: a listing can be disabled while a booking waits.
    const current=await client.query("SELECT s.duration_minutes,s.weekly_hours,s.booking_timezone FROM marketplace_services s JOIN businesses b ON b.id=s.business_id WHERE s.id=$1 AND s.active=true AND NOT s.admin_hidden AND b.is_active=true AND b.approval_status='approved'",[serviceId]);
    if(!current.rowCount){await client.query('ROLLBACK');return res.status(409).json({error:'SERVICE_UNAVAILABLE'});}

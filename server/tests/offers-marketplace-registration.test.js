@@ -34,11 +34,11 @@ test('migration has balanced PostgreSQL dollar-quoted blocks', () => {
   assert.doesNotMatch(sql, /(?:DO \$ BEGIN|END \$;|LANGUAGE plpgsql AS \$\n)/);
 });
 
-test('migration preserves legacy offer review upsert contract', () => {
-  const migration = read('migrations/128_offers_marketplace_compatibility.sql');
-  const business = read('business-routes.js');
-  assert.match(business, /ON CONFLICT\(owner_id,campaign_id\) DO UPDATE/);
-  assert.doesNotMatch(migration, /DROP CONSTRAINT IF EXISTS offer_reviews_owner_id_campaign_id_key/);
+test('legacy review URL uses the per-redemption arbiter without dropping data', () => {
+  const routes = read('offers-marketplace-routes.js');
+  assert.match(routes, /app.post\('\/api\/offers\/:campaignId\/review'/);
+  assert.match(routes, /ON CONFLICT\(redemption_id\) DO UPDATE/);
+  assert.doesNotMatch(read('migrations/129_offers_marketplace_integrity.sql'), /DELETE FROM|TRUNCATE/i);
 });
 
 test('applied migration 124 remains byte-for-byte compatible', () => {
@@ -84,31 +84,38 @@ test('favorites never include or delete ambiguous legacy-role records', () => {
   assert.match(routes, /f\.actor_role=\$2/);
 });
 
-test('new code issuance never reuses an ambiguous legacy pending code', () => {
-  const service = read('offer-redemption-service.js');
-  assert.match(service, /WHERE owner_id=\$1 AND actor_role=\$2 AND campaign_id=\$3 AND status='pending'/);
-  assert.doesNotMatch(service, /actor_role IN \(\$2,'legacy'\)/);
+test('ambiguous legacy rows need exclusive vehicle evidence', () => {
+  const compat=read('offer-actor-compat.js');
+  assert.match(compat,/AND NOT/);
+  assert.match(compat,/vehicle_drivers/);
+  assert.match(compat,/owner_id::text/);
 });
 
-test('legacy redemption verification locks campaign before redemption and refreshes limits', () => {
-  const business = read('business-routes.js');
-  const start = business.indexOf("app.post('/api/business/redemptions/verify'");
-  const end = business.indexOf("app.get('/api/business/rede", start);
-  assert.ok(start >= 0 && end > start);
-  const handler = business.slice(start, end);
-  const campaign = handler.indexOf("FROM business_campaigns WHERE id=$1 FOR UPDATE");
-  const redemption = handler.indexOf("FROM offer_redemptions WHERE id=$1 FOR UPDATE");
-  assert.ok(campaign >= 0 && redemption > campaign, 'campaign must lock before redemption');
-  assert.match(handler, /const limits=lockedCampaign\.rows\[0\]/);
-  assert.doesNotMatch(handler, /r\.plate=\$3 FOR UPDATE/);
+test('legacy verification delegates to the shared transaction service', () => {
+  const routes=read('offers-marketplace-routes.js'),service=read('offer-redemption-service.js');
+  assert.match(routes,/await verify\(pool,account/);
+  assert.ok(service.indexOf('await campaignLock(db, found.rows[0].campaign_id)')<service.indexOf('FROM offer_redemptions WHERE id=$1 FOR UPDATE'));
 });
 
-test('legacy verification checks campaign and business availability using database clock', () => {
-  const business = read('business-routes.js');
-  const start = business.indexOf("app.post('/api/business/redemptions/verify'");
-  const end = business.indexOf("app.get('/api/business/rede",start);
-  const handler = business.slice(start,end);
-  assert.match(handler,/clock_timestamp\(\) BETWEEN c\.starts_at AND c\.ends_at/);
-  assert.match(handler,/if\(!limits\.available\)/);
-  assert.match(handler,/FOR UPDATE OF c/);
+test('verification checks campaign and business availability with a fresh wall clock', () => {
+  const service=read('offer-redemption-service.js');
+  assert.match(service,/clock_timestamp\(\) BETWEEN c\.starts_at AND c\.ends_at/);
+  assert.match(service,/FOR SHARE OF b/);
+  assert.match(service,/await campaignLock\(db,c.id\)/);
+});
+
+test('compatibility migration 128 checksum remains immutable',()=>{
+ const crypto=require('node:crypto');
+ assert.equal(crypto.createHash('sha256').update(read('migrations/128_offers_marketplace_compatibility.sql')).digest('hex'),'08169079c251ebb1333c36a4f15b410e9f5d93447c6729163a86247c2e1159d3');
+});
+
+test('old and new API registrations contain no duplicate method/path pairs',()=>{
+ const seen=new Set(),app={};
+ for(const method of ['get','post','patch','delete'])app[method]=(url,...handlers)=>{
+  const key=method+' '+url;assert(!seen.has(key),key);seen.add(key);assert(handlers.every(h=>typeof h==='function'),key);
+ };
+ const original=process.env.BUSINESS_UPLOAD_DIR;
+ process.env.BUSINESS_UPLOAD_DIR='/tmp/heycar-pr326-inventory';
+ try{require('../business-routes')(app,{query:async()=>{throw Error('Registration must not query data');}});}finally{if(original===undefined)delete process.env.BUSINESS_UPLOAD_DIR;else process.env.BUSINESS_UPLOAD_DIR=original;}
+ for(const route of ['get /api/offers/favorites','post /api/offers/:campaignId/redeem','post /api/business/redemptions/verify','get /api/offers/history','get /api/offers/discover','post /api/marketplace/appointments','get /api/business/marketplace/services'])assert(seen.has(route),route);
 });

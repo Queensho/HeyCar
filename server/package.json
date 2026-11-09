@@ -5,8 +5,10 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js && node --check admin-auth-routes.js",
-    "migrate": "node migrate.js"
+    "check": "node scripts/check-js.js",
+    "migrate": "node migrate.js",
+    "test": "node --test --test-reporter=tap tests/*.test.js",
+    "test:release": "node scripts/test-release.js"
   },
   "dependencies": {
     "cors": "^2.8.6",
