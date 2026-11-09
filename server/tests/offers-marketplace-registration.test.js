@@ -30,7 +30,7 @@ test('migration has balanced PostgreSQL dollar-quoted blocks', () => {
   const sql = read('migrations/128_offers_marketplace_compatibility.sql');
   const count = (sql.match(/\$\$/g) || []).length;
   assert.equal(count % 2, 0, 'unbalanced dollar-quoted SQL blocks');
-  assert.ok(count >= 4, 'expected review function and DO block');
+  assert.ok(count >= 6, 'expected review function and two DO blocks');
   assert.doesNotMatch(sql, /(?:DO \$ BEGIN|END \$;|LANGUAGE plpgsql AS \$\n)/);
 });
 
@@ -45,4 +45,10 @@ test('applied migration 124 remains byte-for-byte compatible', () => {
   const crypto = require('node:crypto');
   const sql = read('migrations/124_offers_marketplace.sql');
   assert.equal(crypto.createHash('sha256').update(sql).digest('hex'), 'd72dd5660303c1119dce735b5dc4f5bce7bb38209c791368a953e4c9a756c750');
+});
+
+test('compatibility migration restores the legacy review conflict target', () => {
+  const migration = read('migrations/128_offers_marketplace_compatibility.sql');
+  assert.match(migration, /CREATE UNIQUE INDEX IF NOT EXISTS offer_reviews_owner_campaign_compat_idx ON offer_reviews\(owner_id,campaign_id\)/);
+  assert.match(migration, /OFFER_REVIEWS_LEGACY_UNIQUE_CONFLICT/);
 });
