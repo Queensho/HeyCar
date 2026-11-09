@@ -128,7 +128,7 @@ function patchedServer(original){
   console.log(JSON.stringify({ok:true,source:manifest.sha,database:'heycar_staging',migrations:files,backup,existingRowCountsPreserved:true,flags:updates,productionTouched:false}));
  }catch(e){
   if(codeChanged&&backup){fs.copyFileSync(backup+'/server.js','server.js');fs.copyFileSync(backup+'/staging.env','.env');try{execFileSync('sudo',['-n','/usr/bin/systemctl','restart','cepqontag-staging.service'],{stdio:'pipe'});}catch(_){} }
-  const report={ok:false,code:e.code||e.message,additiveSchemaRetained:schemaCommitted,productionTouched:false};
+  const report={ok:false,code:e.code||'STAGING_VALIDATION_FAILED',reason:String(e.message||'').split('\n')[0].slice(0,180),additiveSchemaRetained:schemaCommitted,productionTouched:false};
   console.error('CAR_WASH_STAGING_STOPPED',report);console.log(JSON.stringify(report));process.exitCode=1;
  }finally{db.release();await pool.end();}
 })();

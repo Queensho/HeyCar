@@ -31,6 +31,8 @@ const pool=new Pool({...config,connectionTimeoutMillis:5000});
   const history=historyExists?(await pool.query('SELECT filename,checksum_sha256 FROM schema_migrations ORDER BY filename')).rows:[];
   const tables=(await pool.query("SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename")).rows.map(r=>r.tablename);
   const extensions=(await pool.query("SELECT name,installed_version FROM pg_available_extensions WHERE name IN('pgcrypto','btree_gist')")).rows;
+  const permissions={schemaCreate:(await pool.query("SELECT has_schema_privilege(current_user,'public','CREATE') AS yes")).rows[0].yes,tables:[]};
+  for(const table of ['users','vehicles','businesses'])permissions.tables.push((await pool.query("SELECT $1::text AS table,has_table_privilege(current_user,$1,'TRIGGER') AS trigger,has_table_privilege(current_user,$1,'REFERENCES') AS references",[table])).rows[0]);
   const nginx=[];
   try{for(const file of fs.readdirSync('/etc/nginx/sites-enabled')){
    const s=fs.readFileSync('/etc/nginx/sites-enabled/'+file,'utf8');
@@ -47,7 +49,7 @@ const pool=new Pool({...config,connectionTimeoutMillis:5000});
   const source=fs.readFileSync('server.js','utf8');
   let sudo='';try{sudo=execFileSync('sudo',['-n','-l'],{encoding:'utf8',stdio:['ignore','pipe','pipe']});}catch(e){sudo=String(e.stdout||'SUDO_UNAVAILABLE');}
   let listening=[];try{listening=execFileSync('ss',['-ltnp'],{encoding:'utf8'}).split('\n').filter(l=>/:(8091|18091)\b/.test(l));}catch(_){}
-  const result={identity:id,historyExists,history,tables,extensions,service,nginx,sudo,listening,
+  const result={identity:id,historyExists,history,tables,extensions,permissions,service,nginx,sudo,listening,
    publicApiBase:env.PUBLIC_API_BASE_URL?new URL(env.PUBLIC_API_BASE_URL).origin+new URL(env.PUBLIC_API_BASE_URL).pathname:null,
    isolation:{appEnv:env.APP_ENV||null,externalDisabled},
    flags:{catalog:env.CAR_WASH_CATALOG_ENABLED||null,booking:env.CAR_WASH_BOOKING_ENABLED||null,push:env.CAR_WASH_PUSH_ENABLED||null},
