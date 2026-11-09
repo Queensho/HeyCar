@@ -161,17 +161,27 @@ module.exports=function registerAdminBusinessPremiumRoutes(app,pool,adminGuard){
     const id=String(req.params.campaignId||'').trim(),body=req.body||{};
     const moderation=body.moderationStatus;
     if(moderation!==undefined&&!['pending','approved','rejected'].includes(String(moderation)))return res.status(400).json({error:'INVALID_MODERATION_STATUS'});
+    if(!require('./offer-validation').campaignInput(body)||body.platformFee!=null&&(typeof body.platformFee!=='number'||!Number.isFinite(body.platformFee)||body.platformFee<0||body.platformFee>9999999999.99))return res.status(400).json({error:'CAMPAIGN_INVALID'});
+    const client=await pool.connect();let committed=false;
     try{
-      const before=await pool.query(`SELECT c.*,b.approval_status AS business_approval,b.is_active AS business_active FROM business_campaigns c JOIN businesses b ON b.id=c.business_id WHERE c.id::text=$1 LIMIT 1`,[id]);
+      await client.query('BEGIN');
+      const locked=await client.query('SELECT id FROM business_campaigns WHERE id::text=$1 FOR UPDATE',[id]);
+      if(!locked.rowCount)return res.status(404).json({error:'CAMPAIGN_NOT_FOUND'});
+      await client.query('SELECT b.id FROM businesses b JOIN business_campaigns c ON c.business_id=b.id WHERE c.id::text=$1 FOR SHARE OF b',[id]);
+      const before=await client.query(`SELECT c.*,b.approval_status AS business_approval,b.is_active AS business_active FROM business_campaigns c JOIN businesses b ON b.id=c.business_id WHERE c.id::text=$1 LIMIT 1`,[id]);
       if(!before.rowCount)return res.status(404).json({error:'CAMPAIGN_NOT_FOUND'});
-      if(String(moderation)==='approved'&&(before.rows[0].business_approval!=='approved'||before.rows[0].business_active!==true))return res.status(409).json({error:'BUSINESS_NOT_APPROVED'});
+      if(moderation==='approved'||body.isActive===true){
+        if(!Number.isInteger(body.revision))return res.status(400).json({error:'CAMPAIGN_VERSION_REQUIRED'});
+        if(body.revision!==before.rows[0].revision)return res.status(409).json({error:'CAMPAIGN_CHANGED'});
+      }
+      if((moderation==='approved'||body.isActive===true)&&(before.rows[0].business_approval!=='approved'||before.rows[0].business_active!==true))return res.status(409).json({error:'BUSINESS_NOT_APPROVED'});
       const start=body.startsAt===undefined?undefined:isoOrNull(body.startsAt);
       const end=body.endsAt===undefined?undefined:isoOrNull(body.endsAt);
       if(body.startsAt!==undefined&&!start)return res.status(400).json({error:'INVALID_START_DATE'});
       if(body.endsAt!==undefined&&!end)return res.status(400).json({error:'INVALID_END_DATE'});
       const reviewed=moderation!==undefined&&String(moderation)!=='pending';
       const a=actor(req);
-      const q=await pool.query(
+      const q=await client.query(
         `UPDATE business_campaigns SET
           title=COALESCE($2,title),
           description=CASE WHEN $3::boolean THEN $4 ELSE description END,
@@ -187,7 +197,7 @@ module.exports=function registerAdminBusinessPremiumRoutes(app,pool,adminGuard){
           discount_percent=CASE WHEN $20::boolean THEN $21 ELSE discount_percent END,
           platform_fee=COALESCE($22,platform_fee),
           image_url=CASE WHEN $23::boolean THEN $24 ELSE image_url END,
-          is_active=COALESCE($25,is_active),
+          is_active=CASE WHEN $26 IN ('pending','rejected') THEN false WHEN $26='approved' THEN COALESCE($25,true) WHEN moderation_status='approved' THEN COALESCE($25,is_active) ELSE false END,
           moderation_status=COALESCE($26,moderation_status),
           admin_note=CASE WHEN $27::boolean THEN $28 ELSE admin_note END,
           reviewed_at=CASE WHEN $29::boolean THEN NOW() WHEN $26='pending' THEN NULL ELSE reviewed_at END,
@@ -214,15 +224,14 @@ module.exports=function registerAdminBusinessPremiumRoutes(app,pool,adminGuard){
           reviewed,a.email||a.name||a.id||'admin'
         ]
       );
-      if(String(moderation)==='rejected')await pool.query('UPDATE business_campaigns SET is_active=FALSE WHERE id=$1',[q.rows[0].id]);
-      if(String(moderation)==='approved'&&body.isActive===undefined)await pool.query('UPDATE business_campaigns SET is_active=TRUE WHERE id=$1',[q.rows[0].id]);
-      const final=await pool.query('SELECT * FROM business_campaigns WHERE id=$1',[q.rows[0].id]);
-      await writeAdminAudit(pool,req,{
+      const final=await client.query('SELECT * FROM business_campaigns WHERE id=$1',[q.rows[0].id]);
+      await writeAdminAudit(client,req,{
         action:String(moderation)==='approved'?'campaign.approved':String(moderation)==='rejected'?'campaign.rejected':body.isActive===false?'campaign.unpublished':'campaign.updated',
         targetType:'business_campaign',targetId:id,targetLabel:final.rows[0].title,before:before.rows[0],after:final.rows[0]
       });
+      await client.query('COMMIT');committed=true;
       res.json({ok:true,campaign:final.rows[0]});
-    }catch(e){console.error('admin campaign update',e);res.status(500).json({error:'SERVER_ERROR'});}
+    }catch(e){console.error('admin campaign update',e);res.status(['22P02','23514','22003'].includes(e.code)?400:500).json({error:'CAMPAIGN_UPDATE_FAILED'});}finally{if(!committed)await client.query('ROLLBACK').catch(()=>{});client.release();}
   });
 
   app.get('/api/admin/manage/offer-revenue',guard,async(req,res)=>{

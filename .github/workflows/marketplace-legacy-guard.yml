@@ -1,0 +1,92 @@
+name: Marketplace legacy route guard
+
+on:
+  pull_request:
+    paths:
+      - 'server/**'
+      - 'lib/admin_commerce_pages.dart'
+      - 'tool/test-marketplace-isolated.sh'
+      - '.github/workflows/marketplace-legacy-guard.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  route-inventory:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check every backend module and test
+        run: npm run check --prefix server
+      - name: Verify 17 legacy HTTP routes
+        run: node server/tests/legacy-marketplace-route-inventory.test.js
+      - name: Install runtime dependencies for actual route registration
+        run: npm install --prefix server --ignore-scripts --no-audit --no-fund
+      - name: Verify registration, immutable migration and compatibility guards
+        run: node --test server/tests/offers-marketplace-registration.test.js
+
+  postgres-integration:
+    needs: route-inventory
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: isolated-marketplace-test
+          POSTGRES_DB: heycar_marketplace_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d heycar_marketplace_test"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_NAME: heycar_marketplace_test
+      DB_USER: postgres
+      DB_PASSWORD: isolated-marketplace-test
+      PGPASSWORD: isolated-marketplace-test
+      DATABASE_URL: postgresql://postgres:isolated-marketplace-test@127.0.0.1:5432/heycar_marketplace_test
+      NODE_ENV: test
+      APP_ENV: test
+      STAGING_DISABLE_EXTERNAL_SERVICES: 'true'
+      SMART_ROUTE_SCAN_ENABLED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install backend dependencies
+        run: npm install --prefix server --ignore-scripts --no-audit --no-fund
+      - name: Bootstrap disposable database roles
+        run: psql -h 127.0.0.1 -U postgres -d heycar_marketplace_test -v ON_ERROR_STOP=1 -c 'CREATE ROLE heycar_user; CREATE ROLE cepqontag_staging;'
+      - name: Apply complete migration chain then verify checksum-preserving rerun
+        run: |
+          npm run migrate --prefix server
+          npm run migrate --prefix server
+      - name: Run all backend tests with both real PostgreSQL suites and zero skips
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run test:release --prefix server | tee backend-marketplace.tap
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-marketplace-results
+          path: backend-marketplace.tap
+
+  admin-client-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Analyze campaign moderation client
+        run: flutter analyze lib/admin_commerce_pages.dart --no-fatal-infos
