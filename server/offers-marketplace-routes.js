@@ -42,7 +42,7 @@ module.exports = function registerMarketplace(app, pool, {auth, offerActor}) {
     const actor=offerActor(req);if(!actor)return res.status(401).json({error:'AUTH_REQUIRED'});
     const db=await pool.connect();try{await db.query('BEGIN');
       await db.query('DELETE FROM offer_business_favorites WHERE owner_id=$1 AND actor_role=$2 AND business_id=$3',[actor.id,actor.role,req.params.businessId]);
-      await db.query(`DELETE FROM offer_favorites f USING business_campaigns c WHERE f.campaign_id=c.id AND f.owner_id=$1 AND f.actor_role IN ($2,'legacy') AND c.business_id=$3`,[actor.id,actor.role,req.params.businessId]);
+      await db.query(`DELETE FROM offer_favorites f USING business_campaigns c WHERE f.campaign_id=c.id AND f.owner_id=$1 AND f.actor_role=$2 AND c.business_id=$3`,[actor.id,actor.role,req.params.businessId]);
       await db.query('COMMIT');res.json({ok:true,favorite:false});
     }catch(e){await db.query('ROLLBACK');throw e;}finally{db.release();}
   }));
@@ -50,7 +50,7 @@ module.exports = function registerMarketplace(app, pool, {auth, offerActor}) {
     const actor=offerActor(req);if(!actor)return res.status(401).json({error:'AUTH_REQUIRED'});
     const q=await pool.query(`WITH saved AS (
       SELECT business_id,created_at FROM offer_business_favorites WHERE owner_id=$1 AND actor_role=$2
-      UNION SELECT c.business_id,f.created_at FROM offer_favorites f JOIN business_campaigns c ON c.id=f.campaign_id WHERE f.owner_id=$1 AND f.actor_role IN ($2,'legacy'))
+      UNION SELECT c.business_id,f.created_at FROM offer_favorites f JOIN business_campaigns c ON c.id=f.campaign_id WHERE f.owner_id=$1 AND f.actor_role=$2)
       SELECT DISTINCT ON(b.id) c.id,c.title,c.description,c.terms,c.badge,c.starts_at,c.ends_at,c.image_url,b.id business_id,b.name,b.address,b.category,b.logo_url,b.opening_hours
       FROM saved f JOIN businesses b ON b.id=f.business_id LEFT JOIN LATERAL(SELECT * FROM business_campaigns c WHERE c.business_id=b.id AND c.moderation_status='approved' ORDER BY (c.is_active AND now() BETWEEN c.starts_at AND c.ends_at) DESC,c.ends_at DESC LIMIT 1)c ON true
       WHERE ${publicBusiness} ORDER BY b.id,f.created_at DESC`,[actor.id,actor.role]);res.json({ok:true,offers:q.rows});
