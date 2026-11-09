@@ -11,7 +11,6 @@ ALTER TABLE offer_reviews ADD COLUMN actor_role text NOT NULL DEFAULT 'legacy' C
 ALTER TABLE offer_reviews ADD COLUMN moderation_status text NOT NULL DEFAULT 'pending' CHECK(moderation_status IN ('pending','approved','rejected'));
 ALTER TABLE offer_reviews ADD COLUMN moderation_note text NOT NULL DEFAULT '';
 ALTER TABLE offer_reviews ADD COLUMN reviewed_at timestamptz;
-ALTER TABLE offer_reviews DROP CONSTRAINT IF EXISTS offer_reviews_owner_id_campaign_id_key;
 ALTER TABLE offer_reviews ADD CONSTRAINT offer_reviews_redemption_unique UNIQUE(redemption_id);
 CREATE INDEX offer_reviews_public ON offer_reviews(campaign_id) WHERE moderation_status='approved';
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS city text;
