@@ -25,3 +25,11 @@ test('review moderation revisions advance and existing services schema is checke
   assert.match(migration, /NEW\.revision := OLD\.revision \+ 1/);
   assert.match(migration, /GRANT SELECT,INSERT,UPDATE,DELETE ON offer_categories,business_services,offer_business_favorites TO cepqontag_staging/);
 });
+
+test('migration has balanced PostgreSQL dollar-quoted blocks', () => {
+  const sql = read('migrations/124_offers_marketplace.sql');
+  const count = (sql.match(/\\$\\$/g) || []).length;
+  assert.equal(count % 2, 0, 'unbalanced dollar-quoted SQL blocks');
+  assert.ok(count >= 8, 'expected review functions and DO blocks');
+  assert.doesNotMatch(sql, /(?:DO \\$ BEGIN|END \\$;|LANGUAGE plpgsql AS \\$\\n)/);
+});
