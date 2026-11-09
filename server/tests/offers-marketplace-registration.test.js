@@ -18,3 +18,10 @@ test('discovery schema includes location fields', () => {
   assert.match(migration, /ADD COLUMN IF NOT EXISTS city text/);
   assert.match(migration, /ADD COLUMN IF NOT EXISTS district text/);
 });
+
+test('review moderation revisions advance and existing services schema is checked', () => {
+  const migration = read('migrations/124_offers_marketplace.sql');
+  assert.match(migration, /BUSINESS_SERVICES_SCHEMA_INCOMPATIBLE/);
+  assert.match(migration, /NEW\.revision := OLD\.revision \+ 1/);
+  assert.match(migration, /GRANT SELECT,INSERT,UPDATE,DELETE ON offer_categories,business_services,offer_business_favorites TO cepqontag_staging/);
+});
