@@ -10,6 +10,7 @@ const registerAdminModerationOpsRoutes = require('./admin-moderation-ops-routes'
 const registerAdminBusinessPremiumRoutes = require('./admin-business-premium-routes');
 const registerSupportRoutes = require('./support-routes');
 const registerOfferEditorialRoutes = require('./offer-editorial-routes');
+const registerAdminOffersMarketplaceRoutes = require('./admin-offers-marketplace-routes');
 const registerAppSettingsRoutes = require('./app-settings-routes');
 const { writeAdminAudit, registerAdminAuditRoutes } = require('./admin-audit');
 const { configureTrustedProxy } = require('./proxy-security');
@@ -90,6 +91,7 @@ module.exports = function registerAdminManagementRoutes(app, pool, adminGuard) {
   registerAdminBusinessPremiumRoutes(app, pool, guard);
   registerSupportRoutes(app, pool, guard);
   registerOfferEditorialRoutes(app, pool, guard);
+  registerAdminOffersMarketplaceRoutes(app, pool, guard);
   registerAppSettingsRoutes(app, pool, guard);
   registerAdminAuditRoutes(app, pool, guard);
 
