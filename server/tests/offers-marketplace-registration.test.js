@@ -52,3 +52,13 @@ test('compatibility migration restores the legacy review conflict target', () =>
   assert.match(migration, /CREATE UNIQUE INDEX IF NOT EXISTS offer_reviews_owner_campaign_compat_idx ON offer_reviews\(owner_id,campaign_id\)/);
   assert.match(migration, /A unique-index failure on duplicate reviews aborts this transaction/);
 });
+
+test('discovery rejects partial latitude/longitude input', async () => {
+  const handlers = {};
+  const app = {get: (path, handler) => { handlers[path] = handler; }, post() {}, patch() {}, delete() {}};
+  require('../offers-marketplace-routes')(app, {query: async () => {throw new Error('unexpected database query');}}, {auth: async () => null, offerActor: () => null});
+  let result;
+  const res = {status(code) { this.code=code; return this; }, json(body) {result={code:this.code||200,body}; return this;}};
+  await handlers['/api/offers/discover']({query:{lat:'41'}},res);
+  assert.deepEqual(result,{code:400,body:{error:'INVALID_LOCATION'}});
+});
