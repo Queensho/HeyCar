@@ -1,0 +1,26 @@
+name: Marketplace legacy route guard
+
+on:
+  pull_request:
+    paths:
+      - 'server/business-routes.js'
+      - 'server/business-marketplace-legacy-routes.js'
+      - 'server/tests/legacy-marketplace-route-inventory.test.js'
+      - '.github/workflows/marketplace-legacy-guard.yml'
+  workflow_dispatch:
+
+jobs:
+  route-inventory:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check
+        run: |
+          node --check server/business-routes.js
+          node --check server/business-marketplace-legacy-routes.js
+          node --check server/tests/legacy-marketplace-route-inventory.test.js
+      - name: Verify 17 legacy HTTP routes
+        run: node server/tests/legacy-marketplace-route-inventory.test.js
