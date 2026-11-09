@@ -35,14 +35,19 @@ const pool=new Pool({...config,connectionTimeoutMillis:5000});
   try{for(const file of fs.readdirSync('/etc/nginx/sites-enabled')){
    const s=fs.readFileSync('/etc/nginx/sites-enabled/'+file,'utf8');
    if(!s.includes('8091'))continue;
-   nginx.push({file,serverNames:[...s.matchAll(/server_name\s+([^;]+);/g)].map(m=>m[1]).filter(n=>/stag|test|carwash/i.test(n))});
+   nginx.push({file,serverNames:[...s.matchAll(/server_name\s+([^;]+);/g)].map(m=>m[1]).filter(n=>/stag|test|carwash/i.test(n)),upstreams:[...s.matchAll(/proxy_pass\s+(https?:\/\/[^;]+);/g)].map(m=>new URL(m[1]).origin)});
   }}catch(_){}
   let service={};try{
-   service=Object.fromEntries(execFileSync('systemctl',['show','cepqontag-staging.service','--property=User,WorkingDirectory,ActiveState,EnvironmentFiles'],{encoding:'utf8'}).trim().split('\n').map(l=>{const i=l.indexOf('=');return[l.slice(0,i),l.slice(i+1)];}));
+   service=Object.fromEntries(execFileSync('systemctl',['show','cepqontag-staging.service','--property=User,WorkingDirectory,ActiveState,EnvironmentFiles,MainPID'],{encoding:'utf8'}).trim().split('\n').map(l=>{const i=l.indexOf('=');return[l.slice(0,i),l.slice(i+1)];}));
+   if(/^\d+$/.test(service.MainPID||'')){
+    const inherited=Object.fromEntries(fs.readFileSync('/proc/'+service.MainPID+'/environ','utf8').split('\0').filter(Boolean).map(l=>{const i=l.indexOf('=');return[l.slice(0,i),l.slice(i+1)];}));
+    service.inherited=Object.fromEntries(['PORT','APP_ENV','STAGING_DISABLE_EXTERNAL_SERVICES','DB_HOST','DB_PORT','DB_NAME','DB_USER'].filter(k=>k in inherited).map(k=>[k,inherited[k]]));
+   }
   }catch(_){}
   const source=fs.readFileSync('server.js','utf8');
   let sudo='';try{sudo=execFileSync('sudo',['-n','-l'],{encoding:'utf8',stdio:['ignore','pipe','pipe']});}catch(e){sudo=String(e.stdout||'SUDO_UNAVAILABLE');}
-  const result={identity:id,historyExists,history,tables,extensions,service,nginx,sudo,
+  let listening=[];try{listening=execFileSync('ss',['-ltnp'],{encoding:'utf8'}).split('\n').filter(l=>/:(8091|18091)\b/.test(l));}catch(_){}
+  const result={identity:id,historyExists,history,tables,extensions,service,nginx,sudo,listening,
    publicApiBase:env.PUBLIC_API_BASE_URL?new URL(env.PUBLIC_API_BASE_URL).origin+new URL(env.PUBLIC_API_BASE_URL).pathname:null,
    isolation:{appEnv:env.APP_ENV||null,externalDisabled},
    flags:{catalog:env.CAR_WASH_CATALOG_ENABLED||null,booking:env.CAR_WASH_BOOKING_ENABLED||null,push:env.CAR_WASH_PUSH_ENABLED||null},
