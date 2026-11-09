@@ -32,6 +32,12 @@ test('call-only partial rollout keeps the shared push policy with its sender',()
   assert.ok(files.has('push-routes.js'));
   const dependency=localImports('push-routes.js').find(x=>x==='external-services-policy.js');
   assert.ok(dependency);assert.ok(files.has(dependency));
+  for(const entry of ['push-routes.js','web-push-service.js']){
+    assert.ok(files.has(entry),entry+' must be copied for call-only rollout');
+    for(const imported of localImports(entry)){
+      assert.ok(files.has(imported),entry+' requires '+imported+' but call-only rollout would not copy/back it up');
+    }
+  }
 });
 
 // Execute only the compatibility block with mocked shell functions. Never run
