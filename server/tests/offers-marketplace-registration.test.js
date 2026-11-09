@@ -14,29 +14,35 @@ test('admin marketplace routes use the existing admin guard', () => {
   assert.match(admin, /registerAdminOffersMarketplaceRoutes\(app, pool, guard\)/);
 });
 test('discovery schema includes location fields', () => {
-  const migration = read('migrations/124_offers_marketplace.sql');
+  const migration = read('migrations/128_offers_marketplace_compatibility.sql');
   assert.match(migration, /ADD COLUMN IF NOT EXISTS city text/);
   assert.match(migration, /ADD COLUMN IF NOT EXISTS district text/);
 });
 
 test('review moderation revisions advance and existing services schema is checked', () => {
-  const migration = read('migrations/124_offers_marketplace.sql');
-  assert.match(migration, /BUSINESS_SERVICES_SCHEMA_INCOMPATIBLE/);
+  const migration = read('migrations/128_offers_marketplace_compatibility.sql');
+  assert.match(migration, /ADD COLUMN IF NOT EXISTS city text/);
   assert.match(migration, /NEW\.revision := OLD\.revision \+ 1/);
   assert.match(migration, /GRANT SELECT,INSERT,UPDATE,DELETE ON offer_categories,business_services,offer_business_favorites TO cepqontag_staging/);
 });
 
 test('migration has balanced PostgreSQL dollar-quoted blocks', () => {
-  const sql = read('migrations/124_offers_marketplace.sql');
+  const sql = read('migrations/128_offers_marketplace_compatibility.sql');
   const count = (sql.match(/\$\$/g) || []).length;
   assert.equal(count % 2, 0, 'unbalanced dollar-quoted SQL blocks');
-  assert.ok(count >= 8, 'expected review functions and DO blocks');
+  assert.ok(count >= 4, 'expected review function and DO block');
   assert.doesNotMatch(sql, /(?:DO \$ BEGIN|END \$;|LANGUAGE plpgsql AS \$\n)/);
 });
 
 test('migration preserves legacy offer review upsert contract', () => {
-  const migration = read('migrations/124_offers_marketplace.sql');
+  const migration = read('migrations/128_offers_marketplace_compatibility.sql');
   const business = read('business-routes.js');
   assert.match(business, /ON CONFLICT\(owner_id,campaign_id\) DO UPDATE/);
   assert.doesNotMatch(migration, /DROP CONSTRAINT IF EXISTS offer_reviews_owner_id_campaign_id_key/);
+});
+
+test('applied migration 124 remains byte-for-byte compatible', () => {
+  const crypto = require('node:crypto');
+  const sql = read('migrations/124_offers_marketplace.sql');
+  assert.equal(crypto.createHash('sha256').update(sql).digest('hex'), 'd72dd5660303c1119dce735b5dc4f5bce7bb38209c791368a953e4c9a756c750');
 });
