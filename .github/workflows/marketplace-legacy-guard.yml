@@ -4,6 +4,13 @@ on:
   pull_request:
     paths:
       - 'server/business-routes.js'
+      - 'server/admin-management-routes.js'
+      - 'server/offers-marketplace-routes.js'
+      - 'server/admin-offers-marketplace-routes.js'
+      - 'server/offer-redemption-service.js'
+      - 'server/offer-validation.js'
+      - 'server/migrations/124_offers_marketplace.sql'
+      - 'server/tests/offers-marketplace-registration.test.js'
       - 'server/business-marketplace-legacy-routes.js'
       - 'server/tests/legacy-marketplace-route-inventory.test.js'
       - '.github/workflows/marketplace-legacy-guard.yml'
@@ -20,7 +27,15 @@ jobs:
       - name: Syntax check
         run: |
           node --check server/business-routes.js
+          node --check server/admin-management-routes.js
+          node --check server/offers-marketplace-routes.js
+          node --check server/admin-offers-marketplace-routes.js
+          node --check server/offer-redemption-service.js
+          node --check server/offer-validation.js
+          node --check server/tests/offers-marketplace-registration.test.js
           node --check server/business-marketplace-legacy-routes.js
           node --check server/tests/legacy-marketplace-route-inventory.test.js
       - name: Verify 17 legacy HTTP routes
         run: node server/tests/legacy-marketplace-route-inventory.test.js
+      - name: Verify offers marketplace registration
+        run: node --test server/tests/offers-marketplace-registration.test.js
