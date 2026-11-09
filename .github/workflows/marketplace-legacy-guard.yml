@@ -10,6 +10,7 @@ on:
       - 'server/offer-redemption-service.js'
       - 'server/offer-validation.js'
       - 'server/migrations/124_offers_marketplace.sql'
+      - 'server/migrations/128_offers_marketplace_compatibility.sql'
       - 'server/tests/offers-marketplace-registration.test.js'
       - 'server/business-marketplace-legacy-routes.js'
       - 'server/tests/legacy-marketplace-route-inventory.test.js'
