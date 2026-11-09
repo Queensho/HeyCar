@@ -83,3 +83,9 @@ test('favorites never include or delete ambiguous legacy-role records', () => {
   assert.doesNotMatch(routes, /f\.actor_role IN \(\$2,'legacy'\)/);
   assert.match(routes, /f\.actor_role=\$2/);
 });
+
+test('new code issuance never reuses an ambiguous legacy pending code', () => {
+  const service = read('offer-redemption-service.js');
+  assert.match(service, /WHERE owner_id=\$1 AND actor_role=\$2 AND campaign_id=\$3 AND status='pending'/);
+  assert.doesNotMatch(service, /actor_role IN \(\$2,'legacy'\)/);
+});
