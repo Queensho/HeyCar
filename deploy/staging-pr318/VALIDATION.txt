@@ -1,31 +1,30 @@
-LOCAL/CI VALIDATION ONLY — NO VPS CONNECTION OR DEPLOYMENT
+DRAFT DIAGNOSTIC IMPROVEMENT — EXACT VPS CAUSE NOT IDENTIFIED
+No VPS connection, deployment or real migration performed.
 
-Branch: fix/staging-restore-schema-verification
-Application target remains 4a3cecdb15a60aabe494f6c11b94791172a8a8e4.
-Historical migration files were not changed.
+Requested VPS framing: 1003 statements, statement 83 CREATE TABLE, 113 -> 111 tokens.
+Required missing input: actual object name and source/restored short SQL difference.
+Counts alone do not identify SQL semantics or prove equivalence.
 
-Reproduced with isolated PostgreSQL 16.15 and synthetic data:
-- Old stable_schema_dump(source) == stable_schema_dump(archive schema).
-- Old stable_schema_dump(source) != stable_schema_dump(restored schema).
-- Difference: NULL-containing unbounded varchar array -> text[] cast rewritten into per-element casts by PostgreSQL.
-- This is a reproduced cause; the exact deleted VPS probe's difference is not known.
+Local PostgreSQL 16.15 investigation:
+- Repository's fresh 120-file schema: 955 statements in this fixture;
+  statement 83 is public.offer_categories, 60 tokens, unchanged after restore.
+- A DIFFERENT synthetic bpchar-array table padded with 26 integer columns
+  produces actual 113 -> 111 token dump/restore CREATE TABLE statements.
+  This is not claimed to be the VPS object or its root cause.
+- Diagnostic indexing independently verified with 1003 framed statements and difference at 83.
 
-Current validations:
-- Standalone staging safety/mock tests: 14 passed, 0 failed, 0 skipped.
-- Actual pinned archive/package regressions: 2 passed, 0 failed, 0 skipped.
-- PostgreSQL restore/SQL safety groups: 7 passed, 0 failed, 0 skipped.
-  Includes real custom dump/restore, NULL-cast equivalence, literal/function-body preservation,
-  symlink-safe 0600 redacted diagnostics surviving clone cleanup, libc/ICU Turkish locale and owner,
-  LATIN1 text round trip without changing database encoding,
-  and rejection of missing table/index/constraint/default/ACL/owner differences.
-- Full historical 120-file source: backup/restore verified; migration 125 applied only to the probe.
-- Source remains 120 after positive restore verification and after deliberately broken probe index.
-- npm run check: passed.
-- npm test: 146 passed, 0 failed, 2 existing PostgreSQL skips (148 total).
-- Full backend release suite on another fresh disposable PostgreSQL: 182 passed, 0 failed, 0 skipped.
+Production SQL normalization deliberately unchanged from PR #321.
+All prior comparison, migration, isolation, restore and cleanup core functions verified unchanged.
+New private diagnostics include object identity and bounded structural deltas;
+values, roles, function bodies and non-metadata identifiers remain HMAC-pseudonymized.
+Mode 0600, symlink refusal and safe temporary clone cleanup retained.
 
-Schema snapshots include ownership and ACLs. Only limited constant-array cast equivalence and
-SQL whitespace/comments outside literals are normalized. Real differences remain fatal.
-Diagnostic JSON includes only positions/categories/counts and ephemeral-key HMAC fingerprints;
-no SQL, object names, literal values, function bodies, user records or credentials are included.
-CI uses its own PostgreSQL service container's tools, verifies cluster identity and never accesses VPS.
+Tests:
+- PostgreSQL restore/SQL-safety groups: 9 passed, 0 failed, 0 skipped.
+- Standalone staging safety/mock groups: 14 passed, 0 failed, 0 skipped.
+- Pinned package regressions: 2 passed, 0 failed, 0 skipped.
+- Full isolated backend release suite: 182 passed, 0 failed, 0 skipped.
+- Historical migrations and application backend files unchanged.
+
+This draft is reviewable diagnostic work; do not treat it as a completed fix for
+an unidentified VPS CREATE TABLE statement or deploy it as an alleged normalization fix.

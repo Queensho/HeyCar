@@ -221,8 +221,81 @@ def stable_schema_dump(text):
     return '\n'.join(statements)
 
 
+def schema_object(values):
+    """Extract only SQL object metadata, never data/defaults or role names."""
+    def identifier_at(at):
+        if at>=len(values):return None
+        value=values[at]
+        if re.fullmatch(r'[A-Za-z_\u0080-\uffff][A-Za-z_0-9$\u0080-\uffff]*',value):return value
+        if value.startswith('"') and value.endswith('"') and len(value)>=2:return value
+        return None
+    def qualified(at):
+        parts=[];value=identifier_at(at)
+        if value is None:return None
+        parts.append(value)
+        while at+2<len(values) and values[at+1]=='.' and identifier_at(at+2) is not None:
+            parts.append(values[at+2]);at+=2
+        name='.'.join(parts)
+        # PostgreSQL identifiers can contain control characters. Do not copy
+        # those into operational diagnostics, even though JSON escapes them.
+        if len(name)>512 or re.search(r'[\x00-\x1f\x7f]',name):return None
+        return name
+    if not values:return {}
+    start=None;kind=None
+    if values[0] in ('CREATE','ALTER','DROP'):
+        at=1
+        while at<len(values) and values[at] in ('OR','REPLACE','UNIQUE','UNLOGGED','TEMP','TEMPORARY'):at+=1
+        if at<len(values) and values[at]=='MATERIALIZED':at+=1
+        if at<len(values) and values[at] in ('TABLE','INDEX','SEQUENCE','FUNCTION','PROCEDURE','VIEW','TYPE','DOMAIN','SCHEMA','EXTENSION','POLICY','TRIGGER'):
+            kind=values[at];start=at+1
+            while start<len(values) and values[start] in ('IF','NOT','EXISTS','ONLY','CONCURRENTLY'):start+=1
+    elif values[0] in ('GRANT','REVOKE','COMMENT') and 'ON' in values:
+        at=values.index('ON')+1
+        if at<len(values) and values[at] in ('TABLE','SCHEMA','SEQUENCE','FUNCTION','PROCEDURE','COLUMN','INDEX','CONSTRAINT','TYPE','DOMAIN','VIEW','POLICY','TRIGGER'):
+            kind=values[at];start=at+1
+    result={}
+    if start is not None:
+        name=qualified(start)
+        if name:result={'objectKind':kind,'objectName':name}
+    if result.get('objectKind') in ('INDEX','POLICY','TRIGGER') and 'ON' in values:
+        name=qualified(values.index('ON')+1)
+        if name:result['tableName']=name
+    return result
+
+
+def schema_structural_changes(source_values,restored_values,key):
+    """Bounded token deltas with SQL structure visible and values pseudonymized."""
+    import difflib
+    import hmac
+    words={'CREATE','ALTER','DROP','OR','REPLACE','TABLE','INDEX','UNIQUE','ONLY','IF','NOT','EXISTS','CONCURRENTLY',
+           'CONSTRAINT','CHECK','PRIMARY','KEY','FOREIGN','REFERENCES','DEFAULT','NULL','AND','ANY','ALL','ARRAY','IN','IS',
+           'GRANT','REVOKE','ON','TO','FROM','SELECT','INSERT','UPDATE','DELETE','TRUNCATE','USAGE','EXECUTE','WITH','OPTION',
+           'OWNER','SET','RESET','ENABLE','DISABLE','ROW','LEVEL','SECURITY','POLICY','AS','FOR','USING','COLLATE','GENERATED',
+           'ALWAYS','BY','IDENTITY','STORED','CASCADE','RESTRICT','NO','ACTION','DEFERRABLE','INITIALLY','DEFERRED','IMMEDIATE',
+           'integer','bigint','smallint','text','character','varying','numeric','decimal','real','double','precision','boolean',
+           'timestamp','time','date','interval','with','without','zone','uuid','bytea','json','jsonb','bpchar','name'}
+    punctuation={'(',')','[',']','.',',',';','::','=','>=','<=','>','<','<>','!=','+','-','*','/','%','||','->','->>','#>','#>>'}
+    def safe(value):
+        if value in words or value in punctuation:return value
+        kind='identifier'
+        if value.startswith(("'","E'","e'")) or value.startswith('$') or value in ('true','false') or re.fullmatch(r'(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?',value):kind='value'
+        digest=hmac.new(key,(kind+':'+value).encode(),hashlib.sha256).hexdigest()[:16]
+        return '<'+kind+':'+digest+'>'
+    changes=[]
+    for action,a0,a1,b0,b1 in difflib.SequenceMatcher(None,source_values,restored_values,autojunk=False).get_opcodes():
+        if action=='equal':continue
+        changes.append({'action':action,'sourceTokenStart':a0+1,'sourceTokenCount':a1-a0,
+                        'restoredTokenStart':b0+1,'restoredTokenCount':b1-b0,
+                        'sourceTokens':[safe(x) for x in source_values[a0:min(a1,a0+12)]],
+                        'restoredTokens':[safe(x) for x in restored_values[b0:min(b1,b0+12)]],
+                        'sourceContext':[safe(x) for x in source_values[max(0,a0-4):min(len(source_values),a1+4,a0+16)]],
+                        'restoredContext':[safe(x) for x in restored_values[max(0,b0-4):min(len(restored_values),b1+4,b0+16)]]})
+        if len(changes)>=8:break
+    return changes
+
+
 def schema_difference_report(source, restored, key):
-    """Only positions, fixed SQL categories and keyed fingerprints, never SQL."""
+    """Private object metadata and redacted structural deltas, never literal data."""
     import difflib
     import hmac
     def fingerprint(value):return hmac.new(key,value.encode(),hashlib.sha256).hexdigest()
@@ -233,17 +306,18 @@ def schema_difference_report(source, restored, key):
         for value in values[:4]:
             if value not in categories:break
             label.append(value)
-        return {'kind':' '.join(label) or 'SQL','tokenCount':len(values),'fingerprint':fingerprint(statement)}
+        return {'kind':' '.join(label) or 'SQL','tokenCount':len(values),'fingerprint':fingerprint(statement),**schema_object(values)}
     a,b=source.splitlines(),restored.splitlines();differences=[]
     for action,a0,a1,b0,b1 in difflib.SequenceMatcher(None,a,b,autojunk=False).get_opcodes():
         if action=='equal':continue
         differences.append({'action':action,'sourceStatementStart':a0+1,'sourceStatementCount':a1-a0,'restoredStatementStart':b0+1,'restoredStatementCount':b1-b0,
                             'source':[describe(x) for x in a[a0:min(a1,a0+3)]],
-                            'restored':[describe(x) for x in b[b0:min(b1,b0+3)]]})
+                            'restored':[describe(x) for x in b[b0:min(b1,b0+3)]],
+                            'structuralChanges':[schema_structural_changes(json.loads(a[a0+n]) if a0+n<a1 else [],json.loads(b[b0+n]) if b0+n<b1 else [],key) for n in range(min(3,max(a1-a0,b1-b0)))]})
         if len(differences)>=10:break
     return {'sourceStatementCount':len(a),'restoredStatementCount':len(b),
             'sourceFingerprint':fingerprint(source),'restoredFingerprint':fingerprint(restored),
-            'firstDifferences':differences,'sqlTextIncluded':False,'fingerprintAlgorithm':'HMAC-SHA256; ephemeral undisclosed key'}
+            'firstDifferences':differences,'sqlTextIncluded':False,'objectNamesIncluded':True,'literalValuesIncluded':False,'fingerprintAlgorithm':'HMAC-SHA256; ephemeral undisclosed key'}
 
 
 def write_private_json(path,value):

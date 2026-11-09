@@ -142,6 +142,35 @@ $literal$;
         self.assertEqual(self.release.database_properties(),self.release.database_properties(self.release.probe))
         self.assertEqual(self.release.counts(),self.release.counts(self.release.probe))
 
+    def test_pg16_two_token_difference_is_named_and_stays_fail_closed(self):
+        # A different synthetic table also gives 113 -> 111 tokens. This proves
+        # counts alone cannot identify the deleted VPS statement or justify a
+        # new normalization rule. Keep comparison strict pending its actual SQL.
+        columns=','.join('c'+str(n)+' integer' for n in range(26))
+        self.pg.sql(self.source,"CREATE TABLE two_token_example(state text CHECK(state=ANY(ARRAY['active'::bpchar])),"+columns+")")
+        source=self.release.schema_dump(deploy.DB)
+        path=Path(self.temp.name)/'two-token.dump'
+        path.write_bytes(self.pg.run(self.pg.args('pg_dump',self.source)+['--format=custom','--encoding=UTF8']))
+        self.release.create_restore_probe();self.release.restore_archive(path)
+        restored=self.release.schema_dump(self.release.probe)
+        before=[json.loads(line) for line in deploy.stable_schema_dump(source).splitlines()]
+        after=[json.loads(line) for line in deploy.stable_schema_dump(restored).splitlines()]
+        select=lambda statements: next(values for values in statements if deploy.schema_object(values).get('objectName')=='public.two_token_example' and values[:2]==['CREATE','TABLE'])
+        a,b=select(before),select(after)
+        self.assertEqual((len(a),len(b)),(113,111))
+        with self.assertRaisesRegex(deploy.Stop,'Restored schema differs'):
+            self.release.compare_schema(source,restored,'unconfirmed-two-token-case')
+        report=json.loads((self.release.backup/'schema-difference.json').read_text())
+        entries=[item for difference in report['firstDifferences'] for side in ('source','restored') for item in difference[side]]
+        self.assertTrue(any(item.get('objectName')=='public.two_token_example' for item in entries))
+        self.assertTrue(any(difference['structuralChanges'] for difference in report['firstDifferences']))
+        # Independently verify diagnostic offsets for the operator's 1003/83
+        # framing using the REAL pg_dump statement tokens obtained above.
+        prefix=[json.dumps(['SELECT','1',';'])]*82;suffix=[json.dumps(['SELECT','2',';'])]*920
+        diagnostic=deploy.schema_difference_report('\n'.join(prefix+[json.dumps(a)]+suffix),'\n'.join(prefix+[json.dumps(b)]+suffix),b'fixture-key')
+        self.assertEqual((diagnostic['sourceStatementCount'],diagnostic['restoredStatementCount']),(1003,1003))
+        self.assertEqual(diagnostic['firstDifferences'][0]['sourceStatementStart'],83)
+
     def test_locale_encoding_and_database_owner_are_preserved(self):
         source='heycar_test_icu_'+self.pg.suffix+'_'+secrets.token_hex(3)
         self.pg.create(source,provider='i');self.release.source=source
@@ -165,6 +194,8 @@ $literal$;
         mutations=[
             'DROP TABLE fixture CASCADE',
             'DROP INDEX fixture_state_idx',
+            'ALTER TABLE fixture DROP COLUMN private_value',
+            'ALTER TABLE fixture ALTER COLUMN state TYPE text',
             'ALTER TABLE fixture DROP CONSTRAINT fixture_state_check',
             'ALTER TABLE fixture ALTER COLUMN private_value SET DEFAULT \'CHANGED_FAKE_SECRET\'',
             'REVOKE SELECT ON fixture FROM '+deploy.identifier(self.pg.role),
@@ -180,8 +211,12 @@ $literal$;
                     self.release.compare_schema(self.release.schema_dump(deploy.DB),self.release.schema_dump(self.release.probe),'test-real-change')
                 diagnostic=Path(self.temp.name)/'schema-difference.json';content=diagnostic.read_text()
                 self.assertEqual(stat.S_IMODE(diagnostic.stat().st_mode),0o600)
-                for secret in ['DO_NOT_DISCLOSE','CHANGED_FAKE_SECRET','example.invalid','fixture_state_idx',self.pg.role]:self.assertNotIn(secret,content)
-                self.assertTrue(json.loads(content)['firstDifferences'])
+                for secret in ['DO_NOT_DISCLOSE','CHANGED_FAKE_SECRET','example.invalid',self.pg.role]:self.assertNotIn(secret,content)
+                report=json.loads(content)
+                self.assertTrue(report['firstDifferences'])
+                names=[item.get('objectName','') for diff in report['firstDifferences'] for side in ('source','restored') for item in diff[side]]
+                self.assertTrue(any(name in ('public.fixture','fixture_state_idx') for name in names))
+                self.assertTrue(any(diff['structuralChanges'] for diff in report['firstDifferences']))
                 self.release.cleanup_probe();self.assertTrue(diagnostic.is_file())
 
     def test_full_120_baseline_backup_restore_and_probe_only_migration(self):
@@ -230,6 +265,22 @@ class PureSchemaSafety(unittest.TestCase):
 
         self.assertEqual(deploy.stable_schema_dump('-- actual comment\nSELECT  1;'),deploy.stable_schema_dump('SELECT\t1;'))
         self.assertNotEqual(deploy.stable_schema_dump("COMMENT ON TABLE t IS 'a\n\nb';"),deploy.stable_schema_dump("COMMENT ON TABLE t IS 'a\nb';"))
+
+    def test_diagnostic_exposes_object_and_shape_but_masks_values_and_roles(self):
+        source="CREATE TABLE public.example(id integer, value text DEFAULT 'PRIVATE_VALUE', CONSTRAINT example_check CHECK(length(value)>3));"
+        restored=source.replace('>3','>=4').replace('PRIVATE_VALUE','ALTERED_PRIVATE_VALUE')
+        report=deploy.schema_difference_report(deploy.stable_schema_dump(source),deploy.stable_schema_dump(restored),b'fixture-key')
+        text=json.dumps(report)
+        self.assertEqual(report['firstDifferences'][0]['source'][0]['objectName'],'public.example')
+        self.assertIn('>=',text)
+        for value in ['PRIVATE_VALUE','ALTERED_PRIVATE_VALUE','length']:
+            self.assertNotIn(value,text)
+        self.assertTrue(report['firstDifferences'][0]['structuralChanges'])
+        for statement in ['ALTER TABLE ONLY public.example OWNER TO private_role;', 'GRANT SELECT ON TABLE public.example TO private_role;']:
+            tokens=deploy.schema_tokens(statement);values=[value for kind,value in tokens]
+            self.assertEqual(deploy.schema_object(values)['objectName'],'public.example')
+            self.assertNotIn('private_role',json.dumps(deploy.schema_structural_changes(values,[],b'fixture-key')))
+        self.assertEqual(deploy.schema_object(['CREATE','TABLE','"bad\nname"','(','id','integer',')',';']),{})
 
     def test_private_diagnostic_writer_refuses_symlinks(self):
         with tempfile.TemporaryDirectory() as folder:
