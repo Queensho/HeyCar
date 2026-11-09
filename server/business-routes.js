@@ -112,5 +112,5 @@ module.exports=function registerBusinessRoutes(app,pool){
  app.get('/api/offers/:campaignId/reviews',async(req,res)=>{try{const q=await pool.query(`SELECT r.rating,r.comment,r.created_at FROM offer_reviews r JOIN business_campaigns c0 ON c0.id=$1 JOIN business_campaigns c ON c.business_id=c0.business_id WHERE r.campaign_id=c.id ORDER BY r.created_at DESC LIMIT 50`,[req.params.campaignId]);const s=await pool.query(`SELECT round(avg(r.rating)::numeric,1) rating,count(r.id)::int review_count FROM offer_reviews r JOIN business_campaigns c0 ON c0.id=$1 JOIN business_campaigns c ON c.business_id=c0.business_id WHERE r.campaign_id=c.id`,[req.params.campaignId]);res.json({ok:true,reviews:q.rows,rating:s.rows[0]?.rating||null,reviewCount:s.rows[0]?.review_count||0});}catch(e){res.status(400).json({error:'INVALID_OFFER'});}});
 
  // Keep legacy service/appointment routes registered alongside offer routes.
- require('./business-marketplace-legacy-routes')(app,pool,{auth,hash});
+ require('./business-marketplace-legacy-routes')(app,pool,{auth});
 };
