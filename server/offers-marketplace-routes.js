@@ -31,7 +31,7 @@ module.exports = function registerMarketplace(app, pool, {auth, offerActor}) {
     const q=await pool.query(`SELECT r.*,c.title,c.ends_at,b.name,b.address,rv.rating review_rating,rv.comment review_comment,rv.moderation_status review_status,
       CASE WHEN r.status='pending' AND (clock_timestamp()>c.ends_at OR NOT c.is_active OR c.moderation_status<>'approved' OR NOT b.is_active OR b.approval_status<>'approved') THEN 'expired' ELSE r.status END display_status
       FROM offer_redemptions r JOIN business_campaigns c ON c.id=r.campaign_id JOIN businesses b ON b.id=c.business_id LEFT JOIN offer_reviews rv ON rv.redemption_id=r.id
-      WHERE r.owner_id=$1 AND r.actor_role IN ($2,'legacy') ORDER BY r.created_at DESC LIMIT 100`,[actor.id,actor.role]);res.json({ok:true,redemptions:q.rows});
+      WHERE r.owner_id=$1 AND r.actor_role=$2 ORDER BY r.created_at DESC LIMIT 100`,[actor.id,actor.role]);res.json({ok:true,redemptions:q.rows});
   }));
   app.post('/api/offers/businesses/:businessId/favorite',wrap(async(req,res)=>{
     const actor=offerActor(req);if(!actor)return res.status(401).json({error:'AUTH_REQUIRED'});
