@@ -128,11 +128,11 @@ BEGIN
 END $$;
 CREATE TRIGGER car_wash_account_removed BEFORE DELETE ON users
  FOR EACH ROW EXECUTE FUNCTION car_wash_account_lifecycle();
-DO $$ BEGIN
- IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='heycar_user') THEN
-  GRANT SELECT,INSERT,UPDATE,DELETE ON car_wash_locations,car_wash_services,
+DO $$ DECLARE runtime_role text := COALESCE(NULLIF(current_setting('cepqontag.runtime_role',true),''),'heycar_user'); BEGIN
+ IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname=runtime_role) THEN
+  EXECUTE format('GRANT SELECT,INSERT,UPDATE,DELETE ON car_wash_locations,car_wash_services,
    car_wash_hours,car_wash_closed_days,car_wash_staff,car_wash_resources,
-   car_wash_bookings,car_wash_history,car_wash_requests,car_wash_notifications TO heycar_user;
+   car_wash_bookings,car_wash_history,car_wash_requests,car_wash_notifications TO %I',runtime_role);
  END IF;
 END $$;
 COMMIT;

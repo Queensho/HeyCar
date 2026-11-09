@@ -203,4 +203,25 @@ test('car wash customer and business journey through the real server and Postgre
   assert.equal(b.owner_id,null);assert.equal(b.status,'cancelled');assert.equal(b.vehicle_plate,'Silinen araç');
   assert.equal((await pool.query('SELECT * FROM car_wash_requests WHERE actor=$1',['owner:'+u.id])).rowCount,0);
  });
+ await t.test('actual staging migration probe works without database CREATE privilege and rolls back',async()=>{
+  const fs=require('node:fs');
+  const deploy=fs.readFileSync(path.join(__dirname,'../../deploy/car-wash-phase3/deploy.cjs'),'utf8');
+  const fn=deploy.slice(deploy.indexOf('async function probe'),deploy.indexOf('function patchedServer'));
+  const probe=new Function('fs','source','assert','files',fn+';return probe;')(fs,path.resolve(__dirname,'../..'),assert,['126_car_wash_catalog.sql','127_car_wash_bookings.sql']);
+  const role='carwash_probe_'+crypto.randomBytes(6).toString('hex');
+  await pool.query(`CREATE ROLE ${role}`);
+  await pool.query(`GRANT SELECT ON users,vehicles,businesses TO ${role}`);
+  const db=await pool.connect();
+  try{
+   await db.query(`SET ROLE ${role}`);
+   assert.equal((await db.query("SELECT has_database_privilege(current_user,current_database(),'CREATE') AS yes")).rows[0].yes,false);
+   const before=(await db.query('SELECT count(*)::int AS n FROM public.users')).rows[0].n;
+   await probe(db,require('../migration-sql').migrationBody);
+   assert.equal((await db.query('SELECT count(*)::int AS n FROM public.users')).rows[0].n,before);
+  }finally{
+   await db.query('RESET ROLE');db.release(true);
+   await pool.query(`REVOKE SELECT ON users,vehicles,businesses FROM ${role}`);
+   await pool.query(`DROP ROLE ${role}`);
+  }
+ });
 });
