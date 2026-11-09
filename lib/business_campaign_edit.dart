@@ -85,6 +85,10 @@ class _BusinessCampaignEditState extends State<BusinessCampaignEdit> {
       marketMessage(context, 'İndirim oranı 1 ile 100 arasında olmalıdır.');
       return;
     }
+    if (fields['title']!.text.trim().isEmpty) {
+      marketMessage(context, 'Kampanya başlığı boş bırakılamaz.');
+      return;
+    }
     setState(() => busy = true);
     try {
       final r = await http.patch(
@@ -111,8 +115,20 @@ class _BusinessCampaignEditState extends State<BusinessCampaignEdit> {
                 fields['offer_price']!.text.replaceAll(',', '.')),
             'discountPercent': int.tryParse(discount)
           }));
-      if (r.statusCode != 200)
-        throw Exception('Kampanya kaydedilemedi (${r.statusCode}).');
+      if (r.statusCode != 200) {
+        String reason = 'Kampanya kaydedilemedi (${r.statusCode}).';
+        try {
+          final data = jsonDecode(r.body);
+          if (data is Map && data['error'] == 'CAMPAIGN_INVALID') {
+            reason = 'Kampanya bilgilerini, tarihleri ve limitleri kontrol edin.';
+          } else if (data is Map && data['error'] == 'INVALID_SESSION') {
+            reason = 'İşletme oturumu sona erdi. Yeniden giriş yapın.';
+          } else if (data is Map && data['error'] == 'NOT_FOUND') {
+            reason = 'Kampanya bulunamadı veya bu işletmeye ait değil.';
+          }
+        } catch (_) {}
+        throw Exception(reason);
+      }
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) marketMessage(context, e);
