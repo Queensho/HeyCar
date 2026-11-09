@@ -227,7 +227,7 @@ def normalize_check_and_groups(tokens):
     while at<len(tokens):
         if tokens[at]==('word','CHECK') and at+1<len(tokens) and punct(tokens[at+1],'('):
             end=close(tokens,at+1);body=tokens[at+2:end]
-            conjunction=None if any(kind=='word' and value in forbidden for kind,value in body) else terms(body)
+            conjunction=None if any(kind=='word' and value.upper() in forbidden for kind,value in body) else terms(body)
             if conjunction is not None:
                 # Keep CHECK's syntax pair and one explicit Boolean AND group.
                 result.extend([tokens[at],tokens[at+1],('punctuation','(')])

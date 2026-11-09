@@ -359,6 +359,7 @@ class PureSchemaSafety(unittest.TestCase):
         self.assertNotEqual(deploy.stable_schema_dump('ALTER TABLE t ADD CONSTRAINT ck CHECK((a AND b) AND c) NOT VALID;'),check('a AND b AND c'))
         self.assertNotEqual(deploy.stable_schema_dump('CREATE TABLE t(a boolean NOT NULL,b boolean,c boolean,CHECK((a AND b) AND c));'),canonical)
         self.assertNotEqual(check('(a OR b) AND c'),check('a OR (b AND c)'))
+        self.assertNotEqual(check('((a AND b or c) AND d)'),check('a AND b or c AND d'))
         self.assertNotEqual(check('NOT (a AND b)'),check('(NOT a) AND b'))
         self.assertNotEqual(check('((x+y)*z>0) AND a'),check('(x+(y*z)>0) AND a'))
         self.assertNotEqual(check('((x>0 AND y>0) AND z>0)'),check('x>0 AND y>1 AND z>0'))
@@ -366,7 +367,7 @@ class PureSchemaSafety(unittest.TestCase):
         self.assertNotEqual(check('(a AND b) AND c'),check('b AND a AND c'))
         self.assertNotEqual(check('x::numeric>0 AND a'),check('x::integer>0 AND a'))
         # No guessing about BETWEEN, CASE, NOT, OR or non-table DDL.
-        for sql in ['CREATE TABLE t(x int,CHECK(x BETWEEN 1 AND 3));', 'CREATE TABLE t(a bool,b bool,CHECK(CASE WHEN a THEN b AND a ELSE false END));', 'CREATE DOMAIN d AS boolean CHECK ((VALUE AND VALUE));', 'CREATE POLICY p ON t USING ((a AND b) AND c);', 'CREATE INDEX i ON t(a) WHERE ((a AND b) AND c);']:
+        for sql in ['CREATE TABLE t(x int,CHECK(x BETWEEN 1 AND 3));', 'CREATE TABLE t(a bool,b bool,CHECK(CASE WHEN a THEN b AND a ELSE false END));', 'CREATE DOMAIN d AS boolean CHECK ((VALUE AND VALUE));', 'CREATE POLICY p ON t USING ((a AND b) AND c);', 'CREATE INDEX i ON t(a) WHERE ((a AND b) AND c);', 'CREATE TABLE t(x int,CHECK(x between 1 AND 3));', 'CREATE TABLE t(a bool,b bool,c bool,d bool,CHECK((a AND b or c) AND d));']:
             expected=[value for kind,value in deploy.schema_tokens(sql)]
             self.assertEqual(json.loads(deploy.stable_schema_dump(sql)),expected)
         literal="CREATE TABLE t(value text,CHECK(value='(a AND b)' AND true));"

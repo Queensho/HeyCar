@@ -6,7 +6,7 @@ GitHub branch: `fix/pg16-check-parenthesis-normalization`
 
 Repository yolu: `deploy/staging-pr318/deploy-staging-pr318.py`
 
-Betik GitHub branch üzerinden veya paylaşılmış commit SHA’sına sabitlenmiş raw URL üzerinden indirilebilir. SHA-256: `7843984dd722f7014ded5ab73ed5349ed9fc2fcbe08bdb9871fd5a90ba82cdf1`. İndirmek betiği çalıştırmaz.
+Betik GitHub branch üzerinden veya paylaşılmış commit SHA’sına sabitlenmiş raw URL üzerinden indirilebilir. SHA-256: `23997ab3f041182c4ff9d4c68c3277b554629750d0a6e91c3445998ec60fc566`. İndirmek betiği çalıştırmaz.
 
 Tek otomasyon dosyası: **deploy-staging-pr318.py**. GitHub main üzerinde değişiklik yapılmadı; eski staging workflow'u tetiklenmedi. Paket veritabanı yedeği, kullanıcı verisi veya erişim anahtarı içermez.
 
