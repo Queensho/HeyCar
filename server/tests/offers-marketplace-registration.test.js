@@ -102,3 +102,13 @@ test('legacy redemption verification locks campaign before redemption and refres
   assert.match(handler, /const limits=lockedCampaign\.rows\[0\]/);
   assert.doesNotMatch(handler, /r\.plate=\$3 FOR UPDATE/);
 });
+
+test('legacy verification checks campaign and business availability using database clock', () => {
+  const business = read('business-routes.js');
+  const start = business.indexOf("app.post('/api/business/redemptions/verify'");
+  const end = business.indexOf("app.get('/api/business/rede",start);
+  const handler = business.slice(start,end);
+  assert.match(handler,/clock_timestamp\(\) BETWEEN c\.starts_at AND c\.ends_at/);
+  assert.match(handler,/if\(!limits\.available\)/);
+  assert.match(handler,/FOR UPDATE OF c/);
+});
