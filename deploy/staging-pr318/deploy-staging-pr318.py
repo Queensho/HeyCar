@@ -186,6 +186,61 @@ def schema_tokens(text):
     return tokens
 
 
+def normalize_check_and_groups(tokens):
+    """Flatten only associative AND grouping in table CHECK expressions.
+
+    Leaves retain their exact tokens and order. OR/NOT/BETWEEN/CASE/subqueries
+    are deliberately opaque; atomic, arithmetic and function-call parentheses
+    are never removed. This is not a general SQL-parenthesis simplifier.
+    """
+    if [value for kind,value in tokens[:2]] not in (['CREATE','TABLE'],['ALTER','TABLE']):return tokens
+    def punct(token,value):return token==('punctuation',value)
+    def close(sequence,start):
+        depth=0
+        for at in range(start,len(sequence)):
+            if punct(sequence[at],'('):depth+=1
+            elif punct(sequence[at],')'):
+                depth-=1
+                if depth==0:return at
+        raise Stop('Unbalanced table CHECK SQL')
+    def terms(expression):
+        while expression and punct(expression[0],'(') and close(expression,0)==len(expression)-1:
+            expression=expression[1:-1]
+        depth=brackets=0;parts=[];start=0
+        for at,token in enumerate(expression):
+            if punct(token,'('):depth+=1
+            elif punct(token,')'):depth-=1
+            elif punct(token,'['):brackets+=1
+            elif punct(token,']'):brackets-=1
+            elif token==('word','AND') and depth==0 and brackets==0:
+                parts.append(expression[start:at]);start=at+1
+        if not parts:return None
+        parts.append(expression[start:])
+        if not all(parts):return None
+        result=[]
+        for part in parts:
+            nested=terms(part)
+            result.extend(nested if nested is not None else [part])
+        return result
+    forbidden={'OR','NOT','BETWEEN','CASE','WHEN','THEN','ELSE','END','SELECT','EXISTS','WITH','OVER','FILTER'}
+    result=[];at=0
+    while at<len(tokens):
+        if tokens[at]==('word','CHECK') and at+1<len(tokens) and punct(tokens[at+1],'('):
+            end=close(tokens,at+1);body=tokens[at+2:end]
+            conjunction=None if any(kind=='word' and value in forbidden for kind,value in body) else terms(body)
+            if conjunction is not None:
+                # Keep CHECK's syntax pair and one explicit Boolean AND group.
+                result.extend([tokens[at],tokens[at+1],('punctuation','(')])
+                for number,part in enumerate(conjunction):
+                    if number:result.append(('word','AND'))
+                    result.extend(part)
+                result.extend([('punctuation',')'),tokens[end]])
+            else:result.extend(tokens[at:end+1])
+            at=end+1
+        else:result.append(tokens[at]);at+=1
+    return result
+
+
 def stable_schema_dump(text):
     # Only normalize a proven built-in cast equivalence: an unbounded varchar
     # array of string/NULL constants cast to text[] equals per-element text
@@ -214,10 +269,10 @@ def stable_schema_dump(text):
     # literals are immaterial; whitespace/newlines inside literals stay exact.
     statements=[];statement=[]
     for kind,value in normalized:
-        statement.append(value)
+        statement.append((kind,value))
         if kind=='punctuation' and value==';':
-            statements.append(json.dumps(statement,ensure_ascii=False,separators=(',',':')));statement=[]
-    if statement:statements.append(json.dumps(statement,ensure_ascii=False,separators=(',',':')))
+            statements.append(json.dumps([value for kind,value in normalize_check_and_groups(statement)],ensure_ascii=False,separators=(',',':')));statement=[]
+    if statement:statements.append(json.dumps([value for kind,value in normalize_check_and_groups(statement)],ensure_ascii=False,separators=(',',':')))
     return '\n'.join(statements)
 
 
@@ -987,6 +1042,12 @@ def self_test():
                     deployment.run([sys.executable,'-c',"import sys;print('TAP failure detail');print('stderr detail',file=sys.stderr);sys.exit(1)"],transcript=transcript)
                 self.assertIn('TAP failure detail',transcript.read_text())
                 self.assertIn('stderr detail',transcript.read_text())
+        def test_table_check_and_grouping_is_narrow(self):
+            def sql(body):return 'CREATE TABLE t(a boolean,b boolean,c boolean,CHECK('+body+'));'
+            self.assertEqual(stable_schema_dump(sql('(a AND b) AND c')),stable_schema_dump(sql('a AND b AND c')))
+            self.assertNotEqual(stable_schema_dump(sql('(a OR b) AND c')),stable_schema_dump(sql('a OR (b AND c)')))
+            self.assertNotEqual(stable_schema_dump(sql('(a AND b) AND c')),stable_schema_dump(sql('a AND b AND NOT c')))
+
         def test_no_rollback_database_operations(self):
             import inspect
             source=inspect.getsource(Deployment.rollback_application)
