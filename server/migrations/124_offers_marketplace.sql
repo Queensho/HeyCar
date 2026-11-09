@@ -11,10 +11,9 @@ ALTER TABLE offer_reviews ADD COLUMN actor_role text NOT NULL DEFAULT 'legacy' C
 ALTER TABLE offer_reviews ADD COLUMN moderation_status text NOT NULL DEFAULT 'pending' CHECK(moderation_status IN ('pending','approved','rejected'));
 ALTER TABLE offer_reviews ADD COLUMN moderation_note text NOT NULL DEFAULT '';
 ALTER TABLE offer_reviews ADD COLUMN reviewed_at timestamptz;
+ALTER TABLE offer_reviews DROP CONSTRAINT IF EXISTS offer_reviews_owner_id_campaign_id_key;
 ALTER TABLE offer_reviews ADD CONSTRAINT offer_reviews_redemption_unique UNIQUE(redemption_id);
 CREATE INDEX offer_reviews_public ON offer_reviews(campaign_id) WHERE moderation_status='approved';
-ALTER TABLE businesses ADD COLUMN IF NOT EXISTS city text;
-ALTER TABLE businesses ADD COLUMN IF NOT EXISTS district text;
 ALTER TABLE businesses ADD COLUMN gallery_urls jsonb NOT NULL DEFAULT '[]' CHECK(jsonb_typeof(gallery_urls)='array');
 ALTER TABLE businesses ADD COLUMN vehicle_types text[] NOT NULL DEFAULT ARRAY['car','motorcycle'];
 ALTER TABLE business_campaigns ADD COLUMN terms text NOT NULL DEFAULT '';
@@ -33,7 +32,7 @@ CREATE TABLE offer_business_favorites (
  created_at timestamptz NOT NULL DEFAULT now(),
  PRIMARY KEY(owner_id,actor_role,business_id)
 );
-CREATE TABLE IF NOT EXISTS business_services (
+CREATE TABLE business_services (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  business_id uuid NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
  name text NOT NULL CHECK(length(name) BETWEEN 1 AND 120),
@@ -41,18 +40,6 @@ CREATE TABLE IF NOT EXISTS business_services (
  vehicle_types text[] NOT NULL DEFAULT ARRAY['car','motorcycle'],
  is_active boolean NOT NULL DEFAULT true
 );
-
--- Existing deployments may already have this table; fail clearly if it is incompatible.
-DO $$ BEGIN
- IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='business_services') THEN
-  IF EXISTS (
-   SELECT 1 FROM (VALUES ('id'),('business_id'),('name'),('price'),('vehicle_types'),('is_active')) AS required(column_name)
-   WHERE NOT EXISTS (SELECT 1 FROM information_schema.columns c WHERE c.table_schema='public' AND c.table_name='business_services' AND c.column_name=required.column_name)
-  ) THEN
-   RAISE EXCEPTION 'BUSINESS_SERVICES_SCHEMA_INCOMPATIBLE';
-  END IF;
- END IF;
-END $$;
 
 -- A review can only describe one completed use by its authenticated actor.
 CREATE OR REPLACE FUNCTION validate_offer_review_redemption() RETURNS trigger LANGUAGE plpgsql AS $$
@@ -62,19 +49,10 @@ BEGIN
  END IF;
  RETURN NEW;
 END $$;
-CREATE OR REPLACE FUNCTION bump_offer_review_revision() RETURNS trigger LANGUAGE plpgsql AS $$
-BEGIN
- NEW.revision := OLD.revision + 1;
- RETURN NEW;
-END $$;
-CREATE TRIGGER offer_review_revision_guard BEFORE UPDATE ON offer_reviews FOR EACH ROW EXECUTE FUNCTION bump_offer_review_revision();
 CREATE TRIGGER offer_review_redemption_guard BEFORE INSERT OR UPDATE ON offer_reviews FOR EACH ROW EXECUTE FUNCTION validate_offer_review_redemption();
 DO $$ BEGIN
  IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='heycar_user') THEN
   GRANT SELECT,INSERT,UPDATE,DELETE ON offer_categories,business_services,offer_business_favorites TO heycar_user;
- END IF;
- IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='cepqontag_staging') THEN
-  GRANT SELECT,INSERT,UPDATE,DELETE ON offer_categories,business_services,offer_business_favorites TO cepqontag_staging;
  END IF;
 END $$;
 
