@@ -62,3 +62,18 @@ test('discovery rejects partial latitude/longitude input', async () => {
   await handlers['/api/offers/discover']({query:{lat:'41'}},res);
   assert.deepEqual(result,{code:400,body:{error:'INVALID_LOCATION'}});
 });
+
+test('redemption history is restricted to the authenticated actor role', async () => {
+  const handlers = {};
+  const app = {get: (path, handler) => {handlers[path]=handler;}, post() {}, patch() {}, delete() {}};
+  let queryText, queryArgs;
+  const pool = {query: async (sql,args) => {queryText=sql;queryArgs=args;return {rows:[]};}};
+  require('../offers-marketplace-routes')(app,pool,{auth: async () => null,offerActor: () => ({id:'same-id',role:'driver'})});
+  let body;
+  const res={json(value){body=value;return this;},status(){return this;}};
+  await handlers['/api/offers/history']({query:{}},res);
+  assert.match(queryText,/r\.actor_role=\$2/);
+  assert.doesNotMatch(queryText,/r\.actor_role IN \(\$2,'legacy'\)/);
+  assert.deepEqual(queryArgs,['same-id','driver']);
+  assert.deepEqual(body,{ok:true,redemptions:[]});
+});
