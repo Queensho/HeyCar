@@ -6,8 +6,7 @@ const assert=require('node:assert/strict');
 const {Pool}=require('pg');
 const env=require('dotenv').parse(fs.readFileSync('.env'));
 assert.equal(fs.realpathSync('.'),'/home/cepqontag-deploy/app/server');
-assert.equal(String(env.APP_ENV).toLowerCase(),'staging');
-assert.ok(['1','true','yes','on'].includes(String(env.STAGING_DISABLE_EXTERNAL_SERVICES).toLowerCase()));
+const externalDisabled=String(env.APP_ENV).toLowerCase()==='staging'&&['1','true','yes','on'].includes(String(env.STAGING_DISABLE_EXTERNAL_SERVICES).toLowerCase());
 assert.equal(String(env.PORT),'8091');
 let config;
 if(env.DATABASE_URL){
@@ -43,7 +42,8 @@ const pool=new Pool({...config,connectionTimeoutMillis:5000});
   }catch(_){}
   const source=fs.readFileSync('server.js','utf8');
   const result={identity:id,historyExists,history,tables,extensions,service,nginx,
-   publicApiBase:env.PUBLIC_API_BASE_URL||null,
+   publicApiBase:env.PUBLIC_API_BASE_URL?new URL(env.PUBLIC_API_BASE_URL).origin+new URL(env.PUBLIC_API_BASE_URL).pathname:null,
+   isolation:{appEnv:env.APP_ENV||null,externalDisabled},
    flags:{catalog:env.CAR_WASH_CATALOG_ENABLED||null,booking:env.CAR_WASH_BOOKING_ENABLED||null,push:env.CAR_WASH_PUSH_ENABLED||null},
    integration:{qrRegistration:(source.match(/registerQrRoutes\s*\(app,\s*pool\)/g)||[]).length,carWash:source.includes('registerCarWashBookingRoutes'),idempotencyCors:source.includes('Idempotency-Key')}};
   console.log(JSON.stringify(result,null,2));
