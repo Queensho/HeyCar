@@ -1,14 +1,10 @@
 const {validWeeklyHours,isWithinWeeklyHours,resolveLocalBookingTime,localBookingParts}=require('./marketplace-hours');
 const {availableSlots}=require('./marketplace-availability');
-const crypto=require('crypto');
-const {decodeBusinessImage}=require('./business-image');
-const {getAppSettings}=require('./app-settings-service');
 const {ownerId:authenticatedOwnerId}=require('./owner-auth-service');
-const {driverId:authenticatedDriverId}=require('./driver-auth-service');
 const rateLimit=require('express-rate-limit');
 
 // Preserve the existing marketplace service and appointment endpoints unchanged.
-module.exports=function registerBusinessMarketplaceLegacyRoutes(app,pool,{auth,hash}){
+module.exports=function registerBusinessMarketplaceLegacyRoutes(app,pool,{auth}){
  const marketplaceBookingLimiter=rateLimit({
   windowMs:15*60*1000,
   limit:12,
