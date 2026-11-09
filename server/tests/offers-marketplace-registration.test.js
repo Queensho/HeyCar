@@ -119,3 +119,10 @@ test('old and new API registrations contain no duplicate method/path pairs',()=>
  try{require('../business-routes')(app,{query:async()=>{throw Error('Registration must not query data');}});}finally{if(original===undefined)delete process.env.BUSINESS_UPLOAD_DIR;else process.env.BUSINESS_UPLOAD_DIR=original;}
  for(const route of ['get /api/offers/favorites','post /api/offers/:campaignId/redeem','post /api/business/redemptions/verify','get /api/offers/history','get /api/offers/discover','post /api/marketplace/appointments','get /api/business/marketplace/services'])assert(seen.has(route),route);
 });
+
+
+test('legacy review rows cannot be overwritten through a different authenticated role', () => {
+  const routes=read('offers-marketplace-routes.js');
+  assert.match(routes,/offer_reviews\.actor_role=EXCLUDED\.actor_role/);
+  assert.doesNotMatch(routes,/offer_reviews\.actor_role IN \(EXCLUDED\.actor_role,'legacy'\)/);
+});
