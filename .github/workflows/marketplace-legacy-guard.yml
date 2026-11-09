@@ -24,6 +24,8 @@ jobs:
         run: npm run check --prefix server
       - name: Verify 17 legacy HTTP routes
         run: node server/tests/legacy-marketplace-route-inventory.test.js
+      - name: Install runtime dependencies for actual route registration
+        run: npm install --prefix server --ignore-scripts --no-audit --no-fund
       - name: Verify registration, immutable migration and compatibility guards
         run: node --test server/tests/offers-marketplace-registration.test.js
 
