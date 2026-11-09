@@ -171,6 +171,74 @@ $literal$;
         self.assertEqual((diagnostic['sourceStatementCount'],diagnostic['restoredStatementCount']),(1003,1003))
         self.assertEqual(diagnostic['firstDifferences'][0]['sourceStatementStart'],83)
 
+    def test_historical_gallery_check_parentheses_round_trip(self):
+        import hashlib
+        fixture=Path(__file__).with_name('fixtures')/'marketplace_service_images_legacy.sql'
+        self.assertEqual(hashlib.sha256(fixture.read_bytes()).hexdigest(),'3de5052b1c05d44806bd2e0931d639e3ba561082d954e854266bb11455545f2d')
+        self.pg.sql(self.source,'CREATE TABLE marketplace_services(id uuid PRIMARY KEY);'+fixture.read_text())
+        source=self.release.schema_dump(deploy.DB)
+        path=Path(self.temp.name)/'gallery.dump'
+        path.write_bytes(self.pg.run(self.pg.args('pg_dump',self.source)+['--format=custom','--encoding=UTF8']))
+        archive=self.release.run(['pg_restore','--schema-only','--file=-',path])
+        self.assertEqual(deploy.stable_schema_dump(source),deploy.stable_schema_dump(archive))
+        self.release.create_restore_probe();self.release.restore_archive(path)
+        restored=self.release.schema_dump(self.release.probe)
+        def gallery_statement(sql):
+            statement=[]
+            for kind,value in deploy.schema_tokens(sql):
+                statement.append(value)
+                if kind=='punctuation' and value==';':
+                    if statement[:2]==['CREATE','TABLE'] and deploy.schema_object(statement).get('objectName')=='public.marketplace_service_images':return statement
+                    statement=[]
+            self.fail('Historical gallery CREATE TABLE missing')
+        before,after=gallery_statement(source),gallery_statement(restored)
+        self.assertEqual((len(before),len(after)),(113,111))
+        import difflib
+        changes=[(op,before[a0:a1],after[b0:b1]) for op,a0,a1,b0,b1 in difflib.SequenceMatcher(None,before,after,autojunk=False).get_opcodes() if op!='equal']
+        self.assertEqual(changes,[('delete',['('],[]),('delete',[')'],[])])
+        self.release.compare_schema(source,restored,'gallery-and-parentheses')
+        self.assertEqual(self.release.schema_digest(deploy.DB),self.release.schema_digest(self.release.probe))
+        expression_sql="SELECT pg_get_expr(conbin,conrelid) FROM pg_constraint WHERE conrelid='public.marketplace_service_images'::regclass AND conname='marketplace_service_images_image_url_check'"
+        original_expression=self.release.pg(expression_sql)
+        restored_expression=self.release.pg(expression_sql,self.release.probe)
+        samples=[None,'','https://a.c','https://a.co','http://example.invalid/a','https://example.invalid/a','https://example.invalid/bad space','https://example.invalid/bad\"quote','https://example.invalid/bad<angle','https://example.invalid/bad\nline','https://'+'a'*2040,'https://'+'a'*2041]
+        values=','.join('('+('NULL::text' if value is None else deploy.literal(value))+')' for value in samples)
+        self.assertEqual(self.release.pg('WITH sample(image_url) AS (VALUES '+values+') SELECT count(*) FROM sample WHERE ('+original_expression+') IS DISTINCT FROM ('+restored_expression+')'),'0')
+        # PostgreSQL CHECK accepts TRUE and UNKNOWN, rejects FALSE. Test both
+        # predicate values and CHECK acceptance, including URL-length boundaries.
+        acceptance=self.release.query_json('WITH sample(image_url) AS (VALUES '+values+') SELECT json_agg(('+original_expression+') IS DISTINCT FROM false) FROM sample')
+        self.assertEqual(acceptance,[True,False,False,True,False,True,False,False,False,False,True,False])
+        expected_table=[False,*acceptance[1:]]  # image_url also has NOT NULL.
+        cases=','.join('('+('NULL::text' if value is None else deploy.literal(value))+','+('true' if expected else 'false')+')' for value,expected in zip(samples,expected_table))
+        physical="""DO $verify$
+        DECLARE sample record; accepted boolean;
+        BEGIN
+          INSERT INTO marketplace_services(id) VALUES('00000000-0000-4000-8000-000000000001');
+          FOR sample IN SELECT * FROM (VALUES """+cases+""") v(url,expected) LOOP
+            accepted=false;
+            BEGIN
+              INSERT INTO marketplace_service_images(service_id,image_url) VALUES('00000000-0000-4000-8000-000000000001',sample.url);
+              accepted=true;
+              RAISE EXCEPTION USING ERRCODE='P9999';
+            EXCEPTION
+              WHEN SQLSTATE 'P9999' THEN NULL; -- rollback successful fixture insert
+              WHEN check_violation OR not_null_violation THEN accepted=false;
+            END;
+            IF accepted IS DISTINCT FROM sample.expected THEN RAISE EXCEPTION 'GALLERY_CHECK_MISMATCH'; END IF;
+          END LOOP;
+        END $verify$;"""
+        self.release.pg(physical)
+        self.release.pg(physical,self.release.probe)
+
+        self.assertEqual(self.release.pg("WITH truth(v) AS (VALUES(true),(false),(NULL::boolean)) SELECT count(*) FROM truth a,truth b,truth c WHERE ((a.v AND b.v) AND c.v) IS DISTINCT FROM (a.v AND b.v AND c.v) OR (a.v AND (b.v AND c.v)) IS DISTINCT FROM (a.v AND b.v AND c.v)"),'0')
+        # A genuine bound change in the SAME historical constraint is fatal.
+        self.assertIn('>= 12',restored_expression)
+        self.release.pg('ALTER TABLE marketplace_service_images DROP CONSTRAINT marketplace_service_images_image_url_check; ALTER TABLE marketplace_service_images ADD CONSTRAINT marketplace_service_images_image_url_check CHECK ('+restored_expression.replace('>= 12','>= 13')+')',self.release.probe)
+        with self.assertRaisesRegex(deploy.Stop,'Restored schema differs'):
+            self.release.compare_schema(source,self.release.schema_dump(self.release.probe),'changed-gallery-bound')
+        diagnostic=json.loads((self.release.backup/'schema-difference.json').read_text())
+        self.assertTrue(any(item.get('objectName')=='public.marketplace_service_images' for diff in diagnostic['firstDifferences'] for side in ('source','restored') for item in diff[side]))
+
     def test_locale_encoding_and_database_owner_are_preserved(self):
         source='heycar_test_icu_'+self.pg.suffix+'_'+secrets.token_hex(3)
         self.pg.create(source,provider='i');self.release.source=source
@@ -281,6 +349,29 @@ class PureSchemaSafety(unittest.TestCase):
             self.assertEqual(deploy.schema_object(values)['objectName'],'public.example')
             self.assertNotIn('private_role',json.dumps(deploy.schema_structural_changes(values,[],b'fixture-key')))
         self.assertEqual(deploy.schema_object(['CREATE','TABLE','"bad\nname"','(','id','integer',')',';']),{})
+
+    def test_only_associative_table_check_and_groups_are_normalized(self):
+        canonical=deploy.stable_schema_dump('CREATE TABLE t(a boolean,b boolean,c boolean,CHECK(a AND b AND c));')
+        for body in ['(a AND b) AND c','a AND (b AND c)','((a AND b) AND c)','(((a AND b) AND c))']:
+            self.assertEqual(deploy.stable_schema_dump('CREATE TABLE t(a boolean,b boolean,c boolean,CHECK('+body+'));'),canonical)
+        def check(body):return deploy.stable_schema_dump('ALTER TABLE t ADD CONSTRAINT ck CHECK ('+body+');')
+        self.assertEqual(check('(a AND b) AND c'),check('a AND b AND c'))
+        self.assertNotEqual(deploy.stable_schema_dump('ALTER TABLE t ADD CONSTRAINT ck CHECK((a AND b) AND c) NOT VALID;'),check('a AND b AND c'))
+        self.assertNotEqual(deploy.stable_schema_dump('CREATE TABLE t(a boolean NOT NULL,b boolean,c boolean,CHECK((a AND b) AND c));'),canonical)
+        self.assertNotEqual(check('(a OR b) AND c'),check('a OR (b AND c)'))
+        self.assertNotEqual(check('((a AND b or c) AND d)'),check('a AND b or c AND d'))
+        self.assertNotEqual(check('NOT (a AND b)'),check('(NOT a) AND b'))
+        self.assertNotEqual(check('((x+y)*z>0) AND a'),check('(x+(y*z)>0) AND a'))
+        self.assertNotEqual(check('((x>0 AND y>0) AND z>0)'),check('x>0 AND y>1 AND z>0'))
+        self.assertNotEqual(check('(a AND b) AND a'),check('a AND b'))
+        self.assertNotEqual(check('(a AND b) AND c'),check('b AND a AND c'))
+        self.assertNotEqual(check('x::numeric>0 AND a'),check('x::integer>0 AND a'))
+        # No guessing about BETWEEN, CASE, NOT, OR or non-table DDL.
+        for sql in ['CREATE TABLE t(x int,CHECK(x BETWEEN 1 AND 3));', 'CREATE TABLE t(a bool,b bool,CHECK(CASE WHEN a THEN b AND a ELSE false END));', 'CREATE DOMAIN d AS boolean CHECK ((VALUE AND VALUE));', 'CREATE POLICY p ON t USING ((a AND b) AND c);', 'CREATE INDEX i ON t(a) WHERE ((a AND b) AND c);', 'CREATE TABLE t(x int,CHECK(x between 1 AND 3));', 'CREATE TABLE t(a bool,b bool,c bool,d bool,CHECK((a AND b or c) AND d));']:
+            expected=[value for kind,value in deploy.schema_tokens(sql)]
+            self.assertEqual(json.loads(deploy.stable_schema_dump(sql)),expected)
+        literal="CREATE TABLE t(value text,CHECK(value='(a AND b)' AND true));"
+        self.assertIn("'(a AND b)'",deploy.stable_schema_dump(literal))
 
     def test_private_diagnostic_writer_refuses_symlinks(self):
         with tempfile.TemporaryDirectory() as folder:

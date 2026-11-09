@@ -1,24 +1,55 @@
 # CepQontag — PR #318 staging dağıtım paketi
 
-**Durum: TASLAK — gerçek 83. ifadenin SQL farkı bekleniyor; staging hatasının giderildiği iddia edilmiyor.** Bu çalışma ortamında SSH anahtarı, SSH agent, VPS host/port bilgisi veya bağlı SSH kimliği bulunmuyor. VPS'ye bağlanılmadı. Gerçek `heycar_staging` veritabanının yedeği alınmış veya migrationı uygulanmış değildir.
+**Durum: PostgreSQL 16'da doğrulanmış CHECK normalizasyon düzeltmesi hazır; VPS'ye dağıtılmadı.** Bu çalışma ortamında SSH anahtarı, SSH agent, VPS host/port bilgisi veya bağlı SSH kimliği bulunmuyor. VPS'ye bağlanılmadı. Gerçek `heycar_staging` veritabanının yedeği alınmış veya migrationı uygulanmış değildir.
 
-GitHub branch: `fix/pg16-restore-statement-diagnostics`
+GitHub branch: `fix/pg16-check-parenthesis-normalization`
 
 Repository yolu: `deploy/staging-pr318/deploy-staging-pr318.py`
 
-Betik GitHub branch üzerinden veya paylaşılmış commit SHA’sına sabitlenmiş raw URL üzerinden indirilebilir. SHA-256: `f3b76ecb8d1fec8d70f5aa1714b8d3642678a77c1726c7e8f19c1920298dd075`. İndirmek betiği çalıştırmaz.
+Betik GitHub branch üzerinden veya paylaşılmış commit SHA’sına sabitlenmiş raw URL üzerinden indirilebilir. SHA-256: `23997ab3f041182c4ff9d4c68c3277b554629750d0a6e91c3445998ec60fc566`. İndirmek betiği çalıştırmaz.
 
 Tek otomasyon dosyası: **deploy-staging-pr318.py**. GitHub main üzerinde değişiklik yapılmadı; eski staging workflow'u tetiklenmedi. Paket veritabanı yedeği, kullanıcı verisi veya erişim anahtarı içermez.
 
-## Statement 83: teşhis geliştirmesi, kesin neden için eksik girdi
+## PostgreSQL 16: marketplace_service_images CHECK parantezleri
 
-**Bu taslak PR gerçek VPS hatasının giderildiği iddiasını taşımaz.** VPS'deki 83. CREATE TABLE'ın adı ve kaynak/restore SQL farkı verilmedi. 1003 ifade ve 113→111 token sayıları bu nesneyi veya dönüşümü tek başına belirlemez. Talep edilen kısa, maskelenmiş SQL farkı gelene kadar üretim normalizasyonu değiştirilmedi.
+Kullanıcı tarafından tablo adı `public.marketplace_service_images` olarak kesinleştirildikten sonra tarihsel DDL bulundu:
 
-Repository'nin 120 dosyalık zinciri PostgreSQL 16.15'te yeni yerel DB'ye kuruldu. Bu belirli fixture'da 955 ifade oluştu; 83. ifade `public.offer_categories` ve 60 token idi. Dolayısıyla bu tabloyu VPS'deki 113 tokenlık ifade olarak adlandırmak yanlış olur.
+- Commit: `106101ca87528132f9e7ddcefd9c90d49231a000`
+- Tarihsel dosya: `server/migrations/126_marketplace_service_images.sql`
+- Değiştirilmeden alınan test fixture'ı: `fixtures/marketplace_service_images_legacy.sql`
+- Fixture SHA256: `3de5052b1c05d44806bd2e0931d639e3ba561082d954e854266bb11455545f2d`
 
-Ayrı sentetik PostgreSQL 16 örneğinde `bpchar[] → text[]` tek elemanlı cast'i restore sırasında eleman bazlı yazıma dönüştü. Tabloya 26 nötr integer kolon eklenince gerçek dump/restore CREATE TABLE token sayıları tam **113→111** oldu. Bu tablo **`public.two_token_example`** adlı sentetik fixture'dır; gerçek VPS tablosu olduğu iddia edilmez. Teşhis numaralandırması ayrıca 1003 ifadelik sentetik çerçevede farkı 83. ifadede gösterecek şekilde test edildi. Bu çerçeve yalnız rapor konumu testidir, VPS şemasının yeniden üretimi değildir.
+Bu fixture PostgreSQL 16.15'te sentetik parent tabloyla kuruldu. Gerçek custom-format backup → restore → pg_dump döngüsünde, aynı tablonun CREATE TABLE ifadesi kaynakta **113**, restore çıktısında **111** token verdi. Kaynak ile arşiv şeması eşitti. Tarihsel fixture'ın somut token farkı bir açılış ve bir kapanış parantezidir (`(` / `)`); kapanış token'ları körlemesine silinmez.
 
-Bu bilgiler yeni bir cast kuralı eklemek için kullanılmadı: bilinmeyen iki-token farkı hâlâ dağıtımı durduruyor. Karşılaştırıcı, lexer, mevcut dar normalleştirici, migration/isolation ve cleanup fonksiyonları #321 ile AST düzeyinde aynı kaldı.
+Neden `image_url` CHECK'indeki `BETWEEN` açılımıdır. `char_length(image_url) BETWEEN 12 AND 2048`, iki karşılaştırmanın AND grubuna açılır; buna regex koşulu eklenir. Kaynak deparser iç içe AND grubunu gösterirken restore sonrası PostgreSQL AND argümanlarını düzleştirir:
+
+```sql
+-- A: char_length(image_url) >= 12
+-- B: char_length(image_url) <= 2048
+-- C: image_url ~ <aynı HTTPS regex literal'i>
+CHECK (((A AND B) AND C))
+CHECK ((A AND B AND C))
+```
+
+### Dar normalizasyon ve kanıt
+
+Yeni kural yalnız `CREATE TABLE` / `ALTER TABLE` içindeki CHECK gövdesinde, AND bağlaçlarının tamamını saran dengeli parantez gruplarını canonical biçimde düzleştirir. Alt koşulların **tüm token'ları, sırası ve tekrar sayısı aynen korunur**. Atomik karşılaştırmalar, tip cast'leri, fonksiyon argümanları ve aritmetik parantezleri değiştirilmez; tablo/constraint/kolon isimleri ve metadata korunur.
+
+OR, NOT, BETWEEN, CASE veya subquery/window sözdizimi içeren CHECK gövdeleri bu yeni kural için opaktır. Buradaki BETWEEN tarihsel SQL'den PostgreSQL'in deparse ettiği `>=` / `<=` biçimine zaten açılmıştır; keyfi BETWEEN ifadelerini yeniden yazan bir kural yoktur. Quoted identifier, literal ve dollar-quoted fonksiyon metni lexer tarafından korunur. İndeks, policy, domain, ownership ve GRANT/REVOKE ifadeleri için bu CHECK kuralı uygulanmaz.
+
+Eşdeğerlik yalnız görünüm üzerinden kabul edilmedi:
+
+1. Gerçek PostgreSQL 16 dump/restore ve **113→111** farkı fixture ile doğrulandı; normalizasyon sonrası iki şema/digest eşit.
+2. TRUE/FALSE/NULL'un **27** AND kombinasyonunda iç içe ve düz biçim aynı sonucu verdi. AND operandları sıralanmaz veya eksiltilmez.
+3. Kaynak ve restore tablolarda gerçek INSERT denemeleri; minimum/maksimum URL uzunluğu, yanlış protokol, boşluk, tırnak, `<`, newline ve NULL örneklerinde aynı kabul/red sonucunu verdi. Başarılı child eklemeleri yalnız test alt transaction'ında geri alındı. NULL'un CHECK sonucu ile kolonun NOT NULL kuralı ayrı ayrı test edildi.
+4. Aynı gerçek CHECK'in alt sınırı **12→13** değiştirilince karşılaştırma hatayla durdu. OR/NOT önceliği, aritmetik gruplama, cast, operand sırası/tekrarı ve literal değişiklikleri de eşit sayılmıyor.
+5. Önceki tablo/kolon/tip/constraint/indeks/owner/ACL kaybı, 0600/symlink-safe teşhis, migration ve clone cleanup testleri geçmeye devam etti. Migration, yetki veya güvenlik doğrulaması devre dışı bırakılmadı.
+
+Yeni kural dışında migration, izolasyon, restore ve cleanup fonksiyonları değiştirilmedi. **Mevcut migration dosyaları değiştirilmedi**; tarihsel gallery SQL'i yalnız test fixture'ıdır, deploy/migration listesine eklenmedi.
+
+### Önceki #322 teşhis aşaması
+
+#322 sırasında tablo adı bilinmediğinden yalnız sayılarla normalizasyon seçilmemişti. Şimdi tarihsel DDL ile aynı tablo/sayı/fark eşleştirildi ve yukarıdaki semantik kanıt eklendi. Önceki farklı `bpchar` örneği hâlâ normalleştirilmeyen bir olumsuz testtir; iki token azaldı diye herhangi bir fark otomatik kabul edilmez.
 
 ### Yeni özel teşhis alanları
 
@@ -33,11 +64,11 @@ Nesne adları yalnız bu **0600 izinli özel dosyada** bulunur; stdout'a veya Gi
 
 Kaynak/restore eşitliği maskelenmiş gösterim üzerinden hesaplanmaz; orijinal canonical SQL hâlâ eksiksiz karşılaştırılır. Böylece teşhiste iki literal gizlense bile gerçek değerleri farklıysa doğrulama başarısız olur. Kolon kaybı da gerçek PostgreSQL olumsuz testlerine eklendi. Geçici klon temizlense de özel teşhis ve orijinal yedek kalır; DB'yi otomatik geri almama politikası değişmez.
 
-Doğrulama: 9 restore/SQL safety test grubu, 14 standalone safety testi, 2 paketleme regresyonu ve izole tam backend paketinde 182 test. Tarihsel migration dosyası veya uygulama backend'i değişmedi. VPS'ye bağlantı/deploy yapılmadı. Kesin düzeltme için gereken girdi: gerçek 83. tablonun adı ve değişen kısa SQL/token parçası (literal değerler ve hassas alan adları maskelenebilir).
+Doğrulama: 11 restore/SQL safety grubu, 15 standalone safety testi, 2 paketleme regresyonu, 6 deployment testi ve izole tam backend paketinde 182 test. Backend ve gerçek migration dosyaları değişmedi. VPS'ye bağlantı veya deploy yapılmadı.
 
 ## Restore şeması karşılaştırma düzeltmesi (#320 sonrası)
 
-Bu sürüm #320'nin üzerine hazırlanmıştır. VPS'ye bağlanılmadı ve gerçek staging farkının kesin nedeni gözlenmedi; başarısız klon önceki çalışmada silinmiş olduğundan onu incelemiş gibi bir iddia yoktur.
+Önceki #321 sürümü #320'nin üzerine hazırlanmıştı. O aşamada VPS'ye bağlanılmadı ve gerçek staging farkının kesin nedeni gözlenmedi; başarısız klon önceki çalışmada silinmiş olduğundan onu incelemiş gibi bir iddia yoktur.
 
 İzole PostgreSQL 16.15'te bildirilen koşullar yeniden üretildi: kaynak dump ve arşivden çıkarılan şema eski `stable_schema_dump()` ile eşitken, restore edilmiş klon eşit değildi. Sentetik örnekteki gerçek fark PostgreSQL'in şu eşdeğer dönüşümüdür:
 
@@ -239,7 +270,7 @@ Yalnız exit code 0 **ve** `report.json` içinde `deployed: true`, `migrationAft
 ## Bu paketin yerel doğrulaması
 
 - Python derleme: başarılı.
-- 14 safety/mock test grubu: başarılı, başarısız 0, atlanan 0. Production hedeflerini reddetme, eksik upload guard'ı, yanlış history/hash, backup hatasında migrationın hiç çağrılmaması ve yalnız uygulama rollback'i kapsanır.
+- 15 safety/mock test grubu: başarılı, başarısız 0, atlanan 0. Production hedeflerini reddetme, eksik upload guard'ı, yanlış history/hash, backup hatasında migrationın hiç çağrılmaması ve yalnız uygulama rollback'i kapsanır.
 - Tamamen yeni yerel PostgreSQL 16.15 konteyneri/sentetik DB: custom dump ve gerçek restore, 111 public tablo sayısı/şema karşılaştırması, klonda 125, 120→121, ikinci doğrudan migrationın reddi ve doğrulanmış 121 ile tekrar yedek/klon doğrulaması başarılı. Sentetik kullanıcı kaydı korundu.
 - Pinned backend ayrı yerel portta başlatıldı; gerçek HTTP smoke kontrolleri ve listener PID kontrolü başarılı.
 - Gerçek systemd restart/dizin değişimi VPS'de çalıştırılmadı; rollback sistem komutları mock ile test edildi.

@@ -1,30 +1,36 @@
-DRAFT DIAGNOSTIC IMPROVEMENT — EXACT VPS CAUSE NOT IDENTIFIED
-No VPS connection, deployment or real migration performed.
+POSTGRESQL 16 CHECK NORMALIZATION VERIFIED — NO VPS/PRODUCTION OPERATION
 
-Requested VPS framing: 1003 statements, statement 83 CREATE TABLE, 113 -> 111 tokens.
-Required missing input: actual object name and source/restored short SQL difference.
-Counts alone do not identify SQL semantics or prove equivalence.
+Branch: fix/pg16-check-parenthesis-normalization
+Application target remains 4a3cecdb15a60aabe494f6c11b94791172a8a8e4.
+No historical migration files changed.
 
-Local PostgreSQL 16.15 investigation:
-- Repository's fresh 120-file schema: 955 statements in this fixture;
-  statement 83 is public.offer_categories, 60 tokens, unchanged after restore.
-- A DIFFERENT synthetic bpchar-array table padded with 26 integer columns
-  produces actual 113 -> 111 token dump/restore CREATE TABLE statements.
-  This is not claimed to be the VPS object or its root cause.
-- Diagnostic indexing independently verified with 1003 framed statements and difference at 83.
+Confirmed historical object: public.marketplace_service_images
+DDL source: commit 106101ca87528132f9e7ddcefd9c90d49231a000,
+server/migrations/126_marketplace_service_images.sql (copied only as a test fixture).
+Fixture SHA256: 3de5052b1c05d44806bd2e0931d639e3ba561082d954e854266bb11455545f2d
 
-Production SQL normalization deliberately unchanged from PR #321.
-All prior comparison, migration, isolation, restore and cleanup core functions verified unchanged.
-New private diagnostics include object identity and bounded structural deltas;
-values, roles, function bodies and non-metadata identifiers remain HMAC-pseudonymized.
-Mode 0600, symlink refusal and safe temporary clone cleanup retained.
+Real isolated PostgreSQL 16.15 backup -> restore -> pg_dump:
+- Source/archive schemas equal.
+- Raw CREATE TABLE: source 113 tokens, restored 111 tokens.
+- Difference: nested Boolean AND from BETWEEN expansion is flattened by PostgreSQL.
+- Exact fixture delta: one '(' and one ')' removed, not arbitrary closing tokens.
+- Canonical CHECK normalization now yields equal schema/digests.
+- All 27 TRUE/FALSE/NULL AND combinations agree.
+- Physical source/restored INSERT acceptance agrees for URL boundaries and invalid/null cases.
+- Changing the real gallery bound 12 -> 13 still stops validation.
 
-Tests:
-- PostgreSQL restore/SQL-safety groups: 9 passed, 0 failed, 0 skipped.
-- Standalone staging safety/mock groups: 14 passed, 0 failed, 0 skipped.
-- Pinned package regressions: 2 passed, 0 failed, 0 skipped.
-- Full isolated backend release suite: 182 passed, 0 failed, 0 skipped.
-- Historical migrations and application backend files unchanged.
+Only table CHECK AND groups are flattened. Atomic tokens/order/duplicates remain.
+OR, NOT, BETWEEN, CASE, subqueries and non-table DDL remain opaque to this rule.
+No global parenthesis deletion, operand sorting, cast/default rewriting or constraint omission.
+Ownership/ACL, true column/type/index/constraint changes and migration validation remain enforced.
+Mode-0600 redacted named diagnostics, symlink refusal and secure clone cleanup retained.
 
-This draft is reviewable diagnostic work; do not treat it as a completed fix for
-an unidentified VPS CREATE TABLE statement or deploy it as an alleged normalization fix.
+Results:
+- PostgreSQL restore/SQL safety: 11 passed, 0 failed, 0 skipped.
+- Standalone staging safety: 15 passed, 0 failed, 0 skipped.
+- Pinned package/deployment regressions: 2 passed, 0 failed, 0 skipped.
+- Existing deployment Python suite: 6 passed, 0 failed, 0 skipped.
+- Full isolated backend release: 182 passed, 0 failed, 0 skipped.
+- npm run check passed. Packaged npm test: 146 passed, 0 failed, 2 existing PG skips.
+
+No SSH, real staging/production DB access, live migration, deployment or automatic merge.
