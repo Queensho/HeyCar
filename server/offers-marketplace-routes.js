@@ -6,12 +6,12 @@ module.exports = function registerMarketplace(app, pool, {auth, offerActor}) {
     const q=await pool.query('SELECT id,name FROM offer_categories WHERE is_active ORDER BY sort_order,name');res.json({ok:true,categories:q.rows});
   }));
   app.get('/api/offers/discover',wrap(async(req,res)=>{
-    const {getAppSettings}=require('./app-settings-service');
-    if((await getAppSettings(pool)).features?.offers===false)return res.status(503).json({error:'OFFERS_FEATURE_DISABLED'});
     const hasLocation=req.query.lat!=null&&req.query.lon!=null;
     if((req.query.lat!=null)!==(req.query.lon!=null))return res.status(400).json({error:'INVALID_LOCATION'});
     const lat=Number(req.query.lat),lon=Number(req.query.lon);
     if(hasLocation&&(!Number.isFinite(lat)||!Number.isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180))return res.status(400).json({error:'INVALID_LOCATION'});
+    const {getAppSettings}=require('./app-settings-service');
+    if((await getAppSettings(pool)).features?.offers===false)return res.status(503).json({error:'OFFERS_FEATURE_DISABLED'});
     const q=String(req.query.q||'').trim().slice(0,120),category=String(req.query.category||'').slice(0,80),city=String(req.query.city||'').trim().slice(0,100);
     const rows=await pool.query(`SELECT c.id,c.title,c.description,c.terms,c.badge,c.starts_at,c.ends_at,c.image_url,c.offer_type,c.regular_price,c.offer_price,c.discount_percent,c.is_featured,
       b.id business_id,b.name,b.category,b.address,b.phone,b.opening_hours,b.logo_url,b.latitude,b.longitude,b.vehicle_types,
