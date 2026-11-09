@@ -2,6 +2,11 @@ name: Staging SSH Connection Check
 
 on:
   workflow_dispatch:
+    inputs:
+      car_wash_inspect:
+        description: Read-only car wash staging readiness inspection
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -17,6 +22,8 @@ jobs:
     environment: staging
     timeout-minutes: 5
     steps:
+      - uses: actions/checkout@v4
+        if: inputs.car_wash_inspect
       - name: Configure SSH
         env:
           SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
@@ -35,3 +42,22 @@ jobs:
           test -s ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
           ssh -i ~/.ssh/staging_key -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" 'test "$(id -un)" = "cepqontag-deploy" && test -f /home/cepqontag-deploy/app/server/server.js && echo STAGING_SSH_OK'
+
+      - name: Inspect staging database and service without changing them
+        if: inputs.car_wash_inspect
+        shell: bash
+        env:
+          SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+          SSH_PORT: ${{ secrets.STAGING_SSH_PORT }}
+          SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = feature/car-wash-phase-1
+          ssh -i ~/.ssh/staging_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
+            'cd /home/cepqontag-deploy/app/server && node' < deploy/car-wash-phase3/inspect.cjs | tee staging-inspection.json
+      - uses: actions/upload-artifact@v4
+        if: inputs.car_wash_inspect
+        with:
+          name: car-wash-staging-inspection
+          path: staging-inspection.json
+          retention-days: 7
