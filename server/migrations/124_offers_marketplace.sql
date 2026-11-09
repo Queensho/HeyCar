@@ -14,6 +14,8 @@ ALTER TABLE offer_reviews ADD COLUMN reviewed_at timestamptz;
 ALTER TABLE offer_reviews DROP CONSTRAINT IF EXISTS offer_reviews_owner_id_campaign_id_key;
 ALTER TABLE offer_reviews ADD CONSTRAINT offer_reviews_redemption_unique UNIQUE(redemption_id);
 CREATE INDEX offer_reviews_public ON offer_reviews(campaign_id) WHERE moderation_status='approved';
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS city text;
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS district text;
 ALTER TABLE businesses ADD COLUMN gallery_urls jsonb NOT NULL DEFAULT '[]' CHECK(jsonb_typeof(gallery_urls)='array');
 ALTER TABLE businesses ADD COLUMN vehicle_types text[] NOT NULL DEFAULT ARRAY['car','motorcycle'];
 ALTER TABLE business_campaigns ADD COLUMN terms text NOT NULL DEFAULT '';
@@ -32,7 +34,7 @@ CREATE TABLE offer_business_favorites (
  created_at timestamptz NOT NULL DEFAULT now(),
  PRIMARY KEY(owner_id,actor_role,business_id)
 );
-CREATE TABLE business_services (
+CREATE TABLE IF NOT EXISTS business_services (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  business_id uuid NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
  name text NOT NULL CHECK(length(name) BETWEEN 1 AND 120),
