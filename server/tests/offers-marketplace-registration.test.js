@@ -77,3 +77,9 @@ test('redemption history is restricted to the authenticated actor role', async (
   assert.deepEqual(queryArgs,['same-id','driver']);
   assert.deepEqual(body,{ok:true,redemptions:[]});
 });
+
+test('favorites never include or delete ambiguous legacy-role records', () => {
+  const routes = read('offers-marketplace-routes.js');
+  assert.doesNotMatch(routes, /f\.actor_role IN \(\$2,'legacy'\)/);
+  assert.match(routes, /f\.actor_role=\$2/);
+});
