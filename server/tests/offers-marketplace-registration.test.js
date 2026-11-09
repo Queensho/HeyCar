@@ -33,3 +33,10 @@ test('migration has balanced PostgreSQL dollar-quoted blocks', () => {
   assert.ok(count >= 8, 'expected review functions and DO blocks');
   assert.doesNotMatch(sql, /(?:DO \$ BEGIN|END \$;|LANGUAGE plpgsql AS \$\n)/);
 });
+
+test('migration preserves legacy offer review upsert contract', () => {
+  const migration = read('migrations/124_offers_marketplace.sql');
+  const business = read('business-routes.js');
+  assert.match(business, /ON CONFLICT\(owner_id,campaign_id\) DO UPDATE/);
+  assert.doesNotMatch(migration, /DROP CONSTRAINT IF EXISTS offer_reviews_owner_id_campaign_id_key/);
+});
