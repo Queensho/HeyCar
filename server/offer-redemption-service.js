@@ -48,7 +48,7 @@ async function issue(pool, actor, campaignId, rawPlate) {
   return transaction(pool, async db => {
     const c = await campaignLock(db, campaignId);
     await authorizedVehicle(db, actor, plate, true);
-    const old = await db.query(`SELECT * FROM offer_redemptions WHERE owner_id=$1 AND actor_role IN ($2,'legacy') AND campaign_id=$3 AND status='pending'`, [actor.id, actor.role, campaignId]);
+    const old = await db.query(`SELECT * FROM offer_redemptions WHERE owner_id=$1 AND actor_role=$2 AND campaign_id=$3 AND status='pending'`, [actor.id, actor.role, campaignId]);
     if (old.rowCount) {
       if (old.rows[0].plate !== plate) throw new OfferError('PENDING_VEHICLE_MISMATCH');
       return {redemption: old.rows[0], created: false};
