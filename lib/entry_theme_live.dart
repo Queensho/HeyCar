@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'car_wash_pages.dart';
+import 'car_wash_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -298,6 +300,13 @@ Future<void> _routePush(Map<String,dynamic> d)async{
       nav.push(MaterialPageRoute(builder:(_)=>DriverHomePage(
         userId:activeDriverId,initialTab:1,
       )));
+    }
+    return;
+  }
+  if(type=='car_wash'){
+    final bookingId='${d['bookingId']??''}';
+    if(RegExp(r'^[0-9a-fA-F-]{36}$').hasMatch(bookingId)){
+      nav.push(MaterialPageRoute(builder:(_)=>WashBookingDetailPage(api:CarWashApi(),id:bookingId)));
     }
     return;
   }

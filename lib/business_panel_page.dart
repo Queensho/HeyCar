@@ -10,6 +10,8 @@ import 'package:latlong2/latlong.dart';
 import 'package:image_picker/image_picker.dart';
 import 'admin_promo_banner.dart';
 import 'business_valet_page.dart';
+import 'business_car_wash_page.dart';
+import 'car_wash_api.dart';
 
 const _bg=Color(0xFF07111F),_panel=Color(0xFF101A30),_line=Color(0xFF27355D),_purple=Color(0xFF713BFF),_muted=Color(0xFFA7B0C7);
 
@@ -34,6 +36,7 @@ class _BusinessPanelPageState extends State<BusinessPanelPage>{
   if(token.isEmpty&&!loading)return _BusinessWelcome(onLogin:()=>_showAuth(context),onRegister:()=>_showAuth(context,register:true));
   if(valetOnly&&token.isNotEmpty){return Scaffold(backgroundColor:_bg,body:SafeArea(child:Column(children:[Container(height:64,padding:const EdgeInsets.symmetric(horizontal:18),decoration:const BoxDecoration(color:_panel,border:Border(bottom:BorderSide(color:_line))),child:Row(children:[const Icon(Icons.local_parking_rounded,color:Color(0xFFB6FF2A)),const SizedBox(width:10),const Expanded(child:Text('CepQontag Vale',style:TextStyle(color:Colors.white,fontSize:19,fontWeight:FontWeight.w900))),TextButton.icon(onPressed:_logout,icon:const Icon(Icons.logout_rounded),label:const Text('Çıkış'))])),Expanded(child:BusinessValetPage(token:token))])));}
   final home=Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+   OutlinedButton.icon(onPressed:token.isEmpty?null:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>BusinessCarWashPage(api:CarWashApi(businessToken:token,baseUrl:_businessApi),onEditProfile:()=>_editProfile(context),uploadPhoto:()=>_pickDataImage(kind:'car_wash')))),icon:const Icon(Icons.local_car_wash),label:const Text('Oto Yıkama Yönetimi')),
    _Header(desktop:desktop,onLogin:token.isEmpty?()=>_showAuth(context):_logout),
    const SizedBox(height:16),if(loading)const LinearProgressIndicator(color:_purple),if(loading)const SizedBox(height:10),_Hero(name:(business?['name']??'İşletmen').toString()),const SizedBox(height:16),const AdminPromoBanner(audience:'business'),const SizedBox(height:16),_Stats(desktop:desktop,stats:stats),const SizedBox(height:16),
    SizedBox(width:double.infinity,height:48,child:FilledButton.icon(onPressed:()=>_showCampaign(context),style:FilledButton.styleFrom(backgroundColor:_purple,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15))),icon:const Icon(Icons.add_circle_rounded),label:const Text('Yeni Kampanya Oluştur',style:TextStyle(fontWeight:FontWeight.w900)))),
