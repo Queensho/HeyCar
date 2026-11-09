@@ -142,7 +142,7 @@ module.exports = function registerMarketplace(app, pool, {auth, offerActor}) {
       const q=await db.query(`SELECT r.* FROM offer_redemptions r WHERE r.owner_id=$1 AND ${legacyRolePredicate()} AND ${explicit?'r.id=$3':'r.campaign_id=$3'} AND r.status='redeemed' ORDER BY r.redeemed_at DESC,r.id LIMIT 1 FOR UPDATE OF r`,[actor.id,actor.role,explicit?req.params.id:req.params.campaignId]);
       if(!q.rowCount)return null;
       const r=q.rows[0];
-      return (await db.query(`INSERT INTO offer_reviews(owner_id,actor_role,campaign_id,redemption_id,rating,comment) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(redemption_id) DO UPDATE SET rating=EXCLUDED.rating,comment=EXCLUDED.comment,actor_role=EXCLUDED.actor_role,moderation_status='pending',moderation_note='',reviewed_at=NULL,updated_at=clock_timestamp() WHERE offer_reviews.owner_id=EXCLUDED.owner_id AND offer_reviews.actor_role IN (EXCLUDED.actor_role,'legacy') RETURNING *`,[actor.id,actor.role,r.campaign_id,r.id,rating,comment.trim()])).rows[0];
+      return (await db.query(`INSERT INTO offer_reviews(owner_id,actor_role,campaign_id,redemption_id,rating,comment) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(redemption_id) DO UPDATE SET rating=EXCLUDED.rating,comment=EXCLUDED.comment,actor_role=EXCLUDED.actor_role,moderation_status='pending',moderation_note='',reviewed_at=NULL,updated_at=clock_timestamp() WHERE offer_reviews.owner_id=EXCLUDED.owner_id AND offer_reviews.actor_role=EXCLUDED.actor_role RETURNING *`,[actor.id,actor.role,r.campaign_id,r.id,rating,comment.trim()])).rows[0];
     });
     if(!result)return res.status(403).json({error:'REDEMPTION_REQUIRED'});
     res.json({ok:true,review:result});
