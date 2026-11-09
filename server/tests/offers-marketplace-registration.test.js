@@ -89,3 +89,16 @@ test('new code issuance never reuses an ambiguous legacy pending code', () => {
   assert.match(service, /WHERE owner_id=\$1 AND actor_role=\$2 AND campaign_id=\$3 AND status='pending'/);
   assert.doesNotMatch(service, /actor_role IN \(\$2,'legacy'\)/);
 });
+
+test('legacy redemption verification locks campaign before redemption and refreshes limits', () => {
+  const business = read('business-routes.js');
+  const start = business.indexOf("app.post('/api/business/redemptions/verify'");
+  const end = business.indexOf("app.get('/api/business/rede", start);
+  assert.ok(start >= 0 && end > start);
+  const handler = business.slice(start, end);
+  const campaign = handler.indexOf("FROM business_campaigns WHERE id=$1 FOR UPDATE");
+  const redemption = handler.indexOf("FROM offer_redemptions WHERE id=$1 FOR UPDATE");
+  assert.ok(campaign >= 0 && redemption > campaign, 'campaign must lock before redemption');
+  assert.match(handler, /const limits=lockedCampaign\.rows\[0\]/);
+  assert.doesNotMatch(handler, /r\.plate=\$3 FOR UPDATE/);
+});
