@@ -1,0 +1,79 @@
+name: Car Wash Staging Test Build
+on:
+  workflow_call:
+    inputs:
+      staging_api:
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  android-and-web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate test-only build origin
+        env:
+          STAGING_API: ${{ inputs.staging_api }}
+        run: |
+          test "$GITHUB_REF_NAME" = feature/car-wash-phase-1
+          python3 - <<'PY'
+          import os, urllib.parse
+          u=urllib.parse.urlsplit(os.environ['STAGING_API'])
+          assert u.scheme=='https' and u.hostname=='staging-api-185-165-46-213.nip.io'
+          assert not u.username and not u.password and not u.query and not u.fragment
+          assert u.path in ('','/')
+          PY
+          curl --fail --silent --show-error --max-time 15 "$STAGING_API/health"
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Resolve and verify Flutter
+        run: |
+          flutter pub get
+          flutter analyze --no-fatal-infos --no-fatal-warnings
+          flutter test
+      - name: Verify staging compile-time isolation
+        env:
+          STAGING_API: ${{ inputs.staging_api }}
+        run: flutter test test/api_environment_test.dart --dart-define=CEPQONTAG_STAGING=true --dart-define=CEPQONTAG_API_BASE_URL="$STAGING_API"
+      - name: Generate isolated Android platform
+        run: |
+          flutter create . --platforms=android --project-name app --org com.cepqar --no-pub
+          python3 tool/prepare_car_wash_android.py
+      - name: Build staging APK
+        env:
+          STAGING_API: ${{ inputs.staging_api }}
+        run: |
+          flutter build apk --debug --target lib/entry_theme_live.dart --dart-define=CEPQONTAG_STAGING=true --dart-define=CEPQONTAG_API_BASE_URL="$STAGING_API"
+          mkdir -p car-wash-build
+          cp build/app/outputs/flutter-apk/app-debug.apk car-wash-build/CepQontag-Oto-Yikama-Staging.apk
+          sha256sum car-wash-build/*.apk > car-wash-build/SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cepqontag-car-wash-staging-apk
+          path: car-wash-build
+          retention-days: 14
+          if-no-files-found: error
+      - name: Build actual owner and business web apps for staging
+        env:
+          STAGING_API: ${{ inputs.staging_api }}
+        run: |
+          flutter create . --platforms=web --project-name heycar_app --no-pub
+          flutter build web --release --target lib/entry_theme_live.dart --no-web-resources-cdn --no-wasm-dry-run --dart-define=CEPQONTAG_STAGING=true --dart-define=CEPQONTAG_API_BASE_URL="$STAGING_API"
+          mkdir -p car-wash-web/owner
+          cp -R build/web/. car-wash-web/owner/
+          flutter build web --release --target lib/entry_business.dart --no-web-resources-cdn --no-wasm-dry-run --dart-define=CEPQONTAG_STAGING=true --dart-define=CEPQONTAG_API_BASE_URL="$STAGING_API"
+          mkdir -p car-wash-web/business
+          cp -R build/web/. car-wash-web/business/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cepqontag-car-wash-staging-web
+          path: car-wash-web
+          retention-days: 14

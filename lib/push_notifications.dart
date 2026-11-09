@@ -1,3 +1,4 @@
+import 'api_environment.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -14,7 +15,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'owner_auth.dart';
 import 'driver_auth.dart';
 
-const _apiBase='https://heycar-api-185-165-46-213.nip.io';
+const _apiBase=apiBaseUrl;
 const _generalChannel='cepqontag_notifications_v12';
 const _callChannel='cepqontag_calls_v9';
 const _callAcceptAction='cepqar_accept_call';
@@ -61,6 +62,7 @@ class PushNotifications{
   static final Map<String,DateTime> _recentLocalNotifications=<String,DateTime>{};
 
   static Future<void> bootstrap(){
+    if(isStagingBuild)return Future<void>.value();
     if(_bootstrapped)return Future<void>.value();
     // App/session restoration may request FCM concurrently with first-frame
     // initialization. Register the handler and initialize Firebase once.
@@ -79,6 +81,7 @@ class PushNotifications{
   }
 
   static Future<void> prepareCallPermissions()async{
+    if(isStagingBuild)return;
     await bootstrap();
     await ensureChannels(requestPermissions:true);
     await FirebaseMessaging.instance.requestPermission(alert:true,badge:true,sound:true);
@@ -91,6 +94,7 @@ class PushNotifications{
   }
 
   static Future<void> init()async{
+    if(isStagingBuild)return;
     await bootstrap();
     await ensureChannels(requestPermissions:true);
     await FirebaseMessaging.instance.requestPermission(alert:true,badge:true,sound:true);
@@ -300,6 +304,7 @@ class PushNotifications{
   }
 
   static Future<void> registerToken({bool scheduleRetry=true})async{
+    if(isStagingBuild)return;
     if(_tokenRegistrationInFlight)return;
     _tokenRegistrationInFlight=true;
     SharedPreferences? prefs;

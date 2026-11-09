@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'api_environment.dart';
 import 'car_wash_pages.dart';
 import 'car_wash_api.dart';
 import 'package:flutter/material.dart';
@@ -39,6 +40,7 @@ import 'cepqontag_splash.dart';
 
 final GlobalKey<NavigatorState> cepqarNavigatorKey=GlobalKey<NavigatorState>();
 Future<void> main()async{
+  validateApiEnvironment();
   WidgetsFlutterBinding.ensureInitialized();
   // Do not hold the first Flutter frame behind Firebase's Android service
   // initialization. The existing push/call listeners are still registered
@@ -77,7 +79,7 @@ class ThemeOwnerApp extends StatelessWidget{
       builder:(_,tokens,__)=>MaterialApp(
         navigatorKey:cepqarNavigatorKey,
         debugShowCheckedModeBanner:false,
-        builder:(context,child)=>CQAppFrame(child:child!),
+        builder:(context,child)=>CQAppFrame(child:isStagingBuild?Banner(message:'STAGING',location:BannerLocation.topEnd,color:const Color(0xFF651FFF),child:child!):child!),
         locale:const Locale('tr','TR'),
         supportedLocales:const [Locale('tr','TR')],
         localizationsDelegates:const [

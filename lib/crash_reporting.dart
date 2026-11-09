@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'api_environment.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
@@ -8,6 +9,7 @@ class CrashReporting {
   static String _pendingRole='unknown';
 
   static Future<void> init() async {
+    if(isStagingBuild)return;
     if(_ready)return;
     if(Firebase.apps.isEmpty)await Firebase.initializeApp();
     await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);

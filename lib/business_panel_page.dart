@@ -1,3 +1,4 @@
+import 'api_environment.dart';
 import 'offers/business_code_scanner.dart';
 import 'business_campaign_edit.dart';
 import 'business_marketplace_tools.dart';
@@ -15,7 +16,7 @@ import 'car_wash_api.dart';
 
 const _bg=Color(0xFF07111F),_panel=Color(0xFF101A30),_line=Color(0xFF27355D),_purple=Color(0xFF713BFF),_muted=Color(0xFFA7B0C7);
 
-const _businessApi='https://heycar-api-185-165-46-213.nip.io';
+const _businessApi=apiBaseUrl;
 const _offerCategories=['Oto Yıkama','Detailing','Lastik','Otopark','Servis','Akaryakıt'];
 
 class BusinessPanelPage extends StatefulWidget{const BusinessPanelPage({super.key});@override State<BusinessPanelPage> createState()=>_BusinessPanelPageState();}

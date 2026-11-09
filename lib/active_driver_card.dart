@@ -1,3 +1,4 @@
+import 'api_environment.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -15,7 +16,7 @@ class ActiveDriverCard extends StatefulWidget {
 }
 
 class _S extends State<ActiveDriverCard> {
-  static const api = 'https://heycar-api-185-165-46-213.nip.io';
+  static const api = apiBaseUrl;
 
   bool loading = true;
   bool active = false;

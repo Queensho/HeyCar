@@ -1,3 +1,4 @@
+import 'api_environment.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -110,7 +111,7 @@ class ParkingSearchService {
       _lastRequest = _now();
       // Geoapify is primary; the API key remains on the Cepqar VPS.
     try {
-      final uri = Uri.parse('https://heycar-api-185-165-46-213.nip.io/api/parking/nearby')
+      final uri = Uri.parse('$apiBaseUrl/api/parking/nearby')
           .replace(queryParameters: {'lat':'$lat','lon':'$lon'});
       final response = await _client.get(uri, headers: const {'Accept':'application/json'})
           .timeout(const Duration(seconds: 10));

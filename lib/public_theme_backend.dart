@@ -1,3 +1,4 @@
+import 'api_environment.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
@@ -28,7 +29,7 @@ class PublicThemeData {
 }
 
 class PublicThemeBackend {
-  static const baseUrl = 'https://heycar-api-185-165-46-213.nip.io';
+  static const baseUrl = apiBaseUrl;
 
   static String resolveBackground(String? value) {
     if (value == null || value.isEmpty) return '';

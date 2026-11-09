@@ -1,3 +1,4 @@
+import 'api_environment.dart';
 import 'design/cq_layout.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -22,7 +23,7 @@ Future<String> _resolveOwnerQrToken() async {
 
   try {
     final response = await http.post(
-      Uri.parse('https://heycar-api-185-165-46-213.nip.io/api/owner/login-phone'),
+      Uri.parse('$apiBaseUrl/api/owner/login-phone'),
       headers: const {'Content-Type': 'application/json'},
       body: jsonEncode({'phone': phone, 'otpCode': '123456'}),
     ).timeout(const Duration(seconds: 12));

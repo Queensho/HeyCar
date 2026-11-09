@@ -1,3 +1,4 @@
+import 'api_environment.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -17,7 +18,7 @@ class OwnerDashboardStatsRow extends StatefulWidget {
 }
 
 class _OwnerDashboardStatsRowState extends State<OwnerDashboardStatsRow> {
-  static const _baseUrl = 'https://heycar-api-185-165-46-213.nip.io';
+  static const _baseUrl = apiBaseUrl;
   Timer? _timer;
   int unread = 0, messages = 0, locations = 0, calls = 0;
   String get vehicleId => QrDraft.vehicleId.trim().isNotEmpty ? QrDraft.vehicleId.trim() : OnboardingDraft.vehicleId.trim();
