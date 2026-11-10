@@ -28,6 +28,8 @@ async function api(path,{token,body,key}={}){
   const vehicle=(await pool.query("INSERT INTO vehicles(owner_id,plate,make,model) VALUES($1,'34 QA TEST','Test','Staging') RETURNING id",[user])).rows[0].id;
   await pool.query("INSERT INTO qr_tags(token,vehicle_id,status,activated_at,scan_secret) VALUES($1,$2,'active',now(),$3)",['QA'+crypto.randomBytes(12).toString('hex').toUpperCase(),vehicle,crypto.randomBytes(24).toString('hex')]);
   const login=await api('/api/owner/login-phone',{body:{phone,password}});assert.equal(String(login.user.id),String(user));const ownerToken=login.accessToken;
+  const registeredVehicles=await api('/api/owner/vehicles',{token:ownerToken});
+  const selectedVehicle=registeredVehicles.vehicles.find(v=>String(v.id)===String(vehicle));assert.ok(selectedVehicle,'REGISTERED_VEHICLE_NOT_SELECTABLE');
   const businessEmail='carwash-business-'+id+'@example.invalid';
   await api('/api/business/auth/register',{body:{email:businessEmail,password,name:'Oto Yıkama QA '+id.slice(0,8),category:'Oto Yıkama',address:'Sentetik test işletmesi – İstanbul',latitude:41,longitude:29}});
   const businessToken=(await api('/api/business/auth/login',{body:{email:businessEmail,password}})).token;
@@ -38,7 +40,7 @@ async function api(path,{token,body,key}={}){
   await api('/api/business/car-wash/resources',{token:businessToken,body:{name:'QA Kapasite 1',active:true,staffId:null}});
   const day=new Date(Date.now()+2*86400000).toISOString().slice(0,10);
   const available=await api(`/api/car-wash/businesses/${business}/availability?serviceId=${service}&date=${day}`,{token:ownerToken});assert.ok(available.slots.length);
-  const key=crypto.randomUUID(),body={businessId:business,serviceId:service,vehicleId:vehicle,startsAt:`${day}T09:00:00.000Z`};
+  const key=crypto.randomUUID(),body={businessId:business,serviceId:service,vehicleId:selectedVehicle.id,startsAt:`${day}T09:00:00.000Z`};
   const created=await Promise.all([1,2,3].map(()=>api('/api/car-wash/bookings',{token:ownerToken,body,key})));
   assert.equal(new Set(created.map(x=>x.booking.id)).size,1);const booking=created[0].booking.id;
   const change=(token,prefix,body)=>api(`${prefix}/bookings/${booking}/change`,{token,key:crypto.randomUUID(),body});
@@ -53,6 +55,6 @@ async function api(path,{token,body,key}={}){
   assert.equal((await pool.query('SELECT count(*)::int n FROM car_wash_notifications WHERE booking_id=$1 AND push_attempted_at IS NOT NULL',[booking])).rows[0].n,0);
   const dir='/home/cepqontag-deploy/car-wash-phase3-qa';fs.mkdirSync(dir,{mode:0o700,recursive:true});
   const accessFile=dir+'/'+id+'.json';fs.writeFileSync(accessFile,JSON.stringify({api:'https://staging-api-185-165-46-213.nip.io',owner:{phone,password},business:{email:businessEmail,password},userId:user,vehicleId:vehicle,businessId:business,bookingId:booking,coordinates:{latitude:41,longitude:29}},null,2),{mode:0o600});
-  console.log(JSON.stringify({ok:true,synthetic:true,database:'heycar_staging',bookingId:booking,checks:['existing-owner-password-login','registered-vehicle','business-password-login','service-capacity-management','availability','idempotency','booking','business-approval','reschedule','cancel','owner-business-notifications','external-push-suppressed'],credentialsFile:accessFile,productionTouched:false}));
+  console.log(JSON.stringify({ok:true,synthetic:true,database:'heycar_staging',bookingId:booking,checks:['existing-owner-password-login','registered-vehicle','owner-vehicle-list-selection','business-password-login','service-capacity-management','availability','idempotency','booking','business-approval','reschedule','cancel','owner-business-notifications','external-push-suppressed'],credentialsFile:accessFile,productionTouched:false}));
  }finally{await pool.end();}
 })().catch(e=>{console.error('CAR_WASH_STAGING_SMOKE_FAILED',{code:e.code||e.message});process.exitCode=1;});
