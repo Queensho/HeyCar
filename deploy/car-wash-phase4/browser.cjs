@@ -12,6 +12,16 @@ const output=process.env.BROWSER_OUTPUT||'phase4-browser';fs.mkdirSync(output,{r
   const context=await browser.newContext({viewport:{width:1280,height:1000},geolocation:{latitude:41,longitude:29},permissions:['geolocation']});
   const authCheck=await context.request.post(origin+'/api/business/auth/login',{data:{email:qa.business.email,password:qa.business.password}});
   assert.equal(authCheck.status(),200,'QA_DIRECT_LOGIN_FAILED');
+  const directToken=(await authCheck.json()).token;assert.ok(directToken);
+  const pushConfig=await context.request.get(origin+'/api/qa/services-v2/push/config',{headers:{Authorization:'Bearer '+directToken}});
+  assert.equal(pushConfig.status(),200);const qaConfig=await pushConfig.json();
+  assert.equal(qaConfig.firebaseProjectId,'cepqontag-staging');assert.equal(qaConfig.recipientRole,'business');
+  assert.equal(qaConfig.deliveryEnabled,false);assert.equal(qaConfig.webPush.enabled,true);
+  for(const prefix of ['/car-wash-owner/','/car-wash-business/']){
+   const worker=await context.request.get(origin+prefix+'qa-service-worker.js');assert.equal(worker.status(),200);assert.ok((await worker.text()).includes("addEventListener('push'"));
+   const bootstrap=await context.request.get(origin+prefix+'flutter_bootstrap.js');assert.equal(bootstrap.status(),200);
+   assert.ok(!/serviceWorkerVersion:\s*["'][^"']+["']/.test(await bootstrap.text()),'CACHE_WORKER_MUST_NOT_REPLACE_QA_PUSH');
+  }
   const page=await context.newPage();page.setDefaultTimeout(15000);const failures=[],responses=[];
   async function enter(label,value){const input=page.getByRole('textbox',{name:label,exact:true});await input.fill('');await input.pressSequentially(value,{delay:5});await input.press('Tab');}
   await page.route('**/api/**',async route=>{if(new URL(route.request().url()).origin!==origin){failures.push('BLOCKED_NON_STAGING_API');await route.abort();}else await route.continue();});
@@ -27,6 +37,8 @@ const output=process.env.BROWSER_OUTPUT||'phase4-browser';fs.mkdirSync(output,{r
   assert.equal(await page.getByRole('textbox',{name:'Şifre',exact:true}).inputValue(),qa.business.password,'PASSWORD_INPUT_MISMATCH');
   const login=page.waitForResponse(r=>r.url().endsWith('/api/business/auth/login')&&r.request().method()==='POST');
   await page.getByRole('button',{name:'Giriş Yap',exact:true}).click();const logged=await login;assert.equal(new URL(logged.url()).origin,origin);assert.equal(logged.status(),200,'UI_LOGIN_FAILED');
+  await page.getByRole('button',{name:'QA bildirim izni',exact:true}).waitFor();
+  assert.equal(await page.evaluate(()=>typeof window.cepqontagQaEnableWebPush),'function');
   step='business-calendar';
   const settingsWait=page.waitForResponse(r=>r.url().endsWith('/api/business/car-wash/settings'));
   await page.getByRole('button',{name:'Oto Yıkama Yönetimi',exact:true}).click();
@@ -65,7 +77,7 @@ const output=process.env.BROWSER_OUTPUT||'phase4-browser';fs.mkdirSync(output,{r
   await page.screenshot({path:output+'/business-mobile.png',fullPage:false});
   assert.ok(responses.some(r=>r.path.endsWith('/bookings')&&r.status===200));
   assert.ok(responses.every(r=>r.status<400));assert.deepEqual(failures,[]);
-  fs.writeFileSync(output+'/result.json',JSON.stringify({ok:true,businessUrl:origin+'/car-wash-business/',checks:['real-business-login','real-calendar-history','service-create','price-duration-persistence','price-update','desktop-mobile-render','no-page-errors'],serviceId:item.id,responses},null,2));
+  fs.writeFileSync(output+'/result.json',JSON.stringify({ok:true,businessUrl:origin+'/car-wash-business/',checks:['qa-push-config-no-delivery','qa-worker-assets-no-cache-worker-conflict','qa-permission-button-present','real-business-login','real-calendar-history','service-create','price-duration-persistence','price-update','desktop-mobile-render','no-page-errors'],serviceId:item.id,responses},null,2));
   console.log('PHASE4_BROWSER_OK');
  }finally{await browser.close();}
 })().catch(e=>{let reason=String(e.message);for(const secret of [qa.business.password,qa.owner.password,qa.owner.phone,qa.business.email])if(secret)reason=reason.split(secret).join('[REDACTED]');console.error('PHASE4_BROWSER_FAILED',{step,reason});process.exitCode=1;});

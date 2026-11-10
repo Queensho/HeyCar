@@ -42,15 +42,17 @@ web platformundaki QA bildirim köprüsü / web click routing içindir.
   müşteri/işletme config 200; simüle token/abonelik tekrarında tek kayıt; yanlış
   proje/SSRF hedefi reddi; allowlist dışı sentetik hesap 403; kendi test cihazları
   kaldırıldı. `realFcmTokenAcquired=false`, `realPushSent=false`.
-- [Backend/PostgreSQL](https://github.com/Queensho/HeyCar/actions/runs/42825028398):
-  **239 passed, 0 failed, 0 skipped**; token başka hesaba geçtiğinde eski olayın
+- [Backend/PostgreSQL](https://github.com/Queensho/HeyCar/actions/runs/42827324825):
+  **240 passed, 0 failed, 0 skipped**; token başka hesaba geçtiğinde eski olayın
   iletilmemesi, iptal edilmiş oturum, event dedupe gerçek izole PostgreSQL ile.
   Gönderici mock'tur; dış push yapılmaz.
 - [Flutter](https://github.com/Queensho/HeyCar/actions/runs/42825028443):
   **595 passed**; tam analyzer **235 bulgu** (önceden kalan warning/info, hata yok).
   Analyzer temizmiş gibi değerlendirilmez.
-- [Yeni Web Push web build](https://github.com/Queensho/HeyCar/actions/runs/42824020575):
-  owner/business staging web derlemesi başarılı. Native Firebase Web SDK yerine
+- [Yeni Web Push web build](https://github.com/Queensho/HeyCar/actions/runs/42827182816):
+  owner/business staging web derlemesi. Yalnız staging derlemesinde Flutter cache
+  service worker kapatılır; QA push worker aynı scope’ta reload ile değiştirilmez.
+  Native Firebase Web SDK yerine
   standart PushManager + ayrı staging VAPID ile HTTPS aboneliği kullanılır.
 
 ## Gereken tek eksik Firebase dosyası — operatör
