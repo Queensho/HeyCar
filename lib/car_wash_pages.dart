@@ -14,7 +14,7 @@ final washTheme = ThemeData(
         primary: _purple,
         secondary: _deep,
         surface: Colors.white),
-    scaffoldBackgroundColor: _bg);
+    scaffoldBackgroundColor: Colors.white);
 
 Widget washPickerTheme(BuildContext context, Widget? child) =>
     Theme(data: washTheme, child: child ?? const SizedBox.shrink());
@@ -91,35 +91,41 @@ class CarWashPage extends StatefulWidget {
 class _CarWashPageState extends State<CarWashPage> {
   late final api = widget.api ?? CarWashApi();
   Future<WashJson>? _future;
+  double radiusKm = 50;
+  bool nearestFirst = true;
+  bool verifiedOnly = false;
+  final Set<String> favorites = {};
+
   @override
   void initState() {
     super.initState();
     _load();
   }
 
-  void _load() {
-    setState(() {
-      _future = _nearby();
-    });
-  }
+  void _load() => setState(() => _future = _nearby());
 
   Future<WashJson> _nearby() async {
-    if (!await Geolocator.isLocationServiceEnabled())
+    if (!await Geolocator.isLocationServiceEnabled()) {
       throw Exception('Yakındaki işletmeler için konum hizmetini açın.');
+    }
     var permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied)
+    if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
+    }
     if (permission == LocationPermission.denied ||
-        permission == LocationPermission.deniedForever)
-      throw Exception(
-          'Konum izni gerekli. Cihaz ayarlarından izin verebilirsiniz.');
+        permission == LocationPermission.deniedForever) {
+      throw Exception('Konum izni gerekli. Cihaz ayarlarından izin verebilirsiniz.');
+    }
     final p = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
             accuracy: LocationAccuracy.medium,
             timeLimit: Duration(seconds: 15)));
     return api.call(
-        '/api/car-wash/nearby?lat=${p.latitude}&lon=${p.longitude}&radiusKm=50');
+        '/api/car-wash/nearby?lat=${p.latitude}&lon=${p.longitude}&radiusKm=${radiusKm.toInt()}');
   }
+
+  double _distance(WashJson b) =>
+      num.tryParse('${b['distance_km']}')?.toDouble() ?? double.infinity;
 
   @override
   Widget build(BuildContext context) => WashScaffold(
@@ -128,42 +134,262 @@ class _CarWashPageState extends State<CarWashPage> {
         IconButton(
             tooltip: 'Randevularım',
             onPressed: () => washPush(context, WashBookingsPage(api: api)),
-            icon: const Icon(Icons.event_note))
+            icon: const Icon(Icons.event_note_outlined)),
       ],
       child: WashLoader(
           future: _future!,
           retry: _load,
           builder: (data) {
-            final businesses = washRows(data['businesses']);
+            final businesses = washRows(data['businesses'])
+                .where((b) => !verifiedOnly || b['verified'] == true)
+                .toList();
+            businesses.sort((a, b) => nearestFirst
+                ? _distance(a).compareTo(_distance(b))
+                : _distance(b).compareTo(_distance(a)));
             return RefreshIndicator(
                 onRefresh: () async {
                   _load();
                   await _future;
                 },
-                child: ListView(padding: const EdgeInsets.all(18), children: [
-                  const Text('Yakındaki oto yıkamacılar',
-                      style:
-                          TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 8),
-                  const Text(
-                      '50 km içindeki işletmeler · Mesafeler kuş uçuşudur.'),
-                  const SizedBox(height: 20),
-                  if (businesses.isEmpty)
-                    const Text(
-                        'Yakınınızda yayında bir oto yıkamacı bulunamadı.'),
-                  for (final b in businesses)
-                    washCard(ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text('${b['name']}'),
-                        subtitle: Text(
-                            '${b['address'] ?? ''}\n${(num.tryParse('${b['distance_km']}') ?? 0).toStringAsFixed(1)} km'),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () => washPush(
-                            context,
-                            WashBusinessPage(
-                                api: api, businessId: '${b['id']}')))),
-                ]));
+                child: ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+                    children: [
+                      Text.rich(
+                          const TextSpan(children: [
+                            TextSpan(text: 'Yakındaki '),
+                            TextSpan(
+                                text: 'Oto Yıkamacılar',
+                                style: TextStyle(color: _purple))
+                          ]),
+                          style: const TextStyle(
+                              fontSize: 25,
+                              height: 1.2,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF10152D))),
+                      const SizedBox(height: 10),
+                      const Text('Bulunduğun konuma en uygun işletmeler.',
+                          style: TextStyle(
+                              fontSize: 14, color: Color(0xFF52566A))),
+                      const SizedBox(height: 18),
+                      Wrap(spacing: 8, runSpacing: 10, children: [
+                        PopupMenuButton<double>(
+                          tooltip: 'Arama mesafesini değiştir',
+                          onSelected: (v) {
+                            radiusKm = v;
+                            _load();
+                          },
+                          itemBuilder: (_) => [5.0, 10.0, 25.0, 50.0]
+                              .map((v) => PopupMenuItem(
+                                  value: v, child: Text('${v.toInt()} km')))
+                              .toList(),
+                          child: _washFilterPill(
+                              Icons.location_on_outlined,
+                              '${radiusKm.toInt()} km',
+                              selected: true),
+                        ),
+                        InkWell(
+                          borderRadius: BorderRadius.circular(24),
+                          onTap: () =>
+                              setState(() => nearestFirst = !nearestFirst),
+                          child: _washFilterPill(
+                              Icons.swap_vert,
+                              nearestFirst ? 'Sırala: Yakınlık' : 'Sırala: Uzaklık'),
+                        ),
+                        InkWell(
+                          borderRadius: BorderRadius.circular(24),
+                          onTap: () =>
+                              setState(() => verifiedOnly = !verifiedOnly),
+                          child: _washFilterPill(
+                              Icons.tune,
+                              verifiedOnly ? 'Doğrulanmış' : 'Filtrele',
+                              selected: verifiedOnly),
+                        ),
+                      ]),
+                      const SizedBox(height: 20),
+                      if (businesses.isEmpty)
+                        const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 28),
+                            child: Center(
+                                child: Text('Bu filtreye uygun işletme bulunamadı.'))),
+                      for (final b in businesses)
+                        _washBusinessTile(
+                          context: context,
+                          business: b,
+                          favorite: favorites.contains('${b['id']}'),
+                          onFavorite: () => setState(() {
+                            final id = '${b['id']}';
+                            if (!favorites.add(id)) favorites.remove(id);
+                          }),
+                          onOpen: () => washPush(
+                              context,
+                              WashBusinessPage(
+                                  api: api, businessId: '${b['id']}')),
+                        ),
+                    ]));
           }));
+}
+
+Widget _washFilterPill(IconData icon, String label, {bool selected = false}) =>
+    Container(
+      constraints: const BoxConstraints(minHeight: 48),
+      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+      decoration: BoxDecoration(
+        color: selected ? _lime : Colors.white,
+        border: Border.all(color: selected ? _lime : _purple),
+        borderRadius: BorderRadius.circular(28),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 20, color: selected ? const Color(0xFF10152D) : _deep),
+        const SizedBox(width: 7),
+        Text(label,
+            style: TextStyle(
+                fontWeight: FontWeight.w700,
+                color: selected ? const Color(0xFF10152D) : _deep)),
+      ]),
+    );
+
+Widget _washBusinessTile({
+  required BuildContext context,
+  required WashJson business,
+  required bool favorite,
+  required VoidCallback onFavorite,
+  required VoidCallback onOpen,
+}) {
+  final name = '${business['name'] ?? 'İşletme'}';
+  final address = '${business['address'] ?? ''}';
+  final distance = num.tryParse('${business['distance_km']}');
+  final verified = business['verified'] == true;
+  final photos = business['photos'];
+  final imageUrl = photos is List && photos.isNotEmpty
+      ? '${photos.first}'
+      : business['image_url'] is String
+          ? business['image_url'] as String
+          : '';
+  final validImage = Uri.tryParse(imageUrl)?.hasScheme == true &&
+      (imageUrl.startsWith('https://') || imageUrl.startsWith('http://'));
+  return Container(
+    margin: const EdgeInsets.only(bottom: 12),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(
+          color: verified ? _lime : const Color(0xFFE9E9ED),
+          width: verified ? 1.6 : 1),
+      boxShadow: const [
+        BoxShadow(
+            color: Color(0x14000000), blurRadius: 9, offset: Offset(0, 3))
+      ],
+    ),
+    child: InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: onOpen,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(15),
+            child: SizedBox(
+              width: 112,
+              height: 116,
+              child: validImage
+                  ? Image.network(imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          const _WashImagePlaceholder())
+                  : const _WashImagePlaceholder(),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (verified) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 9, vertical: 5),
+                    decoration: BoxDecoration(
+                        color: _lime,
+                        borderRadius: BorderRadius.circular(16)),
+                    child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.verified_user_outlined, size: 15),
+                      SizedBox(width: 4),
+                      Flexible(
+                          child: Text('Doğrulanmış işletme',
+                              style: TextStyle(
+                                  fontSize: 11, fontWeight: FontWeight.w700))),
+                    ]),
+                  ),
+                  const SizedBox(height: 6),
+                ],
+                Text(name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF10152D))),
+                const SizedBox(height: 7),
+                Row(children: [
+                  const Icon(Icons.location_on_outlined,
+                      size: 17, color: _deep),
+                  const SizedBox(width: 3),
+                  Expanded(
+                      child: Text(address,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontSize: 12, color: Color(0xFF52566A)))),
+                ]),
+                const SizedBox(height: 8),
+                Row(children: [
+                  const Icon(Icons.near_me_outlined,
+                      size: 17, color: _purple),
+                  const SizedBox(width: 4),
+                  Text(
+                      distance == null
+                          ? 'Mesafe bilinmiyor'
+                          : '${distance.toStringAsFixed(1)} km',
+                      style: const TextStyle(
+                          color: _purple, fontWeight: FontWeight.w700)),
+                  const Spacer(),
+                  Material(
+                    color: _lime,
+                    borderRadius: BorderRadius.circular(12),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: onOpen,
+                      child: const SizedBox(
+                        width: 44,
+                        height: 44,
+                        child: Icon(Icons.chevron_right, color: _deep),
+                      ),
+                    ),
+                  ),
+                ]),
+              ],
+            ),
+          ),
+          IconButton(
+              tooltip: favorite ? 'Favorilerden çıkar' : 'Favorilere ekle',
+              onPressed: onFavorite,
+              icon: Icon(
+                  favorite ? Icons.favorite : Icons.favorite_border,
+                  color: _deep)),
+        ]),
+      ),
+    ),
+  );
+}
+
+class _WashImagePlaceholder extends StatelessWidget {
+  const _WashImagePlaceholder();
+  @override
+  Widget build(BuildContext context) => const ColoredBox(
+      color: Color(0xFFF1ECF9),
+      child: Center(
+          child: Icon(Icons.local_car_wash_outlined,
+              size: 42, color: _purple)));
 }
 
 class WashBusinessPage extends StatefulWidget {
