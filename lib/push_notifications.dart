@@ -33,7 +33,9 @@ Future<void> heyCarNotificationResponseBackground(NotificationResponse r)async{
 @pragma('vm:entry-point')
 Future<void> heyCarFirebaseBackgroundHandler(RemoteMessage m)async{
   WidgetsFlutterBinding.ensureInitialized();
+  if(isStagingBuild&&!isStagingQaFcm)return;
   if(Firebase.apps.isEmpty)await Firebase.initializeApp();
+  PushNotifications.validateFirebaseProject();
   final data=Map<String,dynamic>.from(m.data);
   final type=(data['type']??'').toString();
   if(type=='incoming_call_cancelled'){
@@ -62,16 +64,25 @@ class PushNotifications{
   static final Map<String,DateTime> _recentLocalNotifications=<String,DateTime>{};
 
   static Future<void> bootstrap(){
-    if(isStagingBuild)return Future<void>.value();
+    if(isStagingBuild&&!isStagingQaFcm)return Future<void>.value();
     if(_bootstrapped)return Future<void>.value();
     // App/session restoration may request FCM concurrently with first-frame
     // initialization. Register the handler and initialize Firebase once.
     return _bootstrapPending??=_bootstrapOnce();
   }
 
+  static void validateFirebaseProject(){
+    validateApiEnvironment();
+    if(isStagingQaFcm){
+      final options=Firebase.app().options;
+      if(options.projectId!=stagingFirebaseProjectId||options.messagingSenderId!=stagingFirebaseSenderId)throw StateError('QA Firebase project mismatch');
+    }
+  }
+
   static Future<void> _bootstrapOnce()async{
     try{
       if(Firebase.apps.isEmpty)await Firebase.initializeApp();
+      validateFirebaseProject();
       FirebaseMessaging.onBackgroundMessage(heyCarFirebaseBackgroundHandler);
       await FirebaseMessaging.instance.setAutoInitEnabled(true);
       _bootstrapped=true;
@@ -85,7 +96,7 @@ class PushNotifications{
     await bootstrap();
     await ensureChannels(requestPermissions:true);
     await FirebaseMessaging.instance.requestPermission(alert:true,badge:true,sound:true);
-    if(Platform.isAndroid){
+    if(Platform.isAndroid&&!isStagingBuild){
       try{
         final allowed=await FlutterCallkitIncoming.canUseFullScreenIntent();
         if(!allowed)await FlutterCallkitIncoming.requestFullIntentPermission();
@@ -94,17 +105,17 @@ class PushNotifications{
   }
 
   static Future<void> init()async{
-    if(isStagingBuild)return;
+    if(isStagingBuild&&!isStagingQaFcm)return;
     await bootstrap();
     await ensureChannels(requestPermissions:true);
     await FirebaseMessaging.instance.requestPermission(alert:true,badge:true,sound:true);
-    if(Platform.isAndroid){
+    if(Platform.isAndroid&&!isStagingBuild){
       try{
         final allowed=await FlutterCallkitIncoming.canUseFullScreenIntent();
         if(!allowed)await FlutterCallkitIncoming.requestFullIntentPermission();
       }catch(_){}
     }
-    _listenCallEvents();
+    if(!isStagingBuild)_listenCallEvents();
     FirebaseMessaging.onMessage.listen((m)async{
       final data=Map<String,dynamic>.from(m.data);
       final type=(data['type']??'').toString();
@@ -304,7 +315,7 @@ class PushNotifications{
   }
 
   static Future<void> registerToken({bool scheduleRetry=true})async{
-    if(isStagingBuild)return;
+    if(isStagingBuild&&!isStagingQaFcm)return;
     if(_tokenRegistrationInFlight)return;
     _tokenRegistrationInFlight=true;
     SharedPreferences? prefs;
@@ -313,6 +324,7 @@ class PushNotifications{
       prefs=await SharedPreferences.getInstance();
       final ownerLogged=prefs.getBool('owner_logged_in')??false;
       final driverLogged=prefs.getBool('driver_logged_in')??false;
+      if(isStagingQaFcm&&!ownerLogged){_tokenRetryTimer?.cancel();return;}
       if(!ownerLogged&&!driverLogged){
         _tokenRetryAttempt=0;
         _tokenRetryTimer?.cancel();
@@ -353,8 +365,8 @@ class PushNotifications{
       late final http.Response r;
       if(ownerLogged){
         r=await OwnerHttp.post(
-          Uri.parse('$_apiBase/api/owner/push-token'),
-          body:jsonEncode({'token':token,'deviceId':deviceId,'platform':Platform.operatingSystem}),
+          Uri.parse(isStagingQaFcm?'$_apiBase/api/qa/services-v2/push/devices':'$_apiBase/api/owner/push-token'),
+          body:jsonEncode({'token':token,'deviceId':deviceId,'platform':Platform.operatingSystem,if(isStagingQaFcm)'channel':'fcm',if(isStagingQaFcm)'firebaseProjectId':stagingFirebaseProjectId}),
         ).timeout(const Duration(seconds:20));
       }else{
         r=await DriverHttp.post(

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "603919772851",
+    "project_id": "cepqontag-staging",
+    "storage_bucket": "cepqontag-staging.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:603919772851:android:93c13227fd7a35f94f94c6",
+        "android_client_info": {
+          "package_name": "com.cepqar.app.carwashstaging"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAeff5sA3gsGm3duwlZwgElX0FDoqCxfQk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

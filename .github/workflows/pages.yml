@@ -9,6 +9,10 @@ on:
         description: HTTPS staging API for an isolated car wash test APK (empty keeps the existing build)
         type: string
         default: ''
+      car_wash_qa_fcm:
+        description: Use the separate Firebase staging project for the QA-only staging Android flavor
+        type: boolean
+        default: false
   pull_request:
     branches: [main]
 
@@ -25,6 +29,7 @@ jobs:
     uses: ./.github/workflows/car-wash-phase3.yml
     with:
       staging_api: ${{ inputs.car_wash_staging_api }}
+      qa_fcm: ${{ inputs.car_wash_qa_fcm || false }}
   validate_owner_light_theme:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest

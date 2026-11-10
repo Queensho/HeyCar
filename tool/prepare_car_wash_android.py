@@ -3,10 +3,29 @@ from pathlib import Path
 import re
 import textwrap
 import shutil
+import argparse
+import json
+
+parser=argparse.ArgumentParser()
+parser.add_argument("--qa-fcm",action="store_true")
+args=parser.parse_args()
+if args.qa_fcm:
+    config=json.loads(Path("config/firebase/staging/google-services.json").read_text())
+    assert config["project_info"]["project_id"]=="cepqontag-staging"
+    assert config["project_info"]["project_number"]=="603919772851"
+    assert [c["client_info"]["android_client_info"]["package_name"] for c in config["client"]]==["com.cepqar.app.carwashstaging"]
+    assert not any(k in config for k in ["private_key","client_email","type"])
 
 p = Path('android/app/build.gradle.kts')
 s = p.read_text()
-s = s.replace('applicationId = "com.cepqar.app"', 'applicationId = "com.cepqar.app.carwashstaging"')
+if args.qa_fcm:
+    s=s.replace('plugins {','plugins {\n    id("com.google.gms.google-services") version "4.4.4"',1)
+    s=s.replace('android {','android {\n    flavorDimensions += "environment"\n    productFlavors { create("staging") { dimension = "environment"; applicationId = "com.cepqar.app.carwashstaging" } }',1)
+    folder=Path('android/app/src/staging');folder.mkdir(parents=True,exist_ok=True)
+    shutil.copyfile('config/firebase/staging/google-services.json',folder/'google-services.json')
+    (folder/'AndroidManifest.xml').write_text('<manifest xmlns:android="http://schemas.android.com/apk/res/android"><application><meta-data android:name="firebase_messaging_auto_init_enabled" android:value="false"/><meta-data android:name="firebase_analytics_collection_enabled" android:value="false"/></application></manifest>')
+else:
+    s = s.replace('applicationId = "com.cepqar.app"', 'applicationId = "com.cepqar.app.carwashstaging"')
 s = s.replace('compileOptions {', 'compileOptions {\n        isCoreLibraryDesugaringEnabled = true', 1)
 s += '\n\ndependencies { coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5") }\n'
 p.write_text(s)

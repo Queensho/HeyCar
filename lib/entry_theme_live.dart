@@ -305,7 +305,7 @@ Future<void> _routePush(Map<String,dynamic> d)async{
     }
     return;
   }
-  if(type=='car_wash'){
+  if(type=='car_wash'||(type=='service_booking'&&d['serviceCategory']=='car_wash')){
     final bookingId='${d['bookingId']??''}';
     if(RegExp(r'^[0-9a-fA-F-]{36}$').hasMatch(bookingId)){
       nav.push(MaterialPageRoute(builder:(_)=>WashBookingDetailPage(api:CarWashApi(),id:bookingId)));

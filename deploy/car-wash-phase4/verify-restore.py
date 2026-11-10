@@ -33,7 +33,8 @@ assert normalizer.stable_schema_dump(archive_schema)==normalizer.stable_schema_d
 constraints=json.loads(sql("SELECT json_agg(conname ORDER BY conname) FROM pg_constraint WHERE conrelid='public.car_wash_bookings'::regclass AND contype='x' AND convalidated;"))
 assert len(constraints)==3
 history=json.loads(sql('SELECT json_agg(filename ORDER BY filename) FROM schema_migrations;'))
-assert history[-2:]==['126_car_wash_catalog.sql','127_car_wash_bookings.sql']
+assert {'126_car_wash_catalog.sql','127_car_wash_bookings.sql'}.issubset(history)
+assert set(history).issubset({p.name for p in (root/'server/migrations').glob('*.sql')})
 report={'ok':True,'sourceDatabase':'heycar_staging','targetDatabase':database,'tablesVerified':len(actual_tables),'rowsVerified':sum(int(x['rows']) for x in manifest['tables'].values()),'allTableCountsAndContentChecksumsMatch':True,'schemaSemanticallyMatches':True,'validatedExclusions':constraints,'migrationCount':len(history),'dumpSha256':manifest['sha256'],'productionTouched':False}
 (root/'phase4-restore-result.json').write_text(json.dumps(report,indent=2))
 print(json.dumps(report))

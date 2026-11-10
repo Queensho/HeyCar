@@ -5,6 +5,9 @@ on:
       staging_api:
         required: true
         type: string
+      qa_fcm:
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -46,18 +49,18 @@ jobs:
       - name: Generate isolated Android platform
         run: |
           flutter create . --platforms=android --project-name app --org com.cepqar --no-pub
-          python3 tool/prepare_car_wash_android.py
+          python3 tool/prepare_car_wash_android.py ${{ inputs.qa_fcm && '--qa-fcm' || '' }}
       - name: Build staging APK
         env:
           STAGING_API: ${{ inputs.staging_api }}
         run: |
-          flutter build apk --debug --target lib/entry_theme_live.dart --dart-define=CEPQONTAG_STAGING=true --dart-define=CEPQONTAG_API_BASE_URL="$STAGING_API"
+          flutter build apk --debug ${{ inputs.qa_fcm && '--flavor staging' || '' }} --dart-define=CEPQONTAG_STAGING_QA_FCM=${{ inputs.qa_fcm }} --target lib/entry_theme_live.dart --dart-define=CEPQONTAG_STAGING=true --dart-define=CEPQONTAG_API_BASE_URL="$STAGING_API"
           mkdir -p car-wash-build
-          cp build/app/outputs/flutter-apk/app-debug.apk car-wash-build/CepQontag-Oto-Yikama-Staging.apk
+          cp build/app/outputs/flutter-apk/${{ inputs.qa_fcm && 'app-staging-debug.apk' || 'app-debug.apk' }} car-wash-build/CepQontag-Oto-Yikama-Staging.apk
           sha256sum car-wash-build/*.apk > car-wash-build/SHA256SUMS
       - uses: actions/upload-artifact@v4
         with:
-          name: cepqontag-car-wash-staging-apk
+          name: ${{ inputs.qa_fcm && 'cepqontag-qa-fcm-staging-apk' || 'cepqontag-car-wash-staging-apk' }}
           path: car-wash-build
           retention-days: 14
           if-no-files-found: error
