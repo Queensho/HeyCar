@@ -45,8 +45,8 @@ test('existing owner center service extension preserves QR, reads, dedupe and re
   const res={statusCode:200,status(n){this.statusCode=n;return this;},json(v){this.body=v;return this;}};
   await routes['/api/business/valet/sessions/:id/status']({headers:{authorization:'Bearer '+token},params:{id:session},body:{status:'parked'}},res);
   assert.equal(res.statusCode,200);assert.equal(res.body.session.status,'parked');
-  const events=(await pool.query("SELECT owner_id,category FROM owner_notification_events WHERE appointment_id=$1",[session])).rows;
-  assert.equal(events.length,1);assert.equal(events[0].owner_id,owner);assert.equal(events[0].category,'valet');
+  const events=(await pool.query("SELECT owner_id,category,message FROM owner_notification_events WHERE appointment_id=$1",[session])).rows;
+  assert.equal(events.length,1);assert.equal(events[0].owner_id,owner);assert.equal(events[0].category,'valet');assert.equal(events[0].message,'Aracınız park edildi.');
   assert.equal((await pool.query('SELECT status FROM vehicle_notifications WHERE id=$1',[qr])).rows[0].status,'new');
  });
  await t.test('reminder worker projects exactly one common reminder on repeated ticks',async()=>{

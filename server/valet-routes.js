@@ -78,7 +78,8 @@ module.exports=function registerValetRoutes(app,pool){
   if(center.enabled()&&sessionId&&toStatus){
    const row=(await pool.query('SELECT s.vehicle_id,v.owner_id FROM valet_sessions s JOIN vehicles v ON v.id=s.vehicle_id WHERE s.id=$1 AND s.business_id=$2',[sessionId,businessId])).rows[0];
    const states={accepted:['created',1],parked:['confirmed',2],requested:['rescheduled',3],retrieving:['in_progress',4],ready:['completed',5],delivered:['completed',6],cancelled:['cancelled',7]};
-   if(row&&states[toStatus])await center.record(pool,{ownerId:row.owner_id,vehicleId:row.vehicle_id,businessId,category:'valet',appointmentId:String(sessionId),event:states[toStatus][0],revision:states[toStatus][1],label:'Vale'});
+   const text={accepted:'Aracınız valeye teslim edildi.',parked:'Aracınız park edildi.',requested:'Aracınızın teslimi istendi.',retrieving:'Vale aracınızı getiriyor.',ready:'Aracınız teslim için hazır.',delivered:'Aracınız teslim edildi.',cancelled:'Vale hizmetiniz iptal edildi.'};
+   if(row&&states[toStatus])await center.record(pool,{ownerId:row.owner_id,vehicleId:row.vehicle_id,businessId,category:'valet',appointmentId:String(sessionId),event:states[toStatus][0],revision:states[toStatus][1],label:'Vale',message:text[toStatus]});
   }
  }catch(e){console.error('valet audit',{code:e.code||'UNAVAILABLE'});}}
 

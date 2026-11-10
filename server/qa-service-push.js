@@ -49,7 +49,7 @@ const carWashSource={category:'car_wash',async readEvents(pool,p){return (await 
  AND EXISTS(SELECT 1 FROM service_push_devices d WHERE (d.owner_id=b.owner_id OR d.business_id=b.business_id) AND d.created_at<=n.created_at)
  AND NOT EXISTS(SELECT 1 FROM service_push_deliveries d WHERE d.event_key='services_v2:car_wash:'||b.id::text||':'||n.revision::text||':'||n.event)
  AND (n.event<>'reminder' OR (b.status='confirmed' AND b.revision=n.revision AND b.starts_at>now())) ORDER BY n.created_at LIMIT 500`,[p.notBefore,p.owners,p.businesses])).rows.map(r=>({...r,category:'car_wash',label:'Oto Yıkama'}));}};
-const ownerCenterSource={category:null,async readEvents(pool,p){return (await pool.query(`SELECT n.id AS "centerId",n.category,n.appointment_id AS "appointmentId",n.owner_id AS "ownerId",n.business_id AS "businessId",n.event,n.revision,n.created_at AS "createdAt",left(n.title,80) AS label
+const ownerCenterSource={category:null,async readEvents(pool,p){return (await pool.query(`SELECT n.id AS "centerId",n.category,n.appointment_id AS "appointmentId",n.owner_id AS "ownerId",n.business_id AS "businessId",n.event,n.revision,n.created_at AS "createdAt",left(regexp_replace(n.title,'^CepQontag • ',''),80) AS label,n.message
  FROM owner_notification_events n WHERE n.created_at>=$1 AND n.owner_id=ANY($2::uuid[]) AND n.business_id=ANY($3::uuid[])
  AND EXISTS(SELECT 1 FROM service_push_devices d WHERE (d.owner_id=n.owner_id OR d.business_id=n.business_id) AND d.created_at<=n.created_at)
  AND NOT EXISTS(SELECT 1 FROM service_push_deliveries d WHERE d.event_key=n.event_key)
