@@ -70,6 +70,15 @@ test('car wash customer and business journey through the real server and Postgre
   }
   for(const invalid of [321.5,'321,50',-1])assert.equal((await request('/api/business/car-wash/services',shop.token,{method:'POST',body:{name:'Invalid price',description:'Rejected',priceKurus:invalid,durationMinutes:45,active:true}})).status,400);
  });
+ await t.test('public catalog returns real photos contact and configured operating rules',async()=>{
+  await pool.query('UPDATE businesses SET phone=$2 WHERE id=$1',[shop.id,'+905550000001']);
+  const detail=await request('/api/car-wash/businesses/'+shop.id,owner.token);assert.equal(detail.status,200);
+  assert.equal(detail.body.business.phone,'+905550000001');assert.equal(detail.body.business.workingHours.length,7);
+  assert.equal(detail.body.business.workingHours[0].opens,540);assert.deepEqual(detail.body.business.closedDays,[]);
+  const nearby=await request('/api/car-wash/nearby?lat=41&lon=29',owner.token);assert.equal(nearby.status,200);
+  assert.equal(nearby.body.businesses.find(b=>b.id===shop.id).photos[0],'https://example.invalid/test.webp');
+  assert.equal(detail.body.business.rating,undefined);assert.equal(detail.body.business.review_count,undefined);
+ });
  await t.test('catalog detail and real availability',async()=>{
   const d=await request('/api/car-wash/businesses/'+shop.id,owner.token);assert.equal(d.status,200);assert.equal(d.body.bookingEnabled,true);assert.equal(d.body.business.photos.length,1);
   const a=await request(`/api/car-wash/businesses/${shop.id}/availability?serviceId=${service.id}&date=${day}`,owner.token);assert.equal(a.status,200);assert.equal(a.body.slots[0].capacity,2);

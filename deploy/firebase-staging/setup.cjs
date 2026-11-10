@@ -21,7 +21,7 @@ assert.equal(fs.realpathSync('.env'),server+'/.env');assert.match(source,/^\/hom
 const manifest=JSON.parse(fs.readFileSync(source+'/manifest.json'));assert.equal(source.split('/').at(-1),manifest.sha);
 const digest=b=>crypto.createHash('sha256').update(b).digest('hex');
 for(const [name,sha] of Object.entries(manifest.files))assert.equal(digest(fs.readFileSync(source+'/'+name)),sha);
-const modules=['qa-firebase-admin.js','qa-service-push.js','service-booking-notification.js','owner-notification-center.js','notification-routes.js','valet-routes.js'];
+const modules=['qa-firebase-admin.js','qa-service-push.js','service-booking-notification.js','owner-notification-center.js','notification-routes.js','valet-routes.js','car-wash-routes.js'];
 let backup,codeChanged=false,schemaCommitted=false;
 (async()=>{const db=await pool.connect();try{
  assert.equal((await db.query('SELECT current_database() AS db')).rows[0].db,'heycar_staging');

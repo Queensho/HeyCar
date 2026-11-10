@@ -1,3 +1,4 @@
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'car_wash_api.dart';
@@ -102,7 +103,9 @@ class _CarWashPageState extends State<CarWashPage> {
     _load();
   }
 
-  void _load() => setState(() => _future = _nearby());
+  void _load() => setState(() {
+        _future = _nearby();
+      });
 
   Future<WashJson> _nearby() async {
     if (!await Geolocator.isLocationServiceEnabled()) {
@@ -114,7 +117,8 @@ class _CarWashPageState extends State<CarWashPage> {
     }
     if (permission == LocationPermission.denied ||
         permission == LocationPermission.deniedForever) {
-      throw Exception('Konum izni gerekli. Cihaz ayarlarından izin verebilirsiniz.');
+      throw Exception(
+          'Konum izni gerekli. Cihaz ayarlarından izin verebilirsiniz.');
     }
     final p = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
@@ -174,40 +178,40 @@ class _CarWashPageState extends State<CarWashPage> {
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: Row(children: [
-                        PopupMenuButton<double>(
-                          tooltip: 'Arama mesafesini değiştir',
-                          onSelected: (v) {
-                            radiusKm = v;
-                            _load();
-                          },
-                          itemBuilder: (_) => [5.0, 10.0, 25.0, 50.0]
-                              .map((v) => PopupMenuItem(
-                                  value: v, child: Text('${v.toInt()} km')))
-                              .toList(),
-                          child: _washFilterPill(
-                              Icons.location_on_outlined,
-                              '${radiusKm.toInt()} km',
-                              selected: true),
-                        ),
-                        const SizedBox(width: 8),
-                        InkWell(
-                          borderRadius: BorderRadius.circular(24),
-                          onTap: () =>
-                              setState(() => nearestFirst = !nearestFirst),
-                          child: _washFilterPill(
-                              Icons.swap_vert,
-                              nearestFirst ? 'Sırala: Yakınlık' : 'Sırala: Uzaklık'),
-                        ),
-                        const SizedBox(width: 8),
-                        InkWell(
-                          borderRadius: BorderRadius.circular(24),
-                          onTap: () =>
-                              setState(() => verifiedOnly = !verifiedOnly),
-                          child: _washFilterPill(
-                              Icons.tune,
-                              verifiedOnly ? 'Doğrulanmış' : 'Filtrele',
-                              selected: verifiedOnly),
-                        ),
+                          PopupMenuButton<double>(
+                            tooltip: 'Arama mesafesini değiştir',
+                            onSelected: (v) {
+                              radiusKm = v;
+                              _load();
+                            },
+                            itemBuilder: (_) => [5.0, 10.0, 25.0, 50.0]
+                                .map((v) => PopupMenuItem(
+                                    value: v, child: Text('${v.toInt()} km')))
+                                .toList(),
+                            child: _washFilterPill(Icons.location_on_outlined,
+                                '${radiusKm.toInt()} km',
+                                selected: true),
+                          ),
+                          const SizedBox(width: 8),
+                          InkWell(
+                            borderRadius: BorderRadius.circular(24),
+                            onTap: () =>
+                                setState(() => nearestFirst = !nearestFirst),
+                            child: _washFilterPill(
+                                Icons.swap_vert,
+                                nearestFirst
+                                    ? 'Sırala: Yakınlık'
+                                    : 'Sırala: Uzaklık'),
+                          ),
+                          const SizedBox(width: 8),
+                          InkWell(
+                            borderRadius: BorderRadius.circular(24),
+                            onTap: () =>
+                                setState(() => verifiedOnly = !verifiedOnly),
+                            child: _washFilterPill(Icons.tune,
+                                verifiedOnly ? 'Doğrulanmış' : 'Filtrele',
+                                selected: verifiedOnly),
+                          ),
                         ]),
                       ),
                       const SizedBox(height: 16),
@@ -215,7 +219,8 @@ class _CarWashPageState extends State<CarWashPage> {
                         const Padding(
                             padding: EdgeInsets.symmetric(vertical: 28),
                             child: Center(
-                                child: Text('Bu filtreye uygun işletme bulunamadı.'))),
+                                child: Text(
+                                    'Bu filtreye uygun işletme bulunamadı.'))),
                       for (final b in businesses)
                         _washBusinessTile(
                           context: context,
@@ -263,16 +268,16 @@ Widget _washBusinessTile({
   final name = '${business['name'] ?? 'İşletme'}';
   final address = '${business['address'] ?? ''}';
   final distance = num.tryParse('${business['distance_km']}');
-  final verified = business['verified'] == true ||
-      business['is_verified'] == true;
+  final verified =
+      business['verified'] == true || business['is_verified'] == true;
   final photos = business['photos'];
   final imageUrl = photos is List && photos.isNotEmpty
       ? '${photos.first is Map ? (photos.first['url'] ?? photos.first['photo_url'] ?? '') : photos.first}'
       : '${business['image_url'] ?? business['photo_url'] ?? ''}';
-  final validImage = imageUrl.startsWith('https://') ||
-      imageUrl.startsWith('http://');
-  final rating = num.tryParse(
-      '${business['rating'] ?? business['average_rating'] ?? ''}');
+  final validImage =
+      imageUrl.startsWith('https://') || imageUrl.startsWith('http://');
+  final rating =
+      num.tryParse('${business['rating'] ?? business['average_rating'] ?? ''}');
   final reviews = int.tryParse(
       '${business['review_count'] ?? business['rating_count'] ?? ''}');
   return LayoutBuilder(builder: (context, constraints) {
@@ -356,14 +361,15 @@ Widget _washBusinessTile({
                     const Icon(Icons.near_me_outlined,
                         size: 15, color: _purple),
                     const SizedBox(width: 3),
-                    Text(
-                        distance == null
-                            ? '— km'
-                            : '${distance.toStringAsFixed(1)} km',
-                        style: const TextStyle(
-                            fontSize: 12,
-                            color: _purple,
-                            fontWeight: FontWeight.w700)),
+                    Flexible(
+                        child: Text(
+                            distance == null
+                                ? '— km'
+                                : '${distance.toStringAsFixed(1)} km',
+                            style: const TextStyle(
+                                fontSize: 12,
+                                color: _purple,
+                                fontWeight: FontWeight.w700))),
                     if (rating != null) ...[
                       const SizedBox(width: 6),
                       const Icon(Icons.star_rounded,
@@ -385,9 +391,8 @@ Widget _washBusinessTile({
               child: Column(children: [
                 IconButton(
                     visualDensity: VisualDensity.compact,
-                    tooltip: favorite
-                        ? 'Favorilerden çıkar'
-                        : 'Favorilere ekle',
+                    tooltip:
+                        favorite ? 'Favorilerden çıkar' : 'Favorilere ekle',
                     onPressed: onFavorite,
                     icon: Icon(
                         favorite ? Icons.favorite : Icons.favorite_border,
@@ -421,8 +426,8 @@ class _WashImagePlaceholder extends StatelessWidget {
   Widget build(BuildContext context) => const ColoredBox(
       color: Color(0xFFF1ECF9),
       child: Center(
-          child: Icon(Icons.local_car_wash_outlined,
-              size: 42, color: _purple)));
+          child:
+              Icon(Icons.local_car_wash_outlined, size: 42, color: _purple)));
 }
 
 class WashBusinessPage extends StatefulWidget {
@@ -447,7 +452,8 @@ class _WashBusinessPageState extends State<WashBusinessPage> {
   }
 
   void _load() => setState(() {
-        future = widget.api.call('/api/car-wash/businesses/${widget.businessId}');
+        future =
+            widget.api.call('/api/car-wash/businesses/${widget.businessId}');
       });
 
   String _photoUrl(dynamic photo) {
@@ -464,8 +470,9 @@ class _WashBusinessPageState extends State<WashBusinessPage> {
         IconButton(
             tooltip: 'Paylaş',
             onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Paylaşım bağlantısı yakında kullanılabilir.')));
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                  content:
+                      Text('Paylaşım bağlantısı yakında kullanılabilir.')));
             },
             icon: const Icon(Icons.share_outlined, color: _deep)),
         IconButton(
@@ -480,15 +487,18 @@ class _WashBusinessPageState extends State<WashBusinessPage> {
           builder: (data) {
             final b = Map<String, dynamic>.from(data['business'] as Map);
             final services = washRows(b['services']);
-            final rawPhotos = b['photos'] is List ? b['photos'] as List : const [];
-            final photos = rawPhotos.map(_photoUrl)
-                .where((p) => p.startsWith('https://') || p.startsWith('http://'))
+            final rawPhotos =
+                b['photos'] is List ? b['photos'] as List : const [];
+            final photos = rawPhotos
+                .map(_photoUrl)
+                .where(
+                    (p) => p.startsWith('https://') || p.startsWith('http://'))
                 .toList();
             final verified = b['verified'] == true || b['is_verified'] == true;
-            final rating = num.tryParse(
-                '${b['rating'] ?? b['average_rating'] ?? ''}');
-            final reviewCount = int.tryParse(
-                '${b['review_count'] ?? b['rating_count'] ?? ''}');
+            final rating =
+                num.tryParse('${b['rating'] ?? b['average_rating'] ?? ''}');
+            final reviewCount =
+                int.tryParse('${b['review_count'] ?? b['rating_count'] ?? ''}');
             final address = '${b['address'] ?? ''}';
             return ListView(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 32),
@@ -563,32 +573,34 @@ class _WashBusinessPageState extends State<WashBusinessPage> {
                     const SizedBox(width: 5),
                     Text(rating.toStringAsFixed(1),
                         style: const TextStyle(fontWeight: FontWeight.w800)),
-                    if (reviewCount != null)
-                      Text(' ($reviewCount yorum)'),
+                    if (reviewCount != null) Text(' ($reviewCount yorum)'),
                   ]),
                 ],
                 const SizedBox(height: 10),
                 Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Icon(Icons.location_on_outlined, color: _deep, size: 21),
+                  const Icon(Icons.location_on_outlined,
+                      color: _deep, size: 21),
                   const SizedBox(width: 7),
-                  Expanded(child: Text(address,
-                      style: const TextStyle(fontSize: 14))),
+                  Expanded(
+                      child:
+                          Text(address, style: const TextStyle(fontSize: 14))),
                 ]),
                 const SizedBox(height: 20),
                 Row(children: [
                   _washDetailAction(Icons.phone_outlined, 'Ara',
-                      onTap: () => _washDetailMessage(context,
-                          'Telefon bilgisi işletme tarafından sağlanmadı.')),
+                      onTap: () =>
+                          _washOpenBusinessLink(context, washBusinessPhone(b))),
                   const SizedBox(width: 7),
                   _washDetailAction(Icons.near_me_outlined, 'Yol Tarifi',
-                      onTap: () => _washDetailMessage(context,
-                          'Yol tarifi bağlantısı henüz tanımlı değil.')),
+                      onTap: () => _washOpenBusinessLink(
+                          context, washBusinessMap(b, directions: true))),
                   const SizedBox(width: 7),
                   _washDetailAction(Icons.navigation_outlined, 'Konum',
-                      onTap: () => _washDetailMessage(context,
-                          'Konum bağlantısı henüz tanımlı değil.')),
+                      onTap: () =>
+                          _washOpenBusinessLink(context, washBusinessMap(b))),
                   const SizedBox(width: 7),
-                  _washDetailAction(Icons.access_time_outlined, 'Çalışma Saatleri',
+                  _washDetailAction(
+                      Icons.access_time_outlined, 'Çalışma Saatleri',
                       onTap: () => setState(() => tab = 2)),
                 ]),
                 const SizedBox(height: 24),
@@ -611,13 +623,18 @@ class _WashBusinessPageState extends State<WashBusinessPage> {
                                 color: tab == i ? _lime : Colors.transparent,
                                 borderRadius: BorderRadius.circular(12)),
                             child: Text(
-                                ['Hizmetler', 'Yorumlar${reviewCount == null ? '' : ' ($reviewCount)'}', 'Hakkında'][i],
+                                [
+                                  'Hizmetler',
+                                  'Yorumlar${reviewCount == null ? '' : ' ($reviewCount)'}',
+                                  'Hakkında'
+                                ][i],
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: tab == i
-                                        ? FontWeight.w800 : FontWeight.w600,
+                                        ? FontWeight.w800
+                                        : FontWeight.w600,
                                     color: const Color(0xFF10152D))),
                           ),
                         ),
@@ -648,8 +665,10 @@ class _WashBusinessPageState extends State<WashBusinessPage> {
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(color: const Color(0xFFE6E0EE)),
                         boxShadow: const [
-                          BoxShadow(color: Color(0x12000000),
-                              blurRadius: 8, offset: Offset(0, 3)),
+                          BoxShadow(
+                              color: Color(0x12000000),
+                              blurRadius: 8,
+                              offset: Offset(0, 3)),
                         ],
                       ),
                       child: Column(children: [
@@ -658,13 +677,14 @@ class _WashBusinessPageState extends State<WashBusinessPage> {
                             width: 64,
                             height: 64,
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF3EBFA),
-                              borderRadius: BorderRadius.circular(14)),
+                                color: const Color(0xFFF3EBFA),
+                                borderRadius: BorderRadius.circular(14)),
                             child: const Icon(Icons.local_car_wash_outlined,
                                 color: _purple, size: 34),
                           ),
                           const SizedBox(width: 12),
-                          Expanded(child: Column(
+                          Expanded(
+                              child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text('${service['name'] ?? ''}',
@@ -673,15 +693,15 @@ class _WashBusinessPageState extends State<WashBusinessPage> {
                                       fontWeight: FontWeight.w800)),
                               const SizedBox(height: 4),
                               Text('${service['description'] ?? ''}',
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis),
+                                  maxLines: 2, overflow: TextOverflow.ellipsis),
                               const SizedBox(height: 6),
                               Row(children: [
                                 const Icon(Icons.schedule_outlined,
                                     color: _deep, size: 18),
                                 const SizedBox(width: 5),
                                 Flexible(
-                                  child: Text('${service['durationMinutes']} dakika',
+                                  child: Text(
+                                      '${service['durationMinutes']} dakika',
                                       softWrap: true),
                                 ),
                               ]),
@@ -704,10 +724,12 @@ class _WashBusinessPageState extends State<WashBusinessPage> {
                                 backgroundColor: _lime,
                                 foregroundColor: const Color(0xFF10152D)),
                             onPressed: data['bookingEnabled'] == true
-                                ? () => washPush(context, WashReservePage(
-                                    api: widget.api,
-                                    business: b,
-                                    service: service))
+                                ? () => washPush(
+                                    context,
+                                    WashReservePage(
+                                        api: widget.api,
+                                        business: b,
+                                        service: service))
                                 : null,
                             icon: const Icon(Icons.calendar_month_outlined),
                             label: const Text('Randevu Al',
@@ -718,16 +740,21 @@ class _WashBusinessPageState extends State<WashBusinessPage> {
                     ),
                 ] else if (tab == 1) ...[
                   const Text('Yorumlar',
-                      style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800)),
+                      style:
+                          TextStyle(fontSize: 21, fontWeight: FontWeight.w800)),
                   const SizedBox(height: 10),
                   const Text('Yorum listesi henüz bu ekrana bağlı değil.'),
                 ] else ...[
                   const Text('Hakkında',
-                      style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800)),
+                      style:
+                          TextStyle(fontSize: 21, fontWeight: FontWeight.w800)),
                   const SizedBox(height: 10),
-                  Text('${b['description'] ?? 'İşletme açıklaması bulunmuyor.'}'),
+                  Text(
+                      '${b['description'] ?? 'İşletme açıklaması bulunmuyor.'}'),
                   const SizedBox(height: 14),
-                  const Text('Çalışma saatleri için işletmeyle iletişime geçin.'),
+                  ...washBusinessHours(b).map((line) => Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Text(line))),
                 ],
               ],
             );
@@ -735,30 +762,110 @@ class _WashBusinessPageState extends State<WashBusinessPage> {
 }
 
 Widget _washDetailAction(IconData icon, String label,
-    {required VoidCallback onTap}) => Expanded(
-  child: InkWell(
-    borderRadius: BorderRadius.circular(15),
-    onTap: onTap,
-    child: Container(
-      constraints: const BoxConstraints(minHeight: 76),
-      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 10),
-      decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(15),
-          border: Border.all(color: const Color(0xFFEDE9F2))),
-      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Icon(icon, color: _deep, size: 24),
-        const SizedBox(height: 6),
-        Text(label, textAlign: TextAlign.center, maxLines: 2,
-            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700)),
-      ]),
-    ),
-  ),
-);
+        {required VoidCallback onTap}) =>
+    Expanded(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(15),
+        onTap: onTap,
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 76),
+          padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 10),
+          decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(15),
+              border: Border.all(color: const Color(0xFFEDE9F2))),
+          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Icon(icon, color: _deep, size: 24),
+            const SizedBox(height: 6),
+            Text(label,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                style:
+                    const TextStyle(fontSize: 10, fontWeight: FontWeight.w700)),
+          ]),
+        ),
+      ),
+    );
+
+Uri? washBusinessPhone(WashJson b) {
+  final raw = '${b['phone'] ?? ''}'.trim();
+  if (!RegExp(r'^\+?[0-9 ()-]{7,30}$').hasMatch(raw)) return null;
+  final phone = raw.replaceAll(RegExp(r'[^+0-9]'), '');
+  if (phone.replaceAll('+', '').length < 7 ||
+      phone.replaceAll('+', '').length > 15) return null;
+  return Uri(scheme: 'tel', path: phone);
+}
+
+Uri? washBusinessMap(WashJson b, {bool directions = false}) {
+  final lat = num.tryParse('${b['latitude']}'),
+      lon = num.tryParse('${b['longitude']}');
+  if (lat == null ||
+      lon == null ||
+      !lat.isFinite ||
+      !lon.isFinite ||
+      lat.abs() > 90 ||
+      lon.abs() > 180) return null;
+  return Uri.https(
+      'www.google.com',
+      directions ? '/maps/dir/' : '/maps/search/',
+      {'api': '1', directions ? 'destination' : 'query': '$lat,$lon'});
+}
+
+List<String> washBusinessHours(WashJson b) {
+  const days = [
+    'Pazar',
+    'Pazartesi',
+    'Salı',
+    'Çarşamba',
+    'Perşembe',
+    'Cuma',
+    'Cumartesi'
+  ];
+  String time(int value) =>
+      '${(value ~/ 60).toString().padLeft(2, '0')}:${(value % 60).toString().padLeft(2, '0')}';
+  final lines = <String>[];
+  for (final h in washRows(b['workingHours'])) {
+    final day = h['weekday'], opens = h['opens'], closes = h['closes'];
+    if (day is int &&
+        day >= 0 &&
+        day < 7 &&
+        opens is int &&
+        closes is int &&
+        opens >= 0 &&
+        closes <= 1440 &&
+        closes > opens)
+      lines.add('${days[day]}: ${time(opens)} – ${time(closes)}');
+  }
+  if (lines.isEmpty) {
+    final text = '${b['opening_hours'] ?? ''}'.trim();
+    lines.add(text.isEmpty
+        ? 'Çalışma saatleri işletme tarafından belirtilmedi.'
+        : text);
+  }
+  for (final d in washRows(b['closedDays'])) {
+    final day = '${d['day'] ?? ''}';
+    if (RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(day))
+      lines.add(
+          'Kapalı gün: ${day.substring(8)}.${day.substring(5, 7)}.${day.substring(0, 4)}');
+  }
+  return lines;
+}
+
+Future<void> _washOpenBusinessLink(BuildContext context, Uri? uri) async {
+  if (uri == null) {
+    _washDetailMessage(
+        context, 'İletişim veya konum bilgisi işletme tarafından sağlanmadı.');
+    return;
+  }
+  try {
+    if (await launchUrl(uri, mode: LaunchMode.externalApplication)) return;
+  } catch (_) {}
+  if (context.mounted)
+    _washDetailMessage(context, 'Bağlantı açılamadı. Lütfen tekrar deneyin.');
+}
 
 void _washDetailMessage(BuildContext context, String message) {
-  ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)));
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
 }
 
 class WashReservePage extends StatefulWidget {

@@ -2,7 +2,7 @@ const {ownerId}=require('./owner-auth-service');
 
 // Read-only first phase. No account, vehicle or booking creation endpoints.
 module.exports=function registerCarWashRoutes(app,pool,{enabled=()=>process.env.CAR_WASH_CATALOG_ENABLED==='true'}={}){
-  const publicFields='b.id,b.name,b.address,b.latitude,b.longitude,b.opening_hours,b.description,b.logo_url';
+  const publicFields='b.id,b.name,b.phone,b.address,b.latitude,b.longitude,b.opening_hours,b.description,b.logo_url';
   function allowed(req,res){
     res.set('Cache-Control','no-store');
     if(!enabled()){res.status(503).json({error:'CAR_WASH_DISABLED'});return false;}
@@ -20,8 +20,9 @@ module.exports=function registerCarWashRoutes(app,pool,{enabled=()=>process.env.
       return res.status(400).json({error:'INVALID_LOCATION'});
     }
     try{
+      const photoFields=process.env.CAR_WASH_BOOKING_ENABLED==='true'?",CASE WHEN jsonb_array_length(l.photos)>0 THEN jsonb_build_array(l.photos->0) ELSE '[]'::jsonb END AS photos":"";
       const result=await pool.query(`WITH nearby AS (
-        SELECT ${publicFields},6371*2*asin(sqrt(least(1.0,greatest(0.0,
+        SELECT ${publicFields}${photoFields},6371*2*asin(sqrt(least(1.0,greatest(0.0,
           power(sin(radians(b.latitude-$1)/2),2)+cos(radians($1))*cos(radians(b.latitude))*
           power(sin(radians(b.longitude-$2)/2),2))))) AS distance_km
         FROM car_wash_locations l JOIN businesses b ON b.id=l.business_id
@@ -40,7 +41,9 @@ module.exports=function registerCarWashRoutes(app,pool,{enabled=()=>process.env.
     try{
       // One statement keeps publication and service visibility in one snapshot.
       const phase2=process.env.CAR_WASH_BOOKING_ENABLED==='true';
-      const extra=phase2?',l.photos,l.booking_enabled':'';
+      const extra=phase2?`,l.photos,l.booking_enabled,
+        COALESCE((SELECT jsonb_agg(jsonb_build_object('weekday',h.weekday,'opens',h.opens,'closes',h.closes) ORDER BY h.weekday) FROM car_wash_hours h WHERE h.business_id=b.id),'[]'::jsonb) AS "workingHours",
+        COALESCE((SELECT jsonb_agg(jsonb_build_object('day',d.day::text) ORDER BY d.day) FROM car_wash_closed_days d WHERE d.business_id=b.id),'[]'::jsonb) AS "closedDays"`:'';
       const result=await pool.query(`SELECT ${publicFields}${extra},COALESCE((
         SELECT jsonb_agg(jsonb_build_object('id',s.id,'name',s.name,'description',s.description,
           'priceKurus',s.price_kurus,'currency','TRY','durationMinutes',s.duration_minutes) ORDER BY s.price_kurus,s.id)
