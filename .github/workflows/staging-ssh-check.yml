@@ -19,6 +19,10 @@ on:
         description: Publish staging web, restore isolated backup and test real web UI
         type: boolean
         default: false
+      car_wash_phase4_verify_only:
+        description: Verify already-published staging web without publishing or restarting
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -169,6 +173,7 @@ jobs:
           PYCODE
           cp deploy/car-wash-phase4/staging-web.cjs phase4-web/
       - name: Publish only staging web with code rollback
+        if: inputs.car_wash_phase4_verify_only != true
         env:
           SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
           SSH_PORT: ${{ secrets.STAGING_SSH_PORT }}

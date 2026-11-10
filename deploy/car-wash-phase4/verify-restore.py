@@ -26,7 +26,7 @@ for table,expected in manifest['tables'].items():
  assert json.loads(sql(query))==expected,'Restored rows/content differs: '+table
 spec=importlib.util.spec_from_file_location('schema_normalizer',root/'deploy/staging-pr318/deploy-staging-pr318.py')
 normalizer=importlib.util.module_from_spec(spec);spec.loader.exec_module(normalizer)
-archive_schema=run(['pg_restore','--schema-only','--no-owner','--no-acl'],dump.read_bytes()).decode()
+archive_schema=run(['pg_restore','--schema-only','--no-owner','--no-acl','--file=-'],dump.read_bytes()).decode()
 restored_schema=run(['pg_dump','-U','postgres','--schema-only','--no-owner','--no-acl',database]).decode()
 assert normalizer.stable_schema_dump(archive_schema)==normalizer.stable_schema_dump(restored_schema),'Restored schema differs'
 # Verify the restored UNIQUE/exclusion rules are present without changing data.
