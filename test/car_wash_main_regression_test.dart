@@ -62,6 +62,9 @@ class MainCatalogApi extends FixtureWashApi {
 
 void main() {
   test('hours, contacts and maps come only from actual configured fields', () {
+    expect(washPrice(null), 'Fiyat belirtilmedi');
+    expect(washPrice('NaN'), 'Fiyat belirtilmedi');
+    expect(washPrice(0), '0.00 ₺');
     expect(washBusinessHours({}),
         ['Çalışma saatleri işletme tarafından belirtilmedi.']);
     expect(

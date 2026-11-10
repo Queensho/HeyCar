@@ -140,7 +140,7 @@ class OwnerVehicleBrandMark extends StatelessWidget{
       return Semantics(
         label:slug==null?'Araç marka simgesi':'${make.trim()} marka logosu',
         image:true,
-        child:Center(child:Column(
+        child:Center(child:FittedBox(fit:BoxFit.scaleDown,child:Column(
           mainAxisSize:MainAxisSize.min,
           mainAxisAlignment:MainAxisAlignment.center,
           children:[
@@ -173,7 +173,7 @@ class OwnerVehicleBrandMark extends StatelessWidget{
                 letterSpacing:6,height:1)),
             ],
           ],
-        )),
+        ))),
       );
     });
   }

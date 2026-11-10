@@ -644,7 +644,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
     _=>Icons.cloud_outlined,
   };
 
-  bool get _largeHomeText=>MediaQuery.textScalerOf(context).scale(14)>19;
+  bool get _largeHomeText=>MediaQuery.textScalerOf(context).scale(14)>16.8;
 
   Widget _accessibleHeader()=>Padding(
     padding:EdgeInsets.fromLTRB(16,MediaQuery.paddingOf(context).top+8,16,8),

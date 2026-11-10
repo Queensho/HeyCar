@@ -21,8 +21,13 @@ String washTime(Object? value) {
       : '${washDate(d)} ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 }
 
-String washPrice(Object? value) =>
-    '${((num.tryParse('$value') ?? 0) / 100).toStringAsFixed(2)} ₺';
+String washPrice(Object? value) {
+  final amount = num.tryParse('$value');
+  if (amount == null || !amount.isFinite || amount < 0 || amount % 1 != 0)
+    return 'Fiyat belirtilmedi';
+  return '${(amount / 100).toStringAsFixed(2)} ₺';
+}
+
 const washStatuses = {
   'pending': 'Bekliyor',
   'confirmed': 'Onaylandı',

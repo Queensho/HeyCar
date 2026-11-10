@@ -33,6 +33,10 @@ mor-lime; yeni uygulama/kullanıcı/araç modeli veya ikinci müşteri kutusu yo
   yoksa gerçek opening_hours veya açıkça “belirtilmedi” mesajı kullanılır.
 - Ara/konum/yol tarifi mevcut gerçek phone/coordinate alanlarıyla bağlanır. Eksik/
   geçersiz bilgide dürüst uyarı; sahte konum/fotoğraf/fiyat/puan/saat yoktur.
+- %130 fontta eski Araçlarım ve ana sayfa kartları sabit boyutta taşıyordu. Mevcut
+ erişilebilir düzenin eşiği düzeltildi; normal fonttaki görünüm değişmedi. Logo
+ metni/grafiği kendi kutusuna oranı korunarak sığar; kullanıcı metni ölçeği kısılmaz.
+- Eksik/bozuk fiyat artık0,00 olarak uydurulmaz; açıkça belirtilmedi mesajı gösterilir.
 - Staging workflow'u eski feature artefaktını seçebiliyordu. Artık aynı ref+SHA,
   başarılı workflow_dispatch ve süresi dolmamış staging web artefaktı zorunludur.
   İzinli ref'ler açık listedir; DB/env/path/suppression korumaları değişmedi.

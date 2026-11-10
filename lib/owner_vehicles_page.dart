@@ -89,7 +89,7 @@ Widget _brandHeader(){
 
 Widget _qrBanner(){
   return Container(
-    height:MediaQuery.textScalerOf(context).scale(14)>19?240:130,
+    height:MediaQuery.textScalerOf(context).scale(14)>16.8?240:130,
     clipBehavior:Clip.antiAlias,
     decoration:BoxDecoration(
       gradient:const LinearGradient(begin:Alignment.centerLeft,end:Alignment.centerRight,colors:[Color(0xFF3D0DAE),Color(0xFF6E22EA),Color(0xFF9746FF)]),
@@ -308,7 +308,7 @@ class OwnerVehicleCard extends StatelessWidget{
     final details=[if(trim.isNotEmpty)trim,if(year.isNotEmpty)year,if(color.isNotEmpty)color].join(' • ');
     const dark=false;
 
-    if(MediaQuery.textScalerOf(context).scale(14)>19){
+    if(MediaQuery.textScalerOf(context).scale(14)>16.8){
       return CQCard(child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
         Text('${v['plate']??''}',style:const TextStyle(fontSize:20,fontWeight:FontWeight.w800)),
         Text([make,model,details].where((x)=>x.isNotEmpty).join(' • ')),

@@ -5,8 +5,7 @@ import 'car_wash_api.dart';
 
 const _purple = Color(0xFF651FFF),
     _deep = Color(0xFF4912C8),
-    _lime = Color(0xFFB9FF45),
-    _bg = Color(0xFFF8F9FC);
+    _lime = Color(0xFFB9FF45);
 
 final washTheme = ThemeData(
     useMaterial3: true,
@@ -283,140 +282,144 @@ Widget _washBusinessTile({
   return LayoutBuilder(builder: (context, constraints) {
     final narrow = constraints.maxWidth < 355;
     final imageWidth = narrow ? 92.0 : 112.0;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-            color: verified ? _lime : const Color(0xFFE9E9ED),
-            width: verified ? 1.6 : 1),
-        boxShadow: const [
-          BoxShadow(
-              color: Color(0x14000000), blurRadius: 8, offset: Offset(0, 3))
-        ],
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: onOpen,
-        child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              child: SizedBox(
-                width: imageWidth,
-                height: narrow ? 108 : 116,
-                child: validImage
-                    ? Image.network(imageUrl,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) =>
-                            const _WashImagePlaceholder())
-                    : const _WashImagePlaceholder(),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (verified) ...[
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 7, vertical: 4),
-                      decoration: BoxDecoration(
-                          color: _lime,
-                          borderRadius: BorderRadius.circular(14)),
-                      child: const Text('✓ Doğrulanmış işletme',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                              fontSize: 10, fontWeight: FontWeight.w700)),
-                    ),
-                    const SizedBox(height: 4),
-                  ],
-                  Text(name,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                          fontSize: narrow ? 14 : 15,
-                          height: 1.15,
-                          fontWeight: FontWeight.w800,
-                          color: const Color(0xFF10152D))),
-                  const SizedBox(height: 5),
-                  Row(children: [
-                    const Icon(Icons.location_on_outlined,
-                        size: 15, color: _deep),
-                    const SizedBox(width: 3),
-                    Expanded(
-                      child: Text(address,
+    return Semantics(
+        identifier: 'car-wash-business-${business['id']}',
+        button: true,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+                color: verified ? _lime : const Color(0xFFE9E9ED),
+                width: verified ? 1.6 : 1),
+            boxShadow: const [
+              BoxShadow(
+                  color: Color(0x14000000), blurRadius: 8, offset: Offset(0, 3))
+            ],
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(20),
+            onTap: onOpen,
+            child: Padding(
+              padding: const EdgeInsets.all(10),
+              child:
+                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: SizedBox(
+                    width: imageWidth,
+                    height: narrow ? 108 : 116,
+                    child: validImage
+                        ? Image.network(imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) =>
+                                const _WashImagePlaceholder())
+                        : const _WashImagePlaceholder(),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (verified) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 7, vertical: 4),
+                          decoration: BoxDecoration(
+                              color: _lime,
+                              borderRadius: BorderRadius.circular(14)),
+                          child: const Text('✓ Doğrulanmış işletme',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                  fontSize: 10, fontWeight: FontWeight.w700)),
+                        ),
+                        const SizedBox(height: 4),
+                      ],
+                      Text(name,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              fontSize: 11, color: Color(0xFF52566A))),
-                    ),
-                  ]),
-                  const SizedBox(height: 8),
-                  Row(children: [
-                    const Icon(Icons.near_me_outlined,
-                        size: 15, color: _purple),
-                    const SizedBox(width: 3),
-                    Flexible(
-                        child: Text(
-                            distance == null
-                                ? '— km'
-                                : '${distance.toStringAsFixed(1)} km',
-                            style: const TextStyle(
-                                fontSize: 12,
-                                color: _purple,
-                                fontWeight: FontWeight.w700))),
-                    if (rating != null) ...[
-                      const SizedBox(width: 6),
-                      const Icon(Icons.star_rounded,
-                          size: 16, color: Color(0xFFFFB300)),
-                      Flexible(
-                        child: Text(
-                            '${rating.toStringAsFixed(1)}${reviews == null ? '' : ' ($reviews)'}',
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                fontSize: 11, fontWeight: FontWeight.w600)),
-                      ),
+                          style: TextStyle(
+                              fontSize: narrow ? 14 : 15,
+                              height: 1.15,
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF10152D))),
+                      const SizedBox(height: 5),
+                      Row(children: [
+                        const Icon(Icons.location_on_outlined,
+                            size: 15, color: _deep),
+                        const SizedBox(width: 3),
+                        Expanded(
+                          child: Text(address,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  fontSize: 11, color: Color(0xFF52566A))),
+                        ),
+                      ]),
+                      const SizedBox(height: 8),
+                      Row(children: [
+                        const Icon(Icons.near_me_outlined,
+                            size: 15, color: _purple),
+                        const SizedBox(width: 3),
+                        Flexible(
+                            child: Text(
+                                distance == null
+                                    ? '— km'
+                                    : '${distance.toStringAsFixed(1)} km',
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    color: _purple,
+                                    fontWeight: FontWeight.w700))),
+                        if (rating != null) ...[
+                          const SizedBox(width: 6),
+                          const Icon(Icons.star_rounded,
+                              size: 16, color: Color(0xFFFFB300)),
+                          Flexible(
+                            child: Text(
+                                '${rating.toStringAsFixed(1)}${reviews == null ? '' : ' ($reviews)'}',
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w600)),
+                          ),
+                        ],
+                      ]),
                     ],
-                  ]),
-                ],
-              ),
-            ),
-            SizedBox(
-              width: 42,
-              child: Column(children: [
-                IconButton(
-                    visualDensity: VisualDensity.compact,
-                    tooltip:
-                        favorite ? 'Favorilerden çıkar' : 'Favorilere ekle',
-                    onPressed: onFavorite,
-                    icon: Icon(
-                        favorite ? Icons.favorite : Icons.favorite_border,
-                        color: _deep)),
-                const SizedBox(height: 16),
-                Material(
-                  color: _lime,
-                  borderRadius: BorderRadius.circular(12),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(12),
-                    onTap: onOpen,
-                    child: const SizedBox(
-                      width: 44,
-                      height: 44,
-                      child: Icon(Icons.chevron_right, color: _deep),
-                    ),
                   ),
+                ),
+                SizedBox(
+                  width: 42,
+                  child: Column(children: [
+                    IconButton(
+                        visualDensity: VisualDensity.compact,
+                        tooltip:
+                            favorite ? 'Favorilerden çıkar' : 'Favorilere ekle',
+                        onPressed: onFavorite,
+                        icon: Icon(
+                            favorite ? Icons.favorite : Icons.favorite_border,
+                            color: _deep)),
+                    const SizedBox(height: 16),
+                    Material(
+                      color: _lime,
+                      borderRadius: BorderRadius.circular(12),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: onOpen,
+                        child: const SizedBox(
+                          width: 44,
+                          height: 44,
+                          child: Icon(Icons.chevron_right, color: _deep),
+                        ),
+                      ),
+                    ),
+                  ]),
                 ),
               ]),
             ),
-          ]),
-        ),
-      ),
-    );
+          ),
+        ));
   });
 }
 

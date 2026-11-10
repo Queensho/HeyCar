@@ -157,8 +157,29 @@ const output=process.env.BROWSER_OUTPUT||'phase4-browser';fs.mkdirSync(output,{r
   await ownerPage.getByText('Randevu detayları',{exact:true}).waitFor();
   const readback=await context.request.get(origin+'/api/owner/notifications',{headers:{Authorization:'Bearer '+ownerToken}});assert.equal(readback.status(),200);assert.equal((await readback.json()).notifications.find(n=>n.id===target.id).status,'read');
   await ownerPage.screenshot({path:output+'/owner-notification-booking.png',fullPage:true});
+  step='owner-real-catalog';
+  await ownerPage.getByRole('button',{name:'Geri',exact:true}).click();
+  await ownerPage.locator('[flt-semantics-identifier="owner-tab-2"]').click();
+  const nearbyResponse=ownerPage.waitForResponse(r=>new URL(r.url()).pathname==='/api/car-wash/nearby');
+  await ownerPage.getByText('Oto Yıkama',{exact:true}).click();
+  const nearbyResult=await nearbyResponse;assert.equal(nearbyResult.status(),200);const nearbyData=await nearbyResult.json();
+  const listed=nearbyData.businesses.find(b=>b.id===qa.businessId);assert.ok(listed,'QA_BUSINESS_NOT_LISTED');assert.ok(Array.isArray(listed.photos));
+  const businessRow=ownerPage.locator('[flt-semantics-identifier='+JSON.stringify('car-wash-business-'+qa.businessId)+']');
+  for(let scroll=0;scroll<40&&!(await businessRow.isVisible());scroll++){await ownerPage.mouse.move(640,500);await ownerPage.mouse.wheel(0,500);await ownerPage.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));}
+  await businessRow.waitFor({state:'visible'});
+  const businessDetail=ownerPage.waitForResponse(r=>new URL(r.url()).pathname==='/api/car-wash/businesses/'+qa.businessId);
+  await businessRow.click();const catalog=await businessDetail;assert.equal(catalog.status(),200);const publicBusiness=(await catalog.json()).business;
+  assert.equal(publicBusiness.id,qa.businessId);assert.ok(Array.isArray(publicBusiness.photos)&&Array.isArray(publicBusiness.workingHours));assert.ok(publicBusiness.services.length);
+  if(listed.photos.length)assert.equal(listed.photos[0],publicBusiness.photos[0]);
+  await ownerPage.getByText('Hakkında',{exact:true}).click();
+  const first=publicBusiness.workingHours[0];assert.ok(first,'QA_WORKING_HOURS_REQUIRED');
+  const time=v=>String(Math.floor(v/60)).padStart(2,'0')+':'+String(v%60).padStart(2,'0');
+  const hours=['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'][first.weekday]+': '+time(first.opens)+' – '+time(first.closes);
+  const hoursText=ownerPage.getByText(hours,{exact:true});
+  for(let scroll=0;scroll<12&&!(await hoursText.isVisible());scroll++){await ownerPage.mouse.move(640,500);await ownerPage.mouse.wheel(0,400);await ownerPage.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));}
+  await hoursText.waitFor({state:'visible'});await ownerPage.screenshot({path:output+'/owner-real-working-hours.png',fullPage:true});
   assert.deepEqual(failures,[]);
-  fs.writeFileSync(output+'/result.json',JSON.stringify({ok:true,businessUrl:origin+'/car-wash-business/',checks:['owner-real-ui-login','owner-common-center-filters','owner-notification-exact-booking-route','qa-push-config-no-delivery','qa-worker-assets-no-cache-worker-conflict','qa-permission-button-present','real-business-login','real-calendar-history','service-create','price-duration-persistence','price-update','desktop-mobile-render','no-page-errors'],serviceId:item.id,priceChecks,notificationId:target.id,bookingId:target.booking_id,responses},null,2));
+  fs.writeFileSync(output+'/result.json',JSON.stringify({ok:true,businessUrl:origin+'/car-wash-business/',checks:['owner-real-catalog-photos-contract','owner-real-configured-hours','owner-real-ui-login','owner-common-center-filters','owner-notification-exact-booking-route','qa-push-config-no-delivery','qa-worker-assets-no-cache-worker-conflict','qa-permission-button-present','real-business-login','real-calendar-history','service-create','price-duration-persistence','price-update','desktop-mobile-render','no-page-errors'],serviceId:item.id,priceChecks,notificationId:target.id,bookingId:target.booking_id,responses},null,2));
   console.log('PHASE4_BROWSER_OK');
  }finally{await browser.close();}
 })().catch(e=>{let reason=String(e.message);for(const secret of [qa.business.password,qa.owner.password,qa.owner.phone,qa.business.email])if(secret)reason=reason.split(secret).join('[REDACTED]');console.error('PHASE4_BROWSER_FAILED',{step,reason});process.exitCode=1;});
