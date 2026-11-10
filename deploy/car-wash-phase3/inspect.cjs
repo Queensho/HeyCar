@@ -65,7 +65,7 @@ const pool=new Pool({...config,connectionTimeoutMillis:5000});
    publicApiBase:env.PUBLIC_API_BASE_URL?new URL(env.PUBLIC_API_BASE_URL).origin+new URL(env.PUBLIC_API_BASE_URL).pathname:null,
    isolation:{appEnv:env.APP_ENV||null,externalDisabled},
    flags:{catalog:env.CAR_WASH_CATALOG_ENABLED||null,booking:env.CAR_WASH_BOOKING_ENABLED||null,push:env.CAR_WASH_PUSH_ENABLED||null},
-   integration:{qrRegistration:(source.match(/registerQrRoutes\s*\(app,\s*pool\)/g)||[]).length,carWash:source.includes('registerCarWashBookingRoutes'),idempotencyCors:source.includes('Idempotency-Key')}};
+   integration:{qrRegistration:(source.match(/registerQrRoutes\s*\(app,\s*pool\)/g)||[]).length,carWash:source.includes('registerCarWashBookingRoutes')||source.includes("require('./car-wash-booking-routes')"),idempotencyCors:source.includes('Idempotency-Key')}};
   console.log(JSON.stringify(result,null,2));
  }finally{await pool.end();}
 })().catch(e=>{console.error('STAGING_INSPECTION_FAILED',{code:e.code||'IDENTITY_OR_READ_FAILED'});process.exitCode=1;});

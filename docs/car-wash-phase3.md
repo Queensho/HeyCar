@@ -27,29 +27,40 @@ STAGING bandı gösterilir; production Firebase/Crashlytics başlatılmaz.
 Backend staging dış gönderim koruması da korunur. Bildirim olayları/gelen kutusu
 testi, gerçek cihaz FCM/Web Push teslimi anlamına gelmez.
 
-## Canlı staging'de gözlenen durum
+## Canlı staging — 10 Kasım 2026
 
-Salt okunur Actions incelemesiyle doğrulandı:
+[Rollout sonucu](https://github.com/Queensho/HeyCar/actions/runs/42785892847):
+126/127 sırasıyla, tek transaction içinde uygulandı; staging backend dağıtıldı.
+Production'a dokunulmadı, merge yapılmadı. Kaynak: `ee3e15672f39f9421dbfab4cfc22fd3dff900c87`.
 
-- Public HTTPS origin, Nginx üzerinden `127.0.0.1:8091` staging servisine gidiyor.
-- Servis çalışma dizini `/home/cepqontag-deploy/app/server`; port 8091.
-- PostgreSQL 16.15, veritabanı `heycar_staging`, rol `cepqontag_staging`.
-- Migration geçmişi 125 dahil 121 dosya; tüm checksum'lar kaynakla eşleşiyor.
-- `APP_ENV=staging`, dış bildirim koruması açık; Oto Yıkama henüz etkin değil.
-- Son canlı kontrolde `btree_gist` görünmüyor. Şema CREATE izni var fakat
-  users/vehicles/businesses REFERENCES ve users/vehicles TRIGGER izinleri yok.
+- PostgreSQL `127.0.0.1:5432`, DB `heycar_staging`, rol `cepqontag_staging`.
+- `btree_gist 1.7`, CREATE/REFERENCES/TRIGGER gereksinimleri doğrulandı.
+- 125'e kadar eski 121 migration checksum'ı eşleşti; 126/127 sonradan kaydedildi.
+- Önce yalnız staging DB için custom pg_dump ve server/env yedekleri alındı:
+  `/home/cepqontag-deploy/car-wash-phase3-backups/20261110085136695-ee3e15672f39`.
+  Dump 799099 byte; arşiv `pg_restore --list` ile okunabilirliği kontrol edildi.
+  Yedek dizini özel tutulur; env 0600. Tam staging dump restore denemesi yapılmadı.
+- Geçici şemada kaynak çakışması PostgreSQL `23P01` ile reddedildi;
+  araç silme trigger'ı test edildi ve probe transaction geri alındı.
+- Mevcut kullanıcı/araç/işletme ve korunmuş modül kayıt sayıları değişmedi.
+- Son salt okunur inceleme: 10 yeni tablo, 24 indeks, validated=true olan 3 GiST
+  exclusion constraint (resource/staff/vehicle). Migration checksum'ları kaynakla eşleşti.
+- Catalog/booking etkin; staging dış gönderim koruması korunuyor, car wash push kapalı.
+- Staging servis sağlık kontrolü 200; owner/business route'ları oturumsuz 401.
+  Public HTTPS health ve bookings 401 ayrıca doğrulandı.
 
-Bu nedenle rollout preflight'ta durdu; 126/127 commit edilmedi. Kullanıcı
-extension kurulumu bildirdi, ancak yeni bağımsız staging bağlantısındaki sonuç
-henüz bunu doğrulamıyor. Farklı PostgreSQL instance'ı/commit durumu kontrol edilmeli.
+**Durma nedeni:** gerçek API smoke testi, fixture oluşturmadan önce
+`STAGING_DISABLE_EXTERNAL_SERVICES='1'` değerini yalnız `'true'` kabul eden
+katı assertion nedeniyle durdu (`smoke.cjs:9`, ERR_ASSERTION). Backend koruması
+ve deploy kontrolü zaten `1` değerini destekliyor. Hata test önkoşulunda;
+randevu akışının çalıştığı henüz kanıtlanmadı. Kullanıcının hata halinde durma
+isteği gereği yeni rollout/smoke/APK build başlatılmadı. Migration geri alınmadı;
+backend staging'de etkin kaldı. Sentetik smoke fixture'ları oluşturulmadı.
 
-Yetkili staging yöneticisi için tam ve korumalı dosya:
-[`admin-prerequisites.sql`](../deploy/car-wash-phase3/admin-prerequisites.sql).
-Dosya başka veritabanında çalışmayı reddeder; gerekli extension ve sınırlı
-REFERENCES/TRIGGER yetkilerini tek transaction'da kurar ve COMMIT sonrası doğrular.
-Parola veya production bağlantısı istenmez. Bu erişim adımı çözülmeden staging
-randevu ekranları çalışıyor, migration uygulandı veya gerçek API smoke testi
-geçti denilemez.
+Geri dönüş planı: kod/ayar hatasında yedek server.js ve staging.env geri yüklenip
+yalnız staging servisi restart edilir; eklemeli migration tabloları silinmez.
+DB yedeğinden geri yükleme otomatik yapılmaz; mevcut kayıtları ezebileceğinden
+ayrı inceleme gerektirir. Bu işlemde code/env geri dönüşü gerekmedi.
 
 ## Hazır rollout yolu
 
@@ -90,9 +101,10 @@ branch'te, fingerprint'i doğrulanmış staging SSH hesabıyla çalışır:
 - Backend: izole PostgreSQL 16 üzerinde **221 test geçti**, hata ve atlama yok.
   Admin önkoşul SQL koruması, eşzamanlı rezervasyon ve kapasite testleri dahildir.
 - Salt okunur canlı staging bağlantı ve schema incelemesi başarılı.
-- **Bekleyen:** canlı extension/izin doğrulaması, 126/127 uygulaması, feature
-  etkinleştirme, gerçek staging randevu smoke ve gerçek uygulamanın staging ile
-  tarayıcı/device testi. Gerçek cihaz FCM teslimi de henüz doğrulanmadı.
+- **Bekleyen:** smoke önkoşul kontrolünün düzeltimi ve tekrar testi; gerçek
+  staging randevu akışları ve gerçek uygulamanın tarayıcı/device testi; güncel
+  APK build ve gerçek cihaz bildirim teslimi. Önceki 595/221/11 sonuçları
+  tarihsel doğrulamadır; bu durma sonrasında tüm testler yeniden çalıştırılmadı.
 - PR, bu adımlar tamamlanmadan hazır/merge edilmiş olarak işaretlenmemeli.
 
 Yeni operasyon dosyaları `deploy/car-wash-phase3/`, isolated APK hazırlığı
