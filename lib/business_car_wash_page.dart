@@ -8,7 +8,8 @@ class BusinessCarWashPage extends StatefulWidget {
       {super.key,
       required this.api,
       required this.onEditProfile,
-      required this.uploadPhoto, this.initialBookingId});
+      required this.uploadPhoto,
+      this.initialBookingId});
   final String? initialBookingId;
   final CarWashApi api;
   final Future<void> Function() onEditProfile;
@@ -29,7 +30,10 @@ class _BusinessCarWashPageState extends State<BusinessCarWashPage> {
   void initState() {
     super.initState();
     _load();
-    if(widget.initialBookingId!=null)WidgetsBinding.instance.addPostFrameCallback((_){if(mounted)_booking({'id':widget.initialBookingId});});
+    if (widget.initialBookingId != null)
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _booking({'id': widget.initialBookingId});
+      });
     refresh = Timer.periodic(const Duration(seconds: 60), (_) {
       if (mounted && !busy && (ModalRoute.of(context)?.isCurrent ?? false))
         _load();
@@ -86,111 +90,112 @@ class _BusinessCarWashPageState extends State<BusinessCarWashPage> {
     WashJson? result;
     await washDialog<void>(
         context: context,
-        builder: (c) => StatefulBuilder(
-            builder: (c, update) => AlertDialog(
-                    scrollable: true,
-                    title: Text(type == 'services'
-                        ? 'Hizmet paketi'
-                        : type == 'staff'
-                            ? 'Personel'
-                            : 'Kapasite kaynağı'),
-                    content: SizedBox(
-                        width: 420,
-                        child:
-                            Column(mainAxisSize: MainAxisSize.min, children: [
-                          TextField(
-                              controller: name,
-                              maxLength: 120,
-                              decoration:
-                                  const InputDecoration(labelText: 'Ad')),
-                          if (type == 'services') ...[
-                            TextField(
-                                controller: description,
-                                maxLength: 2000,
-                                decoration: const InputDecoration(
-                                    labelText: 'Açıklama')),
-                            TextField(
-                                controller: price,
-                                keyboardType:
-                                    const TextInputType.numberWithOptions(
-                                        decimal: true),
-                                decoration: const InputDecoration(
-                                    labelText: 'Fiyat (TL)')),
-                            TextField(
-                                controller: duration,
-                                keyboardType: TextInputType.number,
-                                decoration: const InputDecoration(
-                                    labelText: 'Süre (5–480 dakika)'))
-                          ],
-                          if (type == 'resources') ...[
-                            const Text(
-                                'Her kaynak aynı anda bir araç kabul eder. Aynı personelin bağlı olduğu kaynaklar eşzamanlı kullanılamaz.'),
-                            DropdownButtonFormField<String>(
-                                initialValue: staffId ?? '',
-                                isExpanded: true,
-                                decoration: const InputDecoration(
-                                    labelText: 'Sorumlu personel'),
-                                items: [
-                                  const DropdownMenuItem(
-                                      value: '', child: Text('Atanmamış')),
-                                  for (final s in staff)
-                                    DropdownMenuItem(
-                                        value: '${s['id']}',
-                                        child: Text('${s['name']}'))
-                                ],
-                                onChanged: (v) =>
-                                    update(() => staffId = v == '' ? null : v))
-                          ],
-                          SwitchListTile(
-                              contentPadding: EdgeInsets.zero,
-                              title: const Text('Aktif'),
-                              value: active,
-                              onChanged: (v) => update(() => active = v)),
-                          if (validation != null)
-                            Text(validation!,
-                                style: const TextStyle(color: Colors.red)),
-                        ])),
-                    actions: [
-                      TextButton(
-                          onPressed: () => Navigator.pop(c),
-                          child: const Text('Vazgeç')),
-                      FilledButton(
-                          onPressed: () {
-                            final amount = double.tryParse(
-                                    price.text.replaceAll(',', '.')),
-                                minutes = int.tryParse(duration.text);
-                            if (name.text.trim().isEmpty ||
-                                (type == 'services' &&
-                                    (amount == null ||
-                                        !amount.isFinite ||
-                                        amount < 0 ||
-                                        amount > 21474836.47 ||
-                                        minutes == null ||
-                                        minutes < 5 ||
-                                        minutes > 480))) {
-                              update(() => validation =
-                                  'Ad, fiyat ve süre bilgilerini kontrol edin.');
-                              return;
-                            }
-                            result = {
-                              'name': name.text.trim(),
-                              'active': active,
-                              if (item != null) 'id': item['id'],
-                              if (type == 'services') ...{
-                                'description': description.text,
-                                'priceKurus': (amount! * 100).round(),
-                                'durationMinutes': minutes
+        builder: (c) => _ItemEditorControllerScope(
+            controllers: [name, price, duration, description],
+            builder: (c) => StatefulBuilder(
+                builder: (c, update) => AlertDialog(
+                        scrollable: true,
+                        title: Text(type == 'services'
+                            ? 'Hizmet paketi'
+                            : type == 'staff'
+                                ? 'Personel'
+                                : 'Kapasite kaynağı'),
+                        content: SizedBox(
+                            width: 420,
+                            child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  TextField(
+                                      controller: name,
+                                      maxLength: 120,
+                                      decoration: const InputDecoration(
+                                          labelText: 'Ad')),
+                                  if (type == 'services') ...[
+                                    TextField(
+                                        controller: description,
+                                        maxLength: 2000,
+                                        decoration: const InputDecoration(
+                                            labelText: 'Açıklama')),
+                                    TextField(
+                                        controller: price,
+                                        keyboardType: const TextInputType
+                                            .numberWithOptions(decimal: true),
+                                        decoration: const InputDecoration(
+                                            labelText: 'Fiyat (TL)')),
+                                    TextField(
+                                        controller: duration,
+                                        keyboardType: TextInputType.number,
+                                        decoration: const InputDecoration(
+                                            labelText: 'Süre (5–480 dakika)'))
+                                  ],
+                                  if (type == 'resources') ...[
+                                    const Text(
+                                        'Her kaynak aynı anda bir araç kabul eder. Aynı personelin bağlı olduğu kaynaklar eşzamanlı kullanılamaz.'),
+                                    DropdownButtonFormField<String>(
+                                        initialValue: staffId ?? '',
+                                        isExpanded: true,
+                                        decoration: const InputDecoration(
+                                            labelText: 'Sorumlu personel'),
+                                        items: [
+                                          const DropdownMenuItem(
+                                              value: '',
+                                              child: Text('Atanmamış')),
+                                          for (final s in staff)
+                                            DropdownMenuItem(
+                                                value: '${s['id']}',
+                                                child: Text('${s['name']}'))
+                                        ],
+                                        onChanged: (v) => update(
+                                            () => staffId = v == '' ? null : v))
+                                  ],
+                                  SwitchListTile(
+                                      contentPadding: EdgeInsets.zero,
+                                      title: const Text('Aktif'),
+                                      value: active,
+                                      onChanged: (v) =>
+                                          update(() => active = v)),
+                                  if (validation != null)
+                                    Text(validation!,
+                                        style:
+                                            const TextStyle(color: Colors.red)),
+                                ])),
+                        actions: [
+                          TextButton(
+                              onPressed: () => Navigator.pop(c),
+                              child: const Text('Vazgeç')),
+                          FilledButton(
+                              onPressed: () {
+                                final amount = double.tryParse(
+                                        price.text.replaceAll(',', '.')),
+                                    minutes = int.tryParse(duration.text);
+                                if (name.text.trim().isEmpty ||
+                                    (type == 'services' &&
+                                        (amount == null ||
+                                            !amount.isFinite ||
+                                            amount < 0 ||
+                                            amount > 21474836.47 ||
+                                            minutes == null ||
+                                            minutes < 5 ||
+                                            minutes > 480))) {
+                                  update(() => validation =
+                                      'Ad, fiyat ve süre bilgilerini kontrol edin.');
+                                  return;
+                                }
+                                result = {
+                                  'name': name.text.trim(),
+                                  'active': active,
+                                  if (item != null) 'id': item['id'],
+                                  if (type == 'services') ...{
+                                    'description': description.text,
+                                    'priceKurus': (amount! * 100).round(),
+                                    'durationMinutes': minutes
+                                  },
+                                  if (type == 'resources') 'staffId': staffId
+                                };
+                                Navigator.pop(c);
                               },
-                              if (type == 'resources') 'staffId': staffId
-                            };
-                            Navigator.pop(c);
-                          },
-                          child: const Text('Kaydet'))
-                    ])));
-    name.dispose();
-    price.dispose();
-    duration.dispose();
-    description.dispose();
+                              child: const Text('Kaydet'))
+                        ]))));
     if (result != null && mounted)
       await _run(() async {
         await widget.api
@@ -741,4 +746,29 @@ class _BusinessBookingPageState extends State<_BusinessBookingPage> {
                     subtitle: Text(washTime(h['created_at']))),
             ]);
           }));
+}
+
+// The dialog future completes at pop, before its reverse transition unmounts
+// the TextFields. Dispose their controllers only when the route is removed.
+class _ItemEditorControllerScope extends StatefulWidget {
+  const _ItemEditorControllerScope(
+      {required this.controllers, required this.builder});
+  final List<TextEditingController> controllers;
+  final WidgetBuilder builder;
+  @override
+  State<_ItemEditorControllerScope> createState() =>
+      _ItemEditorControllerScopeState();
+}
+
+class _ItemEditorControllerScopeState
+    extends State<_ItemEditorControllerScope> {
+  @override
+  Widget build(BuildContext context) => widget.builder(context);
+  @override
+  void dispose() {
+    for (final controller in widget.controllers) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
 }

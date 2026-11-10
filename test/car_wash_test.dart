@@ -219,4 +219,41 @@ void main() {
     expect(find.text('250.00 ₺ · 30 dakika'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+  for (final entry
+      in {'321,50': 32150, '321.50': 32150, '0,01': 1, '350': 35000}.entries) {
+    testWidgets(
+        'business price ${entry.key} preserves integer kurus ${entry.value}',
+        (tester) async {
+      tester.view.physicalSize = const Size(1000, 1200);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final api = FixtureWashApi();
+      await tester.pumpWidget(MaterialApp(
+          home: BusinessCarWashPage(
+              api: api,
+              onEditProfile: () async {},
+              uploadPhoto: () async => null)));
+      await tester.pumpAndSettle();
+      final add = find.byTooltip('Hizmet paketleri ekle');
+      await tester.ensureVisible(add);
+      await tester.tap(add);
+      await tester.pumpAndSettle();
+      await tester.enterText(find.widgetWithText(TextField, 'Ad'), 'QA fiyat');
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Fiyat (TL)'), entry.key);
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Süre (5–480 dakika)'), '45');
+      await tester.tap(find.text('Kaydet'));
+      await tester.pumpAndSettle();
+      final sent = api.calls
+          .where((c) =>
+              c['path'] == '/api/business/car-wash/services' &&
+              c['method'] == 'POST')
+          .single;
+      expect((sent['body'] as Map)['priceKurus'], entry.value);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  }
 }

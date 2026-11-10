@@ -62,6 +62,14 @@ test('car wash customer and business journey through the real server and Postgre
   return;
  }
  let booking;
+ await t.test('service prices remain exact integer kurus through API and PostgreSQL',async()=>{
+  for(const priceKurus of [32150,2150,1,35000]){
+   const r=await request('/api/business/car-wash/services',shop.token,{method:'POST',body:{name:'QA price '+priceKurus,description:'Isolated price regression',priceKurus,durationMinutes:45,active:true}});
+   assert.equal(r.status,200);assert.equal(r.body.item.price_kurus,priceKurus);
+   const stored=(await pool.query('SELECT price_kurus FROM car_wash_services WHERE id=$1 AND business_id=$2',[r.body.item.id,shop.id])).rows[0];assert.equal(stored.price_kurus,priceKurus);
+  }
+  for(const invalid of [321.5,'321,50',-1])assert.equal((await request('/api/business/car-wash/services',shop.token,{method:'POST',body:{name:'Invalid price',description:'Rejected',priceKurus:invalid,durationMinutes:45,active:true}})).status,400);
+ });
  await t.test('catalog detail and real availability',async()=>{
   const d=await request('/api/car-wash/businesses/'+shop.id,owner.token);assert.equal(d.status,200);assert.equal(d.body.bookingEnabled,true);assert.equal(d.body.business.photos.length,1);
   const a=await request(`/api/car-wash/businesses/${shop.id}/availability?serviceId=${service.id}&date=${day}`,owner.token);assert.equal(a.status,200);assert.equal(a.body.slots[0].capacity,2);
