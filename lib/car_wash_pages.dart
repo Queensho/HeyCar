@@ -171,7 +171,9 @@ class _CarWashPageState extends State<CarWashPage> {
                           style: TextStyle(
                               fontSize: 14, color: Color(0xFF52566A))),
                       const SizedBox(height: 18),
-                      Wrap(spacing: 8, runSpacing: 10, children: [
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(children: [
                         PopupMenuButton<double>(
                           tooltip: 'Arama mesafesini değiştir',
                           onSelected: (v) {
@@ -187,6 +189,7 @@ class _CarWashPageState extends State<CarWashPage> {
                               '${radiusKm.toInt()} km',
                               selected: true),
                         ),
+                        const SizedBox(width: 8),
                         InkWell(
                           borderRadius: BorderRadius.circular(24),
                           onTap: () =>
@@ -195,6 +198,7 @@ class _CarWashPageState extends State<CarWashPage> {
                               Icons.swap_vert,
                               nearestFirst ? 'Sırala: Yakınlık' : 'Sırala: Uzaklık'),
                         ),
+                        const SizedBox(width: 8),
                         InkWell(
                           borderRadius: BorderRadius.circular(24),
                           onTap: () =>
@@ -204,8 +208,9 @@ class _CarWashPageState extends State<CarWashPage> {
                               verifiedOnly ? 'Doğrulanmış' : 'Filtrele',
                               selected: verifiedOnly),
                         ),
-                      ]),
-                      const SizedBox(height: 20),
+                        ]),
+                      ),
+                      const SizedBox(height: 16),
                       if (businesses.isEmpty)
                         const Padding(
                             padding: EdgeInsets.symmetric(vertical: 28),
@@ -232,7 +237,7 @@ class _CarWashPageState extends State<CarWashPage> {
 Widget _washFilterPill(IconData icon, String label, {bool selected = false}) =>
     Container(
       constraints: const BoxConstraints(minHeight: 48),
-      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: selected ? _lime : Colors.white,
         border: Border.all(color: selected ? _lime : _purple),
@@ -258,128 +263,156 @@ Widget _washBusinessTile({
   final name = '${business['name'] ?? 'İşletme'}';
   final address = '${business['address'] ?? ''}';
   final distance = num.tryParse('${business['distance_km']}');
-  final verified = business['verified'] == true;
+  final verified = business['verified'] == true ||
+      business['is_verified'] == true;
   final photos = business['photos'];
   final imageUrl = photos is List && photos.isNotEmpty
-      ? '${photos.first}'
-      : business['image_url'] is String
-          ? business['image_url'] as String
-          : '';
-  final validImage = Uri.tryParse(imageUrl)?.hasScheme == true &&
-      (imageUrl.startsWith('https://') || imageUrl.startsWith('http://'));
-  return Container(
-    margin: const EdgeInsets.only(bottom: 12),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(20),
-      border: Border.all(
-          color: verified ? _lime : const Color(0xFFE9E9ED),
-          width: verified ? 1.6 : 1),
-      boxShadow: const [
-        BoxShadow(
-            color: Color(0x14000000), blurRadius: 9, offset: Offset(0, 3))
-      ],
-    ),
-    child: InkWell(
-      borderRadius: BorderRadius.circular(20),
-      onTap: onOpen,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(15),
-            child: SizedBox(
-              width: 112,
-              height: 116,
-              child: validImage
-                  ? Image.network(imageUrl,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) =>
-                          const _WashImagePlaceholder())
-                  : const _WashImagePlaceholder(),
+      ? '${photos.first is Map ? (photos.first['url'] ?? photos.first['photo_url'] ?? '') : photos.first}'
+      : '${business['image_url'] ?? business['photo_url'] ?? ''}';
+  final validImage = imageUrl.startsWith('https://') ||
+      imageUrl.startsWith('http://');
+  final rating = num.tryParse(
+      '${business['rating'] ?? business['average_rating'] ?? ''}');
+  final reviews = int.tryParse(
+      '${business['review_count'] ?? business['rating_count'] ?? ''}');
+  return LayoutBuilder(builder: (context, constraints) {
+    final narrow = constraints.maxWidth < 355;
+    final imageWidth = narrow ? 92.0 : 112.0;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+            color: verified ? _lime : const Color(0xFFE9E9ED),
+            width: verified ? 1.6 : 1),
+        boxShadow: const [
+          BoxShadow(
+              color: Color(0x14000000), blurRadius: 8, offset: Offset(0, 3))
+        ],
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onOpen,
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: SizedBox(
+                width: imageWidth,
+                height: narrow ? 108 : 116,
+                child: validImage
+                    ? Image.network(imageUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) =>
+                            const _WashImagePlaceholder())
+                    : const _WashImagePlaceholder(),
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (verified) ...[
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 9, vertical: 5),
-                    decoration: BoxDecoration(
-                        color: _lime,
-                        borderRadius: BorderRadius.circular(16)),
-                    child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.verified_user_outlined, size: 15),
-                      SizedBox(width: 4),
-                      Flexible(
-                          child: Text('Doğrulanmış işletme',
-                              style: TextStyle(
-                                  fontSize: 11, fontWeight: FontWeight.w700))),
-                    ]),
-                  ),
-                  const SizedBox(height: 6),
-                ],
-                Text(name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF10152D))),
-                const SizedBox(height: 7),
-                Row(children: [
-                  const Icon(Icons.location_on_outlined,
-                      size: 17, color: _deep),
-                  const SizedBox(width: 3),
-                  Expanded(
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (verified) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 7, vertical: 4),
+                      decoration: BoxDecoration(
+                          color: _lime,
+                          borderRadius: BorderRadius.circular(14)),
+                      child: const Text('✓ Doğrulanmış işletme',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              fontSize: 10, fontWeight: FontWeight.w700)),
+                    ),
+                    const SizedBox(height: 4),
+                  ],
+                  Text(name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          fontSize: narrow ? 14 : 15,
+                          height: 1.15,
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFF10152D))),
+                  const SizedBox(height: 5),
+                  Row(children: [
+                    const Icon(Icons.location_on_outlined,
+                        size: 15, color: _deep),
+                    const SizedBox(width: 3),
+                    Expanded(
                       child: Text(address,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                              fontSize: 12, color: Color(0xFF52566A)))),
-                ]),
-                const SizedBox(height: 8),
-                Row(children: [
-                  const Icon(Icons.near_me_outlined,
-                      size: 17, color: _purple),
-                  const SizedBox(width: 4),
-                  Text(
-                      distance == null
-                          ? 'Mesafe bilinmiyor'
-                          : '${distance.toStringAsFixed(1)} km',
-                      style: const TextStyle(
-                          color: _purple, fontWeight: FontWeight.w700)),
-                  const Spacer(),
-                  Material(
-                    color: _lime,
-                    borderRadius: BorderRadius.circular(12),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(12),
-                      onTap: onOpen,
-                      child: const SizedBox(
-                        width: 44,
-                        height: 44,
-                        child: Icon(Icons.chevron_right, color: _deep),
+                              fontSize: 11, color: Color(0xFF52566A))),
+                    ),
+                  ]),
+                  const SizedBox(height: 8),
+                  Row(children: [
+                    const Icon(Icons.near_me_outlined,
+                        size: 15, color: _purple),
+                    const SizedBox(width: 3),
+                    Text(
+                        distance == null
+                            ? '— km'
+                            : '${distance.toStringAsFixed(1)} km',
+                        style: const TextStyle(
+                            fontSize: 12,
+                            color: _purple,
+                            fontWeight: FontWeight.w700)),
+                    if (rating != null) ...[
+                      const SizedBox(width: 6),
+                      const Icon(Icons.star_rounded,
+                          size: 16, color: Color(0xFFFFB300)),
+                      Flexible(
+                        child: Text(
+                            '${rating.toStringAsFixed(1)}${reviews == null ? '' : ' ($reviews)'}',
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                fontSize: 11, fontWeight: FontWeight.w600)),
                       ),
+                    ],
+                  ]),
+                ],
+              ),
+            ),
+            SizedBox(
+              width: 42,
+              child: Column(children: [
+                IconButton(
+                    visualDensity: VisualDensity.compact,
+                    tooltip: favorite
+                        ? 'Favorilerden çıkar'
+                        : 'Favorilere ekle',
+                    onPressed: onFavorite,
+                    icon: Icon(
+                        favorite ? Icons.favorite : Icons.favorite_border,
+                        color: _deep)),
+                const SizedBox(height: 16),
+                Material(
+                  color: _lime,
+                  borderRadius: BorderRadius.circular(12),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: onOpen,
+                    child: const SizedBox(
+                      width: 44,
+                      height: 44,
+                      child: Icon(Icons.chevron_right, color: _deep),
                     ),
                   ),
-                ]),
-              ],
+                ),
+              ]),
             ),
-          ),
-          IconButton(
-              tooltip: favorite ? 'Favorilerden çıkar' : 'Favorilere ekle',
-              onPressed: onFavorite,
-              icon: Icon(
-                  favorite ? Icons.favorite : Icons.favorite_border,
-                  color: _deep)),
-        ]),
+          ]),
+        ),
       ),
-    ),
-  );
+    );
+  });
 }
 
 class _WashImagePlaceholder extends StatelessWidget {
