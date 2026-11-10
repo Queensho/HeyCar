@@ -57,9 +57,12 @@ const output=process.env.BROWSER_OUTPUT||'phase4-browser';fs.mkdirSync(output,{r
   await enter('Fiyat (TL)','350');
   const update=page.waitForResponse(r=>r.url().endsWith('/api/business/car-wash/services')&&r.request().method()==='POST');
   await page.getByRole('button',{name:'Kaydet',exact:true}).click();assert.equal(((await (await update).json()).item).price_kurus,35000);
+  await page.getByRole('group',{name:new RegExp('^'+name+'.*350[.]00','s')}).waitFor({state:'visible'});
   await page.screenshot({path:output+'/business-services.png',fullPage:true});
   await page.setViewportSize({width:393,height:852});
-  await page.screenshot({path:output+'/business-mobile.png',fullPage:true});
+  await page.waitForFunction(()=>innerWidth===393&&innerHeight===852);
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  await page.screenshot({path:output+'/business-mobile.png',fullPage:false});
   assert.ok(responses.some(r=>r.path.endsWith('/bookings')&&r.status===200));
   assert.ok(responses.every(r=>r.status<400));assert.deepEqual(failures,[]);
   fs.writeFileSync(output+'/result.json',JSON.stringify({ok:true,businessUrl:origin+'/car-wash-business/',checks:['real-business-login','real-calendar-history','service-create','price-duration-persistence','price-update','desktop-mobile-render','no-page-errors'],serviceId:item.id,responses},null,2));
