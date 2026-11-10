@@ -75,13 +75,13 @@ jobs:
           STAGING_API: ${{ inputs.staging_api }}
         run: |
           flutter create . --platforms=web --project-name heycar_app --no-pub
-          flutter build web --release --target lib/entry_theme_live.dart --no-web-resources-cdn --no-wasm-dry-run --dart-define=CEPQONTAG_STAGING=true --dart-define=CEPQONTAG_API_BASE_URL="$STAGING_API"
+          flutter build web --release --pwa-strategy=none --target lib/entry_theme_live.dart --no-web-resources-cdn --no-wasm-dry-run --dart-define=CEPQONTAG_STAGING=true --dart-define=CEPQONTAG_API_BASE_URL="$STAGING_API"
           mkdir -p car-wash-web/owner
           cp -R build/web/. car-wash-web/owner/
           cp web/qa/service-push.js car-wash-web/owner/qa-service-push.js
           cp web/qa/service-worker.js car-wash-web/owner/qa-service-worker.js
           python3 -c 'from pathlib import Path;p=Path("car-wash-web/owner/index.html");p.write_text(p.read_text().replace("</head>","<script defer src=\"qa-service-push.js\"></script></head>"))'
-          flutter build web --release --target lib/entry_business.dart --no-web-resources-cdn --no-wasm-dry-run --dart-define=CEPQONTAG_STAGING=true --dart-define=CEPQONTAG_API_BASE_URL="$STAGING_API"
+          flutter build web --release --pwa-strategy=none --target lib/entry_business.dart --no-web-resources-cdn --no-wasm-dry-run --dart-define=CEPQONTAG_STAGING=true --dart-define=CEPQONTAG_API_BASE_URL="$STAGING_API"
           mkdir -p car-wash-web/business
           cp -R build/web/. car-wash-web/business/
           cp web/qa/service-push.js car-wash-web/business/qa-service-push.js
