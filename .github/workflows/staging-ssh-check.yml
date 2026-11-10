@@ -31,6 +31,10 @@ on:
         description: Read-only staging query plan and timing inspection
         type: boolean
         default: false
+      car_wash_push_readiness:
+        description: Inspect staging push setting presence without printing credentials
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -49,7 +53,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-        if: inputs.car_wash_inspect || inputs.car_wash_smoke || inputs.car_wash_diagnose || inputs.car_wash_performance
+        if: inputs.car_wash_inspect || inputs.car_wash_smoke || inputs.car_wash_diagnose || inputs.car_wash_performance || inputs.car_wash_push_readiness
       - name: Configure SSH
         env:
           SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
@@ -141,6 +145,24 @@ jobs:
         with:
           name: car-wash-phase4-performance
           path: phase4-performance-result.json
+          retention-days: 14
+
+      - name: Inspect staging push credential presence only
+        if: inputs.car_wash_push_readiness
+        env:
+          SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+          SSH_PORT: ${{ secrets.STAGING_SSH_PORT }}
+          SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = feature/car-wash-phase-1
+          ssh -i ~/.ssh/staging_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
+            'cd /home/cepqontag-deploy/app/server && node' < deploy/car-wash-phase4/push-readiness.cjs | tee phase4-push-readiness.json
+      - uses: actions/upload-artifact@v4
+        if: inputs.car_wash_push_readiness
+        with:
+          name: car-wash-push-readiness
+          path: phase4-push-readiness.json
           retention-days: 14
 
   phase4:
