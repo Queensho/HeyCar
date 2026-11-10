@@ -1,5 +1,9 @@
 # Phase 4 son cihaz/push ön kontrolü
 
+> Tarihsel ön kontrol: aşağıdaki eksiklerin bir kısmı ayrı staging Firebase entegrasyonuyla
+> giderildi. **Güncel durum, APK ve kalan manuel işlemler:** [Firebase staging QA](firebase-staging-qa.md).
+> Aşağıdaki “yeni APK yok / business push yok” ifadeleri önceki kontrol tarihine aittir.
+
 **Karar: push testi ve production geçişi henüz hazır değil.** Production Firebase
 kimlik bilgileri okunmadı/kopyalanmadı; ana staging dış servis koruması değiştirilmedi.
 Yeni push APK'sı üretilmedi; aşağıdaki mevcut APK randevu testine uygundur, push'a değil.
@@ -39,12 +43,9 @@ secret'larının varlığı/yokluğu doğrulanamadı. Değerleri okunmaya çalı
   gerekir. Ayrı test ortamında `web-push.generateVAPIDKeys()` ile yeni test pair'i
   üretilip özel secret store'a kaydedilebilir; üretimden alınmaz. Firebase ile aynı
   pair kullanılacaksa Console'un import-existing-pair akışı ayrıca değerlendirilir.
-- Önerilen güvenli test secret adları: `STAGING_FIREBASE_SERVICE_ACCOUNT_JSON`,
-  `STAGING_GOOGLE_SERVICES_JSON`, `STAGING_FIREBASE_PROJECT_ID`,
-  `STAGING_WEB_PUSH_VAPID_PUBLIC_KEY/PRIVATE_KEY/SUBJECT`. Bunlar mevcut build'in
-  otomatik tükettiği değişkenler değildir; ayrı test sender/build eşlemesi gerekir.
-  GitHub → Settings → Environments → staging veya güvenli ortam ayarlarına eklenir;
-  sohbet/issue/git içine yapıştırılmaz. Anahtarlar Android artefaktına/loga yüklenmez.
+- Firebase Admin JSON ve özel VAPID anahtarı yalnız güvenli staging VPS dosyalarında
+  tutulur. GitHub deposuna, GitHub Secrets’a, sohbete veya APK’ya eklenmez.
+  Güncel dosya yolları ve kurulum: [Firebase staging QA](firebase-staging-qa.md).
 
 ## Push build'i neden henüz yapılamıyor?
 

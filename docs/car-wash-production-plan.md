@@ -22,7 +22,7 @@ servis path'i bu görevde doğrulanmadı; staging değerleri yerine tahmin yapı
    ilk aşamada kapalı tutulur.
 2. Güvenli production bağlantısında DB/rol/cluster kimliği, extension ve tablo
    izinleri **salt okunur** doğrulanır. 125'e kadar tüm migration SHA'ları release
-   dosyalarıyla karşılaştırılır; pending set yalnız 126/127 olmalı. Eksik/unknown
+   dosyalarıyla karşılaştırılır; pending set 126/127 ve incelenmiş eklemeli 128 olmalı. Eksik/unknown
    eski migration veya checksum farkında işlem durur; otomatik baseline yapılmaz.
 3. Production'a özel yetkili DBA, extension/DDL rolünü inceleyerek yalnız gereken
    izinleri hazırlar. Runtime rolüne superuser/CREATEDB/CREATEROLE verilmez.
@@ -34,13 +34,14 @@ servis path'i bu görevde doğrulanmadı; staging değerleri yerine tahmin yapı
    geri yüklenip tüm tablo count/content/schema ve migration geçmişiyle karşılaştırılır.
    Production'a restore, `--clean` veya `DROP` çalıştırılmaz.
 5. İncelenmiş migration runner ile advisory lock `73194016`, kısa lock timeout
-   (5 s) ve kontrollü statement timeout (60 s) kullanılarak 126 sonra 127 uygulanır.
+   (5 s) ve kontrollü statement timeout (60 s) kullanılarak 126, 127, sonra 128 uygulanır.
    `server/migrate.js` dosya başına transaction kullanır: 127 başarısız olursa 126
    kalabilir. Flag'ler kapalı tutulur, kısmi eklemeli şema silinmez; hata incelenmeden
-   ilerlenmez. Sadece pending 126/127 uygulanması preflight'ta zorunludur.
-6. 10 tablo, 24 indeks, üç validated GiST exclusion, lifecycle trigger'ları, runtime
+   ilerlenmez. Sadece incelenmiş pending 126/127/128 uygulanması preflight'ta zorunludur.
+6. 126/127 için 10 tablo, 24 indeks, üç validated GiST exclusion, lifecycle trigger'ları, runtime
    DML izinleri ve 126/127 tracking checksum'ları doğrulanır. Eski kullanıcı/araç/
-   işletme kayıtları korunur. DB collision testi production verisi üstünde yapılmaz.
+   işletme kayıtları korunur. 128 için iki yeni QA push tablosu ve indeksleri ayrıca doğrulanır;
+   QA değişkenleri production’da tanımlanmaz ve QA sender çalıştırılmaz. DB collision testi production verisi üstünde yapılmaz.
 7. İncelenmiş backend release'i atomik code/env değişimiyle yüklenir; mevcut auth,
    API ve bildirim altyapısı korunur. `npm ci` lockfile ile yapılır, syntax/health,
    oturumsuz 401 ve temel mevcut modül kontrolleri geçmelidir. Staging web helper'ı
@@ -59,7 +60,7 @@ servis path'i bu görevde doğrulanmadı; staging değerleri yerine tahmin yapı
   503 verebildiği hesaba katılır; mevcut randevular kaybolmuş gibi bırakılmaz.
 - Son çalışan code/env/assets atomik geri yüklenir; yalnız ilgili production servisi
   onaylı operatörce restart edilir. Health, login, araç, QR ve mevcut modüller kontrol edilir.
-- 126/127 tabloları ve yeni randevular silinmez; migration geçmişi geri yazılmaz.
+- 126/127/128 tabloları ve yeni randevular silinmez; migration geçmişi geri yazılmaz.
   Lifecycle trigger/FK etkileri flag'den bağımsızdır; veri koruyan ayrı DBA incelemesi gerekir.
 - Tam DB restore/PITR son çaredir: yazmalar durdurulup rollout sonrası yeni kayıtların
   kaybı ve hedef restore zamanı onaylanmadan otomatik yapılmaz. Diğer modüllerin

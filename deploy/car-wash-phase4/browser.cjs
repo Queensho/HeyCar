@@ -38,7 +38,7 @@ const output=process.env.BROWSER_OUTPUT||'phase4-browser';fs.mkdirSync(output,{r
   await page.getByRole('checkbox',{name:'Tüm geçmiş',exact:true}).click();
   const historyResult=await historyResponse;assert.equal(historyResult.status(),200);
   const historyData=await historyResult.json();assert.ok(historyData.bookings.some(b=>b.id===qa.bookingId));
-  await page.getByText('1 randevu bu sayfada',{exact:false}).waitFor();
+  await page.getByText(`${historyData.bookings.length} randevu bu sayfada`,{exact:false}).waitFor();
   await page.screenshot({path:output+'/business-calendar.png',fullPage:true});
   await page.getByRole('button',{name:'Hizmet paketleri ekle',exact:true}).scrollIntoViewIfNeeded();
   await page.getByRole('button',{name:'Hizmet paketleri ekle',exact:true}).click();
