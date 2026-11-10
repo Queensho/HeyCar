@@ -617,20 +617,20 @@ class _BusinessCarWashPageState extends State<BusinessCarWashPage> {
                 ]),
                 for (final item in washRows(data[group.key]))
                   Semantics(
-                    identifier: 'car-wash-${group.key}-${item['id']}',
-                    container: true,
-                    child: ListTile(
-                      key: ValueKey('car-wash-${group.key}-${item['id']}'),
-                      contentPadding: EdgeInsets.zero,
-                      title: Text('${item['name']}'),
-                      subtitle: Text(
-                          '${item['active'] == true ? 'Aktif' : 'Pasif'}${group.key == 'services' ? ' · ${washPrice(item['price_kurus'])} · ${item['duration_minutes']} dk' : ''}'),
-                      trailing: IconButton(
-                          tooltip: 'Düzenle',
-                          icon: const Icon(Icons.edit_outlined),
-                          onPressed: busy
-                              ? null
-                              : () => _editItem(group.key, item, staff)))),
+                      identifier: 'car-wash-${group.key}-${item['id']}',
+                      container: true,
+                      child: ListTile(
+                          key: ValueKey('car-wash-${group.key}-${item['id']}'),
+                          contentPadding: EdgeInsets.zero,
+                          title: Text('${item['name']}'),
+                          subtitle: Text(
+                              '${item['active'] == true ? 'Aktif' : 'Pasif'}${group.key == 'services' ? ' · ${washPrice(item['price_kurus'])} · ${item['duration_minutes']} dk' : ''}'),
+                          trailing: IconButton(
+                              tooltip: 'Düzenle',
+                              icon: const Icon(Icons.edit_outlined),
+                              onPressed: busy
+                                  ? null
+                                  : () => _editItem(group.key, item, staff)))),
               ],
             ]);
           }));
