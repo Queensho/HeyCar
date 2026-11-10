@@ -16,21 +16,13 @@ assert.equal(cfg.database,'heycar_staging');assert.equal(cfg.user,'cepqontag_sta
 const pool=new Pool({...cfg,connectionTimeoutMillis:5000});
 (async()=>{try{
  const identity=(await pool.query('SELECT current_database() AS database,current_user AS role')).rows[0];assert.equal(identity.database,'heycar_staging');
- const keys=['FIREBASE_SERVICE_ACCOUNT_JSON','FIREBASE_SERVICE_ACCOUNT_FILE','WEB_PUSH_VAPID_PUBLIC_KEY','WEB_PUSH_VAPID_PRIVATE_KEY','WEB_PUSH_VAPID_SUBJECT'];
- const configured=Object.fromEntries(keys.map(k=>[k,Boolean(String(process.env[k]||'').trim())]));
- const inherited={};try{
-  const {execFileSync}=require('node:child_process');const pid=execFileSync('systemctl',['show','cepqontag-staging.service','--property=MainPID','--value'],{encoding:'utf8'}).trim();assert.match(pid,/^[1-9][0-9]*$/);
-  const values=Object.fromEntries(fs.readFileSync('/proc/'+pid+'/environ','utf8').split('\0').filter(Boolean).map(l=>{const i=l.indexOf('=');return[l.slice(0,i),l.slice(i+1)];}));
-  for(const k of keys)inherited[k]=Boolean(String(values[k]||'').trim());
- }catch(_){inherited.readable=false;}
- let vapidPairValid=null;
- if(configured.WEB_PUSH_VAPID_PUBLIC_KEY&&configured.WEB_PUSH_VAPID_PRIVATE_KEY){try{
-  const privateKey=Buffer.from(process.env.WEB_PUSH_VAPID_PRIVATE_KEY.trim(),'base64url'),publicKey=Buffer.from(process.env.WEB_PUSH_VAPID_PUBLIC_KEY.trim(),'base64url');
-  const curve=crypto.createECDH('prime256v1');curve.setPrivateKey(privateKey);
-  vapidPairValid=privateKey.length===32&&publicKey.length===65&&crypto.timingSafeEqual(curve.getPublicKey(),publicKey);
- }catch(_){vapidPairValid=false;}}
- const saFile=process.env.FIREBASE_SERVICE_ACCOUNT_FILE;
- let serviceAccountFile='not_configured';
- if(saFile){const resolved=fs.realpathSync(saFile);if(resolved.startsWith('/home/cepqontag-deploy/staging-secrets/'))serviceAccountFile=fs.statSync(resolved).isFile()?'exists_in_staging_secret_directory':'not_regular_file';else serviceAccountFile='unverified_origin_not_read';}
- console.log(JSON.stringify({ok:true,readOnly:true,identity,configured,inherited,serviceAccountFile,vapidPairValid,vapidProvenanceVerified:false,flags:{appEnv:process.env.APP_ENV,externalServicesSuppressed:['1','true','yes','on'].includes(String(process.env.STAGING_DISABLE_EXTERNAL_SERVICES).trim().toLowerCase()),carWashPush:process.env.CAR_WASH_PUSH_ENABLED},workspaceCredentials:'not_part_of_this_remote_probe',productionCredentialsRead:false,productionTouched:false}));
+ const admin=require('./qa-firebase-admin');const policy=admin.loadPolicy(process.env);
+ assert.equal(process.env.CEPQONTAG_QA_FIREBASE_ADMIN_FILE,'/home/cepqontag-deploy/staging-secrets/firebase-admin.json');
+ const env={...process.env,CEPQONTAG_QA_PUSH_SEND_ENABLED:'true'};
+ assert.ok(admin.createAdminSender(env));assert.ok(admin.createWebSender(env));
+ const loader=require('node:module').createRequire('/home/cepqontag-deploy/qa-firebase-runtime/package.json');
+ const app=loader('firebase-admin/app').getApp('cepqontag-qa-staging');
+ const access=await app.options.credential.getAccessToken();assert.ok(access.access_token&&access.expires_in>0);
+ const devices=(await pool.query(`SELECT channel,count(*)::int AS count FROM service_push_devices WHERE owner_id=ANY($1::uuid[]) OR business_id=ANY($2::uuid[]) GROUP BY channel`,[policy.owners,policy.businesses])).rows;
+ console.log(JSON.stringify({ok:true,readOnly:true,identity,firebaseProjectId:app.options.projectId,credentialAccepted:true,webVapidValid:true,devices,deliveryEnabled:process.env.CEPQONTAG_QA_PUSH_SEND_ENABLED==='true',privateKeyLogged:false,realPushSent:false,productionTouched:false}));
 }finally{await pool.end();}})().catch(e=>{console.error('PUSH_READINESS_STOPPED',{code:e.code||'CHECK_FAILED'});process.exitCode=1;});
