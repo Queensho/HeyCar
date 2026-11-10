@@ -35,6 +35,10 @@ on:
         description: Inspect staging push setting presence without printing credentials
         type: boolean
         default: false
+      car_wash_concurrent_final:
+        description: Synthetic simultaneous business approval and owner cancellation preflight
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -53,7 +57,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-        if: inputs.car_wash_inspect || inputs.car_wash_smoke || inputs.car_wash_diagnose || inputs.car_wash_performance || inputs.car_wash_push_readiness
+        if: inputs.car_wash_inspect || inputs.car_wash_smoke || inputs.car_wash_diagnose || inputs.car_wash_performance || inputs.car_wash_push_readiness || inputs.car_wash_concurrent_final
       - name: Configure SSH
         env:
           SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
@@ -163,6 +167,24 @@ jobs:
         with:
           name: car-wash-push-readiness
           path: phase4-push-readiness.json
+          retention-days: 14
+
+      - name: Test concurrent business approval and owner cancellation on own QA bookings
+        if: inputs.car_wash_concurrent_final
+        env:
+          SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+          SSH_PORT: ${{ secrets.STAGING_SSH_PORT }}
+          SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = feature/car-wash-phase-1
+          ssh -i ~/.ssh/staging_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
+            'cd /home/cepqontag-deploy/app/server && node' < deploy/car-wash-phase4/concurrent-approval-cancel.cjs | tee phase4-concurrent-final.json
+      - uses: actions/upload-artifact@v4
+        if: inputs.car_wash_concurrent_final
+        with:
+          name: car-wash-concurrent-final
+          path: phase4-concurrent-final.json
           retention-days: 14
 
   phase4:
