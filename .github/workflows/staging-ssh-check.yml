@@ -15,9 +15,14 @@ on:
         description: Rollback-only diagnosis of the old synthetic fixture uniqueness error
         type: boolean
         default: false
+      car_wash_phase4:
+        description: Publish staging web, restore isolated backup and test real web UI
+        type: boolean
+        default: false
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: cepqontag-staging-ssh-check
@@ -25,6 +30,7 @@ concurrency:
 
 jobs:
   ssh-check:
+    if: inputs.car_wash_phase4 != true
     name: Verify staging SSH (no deployment)
     runs-on: ubuntu-latest
     environment: staging
@@ -106,3 +112,115 @@ jobs:
           test "$GITHUB_REF_NAME" = feature/car-wash-phase-1
           ssh -i ~/.ssh/staging_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
             'cd /home/cepqontag-deploy/app/server && node' < deploy/car-wash-phase3/diagnose-fixture.cjs
+
+  phase4:
+    if: inputs.car_wash_phase4 == true
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: isolated-phase4-only
+          POSTGRES_DB: heycar_test_phase4_restore
+        ports: ['5432:5432']
+        options: --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: cepqontag-car-wash-staging-web
+          run-id: 42795802190
+          github-token: ${{ github.token }}
+          path: phase4-web
+      - name: Configure SSH
+        env:
+          SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+          SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+          SSH_PORT: ${{ secrets.STAGING_SSH_PORT }}
+          SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+          EXPECTED_FINGERPRINT: ${{ secrets.STAGING_SSH_HOST_FINGERPRINT }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SSH_KEY" && test -n "$SSH_HOST" && test -n "$SSH_PORT" && test -n "$SSH_USER"
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/staging_key
+          chmod 600 ~/.ssh/staging_key
+          ssh-keyscan -T 10 -t ed25519 -p "$SSH_PORT" -H "$SSH_HOST" > ~/.ssh/known_hosts
+          test -n "$EXPECTED_FINGERPRINT"
+          actual=$(ssh-keygen -lf ~/.ssh/known_hosts -E sha256 | awk 'NR==1 {print $2}')
+          test "$actual" = "$EXPECTED_FINGERPRINT"
+          test -s ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          ssh -i ~/.ssh/staging_key -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" 'test "$(id -un)" = "cepqontag-deploy" && test -f /home/cepqontag-deploy/app/server/server.js && echo STAGING_SSH_OK'
+
+      - name: Prepare staging-only web paths
+        run: |
+          test "$GITHUB_REF_NAME" = feature/car-wash-phase-1
+          python3 - <<'PYCODE'
+          from pathlib import Path
+          for folder,prefix in [('business','car-wash-business'),('owner','car-wash-owner')]:
+              p=Path('phase4-web')/folder/'index.html'
+              s=p.read_text();assert s.count('<base href="/">')==1
+              p.write_text(s.replace('<base href="/">','<base href="/'+prefix+'/">'))
+          PYCODE
+          cp deploy/car-wash-phase4/staging-web.cjs phase4-web/
+      - name: Publish only staging web with code rollback
+        env:
+          SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+          SSH_PORT: ${{ secrets.STAGING_SSH_PORT }}
+          SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+        run: |
+          set -euo pipefail
+          destination="/home/cepqontag-deploy/car-wash-phase4-web/releases/$GITHUB_SHA"
+          ssh -i ~/.ssh/staging_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "mkdir -p '$destination'"
+          rsync -az -e "ssh -i $HOME/.ssh/staging_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p $SSH_PORT" phase4-web/ "$SSH_USER@$SSH_HOST:$destination/"
+          ssh -i ~/.ssh/staging_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
+            "cd /home/cepqontag-deploy/app/server && node - '$destination'" < deploy/car-wash-phase4/publish.cjs | tee phase4-publish-result.json
+      - name: Snapshot real staging into private backup
+        env:
+          SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+          SSH_PORT: ${{ secrets.STAGING_SSH_PORT }}
+          SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$RUNNER_TEMP/carwash-phase4"
+          ssh -i ~/.ssh/staging_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
+            'cd /home/cepqontag-deploy/app/server && node' < deploy/car-wash-phase4/snapshot.cjs > "$RUNNER_TEMP/carwash-phase4/snapshot.json"
+          dump=$(python3 -c 'import json,os,re; d=json.load(open(os.environ["RUNNER_TEMP"]+"/carwash-phase4/snapshot.json"))["dump"]; assert re.fullmatch(r"/home/cepqontag-deploy/car-wash-phase4-backups/[0-9a-f-]{36}/heycar_staging.dump",d); print(d)')
+          ssh -i ~/.ssh/staging_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cat '$dump'" > "$RUNNER_TEMP/carwash-phase4/staging.dump"
+          chmod 600 "$RUNNER_TEMP/carwash-phase4/"*
+      - name: Full isolated restore verification (no VPS restore)
+        env:
+          RESTORE_CONTAINER: ${{ job.services.postgres.id }}
+        run: python3 deploy/car-wash-phase4/verify-restore.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Real business web browser tests
+        env:
+          SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+          SSH_PORT: ${{ secrets.STAGING_SSH_PORT }}
+          SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/staging_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
+            'cat /home/cepqontag-deploy/car-wash-phase3-qa/d24a58be-8a8e-4e30-af55-d4faa77bad08.json' > "$RUNNER_TEMP/carwash-phase4/qa.json"
+          chmod 600 "$RUNNER_TEMP/carwash-phase4/qa.json"
+          npm install --ignore-scripts --no-audit --no-fund --prefix "$RUNNER_TEMP/carwash-playwright" playwright@1.56.1
+          NODE_PATH="$RUNNER_TEMP/carwash-playwright/node_modules" QA_FILE="$RUNNER_TEMP/carwash-phase4/qa.json" node deploy/car-wash-phase4/browser.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: car-wash-phase4-results
+          path: |
+            phase4-publish-result.json
+            phase4-restore-result.json
+            phase4-browser/
+          retention-days: 14
+      - name: Remove private runner data
+        if: always()
+        run: rm -rf -- "$RUNNER_TEMP/carwash-phase4"

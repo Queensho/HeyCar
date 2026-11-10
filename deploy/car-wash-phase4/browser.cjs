@@ -1,0 +1,53 @@
+'use strict';
+const fs=require('node:fs'),assert=require('node:assert/strict');
+const {chromium}=require('playwright');
+const qa=JSON.parse(fs.readFileSync(process.env.QA_FILE,'utf8'));
+assert.equal(qa.synthetic,true);assert.equal(qa.status,'passed');assert.match(qa.plate,/^QA-CARWASH-/);
+const origin='https://staging-api-185-165-46-213.nip.io';
+const output=process.env.BROWSER_OUTPUT||'phase4-browser';fs.mkdirSync(output,{recursive:true});
+(async()=>{
+ const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||'/usr/bin/google-chrome',args:['--no-sandbox']});
+ try{
+  const context=await browser.newContext({viewport:{width:1280,height:1000},geolocation:{latitude:41,longitude:29},permissions:['geolocation']});
+  const page=await context.newPage();const failures=[],responses=[];
+  page.on('pageerror',e=>failures.push(String(e.message)));
+  page.on('response',r=>{if(r.url().startsWith(origin+'/api/business/car-wash/'))responses.push({path:new URL(r.url()).pathname,status:r.status()});});
+  await page.goto(origin+'/car-wash-business/');
+  const semantics=page.locator('flt-semantics-placeholder');await semantics.waitFor({state:'attached',timeout:60000});await semantics.dispatchEvent('click');
+  await page.getByRole('button',{name:'Giriş Yap',exact:true}).click();
+  await page.getByRole('textbox',{name:'E-posta',exact:true}).fill(qa.business.email);
+  await page.getByRole('textbox',{name:'Şifre',exact:true}).fill(qa.business.password);
+  const login=page.waitForResponse(r=>r.url().endsWith('/api/business/auth/login')&&r.request().method()==='POST');
+  await page.getByRole('button',{name:'Giriş Yap',exact:true}).click();assert.equal((await login).status(),200);
+  const settingsWait=page.waitForResponse(r=>r.url().endsWith('/api/business/car-wash/settings'));
+  await page.getByRole('button',{name:'Oto Yıkama Yönetimi',exact:true}).click();
+  const initialServices=(await (await settingsWait).json()).services.length;
+  await page.getByText('Randevu takvimi',{exact:true}).waitFor();
+  await page.getByText('Tüm geçmiş',{exact:true}).click();
+  await page.getByText(qa.plate+' · QA İç Dış Yıkama',{exact:true}).waitFor();
+  await page.screenshot({path:output+'/business-calendar.png',fullPage:true});
+  await page.getByRole('button',{name:'Hizmet paketleri ekle',exact:true}).scrollIntoViewIfNeeded();
+  await page.getByRole('button',{name:'Hizmet paketleri ekle',exact:true}).click();
+  const name='Phase 4 QA '+Date.now();
+  await page.getByRole('textbox',{name:'Ad',exact:true}).fill(name);
+  await page.getByRole('textbox',{name:'Açıklama',exact:true}).fill('Yalnız sentetik staging işletmesi');
+  await page.getByRole('textbox',{name:'Fiyat (TL)',exact:true}).fill('321.50');
+  await page.getByRole('textbox',{name:'Süre (5–480 dakika)',exact:true}).fill('45');
+  const save=page.waitForResponse(r=>r.url().endsWith('/api/business/car-wash/services')&&r.request().method()==='POST');
+  await page.getByRole('button',{name:'Kaydet',exact:true}).click();const saved=await save;assert.equal(saved.status(),200);
+  const item=(await saved.json()).item;assert.equal(item.price_kurus,32150);assert.equal(item.duration_minutes,45);
+  // The business owner can see only their own newly created package; verify an edit via UI.
+  await page.getByText(name,{exact:true}).waitFor();
+  await page.getByRole('button',{name:'Düzenle',exact:true}).nth(initialServices).click();
+  await page.getByRole('textbox',{name:'Fiyat (TL)',exact:true}).fill('350');
+  const update=page.waitForResponse(r=>r.url().endsWith('/api/business/car-wash/services')&&r.request().method()==='POST');
+  await page.getByRole('button',{name:'Kaydet',exact:true}).click();assert.equal(((await (await update).json()).item).price_kurus,35000);
+  await page.screenshot({path:output+'/business-services.png',fullPage:true});
+  await page.setViewportSize({width:393,height:852});
+  await page.screenshot({path:output+'/business-mobile.png',fullPage:true});
+  assert.ok(responses.some(r=>r.path.endsWith('/bookings')&&r.status===200));
+  assert.ok(responses.every(r=>r.status<400));assert.deepEqual(failures,[]);
+  fs.writeFileSync(output+'/result.json',JSON.stringify({ok:true,businessUrl:origin+'/car-wash-business/',checks:['real-business-login','real-calendar-history','service-create','price-duration-persistence','price-update','desktop-mobile-render','no-page-errors'],serviceId:item.id,responses},null,2));
+  console.log('PHASE4_BROWSER_OK');
+ }finally{await browser.close();}
+})().catch(e=>{let reason=String(e.message);for(const secret of [qa.business.password,qa.owner.password,qa.owner.phone,qa.business.email])if(secret)reason=reason.split(secret).join('[REDACTED]');console.error('PHASE4_BROWSER_FAILED',reason);process.exitCode=1;});
