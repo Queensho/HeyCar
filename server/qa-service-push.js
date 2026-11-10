@@ -35,7 +35,8 @@ async function registerDevice(pool,a,body){
 async function enqueueEvent(pool,policy,event){
  const db=await pool.connect();try{await db.query('BEGIN');
  assert.ok(policy.owners.includes(event.ownerId)&&policy.businesses.includes(event.businessId),'QA_RECIPIENT_REQUIRED');
- for(const role of ['owner','business']){
+ for(const role of event.recipientRoles||['owner','business']){
+  assert.ok(['owner','business'].includes(role),'INVALID_RECIPIENT_ROLE');
   const id=role==='owner'?event.ownerId:event.businessId,field=role==='owner'?'owner_id':'business_id';
   const payload=envelope({...event,recipientRole:role});
   await db.query(`INSERT INTO service_push_deliveries(device_id,owner_id,business_id,event_key,category,appointment_id,revision,event,fingerprint,payload)
@@ -53,7 +54,7 @@ const ownerCenterSource={category:null,async readEvents(pool,p){return (await po
  AND EXISTS(SELECT 1 FROM service_push_devices d WHERE (d.owner_id=n.owner_id OR d.business_id=n.business_id) AND d.created_at<=n.created_at)
  AND NOT EXISTS(SELECT 1 FROM service_push_deliveries d WHERE d.event_key=n.event_key)
  AND (n.event<>'reminder' OR (n.category='car_wash' AND EXISTS(SELECT 1 FROM car_wash_bookings b WHERE b.id::text=n.appointment_id AND b.status='confirmed' AND b.revision=n.revision AND b.starts_at>now())))
- ORDER BY n.created_at LIMIT 500`,[p.notBefore,p.owners,p.businesses])).rows;}};
+ ORDER BY n.created_at LIMIT 500`,[p.notBefore,p.owners,p.businesses])).rows.map(r=>({...r,recipientRoles:r.category==='car_wash'?['owner','business']:['owner']}));}};
 async function tick(pool,policy,{admin,web,sources=[carWashSource]}){
  for(const source of sources){for(const event of await source.readEvents(pool,policy)){if(source.category)assert.equal(event.category,source.category);await enqueueEvent(pool,policy,event);}}
  if(!admin&&!web)return;

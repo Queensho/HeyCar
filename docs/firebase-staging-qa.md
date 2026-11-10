@@ -21,7 +21,7 @@ PR #328 draft kalır. Fiziksel Android/Web Push teslimi **NOT RUN**.
   tüm ekranları hesap allowlist'iyle kilitli değildir; **push** QA hesaplarına kilitlidir.
 - Yeni staging VAPID çifti sunucuda üretildi; kaynağı bilinmeyen eski global
   `WEB_PUSH_VAPID_*` değerleri kullanılmadı veya değiştirilmedi.
-- **Admin service-account dosyası henüz yok; gönderim kapalıdır.** Token kaydı ve
+- **Admin dosyası güvenli staging VPS’de kuruldu; OAuth erişimi doğrulandı. Gönderim kapalıdır.** Token kaydı ve
   Web Push abonelik altyapısı hazır olması gerçek token/cihaz teslimi kanıtı değildir.
 
 ## APK ve test kanıtları
@@ -55,7 +55,11 @@ web platformundaki QA bildirim köprüsü / web click routing içindir.
   Native Firebase Web SDK yerine
   standart PushManager + ayrı staging VAPID ile HTTPS aboneliği kullanılır.
 
-## Gereken tek eksik Firebase dosyası — operatör
+## Admin dosyası kurulum referansı — tamamlandı
+
+Güncel durum: [ortak bildirim merkezi](owner-notification-center.md). 2026-11-10
+staging OAuth kontrolü başarılı, fiziksel test cihazı kaydı yok. Aşağıdaki kurulum
+adımları referanstır; dosyayı tekrar oluşturmak veya yeniden yüklemek gerekmiyor.
 
 1. Firebase Console'da **CepQontag Staging / `cepqontag-staging`** seçin.
    Project settings → Service accounts üzerinden yalnız bu projeye ait test
@@ -151,7 +155,7 @@ ortaktır. Gerçek olay kaynağı ve detay click entegrasyonu şu an **Oto Yıka
 Diğer V2 kategorileri kendi yetkili event adapter'ını ve detay yönlendirmesini eklemelidir;
 bu kategorilerin uçtan uca push'u tamamlandı denmez. Fırsatlar/Pazaryeri değiştirilmedi.
 
-Canlıya geçiş kapıları: eksik Admin JSON + gerçek token/FCM/Web Push cihaz teslimi,
+Canlıya geçiş kapıları: gerçek token/FCM/Web Push cihaz teslimi,
 iki gerçek UI yarış kanıtı, diğer kategoriler için gerekli adapter'lar, mevcut analyzer
 borcu değerlendirmesi, production'a özel IAM/ACL/PITR/performance/review.
 [Production planı](car-wash-production-plan.md) sadece plandır. Migration128 eklemelidir;

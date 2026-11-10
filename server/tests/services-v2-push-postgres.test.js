@@ -41,4 +41,12 @@ test('Services V2 QA push devices and deliveries enforce ownership, replay and l
   await registerDevice(pool,{role:'owner',id:other,binding:'other-session'},device);let fcm=0;
   await tick(pool,policy,{sources:[],admin:{send:async()=>{fcm++;}},web:{send:async()=>{}}});assert.equal(fcm,0);
  });
+ await t.test('owner-only service adapters cannot enqueue an unsupported business detail notification',async()=>{
+  await registerDevice(pool,actor,device);
+  const onlyOwner={...event,revision:3,event:'completed',recipientRoles:['owner']};
+  await enqueueEvent(pool,policy,onlyOwner);
+  const rows=(await pool.query("SELECT owner_id,business_id FROM service_push_deliveries WHERE event='completed' AND revision=3")).rows;
+  assert.equal(rows.length,1);assert.equal(rows[0].owner_id,owner);assert.equal(rows[0].business_id,null);
+ });
+
 });
