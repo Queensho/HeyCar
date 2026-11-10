@@ -39,6 +39,10 @@ on:
         description: Synthetic simultaneous business approval and owner cancellation preflight
         type: boolean
         default: false
+      car_wash_firebase_setup:
+        description: Install isolated QA push registration (delivery stays disabled; never copies Admin keys)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -57,7 +61,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-        if: inputs.car_wash_inspect || inputs.car_wash_smoke || inputs.car_wash_diagnose || inputs.car_wash_performance || inputs.car_wash_push_readiness || inputs.car_wash_concurrent_final
+        if: inputs.car_wash_inspect || inputs.car_wash_smoke || inputs.car_wash_diagnose || inputs.car_wash_performance || inputs.car_wash_push_readiness || inputs.car_wash_concurrent_final || inputs.car_wash_firebase_setup
       - name: Configure SSH
         env:
           SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
@@ -185,6 +189,38 @@ jobs:
         with:
           name: car-wash-concurrent-final
           path: phase4-concurrent-final.json
+          retention-days: 14
+
+      - name: Package QA push modules and apply additive staging registration setup
+        if: inputs.car_wash_firebase_setup
+        env:
+          SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+          SSH_PORT: ${{ secrets.STAGING_SSH_PORT }}
+          SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = feature/car-wash-phase-1
+          python3 - <<'PYCODE'
+          import pathlib,hashlib,json,os,shutil
+          root=pathlib.Path('qa-firebase-package');root.mkdir()
+          manifest={'sha':os.environ['GITHUB_SHA'],'files':{},'history':{}}
+          names=['qa-firebase-admin.js','qa-service-push.js','service-booking-notification.js','migration-sql.js']
+          for name in names:
+              shutil.copyfile('server/'+name,root/name);manifest['files'][name]=hashlib.sha256((root/name).read_bytes()).hexdigest()
+          name='128_services_v2_qa_push.sql';shutil.copyfile('server/migrations/'+name,root/name);manifest['files'][name]=hashlib.sha256((root/name).read_bytes()).hexdigest()
+          for p in pathlib.Path('server/migrations').glob('*.sql'):manifest['history'][p.name]=hashlib.sha256(p.read_bytes()).hexdigest()
+          (root/'manifest.json').write_text(json.dumps(manifest))
+          PYCODE
+          destination="/home/cepqontag-deploy/qa-push-source/$GITHUB_SHA"
+          ssh -i ~/.ssh/staging_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "mkdir -p '$destination'"
+          rsync -az -e "ssh -i $HOME/.ssh/staging_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p $SSH_PORT" qa-firebase-package/ "$SSH_USER@$SSH_HOST:$destination/"
+          ssh -i ~/.ssh/staging_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
+            "cd /home/cepqontag-deploy/app/server && node - '$destination'" < deploy/firebase-staging/setup.cjs | tee qa-firebase-setup.json
+      - uses: actions/upload-artifact@v4
+        if: inputs.car_wash_firebase_setup && always()
+        with:
+          name: qa-firebase-setup
+          path: qa-firebase-setup.json
           retention-days: 14
 
   phase4:

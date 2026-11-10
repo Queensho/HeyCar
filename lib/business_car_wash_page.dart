@@ -8,7 +8,8 @@ class BusinessCarWashPage extends StatefulWidget {
       {super.key,
       required this.api,
       required this.onEditProfile,
-      required this.uploadPhoto});
+      required this.uploadPhoto, this.initialBookingId});
+  final String? initialBookingId;
   final CarWashApi api;
   final Future<void> Function() onEditProfile;
   final Future<String?> Function() uploadPhoto;
@@ -28,6 +29,7 @@ class _BusinessCarWashPageState extends State<BusinessCarWashPage> {
   void initState() {
     super.initState();
     _load();
+    if(widget.initialBookingId!=null)WidgetsBinding.instance.addPostFrameCallback((_){if(mounted)_booking({'id':widget.initialBookingId});});
     refresh = Timer.periodic(const Duration(seconds: 60), (_) {
       if (mounted && !busy && (ModalRoute.of(context)?.isCurrent ?? false))
         _load();
