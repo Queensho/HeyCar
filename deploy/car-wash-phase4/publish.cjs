@@ -25,6 +25,8 @@ const {execFileSync}=require('node:child_process');
  }
  assert.ok((await fetch('http://127.0.0.1:8091/health')).ok);
  const backup=root+'/backups/'+Date.now();fs.mkdirSync(backup,{recursive:true,mode:0o700});fs.writeFileSync(backup+'/server.js',original,{mode:0o600});
+ const oldModule=fs.existsSync(moduleName)?fs.readFileSync(moduleName):null;
+ if(oldModule)fs.writeFileSync(backup+'/'+moduleName,oldModule,{mode:0o600});
  const current=root+'/current',prior=fs.existsSync(current)?fs.realpathSync(current):null;
  const marker=/registerQrRoutes\(app,\s*pool\);/g;
  let patched=original;
@@ -42,5 +44,5 @@ const {execFileSync}=require('node:child_process');
   for(const path of ['/car-wash-business/','/car-wash-owner/']){const r=await fetch('http://127.0.0.1:8091'+path);assert.equal(r.status,200);assert.ok(r.headers.get('content-security-policy').includes('wasm-unsafe-eval'));}
   assert.equal((await fetch('http://127.0.0.1:8091/api/car-wash/bookings')).status,401);
   console.log(JSON.stringify({ok:true,release,backup,businessUrl:'https://staging-api-185-165-46-213.nip.io/car-wash-business/',ownerUrl:'https://staging-api-185-165-46-213.nip.io/car-wash-owner/',productionTouched:false}));
- }catch(e){fs.writeFileSync(server,original);if(prior){fs.symlinkSync(prior,current+'.rollback');fs.renameSync(current+'.rollback',current);}else if(fs.existsSync(current))fs.unlinkSync(current);try{execFileSync('sudo',['-n','/usr/bin/systemctl','restart','cepqontag-staging.service'],{stdio:'pipe'});}catch(_){}throw e;}
+ }catch(e){fs.writeFileSync(server,original);if(oldModule)fs.writeFileSync(moduleName,oldModule);else if(fs.existsSync(moduleName))fs.unlinkSync(moduleName);if(prior){fs.symlinkSync(prior,current+'.rollback');fs.renameSync(current+'.rollback',current);}else if(fs.existsSync(current))fs.unlinkSync(current);try{execFileSync('sudo',['-n','/usr/bin/systemctl','restart','cepqontag-staging.service'],{stdio:'pipe'});}catch(_){}throw e;}
 })().catch(e=>{console.error('STAGING_WEB_PUBLISH_STOPPED',{code:e.code||'CHECK_FAILED',reason:String(e.message).split('\n')[0]});process.exitCode=1;});
