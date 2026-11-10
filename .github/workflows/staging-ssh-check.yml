@@ -228,6 +228,16 @@ jobs:
           set -euo pipefail
           ssh -i ~/.ssh/staging_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
             'cd /home/cepqontag-deploy/app/server && node' < deploy/firebase-staging/protocol-check.cjs | tee qa-push-protocol.json
+      - name: Verify shared customer center with own QA booking and real staging API
+        if: inputs.car_wash_firebase_setup
+        env:
+          SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+          SSH_PORT: ${{ secrets.STAGING_SSH_PORT }}
+          SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/staging_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
+            'cd /home/cepqontag-deploy/app/server && node' < deploy/firebase-staging/center-smoke.cjs | tee owner-center-smoke.json
       - uses: actions/upload-artifact@v4
         if: inputs.car_wash_firebase_setup && always()
         with:
@@ -235,6 +245,7 @@ jobs:
           path: |
             qa-firebase-setup.json
             qa-push-protocol.json
+            owner-center-smoke.json
           retention-days: 14
 
   phase4:

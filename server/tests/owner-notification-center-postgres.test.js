@@ -25,13 +25,16 @@ test('existing owner center service extension preserves QR, reads, dedupe and re
   assert.equal((await center.list(pool,other,true)).notifications.length,0);assert.equal(await center.mark(pool,other,'service:'+event),false);
   assert.equal((await center.mark(pool,owner,'service:'+event)).status,'read');assert.ok((await pool.query('SELECT read_at FROM car_wash_notifications WHERE id=$1',[event])).rows[0].read_at);
   assert.equal((await pool.query('SELECT status FROM vehicle_notifications WHERE id=$1',[qr])).rows[0].status,'new');
+  assert.equal((await pool.query('SELECT business_read_at FROM car_wash_notifications WHERE id=$1',[event])).rows[0].business_read_at,null);
  });
  await t.test('all service adapters share one history/read model and exact unread total beyond page limit',async()=>{
   for(const category of ['valet','ppf','expertise','future_service']){const ev={ownerId:owner,vehicleId:vehicle,businessId:business,category,appointmentId:crypto.randomUUID(),revision:1,event:'confirmed'};await center.record(pool,ev);await center.record(pool,ev);}
   assert.equal((await center.list(pool,owner,true)).unreadCount,4);
+  const appointmentId=crypto.randomUUID();for(let revision=1;revision<=105;revision++)await center.record(pool,{ownerId:owner,category:'ppf',appointmentId,revision,event:'confirmed'});
+  const full=await center.list(pool,owner,true);assert.equal(full.notifications.length,100);assert.equal(full.unreadCount,109);
   assert.deepEqual(await center.list(pool,owner,false),{notifications:[],unreadCount:0});
-  const db=await pool.connect();try{await db.query('BEGIN');assert.equal(await center.readAll(db,owner,''),4);await db.query('COMMIT');}finally{db.release();}
+  const db=await pool.connect();try{await db.query('BEGIN');assert.equal(await center.readAll(db,owner,''),109);await db.query('COMMIT');}finally{db.release();}
   assert.equal((await center.list(pool,owner,true)).unreadCount,0);
-  assert.equal((await pool.query('SELECT count(*)::int n FROM owner_notification_events')).rows[0].n,5);
+  assert.equal((await pool.query('SELECT count(*)::int n FROM owner_notification_events')).rows[0].n,110);
  });
 });
