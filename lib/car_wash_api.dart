@@ -72,7 +72,21 @@ class CarWashApi {
       r = await OwnerHttp.get(uri, headers: headers)
           .timeout(const Duration(seconds: 20));
     }
-    final data = jsonDecode(r.body);
+    // A missing API route can return the hosting site's HTML fallback.
+    // Never surface a raw JSON FormatException (or HTML) to customers.
+    final contentType = r.headers['content-type']?.toLowerCase() ?? '';
+    if (r.body.trimLeft().startsWith('<') ||
+        (contentType.contains('text/html') && !contentType.contains('json'))) {
+      throw Exception(
+          'Oto yıkama servisine şu anda ulaşılamıyor. Lütfen daha sonra tekrar deneyin.');
+    }
+    Object? data;
+    try {
+      data = jsonDecode(r.body);
+    } on FormatException {
+      throw Exception(
+          'Sunucudan geçerli bir yanıt alınamadı. Lütfen tekrar deneyin.');
+    }
     if (r.statusCode < 200 || r.statusCode >= 300) {
       final code = data is Map ? '${data['error']}' : '';
       throw Exception(const {
