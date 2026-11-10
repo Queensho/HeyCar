@@ -49,13 +49,28 @@ Production'a dokunulmadı, merge yapılmadı. Kaynak: `ee3e15672f39f9421dbfab4cf
 - Staging servis sağlık kontrolü 200; owner/business route'ları oturumsuz 401.
   Public HTTPS health ve bookings 401 ayrıca doğrulandı.
 
-**Durma nedeni:** gerçek API smoke testi, fixture oluşturmadan önce
-`STAGING_DISABLE_EXTERNAL_SERVICES='1'` değerini yalnız `'true'` kabul eden
-katı assertion nedeniyle durdu (`smoke.cjs:9`, ERR_ASSERTION). Backend koruması
-ve deploy kontrolü zaten `1` değerini destekliyor. Hata test önkoşulunda;
-randevu akışının çalıştığı henüz kanıtlanmadı. Kullanıcının hata halinde durma
-isteği gereği yeni rollout/smoke/APK build başlatılmadı. Migration geri alınmadı;
-backend staging'de etkin kaldı. Sentetik smoke fixture'ları oluşturulmadı.
+**Son smoke durumu:** `1` değerini reddeden hata test betiğindeydi. Yalnız
+smoke assertion'ı açık allowlist (`1/true/yes/on`, trim/case normalize) ile düzeltildi;
+eksik/false/bilinmeyen değerler DB erişiminden önce reddedilir. Backend dış servis
+politikası veya staging env değiştirilmedi. Güvenlik regresyon testleri eklendi.
+
+[İlk yeniden test](https://github.com/Queensho/HeyCar/actions/runs/42791798661)
+başarılı: owner/business normal giriş, kayıtlı araç ID'si ile randevu, hizmet/kapasite,
+müsaitlik, üç aynı idempotency isteğinde tek randevu, işletme onayı, yeniden
+planlama, iptal, iki rolün benzersiz bildirimleri ve dış push bastırma geçti.
+
+Flutter ile aynı `/api/owner/vehicles` üzerinden araç seçimini ayrıca kanıtlamak
+üzere smoke genişletildi. [İkinci çalışma](https://github.com/Queensho/HeyCar/actions/runs/42792028975)
+DB `23505` benzersizlik hatasında durdu. Betik her çalışmada sabit `34 QA TEST`
+plakası oluşturuyor; migration 048 normalized plaka için unique indeks içeriyor.
+Bu, fixture çakışmasına güçlü biçimde işaret ediyor; hata logu constraint adı veya
+aşama içermediğinden kesin DB teşhisi ayrıca doğrulanmalı. Hiçbir mevcut QA veya
+kullanıcı kaydı silinmedi. Yeni owner/vehicles assertion'ına ulaşıldığı doğrulanmadı.
+
+Gerçek DB hatasında durma talimatına uyuldu: smoke tekrar çalıştırılmadı,
+[APK build](https://github.com/Queensho/HeyCar/actions/runs/42791902394) iptal edildi.
+Mevcut APK korundu. Backend/Flutter PR CI işleri sonuca kadar izlenebilir;
+yeni APK veya tüm yeni kontrollerin başarılı olduğu iddia edilmiyor.
 
 Geri dönüş planı: kod/ayar hatasında yedek server.js ve staging.env geri yüklenip
 yalnız staging servisi restart edilir; eklemeli migration tabloları silinmez.
@@ -101,10 +116,10 @@ branch'te, fingerprint'i doğrulanmış staging SSH hesabıyla çalışır:
 - Backend: izole PostgreSQL 16 üzerinde **221 test geçti**, hata ve atlama yok.
   Admin önkoşul SQL koruması, eşzamanlı rezervasyon ve kapasite testleri dahildir.
 - Salt okunur canlı staging bağlantı ve schema incelemesi başarılı.
-- **Bekleyen:** smoke önkoşul kontrolünün düzeltimi ve tekrar testi; gerçek
-  staging randevu akışları ve gerçek uygulamanın tarayıcı/device testi; güncel
-  APK build ve gerçek cihaz bildirim teslimi. Önceki 595/221/11 sonuçları
-  tarihsel doğrulamadır; bu durma sonrasında tüm testler yeniden çalıştırılmadı.
+- **Bekleyen:** 23505 fixture teşhisi ve her çalışmada benzersiz sentetik plaka;
+  owner/vehicles seçimini içeren smoke tekrar testi, gerçek uygulamanın
+  tarayıcı/device testi, güncel APK ve gerçek cihaz bildirim teslimi.
+  Önceki 595/221/11 sonuçları tarihsel doğrulamadır.
 - PR, bu adımlar tamamlanmadan hazır/merge edilmiş olarak işaretlenmemeli.
 
 Yeni operasyon dosyaları `deploy/car-wash-phase3/`, isolated APK hazırlığı
