@@ -4,7 +4,7 @@ const {chromium}=require('playwright');
 const qa=JSON.parse(fs.readFileSync(process.env.QA_FILE,'utf8'));
 assert.equal(qa.synthetic,true);assert.equal(qa.status,'passed');assert.match(qa.plate,/^QA-CARWASH-/);
 const origin='https://staging-api-185-165-46-213.nip.io';
-let step='preflight';
+let step='preflight';let diagnosticPage;
 const output=process.env.BROWSER_OUTPUT||'phase4-browser';fs.mkdirSync(output,{recursive:true});
 (async()=>{
  const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||'/usr/bin/google-chrome',args:['--no-sandbox']});
@@ -133,7 +133,7 @@ const output=process.env.BROWSER_OUTPUT||'phase4-browser';fs.mkdirSync(output,{r
   assert.ok(responses.some(r=>r.path.endsWith('/bookings')&&r.status===200));
   assert.ok(responses.every(r=>r.status<400));assert.deepEqual(failures,[]);
   step='owner-common-center-login';
-  const ownerPage=await context.newPage();ownerPage.setDefaultTimeout(20000);
+  const ownerPage=await context.newPage();diagnosticPage=ownerPage;ownerPage.setDefaultTimeout(20000);
   await ownerPage.route('**/api/**',async route=>{if(new URL(route.request().url()).origin!==origin){failures.push('BLOCKED_NON_STAGING_API');await route.abort();}else await route.continue();});
   await ownerPage.goto(origin+'/car-wash-owner/');
   const ownerSemantics=ownerPage.locator('flt-semantics-placeholder');await ownerSemantics.waitFor({state:'attached',timeout:60000});await ownerSemantics.dispatchEvent('click');
@@ -160,9 +160,12 @@ const output=process.env.BROWSER_OUTPUT||'phase4-browser';fs.mkdirSync(output,{r
   step='owner-real-catalog';
   await ownerPage.getByRole('button',{name:'Geri',exact:true}).click();
   await ownerPage.locator('[flt-semantics-identifier="owner-tab-2"]').click();
-  const nearbyResponse=ownerPage.waitForResponse(r=>new URL(r.url()).pathname==='/api/car-wash/nearby');
-  await ownerPage.getByText('Oto Yıkama',{exact:true}).click();
-  const nearbyResult=await nearbyResponse;assert.equal(nearbyResult.status(),200);const nearbyData=await nearbyResult.json();
+  await ownerPage.getByText('CepQontag ile aracınız için tüm hizmetler tek yerde.',{exact:true}).waitFor();
+  await ownerPage.screenshot({path:output+'/owner-services-before-catalog.png',fullPage:true});
+  const catalogApi=await context.request.get(origin+'/api/car-wash/businesses/'+qa.businessId,{headers:{Authorization:'Bearer '+ownerToken}});assert.equal(catalogApi.status(),200);const catalogApiData=(await catalogApi.json()).business;assert.ok(Array.isArray(catalogApiData.workingHours),'LIVE_SCHEDULE_CONTRACT_MISSING');
+  fs.writeFileSync(output+'/owner-catalog-api.json',JSON.stringify({ok:true,businessId:catalogApiData.id,photos:catalogApiData.photos.length,workingHours:catalogApiData.workingHours,services:catalogApiData.services.length},null,2));
+  const category=ownerPage.getByRole('button',{name:/Oto Yıkama/});await category.waitFor({state:'visible'});
+  const [nearbyResult]=await Promise.all([ownerPage.waitForResponse(r=>new URL(r.url()).pathname==='/api/car-wash/nearby'),category.click()]);assert.equal(nearbyResult.status(),200);const nearbyData=await nearbyResult.json();
   const listed=nearbyData.businesses.find(b=>b.id===qa.businessId);assert.ok(listed,'QA_BUSINESS_NOT_LISTED');assert.ok(Array.isArray(listed.photos));
   const businessRow=ownerPage.locator('[flt-semantics-identifier='+JSON.stringify('car-wash-business-'+qa.businessId)+']');
   for(let scroll=0;scroll<40&&!(await businessRow.isVisible());scroll++){await ownerPage.mouse.move(640,500);await ownerPage.mouse.wheel(0,500);await ownerPage.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));}
@@ -181,5 +184,11 @@ const output=process.env.BROWSER_OUTPUT||'phase4-browser';fs.mkdirSync(output,{r
   assert.deepEqual(failures,[]);
   fs.writeFileSync(output+'/result.json',JSON.stringify({ok:true,businessUrl:origin+'/car-wash-business/',checks:['owner-real-catalog-photos-contract','owner-real-configured-hours','owner-real-ui-login','owner-common-center-filters','owner-notification-exact-booking-route','qa-push-config-no-delivery','qa-worker-assets-no-cache-worker-conflict','qa-permission-button-present','real-business-login','real-calendar-history','service-create','price-duration-persistence','price-update','desktop-mobile-render','no-page-errors'],serviceId:item.id,priceChecks,notificationId:target.id,bookingId:target.booking_id,responses},null,2));
   console.log('PHASE4_BROWSER_OK');
+ }catch(e){
+  if(step==='owner-real-catalog'&&diagnosticPage&&!diagnosticPage.isClosed()){
+   await diagnosticPage.screenshot({path:output+'/owner-catalog-failure.png',fullPage:true});
+   fs.writeFileSync(output+'/owner-catalog-controls.json',JSON.stringify(await diagnosticPage.locator('[role],[aria-label]').evaluateAll(nodes=>nodes.map(n=>({role:n.getAttribute('role'),label:n.getAttribute('aria-label'),text:n.textContent?.slice(0,180)}))),null,2));
+  }
+  throw e;
  }finally{await browser.close();}
 })().catch(e=>{let reason=String(e.message);for(const secret of [qa.business.password,qa.owner.password,qa.owner.phone,qa.business.email])if(secret)reason=reason.split(secret).join('[REDACTED]');console.error('PHASE4_BROWSER_FAILED',{step,reason});process.exitCode=1;});
