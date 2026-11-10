@@ -8,16 +8,16 @@ yapılmadı. Fırsatlar/Pazaryeri kaynak dosyalarının diff'i boş.
 
 ## İndirilebilir test build'i
 
-- [Başarılı APK ve web build işi](https://github.com/Queensho/HeyCar/actions/runs/42706319322)
-- [APK arşivi](https://github.com/Queensho/HeyCar/actions/runs/42706319322/artifacts/13713873208)
-- [Gerçek müşteri ve işletme web uygulamaları](https://github.com/Queensho/HeyCar/actions/runs/42706319322/artifacts/13714142700)
+- [Başarılı APK ve web build işi](https://github.com/Queensho/HeyCar/actions/runs/42795802190)
+- [APK arşivi](https://github.com/Queensho/HeyCar/actions/runs/42795802190/artifacts/13755071040)
+- [Gerçek müşteri ve işletme web uygulamaları](https://github.com/Queensho/HeyCar/actions/runs/42795802190/artifacts/13754856123)
 - APK: `com.cepqar.app.carwashstaging`; production uygulamasının üzerine kurulmaz.
 - API: `https://staging-api-185-165-46-213.nip.io`.
-- SHA-256: `4cafe7acdd9c44adb87d5f1d9c9d6d669f0b108dd998a8ba78ac82d413041b28`.
+- SHA-256: `eec9ebec297c43eb5abf0f13236e6541e0405929de3e29030447e86212eed120`.
 - ARM64, ARMv7 ve x86_64 içeren debug APK; 272444094 byte.
-- Frontend source commit'i `d8699c47ab224a3aaa413b27013afafce42aed04`.
-  Sonraki rollout commit'leri backend/operasyon değişiklikleridir; `lib` ağacı
-  build'in kaynağıyla aynı kalır. Native bir cihazda kurulum testi henüz yapılmadı.
+- Frontend source commit'i `1c8a2bfdc2c0e21cff0abe352bfa00a5c36eb520`.
+  Sonraki rapor commit'i yalnız dokümantasyondur; APK ZIP CRC ve SHA-256
+  doğrulaması geçti. Native bir cihazda kurulum testi henüz yapılmadı.
 
 Build gerçek `lib/entry_theme_live.dart` ve `lib/entry_business.dart` girişlerini
 kullanır; demo uygulaması değildir. Ortak API kökleri derleme zamanı
@@ -49,28 +49,42 @@ Production'a dokunulmadı, merge yapılmadı. Kaynak: `ee3e15672f39f9421dbfab4cf
 - Staging servis sağlık kontrolü 200; owner/business route'ları oturumsuz 401.
   Public HTTPS health ve bookings 401 ayrıca doğrulandı.
 
-**Son smoke durumu:** `1` değerini reddeden hata test betiğindeydi. Yalnız
-smoke assertion'ı açık allowlist (`1/true/yes/on`, trim/case normalize) ile düzeltildi;
-eksik/false/bilinmeyen değerler DB erişiminden önce reddedilir. Backend dış servis
-politikası veya staging env değiştirilmedi. Güvenlik regresyon testleri eklendi.
+## Tekrarlanabilir smoke — doğrulanan kök neden ve çözüm
 
-[İlk yeniden test](https://github.com/Queensho/HeyCar/actions/runs/42791798661)
-başarılı: owner/business normal giriş, kayıtlı araç ID'si ile randevu, hizmet/kapasite,
-müsaitlik, üç aynı idempotency isteğinde tek randevu, işletme onayı, yeniden
-planlama, iptal, iki rolün benzersiz bildirimleri ve dış push bastırma geçti.
+[Rollback-only PostgreSQL teşhisi](https://github.com/Queensho/HeyCar/actions/runs/42794930358)
+`23505` hatasını doğruladı: `public.vehicles`, normalize `plate` ifadesi,
+`vehicles_plate_normalized_unique`. PostgreSQL detail:
+`Key (regexp_replace(upper(plate), '[[:space:]]+', '', 'g'))=(34QATEST) already exists.`
+Yalnız eski sentetik QA kaydı üzerinden denendi; transaction rollback edildi.
+Hiçbir constraint, uygulama plaka kuralı veya mevcut araç değişmedi.
 
-Flutter ile aynı `/api/owner/vehicles` üzerinden araç seçimini ayrıca kanıtlamak
-üzere smoke genişletildi. [İkinci çalışma](https://github.com/Queensho/HeyCar/actions/runs/42792028975)
-DB `23505` benzersizlik hatasında durdu. Betik her çalışmada sabit `34 QA TEST`
-plakası oluşturuyor; migration 048 normalized plaka için unique indeks içeriyor.
-Bu, fixture çakışmasına güçlü biçimde işaret ediyor; hata logu constraint adı veya
-aşama içermediğinden kesin DB teşhisi ayrıca doğrulanmalı. Hiçbir mevcut QA veya
-kullanıcı kaydı silinmedi. Yeni owner/vehicles assertion'ına ulaşıldığı doğrulanmadı.
+Düzeltme yalnız test betiğinde:
 
-Gerçek DB hatasında durma talimatına uyuldu: smoke tekrar çalıştırılmadı,
-[APK build](https://github.com/Queensho/HeyCar/actions/runs/42791902394) iptal edildi.
-Mevcut APK korundu. Backend/Flutter PR CI işleri sonuca kadar izlenebilir;
-yeni APK veya tüm yeni kontrollerin başarılı olduğu iddia edilmiyor.
+- Her koşuda UUID namespace'li `QA-CARWASH-<UUID>` plakası ve ayrı QA kullanıcısı.
+- Araç gerçek sahibin hesabına bağlanmaz. QA e-postası `example.invalid`,
+  profil/araç markası sentetik; normalizasyon UUID benzersizliğini korur.
+- Kullanıcı/araç/privacy/QR seed'i tek transaction'da; başarısız seed rollback edilir.
+- Koşuya ait IDs/kimlik bilgileri yalnız VPS'de 0600 manifestte, 0700 dizinde tutulur.
+  Log/CI artefaktına parola yüklenmez. Eski/gerçek kayıtları silen cleanup yok.
+- Her koşu ayrıdır; aynı idempotency key ile üç create isteği tek randevu,
+  iki change isteği tek durum geçmişi üretir. Tekrarlar mevcut kayıtları ezmez.
+- Boolean koruma yalnız açık `1/true/yes/on` için geçer; gerçek servis politikası değişmez.
+- Hatalarda code/schema/table/column/constraint/step raporlanır; key value loglanmaz.
+
+[Üç ardışık gerçek staging smoke](https://github.com/Queensho/HeyCar/actions/runs/42795220056)
+**3/3 başarılı**, aynı deployment üzerinde migration/deploy tekrarlanmadan:
+
+| Koşu | Randevu ID | Sonuç |
+|---|---|---|
+| 1 | `3f66085b-e6e2-4023-9c64-26dc1422fb5d` | geçti |
+| 2 | `75fc89c2-12dc-41a4-b5d2-d8c31245a1ca` | geçti |
+| 3 | `ac306270-0340-4da0-8689-971ef5541a4a` | geçti |
+
+Her koşuda normal owner/business login, `/api/owner/vehicles` üzerinden kendi
+aracını listeleme/seçme, hizmet/kapasite, müsaitlik, create/idempotency, işletme
+onayı, reschedule, cancel ve benzersiz owner/business bildirimleri doğrulandı.
+Dış push girişimi sıfır; fiziksel cihaz teslimi test edilmedi.
+
 
 Geri dönüş planı: kod/ayar hatasında yedek server.js ve staging.env geri yüklenip
 yalnız staging servisi restart edilir; eklemeli migration tabloları silinmez.
@@ -113,17 +127,19 @@ branch'te, fingerprint'i doğrulanmış staging SSH hesabıyla çalışır:
 - APK CI: tam Flutter paketi **595 test geçti**; staging origin testi geçti;
   gerçek owner/business web build'leri ve APK derlemesi başarılı.
 - Proje analizi: **236 mevcut uyarı/bilgi**, hata yok; yeni tanı yok.
-- Backend: izole PostgreSQL 16 üzerinde **221 test geçti**, hata ve atlama yok.
-  Admin önkoşul SQL koruması, eşzamanlı rezervasyon ve kapasite testleri dahildir.
+- Backend: güncel izole PostgreSQL 16 CI üzerinde **224 test geçti**, hata ve
+  atlama yok. Admin SQL, eşzamanlı rezervasyon, kapasite, smoke guard ve UUID
+  plaka normalizasyonu regresyonları dahil. Yedek/restore paketi **11/11** geçti.
+  [Backend CI](https://github.com/Queensho/HeyCar/actions/runs/42795227916).
+- Güncel tam Flutter CI **595/595**; analiz **236 mevcut uyarı/bilgi**, hata yok.
+  [Flutter CI](https://github.com/Queensho/HeyCar/actions/runs/42795227936).
 - Salt okunur canlı staging bağlantı ve schema incelemesi başarılı.
-- **Bekleyen:** 23505 fixture teşhisi ve her çalışmada benzersiz sentetik plaka;
-  owner/vehicles seçimini içeren smoke tekrar testi, gerçek uygulamanın
-  tarayıcı/device testi, güncel APK ve gerçek cihaz bildirim teslimi.
-  Önceki 595/221/11 sonuçları tarihsel doğrulamadır.
+- **Bekleyen:** gerçek uygulamanın staging üzerinde tarayıcı/device testi ve
+  gerçek cihaz bildirim teslimi. Smoke başarısı native UI kurulum/delivery testi değildir.
 - PR, bu adımlar tamamlanmadan hazır/merge edilmiş olarak işaretlenmemeli.
 
 Yeni operasyon dosyaları `deploy/car-wash-phase3/`, isolated APK hazırlığı
 `tool/prepare_car_wash_android.py`, reusable CI
 `.github/workflows/car-wash-phase3.yml`, derleme API ayarı
-`lib/api_environment.dart` ve staging güvenlik testleridir. Genel production
-workflow'ları otomatik tetiklenmedi; hiçbir production database değiştirilmedi.
+`lib/api_environment.dart` ve staging güvenlik testleridir. Production deployment
+workflow'ları tetiklenmedi; hiçbir production database değiştirilmedi.
