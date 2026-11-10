@@ -11,6 +11,10 @@ on:
         description: Run synthetic car wash API smoke on existing staging (no deployment)
         type: boolean
         default: false
+      car_wash_diagnose:
+        description: Rollback-only diagnosis of the old synthetic fixture uniqueness error
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -27,7 +31,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-        if: inputs.car_wash_inspect || inputs.car_wash_smoke
+        if: inputs.car_wash_inspect || inputs.car_wash_smoke || inputs.car_wash_diagnose
       - name: Configure SSH
         env:
           SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
@@ -88,3 +92,15 @@ jobs:
           name: car-wash-staging-smoke
           path: staging-smoke.json
           retention-days: 7
+
+      - name: Diagnose old synthetic fixture collision with rollback only
+        if: inputs.car_wash_diagnose
+        env:
+          SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+          SSH_PORT: ${{ secrets.STAGING_SSH_PORT }}
+          SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = feature/car-wash-phase-1
+          ssh -i ~/.ssh/staging_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
+            'cd /home/cepqontag-deploy/app/server && node' < deploy/car-wash-phase3/diagnose-fixture.cjs
