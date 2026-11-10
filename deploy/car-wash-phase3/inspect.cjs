@@ -25,7 +25,7 @@ if(env.DATABASE_URL){
 const pool=new Pool({...config,connectionTimeoutMillis:5000});
 (async()=>{
  try{
-  const id=(await pool.query("SELECT current_database() AS database,current_user AS role,has_database_privilege(current_user,current_database(),'CREATE') AS can_create,version() AS version")).rows[0];
+  const id=(await pool.query("SELECT current_database() AS database,current_user AS role,inet_server_addr()::text AS server_address,inet_server_port() AS server_port,has_database_privilege(current_user,current_database(),'CREATE') AS can_create,version() AS version")).rows[0];
   assert.equal(id.database,'heycar_staging');
   const historyExists=(await pool.query("SELECT to_regclass('public.schema_migrations') IS NOT NULL AS exists")).rows[0].exists;
   const history=historyExists?(await pool.query('SELECT filename,checksum_sha256 FROM schema_migrations ORDER BY filename')).rows:[];
@@ -49,7 +49,9 @@ const pool=new Pool({...config,connectionTimeoutMillis:5000});
   const source=fs.readFileSync('server.js','utf8');
   let sudo='';try{sudo=execFileSync('sudo',['-n','-l'],{encoding:'utf8',stdio:['ignore','pipe','pipe']});}catch(e){sudo=String(e.stdout||'SUDO_UNAVAILABLE');}
   let listening=[];try{listening=execFileSync('ss',['-ltnp'],{encoding:'utf8'}).split('\n').filter(l=>/:(8091|18091)\b/.test(l));}catch(_){}
-  const result={identity:id,historyExists,history,tables,extensions,permissions,service,nginx,sudo,listening,
+  const connectionTarget=env.DATABASE_URL?{host:new URL(env.DATABASE_URL).hostname,port:Number(new URL(env.DATABASE_URL).port||5432)}:{host:config.host,port:config.port};
+  const adminConnectionVariableNames=[...new Set([...Object.keys(env),...Object.keys(process.env)])].filter(k=>/(ADMIN|SUPERUSER)/i.test(k)&&/(DATABASE|POSTGRES|PG|DB|CONNECTION)/i.test(k));
+  const result={connectionTarget,adminConnectionVariableNames,identity:id,historyExists,history,tables,extensions,permissions,service,nginx,sudo,listening,
    publicApiBase:env.PUBLIC_API_BASE_URL?new URL(env.PUBLIC_API_BASE_URL).origin+new URL(env.PUBLIC_API_BASE_URL).pathname:null,
    isolation:{appEnv:env.APP_ENV||null,externalDisabled},
    flags:{catalog:env.CAR_WASH_CATALOG_ENABLED||null,booking:env.CAR_WASH_BOOKING_ENABLED||null,push:env.CAR_WASH_PUSH_ENABLED||null},
