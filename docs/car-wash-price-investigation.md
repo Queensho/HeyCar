@@ -17,11 +17,11 @@ Katmanlar:
 
 | Katman | İncelenen/doğrulanan davranış |
 |---|---|
-| Eski test | Odak/Flutter text-editing senkronizasyonunu beklemeden5ms yazım; ilk3 rakamı7/24 kayboldu |
+| Eski test | Odak/Flutter text-editing senkronizasyonunu beklemeden5ms yazım; baştaki `3` rakamı7/24 kayboldu |
 | Flutter | `replaceAll(',', '.')` → double parse → ×100 round. `321,50` ve `321.50` gerçek editör widget testinde32150;0,01→1;350→35000 |
 | HTTP | `priceKurus` JSON integer; yeni browser testi POST alanını açıkça doğrular |
 | API | Integer/range kontrolü; dönüşüm yapmadan parameterized INSERT/UPDATE.32150,2150,1,35000 izole gerçek API/DB testinde aynen kaldı; decimal/string/negatif reddedildi |
-| PostgreSQL | `price_kurus INTEGER CHECK>=0`; kuruş birimi. Staging ilk321.50 kaydında API yanıtı, ayrı API okuması ve doğrudan salt okunur QA-scoped SQL doğrulaması32150 |
+| PostgreSQL | `price_kurus INTEGER CHECK>=0`; kuruş birimi. Staging ilk321.50 kaydında API yanıtı ve doğrudan salt okunur QA-scoped SQL doğrulaması32150 |
 
 Türkçe ondalık virgül ve nokta desteklenir; binlik gruplama destekleniyormuş gibi
 kabul edilmedi. Fiyat dönüşümü veya DB constraint'leri değiştirilmedi.
@@ -48,7 +48,7 @@ kabul edilmedi. Fiyat dönüşümü veya DB constraint'leri değiştirilmedi.
   migration'lar, eski APK ve gerçek müşteri verileri değiştirilmedi.
 - Staging ilk321.50→32150 alan/POST/response/PostgreSQL kontrolleri geçti.
 - Ardından **service-management locator.waitFor timeout**: yeni
-  `Phase 4 QA1794324206285` paketinin `group` locator'ı15s içinde görünür bulunamadı.
+  `Phase 4 QA 1794324206285` paketinin `group` locator'ı15s içinde görünür bulunamadı.
   Bu, yeni fiyat dönüşüm hatası kanıtı değildir. Tam satır/semantics/görünürlük
   nedeni henüz doğrulanmadı; test başarısızlığı gizlenmedi veya yeniden denenmedi.
 - Virgüllü fiyat/0,01/tam sayı staging matrisi tamamlanmadı. Ortak müşteri
