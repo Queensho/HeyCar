@@ -216,11 +216,24 @@ jobs:
           rsync -az -e "ssh -i $HOME/.ssh/staging_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p $SSH_PORT" qa-firebase-package/ "$SSH_USER@$SSH_HOST:$destination/"
           ssh -i ~/.ssh/staging_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
             "cd /home/cepqontag-deploy/app/server && node - '$destination'" < deploy/firebase-staging/setup.cjs | tee qa-firebase-setup.json
+
+      - name: Verify QA registration and denial without real push
+        if: inputs.car_wash_firebase_setup
+        env:
+          SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+          SSH_PORT: ${{ secrets.STAGING_SSH_PORT }}
+          SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/staging_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
+            'cd /home/cepqontag-deploy/app/server && node' < deploy/firebase-staging/protocol-check.cjs | tee qa-push-protocol.json
       - uses: actions/upload-artifact@v4
         if: inputs.car_wash_firebase_setup && always()
         with:
           name: qa-firebase-setup
-          path: qa-firebase-setup.json
+          path: |
+            qa-firebase-setup.json
+            qa-push-protocol.json
           retention-days: 14
 
   phase4:
@@ -240,7 +253,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: cepqontag-car-wash-staging-web
-          run-id: 42795802190
+          run-id: 42824020575
           github-token: ${{ github.token }}
           path: phase4-web
       - name: Configure SSH
