@@ -63,3 +63,9 @@ açılışı ve iki farklı QA hesabının birbirinin bildirimini görmemesi do�
 FCM message ID tek başına teslim kanıtı değildir; cihaz görünümü ve UTC zaman
 kanıtı gerekir. Web Push için HTTPS, browser izni, service worker ve test aboneliği
 ayrıca doğrulanmalı. Test sonunda yalnız kendi QA token/aboneliklerini kaldırın.
+
+Son ortam gözlemi, Firebase/VAPID'nin nereden alınacağı, mevcut VAPID pair'inin
+staging-only kaynağının doğrulanmamış olması ve üç tur eşzamanlı API provası için
+[güncel son cihaz/push ön kontrolü](car-wash-final-device-preflight.md) esas alınır.
+Mevcut işletme için doğrulanan bildirim akışı panel kutusudur; ayrı business push
+abonelik/gönderim desteği varmış gibi test sonucu yazılmaz.
