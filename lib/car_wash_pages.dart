@@ -128,11 +128,7 @@ class _CarWashPageState extends State<CarWashPage> {
         IconButton(
             tooltip: 'Randevularım',
             onPressed: () => washPush(context, WashBookingsPage(api: api)),
-            icon: const Icon(Icons.event_note)),
-        IconButton(
-            tooltip: 'Bildirimler',
-            onPressed: () => washPush(context, WashNotificationsPage(api: api)),
-            icon: const Icon(Icons.notifications_outlined))
+            icon: const Icon(Icons.event_note))
       ],
       child: WashLoader(
           future: _future!,
@@ -643,57 +639,6 @@ class _WashBookingDetailPageState extends State<WashBookingDetailPage> {
                     contentPadding: EdgeInsets.zero,
                     title: Text(washEvents[h['event']] ?? '${h['event']}'),
                     subtitle: Text(washTime(h['created_at']))),
-            ]);
-          }));
-}
-
-class WashNotificationsPage extends StatefulWidget {
-  const WashNotificationsPage({super.key, required this.api});
-  final CarWashApi api;
-  @override
-  State<WashNotificationsPage> createState() => _WashNotificationsPageState();
-}
-
-class _WashNotificationsPageState extends State<WashNotificationsPage> {
-  late Future<WashJson> future;
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  void _load() => setState(() {
-        future = widget.api.call('/api/car-wash/notifications');
-      });
-  @override
-  Widget build(BuildContext context) => WashScaffold(
-      title: 'Oto yıkama bildirimleri',
-      child: WashLoader(
-          future: future,
-          retry: _load,
-          builder: (data) {
-            final rows = washRows(data['notifications']);
-            return ListView(padding: const EdgeInsets.all(18), children: [
-              if (rows.isEmpty) const Text('Henüz bildirim yok.'),
-              for (final n in rows)
-                washCard(ListTile(
-                    leading: Icon(n['read_at'] == null
-                        ? Icons.notifications_active
-                        : Icons.notifications_none),
-                    title:
-                        Text(washEvents[n['event']] ?? 'Randevu güncellendi'),
-                    subtitle: Text(washTime(n['created_at'])),
-                    onTap: () async {
-                      await widget.api.call(
-                          '/api/car-wash/notifications/${n['id']}/read',
-                          method: 'POST');
-                      if (!context.mounted) return;
-                      await washPush(
-                          context,
-                          WashBookingDetailPage(
-                              api: widget.api, id: '${n['booking_id']}'));
-                      if (mounted) _load();
-                    }))
             ]);
           }));
 }

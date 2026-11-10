@@ -48,8 +48,14 @@ const carWashSource={category:'car_wash',async readEvents(pool,p){return (await 
  AND EXISTS(SELECT 1 FROM service_push_devices d WHERE (d.owner_id=b.owner_id OR d.business_id=b.business_id) AND d.created_at<=n.created_at)
  AND NOT EXISTS(SELECT 1 FROM service_push_deliveries d WHERE d.event_key='services_v2:car_wash:'||b.id::text||':'||n.revision::text||':'||n.event)
  AND (n.event<>'reminder' OR (b.status='confirmed' AND b.revision=n.revision AND b.starts_at>now())) ORDER BY n.created_at LIMIT 500`,[p.notBefore,p.owners,p.businesses])).rows.map(r=>({...r,category:'car_wash',label:'Oto Yıkama'}));}};
+const ownerCenterSource={category:null,async readEvents(pool,p){return (await pool.query(`SELECT n.id AS "centerId",n.category,n.appointment_id AS "appointmentId",n.owner_id AS "ownerId",n.business_id AS "businessId",n.event,n.revision,n.created_at AS "createdAt",left(n.title,80) AS label
+ FROM owner_notification_events n WHERE n.created_at>=$1 AND n.owner_id=ANY($2::uuid[]) AND n.business_id=ANY($3::uuid[])
+ AND EXISTS(SELECT 1 FROM service_push_devices d WHERE (d.owner_id=n.owner_id OR d.business_id=n.business_id) AND d.created_at<=n.created_at)
+ AND NOT EXISTS(SELECT 1 FROM service_push_deliveries d WHERE d.event_key=n.event_key)
+ AND (n.event<>'reminder' OR (n.category='car_wash' AND EXISTS(SELECT 1 FROM car_wash_bookings b WHERE b.id::text=n.appointment_id AND b.status='confirmed' AND b.revision=n.revision AND b.starts_at>now())))
+ ORDER BY n.created_at LIMIT 500`,[p.notBefore,p.owners,p.businesses])).rows;}};
 async function tick(pool,policy,{admin,web,sources=[carWashSource]}){
- for(const source of sources){for(const event of await source.readEvents(pool,policy)){assert.equal(event.category,source.category);await enqueueEvent(pool,policy,event);}}
+ for(const source of sources){for(const event of await source.readEvents(pool,policy)){if(source.category)assert.equal(event.category,source.category);await enqueueEvent(pool,policy,event);}}
  if(!admin&&!web)return;
  const rows=(await pool.query(`WITH candidates AS (SELECT id FROM service_push_deliveries WHERE state='pending' ORDER BY created_at LIMIT 20 FOR UPDATE SKIP LOCKED)
  UPDATE service_push_deliveries n SET state='claimed',attempted_at=now() FROM candidates c WHERE n.id=c.id RETURNING n.*`)).rows;
@@ -59,7 +65,7 @@ async function tick(pool,policy,{admin,web,sources=[carWashSource]}){
    const role=n.owner_id?'owner':'business',id=n.owner_id||n.business_id;
    if(!d||d.owner_id!==n.owner_id||d.business_id!==n.business_id||!policy[role==='owner'?'owners':'businesses'].includes(id))throw Error('QA_BINDING_INACTIVE');
    const ownerBinding=role==='owner'?JSON.parse(d.auth_binding):null;
-   const active=role==='owner'?await pool.query('SELECT 1 FROM owner_auth_sessions s JOIN users u ON u.id::text=s.owner_id::text LEFT JOIN owner_privacy_settings p ON p.owner_id=u.id::text WHERE s.id::text=$1 AND s.owner_id::text=$2 AND s.revoked_at IS NULL AND s.expires_at>now() AND u.status=\'active\' AND COALESCE(p.security_version,1)=$3',[ownerBinding.sid,id,ownerBinding.sv]):await pool.query('SELECT 1 FROM business_sessions s JOIN businesses b ON b.account_id=s.account_id WHERE s.token_hash=$1 AND b.id=$2 AND s.expires_at>now() AND b.is_active',[d.auth_binding,id]);
+   const active=role==='owner'?await pool.query('SELECT 1 FROM owner_auth_sessions s JOIN users u ON u.id::text=s.owner_id::text LEFT JOIN owner_privacy_settings p ON p.owner_id=u.id::text WHERE s.id::text=$1 AND s.owner_id::text=$2 AND s.revoked_at IS NULL AND s.expires_at>now() AND u.status=\'active\' AND COALESCE(p.security_version,1)=$3 AND COALESCE(p.system_notifications,true)' ,[ownerBinding.sid,id,ownerBinding.sv]):await pool.query('SELECT 1 FROM business_sessions s JOIN businesses b ON b.account_id=s.account_id WHERE s.token_hash=$1 AND b.id=$2 AND s.expires_at>now() AND b.is_active',[d.auth_binding,id]);
    if(!active.rows.length)throw Error('QA_BINDING_INACTIVE');
    const p=n.payload,data={...p.data,notificationId:String(n.id),title:p.title,body:p.body};
    if(d.channel==='fcm'&&admin){await admin.send({token:d.address.token,data,android:{priority:'high',notification:{channelId:'cepqontag_notifications_v12'}},notification:{title:p.title,body:p.body}});state='sent';code='FCM_ACCEPTED_NOT_DEVICE_RECEIPT';}
@@ -78,6 +84,6 @@ function register(app,pool,{env=process.env,options={}}={}){
  route('get','/api/qa/services-v2/push/config',async(req,a)=>({ok:true,recipientRole:a.role,firebaseProjectId:firebase.projectId,registrationEnabled:true,deliveryEnabled:env.CEPQONTAG_QA_PUSH_SEND_ENABLED==='true',fcmSenderReady:Boolean(admin),webPush:{enabled:Boolean(web),publicKey:web?.publicKey||''}}));
  route('post','/api/qa/services-v2/push/devices',async(req,a)=>({ok:true,id:await registerDevice(pool,a,req.body||{})}));
  route('delete','/api/qa/services-v2/push/devices',async(req,a)=>{const field=a.role==='owner'?'owner_id':'business_id';await pool.query(`DELETE FROM service_push_devices WHERE ${field}=$1 AND device_id=$2`,[a.id,String(req.query.deviceId||'')]);return {ok:true};});
- let busy=false;const timer=setInterval(async()=>{if(busy||env.CEPQONTAG_QA_PUSH_SEND_ENABLED!=='true')return;busy=true;try{await tick(pool,getPolicy(),{admin,web});}catch(e){console.warn('QA_PUSH_TICK_STOPPED',{code:e.code||'CONFIG_OR_SOURCE_REFUSED'});}finally{busy=false;}},5000);timer.unref();return ()=>clearInterval(timer);
+ let busy=false;const timer=setInterval(async()=>{if(busy||env.CEPQONTAG_QA_PUSH_SEND_ENABLED!=='true')return;busy=true;try{await tick(pool,getPolicy(),{admin,web,sources:env.OWNER_SERVICE_NOTIFICATIONS_ENABLED==='true'?[ownerCenterSource]:[carWashSource]});}catch(e){console.warn('QA_PUSH_TICK_STOPPED',{code:e.code||'CONFIG_OR_SOURCE_REFUSED'});}finally{busy=false;}},5000);timer.unref();return ()=>clearInterval(timer);
 }
-module.exports={register,validateAddress,registerDevice,enqueueEvent,tick,carWashSource};
+module.exports={register,validateAddress,registerDevice,enqueueEvent,tick,carWashSource,ownerCenterSource};

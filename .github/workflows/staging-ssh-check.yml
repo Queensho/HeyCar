@@ -204,10 +204,11 @@ jobs:
           import pathlib,hashlib,json,os,shutil
           root=pathlib.Path('qa-firebase-package');root.mkdir()
           manifest={'sha':os.environ['GITHUB_SHA'],'files':{},'history':{}}
-          names=['qa-firebase-admin.js','qa-service-push.js','service-booking-notification.js','migration-sql.js']
+          names=['qa-firebase-admin.js','qa-service-push.js','service-booking-notification.js','migration-sql.js','owner-notification-center.js','notification-routes.js','valet-routes.js']
           for name in names:
               shutil.copyfile('server/'+name,root/name);manifest['files'][name]=hashlib.sha256((root/name).read_bytes()).hexdigest()
-          name='128_services_v2_qa_push.sql';shutil.copyfile('server/migrations/'+name,root/name);manifest['files'][name]=hashlib.sha256((root/name).read_bytes()).hexdigest()
+          for name in ['128_services_v2_qa_push.sql','129_owner_notification_center.sql']:
+              shutil.copyfile('server/migrations/'+name,root/name);manifest['files'][name]=hashlib.sha256((root/name).read_bytes()).hexdigest()
           for p in pathlib.Path('server/migrations').glob('*.sql'):manifest['history'][p.name]=hashlib.sha256(p.read_bytes()).hexdigest()
           (root/'manifest.json').write_text(json.dumps(manifest))
           PYCODE

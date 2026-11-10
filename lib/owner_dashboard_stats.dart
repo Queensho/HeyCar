@@ -1,3 +1,4 @@
+import 'owner_notifications_page.dart' show ownerUnreadNotificationCount;
 import 'api_environment.dart';
 import 'dart:async';
 import 'dart:convert';
@@ -50,7 +51,8 @@ class _OwnerDashboardStatsRowState extends State<OwnerDashboardStatsRow> {
       final items = (data['notifications'] as List).whereType<Map>().toList();
       if (!mounted) return;
       setState(() {
-        unread = items.where((e) => e['status']?.toString() == 'new').length;
+        unread = (data['unreadCount'] as num?)?.toInt() ?? items.where((e) => e['status']?.toString() == 'new').length;
+        ownerUnreadNotificationCount.value=unread;
         messages = items.length;
         locations = items.where((e) => e['latitude'] != null && e['longitude'] != null).length;
         calls = items.where((e) => e['type']?.toString() == 'call_request').length;

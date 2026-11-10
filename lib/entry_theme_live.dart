@@ -1,3 +1,4 @@
+import 'owner_service_notification.dart';
 import 'dart:convert';
 import 'api_environment.dart';
 import 'car_wash_pages.dart';
@@ -305,11 +306,13 @@ Future<void> _routePush(Map<String,dynamic> d)async{
     }
     return;
   }
-  if(type=='car_wash'||(type=='service_booking'&&d['serviceCategory']=='car_wash')){
-    final bookingId='${d['bookingId']??''}';
-    if(RegExp(r'^[0-9a-fA-F-]{36}$').hasMatch(bookingId)){
-      nav.push(MaterialPageRoute(builder:(_)=>WashBookingDetailPage(api:CarWashApi(),id:bookingId)));
+  if(type=='car_wash'||type=='service_booking'){
+    final centerId='${d['centerNotificationId']??''}';
+    if(RegExp(r'^service:[0-9a-fA-F-]{36}$').hasMatch(centerId)){
+      try{await OwnerHttp.patch(Uri.parse('$apiBaseUrl/api/owner/notifications/${Uri.encodeComponent(centerId)}'),body:jsonEncode({'status':'read'}));}catch(_){}
     }
+    final context=nav.context;
+    if(context.mounted)await openOwnerServiceNotification(context,d);
     return;
   }
   if(type=='message'&&notificationId.isNotEmpty){
@@ -329,9 +332,9 @@ Future<void> _routePush(Map<String,dynamic> d)async{
 
 Future<void> _openPendingPush()async{
   if(!mounted||restoring)return;
-  if(kIsWeb&&isStagingBuild&&hasSession&&!_qaWebLinkHandled&&Uri.base.queryParameters['serviceCategory']=='car_wash'){
+  if(kIsWeb&&isStagingBuild&&hasSession&&!_qaWebLinkHandled&&Uri.base.queryParameters['serviceCategory']!=null){
     final id=Uri.base.queryParameters['bookingId'];
-    if(id!=null&&RegExp(r'^[0-9a-fA-F-]{36}$').hasMatch(id)){_qaWebLinkHandled=true;await _routePush({'type':'service_booking','serviceCategory':'car_wash','bookingId':id});return;}
+    if(id!=null&&RegExp(r'^[0-9a-fA-F-]{36}$').hasMatch(id)){_qaWebLinkHandled=true;await _routePush({'type':'service_booking','serviceCategory':Uri.base.queryParameters['serviceCategory'],'bookingId':id,'centerNotificationId':Uri.base.queryParameters['centerNotificationId']??''});return;}
   }
   final prefs=await SharedPreferences.getInstance();
   final raw=prefs.getString('pending_push_navigation');

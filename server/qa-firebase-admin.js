@@ -15,7 +15,8 @@ function loadPolicy(env=process.env,options={}){
  assert.ok(Date.parse(p.expiresAt)>Date.now()&&Date.parse(p.expiresAt)-Date.parse(p.notBefore)<=31*86400000,'QA_WINDOW_INVALID');return p;
 }
 function createAdminSender(env=process.env,options={}){
- loadPolicy(env,options);if(env.CEPQONTAG_QA_PUSH_SEND_ENABLED!=='true'||!env.CEPQONTAG_QA_FIREBASE_ADMIN_FILE)return null;
+ loadPolicy(env,options);if(!env.CEPQONTAG_QA_FIREBASE_ADMIN_FILE)return null;
+ if(!fs.existsSync(env.CEPQONTAG_QA_FIREBASE_ADMIN_FILE)&&env.CEPQONTAG_QA_PUSH_SEND_ENABLED!=='true')return null;
  const account=privateJson(env.CEPQONTAG_QA_FIREBASE_ADMIN_FILE,options);assert.equal(account.project_id,projectId);assert.equal(account.type,'service_account');
  assert.ok(account.client_email.endsWith('@'+projectId+'.iam.gserviceaccount.com'));assert.ok(account.private_key.startsWith('-----BEGIN PRIVATE KEY-----'));
  const loader=options.loader||(env.CEPQONTAG_QA_ADMIN_SDK_ROOT?require('node:module').createRequire('/home/cepqontag-deploy/qa-firebase-runtime/package.json'):require);

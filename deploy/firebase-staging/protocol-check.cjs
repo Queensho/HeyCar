@@ -22,7 +22,7 @@ async function api(path,{token,method='GET',body}={}){const r=await fetch(base+p
  const owner=(await api('/api/owner/login-phone',{method:'POST',body:{phone:qa.owner.phone,password:qa.owner.password}})).data.accessToken;
  const business=(await api('/api/business/auth/login',{method:'POST',body:{email:qa.business.email,password:qa.business.password}})).data.token;assert.ok(owner&&business);
  for(const [role,token] of [['owner',owner],['business',business]]){
-  const c=await api('/api/qa/services-v2/push/config',{token});assert.equal(c.status,200);assert.equal(c.data.recipientRole,role);assert.equal(c.data.firebaseProjectId,'cepqontag-staging');assert.equal(c.data.deliveryEnabled,false);assert.equal(c.data.fcmSenderReady,false);assert.equal(c.data.webPush.enabled,true);
+  const c=await api('/api/qa/services-v2/push/config',{token});assert.equal(c.status,200);assert.equal(c.data.recipientRole,role);assert.equal(c.data.firebaseProjectId,'cepqontag-staging');assert.equal(c.data.deliveryEnabled,false);assert.equal(c.data.fcmSenderReady,true);assert.equal(c.data.webPush.enabled,true);
   const id='QA-PROTOCOL-'+crypto.randomUUID();
   const curve=crypto.createECDH('prime256v1');curve.generateKeys();
   const body=role==='owner'?{channel:'fcm',deviceId:id,platform:'android',firebaseProjectId:'cepqontag-staging',token:'QA_TEST_NOT_REAL_TOKEN_'+crypto.randomBytes(24).toString('hex')}:{channel:'web',deviceId:id,subscription:{endpoint:'https://fcm.googleapis.com/fcm/send/QA_TEST_NOT_REAL_'+id,keys:{p256dh:curve.getPublicKey().toString('base64url'),auth:crypto.randomBytes(16).toString('base64url')}}};

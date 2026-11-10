@@ -72,7 +72,16 @@ module.exports=function registerValetRoutes(app,pool){
    return q.rows[0]||null;
   }catch(e){await client.query('ROLLBACK').catch(()=>{});throw e;}finally{client.release();}
  }
- async function audit(businessId,sessionId,staffId,actorType,action,fromStatus,toStatus,metadata){try{await pool.query("INSERT INTO valet_audit_log(business_id,session_id,staff_id,actor_type,action,from_status,to_status,metadata) VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb)",[businessId,sessionId||null,staffId||null,actorType,action,fromStatus||null,toStatus||null,JSON.stringify(metadata||{})]);}catch(e){console.error('valet audit',e);}}
+ async function audit(businessId,sessionId,staffId,actorType,action,fromStatus,toStatus,metadata){try{
+  await pool.query("INSERT INTO valet_audit_log(business_id,session_id,staff_id,actor_type,action,from_status,to_status,metadata) VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb)",[businessId,sessionId||null,staffId||null,actorType,action,fromStatus||null,toStatus||null,JSON.stringify(metadata||{})]);
+  const center=require('./owner-notification-center');
+  if(center.enabled()&&sessionId&&toStatus){
+   const row=(await pool.query('SELECT s.vehicle_id,v.owner_id FROM valet_sessions s JOIN vehicles v ON v.id=s.vehicle_id WHERE s.id=$1 AND s.business_id=$2',[sessionId,businessId])).rows[0];
+   const states={accepted:['created',1],parked:['confirmed',2],requested:['rescheduled',3],retrieving:['in_progress',4],ready:['completed',5],delivered:['completed',6],cancelled:['cancelled',7]};
+   if(row&&states[toStatus])await center.record(pool,{ownerId:row.owner_id,vehicleId:row.vehicle_id,businessId,category:'valet',appointmentId:String(sessionId),event:states[toStatus][0],revision:states[toStatus][1],label:'Vale'});
+  }
+ }catch(e){console.error('valet audit',{code:e.code||'UNAVAILABLE'});}}
+
  async function dispatchNext(businessId){
   try{
    const row=await assignNext(businessId);if(!row)return null;
