@@ -4,12 +4,17 @@ const {chromium}=require('playwright');
 const qa=JSON.parse(fs.readFileSync(process.env.QA_FILE,'utf8'));
 assert.equal(qa.synthetic,true);assert.equal(qa.status,'passed');assert.match(qa.plate,/^QA-CARWASH-/);
 const origin='https://staging-api-185-165-46-213.nip.io';
+let step='preflight';
 const output=process.env.BROWSER_OUTPUT||'phase4-browser';fs.mkdirSync(output,{recursive:true});
 (async()=>{
  const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||'/usr/bin/google-chrome',args:['--no-sandbox']});
  try{
   const context=await browser.newContext({viewport:{width:1280,height:1000},geolocation:{latitude:41,longitude:29},permissions:['geolocation']});
+  const authCheck=await context.request.post(origin+'/api/business/auth/login',{data:{email:qa.business.email,password:qa.business.password}});
+  assert.equal(authCheck.status(),200,'QA_DIRECT_LOGIN_FAILED');
   const page=await context.newPage();const failures=[],responses=[];
+  await page.route('**/api/**',async route=>{if(new URL(route.request().url()).origin!==origin){failures.push('BLOCKED_NON_STAGING_API');await route.abort();}else await route.continue();});
+  step='business-ui-login';
   page.on('pageerror',e=>failures.push(String(e.message)));
   page.on('response',r=>{if(r.url().startsWith(origin+'/api/business/car-wash/'))responses.push({path:new URL(r.url()).pathname,status:r.status()});});
   await page.goto(origin+'/car-wash-business/');
@@ -17,8 +22,11 @@ const output=process.env.BROWSER_OUTPUT||'phase4-browser';fs.mkdirSync(output,{r
   await page.getByRole('button',{name:'Giriş Yap',exact:true}).click();
   await page.getByRole('textbox',{name:'E-posta',exact:true}).fill(qa.business.email);
   await page.getByRole('textbox',{name:'Şifre',exact:true}).fill(qa.business.password);
+  assert.equal(await page.getByRole('textbox',{name:'E-posta',exact:true}).inputValue(),qa.business.email,'EMAIL_INPUT_MISMATCH');
+  assert.equal(await page.getByRole('textbox',{name:'Şifre',exact:true}).inputValue(),qa.business.password,'PASSWORD_INPUT_MISMATCH');
   const login=page.waitForResponse(r=>r.url().endsWith('/api/business/auth/login')&&r.request().method()==='POST');
-  await page.getByRole('button',{name:'Giriş Yap',exact:true}).click();assert.equal((await login).status(),200);
+  await page.getByRole('button',{name:'Giriş Yap',exact:true}).click();const logged=await login;assert.equal(new URL(logged.url()).origin,origin);assert.equal(logged.status(),200,'UI_LOGIN_FAILED');
+  step='business-calendar';
   const settingsWait=page.waitForResponse(r=>r.url().endsWith('/api/business/car-wash/settings'));
   await page.getByRole('button',{name:'Oto Yıkama Yönetimi',exact:true}).click();
   const initialServices=(await (await settingsWait).json()).services.length;
@@ -28,6 +36,7 @@ const output=process.env.BROWSER_OUTPUT||'phase4-browser';fs.mkdirSync(output,{r
   await page.screenshot({path:output+'/business-calendar.png',fullPage:true});
   await page.getByRole('button',{name:'Hizmet paketleri ekle',exact:true}).scrollIntoViewIfNeeded();
   await page.getByRole('button',{name:'Hizmet paketleri ekle',exact:true}).click();
+  step='service-management';
   const name='Phase 4 QA '+Date.now();
   await page.getByRole('textbox',{name:'Ad',exact:true}).fill(name);
   await page.getByRole('textbox',{name:'Açıklama',exact:true}).fill('Yalnız sentetik staging işletmesi');
@@ -50,4 +59,4 @@ const output=process.env.BROWSER_OUTPUT||'phase4-browser';fs.mkdirSync(output,{r
   fs.writeFileSync(output+'/result.json',JSON.stringify({ok:true,businessUrl:origin+'/car-wash-business/',checks:['real-business-login','real-calendar-history','service-create','price-duration-persistence','price-update','desktop-mobile-render','no-page-errors'],serviceId:item.id,responses},null,2));
   console.log('PHASE4_BROWSER_OK');
  }finally{await browser.close();}
-})().catch(e=>{let reason=String(e.message);for(const secret of [qa.business.password,qa.owner.password,qa.owner.phone,qa.business.email])if(secret)reason=reason.split(secret).join('[REDACTED]');console.error('PHASE4_BROWSER_FAILED',reason);process.exitCode=1;});
+})().catch(e=>{let reason=String(e.message);for(const secret of [qa.business.password,qa.owner.password,qa.owner.phone,qa.business.email])if(secret)reason=reason.split(secret).join('[REDACTED]');console.error('PHASE4_BROWSER_FAILED',{step,reason});process.exitCode=1;});
