@@ -31,8 +31,9 @@ const output=process.env.BROWSER_OUTPUT||'phase4-browser';fs.mkdirSync(output,{r
   await page.getByRole('button',{name:'Oto Yıkama Yönetimi',exact:true}).click();
   const initialServices=(await (await settingsWait).json()).services.length;
   await page.getByText('Randevu takvimi',{exact:true}).waitFor();
-  await page.getByText('Tüm geçmiş',{exact:true}).click();
-  await page.getByText(qa.plate+' · QA İç Dış Yıkama',{exact:true}).waitFor();
+  await page.screenshot({path:output+'/business-calendar-loaded.png',fullPage:true});
+  await page.getByRole('button',{name:'Tüm geçmiş',exact:true}).click();
+  await page.locator('[aria-label*="'+qa.plate+'"]').first().waitFor({state:'visible'});
   await page.screenshot({path:output+'/business-calendar.png',fullPage:true});
   await page.getByRole('button',{name:'Hizmet paketleri ekle',exact:true}).scrollIntoViewIfNeeded();
   await page.getByRole('button',{name:'Hizmet paketleri ekle',exact:true}).click();
@@ -46,7 +47,7 @@ const output=process.env.BROWSER_OUTPUT||'phase4-browser';fs.mkdirSync(output,{r
   await page.getByRole('button',{name:'Kaydet',exact:true}).click();const saved=await save;assert.equal(saved.status(),200);
   const item=(await saved.json()).item;assert.equal(item.price_kurus,32150);assert.equal(item.duration_minutes,45);
   // The business owner can see only their own newly created package; verify an edit via UI.
-  await page.getByText(name,{exact:true}).waitFor();
+  await page.locator('[aria-label*="'+name+'"]').first().waitFor({state:'visible'});
   await page.getByRole('button',{name:'Düzenle',exact:true}).nth(initialServices).click();
   await page.getByRole('textbox',{name:'Fiyat (TL)',exact:true}).fill('350');
   const update=page.waitForResponse(r=>r.url().endsWith('/api/business/car-wash/services')&&r.request().method()==='POST');

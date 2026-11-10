@@ -23,6 +23,10 @@ on:
         description: Verify already-published staging web without publishing or restarting
         type: boolean
         default: false
+      car_wash_phase4_browser_only:
+        description: Recheck browser only; preserve published app and completed restore evidence
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -173,7 +177,7 @@ jobs:
           PYCODE
           cp deploy/car-wash-phase4/staging-web.cjs phase4-web/
       - name: Publish only staging web with code rollback
-        if: inputs.car_wash_phase4_verify_only != true
+        if: inputs.car_wash_phase4_verify_only != true && inputs.car_wash_phase4_browser_only != true
         env:
           SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
           SSH_PORT: ${{ secrets.STAGING_SSH_PORT }}
@@ -186,6 +190,7 @@ jobs:
           ssh -i ~/.ssh/staging_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
             "cd /home/cepqontag-deploy/app/server && node - '$destination'" < deploy/car-wash-phase4/publish.cjs | tee phase4-publish-result.json
       - name: Snapshot real staging into private backup
+        if: inputs.car_wash_phase4_browser_only != true
         env:
           SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
           SSH_PORT: ${{ secrets.STAGING_SSH_PORT }}
@@ -199,6 +204,7 @@ jobs:
           ssh -i ~/.ssh/staging_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "cat '$dump'" > "$RUNNER_TEMP/carwash-phase4/staging.dump"
           chmod 600 "$RUNNER_TEMP/carwash-phase4/"*
       - name: Full isolated restore verification (no VPS restore)
+        if: inputs.car_wash_phase4_browser_only != true
         env:
           RESTORE_CONTAINER: ${{ job.services.postgres.id }}
         run: python3 deploy/car-wash-phase4/verify-restore.py
@@ -212,6 +218,7 @@ jobs:
           SSH_USER: ${{ secrets.STAGING_SSH_USER }}
         run: |
           set -euo pipefail
+          install -d -m 700 "$RUNNER_TEMP/carwash-phase4"
           ssh -i ~/.ssh/staging_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
             'cat /home/cepqontag-deploy/car-wash-phase3-qa/d24a58be-8a8e-4e30-af55-d4faa77bad08.json' > "$RUNNER_TEMP/carwash-phase4/qa.json"
           chmod 600 "$RUNNER_TEMP/carwash-phase4/qa.json"
