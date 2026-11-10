@@ -1,3 +1,5 @@
+import 'owner_notification_model.dart';
+import 'owner_notifications_page.dart' show ownerUnreadNotificationCount;
 import 'design/cq_components.dart';
 import 'car_wash_pages.dart';
 import 'dart:async';
@@ -446,6 +448,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       final noticesOk=nr.statusCode>=200&&nr.statusCode<300&&nd is Map&&nd['notifications'] is List;
       var nextNotices=notices;
       if(noticesOk){
+        ownerUnreadNotificationCount.value=ownerUnreadCount(nd);
         nextNotices=(nd['notifications'] as List).whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).toList();
         if(vehicleId.isNotEmpty){
           nextNotices=nextNotices.where((e)=>'${e['vehicle_id']??''}'==vehicleId).toList();
@@ -557,7 +560,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   int get calls=>monthItems.where((e)=>e['type']=='call_request').length;
   int get messages=>monthItems.where((e)=>e['type']!='call_request').length;
   int get warnings=>monthItems.where((e)=>['lights_on','move_vehicle','damage'].contains('${e['type']}')).length;
-  int get unread=>notices.where((e)=>e['status']=='new').length;
+  int get unread=>ownerUnreadNotificationCount.value;
 
   String publicUrl(){
     final t=QrDraft.token.trim(),s=QrDraft.scanSecret.trim();

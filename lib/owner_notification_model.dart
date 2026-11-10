@@ -24,3 +24,12 @@ bool ownerNotificationMatches(Map<String, dynamic> n, int filter) {
         (n['service_category'] ?? n['serviceCategory']) != 'valet';
   return service;
 }
+
+int ownerUnreadCount(Map<dynamic, dynamic> response) {
+  final count = response['unreadCount'];
+  if (count is num && count.isFinite && count >= 0) return count.toInt();
+  final rows = response['notifications'];
+  return rows is List
+      ? rows.whereType<Map>().where((n) => n['status'] == 'new').length
+      : 0;
+}

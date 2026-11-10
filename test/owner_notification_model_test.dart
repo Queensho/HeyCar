@@ -2,6 +2,32 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:heycar_app/owner_notification_model.dart';
 
 void main() {
+  test('bell uses the shared server total across vehicles and page limits', () {
+    expect(
+        ownerUnreadCount({
+          'unreadCount': 123,
+          'notifications': [
+            {'status': 'new'}
+          ]
+        }),
+        123);
+    expect(
+        ownerUnreadCount({
+          'notifications': [
+            {'status': 'new'},
+            {'status': 'read'}
+          ]
+        }),
+        1);
+    expect(
+        ownerUnreadCount({
+          'unreadCount': 0,
+          'notifications': [
+            {'status': 'new'}
+          ]
+        }),
+        0);
+  });
   test(
       'single center filters QR, appointments and present/future service categories',
       () {
