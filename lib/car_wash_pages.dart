@@ -436,6 +436,10 @@ class WashBusinessPage extends StatefulWidget {
 
 class _WashBusinessPageState extends State<WashBusinessPage> {
   late Future<WashJson> future;
+  int photoIndex = 0;
+  int tab = 0;
+  bool favorite = false;
+
   @override
   void initState() {
     super.initState();
@@ -443,78 +447,313 @@ class _WashBusinessPageState extends State<WashBusinessPage> {
   }
 
   void _load() => setState(() {
-        future =
-            widget.api.call('/api/car-wash/businesses/${widget.businessId}');
+        future = widget.api.call('/api/car-wash/businesses/${widget.businessId}');
       });
+
+  String _photoUrl(dynamic photo) {
+    if (photo is Map) {
+      return '${photo['url'] ?? photo['photo_url'] ?? photo['image_url'] ?? ''}';
+    }
+    return '${photo ?? ''}';
+  }
+
   @override
   Widget build(BuildContext context) => WashScaffold(
-      title: 'İşletme detayları',
+      title: 'İşletme Detayları',
+      actions: [
+        IconButton(
+            tooltip: 'Paylaş',
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Paylaşım bağlantısı yakında kullanılabilir.')));
+            },
+            icon: const Icon(Icons.share_outlined, color: _deep)),
+        IconButton(
+            tooltip: favorite ? 'Favorilerden çıkar' : 'Favorilere ekle',
+            onPressed: () => setState(() => favorite = !favorite),
+            icon: Icon(favorite ? Icons.favorite : Icons.favorite_border,
+                color: _deep)),
+      ],
       child: WashLoader(
           future: future,
           retry: _load,
           builder: (data) {
-            final b = Map<String, dynamic>.from(data['business'] as Map),
-                services = washRows(b['services']);
-            final photos = b['photos'] is List ? b['photos'] as List : const [];
-            return ListView(padding: const EdgeInsets.all(18), children: [
-              Text('${b['name']}',
-                  style: const TextStyle(
-                      fontSize: 26, fontWeight: FontWeight.w800)),
-              const SizedBox(height: 8),
-              Text('${b['address'] ?? ''}'),
-              const SizedBox(height: 8),
-              Text('${b['description'] ?? ''}'),
-              if (photos.isNotEmpty)
-                SizedBox(
-                    height: 200,
-                    child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        itemCount: photos.length,
-                        separatorBuilder: (_, __) => const SizedBox(width: 12),
-                        itemBuilder: (_, i) => ClipRRect(
-                            borderRadius: BorderRadius.circular(16),
-                            child: Image.network('${photos[i]}',
-                                width: 260,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => const SizedBox(
-                                    width: 260,
-                                    child: Center(
-                                        child:
-                                            Text('Fotoğraf yüklenemedi'))))))),
-              const SizedBox(height: 20),
-              const Text('Hizmet paketleri',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 12),
-              if (services.isEmpty)
-                const Text('Henüz aktif hizmet paketi bulunmuyor.'),
-              if (data['bookingEnabled'] != true)
-                const Padding(
-                    padding: EdgeInsets.only(bottom: 16),
-                    child: Text('Bu işletme şu anda randevu kabul etmiyor.')),
-              for (final s in services)
-                washCard(Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('${s['name']}',
-                          style: const TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.w700)),
-                      Text('${s['description'] ?? ''}'),
-                      const SizedBox(height: 8),
-                      Text(
-                          '${washPrice(s['priceKurus'])} · ${s['durationMinutes']} dakika'),
-                      const SizedBox(height: 12),
-                      FilledButton(
-                          onPressed: data['bookingEnabled'] == true
-                              ? () => washPush(
-                                  context,
-                                  WashReservePage(
-                                      api: widget.api, business: b, service: s))
-                              : null,
-                          child: const Text('Randevu al'))
-                    ])),
-            ]);
+            final b = Map<String, dynamic>.from(data['business'] as Map);
+            final services = washRows(b['services']);
+            final rawPhotos = b['photos'] is List ? b['photos'] as List : const [];
+            final photos = rawPhotos.map(_photoUrl)
+                .where((p) => p.startsWith('https://') || p.startsWith('http://'))
+                .toList();
+            final verified = b['verified'] == true || b['is_verified'] == true;
+            final rating = num.tryParse(
+                '${b['rating'] ?? b['average_rating'] ?? ''}');
+            final reviewCount = int.tryParse(
+                '${b['review_count'] ?? b['rating_count'] ?? ''}');
+            final address = '${b['address'] ?? ''}';
+            return ListView(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 32),
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: SizedBox(
+                    height: 205,
+                    child: Stack(fit: StackFit.expand, children: [
+                      if (photos.isNotEmpty)
+                        PageView.builder(
+                          itemCount: photos.length,
+                          onPageChanged: (i) => setState(() => photoIndex = i),
+                          itemBuilder: (_, i) => Image.network(photos[i],
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) =>
+                                  const _WashImagePlaceholder()),
+                        )
+                      else
+                        const _WashImagePlaceholder(),
+                      if (photos.length > 1)
+                        Positioned(
+                          bottom: 12,
+                          right: 12,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 11, vertical: 6),
+                            decoration: BoxDecoration(
+                                color: const Color(0xAA10152D),
+                                borderRadius: BorderRadius.circular(20)),
+                            child: Text('${photoIndex + 1}/${photos.length}',
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700)),
+                          ),
+                        ),
+                    ]),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    Text('${b['name'] ?? 'İşletme'}',
+                        style: const TextStyle(
+                            fontSize: 24,
+                            height: 1.15,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF10152D))),
+                    if (verified)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 9, vertical: 6),
+                        decoration: BoxDecoration(
+                            color: const Color(0xFFF1E9FB),
+                            borderRadius: BorderRadius.circular(16)),
+                        child: const Text('✓ Doğrulanmış işletme',
+                            style: TextStyle(
+                                color: _deep,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700)),
+                      ),
+                  ],
+                ),
+                if (rating != null) ...[
+                  const SizedBox(height: 9),
+                  Row(children: [
+                    const Icon(Icons.star_rounded,
+                        color: Color(0xFFFFA500), size: 25),
+                    const SizedBox(width: 5),
+                    Text(rating.toStringAsFixed(1),
+                        style: const TextStyle(fontWeight: FontWeight.w800)),
+                    if (reviewCount != null)
+                      Text(' ($reviewCount yorum)'),
+                  ]),
+                ],
+                const SizedBox(height: 10),
+                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Icon(Icons.location_on_outlined, color: _deep, size: 21),
+                  const SizedBox(width: 7),
+                  Expanded(child: Text(address,
+                      style: const TextStyle(fontSize: 14))),
+                ]),
+                const SizedBox(height: 20),
+                Row(children: [
+                  _washDetailAction(Icons.phone_outlined, 'Ara',
+                      onTap: () => _washDetailMessage(context,
+                          'Telefon bilgisi işletme tarafından sağlanmadı.')),
+                  const SizedBox(width: 7),
+                  _washDetailAction(Icons.near_me_outlined, 'Yol Tarifi',
+                      onTap: () => _washDetailMessage(context,
+                          'Yol tarifi bağlantısı henüz tanımlı değil.')),
+                  const SizedBox(width: 7),
+                  _washDetailAction(Icons.navigation_outlined, 'Konum',
+                      onTap: () => _washDetailMessage(context,
+                          'Konum bağlantısı henüz tanımlı değil.')),
+                  const SizedBox(width: 7),
+                  _washDetailAction(Icons.access_time_outlined, 'Çalışma Saatleri',
+                      onTap: () => setState(() => tab = 2)),
+                ]),
+                const SizedBox(height: 24),
+                Container(
+                  padding: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF3F0F8),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(children: [
+                    for (var i = 0; i < 3; i++)
+                      Expanded(
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () => setState(() => tab = i),
+                          child: Container(
+                            constraints: const BoxConstraints(minHeight: 48),
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                                color: tab == i ? _lime : Colors.transparent,
+                                borderRadius: BorderRadius.circular(12)),
+                            child: Text(
+                                ['Hizmetler', 'Yorumlar${reviewCount == null ? '' : ' ($reviewCount)'}', 'Hakkında'][i],
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: tab == i
+                                        ? FontWeight.w800 : FontWeight.w600,
+                                    color: const Color(0xFF10152D))),
+                          ),
+                        ),
+                      ),
+                  ]),
+                ),
+                const SizedBox(height: 24),
+                if (tab == 0) ...[
+                  const Text('Hizmet Paketleri',
+                      style: TextStyle(
+                          fontSize: 21,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF10152D))),
+                  const SizedBox(height: 16),
+                  if (services.isEmpty)
+                    const Text('Henüz aktif hizmet paketi bulunmuyor.'),
+                  if (data['bookingEnabled'] != true)
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 12),
+                      child: Text('Bu işletme şu anda randevu kabul etmiyor.'),
+                    ),
+                  for (final service in services)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 14),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: const Color(0xFFE6E0EE)),
+                        boxShadow: const [
+                          BoxShadow(color: Color(0x12000000),
+                              blurRadius: 8, offset: Offset(0, 3)),
+                        ],
+                      ),
+                      child: Column(children: [
+                        Row(children: [
+                          Container(
+                            width: 64,
+                            height: 64,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF3EBFA),
+                              borderRadius: BorderRadius.circular(14)),
+                            child: const Icon(Icons.local_car_wash_outlined,
+                                color: _purple, size: 34),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('${service['name'] ?? ''}',
+                                  style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w800)),
+                              const SizedBox(height: 4),
+                              Text('${service['description'] ?? ''}',
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis),
+                              const SizedBox(height: 6),
+                              Row(children: [
+                                const Icon(Icons.schedule_outlined,
+                                    color: _deep, size: 18),
+                                const SizedBox(width: 5),
+                                Text('${service['durationMinutes']} dakika'),
+                              ]),
+                            ],
+                          )),
+                          Text(washPrice(service['priceKurus']),
+                              style: const TextStyle(
+                                  fontSize: 16,
+                                  color: _deep,
+                                  fontWeight: FontWeight.w800)),
+                        ]),
+                        const SizedBox(height: 14),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: FilledButton.icon(
+                            style: FilledButton.styleFrom(
+                                backgroundColor: _lime,
+                                foregroundColor: const Color(0xFF10152D)),
+                            onPressed: data['bookingEnabled'] == true
+                                ? () => washPush(context, WashReservePage(
+                                    api: widget.api,
+                                    business: b,
+                                    service: service))
+                                : null,
+                            icon: const Icon(Icons.calendar_month_outlined),
+                            label: const Text('Randevu Al',
+                                style: TextStyle(fontWeight: FontWeight.w800)),
+                          ),
+                        ),
+                      ]),
+                    ),
+                ] else if (tab == 1) ...[
+                  const Text('Yorumlar',
+                      style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 10),
+                  const Text('Yorum listesi henüz bu ekrana bağlı değil.'),
+                ] else ...[
+                  const Text('Hakkında',
+                      style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 10),
+                  Text('${b['description'] ?? 'İşletme açıklaması bulunmuyor.'}'),
+                  const SizedBox(height: 14),
+                  const Text('Çalışma saatleri için işletmeyle iletişime geçin.'),
+                ],
+              ],
+            );
           }));
+}
+
+Widget _washDetailAction(IconData icon, String label,
+    {required VoidCallback onTap}) => Expanded(
+  child: InkWell(
+    borderRadius: BorderRadius.circular(15),
+    onTap: onTap,
+    child: Container(
+      constraints: const BoxConstraints(minHeight: 76),
+      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 10),
+      decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: const Color(0xFFEDE9F2))),
+      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Icon(icon, color: _deep, size: 24),
+        const SizedBox(height: 6),
+        Text(label, textAlign: TextAlign.center, maxLines: 2,
+            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700)),
+      ]),
+    ),
+  ),
+);
+
+void _washDetailMessage(BuildContext context, String message) {
+  ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)));
 }
 
 class WashReservePage extends StatefulWidget {
