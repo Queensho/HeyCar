@@ -77,7 +77,31 @@ const output=process.env.BROWSER_OUTPUT||'phase4-browser';fs.mkdirSync(output,{r
   await page.screenshot({path:output+'/business-mobile.png',fullPage:false});
   assert.ok(responses.some(r=>r.path.endsWith('/bookings')&&r.status===200));
   assert.ok(responses.every(r=>r.status<400));assert.deepEqual(failures,[]);
-  fs.writeFileSync(output+'/result.json',JSON.stringify({ok:true,businessUrl:origin+'/car-wash-business/',checks:['qa-push-config-no-delivery','qa-worker-assets-no-cache-worker-conflict','qa-permission-button-present','real-business-login','real-calendar-history','service-create','price-duration-persistence','price-update','desktop-mobile-render','no-page-errors'],serviceId:item.id,responses},null,2));
+  step='owner-common-center-login';
+  const ownerPage=await context.newPage();ownerPage.setDefaultTimeout(20000);
+  await ownerPage.route('**/api/**',async route=>{if(new URL(route.request().url()).origin!==origin){failures.push('BLOCKED_NON_STAGING_API');await route.abort();}else await route.continue();});
+  await ownerPage.goto(origin+'/car-wash-owner/');
+  const ownerSemantics=ownerPage.locator('flt-semantics-placeholder');await ownerSemantics.waitFor({state:'attached',timeout:60000});await ownerSemantics.dispatchEvent('click');
+  await ownerPage.getByRole('button',{name:'Giriş Yap',exact:true}).click();
+  async function ownerEnter(name,value){const input=ownerPage.getByRole('textbox',{name,exact:true});await input.fill('');await input.pressSequentially(value,{delay:5});await input.press('Tab');}
+  await ownerEnter('5XX XXX XX XX',qa.owner.phone.replace(/^\+90/,''));await ownerEnter('Şifreni gir',qa.owner.password);
+  const ownerLogin=ownerPage.waitForResponse(r=>r.url().endsWith('/api/owner/login-phone')&&r.request().method()==='POST');
+  await ownerPage.getByRole('button',{name:'Giriş Yap',exact:true}).click();const loggedOwner=await ownerLogin;assert.equal(loggedOwner.status(),200);
+  const ownerToken=(await loggedOwner.json()).accessToken;
+  const center=await context.request.get(origin+'/api/owner/notifications',{headers:{Authorization:'Bearer '+ownerToken}});assert.equal(center.status(),200);
+  const target=(await center.json()).notifications.find(n=>n.service_category==='car_wash');assert.ok(target);
+  step='owner-common-center-filters';
+  await ownerPage.getByText('Bildirimler',{exact:true}).last().click();
+  await ownerPage.getByText('Tümü',{exact:true}).waitFor();await ownerPage.getByText('Araç',{exact:true}).waitFor();await ownerPage.getByText('Hizmetler',{exact:true}).waitFor();
+  await ownerPage.getByText('Randevular',{exact:true}).click();
+  await ownerPage.getByText('Oto Yıkama',{exact:true}).first().waitFor();
+  await ownerPage.screenshot({path:output+'/owner-shared-center.png',fullPage:true});
+  step='owner-notification-detail';
+  const bookingDetail=ownerPage.waitForResponse(r=>r.url().endsWith('/api/car-wash/bookings/'+target.booking_id)&&r.request().method()==='GET');
+  await ownerPage.getByText('Oto Yıkama',{exact:true}).first().click();assert.equal((await bookingDetail).status(),200);
+  await ownerPage.getByText('Randevu detayları',{exact:true}).waitFor();await ownerPage.screenshot({path:output+'/owner-notification-booking.png',fullPage:true});
+  assert.deepEqual(failures,[]);
+  fs.writeFileSync(output+'/result.json',JSON.stringify({ok:true,businessUrl:origin+'/car-wash-business/',checks:['owner-real-ui-login','owner-common-center-filters','owner-notification-exact-booking-route','qa-push-config-no-delivery','qa-worker-assets-no-cache-worker-conflict','qa-permission-button-present','real-business-login','real-calendar-history','service-create','price-duration-persistence','price-update','desktop-mobile-render','no-page-errors'],serviceId:item.id,responses},null,2));
   console.log('PHASE4_BROWSER_OK');
  }finally{await browser.close();}
 })().catch(e=>{let reason=String(e.message);for(const secret of [qa.business.password,qa.owner.password,qa.owner.phone,qa.business.email])if(secret)reason=reason.split(secret).join('[REDACTED]');console.error('PHASE4_BROWSER_FAILED',{step,reason});process.exitCode=1;});
