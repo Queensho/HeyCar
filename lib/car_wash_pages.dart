@@ -748,16 +748,7 @@ class _WashBusinessPageState extends State<WashBusinessPage> {
                   const SizedBox(height: 10),
                   const Text('Yorum listesi henüz bu ekrana bağlı değil.'),
                 ] else ...[
-                  const Text('Hakkında',
-                      style:
-                          TextStyle(fontSize: 21, fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 10),
-                  Text(
-                      '${b['description'] ?? 'İşletme açıklaması bulunmuyor.'}'),
-                  const SizedBox(height: 14),
-                  ...washBusinessHours(b).map((line) => Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Text(line))),
+                  _WashBusinessAbout(business: b),
                 ],
               ],
             );
