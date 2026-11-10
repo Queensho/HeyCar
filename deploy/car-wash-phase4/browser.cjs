@@ -30,15 +30,15 @@ const output=process.env.BROWSER_OUTPUT||'phase4-browser';fs.mkdirSync(output,{r
   step='business-calendar';
   const settingsWait=page.waitForResponse(r=>r.url().endsWith('/api/business/car-wash/settings'));
   await page.getByRole('button',{name:'Oto Yıkama Yönetimi',exact:true}).click();
-  const initialServices=(await (await settingsWait).json()).services.length;
+  assert.ok((await (await settingsWait).json()).services.length);
   await page.getByText('Randevu takvimi',{exact:true}).waitFor();
   await page.screenshot({path:output+'/business-calendar-loaded.png',fullPage:true});
   fs.writeFileSync(output+'/calendar-controls.json',JSON.stringify(await page.locator('[role],[aria-label]').evaluateAll(nodes=>nodes.map(n=>({role:n.getAttribute('role'),label:n.getAttribute('aria-label'),text:n.textContent?.slice(0,100)}))),null,2));
   const historyResponse=page.waitForResponse(r=>r.url().includes('/api/business/car-wash/bookings?')&&!r.url().includes('&from='));
-  const history=page.locator('[aria-label*="Tüm geçmiş"]').first();
-  if(await history.count())await history.click();else await page.mouse.click(550,178);
-  assert.equal((await historyResponse).status(),200);
-  await page.locator('[aria-label*="'+qa.plate+'"]').first().waitFor({state:'visible'});
+  await page.getByRole('checkbox',{name:'Tüm geçmiş',exact:true}).click();
+  const historyResult=await historyResponse;assert.equal(historyResult.status(),200);
+  const historyData=await historyResult.json();assert.ok(historyData.bookings.some(b=>b.id===qa.bookingId));
+  await page.getByText('1 randevu bu sayfada',{exact:false}).waitFor();
   await page.screenshot({path:output+'/business-calendar.png',fullPage:true});
   await page.getByRole('button',{name:'Hizmet paketleri ekle',exact:true}).scrollIntoViewIfNeeded();
   await page.getByRole('button',{name:'Hizmet paketleri ekle',exact:true}).click();
@@ -52,8 +52,8 @@ const output=process.env.BROWSER_OUTPUT||'phase4-browser';fs.mkdirSync(output,{r
   await page.getByRole('button',{name:'Kaydet',exact:true}).click();const saved=await save;assert.equal(saved.status(),200);
   const item=(await saved.json()).item;assert.equal(item.price_kurus,32150);assert.equal(item.duration_minutes,45);
   // The business owner can see only their own newly created package; verify an edit via UI.
-  await page.locator('[aria-label*="'+name+'"]').first().waitFor({state:'visible'});
-  await page.getByRole('button',{name:'Düzenle',exact:true}).nth(initialServices).click();
+  const newService=page.getByRole('group',{name:new RegExp('^'+name)});await newService.waitFor({state:'visible'});
+  await newService.getByRole('button',{name:'Düzenle',exact:true}).click();
   await enter('Fiyat (TL)','350');
   const update=page.waitForResponse(r=>r.url().endsWith('/api/business/car-wash/services')&&r.request().method()==='POST');
   await page.getByRole('button',{name:'Kaydet',exact:true}).click();assert.equal(((await (await update).json()).item).price_kurus,35000);
