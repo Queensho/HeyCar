@@ -35,6 +35,8 @@ jobs:
         working-directory: server
       - run: npm run check
         working-directory: server
+      - name: Exact-source staging artifact selection regression
+        run: python3 -B deploy/car-wash-phase4/test_select_artifact.py
       - name: Staging deployment safety (no VPS/database access)
         run: python3 deploy/staging-pr318/deploy-staging-pr318.py --self-test
       - name: Test actual pinned staging release package

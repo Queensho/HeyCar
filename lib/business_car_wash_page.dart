@@ -580,24 +580,28 @@ class _BusinessCarWashPageState extends State<BusinessCarWashPage> {
                         '${washTime(b['starts_at'])}\n${washStatuses[b['status']]} · ${washPrice(b['price_kurus'])}'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: busy ? null : () => _booking(b))),
-              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                TextButton(
-                    onPressed: offset > 0
-                        ? () {
-                            offset -= 100;
-                            _load();
-                          }
-                        : null,
-                    child: const Text('Önceki')),
-                TextButton(
-                    onPressed: rows.length == 100
-                        ? () {
-                            offset += 100;
-                            _load();
-                          }
-                        : null,
-                    child: const Text('Sonraki'))
-              ]),
+              Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    TextButton(
+                        onPressed: offset > 0
+                            ? () {
+                                offset -= 100;
+                                _load();
+                              }
+                            : null,
+                        child: const Text('Önceki')),
+                    TextButton(
+                        onPressed: rows.length == 100
+                            ? () {
+                                offset += 100;
+                                _load();
+                              }
+                            : null,
+                        child: const Text('Sonraki'))
+                  ]),
               for (final group in {
                 'services': 'Hizmet paketleri',
                 'staff': 'Personel',

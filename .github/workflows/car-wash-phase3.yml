@@ -23,7 +23,7 @@ jobs:
         env:
           STAGING_API: ${{ inputs.staging_api }}
         run: |
-          test "$GITHUB_REF_NAME" = feature/car-wash-phase-1
+          case "$GITHUB_REF_NAME" in main|release/car-wash-main-regression|feature/car-wash-phase-1) ;; *) exit 1 ;; esac
           python3 - <<'PY'
           import os, urllib.parse
           u=urllib.parse.urlsplit(os.environ['STAGING_API'])

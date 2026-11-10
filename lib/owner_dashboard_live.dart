@@ -142,7 +142,7 @@ void _showQuickAccess(){
 Widget _ownerNavItem(int index,String label,IconData icon){
   final active=tab==index;
   return Expanded(child:Semantics(
-    button:true,selected:active,label:label,
+    identifier:'owner-tab-$index',button:true,selected:active,label:label,
     child:InkWell(
       key:ValueKey('owner-nav-$index'),
       onTap:()=>_selectTab(index),

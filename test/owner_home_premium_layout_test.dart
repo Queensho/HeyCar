@@ -15,7 +15,7 @@ void main(){
     const Size(393,852),
     const Size(430,932),
   ]){
-    for(final scale in [1.0,1.5,2.0,3.0]){
+    for(final scale in [1.0,1.3,1.5,1.6,2.0,3.0]){
     testWidgets('premium owner home is responsive at ${size.width}dp text $scale',(tester)async{
       SharedPreferences.setMockInitialValues(<String,Object>{});
       tester.view.physicalSize=size;

@@ -81,7 +81,7 @@ void main(){
     'vehicle-center':()=>const VehicleCenterPage(plate:'34 ABC 123',title:'BMW 135i',initialVehicle:{'id':'test','make':'BMW','model':'135i','plate':'34 ABC 123'}),
   };
   for(final width in [320.0,360.0,393.0,430.0]){
-    for(final scale in [1.0,2.0,3.0]){
+    for(final scale in [1.0,1.3,1.6,2.0,3.0]){
       for(final entry in pages.entries){
         testWidgets('${entry.key} at $width dp text $scale',(tester)async{
           SharedPreferences.setMockInitialValues({});
