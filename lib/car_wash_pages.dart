@@ -748,20 +748,145 @@ class _WashBusinessPageState extends State<WashBusinessPage> {
                   const SizedBox(height: 10),
                   const Text('Yorum listesi henüz bu ekrana bağlı değil.'),
                 ] else ...[
-                  const Text('Hakkında',
-                      style:
-                          TextStyle(fontSize: 21, fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 10),
-                  Text(
-                      '${b['description'] ?? 'İşletme açıklaması bulunmuyor.'}'),
-                  const SizedBox(height: 14),
-                  ...washBusinessHours(b).map((line) => Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Text(line))),
+                  _WashBusinessAbout(business: b),
                 ],
               ],
             );
           }));
+}
+
+class _WashBusinessAbout extends StatefulWidget {
+  const _WashBusinessAbout({required this.business});
+  final WashJson business;
+
+  @override
+  State<_WashBusinessAbout> createState() => _WashBusinessAboutState();
+}
+
+class _WashBusinessAboutState extends State<_WashBusinessAbout> {
+  bool expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final b = widget.business;
+    final description = '${b['description'] ?? ''}'.trim();
+    final hours = washBusinessHours(b);
+    final address = '${b['address'] ?? ''}'.trim();
+    final phone = washBusinessPhone(b);
+    final summary = hours.length == 7 &&
+            hours.every((line) => line.contains(' – ') &&
+                line.split(': ').skip(1).join(': ') ==
+                    hours.first.split(': ').skip(1).join(': '))
+        ? 'Her gün • ${hours.first.split(': ').skip(1).join(': ')}'
+        : hours.length == 1 ? hours.first : 'Günlere göre değişiyor';
+
+    Widget informationRow(IconData icon, String title, String subtitle,
+        {VoidCallback? onTap, Widget? trailing}) {
+      return InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF3EFFB),
+                borderRadius: BorderRadius.circular(13),
+              ),
+              child: Icon(icon, color: const Color(0xFF651FFF), size: 23),
+            ),
+            const SizedBox(width: 13),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(title, style: const TextStyle(
+                    fontSize: 15, fontWeight: FontWeight.w800,
+                    color: Color(0xFF10152D))),
+                const SizedBox(height: 4),
+                Text(subtitle, style: const TextStyle(
+                    fontSize: 13, height: 1.35, color: Color(0xFF62677A))),
+              ]),
+            ),
+            if (trailing != null) ...[const SizedBox(width: 6), trailing],
+            if (onTap != null)
+              const Icon(Icons.chevron_right_rounded, color: Color(0xFF9C95A8)),
+          ]),
+        ),
+      );
+    }
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const Text('İşletme hakkında', style: TextStyle(
+          fontSize: 20, fontWeight: FontWeight.w800, color: Color(0xFF10152D))),
+      const SizedBox(height: 12),
+      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Container(
+          padding: const EdgeInsets.all(11),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF3EFFB),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: const Icon(Icons.storefront_outlined,
+              color: Color(0xFF651FFF), size: 25),
+        ),
+        const SizedBox(width: 12),
+        Expanded(child: Text(
+          description.isEmpty
+              ? 'İşletme henüz bir açıklama eklemedi.'
+              : description,
+          style: TextStyle(fontSize: 14, height: 1.5,
+              color: description.isEmpty
+                  ? const Color(0xFF778096) : const Color(0xFF10152D)),
+        )),
+      ]),
+      const SizedBox(height: 20),
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 3),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: const Color(0xFFEAE5F1)),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(children: [
+          informationRow(Icons.access_time_outlined, 'Çalışma saatleri', summary,
+              onTap: () => setState(() => expanded = !expanded),
+              trailing: Icon(expanded
+                  ? Icons.keyboard_arrow_up_rounded
+                  : Icons.keyboard_arrow_down_rounded,
+                  color: const Color(0xFF651FFF))),
+          if (expanded) ...[
+            const Divider(height: 1, color: Color(0xFFEAE5F1)),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Column(children: [
+                for (final line in hours)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 5),
+                    child: Align(alignment: Alignment.centerLeft,
+                      child: Text(line, style: const TextStyle(
+                          fontSize: 13, height: 1.4,
+                          color: Color(0xFF3E4051)))),
+                  ),
+              ]),
+            ),
+          ],
+          if (address.isNotEmpty) ...[
+            const Divider(height: 1, color: Color(0xFFEAE5F1)),
+            informationRow(Icons.location_on_outlined, 'Adres', address,
+                onTap: () => _washOpenBusinessLink(
+                    context, washBusinessMap(b))),
+          ],
+          if (phone != null) ...[
+            const Divider(height: 1, color: Color(0xFFEAE5F1)),
+            informationRow(Icons.phone_outlined, 'İletişim',
+                '${b['phone']}',
+                onTap: () => _washOpenBusinessLink(context, phone)),
+          ],
+        ]),
+      ),
+    ]);
+  }
 }
 
 Widget _washDetailAction(IconData icon, String label,

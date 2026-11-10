@@ -168,6 +168,10 @@ void main() {
         scrollable: find.byType(Scrollable).first);
     await tester.tap(about);
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Çalışma saatleri'), 300,
+        scrollable: find.byType(Scrollable).first);
+    await tester.tap(find.text('Çalışma saatleri'));
+    await tester.pumpAndSettle();
     await tester.scrollUntilVisible(find.text('Pazartesi: 09:00 – 18:00'), 300,
         scrollable: find.byType(Scrollable).first);
     expect(find.text('Kapalı gün: 01.01.2030'), findsOneWidget);
