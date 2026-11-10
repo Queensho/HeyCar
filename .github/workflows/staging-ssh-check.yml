@@ -7,6 +7,10 @@ on:
         description: Read-only car wash staging readiness inspection
         type: boolean
         default: false
+      car_wash_smoke:
+        description: Run synthetic car wash API smoke on existing staging (no deployment)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -23,13 +27,14 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-        if: inputs.car_wash_inspect
+        if: inputs.car_wash_inspect || inputs.car_wash_smoke
       - name: Configure SSH
         env:
           SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
           SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
           SSH_PORT: ${{ secrets.STAGING_SSH_PORT }}
           SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+          EXPECTED_FINGERPRINT: ${{ secrets.STAGING_SSH_HOST_FINGERPRINT }}
         shell: bash
         run: |
           set -euo pipefail
@@ -38,7 +43,10 @@ jobs:
           chmod 700 ~/.ssh
           printf '%s\n' "$SSH_KEY" > ~/.ssh/staging_key
           chmod 600 ~/.ssh/staging_key
-          ssh-keyscan -T 10 -p "$SSH_PORT" -H "$SSH_HOST" > ~/.ssh/known_hosts
+          ssh-keyscan -T 10 -t ed25519 -p "$SSH_PORT" -H "$SSH_HOST" > ~/.ssh/known_hosts
+          test -n "$EXPECTED_FINGERPRINT"
+          actual=$(ssh-keygen -lf ~/.ssh/known_hosts -E sha256 | awk 'NR==1 {print $2}')
+          test "$actual" = "$EXPECTED_FINGERPRINT"
           test -s ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
           ssh -i ~/.ssh/staging_key -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" 'test "$(id -un)" = "cepqontag-deploy" && test -f /home/cepqontag-deploy/app/server/server.js && echo STAGING_SSH_OK'
@@ -60,4 +68,23 @@ jobs:
         with:
           name: car-wash-staging-inspection
           path: staging-inspection.json
+          retention-days: 7
+
+      - name: Run synthetic real API smoke without deployment
+        if: inputs.car_wash_smoke
+        shell: bash
+        env:
+          SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+          SSH_PORT: ${{ secrets.STAGING_SSH_PORT }}
+          SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = feature/car-wash-phase-1
+          ssh -i ~/.ssh/staging_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
+            'cd /home/cepqontag-deploy/app/server && node' < deploy/car-wash-phase3/smoke.cjs | tee staging-smoke.json
+      - uses: actions/upload-artifact@v4
+        if: inputs.car_wash_smoke && always()
+        with:
+          name: car-wash-staging-smoke
+          path: staging-smoke.json
           retention-days: 7

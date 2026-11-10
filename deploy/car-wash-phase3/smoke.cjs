@@ -6,7 +6,7 @@ assert.equal(fs.realpathSync('.'),'/home/cepqontag-deploy/app/server');
 require('dotenv').config({quiet:true});
 assert.equal(process.env.APP_ENV,'staging');assert.equal(process.env.PORT,'8091');
 assert.equal(process.env.CAR_WASH_CATALOG_ENABLED,'true');assert.equal(process.env.CAR_WASH_BOOKING_ENABLED,'true');
-assert.equal(process.env.CAR_WASH_PUSH_ENABLED,'false');assert.equal(process.env.STAGING_DISABLE_EXTERNAL_SERVICES,'true');
+assert.equal(process.env.CAR_WASH_PUSH_ENABLED,'false');assert.ok(['1','true','yes','on'].includes(String(process.env.STAGING_DISABLE_EXTERNAL_SERVICES||'').trim().toLowerCase()),'EXTERNAL_SERVICE_SUPPRESSION_REQUIRED');
 const {Pool}=require('pg');
 const e=process.env;
 let cfg;
