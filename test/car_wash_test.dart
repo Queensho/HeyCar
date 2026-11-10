@@ -263,7 +263,9 @@ void main() {
         home: WashBusinessPage(api: FixtureWashApi(), businessId: 'business')));
     await tester.pumpAndSettle();
     expect(find.text('Test Oto Yıkama'), findsOneWidget);
-    expect(find.text('250.00 ₺ · 30 dakika'), findsOneWidget);
+    // Redesigned service card presents duration and price separately.
+    expect(find.text('30 dakika'), findsOneWidget);
+    expect(find.text('250.00 ₺'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
   for (final entry
