@@ -37,4 +37,25 @@ test('existing owner center service extension preserves QR, reads, dedupe and re
   assert.equal((await center.list(pool,owner,true)).unreadCount,0);
   assert.equal((await pool.query('SELECT count(*)::int n FROM owner_notification_events')).rows[0].n,110);
  });
+ await t.test('actual valet business transition reaches the same owner center without changing QR',async()=>{
+  await pool.query('UPDATE businesses SET valet_enabled=true WHERE id=$1',[business]);
+  const token=crypto.randomBytes(24).toString('hex');await pool.query("INSERT INTO business_sessions(account_id,token_hash,expires_at) VALUES($1,$2,now()+interval '1 day')",[account,crypto.createHash('sha256').update(token).digest('hex')]);
+  const session=(await pool.query("INSERT INTO valet_sessions(business_id,vehicle_id,plate,status) VALUES($1,$2,'QA VALET','accepted') RETURNING id",[business,vehicle])).rows[0].id;
+  const routes={},app={locals:{},get:()=>{},post:()=>{},patch:(p,...f)=>routes[p]=f.at(-1)};require('../valet-routes')(app,pool);
+  const res={statusCode:200,status(n){this.statusCode=n;return this;},json(v){this.body=v;return this;}};
+  await routes['/api/business/valet/sessions/:id/status']({headers:{authorization:'Bearer '+token},params:{id:session},body:{status:'parked'}},res);
+  assert.equal(res.statusCode,200);assert.equal(res.body.session.status,'parked');
+  const events=(await pool.query("SELECT owner_id,category FROM owner_notification_events WHERE appointment_id=$1",[session])).rows;
+  assert.equal(events.length,1);assert.equal(events[0].owner_id,owner);assert.equal(events[0].category,'valet');
+  assert.equal((await pool.query('SELECT status FROM vehicle_notifications WHERE id=$1',[qr])).rows[0].status,'new');
+ });
+ await t.test('reminder worker projects exactly one common reminder on repeated ticks',async()=>{
+  const oldFlag=process.env.CAR_WASH_BOOKING_ENABLED;process.env.CAR_WASH_BOOKING_ENABLED='true';
+  try{
+   await pool.query("UPDATE car_wash_bookings SET status='confirmed',starts_at=now()+interval '45 minutes',ends_at=now()+interval '75 minutes' WHERE id=$1",[booking]);
+   const worker=require('../car-wash-notifications');await worker.tick({locals:{}},pool);await worker.tick({locals:{}},pool);
+   assert.equal((await pool.query("SELECT count(*)::int n FROM owner_notification_events WHERE appointment_id=$1 AND event='reminder'",[booking])).rows[0].n,1);
+  }finally{if(oldFlag===undefined)delete process.env.CAR_WASH_BOOKING_ENABLED;else process.env.CAR_WASH_BOOKING_ENABLED=oldFlag;}
+ });
+
 });
