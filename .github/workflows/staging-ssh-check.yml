@@ -84,13 +84,15 @@ jobs:
         run: |
           set -euo pipefail
           test "$GITHUB_REF_NAME" = feature/car-wash-phase-1
-          ssh -i ~/.ssh/staging_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
-            'cd /home/cepqontag-deploy/app/server && node' < deploy/car-wash-phase3/smoke.cjs | tee staging-smoke.json
+          for attempt in 1 2 3; do
+            ssh -i ~/.ssh/staging_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
+              'cd /home/cepqontag-deploy/app/server && node' < deploy/car-wash-phase3/smoke.cjs | tee "staging-smoke-$attempt.json"
+          done
       - uses: actions/upload-artifact@v4
         if: inputs.car_wash_smoke && always()
         with:
           name: car-wash-staging-smoke
-          path: staging-smoke.json
+          path: staging-smoke-*.json
           retention-days: 7
 
       - name: Diagnose old synthetic fixture collision with rollback only
