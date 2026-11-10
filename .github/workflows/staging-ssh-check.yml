@@ -154,7 +154,6 @@ jobs:
         env:
           POSTGRES_PASSWORD: isolated-phase4-only
           POSTGRES_DB: heycar_test_phase4_restore
-        ports: ['5432:5432']
         options: --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 15
     steps:
       - uses: actions/checkout@v4

@@ -37,7 +37,8 @@ SSH ile geçici CI PostgreSQL 16 servisine aktarıldı; yalnız
 `heycar_test_phase4_restore` içine `pg_restore --single-transaction` yapıldı.
 Staging/prod DB'sine restore, DROP veya migration yapılmadı. Dump/QA parolaları
 CI artefaktlarına eklenmedi; runner dosyaları job sonunda temizlendi, geçici PG
-servisi kaldırıldı. Restore edilen owner/ACL production rolleri değildir
+servisi kaldırıldı. Restore PG servisi host port yayınlamaz; yalnız `docker exec`
+ile erişilir. Restore edilen owner/ACL production rolleri değildir
 (`--no-owner --no-acl`); gerçek production rol/ACL/PITR kontrolü ayrı kapıdır.
 
 İlk kontrol hatası `pg_restore --schema-only` için eksik `--file=-` parametresiydi;
@@ -114,5 +115,8 @@ release'e karıştırmak mevcut modüller açısından gereksiz risk olurdu.
   klavye etkileşimiyle test düzeltildi. Ara başarısızlıklar gizlenmez.
 - Güncel backend CI **227/227**, skip yok; backup/restore testleri **11/11**:
   https://github.com/Queensho/HeyCar/actions/runs/42805919946 .
-- Tam Flutter CI ve analiz son rapora bağlanır; yerel tam analiz **235** tanı,
+- [Son web UI kontrolü](https://github.com/Queensho/HeyCar/actions/runs/42806461170)
+  başarılı: kaydedilen **350,00 TL** fiyatın UI'ya yansıması da beklendi;
+  393×852 viewport görüntüsü alındı. Sayfa testleri fiziksel cihaz testi değildir.
+- Tam Flutter CI ve analiz son PR raporuna bağlanır; yerel tam analiz **235** tanı,
   hata yok. Fiziksel cihaz sonucu bu CI testleriyle ikame edilmez.
