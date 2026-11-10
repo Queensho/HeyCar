@@ -680,15 +680,20 @@ class _WashBusinessPageState extends State<WashBusinessPage> {
                                 const Icon(Icons.schedule_outlined,
                                     color: _deep, size: 18),
                                 const SizedBox(width: 5),
-                                Text('${service['durationMinutes']} dakika'),
+                                Flexible(
+                                  child: Text('${service['durationMinutes']} dakika',
+                                      softWrap: true),
+                                ),
                               ]),
+                              const SizedBox(height: 6),
+                              Text(washPrice(service['priceKurus']),
+                                  softWrap: true,
+                                  style: const TextStyle(
+                                      fontSize: 16,
+                                      color: _deep,
+                                      fontWeight: FontWeight.w800)),
                             ],
                           )),
-                          Text(washPrice(service['priceKurus']),
-                              style: const TextStyle(
-                                  fontSize: 16,
-                                  color: _deep,
-                                  fontWeight: FontWeight.w800)),
                         ]),
                         const SizedBox(height: 14),
                         SizedBox(
