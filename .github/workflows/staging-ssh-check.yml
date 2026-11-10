@@ -285,8 +285,8 @@ jobs:
                   artifacts=json.load(response)['artifacts']
               if any(a['name']=='cepqontag-car-wash-staging-web' and not a['expired'] for a in artifacts):
                   with open(os.environ['GITHUB_OUTPUT'],'a') as output:
-                      output.write(f"run_id={run['id']}\\n")
-                      output.write(f"source_sha={run['head_sha']}\\n")
+                      output.write(f"run_id={run['id']}\n")
+                      output.write(f"source_sha={run['head_sha']}\n")
                   print(f"Using staging web artifact from run {run['id']} at {run['head_sha']}")
                   break
           else:
