@@ -2,6 +2,11 @@ name: Deploy CepQontag Staging
 
 on:
   workflow_dispatch:
+    inputs:
+      car_wash_phase3:
+        description: Deploy only the car wash integration and migrations 126/127 to verified staging
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -12,6 +17,7 @@ concurrency:
 
 jobs:
   deploy:
+    if: inputs.car_wash_phase3 != true
     name: Deploy marketplace branch to staging only
     runs-on: ubuntu-latest
     environment: staging
@@ -89,3 +95,74 @@ jobs:
             echo
             echo STAGING_DEPLOY_OK
           '
+
+  car-wash-phase3:
+    if: inputs.car_wash_phase3 == true
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Package pinned car wash files only
+        run: |
+          test "$GITHUB_REF_NAME" = feature/car-wash-phase-1
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,shutil
+          root=pathlib.Path('.'); out=pathlib.Path('car-wash-stage-package')
+          files=['server/'+x for x in ['car-wash-routes.js','car-wash-service.js','car-wash-booking-routes.js','car-wash-notifications.js','migration-sql.js']]
+          files+=['server/migrations/'+x for x in ['126_car_wash_catalog.sql','127_car_wash_bookings.sql']]
+          manifest={'sha':os.environ['GITHUB_SHA'],'files':{},'history':{}}
+          for name in files:
+              p=out/name;p.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(root/name,p)
+              manifest['files'][name]=hashlib.sha256(p.read_bytes()).hexdigest()
+          for p in sorted(pathlib.Path('server/migrations').glob('*.sql')):
+              if int(p.name[:3])<126:manifest['history'][p.name]=hashlib.sha256(p.read_bytes()).hexdigest()
+          (out/'manifest.json').write_text(json.dumps(manifest))
+          PY
+      - name: Verify SSH identity and upload staged package
+        env:
+          SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+          SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+          SSH_PORT: ${{ secrets.STAGING_SSH_PORT }}
+          SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+          EXPECTED_FINGERPRINT: ${{ secrets.STAGING_SSH_HOST_FINGERPRINT }}
+        run: |
+          set -euo pipefail
+          test "$SSH_USER" = cepqontag-deploy
+          test -n "$SSH_KEY" && test -n "$EXPECTED_FINGERPRINT"
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/staging_key
+          chmod 600 ~/.ssh/staging_key
+          ssh-keyscan -T 10 -t ed25519 -p "$SSH_PORT" -H "$SSH_HOST" > ~/.ssh/known_hosts
+          actual=$(ssh-keygen -lf ~/.ssh/known_hosts -E sha256 | awk 'NR==1 {print $2}')
+          test "$actual" = "$EXPECTED_FINGERPRINT"
+          destination="/home/cepqontag-deploy/car-wash-phase3-source/$GITHUB_SHA"
+          ssh -i ~/.ssh/staging_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "mkdir -p '$destination'"
+          rsync -az -e "ssh -i $HOME/.ssh/staging_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p $SSH_PORT" car-wash-stage-package/ "$SSH_USER@$SSH_HOST:$destination/"
+      - name: Backup, probe, migrate and enable staging only
+        env:
+          SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+          SSH_PORT: ${{ secrets.STAGING_SSH_PORT }}
+          SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+        run: |
+          set -euo pipefail
+          destination="/home/cepqontag-deploy/car-wash-phase3-source/$GITHUB_SHA"
+          ssh -i ~/.ssh/staging_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
+            "cd /home/cepqontag-deploy/app/server && node - '$destination'" < deploy/car-wash-phase3/deploy.cjs | tee car-wash-staging-result.json
+      - name: Test real staging appointments using synthetic fixtures only
+        env:
+          SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+          SSH_PORT: ${{ secrets.STAGING_SSH_PORT }}
+          SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/staging_key -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
+            'cd /home/cepqontag-deploy/app/server && node' < deploy/car-wash-phase3/smoke.cjs | tee car-wash-staging-smoke.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: car-wash-staging-result
+          path: |
+            car-wash-staging-result.json
+            car-wash-staging-smoke.json
+          retention-days: 14

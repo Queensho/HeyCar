@@ -1,4 +1,7 @@
+import 'owner_notification_model.dart';
+import 'owner_notifications_page.dart' show ownerUnreadNotificationCount;
 import 'design/cq_components.dart';
+import 'car_wash_pages.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -445,6 +448,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
       final noticesOk=nr.statusCode>=200&&nr.statusCode<300&&nd is Map&&nd['notifications'] is List;
       var nextNotices=notices;
       if(noticesOk){
+        ownerUnreadNotificationCount.value=ownerUnreadCount(nd);
         nextNotices=(nd['notifications'] as List).whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).toList();
         if(vehicleId.isNotEmpty){
           nextNotices=nextNotices.where((e)=>'${e['vehicle_id']??''}'==vehicleId).toList();
@@ -556,7 +560,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   int get calls=>monthItems.where((e)=>e['type']=='call_request').length;
   int get messages=>monthItems.where((e)=>e['type']!='call_request').length;
   int get warnings=>monthItems.where((e)=>['lights_on','move_vehicle','damage'].contains('${e['type']}')).length;
-  int get unread=>notices.where((e)=>e['status']=='new').length;
+  int get unread=>ownerUnreadNotificationCount.value;
 
   String publicUrl(){
     final t=QrDraft.token.trim(),s=QrDraft.scanSecret.trim();
@@ -784,7 +788,11 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   );
 
   Widget _homeCircleButton(IconData icon,VoidCallback action,{int unreadCount=0})=>
-    Material(color:_homeCardBackground,shape:const CircleBorder(),
+    Semantics(
+      identifier:icon==Icons.notifications_none_rounded?'owner-notifications-bell':'',
+      label:icon==Icons.notifications_none_rounded?'Bildirimler':null,
+      button:true,
+      child:Material(color:_homeCardBackground,shape:const CircleBorder(),
       child:InkWell(onTap:action,customBorder:const CircleBorder(),
         child:SizedBox(width:CQLayout.minimumTouchTarget,height:CQLayout.minimumTouchTarget,child:Stack(children:[
           Center(child:Icon(icon,color:_homeText,size:24)),
@@ -796,7 +804,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                 style:const TextStyle(color:Colors.white,fontSize:9,fontWeight:FontWeight.w800)))),
         ])),
       ),
-    );
+    ));
 
   int _valetStep(String status)=>switch(status){
     'accepted'=>0,
@@ -2522,6 +2530,7 @@ class OwnerServicesRedesign extends StatelessWidget{
     const text=Color(0xFF10162F),muted=Color(0xFF737B90),panel=Colors.white,line=Color(0xFFEEEEF3);
     final items=<({IconData icon,String title,String subtitle,Color color,VoidCallback tap,bool comingSoon,bool enabled})>[
       (icon:Icons.storefront_rounded,title:'CepQontag Mağaza',subtitle:'Araç etiketi, yedek ürünler ve yeni CepQontag ürünleri.',color:CepqarTheme.brightPurple,tap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const CepqontagStorePage())),comingSoon:false,enabled:true),
+      (icon:Icons.local_car_wash_rounded,title:'Oto Yıkama',subtitle:'Yakındaki oto yıkamacıları keşfedin, aracınız için randevu alın.',color:CepqarTheme.brightPurple,tap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const CarWashPage())),comingSoon:false,enabled:true),
       (icon:Icons.fire_truck_rounded,title:'Çekici',subtitle:'Yolda kaldığınızda çekici çağırın ve canlı takip edin.',color:const Color(0xFFFF8A43),tap:onTowing,comingSoon:true,enabled:_ownerServicesTestAccount),
       (icon:Icons.sos_rounded,title:'Yol Yardım',subtitle:'Akü, lastik, yakıt ve yerinde müdahale desteği.',color:const Color(0xFFFF775F),tap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const RoadsideHelpPage(initialTab:0))),comingSoon:true,enabled:_ownerServicesTestAccount),
       (icon:Icons.support_agent_rounded,title:'Vale',subtitle:'Aracınızı güvenle teslim edin, zaman kazanın.',color:const Color(0xFF8B36FF),tap:onVale,comingSoon:true,enabled:_ownerServicesTestAccount),
@@ -2548,8 +2557,8 @@ class OwnerServicesRedesign extends StatelessWidget{
           future:() async{final config=AppUiConfigService();return active?(await config.refresh()??await config.cachedOrDefault()):await config.cachedOrDefault();}(),
           builder:(context,snapshot){
             final configured=snapshot.data?.services??const <AppUiServiceItem>[];
-            final keys=<String,String>{'CepQontag Mağaza':'store','Çekici':'towing','Yol Yardım':'roadside','Vale':'valet','Fırsatlar':'offers'};
-            final assets=<String,String>{'CepQontag Mağaza':'magaza','Çekici':'cekici','Yol Yardım':'yol_yardim','Vale':'vale','Fırsatlar':'firsatlar'};
+            final keys=<String,String>{'CepQontag Mağaza':'store','Oto Yıkama':'car_wash','Çekici':'towing','Yol Yardım':'roadside','Vale':'valet','Fırsatlar':'offers'};
+            final assets=<String,String>{'CepQontag Mağaza':'magaza','Oto Yıkama':'oto_yikama','Çekici':'cekici','Yol Yardım':'yol_yardim','Vale':'vale','Fırsatlar':'firsatlar'};
             return Column(children:items.map((x){
               AppUiServiceItem? custom;
               for(final service in configured){

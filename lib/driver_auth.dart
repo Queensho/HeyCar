@@ -1,8 +1,9 @@
+import 'api_environment.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-const _driverApiBase = 'https://heycar-api-185-165-46-213.nip.io';
+const _driverApiBase = apiBaseUrl;
 
 class DriverAuth {
   static String accessToken = '';

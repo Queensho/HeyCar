@@ -1,3 +1,4 @@
+import 'api_environment.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -10,7 +11,7 @@ import 'account_recovery_page.dart';
 import 'legal_pages.dart';
 import 'driver_services_page.dart';
 
-const _api = 'https://heycar-api-185-165-46-213.nip.io';
+const _api = apiBaseUrl;
 const _bg = Color(0xFF07111F);
 const _panel = Color(0xFF101A30);
 const _panel2 = Color(0xFF0D1728);

@@ -4,6 +4,19 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      car_wash_staging_api:
+        description: HTTPS staging API for an isolated car wash test APK (empty keeps the existing build)
+        type: string
+        default: ''
+      car_wash_qa_fcm:
+        description: Use the separate Firebase staging project for the QA-only staging Android flavor
+        type: boolean
+        default: false
+      car_wash_web_only:
+        description: Refresh staging web without rebuilding the verified Android APK
+        type: boolean
+        default: false
   pull_request:
     branches: [main]
 
@@ -15,6 +28,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  car-wash-staging:
+    if: github.event_name == 'workflow_dispatch' && inputs.car_wash_staging_api != ''
+    uses: ./.github/workflows/car-wash-phase3.yml
+    with:
+      staging_api: ${{ inputs.car_wash_staging_api }}
+      qa_fcm: ${{ inputs.car_wash_qa_fcm || false }}
+      web_only: ${{ inputs.car_wash_web_only || false }}
   validate_owner_light_theme:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
@@ -108,7 +128,7 @@ jobs:
 
   build:
     needs: validate_owner_light_theme
-    if: ${{ !cancelled() && (needs.validate_owner_light_theme.result == 'success' || needs.validate_owner_light_theme.result == 'skipped') && (github.event_name != 'pull_request' || github.head_ref == 'rollback/owner-app-15oct-keep-backend-20261018' || github.head_ref == 'design/apple-hig-responsive-20261106') }}
+    if: ${{ !cancelled() && inputs.car_wash_staging_api == '' && (needs.validate_owner_light_theme.result == 'success' || needs.validate_owner_light_theme.result == 'skipped') && (github.event_name != 'pull_request' || github.head_ref == 'rollback/owner-app-15oct-keep-backend-20261018' || github.head_ref == 'design/apple-hig-responsive-20261106') }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:

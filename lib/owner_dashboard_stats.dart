@@ -1,7 +1,9 @@
+import 'owner_notification_model.dart';
+import 'owner_notifications_page.dart' show ownerUnreadNotificationCount;
+import 'api_environment.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'onboarding_backend.dart';
 import 'qr_backend.dart';
 import 'cepqar_theme.dart';
@@ -17,7 +19,7 @@ class OwnerDashboardStatsRow extends StatefulWidget {
 }
 
 class _OwnerDashboardStatsRowState extends State<OwnerDashboardStatsRow> {
-  static const _baseUrl = 'https://heycar-api-185-165-46-213.nip.io';
+  static const _baseUrl = apiBaseUrl;
   Timer? _timer;
   int unread = 0, messages = 0, locations = 0, calls = 0;
   String get vehicleId => QrDraft.vehicleId.trim().isNotEmpty ? QrDraft.vehicleId.trim() : OnboardingDraft.vehicleId.trim();
@@ -49,7 +51,8 @@ class _OwnerDashboardStatsRowState extends State<OwnerDashboardStatsRow> {
       final items = (data['notifications'] as List).whereType<Map>().toList();
       if (!mounted) return;
       setState(() {
-        unread = items.where((e) => e['status']?.toString() == 'new').length;
+        unread = ownerUnreadCount(data);
+        ownerUnreadNotificationCount.value=unread;
         messages = items.length;
         locations = items.where((e) => e['latitude'] != null && e['longitude'] != null).length;
         calls = items.where((e) => e['type']?.toString() == 'call_request').length;

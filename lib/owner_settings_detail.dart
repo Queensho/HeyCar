@@ -1,3 +1,4 @@
+import 'api_environment.dart';
 import 'design/cq_components.dart';
 import 'dart:convert';
 import 'dart:math';
@@ -16,7 +17,7 @@ const _panel = Color(0xFFFFFFFF);
 const _line = Color(0xFFE8EAF2);
 const _purple = Color(0xFF8B5CFF);
 const _muted = Color(0xFF778096);
-const _baseUrl = 'https://heycar-api-185-165-46-213.nip.io';
+const _baseUrl = apiBaseUrl;
 
 Map<String, String> get _ownerHeaders => const {};
 

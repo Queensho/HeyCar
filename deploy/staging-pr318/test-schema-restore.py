@@ -298,12 +298,17 @@ $literal$;
         code="""const fs=require('fs');const{Pool}=require('pg');const{migrationFiles,applyMigration}=require('./migrate');
         (async()=>{const p=new Pool({connectionString:process.env.TEST_DATABASE_URL});const c=await p.connect();try{
         await c.query('CREATE TABLE schema_migrations(filename text PRIMARY KEY,checksum_sha256 char(64) NOT NULL,applied_at timestamptz NOT NULL DEFAULT now())');
-        for(const f of migrationFiles().filter(f=>!f.name.startsWith('125_')))await applyMigration(c,f.name,fs.readFileSync(f.path,'utf8'));
+        for(const f of migrationFiles().filter(f=>Number(f.name.split('_')[0])<125))await applyMigration(c,f.name,fs.readFileSync(f.path,'utf8'));
         await c.query(\"INSERT INTO users(display_name,password_hash) VALUES('Synthetic restore owner','unused')\");
         }finally{c.release();await p.end();}})().catch(()=>process.exit(1));"""
         result=subprocess.run(['node','-e',code],cwd=ROOT/'server',env={**os.environ,'TEST_DATABASE_URL':self.pg.uri(source),'APP_ENV':'staging','STAGING_DISABLE_EXTERNAL_SERVICES':'true'},capture_output=True,timeout=120)
         self.assertEqual(result.returncode,0,'Historical fixture migration failed')
-        self.release.expected=deploy.expected_history(ROOT/'server/migrations');self.release.baseline_count=120;self.release.db_user='heycar_user'
+        # This restore test exercises the pinned PR318 release through 125.
+        # Later additive migrations belong to their own rollout, not this fixture.
+        pinned=Path(self.temp.name)/'pinned-migrations';pinned.mkdir()
+        for file in (ROOT/'server/migrations').glob('*.sql'):
+            if int(file.name.split('_')[0])<=125:shutil.copy2(file,pinned/file.name)
+        self.release.expected=deploy.expected_history(pinned);self.release.baseline_count=120;self.release.db_user='heycar_user'
         self.release.body=subprocess.check_output(['node','-e',"process.stdout.write(require('./migration-sql').migrationBody(require('fs').readFileSync('migrations/125_valet_retrieving_timestamp.sql','utf8')))"] ,cwd=ROOT/'server').decode()
         self.release.backup_and_restore_check()
         self.assertTrue(self.release.report['backup']['restoreVerified'])

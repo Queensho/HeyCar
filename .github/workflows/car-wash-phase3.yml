@@ -1,0 +1,94 @@
+name: Car Wash Staging Test Build
+on:
+  workflow_call:
+    inputs:
+      staging_api:
+        required: true
+        type: string
+      qa_fcm:
+        type: boolean
+        default: false
+      web_only:
+        type: boolean
+        default: false
+permissions:
+  contents: read
+jobs:
+  android-and-web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate test-only build origin
+        env:
+          STAGING_API: ${{ inputs.staging_api }}
+        run: |
+          test "$GITHUB_REF_NAME" = feature/car-wash-phase-1
+          python3 - <<'PY'
+          import os, urllib.parse
+          u=urllib.parse.urlsplit(os.environ['STAGING_API'])
+          assert u.scheme=='https' and u.hostname=='staging-api-185-165-46-213.nip.io'
+          assert not u.username and not u.password and not u.query and not u.fragment
+          assert u.path in ('','/')
+          PY
+          curl --fail --silent --show-error --max-time 15 "$STAGING_API/health"
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Resolve and verify Flutter
+        run: |
+          flutter pub get
+          flutter analyze --no-fatal-infos --no-fatal-warnings
+          flutter test
+      - name: Verify staging compile-time isolation
+        env:
+          STAGING_API: ${{ inputs.staging_api }}
+        run: flutter test test/api_environment_test.dart --dart-define=CEPQONTAG_STAGING=true --dart-define=CEPQONTAG_API_BASE_URL="$STAGING_API"
+      - name: Generate isolated Android platform
+        if: inputs.web_only != true
+        run: |
+          flutter create . --platforms=android --project-name app --org com.cepqar --no-pub
+          python3 tool/prepare_car_wash_android.py ${{ inputs.qa_fcm && '--qa-fcm' || '' }}
+      - name: Build staging APK
+        if: inputs.web_only != true
+        env:
+          STAGING_API: ${{ inputs.staging_api }}
+        run: |
+          flutter build apk --debug ${{ inputs.qa_fcm && '--flavor staging' || '' }} --dart-define=CEPQONTAG_STAGING_QA_FCM=${{ inputs.qa_fcm }} --target lib/entry_theme_live.dart --dart-define=CEPQONTAG_STAGING=true --dart-define=CEPQONTAG_API_BASE_URL="$STAGING_API"
+          mkdir -p car-wash-build
+          cp build/app/outputs/flutter-apk/${{ inputs.qa_fcm && 'app-staging-debug.apk' || 'app-debug.apk' }} car-wash-build/CepQontag-Oto-Yikama-Staging.apk
+          sha256sum car-wash-build/*.apk > car-wash-build/SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        if: inputs.web_only != true
+        with:
+          name: ${{ inputs.qa_fcm && 'cepqontag-qa-fcm-staging-apk' || 'cepqontag-car-wash-staging-apk' }}
+          path: car-wash-build
+          retention-days: 14
+          if-no-files-found: error
+      - name: Build actual owner and business web apps for staging
+        env:
+          STAGING_API: ${{ inputs.staging_api }}
+        run: |
+          flutter create . --platforms=web --project-name heycar_app --no-pub
+          flutter build web --release --pwa-strategy=none --target lib/entry_theme_live.dart --no-web-resources-cdn --no-wasm-dry-run --dart-define=CEPQONTAG_STAGING=true --dart-define=CEPQONTAG_API_BASE_URL="$STAGING_API"
+          mkdir -p car-wash-web/owner
+          cp -R build/web/. car-wash-web/owner/
+          cp web/qa/service-push.js car-wash-web/owner/qa-service-push.js
+          cp web/qa/service-worker.js car-wash-web/owner/qa-service-worker.js
+          python3 -c 'from pathlib import Path;p=Path("car-wash-web/owner/index.html");p.write_text(p.read_text().replace("</head>","<script defer src=\"qa-service-push.js\"></script></head>"))'
+          flutter build web --release --pwa-strategy=none --target lib/entry_business.dart --no-web-resources-cdn --no-wasm-dry-run --dart-define=CEPQONTAG_STAGING=true --dart-define=CEPQONTAG_API_BASE_URL="$STAGING_API"
+          mkdir -p car-wash-web/business
+          cp -R build/web/. car-wash-web/business/
+          cp web/qa/service-push.js car-wash-web/business/qa-service-push.js
+          cp web/qa/service-worker.js car-wash-web/business/qa-service-worker.js
+          python3 -c 'from pathlib import Path;p=Path("car-wash-web/business/index.html");p.write_text(p.read_text().replace("</head>","<script defer src=\"qa-service-push.js\"></script></head>"))'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cepqontag-car-wash-staging-web
+          path: car-wash-web
+          retention-days: 14

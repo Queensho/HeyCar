@@ -9,3 +9,9 @@ android/local.properties
 .env
 .env.*
 !.env.example
+
+# Server-only credentials are never app assets.
+**/firebase-admin*.json
+**/service-account*.json
+**/qa-push-allowlist.json
+**/qa-vapid.json

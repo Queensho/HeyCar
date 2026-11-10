@@ -1,6 +1,7 @@
 const test=require('node:test'),assert=require('node:assert/strict'),crypto=require('node:crypto'),fs=require('node:fs'),path=require('node:path');
 const {execFile}=require('node:child_process'),{promisify}=require('node:util'),{Pool}=require('pg');
 const exec=promisify(execFile),url=process.env.TEST_DATABASE_URL;
+const migrationCount=require('../migrate').migrationFiles().length;
 test('release audit on full migrated disposable PostgreSQL database',{skip:!url},async t=>{
  require('./test-database').testDatabaseUrl(url);
  const control=new Pool({connectionString:url}),name='heycar_test_audit_'+crypto.randomBytes(6).toString('hex');
@@ -12,19 +13,19 @@ test('release audit on full migrated disposable PostgreSQL database',{skip:!url}
  const env={...process.env,DATABASE_URL:local.href,APP_ENV:'staging',STAGING_DISABLE_EXTERNAL_SERVICES:'true'};
  const migrate=()=>exec(process.execPath,[path.join(__dirname,'../migrate.js')],{env,maxBuffer:4*1024*1024});
  await t.test('historical baseline plus additive repair apply on empty UUID schema and replay without changes',async()=>{
-  assert.match((await migrate()).stdout,/MIGRATIONS_OK count=121/);
-  const replay=(await migrate()).stdout;assert.match(replay,/MIGRATIONS_OK count=121/);assert.doesNotMatch(replay,/^APPLY /m);
+  assert.match((await migrate()).stdout,new RegExp(`MIGRATIONS_OK count=${migrationCount}\\b`));
+  const replay=(await migrate()).stdout;assert.match(replay,new RegExp(`MIGRATIONS_OK count=${migrationCount}\\b`));assert.doesNotMatch(replay,/^APPLY /m);
   const check=fs.readFileSync(path.join(__dirname,'../matrix-schema-check.sql'),'utf8').replace(/^\\.*$/mg,'');await pool.query(check);
   const rows=(await pool.query('SELECT filename,checksum_sha256 FROM schema_migrations')).rows;
   for(const file of require('../migrate').migrationFiles())assert.equal(rows.find(r=>r.filename===file.name).checksum_sha256,require('../migrate').checksum(fs.readFileSync(file.path,'utf8')));
  });
- await t.test('existing 120-file baseline upgrades by applying only additive migration 125',async()=>{
+ await t.test('tracked database missing migration 125 applies only that additive repair',async()=>{
   await pool.query("DELETE FROM schema_migrations WHERE filename='125_valet_retrieving_timestamp.sql'");
   await pool.query('ALTER TABLE valet_sessions DROP COLUMN retrieving_at');
-  assert.equal((await pool.query('SELECT count(*)::int n FROM schema_migrations')).rows[0].n,120);
+  assert.equal((await pool.query('SELECT count(*)::int n FROM schema_migrations')).rows[0].n,migrationCount-1);
   const output=(await migrate()).stdout;
   assert.deepEqual(output.split('\n').filter(line=>line.startsWith('APPLY ')),['APPLY 125_valet_retrieving_timestamp.sql']);
-  assert.equal((await pool.query('SELECT count(*)::int n FROM schema_migrations')).rows[0].n,121);
+  assert.equal((await pool.query('SELECT count(*)::int n FROM schema_migrations')).rows[0].n,migrationCount);
  });
  await t.test('failed migration tracking rolls back wrapped DDL including DDL after legacy COMMIT',async()=>{
   const client=await pool.connect();try{

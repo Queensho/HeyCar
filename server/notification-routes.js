@@ -1,3 +1,4 @@
+const ownerCenter=require('./owner-notification-center');
 const {ownerId: authenticatedOwnerId}=require('./owner-auth-service');
 const express = require('express');
 const fs = require('fs');
@@ -517,6 +518,16 @@ module.exports = function registerNotificationRoutes(app, pool) {
     } catch (e) { console.error(e); return res.status(500).json({ error: 'SERVER_ERROR' }); }
   });
 
+  app.get('/api/owner/notifications/services/:category/:appointmentId',async(req,res)=>{
+   const ownerId=authenticatedOwnerId(req);if(!ownerId)return res.status(401).json({error:'OWNER_REQUIRED'});
+   if(!ownerCenter.enabled())return res.status(404).json({error:'NOT_FOUND'});
+   try{
+    const history=(await pool.query('SELECT id,category,appointment_id,title,message,event,created_at FROM owner_notification_events WHERE owner_id=$1 AND category=$2 AND appointment_id=$3 ORDER BY created_at DESC',[ownerId,req.params.category,req.params.appointmentId])).rows;
+    if(!history.length)return res.status(404).json({error:'NOT_FOUND'});
+    return res.json({ok:true,history});
+   }catch(e){return res.status(500).json({error:'SERVER_ERROR'});}
+  });
+
   app.get('/api/owner/notifications', async (req, res) => {
     const ownerId = authenticatedOwnerId(req);
     if (!ownerId) return res.status(401).json({ error: 'OWNER_REQUIRED' });
@@ -524,7 +535,10 @@ module.exports = function registerNotificationRoutes(app, pool) {
       const p = await getPrivacy(ownerId);
       await maybeAutoCloseOldChats(ownerId, p.auto_close_old_chats);
       const result = await pool.query(`SELECT n.id, n.vehicle_id, n.qr_token, n.type, n.message, n.photo_path, n.latitude, n.longitude, n.status, n.created_at, n.read_at, n.resolved_at, v.plate, v.make, v.model, v.color FROM vehicle_notifications n JOIN vehicles v ON v.id=n.vehicle_id WHERE v.owner_id=$1 AND ((n.type='message' AND $2) OR (n.type='call_request' AND $3) OR (n.type='damage' AND $4) OR (n.type IN ('move_vehicle','lights_on') AND $5)) ORDER BY n.created_at DESC LIMIT 100`, [ownerId, p.message_notifications, p.call_notifications, p.damage_notifications, p.system_notifications]);
-      return res.json({ ok: true, notifications: result.rows });
+      const service=await ownerCenter.list(pool,ownerId,p.system_notifications);
+      const notifications=[...result.rows,...service.notifications].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,100);
+      const legacyUnread=(await pool.query(`SELECT count(*)::int AS count FROM vehicle_notifications n JOIN vehicles v ON v.id=n.vehicle_id WHERE v.owner_id=$1 AND n.status='new' AND ((n.type='message' AND $2) OR (n.type='call_request' AND $3) OR (n.type='damage' AND $4) OR (n.type IN ('move_vehicle','lights_on') AND $5))`,[ownerId,p.message_notifications,p.call_notifications,p.damage_notifications,p.system_notifications])).rows[0].count;
+      return res.json({ok:true,notifications,unreadCount:legacyUnread+service.unreadCount});
     } catch (e) { console.error(e); return res.status(500).json({ error: 'SERVER_ERROR' }); }
   });
 
@@ -535,14 +549,12 @@ module.exports = function registerNotificationRoutes(app, pool) {
     if (!ownerId) return res.status(401).json({ error: 'OWNER_REQUIRED' });
     const vehicleId = String(req.body?.vehicleId || '').trim();
     try {
-      const result = await pool.query(
-        `UPDATE vehicle_notifications n SET status='read', read_at=COALESCE(n.read_at,NOW())
-         FROM vehicles v WHERE v.id=n.vehicle_id AND v.owner_id=$1
-         AND ($2::text='' OR v.id::text=$2)
-         AND n.status='new' RETURNING n.id`,
-        [ownerId, vehicleId]
-      );
-      return res.json({ ok: true, updated: result.rowCount });
+      const db=await pool.connect();
+      try{await db.query('BEGIN');
+       const result=await db.query(`UPDATE vehicle_notifications n SET status='read',read_at=COALESCE(n.read_at,NOW()) FROM vehicles v WHERE v.id=n.vehicle_id AND v.owner_id=$1 AND ($2::text='' OR v.id::text=$2) AND n.status='new' RETURNING n.id`,[ownerId,vehicleId]);
+       const serviceCount=await ownerCenter.readAll(db,ownerId,vehicleId);
+       await db.query('COMMIT');return res.json({ok:true,updated:result.rowCount+serviceCount});
+      }catch(e){await db.query('ROLLBACK');throw e;}finally{db.release();}
     } catch (e) { console.error(e); return res.status(500).json({ error: 'SERVER_ERROR' }); }
   });
 
@@ -553,6 +565,11 @@ module.exports = function registerNotificationRoutes(app, pool) {
     if (!ownerId) return res.status(401).json({ error: 'OWNER_REQUIRED' });
     if (!['read', 'arriving', 'resolved'].includes(status)) return res.status(400).json({ error: 'INVALID_STATUS' });
     try {
+      if(id.startsWith('service:')){
+       if(status!=='read')return res.status(400).json({error:'INVALID_STATUS'});
+       const notification=await ownerCenter.mark(pool,ownerId,id);
+       return notification?res.json({ok:true,notification}):res.status(404).json({error:'NOT_FOUND'});
+      }
       const result = await pool.query(`UPDATE vehicle_notifications n SET status=$1, read_at=CASE WHEN $1 IN ('read','arriving','resolved') THEN COALESCE(n.read_at,NOW()) ELSE n.read_at END, arriving_at=CASE WHEN $1='arriving' THEN NOW() ELSE n.arriving_at END, resolved_at=CASE WHEN $1='resolved' THEN NOW() ELSE n.resolved_at END FROM vehicles v WHERE n.id=$2 AND v.id=n.vehicle_id AND v.owner_id=$3 RETURNING n.id,n.status,n.read_at,n.arriving_at,n.resolved_at`, [status, id, ownerId]);
       if (!result.rows.length) return res.status(404).json({ error: 'NOT_FOUND' });
       return res.json({ ok: true, notification: result.rows[0] });

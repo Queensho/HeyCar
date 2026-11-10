@@ -1,3 +1,4 @@
+import 'api_environment.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -18,7 +19,7 @@ class StreetParkingCard extends StatefulWidget {
 }
 
 class _StreetParkingCardState extends State<StreetParkingCard>{
-  static const base='https://heycar-api-185-165-46-213.nip.io';
+  static const base=apiBaseUrl;
   double? lat,lng; DateTime? parkedAt; bool busy=false; Timer? timer;
   Map<String,dynamic>? parkNote; bool noteBusy=false;
   String get prefix=>'street_park_${widget.vehicleId}_';

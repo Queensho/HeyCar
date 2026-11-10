@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js && node --check admin-auth-routes.js && node --check business-routes.js && node --check offer-redemption-service.js && node --check offers-marketplace-routes.js && node --check admin-offers-marketplace-routes.js && node --check offer-validation.js",
+    "check": "node --check server.js && node --check admin-auth-routes.js && node --check business-routes.js && node --check offer-redemption-service.js && node --check offers-marketplace-routes.js && node --check admin-offers-marketplace-routes.js && node --check offer-validation.js && node --check car-wash-routes.js && node --check car-wash-service.js && node --check car-wash-booking-routes.js && node --check car-wash-notifications.js",
     "migrate": "node migrate.js",
     "test": "node --test tests/*.test.js *.test.js",
     "test:offers": "node --test tests/offers-marketplace-postgres.test.js",
@@ -16,6 +16,7 @@
     "dotenv": "^17.4.2",
     "express": "^5.3.0",
     "express-rate-limit": "^8.7.1",
+    "firebase-admin": "13.6.1",
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
     "pg": "^8.23.0",

@@ -1,3 +1,4 @@
+import 'api_environment.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -15,7 +16,7 @@ const _authGreen = Color(0xFFB9FF43);
 const _authMuted = Color(0xFFAAB4CF);
 
 class OwnerLoginBackend {
-  static const baseUrl = 'https://heycar-api-185-165-46-213.nip.io';
+  static const baseUrl = apiBaseUrl;
 
   static String? normalizeTrMobile(String input) {
     var digits = input.replaceAll(RegExp(r'\D'), '');

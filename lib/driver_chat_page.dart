@@ -1,3 +1,4 @@
+import 'api_environment.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -26,7 +27,7 @@ class DriverChatPage extends StatefulWidget {
 }
 
 class _DriverChatPageState extends State<DriverChatPage> {
-  static const baseUrl = 'https://heycar-api-185-165-46-213.nip.io';
+  static const baseUrl = apiBaseUrl;
   final input = TextEditingController();
   final scroll = ScrollController();
   List<Map<String, dynamic>> messages = [];
