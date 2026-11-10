@@ -1,29 +1,26 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),crypto=require('node:crypto');
 const source=fs.readFileSync(path.join(__dirname,'../../deploy/car-wash-phase4/push-readiness.cjs'),'utf8');
-function pair(){const curve=crypto.createECDH('prime256v1');curve.generateKeys();return {publicKey:curve.getPublicKey().toString('base64url'),privateKey:curve.getPrivateKey().toString('base64url')};}
 async function inspect(overrides={}){
- const env={APP_ENV:'staging',PORT:'8091',CAR_WASH_CATALOG_ENABLED:'true',CAR_WASH_BOOKING_ENABLED:'true',CAR_WASH_PUSH_ENABLED:'false',STAGING_DISABLE_EXTERNAL_SERVICES:'1',DB_HOST:'127.0.0.1',DB_NAME:'heycar_staging',DB_USER:'cepqontag_staging',...overrides};
- const logs=[];let pools=0;
+ const env={APP_ENV:'staging',PORT:'8091',CAR_WASH_CATALOG_ENABLED:'true',CAR_WASH_BOOKING_ENABLED:'true',CAR_WASH_PUSH_ENABLED:'false',STAGING_DISABLE_EXTERNAL_SERVICES:'1',DB_HOST:'127.0.0.1',DB_NAME:'heycar_staging',DB_USER:'cepqontag_staging',CEPQONTAG_QA_FIREBASE_ADMIN_FILE:'/home/cepqontag-deploy/staging-secrets/firebase-admin.json',...overrides};
+ const logs=[];let pools=0,sdkCalls=0;
  const result=vm.runInNewContext(source,{process:{env},console:{log:s=>logs.push(s),error:s=>logs.push(s)},Buffer,require:n=>{
   if(n==='node:assert/strict')return assert;if(n==='node:crypto')return crypto;
   if(n==='dotenv')return {config:()=>{}};
-  if(n==='node:child_process')return {execFileSync:()=> '1234'};
-  if(n==='node:fs')return {realpathSync:p=>p==='.'?'/home/cepqontag-deploy/app/server':p,readFileSync:p=>{assert.equal(p,'/proc/1234/environ','Must not read unverified credential files');return '';}};
-  if(n==='pg')return {Pool:class{constructor(){pools++;}async query(){return {rows:[{database:'heycar_staging',role:'cepqontag_staging'}]};}async end(){}}};
+  if(n==='node:fs')return {realpathSync:p=>p==='.'?'/home/cepqontag-deploy/app/server':p};
+  if(n==='pg')return {Pool:class{constructor(){pools++;}async query(sql){return {rows:sql.includes('current_database')?[{database:'heycar_staging',role:'cepqontag_staging'}]:[]};}async end(){}}};
+  if(n==='./qa-firebase-admin')return {loadPolicy:()=>({owners:[],businesses:[]}),createAdminSender:()=>{sdkCalls++;return {};},createWebSender:()=>({})};
+  if(n==='node:module')return {createRequire:()=>()=>({getApp:()=>({options:{projectId:'cepqontag-staging',credential:{getAccessToken:async()=>({access_token:'SECRET_OAUTH_FIXTURE_NEVER_LOG',expires_in:3600})}}})})};
   assert.fail(n);
- }});await result;return {logs,pools};
+ }});await result;return {logs,pools,sdkCalls};
 }
-test('readiness validates VAPID pair without disclosing secrets or trusting provenance',async()=>{
- const keys=pair(),other=pair();
- for(const [privateKey,expected] of [[keys.privateKey,true],[other.privateKey,false]]){
-  const {logs}=await inspect({WEB_PUSH_VAPID_PUBLIC_KEY:keys.publicKey,WEB_PUSH_VAPID_PRIVATE_KEY:privateKey,FIREBASE_SERVICE_ACCOUNT_JSON:'{"private_key":"TEST_ONLY_NOT_FOR_LOGS"}'});
-  const text=logs.join('');assert.ok(!text.includes(privateKey));assert.ok(!text.includes(keys.publicKey));assert.ok(!text.includes('TEST_ONLY_NOT_FOR_LOGS'));
-  const report=JSON.parse(logs[0]);assert.equal(report.vapidPairValid,expected);assert.equal(report.vapidProvenanceVerified,false);
- }
+test('readiness validates explicit staging credential without logging OAuth tokens or sending push',async()=>{
+ const {logs,sdkCalls}=await inspect();assert.equal(sdkCalls,1);
+ assert.ok(!logs.join('').includes('SECRET_OAUTH_FIXTURE_NEVER_LOG'));
+ const report=JSON.parse(logs[0]);assert.equal(report.credentialAccepted,true);assert.equal(report.realPushSent,false);assert.equal(report.firebaseProjectId,'cepqontag-staging');
 });
-test('readiness does not open a credential file of unverified origin',async()=>{
- const {logs}=await inspect({FIREBASE_SERVICE_ACCOUNT_FILE:'/production/service-account.json'});
- assert.equal(JSON.parse(logs[0]).serviceAccountFile,'unverified_origin_not_read');
+test('readiness refuses credential paths outside the private staging directory before SDK access',async()=>{
+ const {logs,sdkCalls}=await inspect({CEPQONTAG_QA_FIREBASE_ADMIN_FILE:'/production/service-account.json'});
+ assert.equal(sdkCalls,0);assert.ok(logs.includes('PUSH_READINESS_STOPPED'));
 });
 test('readiness refuses production identity before constructing a database pool',async()=>{
  await assert.rejects(()=>inspect({APP_ENV:'production'}));

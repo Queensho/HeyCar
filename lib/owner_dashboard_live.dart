@@ -185,7 +185,7 @@ Widget _ownerNavItem(int index,String label,IconData icon){
           onReminders:()=>action('reminders'),
           active:tab==2,
         ) else const SizedBox.shrink(),
-        if(_visitedTabs.contains(3))OwnerNotificationsPage(key:ValueKey('notifications-$vid'),vehicleId:vid,plate:QrDraft.plate,active:tab==3) else const SizedBox.shrink(),
+        if(_visitedTabs.contains(3))OwnerNotificationsPage(key:ValueKey('notifications-${OnboardingDraft.userId}'),active:tab==3) else const SizedBox.shrink(),
         if(_visitedTabs.contains(4))OwnerSettingsPage(onOpenVehicles:()=>_selectTab(1),onOpenQr:_qr) else const SizedBox.shrink(),
       ];
       return Scaffold(
