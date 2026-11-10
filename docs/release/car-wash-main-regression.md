@@ -87,3 +87,64 @@ yalnız ilgili servis kontrollü restart edilir. Yeni tablolar/randevular silinm
 migration tracking geri yazılmaz. Lifecycle trigger/FK etkileri kod rollback'inden
 bağımsızdır. Tam production restore yalnız ayrıca onaylı son çare/PITR prosedürüdür;
 diğer modüllerin yeni verisi eski snapshot'la ezilmez.
+
+## Son doğrulama — 10 Kasım 2026
+
+Main yeniden fetch edildi: `5b0231ab6e6df16f3d589b7f98815057b471fca2`;
+çalışma branch'inin atasıdır. PR328 yeniden merge edilmedi.
+
+| Kontrol | Gerçek sonuç / GitHub Actions run |
+| --- | --- |
+| Backend + izole PostgreSQL | 251 geçti, 0 başarısız/atlanan — [42894428726](https://github.com/Queensho/HeyCar/actions/runs/42894428726) |
+| Full Flutter | 972 geçti — [42896293086](https://github.com/Queensho/HeyCar/actions/runs/42896293086) |
+| Flutter analyze | 0 error; 234 warning/info, aşağıda sınıflandırıldı; mevcut `--no-fatal-infos --no-fatal-warnings` politikası değiştirilmedi |
+| Staging API ortak bildirim smoke | Oluştur/onayla/yeniden planla/iptal, ortak sayaç/read senkronizasyonu ve hesap izolasyonu geçti — [42894973386](https://github.com/Queensho/HeyCar/actions/runs/42894973386) |
+| Güncel staging web + gerçek API browser | Başarılı — [42896928187](https://github.com/Queensho/HeyCar/actions/runs/42896928187) |
+| İzole restore | Aynı son run: 132 tablo, 3648 satır, 125 migration, içerik/şema eşleşmesi ve resource/staff/vehicle exclusion korumaları geçti |
+| APK build | Başarılı — [42893575118](https://github.com/Queensho/HeyCar/actions/runs/42893575118) |
+| Fiziksel Android / gerçek push teslimi | ÇALIŞTIRILMADI; cihaz/token yok, hiçbir gerçek FCM/Web Push gönderilmedi |
+
+İlk main-regresyon çalışması %130 fontta 8 gerçek eski ekran taşması buldu;
+düzenler düzeltildikten sonra full suite geçti. İlk genişletilmiş katalog browser
+testinde menünün birleşik Semantics etiketi exact-text locator ile eşleşmedi.
+Button role/name ve birlikte await edilen click/response ile düzeltildi; sonraki
+çalışma gerçek nearby/detail API ve kayıtlı çalışma saatleriyle geçti. Hatalar
+gizlenmedi, API mock veya geolocation güvenlik gevşetmesi eklenmedi.
+
+Fiyat matrisi yalnız yeni sentetik QA paket UUID'sini seçer. `321.50`, `321,50`,
+`0,01`, `350.00`, `350` için DOM, API isteği/yanıtı/readback ve PostgreSQL kuruş
+değerleri birebir eşleşti (32150,32150,1,35000,35000). Paket 13 satırlı listenin
+12. indeksindeydi; sabit ilk satır kullanılmaz. Ortak bildirim filtreleri, okundu
+durumu ve tam booking UUID detay yönlendirmesi gerçek staging web'de geçti.
+
+Analiz sınıflaması: deprecated_member_use71; unused_element98; unused_import26;
+unused_element_parameter7; unused_field5; unused_local_variable5;
+unnecessary_non_null_assertion9; unnecessary_import5; unnecessary_set_literal2;
+dead_code6. Dead-code dalları mevcut sabit açık tema koşullarının erişilemeyen koyu
+tema alternatifleridir; çalışan araç/QR işlemleri kaldırılmadı. Genel kod temizliği
+bu yayında eski ekranları yeniden tasarlamak için kullanılmadı. Kritik görülen
+gerçek layout/runtime assertion hataları düzeltildi; analiz sıfır uyarı değildir.
+
+Staging web kaynak SHA: `d5f4bda9d05e1ead66c0e4868eed5dcab7a95bcd`; backend
+`bb4af868f415b2added3b6fc858564dd35d49ee5`. APK kaynak `94b9c13636823b8cf430509021654bf6d5561c48`;
+sonraki commit'ler ops/test/rapor değişiklikleridir; lib/android/web/Firebase/config
+ve pubspec farkı yoktur. APK ZIP CRC ve SHA256SUMS yerelde doğrulandı:
+`2dbf9be8a28300f13f362851c5195e4d58253b35b375b075c6707aa8768ecd32`.
+Derlenmiş uygulamada staging API URL, `com.cepqar.app.carwashstaging` ve
+`cepqontag-staging`/603919772851 doğrulandı; Admin/service-account dosyası yoktur.
+[APK artefaktı](https://github.com/Queensho/HeyCar/actions/runs/42893575118/artifacts/13799852575)
+GitHub repo erişimi gerektirir; ZIP içindeki APK kurulmalıdır.
+
+Staging işletme paneli:
+`https://staging-api-185-165-46-213.nip.io/car-wash-business/`.
+QA parolaları rapora/PR'a yazılmaz; yalnız yetkili operatörün VPS'deki 0600 özel QA
+manifestinden alınır. Mevcut gerçek müşteri/işletme araçları ve paketleri
+değiştirilmedi; QA'nın yeni kayıtları kanıt olarak korunur.
+
+Manuel yayın kapıları: Google Play Services olan fiziksel QA cihazına APK kurulumu,
+bildirim izni ve token kaydı; yalnız bu hesap/cihaz allowlist'iyle kontrollü staging
+push izni; foreground/background/killed teslim ve doğru randevu açılışının ekran
+kaydı. QR/araç ve randevu giriş akışı cihazda tekrar kontrol edilir. Ardından
+production'a özel salt okunur migration/ACL/Firebase IAM/backup-PITR incelemesi,
+temsili yük ve insan review/onayı gerekir. Şu an koşulsuz production-ready değildir.
+Production'a bağlanılmadı, deploy/merge yapılmadı.
