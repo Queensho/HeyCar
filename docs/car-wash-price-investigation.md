@@ -1,4 +1,8 @@
-# İşletme fiyat testi — kök neden ve durdurulan staging kabulü
+# İşletme fiyat testi — kök neden ve tarihsel staging engeli
+
+> Güncelleme: satır görünürlük engeli UUID ile kaydırılarak giderildi; bütün fiyat
+> matrisi ve bildirimden doğru randevuya tarayıcı kabulü geçti.
+> [Güncel kanıt](car-wash-service-identity.md). Aşağıdaki durma kaydı önceki koşuya aittir.
 
 PR #328. Production verisi/Firebase/deploy/merge yok; eski kayıtlar düzeltilmedi veya silinmedi.
 
