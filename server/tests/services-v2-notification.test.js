@@ -23,3 +23,17 @@ test('Admin policy requires isolated environment, private files, QA time window 
   fs.chmodSync(allow,0o644);assert.throws(()=>admin.loadPolicy(env,{root}));
  }finally{fs.rmSync(root,{recursive:true,force:true});}
 });
+test('Admin sender refuses production credentials and secret symlinks before loading Firebase SDK',()=>{
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'qa-firebase-reject-'));
+ try{
+  const allow=path.join(root,'allow.json'),credential=path.join(root,'firebase-admin.json');
+  fs.writeFileSync(allow,JSON.stringify({projectId:'cepqontag-staging',owners:[id],businesses:[id],notBefore:new Date(Date.now()-1000).toISOString(),expiresAt:new Date(Date.now()+86400000).toISOString()}),{mode:0o600});
+  fs.writeFileSync(credential,JSON.stringify({project_id:'production',type:'service_account',client_email:'fixture@production.iam.gserviceaccount.com',private_key:'fixture-not-a-private-key'}),{mode:0o600});
+  const env={APP_ENV:'staging',PORT:'8091',STAGING_DISABLE_EXTERNAL_SERVICES:'1',CEPQONTAG_QA_PUSH_REGISTRATION:'true',CEPQONTAG_QA_PUSH_ALLOWLIST_FILE:allow,CEPQONTAG_QA_PUSH_SEND_ENABLED:'true',CEPQONTAG_QA_FIREBASE_ADMIN_FILE:credential};
+  let sdkLoaded=false;const options={root,loader:()=>{sdkLoaded=true;throw Error('SDK_MUST_NOT_LOAD');}};
+  assert.throws(()=>admin.createAdminSender(env,options));assert.equal(sdkLoaded,false);
+  const link=path.join(root,'credential-link.json');fs.symlinkSync(credential,link);
+  assert.throws(()=>admin.createAdminSender({...env,CEPQONTAG_QA_FIREBASE_ADMIN_FILE:link},options),/SECRET_SYMLINK_REFUSED/);assert.equal(sdkLoaded,false);
+  fs.chmodSync(credential,0o644);assert.throws(()=>admin.createAdminSender(env,options),/SECRET_MODE_0600_REQUIRED/);assert.equal(sdkLoaded,false);
+ }finally{fs.rmSync(root,{recursive:true,force:true});}
+});
