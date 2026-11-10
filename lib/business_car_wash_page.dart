@@ -616,7 +616,11 @@ class _BusinessCarWashPageState extends State<BusinessCarWashPage> {
                       icon: const Icon(Icons.add_circle_outline))
                 ]),
                 for (final item in washRows(data[group.key]))
-                  ListTile(
+                  Semantics(
+                    identifier: 'car-wash-${group.key}-${item['id']}',
+                    container: true,
+                    child: ListTile(
+                      key: ValueKey('car-wash-${group.key}-${item['id']}'),
                       contentPadding: EdgeInsets.zero,
                       title: Text('${item['name']}'),
                       subtitle: Text(
@@ -626,7 +630,7 @@ class _BusinessCarWashPageState extends State<BusinessCarWashPage> {
                           icon: const Icon(Icons.edit_outlined),
                           onPressed: busy
                               ? null
-                              : () => _editItem(group.key, item, staff))),
+                              : () => _editItem(group.key, item, staff)))),
               ],
             ]);
           }));

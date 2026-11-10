@@ -94,6 +94,53 @@ class FixtureWashApi extends CarWashApi {
   }
 }
 
+class LongBusinessServiceApi extends FixtureWashApi {
+  final services = List<WashJson>.generate(
+      35,
+      (i) => {
+            'id': 'existing-$i',
+            'name': 'Aynı paket',
+            'active': true,
+            'price_kurus': 100,
+            'duration_minutes': 30
+          });
+  int settingsReads = 0;
+  final writes = <WashJson>[];
+  @override
+  Future<WashJson> call(String path,
+      {String method = 'GET', WashJson? body, String? key}) async {
+    if (path == '/api/business/car-wash/settings') {
+      settingsReads++;
+      return {
+        'location': null,
+        'hours': [],
+        'closedDays': [],
+        'staff': [],
+        'resources': [],
+        'services': services.map((e) => Map<String, dynamic>.from(e)).toList()
+      };
+    }
+    if (path == '/api/business/car-wash/services' && method == 'POST') {
+      final value = Map<String, dynamic>.from(body!);
+      writes.add(value);
+      final id = value['id'] ?? 'created-service';
+      final item = <String, dynamic>{
+        ...value,
+        'id': id,
+        'price_kurus': value['priceKurus'],
+        'duration_minutes': value['durationMinutes']
+      };
+      final index = services.indexWhere((s) => s['id'] == id);
+      if (index < 0)
+        services.add(item);
+      else
+        services[index] = item;
+      return {'item': item};
+    }
+    return super.call(path, method: method, body: body, key: key);
+  }
+}
+
 void main() {
   test('Türkiye timezone and integer kuruş formatting', () {
     expect(washTime('2030-01-01T22:30:00Z'), '2030-01-02 01:30');
@@ -256,4 +303,55 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     });
   }
+  testWidgets(
+      'new service refreshes at the end of a long list and can be edited by ID despite duplicate names',
+      (tester) async {
+    tester.view.physicalSize = const Size(1000, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final api = LongBusinessServiceApi();
+    await tester.pumpWidget(MaterialApp(
+        home: BusinessCarWashPage(
+            api: api,
+            onEditProfile: () async {},
+            uploadPhoto: () async => null)));
+    await tester.pumpAndSettle();
+    final add = find.byTooltip('Hizmet paketleri ekle');
+    await tester.ensureVisible(add);
+    await tester.tap(add);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, 'Ad'), 'Aynı paket');
+    await tester.enterText(
+        find.widgetWithText(TextField, 'Fiyat (TL)'), '321,50');
+    await tester.enterText(
+        find.widgetWithText(TextField, 'Süre (5–480 dakika)'), '45');
+    await tester.tap(find.text('Kaydet'));
+    await tester.pumpAndSettle();
+    expect(api.settingsReads, greaterThanOrEqualTo(2));
+    expect(api.services.last['id'], 'created-service');
+    final row = find.byKey(const ValueKey('car-wash-services-created-service'));
+    expect(row,
+        findsNothing); // Lazy viewport: absence from semantics is not data loss.
+    await tester.scrollUntilVisible(row, 450,
+        scrollable: find.byType(Scrollable).first, maxScrolls: 40);
+    await tester.pumpAndSettle();
+    expect(row, findsOneWidget);
+    final semantics = tester.widget<Semantics>(
+        find.ancestor(of: row, matching: find.byType(Semantics)).first);
+    expect(
+        semantics.properties.identifier, 'car-wash-services-created-service');
+    await tester
+        .tap(find.descendant(of: row, matching: find.byTooltip('Düzenle')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+        find.widgetWithText(TextField, 'Fiyat (TL)'), '350.00');
+    await tester.tap(find.text('Kaydet'));
+    await tester.pumpAndSettle();
+    expect(api.writes.last['id'], 'created-service');
+    expect(api.services.last['price_kurus'], 35000);
+    expect(api.services.take(35).every((s) => s['price_kurus'] == 100), true);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 }

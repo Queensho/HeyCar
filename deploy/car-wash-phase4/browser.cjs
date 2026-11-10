@@ -30,7 +30,7 @@ const output=process.env.BROWSER_OUTPUT||'phase4-browser';fs.mkdirSync(output,{r
    await input.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
    await input.pressSequentially(value,{delay:40});await input.press('Tab');
    await input.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
-   assert.ok(await input.inputValue()===value,'FIELD_VALUE_MISMATCH_'+label);
+   assert.ok(await input.inputValue()===value,'FIELD_VALUE_MISMATCH_'+label);return await input.inputValue();
   }
   await page.route('**/api/**',async route=>{if(new URL(route.request().url()).origin!==origin){failures.push('BLOCKED_NON_STAGING_API');await route.abort();}else await route.continue();});
   step='business-ui-login';
@@ -66,49 +66,65 @@ const output=process.env.BROWSER_OUTPUT||'phase4-browser';fs.mkdirSync(output,{r
   const name='Phase 4 QA '+Date.now();
   await enter('Ad',name);
   await enter('Açıklama','Yalnız sentetik staging işletmesi');
-  const priceTrace=[];const priceInput=page.getByRole('textbox',{name:'Fiyat (TL)',exact:true});
-  // Reproduce the previous DOM-fill/5ms sequence without saving probe values.
-  for(let probe=0;probe<24;probe++){
-   await page.getByRole('textbox',{name:'Açıklama',exact:true}).click();
-   await priceInput.fill('');await priceInput.pressSequentially('321.50',{delay:5});
-   const afterTyping=await priceInput.inputValue();await priceInput.press('Tab');
-   await priceInput.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
-   priceTrace.push({probe,intended:'321.50',afterTyping,afterBlur:await priceInput.inputValue()});
+  const priceChecks=[],identityProof=[];
+  const frame=()=>page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+  const serviceSelector=id=>'[flt-semantics-identifier='+JSON.stringify('car-wash-services-'+id)+']';
+  async function serviceRow(id,total){
+   assert.match(id,/^[0-9a-f-]{36}$/i);const row=page.locator(serviceSelector(id));
+   const initiallyMounted=await row.count()>0;await frame();
+   for(let scrolls=0;scrolls<Math.min(120,20+total*2);scrolls++){
+    if(await row.count()){
+     await row.scrollIntoViewIfNeeded();await frame();
+     if(await row.isVisible()){identityProof.push({serviceId:id,initiallyMounted,scrolls,selector:serviceSelector(id)});return row;}
+    }
+    const viewport=page.viewportSize();await page.mouse.move(viewport.width/2,viewport.height/2);
+    await page.mouse.wheel(0,Math.max(240,Math.floor(viewport.height*.65)));await frame();
+   }
+   await page.screenshot({path:output+'/missing-service-id.png',fullPage:true});
+   throw Error('SERVICE_UUID_NOT_RENDERED_'+id);
   }
-  fs.writeFileSync(output+'/price-input-diagnostics.json',JSON.stringify({legacySequence:priceTrace,credentialsRecorded:false},null,2));
-  await enter('Fiyat (TL)','321.50');
-  await enter('Süre (5–480 dakika)','45');
-  const save=page.waitForResponse(r=>r.url().endsWith('/api/business/car-wash/services')&&r.request().method()==='POST');
-  await page.getByRole('button',{name:'Kaydet',exact:true}).click();const saved=await save;assert.equal(saved.request().postDataJSON().priceKurus,32150,'REQUEST_KURUS_MISMATCH');assert.equal(saved.status(),200);
-  const item=(await saved.json()).item;assert.equal(item.price_kurus,32150);assert.equal(item.duration_minutes,45);
+  async function renderedPrice(id,expected){
+   await page.waitForFunction(({selector,text})=>{const el=document.querySelector(selector);if(!el)return false;const values=[el.textContent,el.getAttribute('aria-label'),...Array.from(el.querySelectorAll('[aria-label]')).map(n=>n.getAttribute('aria-label'))];return values.join(' ').includes(text);},{selector:serviceSelector(id),text:(expected/100).toFixed(2)+' ₺'});
+  }
+  function refreshWait(){return {settings:page.waitForResponse(r=>new URL(r.url()).pathname==='/api/business/car-wash/settings'&&r.request().method()==='GET'),bookings:page.waitForResponse(r=>new URL(r.url()).pathname==='/api/business/car-wash/bookings'&&r.request().method()==='GET')};}
+  async function refreshed(wait,id,expected){
+   const settings=await wait.settings;assert.equal(settings.status(),200);const data=await settings.json();
+   assert.equal((await wait.bookings).status(),200);const found=data.services.find(s=>s.id===id);assert.ok(found,'CREATED_UUID_ABSENT_FROM_REFRESH');assert.equal(found.price_kurus,expected);assert.equal(found.name,name);
+   await frame();return data.services;
+  }
   function verifyPriceInPostgres(serviceId,expectedKurus){
    const {execFileSync}=require('node:child_process'),path=require('node:path');
    const script='const qaPriceProof='+JSON.stringify({serviceId,expectedKurus})+';\n'+fs.readFileSync(path.join(__dirname,'verify-price.cjs'),'utf8');
    const result=execFileSync('ssh',['-i',process.env.HOME+'/.ssh/staging_key','-o','BatchMode=yes','-o','StrictHostKeyChecking=yes','-p',process.env.SSH_PORT,process.env.SSH_USER+'@'+process.env.SSH_HOST,'cd /home/cepqontag-deploy/app/server && node -'],{input:script,encoding:'utf8',timeout:20000});
    const report=JSON.parse(result.trim());assert.equal(report.priceKurus,expectedKurus);return report;
   }
-  verifyPriceInPostgres(item.id,32150);
-  const priceChecks=[{serviceId:item.id,input:'321.50',domValue:'321.50',requestKurus:32150,responseKurus:item.price_kurus}];
-  for(const [input,expected] of [['321,50',32150],['0,01',1],['350.00',35000]]){
-   const group=page.getByRole('group',{name:new RegExp('^'+name)});await group.waitFor({state:'visible'});await group.getByRole('button',{name:'Düzenle',exact:true}).click();
-   await enter('Fiyat (TL)',input);
+  async function recordPrice(item,input,domValue,requestKurus,services){
+   const persisted=await context.request.get(origin+'/api/business/car-wash/settings',{headers:{Authorization:'Bearer '+directToken}});assert.equal(persisted.status(),200);
+   const readback=(await persisted.json()).services.find(s=>s.id===item.id);assert.ok(readback);assert.equal(readback.price_kurus,requestKurus);
+   const db=verifyPriceInPostgres(item.id,requestKurus);
+   priceChecks.push({serviceId:item.id,input,domValue,requestKurus,responseKurus:item.price_kurus,apiReadbackKurus:readback.price_kurus,postgresKurus:db.priceKurus,listIndex:services.findIndex(s=>s.id===item.id),serviceCount:services.length});
+   fs.writeFileSync(output+'/price-roundtrip.json',JSON.stringify({ok:true,complete:false,onlyOwnSyntheticService:true,checks:priceChecks},null,2));
+  }
+  const initialDom=await enter('Fiyat (TL)','321.50');await enter('Süre (5–480 dakika)','45');
+  const initialRefresh=refreshWait();
+  const save=page.waitForResponse(r=>r.url().endsWith('/api/business/car-wash/services')&&r.request().method()==='POST');
+  await page.getByRole('button',{name:'Kaydet',exact:true}).click();const saved=await save;assert.equal(saved.request().postDataJSON().priceKurus,32150);assert.equal(saved.status(),200);
+  const item=(await saved.json()).item;assert.equal(item.name,name);assert.equal(item.price_kurus,32150);assert.equal(item.duration_minutes,45);
+  let services=await refreshed(initialRefresh,item.id,32150);
+  await recordPrice(item,'321.50',initialDom,32150,services);
+  await serviceRow(item.id,services.length);await renderedPrice(item.id,32150);
+  for(const [input,expected] of [['321,50',32150],['0,01',1],['350.00',35000],['350',35000]]){
+   const row=await serviceRow(item.id,services.length);await row.getByRole('button',{name:'Düzenle',exact:true}).click();
+   const domValue=await enter('Fiyat (TL)',input);const wait=refreshWait();
    const response=page.waitForResponse(r=>r.url().endsWith('/api/business/car-wash/services')&&r.request().method()==='POST');
    await page.getByRole('button',{name:'Kaydet',exact:true}).click();const r=await response;
-   assert.equal(r.request().postDataJSON().priceKurus,expected);assert.equal(r.status(),200);assert.equal((await r.json()).item.price_kurus,expected);
-   const persisted=await context.request.get(origin+'/api/business/car-wash/settings',{headers:{Authorization:'Bearer '+directToken}});assert.equal(persisted.status(),200);
-   assert.equal((await persisted.json()).services.find(s=>s.id===item.id).price_kurus,expected);
-   await page.getByRole('group',{name:new RegExp('^'+name+'.*'+(expected/100).toFixed(2).replace('.','[.]'),'s')}).waitFor({state:'visible'});
-   verifyPriceInPostgres(item.id,expected);
-   priceChecks.push({serviceId:item.id,input,domValue:input,requestKurus:expected,responseKurus:expected,apiReadbackKurus:expected});
+   assert.equal(r.request().postDataJSON().id,item.id,'EDIT_MUST_TARGET_CREATED_UUID');assert.equal(r.request().postDataJSON().priceKurus,expected);assert.equal(r.status(),200);
+   const changed=(await r.json()).item;assert.equal(changed.id,item.id);assert.equal(changed.price_kurus,expected);
+   services=await refreshed(wait,item.id,expected);await recordPrice(changed,input,domValue,expected,services);
+   await serviceRow(item.id,services.length);await renderedPrice(item.id,expected);
   }
-  fs.writeFileSync(output+'/price-roundtrip.json',JSON.stringify({ok:true,onlyOwnSyntheticService:true,checks:priceChecks},null,2));
-  // The business owner can see only their own newly created package; verify an edit via UI.
-  const newService=page.getByRole('group',{name:new RegExp('^'+name)});await newService.waitFor({state:'visible'});
-  await newService.getByRole('button',{name:'Düzenle',exact:true}).click();
-  await enter('Fiyat (TL)','350');
-  const update=page.waitForResponse(r=>r.url().endsWith('/api/business/car-wash/services')&&r.request().method()==='POST');
-  await page.getByRole('button',{name:'Kaydet',exact:true}).click();const updated=await update;assert.equal(updated.request().postDataJSON().priceKurus,35000);assert.equal(((await updated.json()).item).price_kurus,35000);
-  await page.getByRole('group',{name:new RegExp('^'+name+'.*350[.]00','s')}).waitFor({state:'visible'});
+  fs.writeFileSync(output+'/service-identity.json',JSON.stringify({ok:true,ordering:'created_at ASC',packageFilters:'none',identityProof},null,2));
+  fs.writeFileSync(output+'/price-roundtrip.json',JSON.stringify({ok:true,complete:true,onlyOwnSyntheticService:true,checks:priceChecks},null,2));
   await page.screenshot({path:output+'/business-services.png',fullPage:true});
   await page.setViewportSize({width:393,height:852});
   await page.waitForFunction(()=>innerWidth===393&&innerHeight===852);
@@ -130,17 +146,19 @@ const output=process.env.BROWSER_OUTPUT||'phase4-browser';fs.mkdirSync(output,{r
   const center=await context.request.get(origin+'/api/owner/notifications',{headers:{Authorization:'Bearer '+ownerToken}});assert.equal(center.status(),200);
   const target=(await center.json()).notifications.find(n=>n.service_category==='car_wash');assert.ok(target);
   step='owner-common-center-filters';
-  await ownerPage.getByText('Bildirimler',{exact:true}).last().click();
+  await ownerPage.locator('[flt-semantics-identifier="owner-notifications-bell"]').click();
   await ownerPage.getByText('Tümü',{exact:true}).waitFor();await ownerPage.getByText('Araç',{exact:true}).waitFor();await ownerPage.getByText('Hizmetler',{exact:true}).waitFor();
   await ownerPage.getByText('Randevular',{exact:true}).click();
-  await ownerPage.getByText('Oto Yıkama',{exact:true}).first().waitFor();
+  const notice=ownerPage.locator('[flt-semantics-identifier='+JSON.stringify('owner-notification-'+target.id)+']');await notice.waitFor({state:'visible'});
   await ownerPage.screenshot({path:output+'/owner-shared-center.png',fullPage:true});
   step='owner-notification-detail';
   const bookingDetail=ownerPage.waitForResponse(r=>r.url().endsWith('/api/car-wash/bookings/'+target.booking_id)&&r.request().method()==='GET');
-  await ownerPage.getByText('Oto Yıkama',{exact:true}).first().click();assert.equal((await bookingDetail).status(),200);
-  await ownerPage.getByText('Randevu detayları',{exact:true}).waitFor();await ownerPage.screenshot({path:output+'/owner-notification-booking.png',fullPage:true});
+  await notice.click();const detailResponse=await bookingDetail;assert.equal(detailResponse.status(),200);assert.equal((await detailResponse.json()).booking.id,target.booking_id);
+  await ownerPage.getByText('Randevu detayları',{exact:true}).waitFor();
+  const readback=await context.request.get(origin+'/api/owner/notifications',{headers:{Authorization:'Bearer '+ownerToken}});assert.equal(readback.status(),200);assert.equal((await readback.json()).notifications.find(n=>n.id===target.id).status,'read');
+  await ownerPage.screenshot({path:output+'/owner-notification-booking.png',fullPage:true});
   assert.deepEqual(failures,[]);
-  fs.writeFileSync(output+'/result.json',JSON.stringify({ok:true,businessUrl:origin+'/car-wash-business/',checks:['owner-real-ui-login','owner-common-center-filters','owner-notification-exact-booking-route','qa-push-config-no-delivery','qa-worker-assets-no-cache-worker-conflict','qa-permission-button-present','real-business-login','real-calendar-history','service-create','price-duration-persistence','price-update','desktop-mobile-render','no-page-errors'],serviceId:item.id,priceChecks,responses},null,2));
+  fs.writeFileSync(output+'/result.json',JSON.stringify({ok:true,businessUrl:origin+'/car-wash-business/',checks:['owner-real-ui-login','owner-common-center-filters','owner-notification-exact-booking-route','qa-push-config-no-delivery','qa-worker-assets-no-cache-worker-conflict','qa-permission-button-present','real-business-login','real-calendar-history','service-create','price-duration-persistence','price-update','desktop-mobile-render','no-page-errors'],serviceId:item.id,priceChecks,notificationId:target.id,bookingId:target.booking_id,responses},null,2));
   console.log('PHASE4_BROWSER_OK');
  }finally{await browser.close();}
 })().catch(e=>{let reason=String(e.message);for(const secret of [qa.business.password,qa.owner.password,qa.owner.phone,qa.business.email])if(secret)reason=reason.split(secret).join('[REDACTED]');console.error('PHASE4_BROWSER_FAILED',{step,reason});process.exitCode=1;});

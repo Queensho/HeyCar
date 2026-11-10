@@ -788,7 +788,11 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
   );
 
   Widget _homeCircleButton(IconData icon,VoidCallback action,{int unreadCount=0})=>
-    Material(color:_homeCardBackground,shape:const CircleBorder(),
+    Semantics(
+      identifier:icon==Icons.notifications_none_rounded?'owner-notifications-bell':'',
+      label:icon==Icons.notifications_none_rounded?'Bildirimler':null,
+      button:true,
+      child:Material(color:_homeCardBackground,shape:const CircleBorder(),
       child:InkWell(onTap:action,customBorder:const CircleBorder(),
         child:SizedBox(width:CQLayout.minimumTouchTarget,height:CQLayout.minimumTouchTarget,child:Stack(children:[
           Center(child:Icon(icon,color:_homeText,size:24)),
@@ -800,7 +804,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                 style:const TextStyle(color:Colors.white,fontSize:9,fontWeight:FontWeight.w800)))),
         ])),
       ),
-    );
+    ));
 
   int _valetStep(String status)=>switch(status){
     'accepted'=>0,
