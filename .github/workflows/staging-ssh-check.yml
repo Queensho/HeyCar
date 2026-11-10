@@ -207,6 +207,7 @@ jobs:
           names=['qa-firebase-admin.js','qa-service-push.js','service-booking-notification.js','migration-sql.js','owner-notification-center.js','notification-routes.js','valet-routes.js','car-wash-routes.js']
           for name in names:
               shutil.copyfile('server/'+name,root/name);manifest['files'][name]=hashlib.sha256((root/name).read_bytes()).hexdigest()
+          name='harden-backups.cjs';shutil.copyfile('deploy/firebase-staging/'+name,root/name);manifest['files'][name]=hashlib.sha256((root/name).read_bytes()).hexdigest()
           for name in ['128_services_v2_qa_push.sql','129_owner_notification_center.sql']:
               shutil.copyfile('server/migrations/'+name,root/name);manifest['files'][name]=hashlib.sha256((root/name).read_bytes()).hexdigest()
           for p in pathlib.Path('server/migrations').glob('*.sql'):manifest['history'][p.name]=hashlib.sha256(p.read_bytes()).hexdigest()
