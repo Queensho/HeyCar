@@ -8,6 +8,9 @@ on:
       qa_fcm:
         type: boolean
         default: false
+      web_only:
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -47,10 +50,12 @@ jobs:
           STAGING_API: ${{ inputs.staging_api }}
         run: flutter test test/api_environment_test.dart --dart-define=CEPQONTAG_STAGING=true --dart-define=CEPQONTAG_API_BASE_URL="$STAGING_API"
       - name: Generate isolated Android platform
+        if: inputs.web_only != true
         run: |
           flutter create . --platforms=android --project-name app --org com.cepqar --no-pub
           python3 tool/prepare_car_wash_android.py ${{ inputs.qa_fcm && '--qa-fcm' || '' }}
       - name: Build staging APK
+        if: inputs.web_only != true
         env:
           STAGING_API: ${{ inputs.staging_api }}
         run: |
@@ -59,6 +64,7 @@ jobs:
           cp build/app/outputs/flutter-apk/${{ inputs.qa_fcm && 'app-staging-debug.apk' || 'app-debug.apk' }} car-wash-build/CepQontag-Oto-Yikama-Staging.apk
           sha256sum car-wash-build/*.apk > car-wash-build/SHA256SUMS
       - uses: actions/upload-artifact@v4
+        if: inputs.web_only != true
         with:
           name: ${{ inputs.qa_fcm && 'cepqontag-qa-fcm-staging-apk' || 'cepqontag-car-wash-staging-apk' }}
           path: car-wash-build

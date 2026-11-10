@@ -13,6 +13,10 @@ on:
         description: Use the separate Firebase staging project for the QA-only staging Android flavor
         type: boolean
         default: false
+      car_wash_web_only:
+        description: Refresh staging web without rebuilding the verified Android APK
+        type: boolean
+        default: false
   pull_request:
     branches: [main]
 
@@ -30,6 +34,7 @@ jobs:
     with:
       staging_api: ${{ inputs.car_wash_staging_api }}
       qa_fcm: ${{ inputs.car_wash_qa_fcm || false }}
+      web_only: ${{ inputs.car_wash_web_only || false }}
   validate_owner_light_theme:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
