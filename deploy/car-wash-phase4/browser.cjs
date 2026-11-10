@@ -68,7 +68,7 @@ const output=process.env.BROWSER_OUTPUT||'phase4-browser';fs.mkdirSync(output,{r
   await enter('Açıklama','Yalnız sentetik staging işletmesi');
   const priceTrace=[];const priceInput=page.getByRole('textbox',{name:'Fiyat (TL)',exact:true});
   // Reproduce the previous DOM-fill/5ms sequence without saving probe values.
-  for(let probe=0;probe<8;probe++){
+  for(let probe=0;probe<24;probe++){
    await page.getByRole('textbox',{name:'Açıklama',exact:true}).click();
    await priceInput.fill('');await priceInput.pressSequentially('321.50',{delay:5});
    const afterTyping=await priceInput.inputValue();await priceInput.press('Tab');
