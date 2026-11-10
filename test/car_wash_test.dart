@@ -263,7 +263,10 @@ void main() {
         home: WashBusinessPage(api: FixtureWashApi(), businessId: 'business')));
     await tester.pumpAndSettle();
     expect(find.text('Test Oto Yıkama'), findsOneWidget);
-    // Redesigned service card presents duration and price separately.
+    // The gallery and quick actions push the service card below the fold
+    // at 320dp with 160% text scaling. Scroll before checking its labels.
+    await tester.scrollUntilVisible(find.text('30 dakika'), 160,
+        scrollable: find.byType(Scrollable).first);
     expect(find.text('30 dakika'), findsOneWidget);
     expect(find.text('250.00 ₺'), findsOneWidget);
     expect(tester.takeException(), isNull);
