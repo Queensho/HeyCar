@@ -112,7 +112,7 @@ class ThemeOwnerApp extends StatelessWidget{
   );
 }
 class ThemeOwnerEntry extends StatefulWidget{const ThemeOwnerEntry({super.key});@override State<ThemeOwnerEntry> createState()=>_ThemeOwnerEntryState();}
-class _ThemeOwnerEntryState extends State<ThemeOwnerEntry> with WidgetsBindingObserver{int index=0;bool loginMode=false,registerMode=false,restoring=true,hasSession=false,callPermissionSetupDone=false,runtimeLoading=true;String driverId='';RuntimeAppConfig? runtimeConfig;bool _openingIncomingCall=false;String _displayedIncomingCallId='';int _callLookupRetries=0;Widget ownerHome()=>const OwnerCallWatcher(child:OwnerDashboardLive());@override void initState(){super.initState();WidgetsBinding.instance.addObserver(this);PushNotifications.onNavigationRequested=_routePush;_loadRuntimeConfig();_restoreSession();}@override void didChangeAppLifecycleState(AppLifecycleState state){if(state==AppLifecycleState.resumed){_loadRuntimeConfig(silent:true);if(!kIsWeb)PushNotifications.refreshTokenRegistration();Future.delayed(const Duration(milliseconds:250),_openPendingPush);}}
+class _ThemeOwnerEntryState extends State<ThemeOwnerEntry> with WidgetsBindingObserver{int index=0;bool loginMode=false,registerMode=false,restoring=true,hasSession=false,callPermissionSetupDone=false,runtimeLoading=true;String driverId='';RuntimeAppConfig? runtimeConfig;bool _qaWebLinkHandled=false;bool _openingIncomingCall=false;String _displayedIncomingCallId='';int _callLookupRetries=0;Widget ownerHome()=>const OwnerCallWatcher(child:OwnerDashboardLive());@override void initState(){super.initState();WidgetsBinding.instance.addObserver(this);PushNotifications.onNavigationRequested=_routePush;_loadRuntimeConfig();_restoreSession();}@override void didChangeAppLifecycleState(AppLifecycleState state){if(state==AppLifecycleState.resumed){_loadRuntimeConfig(silent:true);if(!kIsWeb)PushNotifications.refreshTokenRegistration();Future.delayed(const Duration(milliseconds:250),_openPendingPush);}}
 Future<void> _loadRuntimeConfig({bool silent=false})async{
   if(!silent&&mounted)setState(()=>runtimeLoading=true);
   try{
@@ -329,6 +329,10 @@ Future<void> _routePush(Map<String,dynamic> d)async{
 
 Future<void> _openPendingPush()async{
   if(!mounted||restoring)return;
+  if(kIsWeb&&isStagingBuild&&hasSession&&!_qaWebLinkHandled&&Uri.base.queryParameters['serviceCategory']=='car_wash'){
+    final id=Uri.base.queryParameters['bookingId'];
+    if(id!=null&&RegExp(r'^[0-9a-fA-F-]{36}$').hasMatch(id)){_qaWebLinkHandled=true;await _routePush({'type':'service_booking','serviceCategory':'car_wash','bookingId':id});return;}
+  }
   final prefs=await SharedPreferences.getInstance();
   final raw=prefs.getString('pending_push_navigation');
   if(raw==null||raw.isEmpty){
