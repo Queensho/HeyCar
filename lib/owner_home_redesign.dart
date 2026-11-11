@@ -1192,7 +1192,12 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
 
   Widget _quickAccessPanel(List<OwnerQuickPanelItem> items)=>Padding(
     padding:const EdgeInsets.symmetric(horizontal:16),
-    child:OwnerQuickAccessPanel(items:items),
+    child:items.length<=4?OwnerQuickAccessPanel(items:items):
+      SizedBox(height:116,child:PageView.builder(
+        itemCount:(items.length+3)~/4,
+        itemBuilder:(_,index)=>OwnerQuickAccessPanel(
+          items:items.skip(index*4).take(4).toList()),
+      )),
   );
 
   Color _managedQuickTint(AppUiQuickAction item){
