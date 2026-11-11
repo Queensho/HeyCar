@@ -5,7 +5,8 @@ import 'car_wash_api.dart';
 
 const _purple = Color(0xFF651FFF),
     _deep = Color(0xFF4912C8),
-    _lime = Color(0xFFB9FF45);
+    _lime = Color(0xFFB9FF45),
+    _bg = Color(0xFFF8F9FC);
 
 final washTheme = ThemeData(
     useMaterial3: true,
@@ -1089,97 +1090,260 @@ class _WashReservePageState extends State<WashReservePage> {
     }
   }
 
+  Widget _section(String title, IconData icon) => Padding(
+    padding: const EdgeInsets.only(top: 24, bottom: 12),
+    child: Row(children: [
+      Icon(icon, color: _deep, size: 25),
+      const SizedBox(width: 12),
+      Expanded(child: Text(title, style: const TextStyle(
+        fontSize: 19, fontWeight: FontWeight.w800, color: Color(0xFF10152D)))),
+    ]),
+  );
+
+  BoxDecoration _cardStyle() => BoxDecoration(
+    color: Colors.white,
+    borderRadius: BorderRadius.circular(18),
+    border: Border.all(color: const Color(0xFFEAE7F1)),
+    boxShadow: const [BoxShadow(color: Color(0x100D0833),
+      blurRadius: 9, offset: Offset(0, 3))],
+  );
+
+  Future<void> _pickDate() async {
+    if (busy) return;
+    final now = DateTime.now().toUtc().add(const Duration(hours: 3));
+    final value = await showDatePicker(
+      builder: washPickerTheme,
+      context: context,
+      initialDate: day.isBefore(DateTime(now.year, now.month, now.day))
+          ? now : day,
+      firstDate: DateTime(now.year, now.month, now.day),
+      lastDate: now.add(const Duration(days: 90)),
+    );
+    if (value != null && mounted) {
+      day = value;
+      _slots();
+    }
+  }
+
   @override
-  Widget build(BuildContext context) => WashScaffold(
-      title: widget.booking == null ? 'Randevu oluştur' : 'Yeniden planla',
-      child: ListView(padding: const EdgeInsets.all(18), children: [
-        Text('${widget.business['name']}',
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
-        Text(
-            '${widget.service['name']} · ${washPrice(widget.service['priceKurus'])}'),
-        const SizedBox(height: 20),
-        WashLoader(
-            future: vehicles,
-            retry: () => setState(
+  Widget build(BuildContext context) {
+    final today = DateTime.now().toUtc().add(const Duration(hours: 3));
+    final start = DateTime(today.year, today.month, today.day);
+    final dates = List.generate(5, (i) => start.add(Duration(days: i)));
+    const months = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz',
+      'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
+    const weekdays = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+    final photos = widget.business['photos'];
+    String? photo;
+    if (photos is List && photos.isNotEmpty) {
+      final first = photos.first;
+      if (first is String) photo = first;
+      if (first is Map) photo = '${first['url'] ?? first['photoUrl'] ?? ''}';
+    }
+    final address = '${widget.business['address'] ?? ''}';
+    final price = washPrice(widget.service['priceKurus']);
+    return WashScaffold(
+      title: widget.booking == null ? 'Randevu Oluştur' : 'Yeniden Planla',
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(18, 12, 18, 30),
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: _cardStyle(),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(13),
+                child: SizedBox(width: 88, height: 102,
+                  child: photo != null && Uri.tryParse(photo)?.hasAbsolutePath == true
+                    ? Image.network(photo, fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const Icon(
+                          Icons.local_car_wash, color: _purple, size: 40))
+                    : const ColoredBox(color: _bg,
+                        child: Icon(Icons.local_car_wash, color: _purple, size: 40))),
+              ),
+              const SizedBox(width: 12),
+              Expanded(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('${widget.business['name']}', maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 17,
+                      fontWeight: FontWeight.w800, color: Color(0xFF10152D))),
+                  if (address.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Row(children: [
+                      const Icon(Icons.location_on_outlined, size: 17, color: _deep),
+                      const SizedBox(width: 4),
+                      Expanded(child: Text(address, maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 12))),
+                    ]),
+                  ],
+                  const SizedBox(height: 9),
+                  Row(children: [
+                    Expanded(child: Text('${widget.service['name']}',
+                      maxLines: 2, overflow: TextOverflow.ellipsis)),
+                    const SizedBox(width: 6),
+                    Flexible(child: Text(price, textAlign: TextAlign.end,
+                      style: const TextStyle(fontWeight: FontWeight.w800,
+                        color: _deep, fontSize: 17))),
+                  ]),
+                ],
+              )),
+            ]),
+          ),
+          _section('Araç Seçimi', Icons.directions_car_outlined),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+            decoration: _cardStyle(),
+            child: WashLoader(
+              future: vehicles,
+              retry: () => setState(
                 () => vehicles = widget.api.call('/api/owner/vehicles')),
-            builder: (data) {
-              final rows = washRows(data['vehicles']);
-              if (rows.isEmpty)
-                return const Text(
-                    'Randevu için önce Araçlarım bölümünden araç ekleyin.');
-              return DropdownButtonFormField<String>(
-                  initialValue:
-                      rows.any((v) => v['id'] == vehicle) ? vehicle : null,
+              builder: (data) {
+                final rows = washRows(data['vehicles']);
+                if (rows.isEmpty) return const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: Text('Randevu için önce Araçlarım bölümünden araç ekleyin.'));
+                return DropdownButtonFormField<String>(
+                  initialValue: rows.any((v) => v['id'] == vehicle) ? vehicle : null,
                   isExpanded: true,
-                  decoration:
-                      const InputDecoration(labelText: 'Kayıtlı aracınız'),
-                  items: rows
-                      .map((v) => DropdownMenuItem(
-                          value: '${v['id']}',
-                          child: Text('${v['plate']} · ${v['make'] ?? ''}',
-                              overflow: TextOverflow.ellipsis)))
-                      .toList(),
-                  onChanged: busy || widget.booking != null
-                      ? null
-                      : (v) => setState(() {
-                            vehicle = v;
-                            _key = null;
-                          }));
-            }),
-        const SizedBox(height: 20),
-        OutlinedButton.icon(
-            onPressed: busy
-                ? null
-                : () async {
-                    final now =
-                        DateTime.now().toUtc().add(const Duration(hours: 3));
-                    final value = await showDatePicker(
-                        builder: washPickerTheme,
-                        context: context,
-                        initialDate: day,
-                        firstDate: DateTime(now.year, now.month, now.day),
-                        lastDate: now.add(const Duration(days: 90)));
-                    if (value != null && mounted) {
-                      day = value;
-                      _slots();
-                    }
-                  },
-            icon: const Icon(Icons.calendar_month),
-            label: Text(washDate(day))),
-        const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Text('Müsait saatler · Türkiye saati')),
-        WashLoader(
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.directions_car_outlined, color: _deep),
+                    hintText: 'Kayıtlı aracınız', border: InputBorder.none),
+                  items: rows.map((v) => DropdownMenuItem(
+                    value: '${v['id']}',
+                    child: Text('${v['plate']} · ${v['make'] ?? ''}',
+                      overflow: TextOverflow.ellipsis))).toList(),
+                  onChanged: busy || widget.booking != null ? null : (v) =>
+                    setState(() { vehicle = v; _key = null; }),
+                );
+              },
+            ),
+          ),
+          _section('Tarih Seçin', Icons.calendar_month_outlined),
+          SizedBox(height: 94, child: Row(children: [
+            for (final date in dates)
+              Expanded(child: Padding(
+                padding: const EdgeInsets.only(right: 5),
+                child: _dateTile(date.day.toString(),
+                  months[date.month - 1], weekdays[date.weekday - 1],
+                  washDate(day) == washDate(date),
+                  () { if (!busy) { day = date; _slots(); } }),
+              )),
+            Expanded(child: _dateTile('',
+              'Diğer', 'Tarih', !dates.any((d) => washDate(d) == washDate(day)),
+              _pickDate, icon: Icons.calendar_month_outlined)),
+          ])),
+          _section('Müsait Saatler (Türkiye saati)', Icons.access_time_outlined),
+          WashLoader(
             future: availability!,
             retry: _slots,
             builder: (data) {
               final slots = washRows(data['slots']);
-              return slots.isEmpty
-                  ? const Text(
-                      'Bu gün için müsait saat yok. Başka bir tarih seçin.')
-                  : Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: slots
-                          .map((s) => ChoiceChip(
-                              label: Text(
-                                  washTime(s['starts_at']).split(' ').last),
-                              selected: at == s['starts_at'],
-                              onSelected: busy
-                                  ? null
-                                  : (_) => setState(() {
-                                        at = '${s['starts_at']}';
-                                        _key = null;
-                                      })))
-                          .toList());
-            }),
-        const SizedBox(height: 20),
-        if (error != null)
-          Text(error!, style: const TextStyle(color: Colors.red)),
-        FilledButton(
+              if (slots.isEmpty) return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Text('Bu gün için müsait saat yok. Başka bir tarih seçin.'));
+              return Wrap(spacing: 9, runSpacing: 9,
+                children: slots.map((slot) {
+                  final value = '${slot['starts_at']}';
+                  final selected = at == value;
+                  return ChoiceChip(
+                    label: Text(washTime(value).split(' ').last),
+                    selected: selected,
+                    showCheckmark: false,
+                    selectedColor: _lime,
+                    backgroundColor: Colors.white,
+                    side: BorderSide(color: selected
+                      ? _lime : const Color(0xFFE5E2EB)),
+                    labelStyle: TextStyle(color: const Color(0xFF10152D),
+                      fontWeight: selected ? FontWeight.w800 : FontWeight.w500),
+                    onSelected: busy ? null : (_) => setState(() {
+                      at = value; _key = null;
+                    }),
+                  );
+                }).toList(),
+              );
+            },
+          ),
+          _section('Randevu Özeti', Icons.format_list_bulleted),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: _cardStyle(),
+            child: Column(children: [
+              _summaryRow('İşletme', '${widget.business['name']}'),
+              _summaryRow('Hizmet', '${widget.service['name']}'),
+              _summaryRow('Tarih',
+                '${day.day} ${months[day.month - 1]} ${day.year}, ${weekdays[day.weekday - 1]}'),
+              _summaryRow('Saat', at == null ? 'Henüz seçilmedi'
+                : washTime(at).split(' ').last),
+              _summaryRow('Tutar', price, last: true, prominent: true),
+            ]),
+          ),
+          if (error != null) Padding(
+            padding: const EdgeInsets.only(top: 14),
+            child: Text(error!, style: const TextStyle(color: Colors.red))),
+          const SizedBox(height: 24),
+          SizedBox(height: 54, child: FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: _lime,
+              foregroundColor: const Color(0xFF10152D),
+              disabledBackgroundColor: const Color(0xFFE3E3E3),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(28))),
             onPressed: busy || vehicle == null || at == null ? null : _confirm,
-            child: Text(busy ? 'Kaydediliyor…' : 'Özeti görüntüle ve onayla')),
-      ]));
+            icon: const Icon(Icons.calendar_month_outlined),
+            label: Text(busy ? 'Kaydediliyor…' : 'Özeti Görüntüle ve Onayla',
+              style: const TextStyle(fontWeight: FontWeight.w800)),
+          )),
+        ],
+      ),
+    );
+  }
+
+  Widget _dateTile(String number, String month, String weekday,
+      bool selected, VoidCallback tap, {IconData? icon}) =>
+    Material(color: selected ? _lime : Colors.white,
+      borderRadius: BorderRadius.circular(13),
+      child: InkWell(
+        onTap: tap,
+        borderRadius: BorderRadius.circular(13),
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: selected
+              ? _lime : const Color(0xFFEAE7F1)),
+            borderRadius: BorderRadius.circular(13)),
+          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            if (icon != null) Icon(icon, color: _deep, size: 23)
+            else Text(number, style: const TextStyle(
+              fontSize: 20, fontWeight: FontWeight.w800)),
+            Text(month, style: const TextStyle(fontSize: 12)),
+            Text(weekday, style: const TextStyle(fontSize: 12)),
+          ]),
+        ),
+      ),
+    );
+
+  Widget _summaryRow(String label, String value,
+      {bool last = false, bool prominent = false}) =>
+    Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Column(children: [
+        Row(children: [
+          Text(label),
+          const SizedBox(width: 12),
+          Expanded(child: Text(value, textAlign: TextAlign.end,
+            maxLines: 2, overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: prominent ? _deep : const Color(0xFF10152D),
+              fontWeight: prominent ? FontWeight.w800 : FontWeight.w600,
+              fontSize: prominent ? 18 : 14))),
+        ]),
+        if (!last) const Padding(
+          padding: EdgeInsets.only(top: 12),
+          child: Divider(height: 1, color: Color(0xFFEAE7F1))),
+      ]),
+    );
+
 }
 
 class WashBookingsPage extends StatefulWidget {
