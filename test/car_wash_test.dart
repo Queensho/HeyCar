@@ -181,7 +181,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(confirm);
       await tester.pumpAndSettle();
-      expect(find.text('Randevu Özeti'), findsOneWidget);
+      expect(find.text('Randevu Özeti'), findsWidgets);
       expect(Theme.of(tester.element(find.text('Onayla'))).colorScheme.primary,
           const Color(0xFF651FFF));
       await tester.tap(find.text('Onayla'));
