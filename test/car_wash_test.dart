@@ -169,7 +169,14 @@ void main() {
     await tester.tap(find.text('09:00'));
     await tester.pumpAndSettle();
     for (var i = 0; i < 2; i++) {
-      await tester.tap(find.text('Özeti görüntüle ve onayla'));
+      final confirm = find.text('Özeti görüntüle ve onayla');
+      await tester.scrollUntilVisible(
+        confirm,
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(confirm);
       await tester.pumpAndSettle();
       expect(find.text('Randevu özeti'), findsOneWidget);
       expect(Theme.of(tester.element(find.text('Onayla'))).colorScheme.primary,
