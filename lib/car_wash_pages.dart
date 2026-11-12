@@ -1038,18 +1038,95 @@ class _WashReservePageState extends State<WashReservePage> {
     if (vehicle == null || at == null || busy) return;
     final yes = await washDialog<bool>(
         context: context,
-        builder: (c) => AlertDialog(
-                title: const Text('Randevu özeti'),
-                content: Text(
-                    '${widget.business['name']}\n${widget.service['name']}\n${washTime(at)} (Türkiye saati)\n${washPrice(widget.service['priceKurus'])}\nÖdeme işletmede yapılır. Randevu işletmenin onayını bekler.'),
-                actions: [
-                  TextButton(
+        builder: (c) {
+          final selected = DateTime.tryParse(at!)?.toUtc().add(
+              const Duration(hours: 3));
+          const months = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran',
+            'Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+          const days = ['Pazartesi','Salı','Çarşamba','Perşembe',
+            'Cuma','Cumartesi','Pazar'];
+          final date = selected == null ? washTime(at) :
+            '${selected.day} ${months[selected.month - 1]} ${selected.year}, ${days[selected.weekday - 1]}';
+          Widget line(IconData icon, String value) => Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Icon(icon, color: _deep, size: 23),
+              const SizedBox(width: 14),
+              Expanded(child: Text(value, style: const TextStyle(
+                color: Color(0xFF24113F), fontSize: 16,
+                fontWeight: FontWeight.w600))),
+            ]),
+          );
+          return Dialog(
+            insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            backgroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 430),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  Container(
+                    width: 76, height: 76,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFEFFFAB), shape: BoxShape.circle),
+                    child: const Icon(Icons.event_available_outlined,
+                      size: 42, color: _deep)),
+                  const SizedBox(height: 12),
+                  const Text('Randevu Özeti', textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800,
+                      color: Color(0xFF24113F))),
+                  const SizedBox(height: 14),
+                  line(Icons.storefront_outlined, '${widget.business['name']}'),
+                  const Divider(height: 1),
+                  line(Icons.directions_car_outlined, '${widget.service['name']}'),
+                  const Divider(height: 1),
+                  line(Icons.calendar_month_outlined, date),
+                  const Divider(height: 1),
+                  line(Icons.access_time_outlined,
+                    '${washTime(at).split(' ').last} (Türkiye saati)'),
+                  const Divider(height: 1),
+                  line(Icons.payments_outlined,
+                    washPrice(widget.service['priceKurus'])),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(color: const Color(0xFFEFFFAB),
+                      borderRadius: BorderRadius.circular(16)),
+                    child: const Row(crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.info_outline, color: Color(0xFF10152D)),
+                        SizedBox(width: 10),
+                        Expanded(child: Text(
+                          'Ödeme işletmede yapılır. Randevu işletmenin onayını bekler.',
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600))),
+                      ])),
+                  const SizedBox(height: 20),
+                  Row(children: [
+                    Expanded(child: OutlinedButton(
                       onPressed: () => Navigator.pop(c, false),
-                      child: const Text('Vazgeç')),
-                  FilledButton(
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(0, 50),
+                        foregroundColor: _deep,
+                        side: const BorderSide(color: _deep, width: 1.5),
+                        shape: const StadiumBorder()),
+                      child: const Text('Vazgeç'))),
+                    const SizedBox(width: 10),
+                    Expanded(child: FilledButton.icon(
                       onPressed: () => Navigator.pop(c, true),
-                      child: const Text('Onayla'))
-                ]));
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(0, 50),
+                        backgroundColor: _lime,
+                        foregroundColor: const Color(0xFF10152D),
+                        shape: const StadiumBorder()),
+                      icon: const Icon(Icons.check),
+                      label: const Text('Onayla'))),
+                  ]),
+                ]),
+              ),
+            ),
+          );
+        });
     if (yes != true || !mounted) return;
     setState(() {
       busy = true;
