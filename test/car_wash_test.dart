@@ -166,7 +166,10 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('34 TEST 01 · Test').last);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('09:00'));
+    final slot = find.text('09:00');
+    await tester.ensureVisible(slot);
+    await tester.pumpAndSettle();
+    await tester.tap(slot);
     await tester.pumpAndSettle();
     for (var i = 0; i < 2; i++) {
       final confirm = find.text('Özeti görüntüle ve onayla');
