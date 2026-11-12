@@ -1529,6 +1529,33 @@ class _WashBookingDetailPageState extends State<WashBookingDetailPage> {
   bool busy = false;
   String? error;
   final cancelKey = washKey();
+  String _bookingDate(dynamic value) {
+    final dt = DateTime.tryParse('$value')?.toUtc().add(
+      const Duration(hours: 3));
+    if (dt == null) return washTime(value);
+    const months = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran',
+      'Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+    const days = ['Pazartesi','Salı','Çarşamba','Perşembe',
+      'Cuma','Cumartesi','Pazar'];
+    return '${dt.day} ${months[dt.month - 1]} ${dt.year}, '
+      '${days[dt.weekday - 1]}';
+  }
+
+  Widget _bookingInfoRow(IconData icon, String value, {String? trailing}) =>
+    Padding(
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      child: Row(children: [
+        Icon(icon, color: _deep, size: 26),
+        const SizedBox(width: 14),
+        Expanded(child: Text(value, style: const TextStyle(
+          fontWeight: FontWeight.w600, fontSize: 16))),
+        if (trailing != null) Flexible(child: Text(trailing,
+          textAlign: TextAlign.end,
+          style: const TextStyle(color: _deep, fontSize: 17,
+            fontWeight: FontWeight.w800))),
+      ]),
+    );
+
   @override
   void initState() {
     super.initState();
@@ -1549,38 +1576,102 @@ class _WashBookingDetailPageState extends State<WashBookingDetailPage> {
             final editable = ['pending', 'confirmed'].contains(b['status']) &&
                 DateTime.parse('${b['starts_at']}').isAfter(DateTime.now());
             return ListView(padding: const EdgeInsets.all(18), children: [
-              washCard(Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('${b['business_name']}',
-                        style: const TextStyle(
-                            fontSize: 24, fontWeight: FontWeight.w800)),
-                    Text('${b['address'] ?? ''}'),
-                    const SizedBox(height: 16),
-                    Text(
-                        '${b['service_name']} · ${washPrice(b['price_kurus'])}'),
-                    Text(
-                        '${b['vehicle_plate']}\n${washTime(b['starts_at'])} (Türkiye saati)'),
-                    const SizedBox(height: 12),
-                    Semantics(
-                      label:
-                          'Randevu durumu: ${washStatuses[b['status']] ?? b['status']}',
-                      child: ExcludeSemantics(
-                          child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                            color: _lime,
-                            borderRadius: BorderRadius.circular(12)),
-                        child:
-                            Text(washStatuses[b['status']] ?? '${b['status']}'),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(22),
+                child: SizedBox(
+                  height: 176,
+                  width: double.infinity,
+                  child: Stack(fit: StackFit.expand, children: [
+                    Builder(builder: (_) {
+                      final url = '${b['business_image_url'] ?? b['image_url'] ?? b['photo_url'] ?? ''}';
+                      return url.startsWith('https://') || url.startsWith('http://')
+                          ? Image.network(url, fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const _WashImagePlaceholder())
+                          : const _WashImagePlaceholder();
+                    }),
+                    Positioned(right: 12, bottom: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(color: _deep,
+                          borderRadius: BorderRadius.circular(18)),
+                        child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                          Icon(Icons.local_car_wash_outlined, color: Colors.white),
+                          SizedBox(width: 8),
+                          Text('Oto Yıkama', style: TextStyle(color: Colors.white,
+                            fontWeight: FontWeight.w800)),
+                        ]),
                       )),
-                    )
-                  ])),
+                  ]),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text('${b['business_name']}', style: const TextStyle(
+                fontSize: 26, fontWeight: FontWeight.w800,
+                color: Color(0xFF10152D))),
+              const SizedBox(height: 8),
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Icon(Icons.location_on_outlined, color: _deep, size: 22),
+                const SizedBox(width: 6),
+                Expanded(child: Text('${b['address'] ?? ''}',
+                  style: const TextStyle(color: _deep, fontSize: 15))),
+              ]),
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8F6FC),
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: const Color(0xFFECE7F4))),
+                child: Column(children: [
+                  _bookingInfoRow(Icons.local_car_wash_outlined,
+                    '${b['service_name']}', trailing: washPrice(b['price_kurus'])),
+                  const Divider(height: 1),
+                  _bookingInfoRow(Icons.directions_car_outlined,
+                    '${b['vehicle_plate']}'),
+                  const Divider(height: 1),
+                  _bookingInfoRow(Icons.calendar_month_outlined,
+                    _bookingDate(b['starts_at'])),
+                  const Divider(height: 1),
+                  _bookingInfoRow(Icons.access_time_outlined,
+                    '${washTime(b['starts_at']).split(' ').last} (Türkiye saati)'),
+                ]),
+              ),
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8F6FC),
+                  borderRadius: BorderRadius.circular(20)),
+                child: Row(children: [
+                  Semantics(
+                    label: 'Randevu durumu: ${washStatuses[b['status']] ?? b['status']}',
+                    child: ExcludeSemantics(child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(color: _lime,
+                        borderRadius: BorderRadius.circular(30)),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        const Icon(Icons.schedule, color: Color(0xFF10152D)),
+                        const SizedBox(width: 8),
+                        Text(washStatuses[b['status']] ?? '${b['status']}',
+                          style: const TextStyle(fontWeight: FontWeight.w800,
+                            color: Color(0xFF10152D))),
+                      ]),
+                    )),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text(
+                    b['status'] == 'pending' ? 'İşletme onayını bekliyor.'
+                      : b['status'] == 'confirmed' ? 'İşletme onayladı.'
+                      : b['status'] == 'cancelled' ? 'Randevu iptal edildi.'
+                      : 'Randevu durumu güncellendi.',
+                    style: const TextStyle(fontWeight: FontWeight.w600))),
+                ]),
+              ),
               if (error != null)
                 Text(error!, style: const TextStyle(color: Colors.red)),
               if (editable) ...[
-                FilledButton(
+                FilledButton.icon(
                     onPressed: busy
                         ? null
                         : () async {
@@ -1600,8 +1691,12 @@ class _WashBookingDetailPageState extends State<WashBookingDetailPage> {
                                     booking: b));
                             if (mounted) _load();
                           },
-                    child: const Text('Yeniden planla')),
-                OutlinedButton(
+                    icon: const Icon(Icons.edit_calendar_outlined),
+                    style: FilledButton.styleFrom(backgroundColor: _lime,
+                      foregroundColor: const Color(0xFF10152D),
+                      minimumSize: const Size.fromHeight(52)),
+                    label: const Text('Yeniden planla')),
+                OutlinedButton.icon(
                     onPressed: busy
                         ? null
                         : () async {
@@ -1635,16 +1730,45 @@ class _WashBookingDetailPageState extends State<WashBookingDetailPage> {
                               if (mounted) setState(() => busy = false);
                             }
                           },
-                    child: const Text('Randevuyu iptal et'))
+                    icon: const Icon(Icons.close),
+                    style: OutlinedButton.styleFrom(foregroundColor: _deep,
+                      side: const BorderSide(color: _deep),
+                      minimumSize: const Size.fromHeight(52)),
+                    label: const Text('Randevuyu iptal et'))
               ],
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               const Text('Durum geçmişi',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800,
+                  color: Color(0xFF10152D))),
+              const SizedBox(height: 14),
               for (final h in washRows(data['history']))
-                ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(washEvents[h['event']] ?? '${h['event']}'),
-                    subtitle: Text(washTime(h['created_at']))),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Container(
+                      width: 34, height: 34,
+                      decoration: const BoxDecoration(
+                        color: _deep, shape: BoxShape.circle),
+                      child: const Icon(Icons.check, color: Colors.white, size: 20)),
+                    const SizedBox(width: 12),
+                    Expanded(child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8F6FC),
+                        borderRadius: BorderRadius.circular(16),
+                        border: const Border(right: BorderSide(
+                          color: _lime, width: 4))),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(washEvents[h['event']] ?? '${h['event']}',
+                            style: const TextStyle(fontWeight: FontWeight.w800,
+                              fontSize: 16)),
+                          const SizedBox(height: 4),
+                          Text(washTime(h['created_at']),
+                            style: const TextStyle(color: Color(0xFF666070))),
+                        ]))),
+                  ]),
+                ),
             ]);
           }));
 }
