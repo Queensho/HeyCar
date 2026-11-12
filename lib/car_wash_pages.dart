@@ -1222,7 +1222,7 @@ class _WashReservePageState extends State<WashReservePage> {
           ),
           _section('Tarih Seçin', Icons.calendar_month_outlined),
           SizedBox(
-            height: 116,
+            height: 142,
             child: ListView(
               scrollDirection: Axis.horizontal,
               children: [
@@ -1332,13 +1332,20 @@ class _WashReservePageState extends State<WashReservePage> {
             border: Border.all(color: selected
               ? _lime : const Color(0xFFEAE7F1)),
             borderRadius: BorderRadius.circular(13)),
-          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-            if (icon != null) Icon(icon, color: _deep, size: 23)
-            else Text(number, style: const TextStyle(
-              fontSize: 20, fontWeight: FontWeight.w800)),
-            Text(month, style: const TextStyle(fontSize: 12)),
-            Text(weekday, style: const TextStyle(fontSize: 12)),
-          ]),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Column(mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center, children: [
+                if (icon != null) Icon(icon, color: _deep, size: 23)
+                else Text(number, style: const TextStyle(
+                  fontSize: 20, fontWeight: FontWeight.w800)),
+                Text(month, style: const TextStyle(fontSize: 12)),
+                Text(weekday, style: const TextStyle(fontSize: 12)),
+              ]),
+            ),
+          ),
         ),
       ),
     );
