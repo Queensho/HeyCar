@@ -1312,7 +1312,7 @@ class _WashReservePageState extends State<WashReservePage> {
                 borderRadius: BorderRadius.circular(28))),
             onPressed: busy || vehicle == null || at == null ? null : _confirm,
             icon: const Icon(Icons.calendar_month_outlined),
-            label: Text(busy ? 'Kaydediliyor…' : 'Özeti Görüntüle ve Onayla',
+            label: Text(busy ? 'Kaydediliyor…' : 'Özeti görüntüle ve onayla',
               style: const TextStyle(fontWeight: FontWeight.w800)),
           )),
         ],
