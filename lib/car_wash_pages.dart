@@ -1221,19 +1221,39 @@ class _WashReservePageState extends State<WashReservePage> {
             ),
           ),
           _section('Tarih Seçin', Icons.calendar_month_outlined),
-          SizedBox(height: 94, child: Row(children: [
-            for (final date in dates)
-              Expanded(child: Padding(
-                padding: const EdgeInsets.only(right: 5),
-                child: _dateTile(date.day.toString(),
-                  months[date.month - 1], weekdays[date.weekday - 1],
-                  washDate(day) == washDate(date),
-                  () { if (!busy) { day = date; _slots(); } }),
-              )),
-            Expanded(child: _dateTile('',
-              'Diğer', 'Tarih', !dates.any((d) => washDate(d) == washDate(day)),
-              _pickDate, icon: Icons.calendar_month_outlined)),
-          ])),
+          SizedBox(
+            height: 116,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                for (final date in dates)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: SizedBox(
+                      width: 68,
+                      child: _dateTile(
+                        date.day.toString(),
+                        months[date.month - 1],
+                        weekdays[date.weekday - 1],
+                        washDate(day) == washDate(date),
+                        () { if (!busy) { day = date; _slots(); } },
+                      ),
+                    ),
+                  ),
+                SizedBox(
+                  width: 74,
+                  child: _dateTile(
+                    '',
+                    'Diğer',
+                    'Tarih',
+                    !dates.any((d) => washDate(d) == washDate(day)),
+                    _pickDate,
+                    icon: Icons.calendar_month_outlined,
+                  ),
+                ),
+              ],
+            ),
+          ),
           _section('Müsait Saatler (Türkiye saati)', Icons.access_time_outlined),
           WashLoader(
             future: availability!,
