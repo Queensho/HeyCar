@@ -193,6 +193,10 @@ void main() {
     expect(creates[0]['key'], creates[1]['key']);
     expect((creates[0]['body'] as Map)['vehicleId'], 'vehicle');
     expect(find.text('Randevu detayları'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Bekliyor'), 180,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('Bekliyor'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -201,6 +205,11 @@ void main() {
     final api = FixtureWashApi();
     await tester.pumpWidget(
         MaterialApp(home: WashBookingDetailPage(api: api, id: 'booking')));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Randevuyu iptal et'), 180,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Randevuyu iptal et'));
     await tester.pumpAndSettle();
