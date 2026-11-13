@@ -38,8 +38,9 @@ class _BusinessServiceDetailsState extends State<BusinessServiceDetails> {
       title: 'Hizmet bağlantıları ve fotoğrafları',
       child: WashLoader(
           future: future,
-          retry: () => setState(() =>
-              future = widget.api.call('/api/business/car-wash/management')),
+          retry: () => setState(() {
+                future = widget.api.call('/api/business/car-wash/management');
+              }),
           builder: (data) {
             if (!loaded) {
               category = '${widget.item['category'] ?? 'car_wash'}';
@@ -192,8 +193,9 @@ class _BusinessStaffHoursState extends State<BusinessStaffHours> {
       title: 'Personel çalışma saatleri',
       child: WashLoader(
           future: future,
-          retry: () => setState(() =>
-              future = widget.api.call('/api/business/car-wash/management')),
+          retry: () => setState(() {
+                future = widget.api.call('/api/business/car-wash/management');
+              }),
           builder: (data) {
             if (!initialized) {
               custom = widget.staff['custom_hours'] == true;

@@ -208,6 +208,19 @@ test('car wash customer and business journey through the real server and Postgre
   assert.equal(new Date(moved.ends_at)-new Date(moved.starts_at),new Date(b.ends_at)-new Date(b.starts_at));
   assert.equal((await pool.query("SELECT 1 FROM car_wash_history WHERE booking_id=$1 AND event='rescheduled'",[b.id])).rowCount,1);
  });
+ await t.test('customer history only comes from own bookings, excludes private contact and validates paging/search',async()=>{
+  const base='/api/business/car-wash/customers';
+  const all=await request(base,shop.token);assert.equal(all.status,200);
+  const mine=all.body.customers.find(c=>c.id===owner.id);assert.ok(mine);assert.ok(mine.booking_count>0);assert.ok(mine.completed_count>0);assert.equal(mine.phone,undefined);
+  assert.deepEqual((await request(base,outsider.token)).body.customers,[]);
+  assert.equal((await request(base+'/'+owner.id,outsider.token)).status,404);
+  const detail=await request(base+'/'+owner.id,shop.token);assert.equal(detail.status,200);assert.ok(detail.body.bookings.length);assert.equal(detail.body.customer.phone,undefined);
+  const expected=(await pool.query("SELECT count(*)::int n FROM car_wash_bookings WHERE business_id=$1 AND owner_id=$2 AND status='completed'",[shop.id,owner.id])).rows[0].n;assert.equal(detail.body.customer.completed_count,expected);
+  assert.equal((await request(base+'?q='+encodeURIComponent('TEST owner'),shop.token)).body.customers.length,1);
+  assert.equal((await request(base+'?q='+encodeURIComponent("%_' OR 1=1"),shop.token)).body.customers.length,0);
+  assert.equal((await request(base+'?offset=-1',shop.token)).status,400);assert.equal((await request(base+'?completed=anything',shop.token)).status,400);
+  assert.equal((await request(base+'/'+other.id,shop.token)).status,404);
+ });
  await t.test('reminders and event inbox deduplicate; existing push transport is called at most once',async()=>{
   const fresh=(await create(payload(7,'11'))).body.booking;
   await pool.query("UPDATE car_wash_bookings SET status='confirmed',starts_at=now()+interval '45 minutes',ends_at=now()+interval '75 minutes' WHERE id=$1",[fresh.id]);
