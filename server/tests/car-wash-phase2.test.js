@@ -62,6 +62,36 @@ test('car wash customer and business journey through the real server and Postgre
   return;
  }
  let booking;
+ await t.test('V2 metadata is tenant scoped; categories, staffing hours and allocation share rules',async()=>{
+  const base='/api/business/car-wash';
+  const staff=(await request(base+'/staff',shop.token,{method:'POST',body:{name:'Programlı personel',active:true}})).body.item;
+  const resources=(await request(base+'/settings',shop.token)).body.resources;
+  const leaf=(await request(base+'/services',shop.token,{method:'POST',body:{name:'V2 özel hizmet',description:'Test',priceKurus:1000,durationMinutes:30,active:true}})).body.item;
+  const url=base+'/services/'+leaf.id+'/details';
+  const body={category:'car_wash',photos:['https://example.invalid/service.webp'],resourceIds:[resources[0].id],componentIds:[service.id]};
+  assert.equal((await request(url,outsider.token,{method:'PUT',body})).status,404);
+  assert.equal((await request(url,shop.token,{method:'PUT',body:{...body,category:'ppf'}})).status,403);
+  assert.equal((await request(url,shop.token,{method:'PUT',body:{...body,componentIds:[crypto.randomUUID()]}})).status,404);
+  assert.equal((await request(url,shop.token,{method:'PUT',body:{...body,componentIds:[leaf.id]}})).status,400);
+  assert.equal((await request(url,shop.token,{method:'PUT',body})).status,200);
+  assert.equal((await request(url,shop.token,{method:'PUT',body})).status,200);
+  assert.equal((await request(base+'/management',outsider.token)).body.links.length,0);
+  assert.equal((await request(base+'/management',shop.token)).body.links.filter(l=>l.service_id===leaf.id).length,1);
+  assert.equal((await request(base+'/resources',shop.token,{method:'POST',body:{id:resources[0].id,name:resources[0].name,active:true,staffId:staff.id}})).status,200);
+  const program={customHours:true,hours:Array.from({length:7},(_,weekday)=>({weekday,opens:540,closes:720}))};
+  assert.equal((await request(base+'/staff/'+staff.id+'/hours',outsider.token,{method:'PUT',body:program})).status,404);
+  assert.equal((await request(base+'/staff/'+staff.id+'/hours',shop.token,{method:'PUT',body:program})).status,200);
+  const slots=(await request(`/api/car-wash/businesses/${shop.id}/availability?serviceId=${leaf.id}&date=${day}`,owner.token)).body.slots;
+  assert.ok(slots.length);assert.ok(slots.every(s=>s.capacity===1&&new Date(s.ends_at).getUTCHours()<=9));
+  assert.equal((await create({...payload(7,'11'),serviceId:leaf.id})).status,409);
+  const publicLeaf=(await request('/api/car-wash/businesses/'+shop.id,owner.token)).body.business.services.find(s=>s.id===leaf.id);
+  assert.deepEqual(publicLeaf.photos,body.photos);assert.equal(publicLeaf.category,'car_wash');
+  const created=(await create({...payload(7,'06'),serviceId:leaf.id})).body.booking;
+  assert.equal((await request(url,shop.token,{method:'PUT',body:{...body,resourceIds:[resources[1].id]}})).status,409);
+  assert.equal((await request(base+'/staff/'+staff.id+'/hours',shop.token,{method:'PUT',body:{customHours:true,hours:[]}})).status,409);
+  await request(base+'/bookings/'+created.id+'/change',shop.token,{method:'POST',key:crypto.randomUUID(),body:{status:'cancelled'}});
+  await request(base+'/resources',shop.token,{method:'POST',body:{id:resources[0].id,name:resources[0].name,active:true,staffId:null}});
+ });
  await t.test('service prices remain exact integer kurus through API and PostgreSQL',async()=>{
   for(const priceKurus of [32150,2150,1,35000]){
    const r=await request('/api/business/car-wash/services',shop.token,{method:'POST',body:{name:'QA price '+priceKurus,description:'Isolated price regression',priceKurus,durationMinutes:45,active:true}});

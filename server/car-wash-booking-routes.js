@@ -25,6 +25,7 @@ module.exports=function registerCarWashBookingRoutes(app,pool){
    return res.status(e.status||(collision?409:503)).json({error:code});
   }
  });}
+ require('./business-v2-management')({route,pool,svc});
  route('get','/api/car-wash/businesses/:businessId/availability','owner',async(req,a)=>{
   let duration=null;
   if(req.query.bookingId){
@@ -116,7 +117,11 @@ module.exports=function registerCarWashBookingRoutes(app,pool){
    if(entity==='resources'&&b.staffId)svc.uuid(b.staffId);
    return svc.transaction(pool,async db=>{
     await db.query('INSERT INTO car_wash_locations(business_id) VALUES($1) ON CONFLICT DO NOTHING',[a.id]);
-    await svc.lockLocation(db,a.id);
+    const location=await svc.lockLocation(db,a.id);
+    if(entity==='services'){
+     const existing=b.id?(await db.query('SELECT category FROM car_wash_services WHERE id=$1 AND business_id=$2',[b.id,a.id])).rows[0]:{category:'car_wash'};
+     if(existing&&!location.service_categories.includes(existing.category))svc.fail('CATEGORY_NOT_AUTHORIZED',403);
+    }
     const table=`car_wash_${entity}`;
     if(b.id&&!(await db.query(`SELECT 1 FROM ${table} WHERE id=$1 AND business_id=$2`,[b.id,a.id])).rows.length)svc.fail('NOT_FOUND',404);
     let result;

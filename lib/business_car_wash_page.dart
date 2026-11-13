@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'car_wash_api.dart';
 import 'car_wash_pages.dart';
 import 'business_v2_shell.dart';
+import 'business_v2_management.dart';
 
 class BusinessCarWashPage extends StatefulWidget {
   const BusinessCarWashPage(
@@ -869,6 +870,25 @@ class _BusinessCarWashPageState extends State<BusinessCarWashPage> {
                                   'car-wash-${group.key}-${item['id']}'),
                               contentPadding: EdgeInsets.zero,
                               title: Text('${item['name']}'),
+                              onTap: group.key == 'resources'
+                                  ? null
+                                  : () async {
+                                      await Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                              builder: (_) => group.key ==
+                                                      'services'
+                                                  ? BusinessServiceDetails(
+                                                      api: widget.api,
+                                                      item: item,
+                                                      settings: data,
+                                                      upload:
+                                                          widget.uploadPhoto)
+                                                  : BusinessStaffHours(
+                                                      api: widget.api,
+                                                      staff: item)));
+                                      if (mounted) _load();
+                                    },
                               subtitle: Text(
                                   '${item['active'] == true ? 'Aktif' : 'Pasif'}${group.key == 'services' ? ' · ${washPrice(item['price_kurus'])} · ${item['duration_minutes']} dk' : ''}'),
                               trailing: IconButton(
