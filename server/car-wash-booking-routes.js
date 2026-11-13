@@ -28,6 +28,7 @@ module.exports=function registerCarWashBookingRoutes(app,pool){
  require('./business-v2-management')({route,pool,svc});
  require('./business-v2-customers')({route,pool,svc});
  require('./business-v2-reports')({route,pool,svc});
+ require('./business-v2-profile')({route,pool,svc});
  route('get','/api/car-wash/businesses/:businessId/availability','owner',async(req,a)=>{
   let duration=null;
   if(req.query.bookingId){
@@ -39,6 +40,7 @@ module.exports=function registerCarWashBookingRoutes(app,pool){
  route('post','/api/car-wash/bookings','owner',(req,a)=>svc.createBooking(pool,a.id,req.headers['idempotency-key'],req.body||{}));
  const list=async(a,req)=>{
   const scope=a.kind==='owner'?'bk.owner_id':'bk.business_id';
+  const status=req.query.status||null;if(status&&!['pending','confirmed','in_progress','completed','cancelled','rejected'].includes(status))svc.fail('INVALID_STATUS');
   const from=req.query.from?svc.date(req.query.from):null,to=req.query.to?svc.date(req.query.to):null;
   if((from&&!to)||(!from&&to)||(from&&to&&(to<from||(Date.parse(to)-Date.parse(from))/86400000>366)))svc.fail('INVALID_DATE_RANGE');
   const limit=req.query.limit===undefined?100:Number(req.query.limit),offset=req.query.offset===undefined?0:Number(req.query.offset);
@@ -46,7 +48,8 @@ module.exports=function registerCarWashBookingRoutes(app,pool){
   const r=await pool.query(`SELECT bk.*,b.name AS business_name FROM car_wash_bookings bk JOIN businesses b ON b.id=bk.business_id WHERE ${scope}=$1
    AND ($2::date IS NULL OR bk.starts_at>=($2::date::timestamp AT TIME ZONE 'Europe/Istanbul'))
    AND ($3::date IS NULL OR bk.starts_at<(($3::date+1)::timestamp AT TIME ZONE 'Europe/Istanbul'))
-   ORDER BY bk.starts_at DESC,bk.id LIMIT $4 OFFSET $5`,[a.id,from,to,limit,offset]);
+   AND ($6::text IS NULL OR bk.status=$6)
+   ORDER BY bk.starts_at DESC,bk.id LIMIT $4 OFFSET $5`,[a.id,from,to,limit,offset,status]);
   return {ok:true,bookings:r.rows,limit,offset};
  };
  route('get','/api/car-wash/bookings','owner',(req,a)=>list(a,req));

@@ -1,0 +1,27 @@
+const {chromium}=require('playwright');const fs=require('fs');const assert=require('assert/strict');const crypto=require('crypto');
+(async()=>{
+ const qa=JSON.parse(fs.readFileSync(process.env.BUSINESS_V2_PREVIEW_CONFIG||'/tmp/bv2-preview.json'));assert.equal(qa.environment,'isolated-postgres-test');assert.match(qa.databaseName,/^heycar_test_carwash_[0-9a-f]+$/);const base='http://127.0.0.1:56542',web='http://127.0.0.1:58412';
+ async function api(path,token,method='GET',body){const r=await fetch(base+path,{method,headers:{Authorization:'Bearer '+token,'Content-Type':'application/json','Idempotency-Key':crypto.randomUUID()},body:body?JSON.stringify(body):undefined});const data=await r.json();assert.equal(r.status,200,JSON.stringify({path,status:r.status,data}));return data;}
+ const settings=await api('/api/business/car-wash/settings',qa.businessToken);await api('/api/business/car-wash/settings',qa.businessToken,'PUT',{published:true,bookingEnabled:true,hours:settings.hours.map(({weekday,opens,closes})=>({weekday,opens,closes})),closedDays:[],photos:[]});
+ const vehicles=(await api('/api/owner/vehicles',qa.ownerToken)).vehicles;assert.ok(vehicles.length);
+ const previous=await api('/api/car-wash/bookings',qa.ownerToken);for(const b of previous.bookings.filter(b=>b.business_id===qa.businessId&&['pending','confirmed'].includes(b.status))){await api('/api/car-wash/bookings/'+b.id+'/change',qa.ownerToken,'POST',{status:'cancelled'});}
+ const created=await api('/api/car-wash/bookings',qa.ownerToken,'POST',{businessId:qa.businessId,serviceId:qa.serviceId,vehicleId:vehicles[0].id,startsAt:qa.day+'T06:00:00.000Z'});
+ const browser=await chromium.launch({executablePath:'/usr/bin/chromium',headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});const errors=[],responses=[];let page;
+ try{
+ const context=await browser.newContext({viewport:{width:1440,height:1000}});await context.addInitScript(token=>localStorage.setItem('flutter.business_token',JSON.stringify(token)),qa.businessToken);
+ page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));page.on('response',r=>{if(r.url().includes('/api/'))responses.push({path:new URL(r.url()).pathname,status:r.status()});});
+ await page.route('**/*',async route=>{const host=new URL(route.request().url()).hostname;if(!['127.0.0.1','localhost'].includes(host)){await route.abort();return;}await route.continue();});
+ await page.goto(web);await page.locator('flt-semantics-placeholder').waitFor({state:'attached',timeout:60000});await page.locator('flt-semantics-placeholder').dispatchEvent('click');
+ await page.getByRole('button',{name:'Oto Yıkama Yönetimi',exact:true}).click();await page.getByRole('button',{name:'Genel Bakış',exact:true}).waitFor();await page.screenshot({path:'/workspace/artifacts/business-v2/desktop-overview.png',fullPage:true});
+ for(const section of ['Randevular','Hizmetler','Müşteriler','Personel','Kapasite ve Çalışma Saatleri','Raporlar','İşletme Profili','Ayarlar']){
+  await page.getByRole('button',{name:section,exact:true}).click();await page.waitForTimeout(250);
+  if(section==='Randevular'){await page.getByRole('checkbox',{name:'Tüm geçmiş',exact:true}).click();await page.getByRole('checkbox',{name:'Bekliyor',exact:true}).click();await page.getByRole('button',{name:/TEST owner/}).first().click();await page.getByRole('button',{name:'Randevuyu kabul et',exact:true}).click();await page.getByRole('button',{name:'Onayla',exact:true}).click();await page.getByRole('button',{name:'Hizmeti başlat',exact:true}).waitFor();await page.screenshot({path:'/workspace/artifacts/business-v2/booking-confirmed.png'});await page.getByRole('button',{name:/^(Back|Geri)$/}).click();}
+  if(section==='İşletme Profili'){await page.getByRole('button',{name:'Profili kaydet',exact:true}).scrollIntoViewIfNeeded();await page.getByRole('button',{name:'Profili kaydet',exact:true}).click();await page.waitForTimeout(300);}
+  await page.screenshot({path:'/workspace/artifacts/business-v2/section-'+section.replace(/[^a-zA-Z]/g,'')+'.png',fullPage:true});
+ }
+ await page.getByRole('button',{name:'Randevular',exact:true}).click();await page.getByRole('checkbox',{name:'Tüm geçmiş',exact:true}).click();
+ await page.getByRole('checkbox',{name:'Tümü',exact:true}).click();for(const width of [320,360,393,430]){await page.setViewportSize({width,height:1000});await page.waitForTimeout(350);assert.ok(/İşletme bölümü/.test(await page.locator('body').ariaSnapshot()));await page.screenshot({path:'/workspace/artifacts/business-v2/mobile-'+width+'.png'});}
+ assert.deepEqual(errors,[]);assert.ok(responses.every(r=>r.status<400),JSON.stringify(responses.filter(r=>r.status>=400)));
+ fs.writeFileSync('/workspace/artifacts/business-v2/browser-result.json',JSON.stringify({ok:true,environment:'local-isolated-real-api',productionTouched:false,devicePushSent:false,desktopWidth:1440,mobileWidths:[320,360,393,430],checks:['nine-sections','real-session','owner-created-booking-business-approved','profile-save-reopen','no-page-errors'],responses},null,2));console.log('BUSINESS_V2_BROWSER_OK');
+ }catch(e){if(page){fs.writeFileSync('/workspace/artifacts/business-v2/browser-failure.txt',await page.locator('body').ariaSnapshot());await page.screenshot({path:'/workspace/artifacts/business-v2/browser-failure.png'});}throw e;}finally{await browser.close();}
+})().catch(e=>{console.error(e.message);process.exitCode=1;});

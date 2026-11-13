@@ -37,7 +37,7 @@ async function slots(db,businessId,serviceId,day,duration=null,excludeId=null){
   SELECT h.opens,h.closes,COALESCE($4::int,s.duration_minutes) AS duration_minutes FROM car_wash_locations l
   JOIN businesses b ON b.id=l.business_id JOIN car_wash_services s ON s.business_id=l.business_id
   JOIN car_wash_hours h ON h.business_id=l.business_id AND h.weekday=extract(dow FROM $3::date)
-  WHERE l.business_id=$1 AND s.id=$2 AND l.published AND l.booking_enabled AND b.is_active AND (s.active OR $4::int IS NOT NULL)
+  WHERE l.business_id=$1 AND s.id=$2 AND l.published AND l.booking_enabled AND b.is_active AND (s.active OR $4::int IS NOT NULL) AND (s.category=ANY(l.service_categories) OR $4::int IS NOT NULL)
   AND $3::date BETWEEN (now() AT TIME ZONE 'Europe/Istanbul')::date AND (now() AT TIME ZONE 'Europe/Istanbul')::date+90
   AND NOT EXISTS(SELECT 1 FROM car_wash_closed_days c WHERE c.business_id=l.business_id AND c.day=$3::date)
  ), times AS (
@@ -62,6 +62,7 @@ async function allocate(db,businessId,serviceId,startsAt,vehicleId,excludeId=nul
  if(!l.published||!l.booking_enabled||!l.is_active)fail('BOOKING_UNAVAILABLE',409);
  const s=(await db.query('SELECT * FROM car_wash_services WHERE id=$1 AND business_id=$2 AND (active OR $3::boolean)',[serviceId,businessId,duration!==null])).rows[0];
  if(!s)fail('SERVICE_NOT_FOUND',404);
+ if(duration===null&&!l.service_categories.includes(s.category))fail('CATEGORY_NOT_AUTHORIZED',403);
  if(duration!==null)s.duration_minutes=duration;
  const valid=await db.query(`SELECT 1 FROM car_wash_hours h WHERE h.business_id=$1
   AND h.weekday=extract(dow FROM $2::timestamptz AT TIME ZONE 'Europe/Istanbul')
@@ -90,8 +91,8 @@ async function createBooking(pool,owner,key,body){
   const v=(await db.query('SELECT plate FROM vehicles WHERE id=$1 AND owner_id=$2 FOR UPDATE',[vehicle,owner])).rows[0];
   if(!v)fail('VEHICLE_NOT_OWNED',403);
   const {service:s,resource:r}=await allocate(db,business,service,at,vehicle);
-  const b=(await db.query(`INSERT INTO car_wash_bookings(business_id,owner_id,vehicle_id,service_id,resource_id,staff_id,starts_at,ends_at,service_name,price_kurus,vehicle_plate)
-   VALUES($1,$2,$3,$4,$5,$6,$7,$7::timestamptz+make_interval(mins=>$8),$9,$10,$11) RETURNING *`,[business,owner,vehicle,service,r.id,r.staff_id,at,s.duration_minutes,s.name,s.price_kurus,v.plate])).rows[0];
+  const b=(await db.query(`INSERT INTO car_wash_bookings(business_id,owner_id,vehicle_id,service_id,resource_id,staff_id,starts_at,ends_at,service_name,price_kurus,vehicle_plate,service_category)
+   VALUES($1,$2,$3,$4,$5,$6,$7,$7::timestamptz+make_interval(mins=>$8),$9,$10,$11,$12) RETURNING *`,[business,owner,vehicle,service,r.id,r.staff_id,at,s.duration_minutes,s.name,s.price_kurus,v.plate,s.category])).rows[0];
   await record(db,b,'created',`owner:${owner}`);return {ok:true,booking:b};
  });
 }

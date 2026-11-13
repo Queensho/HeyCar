@@ -14,14 +14,14 @@ async function mark(pool,ownerId,id){
  const raw=id.slice(8),db=await pool.connect();
  try{await db.query('BEGIN');
  const r=await db.query('UPDATE owner_notification_events SET read_at=COALESCE(read_at,now()) WHERE id=$1 AND owner_id=$2 RETURNING *',[raw,ownerId]);
- if(r.rows[0]?.category==='car_wash')await db.query('UPDATE car_wash_notifications SET read_at=COALESCE(read_at,now()) WHERE id=$1 AND owner_id=$2',[raw,ownerId]);
+ if(r.rows.length)await db.query('UPDATE car_wash_notifications SET read_at=COALESCE(read_at,now()) WHERE id=$1 AND owner_id=$2',[raw,ownerId]);
  await db.query('COMMIT');return r.rows[0]?normalize(r.rows[0]):false;
  }catch(e){await db.query('ROLLBACK');throw e;}finally{db.release();}
 }
 async function readAll(db,ownerId,vehicleId){
  if(!enabled())return 0;
  const r=await db.query("UPDATE owner_notification_events SET read_at=COALESCE(read_at,now()) WHERE owner_id=$1 AND ($2::text='' OR vehicle_id::text=$2) AND read_at IS NULL RETURNING id",[ownerId,vehicleId]);
- await db.query("UPDATE car_wash_notifications n SET read_at=e.read_at FROM owner_notification_events e WHERE e.id=n.id AND e.owner_id=$1 AND e.category='car_wash' AND ($2::text='' OR e.vehicle_id::text=$2) AND n.read_at IS NULL",[ownerId,vehicleId]);return r.rowCount;
+ await db.query("UPDATE car_wash_notifications n SET read_at=e.read_at FROM owner_notification_events e WHERE e.id=n.id AND e.owner_id=$1 AND ($2::text='' OR e.vehicle_id::text=$2) AND n.read_at IS NULL",[ownerId,vehicleId]);return r.rowCount;
 }
 // Internal adapters only. Never accepts recipient/URL supplied by public clients.
 async function record(db,event){

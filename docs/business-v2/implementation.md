@@ -56,3 +56,78 @@ Five isolated replays and the subsequent full suite passed; added eight-account
 lifecycle regression and PostgreSQL detail/constraint/context capture. Constraint
 was not removed/relaxed. Root cause is not yet established; recurrence is a release
 blocker, not evidence of a repaired database issue.
+
+Stage 6: scoped business profile editor, real logo/cover/gallery and existing
+hours/publication/booking settings. First gallery photo is the explicit cover.
+Existing upload endpoint performs decoding/resizing; legacy cepqar.com URLs still
+resolve through the current API. Profile return refreshes the parent business cache;
+opening settings fetches a fresh snapshot rather than overwriting saved photos.
+Service photos now render on the customer catalog. Status filtering happens in SQL
+before pagination. Larger text uses a single metric column on narrow screens.
+
+Migration 131 adds scoped customer/management indexes. Migration 132 snapshots the
+service category on new bookings and projects it through the SAME owner notification
+center; existing history/IDs/read states are untouched. New category notification
+clicks reuse the existing appointment detail. Existing vehicle/QR/valet routing is
+preserved. New categories require operator-granted business service_categories;
+no client-controlled grant endpoint exists. Duration remains the existing 5–480min
+same-day appointment model; no mobile team, instant call or payment model was added.
+
+## Validation and reproducibility
+
+- Local full Flutter: 1080 passed before adding the final six category click tests;
+  latest targeted notification/profile/calendar:22 passed. Final full CI is recorded
+  in PR6. Full analyze:0 errors,235 warnings/info; focused new panel/router files clean.
+- Full local PostgreSQL backend:258 passed,0 failures/skips (all migrations including
+  130–132). Tests cover concurrent booking/idempotency/exclusions, tenant access,
+  categories, price, hours, customer privacy, reports, real image upload/save/reopen,
+  customer readback and notification read synchronization across all six categories.
+- Browser: actual entry_business.dart release build, real local API/private sessions,
+  owner creates booking→business approves, all nine sections, profile save/reopen,
+  desktop1440 and mobile320/360/393/430px. BUSINESS_V2_BROWSER_OK; page errors=[] and
+  all observed API responses<400. Browser text scale100%; 130/160% covered by widgets.
+- Physical Android/iOS and real device FCM/Web Push delivery: NOT RUN. No real push
+  sent. This work does not deploy to staging or production, or merge main.
+
+Reproduce browser test ONLY with isolated test infrastructure:
+1. Start a disposable PostgreSQL database accepted by server/tests/test-database.js.
+2. TEST_DATABASE_URL=<local-test-url> CAR_WASH_PREVIEW_CONFIG=/tmp/bv2-preview.json
+   node --test server/tests/car-wash-phase2.test.js. The manifest is private0600;
+   environment/database prefix identify this generated test fixture, not staging.
+3. In a separate build copy, follow the existing web workflow platform generation;
+   flutter build web --release --target lib/entry_business.dart
+   --no-web-resources-cdn --no-wasm-dry-run
+   --dart-define=CEPQONTAG_API_BASE_URL=http://127.0.0.1:56542.
+   Serve that copy on127.0.0.1:58412. No token is compiled into the build.
+4. node deploy/business-v2/browser.cjs. It refuses non-fixture manifests, connects
+   only to fixed loopback API/web origins and blocks other browser hosts. Repeats
+   cancel only generated fixture bookings, never staging or real users. Evidence
+   goes outside the repository to /workspace/artifacts/business-v2.
+5. Touch /tmp/bv2-preview.json.stop; the fixture gracefully closes its server and
+   drops ONLY its generated heycar_test_carwash_* DB. No live DB restore/cleanup.
+
+## Release gates and rollback
+
+All six PRs are stacked and remain unmerged because main push auto-publishes Pages.
+Operator must first approve a release window/publication approach. The integration
+cannot read main branch-protection rules (GitHub403); it does report actual check
+results and does not claim approval or merge authority overrides.
+
+Before an authorized release: fresh private backup + isolated restore proof;
+verify deployed migration checksums, role ownership/REFERENCES/TRIGGER permissions
+and runtime grants. Apply additive130,131,132 in order before backend code. Index131
+uses normal CREATE INDEX: plan write-lock duration on real data (or have DBA prepare
+concurrent indexes under an explicitly reviewed migration procedure). Do not reset
+tracking or weaken constraints. Verify readiness after each step and stop on error.
+First publish to approved test infrastructure, run browser/device/pilot tests, then
+obtain separate live approval. Existing production/staging Firebase/credentials are
+not copied or changed; keep QA external-delivery suppression until a registered
+allowlisted staging account/device can be tested.
+
+Code rollback retains new tables/columns and booking snapshots. Pause new bookings
+per business while preserving read/cancel; restore versioned code/assets/env only.
+Do not DROP tables, remove FKs, rewrite checksums or restore over current user data.
+The earlier intermittent FK23503 account-deletion observation remains documented:
+not reproduced in five replays, eight-account regression, subsequent full backend
+or PR5 CI. No root cause established; investigate/block release on recurrence and
+include it in human release review rather than silently calling it fixed.

@@ -30,6 +30,12 @@ class _BusinessReportsState extends State<BusinessReports> {
       future: future,
       retry: _load,
       builder: (data) {
+        if (data['summary'] is! Map)
+          return Center(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+            const Text('Rapor verisi alınamadı.'),
+            FilledButton(onPressed: _load, child: const Text('Tekrar dene'))
+          ]));
         final summary = data['summary'] as Map? ?? {};
         final days = washRows(data['daily']);
         final maximum = days.fold<num>(

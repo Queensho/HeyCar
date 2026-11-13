@@ -732,8 +732,10 @@ class _WashBusinessPageState extends State<WashBusinessPage> {
                             decoration: BoxDecoration(
                                 color: const Color(0xFFF3EBFA),
                                 borderRadius: BorderRadius.circular(14)),
-                            child: const Icon(Icons.local_car_wash_outlined,
-                                color: _purple, size: 34),
+                            clipBehavior: Clip.antiAlias,
+                            child: service['photos'] is List && (service['photos'] as List).isNotEmpty
+                                ? Image.network(washBusinessImageUrl((service['photos'] as List).first) ?? '', fit: BoxFit.cover, errorBuilder: (context,error,stack) => const Icon(Icons.broken_image_outlined, color: _purple))
+                                : const Icon(Icons.local_car_wash_outlined, color: _purple, size: 34),
                           ),
                           const SizedBox(width: 12),
                           Expanded(

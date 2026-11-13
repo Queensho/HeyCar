@@ -16,11 +16,13 @@ test('car wash customer and business journey through the real server and Postgre
  await control.query(`CREATE DATABASE ${name}`);
  const url=new URL(testDatabaseUrl());url.pathname='/'+name;
  const pool=new Pool({connectionString:url.href,max:20});
- const env={...process.env,DATABASE_URL:url.href,TZ:'Europe/Istanbul',APP_ENV:'staging',STAGING_DISABLE_EXTERNAL_SERVICES:'true',OWNER_AUTH_SECRET:secret,JWT_SECRET:secret,DRIVER_AUTH_SECRET:secret,
+ const uploadDir=require('node:fs').mkdtempSync(require('node:os').tmpdir()+'/cepqontag-v2-upload-');
+ const env={...process.env,BUSINESS_UPLOAD_DIR:uploadDir,PUBLIC_API_BASE_URL:'https://qa-uploads.example.invalid',DATABASE_URL:url.href,TZ:'Europe/Istanbul',APP_ENV:'staging',CORS_ORIGINS:process.env.CAR_WASH_PREVIEW_CONFIG?'http://127.0.0.1:58412':'',STAGING_DISABLE_EXTERNAL_SERVICES:'true',OWNER_AUTH_SECRET:secret,JWT_SECRET:secret,DRIVER_AUTH_SECRET:secret,
   CAR_WASH_CATALOG_ENABLED:'true',CAR_WASH_BOOKING_ENABLED:'true',CAR_WASH_PUSH_ENABLED:'false',SMART_ROUTE_SCAN_ENABLED:'false',PORT:'56542'};
  let server;
  t.after(async()=>{
   if(server&&server.exitCode===null){server.kill('SIGTERM');await new Promise(r=>server.once('exit',r));}
+  require('node:fs').rmSync(uploadDir,{recursive:true,force:true});
   await pool.end();await control.query(`DROP DATABASE ${name}`);await control.end();
  });
  await exec(process.execPath,[path.join(__dirname,'../migrate.js')],{env,maxBuffer:4*1024*1024});
@@ -57,7 +59,7 @@ test('car wash customer and business journey through the real server and Postgre
  const payload=(i=0,h='06')=>({businessId:shop.id,serviceId:service.id,vehicleId:owner.vehicles[i],startsAt:at(h)});
  const create=(body,key=crypto.randomUUID())=>request('/api/car-wash/bookings',owner.token,{method:'POST',body,key});
  if(process.env.CAR_WASH_PREVIEW_CONFIG){
-  require('node:fs').writeFileSync(process.env.CAR_WASH_PREVIEW_CONFIG,JSON.stringify({ownerToken:owner.token,businessToken:shop.token,businessId:shop.id,serviceId:service.id,day}));
+  require('node:fs').writeFileSync(process.env.CAR_WASH_PREVIEW_CONFIG,JSON.stringify({environment:'isolated-postgres-test',databaseName:name,ownerToken:owner.token,businessToken:shop.token,businessId:shop.id,serviceId:service.id,day}));
   while(!require('node:fs').existsSync(process.env.CAR_WASH_PREVIEW_CONFIG+'.stop'))await new Promise(r=>setTimeout(r,500));
   return;
  }
@@ -227,6 +229,8 @@ test('car wash customer and business journey through the real server and Postgre
   const db=(await pool.query("SELECT count(*)::int AS n,COALESCE(sum(price_kurus) FILTER(WHERE status='completed'),0)::text AS amount FROM car_wash_bookings WHERE business_id=$1 AND (starts_at AT TIME ZONE 'Europe/Istanbul')::date=$2::date",[shop.id,day])).rows[0];
   assert.equal(r.body.summary.total_count,db.n);assert.equal(r.body.summary.completed_amount_kurus,db.amount);
   assert.equal(r.body.amountDefinition,'completed_booking_value_not_collected_revenue');
+  const filtered=await request(`/api/business/car-wash/bookings?from=${day}&to=${day}&status=completed`,shop.token);assert.ok(filtered.body.bookings.every(b=>b.status==='completed'));
+  assert.equal((await request('/api/business/car-wash/bookings?status=unknown',shop.token)).status,400);
   assert.equal(r.body.daily.reduce((n,d)=>n+d.count,0),db.n);assert.equal(r.body.services.reduce((n,s)=>n+s.count,0),db.n);
   assert.equal((await request(path,outsider.token)).body.summary.total_count,0);
   assert.equal((await request('/api/business/car-wash/reports?from=2020-01-01&to=2025-01-01',shop.token)).status,400);
@@ -293,6 +297,35 @@ test('car wash customer and business journey through the real server and Postgre
    const b=(await request('/api/car-wash/bookings',u.token,{method:'POST',key:crypto.randomUUID(),body:{...payload(),vehicleId:u.vehicles[0],startsAt:at('14')}})).body.booking;assert.ok(b);
    try{await pool.query('DELETE FROM users WHERE id=$1',[u.id]);}catch(e){console.error('LIFECYCLE_SQL_DIAGNOSTIC',JSON.stringify({code:e.code,constraint:e.constraint,detail:e.detail,where:e.where}));throw e;}
    const saved=(await pool.query('SELECT status,owner_id,vehicle_id FROM car_wash_bookings WHERE id=$1',[b.id])).rows[0];assert.deepEqual(saved,{status:'cancelled',owner_id:null,vehicle_id:null});
+  }
+ });
+ await t.test('profile upload save reopen and customer presentation use actual existing media storage',async()=>{
+  const png=await require('sharp')({create:{width:2,height:2,channels:3,background:'#651fff'}}).png().toBuffer();
+  const upload=await request('/api/business/media',shop.token,{method:'POST',body:{kind:'car_wash',data:'data:image/png;base64,'+png.toString('base64')}});assert.equal(upload.status,201,JSON.stringify(upload));
+  const image=new URL(upload.body.url);assert.equal((await fetch(base+image.pathname)).status,200);
+  assert.equal((await request('/api/business/media',null,{method:'POST',body:{data:'invalid'}})).status,401);
+  const current=(await request('/api/business/car-wash/profile',shop.token)).body;
+  const body={name:'Kaydedilen QA işletmesi',phone:'+905550000001',address:'QA işletme adresi',description:'QA açıklama',latitude:41,longitude:29,logoUrl:upload.body.url,photos:[upload.body.url]};
+  assert.equal((await request('/api/business/car-wash/profile',shop.token,{method:'PUT',body:{...body,latitude:181}})).status,400);
+  assert.equal((await request('/api/business/car-wash/profile',shop.token,{method:'PUT',body:{...body,logoUrl:'javascript:bad'}})).status,400);
+  assert.equal((await request('/api/business/car-wash/profile',shop.token,{method:'PUT',body})).status,200);
+  const reopened=(await request('/api/business/car-wash/profile',shop.token)).body;assert.equal(reopened.business.name,body.name);assert.equal(reopened.business.logo_url,body.logoUrl);assert.deepEqual(reopened.location.photos,body.photos);
+  const publicView=(await request('/api/car-wash/businesses/'+shop.id,owner.token)).body.business;assert.equal(publicView.logo_url,body.logoUrl);assert.deepEqual(publicView.photos,body.photos);
+  const otherProfile=(await request('/api/business/car-wash/profile',outsider.token)).body;assert.notEqual(otherProfile.business.id,shop.id);assert.notEqual(otherProfile.business.logo_url,body.logoUrl);
+  assert.equal((await request('/api/business/car-wash/profile',null)).status,401);
+ });
+ await t.test('authorized service categories snapshot into the same owner inbox and preserve read synchronization',async()=>{
+  const categories=['car_wash','interior','polish','ceramic','ppf','inspection'];
+  await pool.query('UPDATE car_wash_locations SET service_categories=$2 WHERE business_id=$1',[shop.id,categories]);
+  for(const category of categories.slice(1)){
+   const leaf=(await request('/api/business/car-wash/services',shop.token,{method:'POST',body:{name:'QA '+category,description:'QA',priceKurus:1000,durationMinutes:30,active:true}})).body.item;
+   assert.equal((await request('/api/business/car-wash/services/'+leaf.id+'/details',shop.token,{method:'PUT',body:{category,resourceIds:[],componentIds:[],photos:[]}})).status,200);
+   const made=await create({...payload(7,'14'),serviceId:leaf.id});assert.equal(made.status,200,JSON.stringify(made));assert.equal(made.body.booking.service_category,category);
+   const n=(await pool.query("SELECT * FROM owner_notification_events WHERE appointment_id=$1 AND event='created'",[made.body.booking.id])).rows[0];assert.equal(n.category,category);assert.equal(n.payload.serviceCategory,category);assert.notEqual(n.title,'Oto Yıkama');
+   const previous=process.env.OWNER_SERVICE_NOTIFICATIONS_ENABLED;process.env.OWNER_SERVICE_NOTIFICATIONS_ENABLED='true';
+   try{await require('../owner-notification-center').mark(pool,owner.id,'service:'+n.id);}finally{if(previous===undefined)delete process.env.OWNER_SERVICE_NOTIFICATIONS_ENABLED;else process.env.OWNER_SERVICE_NOTIFICATIONS_ENABLED=previous;}
+   assert.ok((await pool.query('SELECT read_at FROM car_wash_notifications WHERE id=$1',[n.id])).rows[0].read_at);
+   await request('/api/business/car-wash/bookings/'+made.body.booking.id+'/change',shop.token,{method:'POST',key:crypto.randomUUID(),body:{status:'cancelled'}});
   }
  });
  await t.test('actual staging migration probe works without database CREATE privilege and rolls back',async()=>{

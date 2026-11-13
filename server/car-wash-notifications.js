@@ -15,13 +15,13 @@ async function tick(app,pool){
  for(const n of rows){
   let result='unknown';
   try{
-   const b=(await pool.query('SELECT status,revision,starts_at FROM car_wash_bookings WHERE id=$1',[n.booking_id])).rows[0];
+   const b=(await pool.query('SELECT status,revision,starts_at,service_category FROM car_wash_bookings WHERE id=$1',[n.booking_id])).rows[0];
    const preferences=(await pool.query('SELECT system_notifications FROM owner_privacy_settings WHERE owner_id=$1',[String(n.owner_id)])).rows[0];
    if(externalServicesDisabled()){result='suppressed_staging';}
    else if(preferences?.system_notifications===false){result='suppressed_preference';}
    else if(n.event==='reminder'&&(!b||b.status!=='confirmed'||b.revision!==n.revision||new Date(b.starts_at)<=new Date())){result='superseded';}
    else{
-    const out=await app.locals.heycarPush.sendOwner(String(n.owner_id),{type:'car_wash',bookingId:String(n.booking_id),notificationId:String(n.id),event:n.event},'CepQontag • Oto Yıkama',messages[n.event]||'Randevunuz güncellendi.');
+    const out=await app.locals.heycarPush.sendOwner(String(n.owner_id),{type:'car_wash',bookingId:String(n.booking_id),notificationId:String(n.id),event:n.event,serviceCategory:b?.service_category||'car_wash'},b?.service_category==='car_wash'?'CepQontag • Oto Yıkama':'CepQontag • Hizmet randevusu',(messages[n.event]||'Randevunuz güncellendi.').replaceAll('Oto yıkama','Hizmet'));
     result=Number(out?.delivered||0)>0?'sent':'not_delivered';
    }
   }catch(_){result='unknown';}
