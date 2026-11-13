@@ -1,7 +1,7 @@
 name: Backend Release Audit
 on:
   pull_request:
-    branches: [main]
+    branches: [main, 'feat/business-v2-*']
   workflow_dispatch:
 permissions:
   contents: read
