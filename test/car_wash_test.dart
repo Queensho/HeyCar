@@ -156,6 +156,11 @@ void main() {
     expect(logo, contains('/uploads/car-wash/logo.png'));
     expect(washBusinessImageUrl('javascript:alert(1)'), isNull);
     expect(washBusinessImageUrl(null), isNull);
+    final legacy = washBusinessImageUrl(
+      'https://cepqar.com/uploads/business/old-photo.webp');
+    expect(legacy, contains('/uploads/business/old-photo.webp'));
+    expect(legacy, isNot(startsWith('https://cepqar.com/')));
+
   });
 
   test('Türkiye timezone and integer kuruş formatting', () {
