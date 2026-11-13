@@ -6,7 +6,7 @@ import 'car_wash_api.dart';
 import 'car_wash_pages.dart';
 
 Future<void> openOwnerServiceNotification(
-    BuildContext context, Map<String, dynamic> n) async {
+    BuildContext context, Map<String, dynamic> n, {CarWashApi? api}) async {
   final category =
           '${n['service_category'] ?? n['serviceCategory'] ?? (n['type'] == 'car_wash' ? 'car_wash' : '')}',
       id = '${n['booking_id'] ?? n['bookingId'] ?? n['appointmentId'] ?? ''}';
@@ -14,9 +14,16 @@ Future<void> openOwnerServiceNotification(
       id.isEmpty ||
       id.length > 128) return;
   await Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (_) => category == 'car_wash' &&
+      builder: (_) => const [
+                'car_wash',
+                'interior',
+                'polish',
+                'ceramic',
+                'ppf',
+                'inspection'
+              ].contains(category) &&
               RegExp(r'^[0-9a-fA-F-]{36}$').hasMatch(id)
-          ? WashBookingDetailPage(api: CarWashApi(), id: id)
+          ? WashBookingDetailPage(api: api ?? CarWashApi(), id: id)
           : OwnerServiceHistoryPage(category: category, appointmentId: id)));
 }
 

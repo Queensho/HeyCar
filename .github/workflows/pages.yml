@@ -18,7 +18,7 @@ on:
         type: boolean
         default: false
   pull_request:
-    branches: [main]
+    branches: [main, 'feat/business-v2-*']
 
 permissions:
   contents: read

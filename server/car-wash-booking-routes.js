@@ -25,6 +25,10 @@ module.exports=function registerCarWashBookingRoutes(app,pool){
    return res.status(e.status||(collision?409:503)).json({error:code});
   }
  });}
+ require('./business-v2-management')({route,pool,svc});
+ require('./business-v2-customers')({route,pool,svc});
+ require('./business-v2-reports')({route,pool,svc});
+ require('./business-v2-profile')({route,pool,svc});
  route('get','/api/car-wash/businesses/:businessId/availability','owner',async(req,a)=>{
   let duration=null;
   if(req.query.bookingId){
@@ -36,6 +40,7 @@ module.exports=function registerCarWashBookingRoutes(app,pool){
  route('post','/api/car-wash/bookings','owner',(req,a)=>svc.createBooking(pool,a.id,req.headers['idempotency-key'],req.body||{}));
  const list=async(a,req)=>{
   const scope=a.kind==='owner'?'bk.owner_id':'bk.business_id';
+  const status=req.query.status||null;if(status&&!['pending','confirmed','in_progress','completed','cancelled','rejected'].includes(status))svc.fail('INVALID_STATUS');
   const from=req.query.from?svc.date(req.query.from):null,to=req.query.to?svc.date(req.query.to):null;
   if((from&&!to)||(!from&&to)||(from&&to&&(to<from||(Date.parse(to)-Date.parse(from))/86400000>366)))svc.fail('INVALID_DATE_RANGE');
   const limit=req.query.limit===undefined?100:Number(req.query.limit),offset=req.query.offset===undefined?0:Number(req.query.offset);
@@ -43,7 +48,8 @@ module.exports=function registerCarWashBookingRoutes(app,pool){
   const r=await pool.query(`SELECT bk.*,b.name AS business_name FROM car_wash_bookings bk JOIN businesses b ON b.id=bk.business_id WHERE ${scope}=$1
    AND ($2::date IS NULL OR bk.starts_at>=($2::date::timestamp AT TIME ZONE 'Europe/Istanbul'))
    AND ($3::date IS NULL OR bk.starts_at<(($3::date+1)::timestamp AT TIME ZONE 'Europe/Istanbul'))
-   ORDER BY bk.starts_at DESC,bk.id LIMIT $4 OFFSET $5`,[a.id,from,to,limit,offset]);
+   AND ($6::text IS NULL OR bk.status=$6)
+   ORDER BY bk.starts_at DESC,bk.id LIMIT $4 OFFSET $5`,[a.id,from,to,limit,offset,status]);
   return {ok:true,bookings:r.rows,limit,offset};
  };
  route('get','/api/car-wash/bookings','owner',(req,a)=>list(a,req));
@@ -60,8 +66,13 @@ module.exports=function registerCarWashBookingRoutes(app,pool){
   FROM car_wash_notifications n JOIN car_wash_bookings b ON b.id=n.booking_id WHERE b.business_id=$1 ORDER BY n.created_at DESC LIMIT 100`,[a.id])).rows}));
  route('post','/api/business/car-wash/notifications/:id/read','business',async(req,a)=>{await pool.query(`UPDATE car_wash_notifications n SET business_read_at=COALESCE(business_read_at,now())
   FROM car_wash_bookings b WHERE n.id=$1 AND b.id=n.booking_id AND b.business_id=$2`,[svc.uuid(req.params.id),a.id]);return {ok:true};});
+ route('get','/api/business/car-wash/bookings/:id/availability','business',async(req,a)=>{
+  const b=(await pool.query("SELECT * FROM car_wash_bookings WHERE id=$1 AND business_id=$2 AND status IN('pending','confirmed')",[svc.uuid(req.params.id),a.id])).rows[0];
+  if(!b)svc.fail('BOOKING_NOT_FOUND',404);
+  return {ok:true,slots:await svc.slots(pool,b.business_id,b.service_id,svc.date(req.query.date),Math.round((new Date(b.ends_at)-new Date(b.starts_at))/60000),b.id)};
+ });
  route('get','/api/business/car-wash/bookings/:id','business',async(req,a)=>{
-  const b=(await pool.query('SELECT * FROM car_wash_bookings WHERE id=$1 AND business_id=$2',[svc.uuid(req.params.id),a.id])).rows[0];
+  const b=(await pool.query('SELECT bk.*,u.display_name AS customer_name FROM car_wash_bookings bk LEFT JOIN users u ON u.id=bk.owner_id WHERE bk.id=$1 AND bk.business_id=$2',[svc.uuid(req.params.id),a.id])).rows[0];
   if(!b)svc.fail('BOOKING_NOT_FOUND',404);
   return {ok:true,booking:b,history:(await pool.query('SELECT * FROM car_wash_history WHERE booking_id=$1 ORDER BY revision',[b.id])).rows};
  });
@@ -111,7 +122,11 @@ module.exports=function registerCarWashBookingRoutes(app,pool){
    if(entity==='resources'&&b.staffId)svc.uuid(b.staffId);
    return svc.transaction(pool,async db=>{
     await db.query('INSERT INTO car_wash_locations(business_id) VALUES($1) ON CONFLICT DO NOTHING',[a.id]);
-    await svc.lockLocation(db,a.id);
+    const location=await svc.lockLocation(db,a.id);
+    if(entity==='services'){
+     const existing=b.id?(await db.query('SELECT category FROM car_wash_services WHERE id=$1 AND business_id=$2',[b.id,a.id])).rows[0]:{category:'car_wash'};
+     if(existing&&!location.service_categories.includes(existing.category))svc.fail('CATEGORY_NOT_AUTHORIZED',403);
+    }
     const table=`car_wash_${entity}`;
     if(b.id&&!(await db.query(`SELECT 1 FROM ${table} WHERE id=$1 AND business_id=$2`,[b.id,a.id])).rows.length)svc.fail('NOT_FOUND',404);
     let result;

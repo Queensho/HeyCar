@@ -105,6 +105,10 @@ class CarWashApi {
             'SERVICE_DURATION_CHANGED':
                 'Hizmet süresi değişti. İşletmeyle iletişime geçin.',
             'BOOKING_NOT_FOUND': 'Randevu bulunamadı.',
+            'CATEGORY_NOT_AUTHORIZED': 'Bu hizmet kategorisi için işletme yetkiniz bulunmuyor.',
+            'INVALID_PACKAGE': 'Paket yalnız tekil hizmetlerden oluşmalıdır.',
+            'INVALID_COORDINATES': 'Geçerli enlem ve boylam bilgilerini birlikte girin.',
+            'NOT_FOUND': 'Kayıt bulunamadı veya bu işletmeye ait değil.',
           }[code] ??
           'İşlem tamamlanamadı. Lütfen bilgileri kontrol edip tekrar deneyin.');
     }

@@ -144,7 +144,9 @@ class LongBusinessServiceApi extends FixtureWashApi {
 void main() {
   test('business cover resolves uploaded relative photo and logo URLs', () {
     final photo = washBusinessCover({
-      'photos': [{'url': '/uploads/car-wash/photo.jpg'}],
+      'photos': [
+        {'url': '/uploads/car-wash/photo.jpg'}
+      ],
       'logo_url': '/uploads/car-wash/logo.png',
     });
     expect(photo, contains('/uploads/car-wash/photo.jpg'));
@@ -157,10 +159,9 @@ void main() {
     expect(washBusinessImageUrl('javascript:alert(1)'), isNull);
     expect(washBusinessImageUrl(null), isNull);
     final legacy = washBusinessImageUrl(
-      'https://cepqar.com/uploads/business/old-photo.webp');
+        'https://cepqar.com/uploads/business/old-photo.webp');
     expect(legacy, contains('/uploads/business/old-photo.webp'));
     expect(legacy, isNot(startsWith('https://cepqar.com/')));
-
   });
 
   test('Türkiye timezone and integer kuruş formatting', () {
@@ -215,7 +216,8 @@ void main() {
     expect((creates[0]['body'] as Map)['vehicleId'], 'vehicle');
     expect(find.text('Randevu detayları'), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.text('Bekliyor'), 180,
+      find.text('Bekliyor'),
+      180,
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('Bekliyor'), findsOneWidget);
@@ -228,7 +230,8 @@ void main() {
         MaterialApp(home: WashBookingDetailPage(api: api, id: 'booking')));
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
-      find.text('Randevuyu iptal et'), 180,
+      find.text('Randevuyu iptal et'),
+      180,
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
@@ -333,6 +336,8 @@ void main() {
               onEditProfile: () async {},
               uploadPhoto: () async => null)));
       await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('business-section-services')));
+      await tester.pumpAndSettle();
       final add = find.byTooltip('Hizmet paketleri ekle');
       await tester.ensureVisible(add);
       await tester.tap(add);
@@ -368,6 +373,8 @@ void main() {
             onEditProfile: () async {},
             uploadPhoto: () async => null)));
     await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('business-section-services')));
+    await tester.pumpAndSettle();
     final add = find.byTooltip('Hizmet paketleri ekle');
     await tester.ensureVisible(add);
     await tester.tap(add);
@@ -385,7 +392,7 @@ void main() {
     expect(row,
         findsNothing); // Lazy viewport: absence from semantics is not data loss.
     await tester.scrollUntilVisible(row, 450,
-        scrollable: find.byType(Scrollable).first, maxScrolls: 40);
+        scrollable: find.byType(Scrollable).last, maxScrolls: 40);
     await tester.pumpAndSettle();
     expect(row, findsOneWidget);
     final semantics = tester.widget<Semantics>(

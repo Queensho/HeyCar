@@ -46,8 +46,8 @@ module.exports=function registerCarWashRoutes(app,pool,{enabled=()=>process.env.
         COALESCE((SELECT jsonb_agg(jsonb_build_object('day',d.day::text) ORDER BY d.day) FROM car_wash_closed_days d WHERE d.business_id=b.id),'[]'::jsonb) AS "closedDays"`:'';
       const result=await pool.query(`SELECT ${publicFields}${extra},COALESCE((
         SELECT jsonb_agg(jsonb_build_object('id',s.id,'name',s.name,'description',s.description,
-          'priceKurus',s.price_kurus,'currency','TRY','durationMinutes',s.duration_minutes) ORDER BY s.price_kurus,s.id)
-        FROM car_wash_services s WHERE s.business_id=b.id AND s.active
+          'priceKurus',s.price_kurus,'currency','TRY','durationMinutes',s.duration_minutes${phase2?",'category',s.category,'photos',s.photos":''}) ORDER BY s.price_kurus,s.id)
+        FROM car_wash_services s WHERE s.business_id=b.id AND s.active${phase2?' AND s.category=ANY(l.service_categories)':''}
       ),'[]'::jsonb) AS services
         FROM car_wash_locations l JOIN businesses b ON b.id=l.business_id
         WHERE b.id=$1 AND l.published AND b.is_active`,[id]);
