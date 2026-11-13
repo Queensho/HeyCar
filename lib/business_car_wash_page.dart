@@ -23,6 +23,8 @@ class _BusinessCarWashPageState extends State<BusinessCarWashPage> {
   late Future<WashJson> future;
   DateTime day = DateTime.now().toUtc().add(const Duration(hours: 3));
   String period = 'day';
+  String? statusFilter;
+  bool calendar = false;
   int offset = 0;
   Timer? refresh;
   bool busy = false;
@@ -52,9 +54,13 @@ class _BusinessCarWashPageState extends State<BusinessCarWashPage> {
       });
   Future<WashJson> _data() async {
     final settings = await widget.api.call('/api/business/car-wash/settings');
-    final end = day.add(Duration(days: period == 'week' ? 6 : 0));
-    final filter =
-        period == 'history' ? '' : '&from=${washDate(day)}&to=${washDate(end)}';
+    final start = period == 'month' ? DateTime(day.year, day.month) : day;
+    final end = period == 'month'
+        ? DateTime(day.year, day.month + 1, 0)
+        : day.add(Duration(days: period == 'week' ? 6 : 0));
+    final filter = period == 'history'
+        ? ''
+        : '&from=${washDate(start)}&to=${washDate(end)}';
     final bookings = await widget.api.call(
         '/api/business/car-wash/bookings?limit=100&offset=$offset$filter');
     return {...settings, 'bookings': bookings['bookings']};
@@ -512,7 +518,10 @@ class _BusinessCarWashPageState extends State<BusinessCarWashPage> {
               future: future,
               retry: _load,
               builder: (data) {
-                final rows = washRows(data['bookings']),
+                final rows = washRows(data['bookings'])
+                        .where((b) =>
+                            statusFilter == null || b['status'] == statusFilter)
+                        .toList(),
                     staff = washRows(data['staff']);
                 final pending =
                     rows.where((b) => b['status'] == 'pending').length;
@@ -656,6 +665,7 @@ class _BusinessCarWashPageState extends State<BusinessCarWashPage> {
                       for (final p in {
                         'day': 'Günlük',
                         'week': 'Haftalık',
+                        'month': 'Aylık',
                         'history': 'Tüm geçmiş'
                       }.entries)
                         ChoiceChip(
@@ -692,6 +702,41 @@ class _BusinessCarWashPageState extends State<BusinessCarWashPage> {
                                 '${washDate(day)}${period == 'week' ? ' – ${washDate(day.add(const Duration(days: 6)))}' : ''}')),
                     ]),
                     const SizedBox(height: 12),
+                    Wrap(spacing: 8, runSpacing: 8, children: [
+                      FilterChip(
+                          label: const Text('Takvim görünümü'),
+                          selected: calendar,
+                          onSelected: (v) => setState(() => calendar = v)),
+                      for (final entry in <String?, String>{
+                        null: 'Tümü',
+                        ...washStatuses
+                      }.entries)
+                        ChoiceChip(
+                            label: Text(entry.value),
+                            selected: statusFilter == entry.key,
+                            onSelected: (_) =>
+                                setState(() => statusFilter = entry.key)),
+                    ]),
+                    if (calendar) ...[
+                      const SizedBox(height: 12),
+                      for (final date in rows
+                          .map((b) => washTime(b['starts_at']).split(' ').first)
+                          .toSet())
+                        Card(
+                            child: ExpansionTile(
+                                initiallyExpanded: true,
+                                title: Text(date),
+                                children: [
+                              for (final b in rows.where((b) =>
+                                  washTime(b['starts_at']).startsWith(date)))
+                                ListTile(
+                                    title: Text(
+                                        '${washTime(b['starts_at']).split(' ').last} · ${b['vehicle_plate']}'),
+                                    subtitle: Text(
+                                        '${b['service_name']} · ${washStatuses[b['status']]}'),
+                                    onTap: () => _booking(b))
+                            ])),
+                    ],
                     Text(
                         '${rows.length} randevu bu sayfada · $pending onay bekliyor · $completed tamamlandı',
                         style: const TextStyle(color: Color(0xFF6B6880))),
@@ -711,39 +756,42 @@ class _BusinessCarWashPageState extends State<BusinessCarWashPage> {
                               textAlign: TextAlign.center),
                         ]),
                       ),
-                    for (final b in rows)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: Material(
-                          color: Colors.white,
-                          shape: RoundedRectangleBorder(
-                              side: const BorderSide(color: Color(0xFFEAE6F1)),
-                              borderRadius: BorderRadius.circular(18)),
-                          clipBehavior: Clip.antiAlias,
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 8),
-                            leading: Container(
-                                width: 44,
-                                height: 44,
-                                decoration: BoxDecoration(
-                                    color: const Color(0xFFF0EBFF),
-                                    borderRadius: BorderRadius.circular(12)),
-                                child: const Icon(Icons.directions_car_outlined,
-                                    color: Color(0xFF651FFF))),
-                            title: Text(
-                                '${b['vehicle_plate']} · ${b['service_name']}',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w700)),
-                            subtitle: Text(
-                                '${washTime(b['starts_at'])}\n${washStatuses[b['status']]} · ${washPrice(b['price_kurus'])}'),
-                            isThreeLine: true,
-                            trailing: const Icon(Icons.chevron_right,
-                                color: Color(0xFF651FFF)),
-                            onTap: busy ? null : () => _booking(b),
+                    if (!calendar)
+                      for (final b in rows)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: Material(
+                            color: Colors.white,
+                            shape: RoundedRectangleBorder(
+                                side:
+                                    const BorderSide(color: Color(0xFFEAE6F1)),
+                                borderRadius: BorderRadius.circular(18)),
+                            clipBehavior: Clip.antiAlias,
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 8),
+                              leading: Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                      color: const Color(0xFFF0EBFF),
+                                      borderRadius: BorderRadius.circular(12)),
+                                  child: const Icon(
+                                      Icons.directions_car_outlined,
+                                      color: Color(0xFF651FFF))),
+                              title: Text(
+                                  '${b['vehicle_plate']} · ${b['service_name']}',
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w700)),
+                              subtitle: Text(
+                                  '${washTime(b['starts_at'])}\n${washStatuses[b['status']]} · ${washPrice(b['price_kurus'])}'),
+                              isThreeLine: true,
+                              trailing: const Icon(Icons.chevron_right,
+                                  color: Color(0xFF651FFF)),
+                              onTap: busy ? null : () => _booking(b),
+                            ),
                           ),
                         ),
-                      ),
                     Wrap(
                         alignment: WrapAlignment.spaceBetween,
                         spacing: 8,
@@ -858,6 +906,57 @@ class _BusinessBookingPageState extends State<_BusinessBookingPage> {
         future = widget.api
             .call('/api/business/car-wash/bookings/${widget.bookingId}');
       });
+  Future<void> _reschedule(WashJson booking) async {
+    final now = DateTime.now().toUtc().add(const Duration(hours: 3));
+    final date = await showDatePicker(
+        context: context,
+        builder: washPickerTheme,
+        initialDate: now,
+        firstDate: now,
+        lastDate: now.add(const Duration(days: 90)));
+    if (date == null || !mounted) return;
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      final available = await widget.api.call(
+          '/api/business/car-wash/bookings/${widget.bookingId}/availability?date=${washDate(date)}');
+      if (!mounted) return;
+      final slots = washRows(available['slots']);
+      final selected = await washDialog<String>(
+          context: context,
+          builder: (c) => AlertDialog(
+              scrollable: true,
+              title: const Text('Müsait saatler · Türkiye saati'),
+              content: SizedBox(
+                  width: 420,
+                  child: slots.isEmpty
+                      ? const Text('Bu gün müsait saat bulunmuyor.')
+                      : Wrap(spacing: 8, runSpacing: 8, children: [
+                          for (final slot in slots)
+                            ActionChip(
+                                label: Text(washTime(slot['starts_at'])
+                                    .split(' ')
+                                    .last),
+                                onPressed: () =>
+                                    Navigator.pop(c, '${slot['starts_at']}'))
+                        ]))));
+      if (selected == null) return;
+      await widget.api.call(
+          '/api/business/car-wash/bookings/${widget.bookingId}/change',
+          method: 'POST',
+          key: keys.putIfAbsent(
+              '${booking['revision']}:reschedule:$selected', washKey),
+          body: {'action': 'reschedule', 'startsAt': selected});
+      if (mounted) _load();
+    } catch (e) {
+      if (mounted) setState(() => error = washError(e));
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) => WashScaffold(
       title: 'İşletme randevu detayı',
@@ -883,7 +982,13 @@ class _BusinessBookingPageState extends State<_BusinessBookingPage> {
               Text('${b['vehicle_plate']}',
                   style: const TextStyle(
                       fontSize: 26, fontWeight: FontWeight.w800)),
+              Text('${b['customer_name'] ?? 'Müşteri adı belirtilmedi'}'),
               Text('${b['service_name']} · ${washPrice(b['price_kurus'])}'),
+              if (['pending', 'confirmed'].contains(b['status']))
+                OutlinedButton.icon(
+                    onPressed: busy ? null : () => _reschedule(b),
+                    icon: const Icon(Icons.edit_calendar_outlined),
+                    label: const Text('Yeniden planla')),
               Text('${washTime(b['starts_at'])}\n${washStatuses[b['status']]}'),
               const SizedBox(height: 20),
               if (error != null)

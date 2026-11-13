@@ -100,14 +100,13 @@ async function mutateBooking(pool,actor,key,id,body){
   // Vehicle lifecycle triggers lock the vehicle before updating reservations.
   // Use the same order during rescheduling to avoid a transfer deadlock.
   if(body.action==='reschedule'){
-   if(actor.kind!=='owner')fail('INVALID_TRANSITION',409);
-   const v=await db.query('SELECT 1 FROM vehicles WHERE id=$1 AND owner_id=$2 FOR UPDATE',[b.vehicle_id,actor.id]);
+   const v=await db.query('SELECT 1 FROM vehicles WHERE id=$1 AND owner_id=$2 FOR UPDATE',[b.vehicle_id,b.owner_id]);
    if(!v.rows.length)fail('VEHICLE_NOT_OWNED',403);
   }
   b=(await db.query(`SELECT * FROM car_wash_bookings WHERE id=$1 AND ${scope}=$2 FOR UPDATE`,[id,actor.id])).rows[0];
   if(!b)fail('BOOKING_NOT_FOUND',404);
   if(body.action==='reschedule'){
-   if(actor.kind!=='owner'||!['pending','confirmed'].includes(b.status)||new Date(b.starts_at)<=new Date())fail('INVALID_TRANSITION',409);
+   if(!['pending','confirmed'].includes(b.status)||new Date(b.starts_at)<=new Date())fail('INVALID_TRANSITION',409);
    const at=instant(body.startsAt);
    // Preserve the purchased price and duration, even after catalog changes.
    const duration=Math.round((new Date(b.ends_at)-new Date(b.starts_at))/60000);

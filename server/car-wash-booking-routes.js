@@ -60,8 +60,13 @@ module.exports=function registerCarWashBookingRoutes(app,pool){
   FROM car_wash_notifications n JOIN car_wash_bookings b ON b.id=n.booking_id WHERE b.business_id=$1 ORDER BY n.created_at DESC LIMIT 100`,[a.id])).rows}));
  route('post','/api/business/car-wash/notifications/:id/read','business',async(req,a)=>{await pool.query(`UPDATE car_wash_notifications n SET business_read_at=COALESCE(business_read_at,now())
   FROM car_wash_bookings b WHERE n.id=$1 AND b.id=n.booking_id AND b.business_id=$2`,[svc.uuid(req.params.id),a.id]);return {ok:true};});
+ route('get','/api/business/car-wash/bookings/:id/availability','business',async(req,a)=>{
+  const b=(await pool.query("SELECT * FROM car_wash_bookings WHERE id=$1 AND business_id=$2 AND status IN('pending','confirmed')",[svc.uuid(req.params.id),a.id])).rows[0];
+  if(!b)svc.fail('BOOKING_NOT_FOUND',404);
+  return {ok:true,slots:await svc.slots(pool,b.business_id,b.service_id,svc.date(req.query.date),Math.round((new Date(b.ends_at)-new Date(b.starts_at))/60000),b.id)};
+ });
  route('get','/api/business/car-wash/bookings/:id','business',async(req,a)=>{
-  const b=(await pool.query('SELECT * FROM car_wash_bookings WHERE id=$1 AND business_id=$2',[svc.uuid(req.params.id),a.id])).rows[0];
+  const b=(await pool.query('SELECT bk.*,u.display_name AS customer_name FROM car_wash_bookings bk LEFT JOIN users u ON u.id=bk.owner_id WHERE bk.id=$1 AND bk.business_id=$2',[svc.uuid(req.params.id),a.id])).rows[0];
   if(!b)svc.fail('BOOKING_NOT_FOUND',404);
   return {ok:true,booking:b,history:(await pool.query('SELECT * FROM car_wash_history WHERE booking_id=$1 ORDER BY revision',[b.id])).rows};
  });
