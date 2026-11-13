@@ -385,7 +385,7 @@ void main() {
     expect(row,
         findsNothing); // Lazy viewport: absence from semantics is not data loss.
     await tester.scrollUntilVisible(row, 450,
-        scrollable: find.byType(Scrollable).first, maxScrolls: 40);
+        scrollable: find.byType(Scrollable).last, maxScrolls: 40);
     await tester.pumpAndSettle();
     expect(row, findsOneWidget);
     final semantics = tester.widget<Semantics>(

@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:heycar_app/business_v2_shell.dart';
+import 'package:heycar_app/business_car_wash_page.dart';
+import 'car_wash_test.dart' show FixtureWashApi;
 void main() {
+ testWidgets('actual business route allows desktop sidebar', (t) async {
+ t.view.physicalSize=const Size(1280,1000);t.view.devicePixelRatio=1;addTearDown(t.view.resetPhysicalSize);addTearDown(t.view.resetDevicePixelRatio);
+ await t.pumpWidget(MaterialApp(home:BusinessCarWashPage(api:FixtureWashApi(),onEditProfile:()async{},uploadPhoto:()async=>null)));await t.pumpAndSettle();
+ expect(find.byKey(const ValueKey('business-section-services')),findsOneWidget);await t.pumpWidget(const SizedBox.shrink());
+ });
   for (final width in [320.0, 360.0, 393.0, 430.0, 1280.0]) {
     for (final scale in [1.0, 1.3, 1.6]) {
       testWidgets('business navigation $width / $scale', (t) async {

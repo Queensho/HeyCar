@@ -30,10 +30,11 @@ Future<T?> washDialog<T>(
 
 class WashScaffold extends StatelessWidget {
   const WashScaffold(
-      {super.key, required this.title, required this.child, this.actions});
+      {super.key, required this.title, required this.child, this.actions, this.maxWidth = 720});
   final String title;
   final Widget child;
   final List<Widget>? actions;
+  final double maxWidth;
   @override
   Widget build(BuildContext context) => Theme(
         data: washTheme,
@@ -42,7 +43,7 @@ class WashScaffold extends StatelessWidget {
             body: SafeArea(
                 child: Center(
                     child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 720),
+                        constraints: BoxConstraints(maxWidth: maxWidth),
                         child: child)))),
       );
 }

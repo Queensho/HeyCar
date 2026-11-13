@@ -496,6 +496,7 @@ class _BusinessCarWashPageState extends State<BusinessCarWashPage> {
   @override
   Widget build(BuildContext context) => WashScaffold(
       title: 'Oto Yıkama Yönetimi',
+      maxWidth: 1440,
       actions: [
         IconButton(
             tooltip: 'Randevu bildirimleri',
