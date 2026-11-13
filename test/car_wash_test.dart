@@ -142,6 +142,22 @@ class LongBusinessServiceApi extends FixtureWashApi {
 }
 
 void main() {
+  test('business cover resolves uploaded relative photo and logo URLs', () {
+    final photo = washBusinessCover({
+      'photos': [{'url': '/uploads/car-wash/photo.jpg'}],
+      'logo_url': '/uploads/car-wash/logo.png',
+    });
+    expect(photo, contains('/uploads/car-wash/photo.jpg'));
+    expect(photo, startsWith('https://'));
+    final logo = washBusinessCover({
+      'photos': [],
+      'logo_url': '/uploads/car-wash/logo.png',
+    });
+    expect(logo, contains('/uploads/car-wash/logo.png'));
+    expect(washBusinessImageUrl('javascript:alert(1)'), isNull);
+    expect(washBusinessImageUrl(null), isNull);
+  });
+
   test('Türkiye timezone and integer kuruş formatting', () {
     expect(washTime('2030-01-01T22:30:00Z'), '2030-01-02 01:30');
     expect(washPrice(25050), '250.50 ₺');
