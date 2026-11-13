@@ -27,3 +27,7 @@ This checklist is preparation only. Do not treat local fixture/browser success o
 - **Staging deployment:** requires verified access to the staging host, database identity, and backup/restore evidence. None is established merely by this PR.
 - **Production release:** separate explicit approval after staging and real-device checks. Merging to main automatically publishes Pages and must not be used before that approval.
 - **Current stack:** #338 → #339 → #340 → #341 → #342 → #343. This checklist PR is stacked on #343 and does not change application code.
+
+## Main integration gate
+
+The user approved main integration, including its automatic Pages publish. The GitHub branch protection rule requires the `backend-matrix` check; do not bypass or merge until it reports success on the current PR head. Production VPS API deployment and staging migration application remain separate, unperformed operations.
