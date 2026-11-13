@@ -5,6 +5,7 @@ import 'car_wash_pages.dart';
 import 'business_v2_shell.dart';
 import 'business_v2_management.dart';
 import 'business_v2_customers.dart';
+import 'business_v2_reports.dart';
 
 class BusinessCarWashPage extends StatefulWidget {
   const BusinessCarWashPage(
@@ -65,7 +66,13 @@ class _BusinessCarWashPageState extends State<BusinessCarWashPage> {
         : '&from=${washDate(start)}&to=${washDate(end)}';
     final bookings = await widget.api.call(
         '/api/business/car-wash/bookings?limit=100&offset=$offset$filter');
-    return {...settings, 'bookings': bookings['bookings']};
+    final report = await widget.api.call(
+        '/api/business/car-wash/reports?from=${washDate(start)}&to=${washDate(end)}');
+    return {
+      ...settings,
+      'bookings': bookings['bookings'],
+      'summary': report['summary']
+    };
   }
 
   Future<void> _run(Future<void> Function() fn) async {
@@ -516,440 +523,466 @@ class _BusinessCarWashPageState extends State<BusinessCarWashPage> {
             icon: const Icon(Icons.refresh))
       ],
       child: BusinessV2Shell(
-          builder: (section) => section == BusinessSection.customers
-              ? BusinessCustomers(api: widget.api, onBooking: _booking)
-              : WashLoader(
-                  future: future,
-                  retry: _load,
-                  builder: (data) {
-                    final rows = washRows(data['bookings'])
-                            .where((b) =>
-                                statusFilter == null ||
-                                b['status'] == statusFilter)
-                            .toList(),
-                        staff = washRows(data['staff']);
-                    final pending =
-                        rows.where((b) => b['status'] == 'pending').length;
-                    final confirmed =
-                        rows.where((b) => b['status'] == 'confirmed').length;
-                    final completed =
-                        rows.where((b) => b['status'] == 'completed').length;
-                    final revenue = rows
-                        .where((b) => b['status'] == 'completed')
-                        .fold<int>(
-                            0,
-                            (total, b) =>
-                                total +
-                                ((b['price_kurus'] as num?)?.toInt() ?? 0));
-                    return ListView(
-                        padding: const EdgeInsets.all(18),
-                        children: [
-                          if (busy) const LinearProgressIndicator(),
-                          if (error != null)
-                            Text(error!,
-                                style: const TextStyle(color: Colors.red)),
-                          if (section == BusinessSection.overview) ...[
-                            Container(
-                              padding: const EdgeInsets.all(22),
-                              decoration: BoxDecoration(
-                                  color: const Color(0xFF10152D),
-                                  borderRadius: BorderRadius.circular(26)),
-                              child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Row(children: [
-                                      Icon(Icons.auto_awesome,
-                                          color: Color(0xFFB9FF45), size: 20),
-                                      SizedBox(width: 8),
-                                      Expanded(
-                                          child: Text('CEPQONTAG · İŞLETME',
-                                              softWrap: true,
-                                              style: TextStyle(
-                                                  color: Color(0xFFB9FF45),
-                                                  letterSpacing: 1.2,
-                                                  fontSize: 12,
-                                                  fontWeight:
-                                                      FontWeight.w800))),
-                                    ]),
-                                    const SizedBox(height: 12),
-                                    const Text('İşletme kontrol merkezi',
-                                        style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 25,
-                                            fontWeight: FontWeight.w800)),
-                                    const SizedBox(height: 8),
-                                    const Text(
-                                        'Randevularını, hizmetlerini ve ekibini tek yerden yönet.',
-                                        style: TextStyle(
-                                            color: Color(0xFFD9D6E5),
-                                            fontSize: 14)),
-                                    const SizedBox(height: 18),
-                                    Wrap(
-                                        spacing: 10,
-                                        runSpacing: 10,
-                                        children: [
-                                          FilledButton.icon(
-                                              onPressed: busy
-                                                  ? null
-                                                  : () => _settings(data),
-                                              style: FilledButton.styleFrom(
-                                                  backgroundColor:
-                                                      const Color(0xFFB9FF45),
-                                                  foregroundColor:
-                                                      const Color(0xFF10152D)),
-                                              icon: const Icon(Icons.tune),
-                                              label: const Text(
-                                                  'Saatler, tatiller ve fotoğraflar')),
-                                          OutlinedButton.icon(
-                                              onPressed: busy
-                                                  ? null
-                                                  : widget.onEditProfile,
-                                              style: OutlinedButton.styleFrom(
-                                                  foregroundColor: Colors.white,
-                                                  side: const BorderSide(
-                                                      color:
-                                                          Color(0xFF8E88A5))),
-                                              icon: const Icon(
-                                                  Icons.storefront_outlined),
-                                              label: const Text(
-                                                  'İşletme profili')),
+          builder: (section) => section == BusinessSection.reports
+              ? BusinessReports(api: widget.api)
+              : section == BusinessSection.customers
+                  ? BusinessCustomers(api: widget.api, onBooking: _booking)
+                  : WashLoader(
+                      future: future,
+                      retry: _load,
+                      builder: (data) {
+                        final rows = washRows(data['bookings'])
+                                .where((b) =>
+                                    statusFilter == null ||
+                                    b['status'] == statusFilter)
+                                .toList(),
+                            staff = washRows(data['staff']);
+                        final pending =
+                            rows.where((b) => b['status'] == 'pending').length;
+                        final completed = rows
+                            .where((b) => b['status'] == 'completed')
+                            .length;
+                        return ListView(
+                            padding: const EdgeInsets.all(18),
+                            children: [
+                              if (busy) const LinearProgressIndicator(),
+                              if (error != null)
+                                Text(error!,
+                                    style: const TextStyle(color: Colors.red)),
+                              if (section == BusinessSection.overview) ...[
+                                Text(
+                                    'İstatistik aralığı: ${washDate(period == 'month' ? DateTime(day.year, day.month) : day)} – ${washDate(period == 'month' ? DateTime(day.year, day.month + 1, 0) : day.add(Duration(days: period == 'week' ? 6 : 0)))} · durum filtresinden bağımsız'),
+                                Container(
+                                  padding: const EdgeInsets.all(22),
+                                  decoration: BoxDecoration(
+                                      color: const Color(0xFF10152D),
+                                      borderRadius: BorderRadius.circular(26)),
+                                  child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const Row(children: [
+                                          Icon(Icons.auto_awesome,
+                                              color: Color(0xFFB9FF45),
+                                              size: 20),
+                                          SizedBox(width: 8),
+                                          Expanded(
+                                              child: Text('CEPQONTAG · İŞLETME',
+                                                  softWrap: true,
+                                                  style: TextStyle(
+                                                      color: Color(0xFFB9FF45),
+                                                      letterSpacing: 1.2,
+                                                      fontSize: 12,
+                                                      fontWeight:
+                                                          FontWeight.w800))),
                                         ]),
-                                  ]),
-                            ),
-                            const SizedBox(height: 18),
-                            LayoutBuilder(builder: (context, constraints) {
-                              final width = constraints.maxWidth;
-                              final columns = width >= 700 ? 4 : 2;
-                              final tileWidth =
-                                  (width - (columns - 1) * 10) / columns;
-                              Widget metric(String label, String value,
-                                      IconData icon, Color color) =>
-                                  SizedBox(
-                                    width: tileWidth,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(15),
-                                      decoration: BoxDecoration(
-                                          color: const Color(0xFFF8F7FC),
-                                          border: Border.all(
-                                              color: const Color(0xFFEAE6F1)),
-                                          borderRadius:
-                                              BorderRadius.circular(18)),
-                                      child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Icon(icon, color: color, size: 23),
-                                            const SizedBox(height: 10),
-                                            Text(value,
-                                                maxLines: 1,
-                                                style: const TextStyle(
-                                                    fontSize: 23,
-                                                    fontWeight: FontWeight.w800,
-                                                    color: Color(0xFF10152D))),
-                                            const SizedBox(height: 4),
-                                            Text(label,
-                                                style: const TextStyle(
-                                                    fontSize: 12,
-                                                    color: Color(0xFF6B6880))),
-                                          ]),
-                                    ),
-                                  );
-                              return Wrap(
-                                  spacing: 10,
-                                  runSpacing: 10,
-                                  children: [
-                                    metric(
-                                        'Onay bekliyor',
-                                        '$pending',
-                                        Icons.pending_actions,
-                                        const Color(0xFF651FFF)),
-                                    metric(
-                                        'Onaylanan',
-                                        '$confirmed',
-                                        Icons.event_available,
-                                        const Color(0xFF651FFF)),
-                                    metric(
-                                        'Tamamlanan',
-                                        '$completed',
-                                        Icons.check_circle_outline,
-                                        const Color(0xFF651FFF)),
-                                    metric(
-                                        'Tamamlanan tutarı',
-                                        washPrice(revenue),
-                                        Icons.payments_outlined,
-                                        const Color(0xFF651FFF)),
-                                  ]);
-                            }),
-                          ],
-                          if (section == BusinessSection.overview ||
-                              section == BusinessSection.bookings) ...[
-                            const SizedBox(height: 26),
-                            Row(children: [
-                              const Expanded(
-                                  child: Text('Randevu takvimi',
-                                      style: TextStyle(
-                                          fontSize: 22,
-                                          fontWeight: FontWeight.w800,
-                                          color: Color(0xFF10152D)))),
-                              IconButton(
-                                  tooltip: 'Randevuları yenile',
-                                  onPressed: busy ? null : _load,
-                                  icon: const Icon(Icons.refresh,
-                                      color: Color(0xFF651FFF))),
-                            ]),
-                            const SizedBox(height: 10),
-                            Wrap(spacing: 8, runSpacing: 8, children: [
-                              for (final p in {
-                                'day': 'Günlük',
-                                'week': 'Haftalık',
-                                'month': 'Aylık',
-                                'history': 'Tüm geçmiş'
-                              }.entries)
-                                ChoiceChip(
-                                    label: Text(p.value),
-                                    selected: period == p.key,
-                                    selectedColor: const Color(0xFFB9FF45),
-                                    onSelected: busy
-                                        ? null
-                                        : (_) {
-                                            period = p.key;
-                                            offset = 0;
-                                            _load();
-                                          }),
-                              if (period != 'history')
-                                OutlinedButton.icon(
-                                    onPressed: busy
-                                        ? null
-                                        : () async {
-                                            final d = await showDatePicker(
-                                                builder: washPickerTheme,
-                                                context: context,
-                                                initialDate: day,
-                                                firstDate: DateTime(2020),
-                                                lastDate: DateTime.now().add(
-                                                    const Duration(days: 730)));
-                                            if (d != null && mounted) {
-                                              day = d;
-                                              offset = 0;
-                                              _load();
-                                            }
-                                          },
-                                    icon: const Icon(
-                                        Icons.calendar_month_outlined),
-                                    label: Text(
-                                        '${washDate(day)}${period == 'week' ? ' – ${washDate(day.add(const Duration(days: 6)))}' : ''}')),
-                            ]),
-                            const SizedBox(height: 12),
-                            Wrap(spacing: 8, runSpacing: 8, children: [
-                              FilterChip(
-                                  label: const Text('Takvim görünümü'),
-                                  selected: calendar,
-                                  onSelected: (v) =>
-                                      setState(() => calendar = v)),
-                              for (final entry in <String?, String>{
-                                null: 'Tümü',
-                                ...washStatuses
-                              }.entries)
-                                ChoiceChip(
-                                    label: Text(entry.value),
-                                    selected: statusFilter == entry.key,
-                                    onSelected: (_) => setState(
-                                        () => statusFilter = entry.key)),
-                            ]),
-                            if (calendar) ...[
-                              const SizedBox(height: 12),
-                              for (final date in rows
-                                  .map((b) =>
-                                      washTime(b['starts_at']).split(' ').first)
-                                  .toSet())
-                                Card(
-                                    child: ExpansionTile(
-                                        initiallyExpanded: true,
-                                        title: Text(date),
-                                        children: [
-                                      for (final b in rows.where((b) =>
-                                          washTime(b['starts_at'])
-                                              .startsWith(date)))
-                                        ListTile(
-                                            title: Text(
-                                                '${washTime(b['starts_at']).split(' ').last} · ${b['vehicle_plate']}'),
-                                            subtitle: Text(
-                                                '${b['service_name']} · ${washStatuses[b['status']]}'),
-                                            onTap: () => _booking(b))
-                                    ])),
-                            ],
-                            Text(
-                                '${rows.length} randevu bu sayfada · $pending onay bekliyor · $completed tamamlandı',
-                                style:
-                                    const TextStyle(color: Color(0xFF6B6880))),
-                            const SizedBox(height: 12),
-                            if (rows.isEmpty)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    vertical: 30, horizontal: 20),
-                                decoration: BoxDecoration(
-                                    color: const Color(0xFFF8F7FC),
-                                    borderRadius: BorderRadius.circular(18)),
-                                child: const Column(children: [
-                                  Icon(Icons.event_busy_outlined,
-                                      size: 36, color: Color(0xFF651FFF)),
-                                  SizedBox(height: 10),
-                                  Text('Seçilen aralıkta randevu bulunmuyor.',
-                                      textAlign: TextAlign.center),
+                                        const SizedBox(height: 12),
+                                        const Text('İşletme kontrol merkezi',
+                                            style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 25,
+                                                fontWeight: FontWeight.w800)),
+                                        const SizedBox(height: 8),
+                                        const Text(
+                                            'Randevularını, hizmetlerini ve ekibini tek yerden yönet.',
+                                            style: TextStyle(
+                                                color: Color(0xFFD9D6E5),
+                                                fontSize: 14)),
+                                        const SizedBox(height: 18),
+                                        Wrap(
+                                            spacing: 10,
+                                            runSpacing: 10,
+                                            children: [
+                                              FilledButton.icon(
+                                                  onPressed: busy
+                                                      ? null
+                                                      : () => _settings(data),
+                                                  style: FilledButton.styleFrom(
+                                                      backgroundColor:
+                                                          const Color(
+                                                              0xFFB9FF45),
+                                                      foregroundColor:
+                                                          const Color(
+                                                              0xFF10152D)),
+                                                  icon: const Icon(Icons.tune),
+                                                  label: const Text(
+                                                      'Saatler, tatiller ve fotoğraflar')),
+                                              OutlinedButton.icon(
+                                                  onPressed: busy
+                                                      ? null
+                                                      : widget.onEditProfile,
+                                                  style:
+                                                      OutlinedButton.styleFrom(
+                                                          foregroundColor:
+                                                              Colors.white,
+                                                          side: const BorderSide(
+                                                              color: Color(
+                                                                  0xFF8E88A5))),
+                                                  icon: const Icon(Icons
+                                                      .storefront_outlined),
+                                                  label: const Text(
+                                                      'İşletme profili')),
+                                            ]),
+                                      ]),
+                                ),
+                                const SizedBox(height: 18),
+                                LayoutBuilder(builder: (context, constraints) {
+                                  final width = constraints.maxWidth;
+                                  final columns = width >= 700 ? 4 : 2;
+                                  final tileWidth =
+                                      (width - (columns - 1) * 10) / columns;
+                                  Widget metric(String label, String value,
+                                          IconData icon, Color color) =>
+                                      SizedBox(
+                                        width: tileWidth,
+                                        child: Container(
+                                          padding: const EdgeInsets.all(15),
+                                          decoration: BoxDecoration(
+                                              color: const Color(0xFFF8F7FC),
+                                              border: Border.all(
+                                                  color:
+                                                      const Color(0xFFEAE6F1)),
+                                              borderRadius:
+                                                  BorderRadius.circular(18)),
+                                          child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Icon(icon,
+                                                    color: color, size: 23),
+                                                const SizedBox(height: 10),
+                                                Text(value,
+                                                    maxLines: 1,
+                                                    style: const TextStyle(
+                                                        fontSize: 23,
+                                                        fontWeight:
+                                                            FontWeight.w800,
+                                                        color:
+                                                            Color(0xFF10152D))),
+                                                const SizedBox(height: 4),
+                                                Text(label,
+                                                    style: const TextStyle(
+                                                        fontSize: 12,
+                                                        color:
+                                                            Color(0xFF6B6880))),
+                                              ]),
+                                        ),
+                                      );
+                                  return Wrap(
+                                      spacing: 10,
+                                      runSpacing: 10,
+                                      children: [
+                                        metric(
+                                            'Onay bekliyor',
+                                            '${(data['summary'] as Map?)?['pending_count'] ?? '—'}',
+                                            Icons.pending_actions,
+                                            const Color(0xFF651FFF)),
+                                        metric(
+                                            'Onaylanan',
+                                            '${(data['summary'] as Map?)?['confirmed_count'] ?? '—'}',
+                                            Icons.event_available,
+                                            const Color(0xFF651FFF)),
+                                        metric(
+                                            'Tamamlanan',
+                                            '${(data['summary'] as Map?)?['completed_count'] ?? '—'}',
+                                            Icons.check_circle_outline,
+                                            const Color(0xFF651FFF)),
+                                        metric(
+                                            'Tamamlanan tutarı',
+                                            washPrice(
+                                                (data['summary'] as Map?)?[
+                                                    'completed_amount_kurus']),
+                                            Icons.payments_outlined,
+                                            const Color(0xFF651FFF)),
+                                      ]);
+                                }),
+                              ],
+                              if (section == BusinessSection.overview ||
+                                  section == BusinessSection.bookings) ...[
+                                const SizedBox(height: 26),
+                                Row(children: [
+                                  const Expanded(
+                                      child: Text('Randevu takvimi',
+                                          style: TextStyle(
+                                              fontSize: 22,
+                                              fontWeight: FontWeight.w800,
+                                              color: Color(0xFF10152D)))),
+                                  IconButton(
+                                      tooltip: 'Randevuları yenile',
+                                      onPressed: busy ? null : _load,
+                                      icon: const Icon(Icons.refresh,
+                                          color: Color(0xFF651FFF))),
                                 ]),
-                              ),
-                            if (!calendar)
-                              for (final b in rows)
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 10),
-                                  child: Material(
-                                    color: Colors.white,
-                                    shape: RoundedRectangleBorder(
-                                        side: const BorderSide(
-                                            color: Color(0xFFEAE6F1)),
+                                const SizedBox(height: 10),
+                                Wrap(spacing: 8, runSpacing: 8, children: [
+                                  for (final p in {
+                                    'day': 'Günlük',
+                                    'week': 'Haftalık',
+                                    'month': 'Aylık',
+                                    'history': 'Tüm geçmiş'
+                                  }.entries)
+                                    ChoiceChip(
+                                        label: Text(p.value),
+                                        selected: period == p.key,
+                                        selectedColor: const Color(0xFFB9FF45),
+                                        onSelected: busy
+                                            ? null
+                                            : (_) {
+                                                period = p.key;
+                                                offset = 0;
+                                                _load();
+                                              }),
+                                  if (period != 'history')
+                                    OutlinedButton.icon(
+                                        onPressed: busy
+                                            ? null
+                                            : () async {
+                                                final d = await showDatePicker(
+                                                    builder: washPickerTheme,
+                                                    context: context,
+                                                    initialDate: day,
+                                                    firstDate: DateTime(2020),
+                                                    lastDate: DateTime.now()
+                                                        .add(const Duration(
+                                                            days: 730)));
+                                                if (d != null && mounted) {
+                                                  day = d;
+                                                  offset = 0;
+                                                  _load();
+                                                }
+                                              },
+                                        icon: const Icon(
+                                            Icons.calendar_month_outlined),
+                                        label: Text(
+                                            '${washDate(day)}${period == 'week' ? ' – ${washDate(day.add(const Duration(days: 6)))}' : ''}')),
+                                ]),
+                                const SizedBox(height: 12),
+                                Wrap(spacing: 8, runSpacing: 8, children: [
+                                  FilterChip(
+                                      label: const Text('Takvim görünümü'),
+                                      selected: calendar,
+                                      onSelected: (v) =>
+                                          setState(() => calendar = v)),
+                                  for (final entry in <String?, String>{
+                                    null: 'Tümü',
+                                    ...washStatuses
+                                  }.entries)
+                                    ChoiceChip(
+                                        label: Text(entry.value),
+                                        selected: statusFilter == entry.key,
+                                        onSelected: (_) => setState(
+                                            () => statusFilter = entry.key)),
+                                ]),
+                                if (calendar) ...[
+                                  const SizedBox(height: 12),
+                                  for (final date in rows
+                                      .map((b) => washTime(b['starts_at'])
+                                          .split(' ')
+                                          .first)
+                                      .toSet())
+                                    Card(
+                                        child: ExpansionTile(
+                                            initiallyExpanded: true,
+                                            title: Text(date),
+                                            children: [
+                                          for (final b in rows.where((b) =>
+                                              washTime(b['starts_at'])
+                                                  .startsWith(date)))
+                                            ListTile(
+                                                title: Text(
+                                                    '${washTime(b['starts_at']).split(' ').last} · ${b['vehicle_plate']}'),
+                                                subtitle: Text(
+                                                    '${b['service_name']} · ${washStatuses[b['status']]}'),
+                                                onTap: () => _booking(b))
+                                        ])),
+                                ],
+                                Text(
+                                    '${rows.length} randevu bu sayfada · $pending onay bekliyor · $completed tamamlandı',
+                                    style: const TextStyle(
+                                        color: Color(0xFF6B6880))),
+                                const SizedBox(height: 12),
+                                if (rows.isEmpty)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 30, horizontal: 20),
+                                    decoration: BoxDecoration(
+                                        color: const Color(0xFFF8F7FC),
                                         borderRadius:
                                             BorderRadius.circular(18)),
-                                    clipBehavior: Clip.antiAlias,
-                                    child: ListTile(
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                              horizontal: 14, vertical: 8),
-                                      leading: Container(
-                                          width: 44,
-                                          height: 44,
-                                          decoration: BoxDecoration(
-                                              color: const Color(0xFFF0EBFF),
-                                              borderRadius:
-                                                  BorderRadius.circular(12)),
-                                          child: const Icon(
-                                              Icons.directions_car_outlined,
-                                              color: Color(0xFF651FFF))),
-                                      title: Text(
-                                          '${b['vehicle_plate']} · ${b['service_name']}',
-                                          style: const TextStyle(
-                                              fontWeight: FontWeight.w700)),
-                                      subtitle: Text(
-                                          '${washTime(b['starts_at'])}\n${washStatuses[b['status']]} · ${washPrice(b['price_kurus'])}'),
-                                      isThreeLine: true,
-                                      trailing: const Icon(Icons.chevron_right,
-                                          color: Color(0xFF651FFF)),
-                                      onTap: busy ? null : () => _booking(b),
-                                    ),
+                                    child: const Column(children: [
+                                      Icon(Icons.event_busy_outlined,
+                                          size: 36, color: Color(0xFF651FFF)),
+                                      SizedBox(height: 10),
+                                      Text(
+                                          'Seçilen aralıkta randevu bulunmuyor.',
+                                          textAlign: TextAlign.center),
+                                    ]),
                                   ),
-                                ),
-                            Wrap(
-                                alignment: WrapAlignment.spaceBetween,
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: [
-                                  TextButton(
-                                      onPressed: offset > 0
-                                          ? () {
-                                              offset -= 100;
-                                              _load();
-                                            }
-                                          : null,
-                                      child: const Text('Önceki')),
-                                  TextButton(
-                                      onPressed: rows.length == 100
-                                          ? () {
-                                              offset += 100;
-                                              _load();
-                                            }
-                                          : null,
-                                      child: const Text('Sonraki')),
-                                ]),
-                          ],
-                          if ([
-                            BusinessSection.capacity,
-                            BusinessSection.profile,
-                            BusinessSection.settings
-                          ].contains(section)) ...[
-                            Text(section.label,
-                                style:
-                                    Theme.of(context).textTheme.headlineSmall),
-                            const SizedBox(height: 16),
-                            FilledButton.icon(
-                                onPressed: busy ? null : () => _settings(data),
-                                icon: const Icon(Icons.tune),
-                                label: const Text(
-                                    'Saatler, tatiller ve fotoğraflar')),
-                            OutlinedButton.icon(
-                                onPressed: widget.onEditProfile,
-                                icon: const Icon(Icons.storefront_outlined),
-                                label: const Text('İşletme profilini düzenle')),
-                          ],
-                          if (section == BusinessSection.reports)
-                            Text(
-                                '${section.label} bu aşamada henüz kullanıma açılmadı.'),
-                          for (final group in {
-                            'services': 'Hizmet paketleri',
-                            'staff': 'Personel',
-                            'resources': 'Kapasite kaynakları'
-                          }.entries.where((g) =>
-                              section == BusinessSection.overview ||
-                              (g.key == 'services' &&
-                                  section == BusinessSection.services) ||
-                              (g.key == 'staff' &&
-                                  section == BusinessSection.staff) ||
-                              (g.key == 'resources' &&
-                                  section == BusinessSection.capacity))) ...[
-                            const SizedBox(height: 24),
-                            Row(children: [
-                              Expanded(
-                                  child: Text(group.value,
-                                      style: const TextStyle(
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.w700))),
-                              IconButton(
-                                  tooltip: '${group.value} ekle',
-                                  onPressed: busy
-                                      ? null
-                                      : () => _editItem(group.key, null, staff),
-                                  icon: const Icon(Icons.add_circle_outline))
-                            ]),
-                            for (final item in washRows(data[group.key]))
-                              Semantics(
-                                  identifier:
-                                      'car-wash-${group.key}-${item['id']}',
-                                  container: true,
-                                  child: ListTile(
-                                      key: ValueKey(
-                                          'car-wash-${group.key}-${item['id']}'),
-                                      contentPadding: EdgeInsets.zero,
-                                      title: Text('${item['name']}'),
-                                      onTap: group.key == 'resources'
+                                if (!calendar)
+                                  for (final b in rows)
+                                    Padding(
+                                      padding:
+                                          const EdgeInsets.only(bottom: 10),
+                                      child: Material(
+                                        color: Colors.white,
+                                        shape: RoundedRectangleBorder(
+                                            side: const BorderSide(
+                                                color: Color(0xFFEAE6F1)),
+                                            borderRadius:
+                                                BorderRadius.circular(18)),
+                                        clipBehavior: Clip.antiAlias,
+                                        child: ListTile(
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                                  horizontal: 14, vertical: 8),
+                                          leading: Container(
+                                              width: 44,
+                                              height: 44,
+                                              decoration: BoxDecoration(
+                                                  color:
+                                                      const Color(0xFFF0EBFF),
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                          12)),
+                                              child: const Icon(
+                                                  Icons.directions_car_outlined,
+                                                  color: Color(0xFF651FFF))),
+                                          title: Text(
+                                              '${b['vehicle_plate']} · ${b['service_name']}',
+                                              style: const TextStyle(
+                                                  fontWeight: FontWeight.w700)),
+                                          subtitle: Text(
+                                              '${washTime(b['starts_at'])}\n${washStatuses[b['status']]} · ${washPrice(b['price_kurus'])}'),
+                                          isThreeLine: true,
+                                          trailing: const Icon(
+                                              Icons.chevron_right,
+                                              color: Color(0xFF651FFF)),
+                                          onTap:
+                                              busy ? null : () => _booking(b),
+                                        ),
+                                      ),
+                                    ),
+                                Wrap(
+                                    alignment: WrapAlignment.spaceBetween,
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: [
+                                      TextButton(
+                                          onPressed: offset > 0
+                                              ? () {
+                                                  offset -= 100;
+                                                  _load();
+                                                }
+                                              : null,
+                                          child: const Text('Önceki')),
+                                      TextButton(
+                                          onPressed: rows.length == 100
+                                              ? () {
+                                                  offset += 100;
+                                                  _load();
+                                                }
+                                              : null,
+                                          child: const Text('Sonraki')),
+                                    ]),
+                              ],
+                              if ([
+                                BusinessSection.capacity,
+                                BusinessSection.profile,
+                                BusinessSection.settings
+                              ].contains(section)) ...[
+                                Text(section.label,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .headlineSmall),
+                                const SizedBox(height: 16),
+                                FilledButton.icon(
+                                    onPressed:
+                                        busy ? null : () => _settings(data),
+                                    icon: const Icon(Icons.tune),
+                                    label: const Text(
+                                        'Saatler, tatiller ve fotoğraflar')),
+                                OutlinedButton.icon(
+                                    onPressed: widget.onEditProfile,
+                                    icon: const Icon(Icons.storefront_outlined),
+                                    label: const Text(
+                                        'İşletme profilini düzenle')),
+                              ],
+                              for (final group in {
+                                'services': 'Hizmet paketleri',
+                                'staff': 'Personel',
+                                'resources': 'Kapasite kaynakları'
+                              }.entries.where((g) =>
+                                  section == BusinessSection.overview ||
+                                  (g.key == 'services' &&
+                                      section == BusinessSection.services) ||
+                                  (g.key == 'staff' &&
+                                      section == BusinessSection.staff) ||
+                                  (g.key == 'resources' &&
+                                      section ==
+                                          BusinessSection.capacity))) ...[
+                                const SizedBox(height: 24),
+                                Row(children: [
+                                  Expanded(
+                                      child: Text(group.value,
+                                          style: const TextStyle(
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.w700))),
+                                  IconButton(
+                                      tooltip: '${group.value} ekle',
+                                      onPressed: busy
                                           ? null
-                                          : () async {
-                                              await Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                      builder: (_) => group
-                                                                  .key ==
-                                                              'services'
-                                                          ? BusinessServiceDetails(
-                                                              api: widget.api,
-                                                              item: item,
-                                                              settings: data,
-                                                              upload: widget
-                                                                  .uploadPhoto)
-                                                          : BusinessStaffHours(
-                                                              api: widget.api,
-                                                              staff: item)));
-                                              if (mounted) _load();
-                                            },
-                                      subtitle: Text(
-                                          '${item['active'] == true ? 'Aktif' : 'Pasif'}${group.key == 'services' ? ' · ${washPrice(item['price_kurus'])} · ${item['duration_minutes']} dk' : ''}'),
-                                      trailing: IconButton(
-                                          tooltip: 'Düzenle',
-                                          icon: const Icon(Icons.edit_outlined),
-                                          onPressed: busy
+                                          : () =>
+                                              _editItem(group.key, null, staff),
+                                      icon:
+                                          const Icon(Icons.add_circle_outline))
+                                ]),
+                                for (final item in washRows(data[group.key]))
+                                  Semantics(
+                                      identifier:
+                                          'car-wash-${group.key}-${item['id']}',
+                                      container: true,
+                                      child: ListTile(
+                                          key: ValueKey(
+                                              'car-wash-${group.key}-${item['id']}'),
+                                          contentPadding: EdgeInsets.zero,
+                                          title: Text('${item['name']}'),
+                                          onTap: group.key == 'resources'
                                               ? null
-                                              : () => _editItem(
-                                                  group.key, item, staff)))),
-                          ],
-                        ]);
-                  })));
+                                              : () async {
+                                                  await Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                          builder: (_) => group
+                                                                      .key ==
+                                                                  'services'
+                                                              ? BusinessServiceDetails(
+                                                                  api: widget
+                                                                      .api,
+                                                                  item: item,
+                                                                  settings:
+                                                                      data,
+                                                                  upload: widget
+                                                                      .uploadPhoto)
+                                                              : BusinessStaffHours(
+                                                                  api: widget
+                                                                      .api,
+                                                                  staff:
+                                                                      item)));
+                                                  if (mounted) _load();
+                                                },
+                                          subtitle: Text(
+                                              '${item['active'] == true ? 'Aktif' : 'Pasif'}${group.key == 'services' ? ' · ${washPrice(item['price_kurus'])} · ${item['duration_minutes']} dk' : ''}'),
+                                          trailing: IconButton(
+                                              tooltip: 'Düzenle',
+                                              icon: const Icon(
+                                                  Icons.edit_outlined),
+                                              onPressed: busy
+                                                  ? null
+                                                  : () => _editItem(group.key,
+                                                      item, staff)))),
+                              ],
+                            ]);
+                      })));
 }
 
 class _BusinessBookingPage extends StatefulWidget {
