@@ -48,6 +48,9 @@ async function slots(db,businessId,serviceId,day,duration=null,excludeId=null){
  JOIN car_wash_resources r ON r.business_id=$1 AND r.active
  LEFT JOIN car_wash_staff staff ON staff.id=r.staff_id
  WHERE t.starts_at>now() AND (r.staff_id IS NULL OR staff.active)
+ AND (NOT EXISTS(SELECT 1 FROM car_wash_service_resources sr WHERE sr.service_id=$2) OR EXISTS(SELECT 1 FROM car_wash_service_resources sr WHERE sr.service_id=$2 AND sr.resource_id=r.id))
+ AND (r.staff_id IS NULL OR NOT staff.custom_hours OR EXISTS(SELECT 1 FROM car_wash_staff_hours sh WHERE sh.staff_id=r.staff_id AND sh.weekday=extract(dow FROM t.starts_at AT TIME ZONE 'Europe/Istanbul') AND t.starts_at>=(((t.starts_at AT TIME ZONE 'Europe/Istanbul')::date+make_interval(mins=>sh.opens)) AT TIME ZONE 'Europe/Istanbul') AND t.ends_at<=(((t.starts_at AT TIME ZONE 'Europe/Istanbul')::date+make_interval(mins=>sh.closes)) AT TIME ZONE 'Europe/Istanbul')))
+
  AND NOT EXISTS(SELECT 1 FROM car_wash_bookings bk WHERE bk.status IN ${active} AND ($5::uuid IS NULL OR bk.id<>$5)
   AND (bk.resource_id=r.id OR (r.staff_id IS NOT NULL AND bk.staff_id=r.staff_id))
   AND tstzrange(bk.starts_at,bk.ends_at,'[)') && tstzrange(t.starts_at,t.ends_at,'[)'))
@@ -70,10 +73,13 @@ async function allocate(db,businessId,serviceId,startsAt,vehicleId,excludeId=nul
  if(!valid.rows.length)fail('OUTSIDE_WORKING_HOURS',409);
  const r=await db.query(`SELECT r.id,r.staff_id FROM car_wash_resources r LEFT JOIN car_wash_staff st ON st.id=r.staff_id
   WHERE r.business_id=$1 AND r.active AND (r.staff_id IS NULL OR st.active)
+ AND (NOT EXISTS(SELECT 1 FROM car_wash_service_resources sr WHERE sr.service_id=$6) OR EXISTS(SELECT 1 FROM car_wash_service_resources sr WHERE sr.service_id=$6 AND sr.resource_id=r.id))
+ AND (r.staff_id IS NULL OR NOT st.custom_hours OR EXISTS(SELECT 1 FROM car_wash_staff_hours sh WHERE sh.staff_id=r.staff_id AND sh.weekday=extract(dow FROM $2::timestamptz AT TIME ZONE 'Europe/Istanbul') AND $2::timestamptz>=((($2::timestamptz AT TIME ZONE 'Europe/Istanbul')::date+make_interval(mins=>sh.opens)) AT TIME ZONE 'Europe/Istanbul') AND ($2::timestamptz+make_interval(mins=>$3))<=((($2::timestamptz AT TIME ZONE 'Europe/Istanbul')::date+make_interval(mins=>sh.closes)) AT TIME ZONE 'Europe/Istanbul')))
+
   AND NOT EXISTS(SELECT 1 FROM car_wash_bookings bk WHERE bk.status IN ${active} AND ($5::uuid IS NULL OR bk.id<>$5)
    AND (bk.resource_id=r.id OR (r.staff_id IS NOT NULL AND bk.staff_id=r.staff_id) OR bk.vehicle_id=$4)
    AND tstzrange(bk.starts_at,bk.ends_at,'[)') && tstzrange($2::timestamptz,$2::timestamptz+make_interval(mins=>$3),'[)'))
-  ORDER BY r.id LIMIT 1`,[businessId,startsAt,s.duration_minutes,vehicleId,excludeId]);
+  ORDER BY r.id LIMIT 1`,[businessId,startsAt,s.duration_minutes,vehicleId,excludeId,serviceId]);
  if(!r.rows.length)fail('SLOT_UNAVAILABLE',409);
  return {service:s,resource:r.rows[0]};
 }
