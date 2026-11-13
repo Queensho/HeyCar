@@ -530,10 +530,11 @@ class _BusinessCarWashPageState extends State<BusinessCarWashPage> {
                   const Row(children: [
                     Icon(Icons.auto_awesome, color: Color(0xFFB9FF45), size: 20),
                     SizedBox(width: 8),
-                    Text('CEPQONTAG · İŞLETME',
+                    Expanded(child: Text('CEPQONTAG · İŞLETME',
+                      softWrap: true,
                       style: TextStyle(color: Color(0xFFB9FF45),
                         letterSpacing: 1.2, fontSize: 12,
-                        fontWeight: FontWeight.w800)),
+                        fontWeight: FontWeight.w800))),
                   ]),
                   const SizedBox(height: 12),
                   const Text('İşletme kontrol merkezi',
