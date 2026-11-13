@@ -550,7 +550,7 @@ class _BusinessCarWashPageState extends State<BusinessCarWashPage> {
                         backgroundColor: const Color(0xFFB9FF45),
                         foregroundColor: const Color(0xFF10152D)),
                       icon: const Icon(Icons.tune),
-                      label: const Text('İşletme ayarları')),
+                      label: const Text('Saatler, tatiller ve fotoğraflar')),
                     OutlinedButton.icon(
                       onPressed: busy ? null : widget.onEditProfile,
                       style: OutlinedButton.styleFrom(
@@ -667,11 +667,12 @@ class _BusinessCarWashPageState extends State<BusinessCarWashPage> {
               for (final b in rows)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 10),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: const Color(0xFFEAE6F1)),
+                  child: Material(
+                    color: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      side: const BorderSide(color: Color(0xFFEAE6F1)),
                       borderRadius: BorderRadius.circular(18)),
+                    clipBehavior: Clip.antiAlias,
                     child: ListTile(
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 14, vertical: 8),
