@@ -250,6 +250,12 @@ void main() {
             onEditProfile: () async {},
             uploadPhoto: () async => null)));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('34 TEST 01 · İç dış yıkama'),
+      180,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.text('34 TEST 01 · İç dış yıkama'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Randevuyu kabul et'));
