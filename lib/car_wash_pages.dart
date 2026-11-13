@@ -270,12 +270,8 @@ Widget _washBusinessTile({
   final distance = num.tryParse('${business['distance_km']}');
   final verified =
       business['verified'] == true || business['is_verified'] == true;
-  final photos = business['photos'];
-  final imageUrl = photos is List && photos.isNotEmpty
-      ? '${photos.first is Map ? (photos.first['url'] ?? photos.first['photo_url'] ?? '') : photos.first}'
-      : '${business['image_url'] ?? business['photo_url'] ?? ''}';
-  final validImage =
-      imageUrl.startsWith('https://') || imageUrl.startsWith('http://');
+  final imageUrl = washBusinessCover(business);
+  final validImage = imageUrl != null;
   final rating =
       num.tryParse('${business['rating'] ?? business['average_rating'] ?? ''}');
   final reviews = int.tryParse(
@@ -312,7 +308,7 @@ Widget _washBusinessTile({
                     width: imageWidth,
                     height: narrow ? 108 : 116,
                     child: validImage
-                        ? Image.network(imageUrl,
+                        ? Image.network(imageUrl!,
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) =>
                                 const _WashImagePlaceholder())
@@ -424,6 +420,50 @@ Widget _washBusinessTile({
   });
 }
 
+/// Resolves public business images returned as absolute or API-relative paths.
+/// Do not turn non-image values or unrelated schemes into network requests.
+String? washBusinessImageUrl(Object? raw) {
+  if (raw == null) return null;
+  if (raw is Map) {
+    for (final key in ['url', 'photo_url', 'image_url', 'photoUrl',
+      'logo_url', 'logoUrl', 'profile_logo_url', 'profile_image_url', 'path']) {
+      final resolved = washBusinessImageUrl(raw[key]);
+      if (resolved != null) return resolved;
+    }
+    return null;
+  }
+  if (raw is! String) return null;
+  final value = raw.trim();
+  if (value.isEmpty || value.toLowerCase() == 'null') return null;
+  final parsed = Uri.tryParse(value);
+  if (parsed == null) return null;
+  if (parsed.hasScheme) {
+    return (parsed.scheme == 'https' || parsed.scheme == 'http') &&
+        parsed.host.isNotEmpty ? value : null;
+  }
+  if (value.startsWith('//')) return 'https:$value';
+  if (value.startsWith('data:') || value.startsWith('blob:')) return null;
+  final base = Uri.tryParse(OnboardingBackend.baseUrl);
+  if (base == null || !base.hasAuthority) return null;
+  return base.resolve(value).toString();
+}
+
+String? washBusinessCover(Map business) {
+  final photos = business['photos'];
+  if (photos is List) {
+    for (final photo in photos) {
+      final url = washBusinessImageUrl(photo);
+      if (url != null) return url;
+    }
+  }
+  for (final key in ['image_url', 'photo_url', 'cover_image_url',
+    'logo_url', 'profile_logo_url', 'profile_image_url', 'logo']) {
+    final url = washBusinessImageUrl(business[key]);
+    if (url != null) return url;
+  }
+  return null;
+}
+
 class _WashImagePlaceholder extends StatelessWidget {
   const _WashImagePlaceholder();
   @override
@@ -460,13 +500,6 @@ class _WashBusinessPageState extends State<WashBusinessPage> {
             widget.api.call('/api/car-wash/businesses/${widget.businessId}');
       });
 
-  String _photoUrl(dynamic photo) {
-    if (photo is Map) {
-      return '${photo['url'] ?? photo['photo_url'] ?? photo['image_url'] ?? ''}';
-    }
-    return '${photo ?? ''}';
-  }
-
   @override
   Widget build(BuildContext context) => WashScaffold(
       title: 'İşletme Detayları',
@@ -494,10 +527,13 @@ class _WashBusinessPageState extends State<WashBusinessPage> {
             final rawPhotos =
                 b['photos'] is List ? b['photos'] as List : const [];
             final photos = rawPhotos
-                .map(_photoUrl)
-                .where(
-                    (p) => p.startsWith('https://') || p.startsWith('http://'))
+                .map(washBusinessImageUrl)
+                .whereType<String>()
                 .toList();
+            if (photos.isEmpty) {
+              final cover = washBusinessCover(b);
+              if (cover != null) photos.add(cover);
+            }
             final verified = b['verified'] == true || b['is_verified'] == true;
             final rating =
                 num.tryParse('${b['rating'] ?? b['average_rating'] ?? ''}');
@@ -1583,8 +1619,9 @@ class _WashBookingDetailPageState extends State<WashBookingDetailPage> {
                   width: double.infinity,
                   child: Stack(fit: StackFit.expand, children: [
                     Builder(builder: (_) {
-                      final url = '${b['business_image_url'] ?? b['image_url'] ?? b['photo_url'] ?? ''}';
-                      return url.startsWith('https://') || url.startsWith('http://')
+                      final url = washBusinessCover(b) ??
+                          washBusinessImageUrl(b['business_image_url']);
+                      return url != null
                           ? Image.network(url, fit: BoxFit.cover,
                               errorBuilder: (_, __, ___) => const _WashImagePlaceholder())
                           : const _WashImagePlaceholder();
