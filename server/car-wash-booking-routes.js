@@ -26,6 +26,7 @@ module.exports=function registerCarWashBookingRoutes(app,pool){
   }
  });}
  require('./business-v2-management')({route,pool,svc});
+ require('./business-v2-customers')({route,pool,svc});
  route('get','/api/car-wash/businesses/:businessId/availability','owner',async(req,a)=>{
   let duration=null;
   if(req.query.bookingId){
