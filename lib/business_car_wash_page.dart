@@ -511,97 +511,205 @@ class _BusinessCarWashPageState extends State<BusinessCarWashPage> {
           builder: (data) {
             final rows = washRows(data['bookings']),
                 staff = washRows(data['staff']);
+            final pending = rows.where((b) => b['status'] == 'pending').length;
+            final confirmed = rows.where((b) => b['status'] == 'confirmed').length;
+            final completed = rows.where((b) => b['status'] == 'completed').length;
+            final revenue = rows.where((b) => b['status'] == 'completed')
+                .fold<int>(0, (total, b) =>
+                    total + ((b['price_kurus'] as num?)?.toInt() ?? 0));
             return ListView(padding: const EdgeInsets.all(18), children: [
               if (busy) const LinearProgressIndicator(),
               if (error != null)
                 Text(error!, style: const TextStyle(color: Colors.red)),
-              Wrap(spacing: 8, runSpacing: 8, children: [
-                OutlinedButton.icon(
-                    onPressed: busy ? null : widget.onEditProfile,
-                    icon: const Icon(Icons.storefront),
-                    label: const Text('İşletme profili')),
-                FilledButton.icon(
-                    onPressed: busy ? null : () => _settings(data),
-                    icon: const Icon(Icons.settings),
-                    label: const Text('Saatler, tatiller ve fotoğraflar'))
+              Container(
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10152D),
+                  borderRadius: BorderRadius.circular(26)),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Row(children: [
+                    Icon(Icons.auto_awesome, color: Color(0xFFB9FF45), size: 20),
+                    SizedBox(width: 8),
+                    Text('CEPQONTAG · İŞLETME',
+                      style: TextStyle(color: Color(0xFFB9FF45),
+                        letterSpacing: 1.2, fontSize: 12,
+                        fontWeight: FontWeight.w800)),
+                  ]),
+                  const SizedBox(height: 12),
+                  const Text('İşletme kontrol merkezi',
+                    style: TextStyle(color: Colors.white, fontSize: 25,
+                      fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 8),
+                  const Text('Randevularını, hizmetlerini ve ekibini tek yerden yönet.',
+                    style: TextStyle(color: Color(0xFFD9D6E5), fontSize: 14)),
+                  const SizedBox(height: 18),
+                  Wrap(spacing: 10, runSpacing: 10, children: [
+                    FilledButton.icon(
+                      onPressed: busy ? null : () => _settings(data),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFFB9FF45),
+                        foregroundColor: const Color(0xFF10152D)),
+                      icon: const Icon(Icons.tune),
+                      label: const Text('İşletme ayarları')),
+                    OutlinedButton.icon(
+                      onPressed: busy ? null : widget.onEditProfile,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        side: const BorderSide(color: Color(0xFF8E88A5))),
+                      icon: const Icon(Icons.storefront_outlined),
+                      label: const Text('İşletme profili')),
+                  ]),
+                ]),
+              ),
+              const SizedBox(height: 18),
+              LayoutBuilder(builder: (context, constraints) {
+                final width = constraints.maxWidth;
+                final columns = width >= 700 ? 4 : 2;
+                final tileWidth = (width - (columns - 1) * 10) / columns;
+                Widget metric(String label, String value, IconData icon,
+                    Color color) => SizedBox(
+                  width: tileWidth,
+                  child: Container(
+                    padding: const EdgeInsets.all(15),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8F7FC),
+                      border: Border.all(color: const Color(0xFFEAE6F1)),
+                      borderRadius: BorderRadius.circular(18)),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(icon, color: color, size: 23),
+                        const SizedBox(height: 10),
+                        Text(value, maxLines: 1,
+                          style: const TextStyle(fontSize: 23,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF10152D))),
+                        const SizedBox(height: 4),
+                        Text(label, style: const TextStyle(fontSize: 12,
+                          color: Color(0xFF6B6880))),
+                      ]),
+                  ),
+                );
+                return Wrap(spacing: 10, runSpacing: 10, children: [
+                  metric('Onay bekliyor', '$pending',
+                    Icons.pending_actions, const Color(0xFF651FFF)),
+                  metric('Onaylanan', '$confirmed',
+                    Icons.event_available, const Color(0xFF651FFF)),
+                  metric('Tamamlanan', '$completed',
+                    Icons.check_circle_outline, const Color(0xFF651FFF)),
+                  metric('Tamamlanan tutarı',
+                    washPrice(revenue), Icons.payments_outlined,
+                    const Color(0xFF651FFF)),
+                ]);
+              }),
+              const SizedBox(height: 26),
+              Row(children: [
+                const Expanded(child: Text('Randevu takvimi',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800,
+                    color: Color(0xFF10152D)))),
+                IconButton(
+                  tooltip: 'Randevuları yenile',
+                  onPressed: busy ? null : _load,
+                  icon: const Icon(Icons.refresh, color: Color(0xFF651FFF))),
               ]),
-              const SizedBox(height: 24),
-              const Text('Randevu takvimi',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
-              Wrap(spacing: 8, children: [
+              const SizedBox(height: 10),
+              Wrap(spacing: 8, runSpacing: 8, children: [
                 for (final p in {
                   'day': 'Günlük',
                   'week': 'Haftalık',
                   'history': 'Tüm geçmiş'
                 }.entries)
                   ChoiceChip(
-                      label: Text(p.value),
-                      selected: period == p.key,
-                      onSelected: busy
-                          ? null
-                          : (_) {
-                              period = p.key;
-                              offset = 0;
-                              _load();
-                            })
-              ]),
-              if (period != 'history')
-                OutlinedButton.icon(
-                    onPressed: busy
-                        ? null
-                        : () async {
-                            final d = await showDatePicker(
-                                builder: washPickerTheme,
-                                context: context,
-                                initialDate: day,
-                                firstDate: DateTime(2020),
-                                lastDate: DateTime.now()
-                                    .add(const Duration(days: 730)));
-                            if (d != null && mounted) {
-                              day = d;
-                              offset = 0;
-                              _load();
-                            }
-                          },
-                    icon: const Icon(Icons.calendar_month),
+                    label: Text(p.value),
+                    selected: period == p.key,
+                    selectedColor: const Color(0xFFB9FF45),
+                    onSelected: busy ? null : (_) {
+                      period = p.key;
+                      offset = 0;
+                      _load();
+                    }),
+                if (period != 'history')
+                  OutlinedButton.icon(
+                    onPressed: busy ? null : () async {
+                      final d = await showDatePicker(
+                        builder: washPickerTheme,
+                        context: context,
+                        initialDate: day,
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime.now().add(const Duration(days: 730)));
+                      if (d != null && mounted) {
+                        day = d;
+                        offset = 0;
+                        _load();
+                      }
+                    },
+                    icon: const Icon(Icons.calendar_month_outlined),
                     label: Text(
-                        '${washDate(day)}${period == 'week' ? ' – ${washDate(day.add(const Duration(days: 6)))}' : ''}')),
-              Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: Text(
-                      '${rows.length} randevu bu sayfada · ${rows.where((b) => b['status'] == 'pending').length} onay bekliyor · ${rows.where((b) => b['status'] == 'completed').length} tamamlandı')),
+                      '${washDate(day)}${period == 'week' ? ' – ${washDate(day.add(const Duration(days: 6)))}' : ''}')),
+              ]),
+              const SizedBox(height: 12),
+              Text('${rows.length} randevu bu sayfada · $pending onay bekliyor · $completed tamamlandı',
+                style: const TextStyle(color: Color(0xFF6B6880))),
+              const SizedBox(height: 12),
               if (rows.isEmpty)
-                const Text('Seçilen aralıkta randevu bulunmuyor.'),
-              for (final b in rows)
-                washCard(ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text('${b['vehicle_plate']} · ${b['service_name']}'),
-                    subtitle: Text(
-                        '${washTime(b['starts_at'])}\n${washStatuses[b['status']]} · ${washPrice(b['price_kurus'])}'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: busy ? null : () => _booking(b))),
-              Wrap(
-                  alignment: WrapAlignment.spaceBetween,
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    TextButton(
-                        onPressed: offset > 0
-                            ? () {
-                                offset -= 100;
-                                _load();
-                              }
-                            : null,
-                        child: const Text('Önceki')),
-                    TextButton(
-                        onPressed: rows.length == 100
-                            ? () {
-                                offset += 100;
-                                _load();
-                              }
-                            : null,
-                        child: const Text('Sonraki'))
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 20),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8F7FC),
+                    borderRadius: BorderRadius.circular(18)),
+                  child: const Column(children: [
+                    Icon(Icons.event_busy_outlined, size: 36,
+                      color: Color(0xFF651FFF)),
+                    SizedBox(height: 10),
+                    Text('Seçilen aralıkta randevu bulunmuyor.',
+                      textAlign: TextAlign.center),
                   ]),
+                ),
+              for (final b in rows)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border.all(color: const Color(0xFFEAE6F1)),
+                      borderRadius: BorderRadius.circular(18)),
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 8),
+                      leading: Container(
+                        width: 44, height: 44,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF0EBFF),
+                          borderRadius: BorderRadius.circular(12)),
+                        child: const Icon(Icons.directions_car_outlined,
+                          color: Color(0xFF651FFF))),
+                      title: Text('${b['vehicle_plate']} · ${b['service_name']}',
+                        style: const TextStyle(fontWeight: FontWeight.w700)),
+                      subtitle: Text(
+                        '${washTime(b['starts_at'])}\n${washStatuses[b['status']]} · ${washPrice(b['price_kurus'])}'),
+                      isThreeLine: true,
+                      trailing: const Icon(Icons.chevron_right,
+                        color: Color(0xFF651FFF)),
+                      onTap: busy ? null : () => _booking(b),
+                    ),
+                  ),
+                ),
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                spacing: 8, runSpacing: 8,
+                children: [
+                  TextButton(
+                    onPressed: offset > 0 ? () {
+                      offset -= 100;
+                      _load();
+                    } : null,
+                    child: const Text('Önceki')),
+                  TextButton(
+                    onPressed: rows.length == 100 ? () {
+                      offset += 100;
+                      _load();
+                    } : null,
+                    child: const Text('Sonraki')),
+                ]),
               for (final group in {
                 'services': 'Hizmet paketleri',
                 'staff': 'Personel',
