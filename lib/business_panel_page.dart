@@ -19,6 +19,21 @@ import 'car_wash_api.dart';
 const _bg=Color(0xFF07111F),_panel=Color(0xFF101A30),_line=Color(0xFF27355D),_purple=Color(0xFF713BFF),_muted=Color(0xFFA7B0C7);
 
 const _businessApi=apiBaseUrl;
+String businessMediaUrl(String value) {
+  final uri = Uri.tryParse(value.trim());
+  if (uri == null) return value;
+  if ((uri.host == 'cepqar.com' || uri.host == 'www.cepqar.com') &&
+      uri.path.startsWith('/uploads/business/')) {
+    final base = Uri.tryParse(_businessApi);
+    if (base != null && base.hasAuthority) {
+      return base.resolveUri(Uri(path: uri.path, query: uri.query)).toString();
+    }
+  }
+  if (!uri.hasScheme && value.startsWith('/uploads/business/')) {
+    return Uri.parse(_businessApi).resolve(value).toString();
+  }
+  return value;
+}
 const _offerCategories=['Oto Yıkama','Detailing','Lastik','Otopark','Servis','Akaryakıt'];
 
 class BusinessPanelPage extends StatefulWidget{const BusinessPanelPage({super.key});@override State<BusinessPanelPage> createState()=>_BusinessPanelPageState();}
@@ -72,7 +87,7 @@ class _BusinessPanelPageState extends State<BusinessPanelPage>{
   final changed=await Navigator.push<bool>(context,MaterialPageRoute(builder:(_)=>BusinessCampaignEdit(token:token,campaign:x,pickImage:()=>_pickDataImage(kind:'campaign'))));
   if(changed==true)await _loadAll();
  }
- Future<void> _editProfile(BuildContext context)async{if(token.isEmpty){await _showAuth(context);return;}String logo=(business?['logo_url']??'').toString();final n=TextEditingController(text:(business?['name']??'').toString()),cat=TextEditingController(text:(business?['category']??'').toString()),phone=TextEditingController(text:(business?['phone']??'').toString()),address=TextEditingController(text:(business?['address']??'').toString()),hours=TextEditingController(text:(business?['opening_hours']??'').toString()),desc=TextEditingController(text:(business?['description']??'').toString());await showDialog(context:context,builder:(d)=>AlertDialog(backgroundColor:_panel,title:const Text('İşletme Bilgileri',style:TextStyle(color:Colors.white)),content:SizedBox(width:430,child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[StatefulBuilder(builder:(c,setP)=>Column(children:[CircleAvatar(radius:38,backgroundColor:_bg,backgroundImage:logo.isNotEmpty?NetworkImage(logo):null,child:logo.isEmpty?const Icon(Icons.storefront,color:_purple,size:32):null),TextButton.icon(onPressed:()async{final v=await _pickDataImage(kind:'logo');if(v!=null)setP(()=>logo=v);},icon:const Icon(Icons.add_a_photo_rounded),label:const Text('Profil logosu seç'))])),_Field(n,'İşletme adı'),_Field(cat,'Kategori'),_Field(phone,'Telefon'),_Field(address,'Adres'),_Field(hours,'Çalışma saatleri'),_Field(desc,'Açıklama')]))),actions:[TextButton(onPressed:()=>Navigator.pop(d),child:const Text('Vazgeç')),FilledButton(onPressed:()async{final r=await http.patch(Uri.parse('$_businessApi/api/business/me'),headers:{'Content-Type':'application/json','Authorization':'Bearer $token'},body:jsonEncode({'name':n.text,'category':cat.text,'phone':phone.text,'address':address.text,'openingHours':hours.text,'description':desc.text,'latitude':business?['latitude'],'longitude':business?['longitude'],'logoUrl':logo}));if(r.statusCode==200){if(d.mounted)Navigator.pop(d);await _loadAll();}},child:const Text('Kaydet'))]));}
+ Future<void> _editProfile(BuildContext context)async{if(token.isEmpty){await _showAuth(context);return;}String logo=(business?['logo_url']??'').toString();final n=TextEditingController(text:(business?['name']??'').toString()),cat=TextEditingController(text:(business?['category']??'').toString()),phone=TextEditingController(text:(business?['phone']??'').toString()),address=TextEditingController(text:(business?['address']??'').toString()),hours=TextEditingController(text:(business?['opening_hours']??'').toString()),desc=TextEditingController(text:(business?['description']??'').toString());await showDialog(context:context,builder:(d)=>AlertDialog(backgroundColor:_panel,title:const Text('İşletme Bilgileri',style:TextStyle(color:Colors.white)),content:SizedBox(width:430,child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[StatefulBuilder(builder:(c,setP)=>Column(children:[CircleAvatar(radius:38,backgroundColor:_bg,backgroundImage:logo.isNotEmpty?NetworkImage(businessMediaUrl(logo)):null,child:logo.isEmpty?const Icon(Icons.storefront,color:_purple,size:32):null),TextButton.icon(onPressed:()async{final v=await _pickDataImage(kind:'logo');if(v!=null)setP(()=>logo=v);},icon:const Icon(Icons.add_a_photo_rounded),label:const Text('Profil logosu seç'))])),_Field(n,'İşletme adı'),_Field(cat,'Kategori'),_Field(phone,'Telefon'),_Field(address,'Adres'),_Field(hours,'Çalışma saatleri'),_Field(desc,'Açıklama')]))),actions:[TextButton(onPressed:()=>Navigator.pop(d),child:const Text('Vazgeç')),FilledButton(onPressed:()async{final r=await http.patch(Uri.parse('$_businessApi/api/business/me'),headers:{'Content-Type':'application/json','Authorization':'Bearer $token'},body:jsonEncode({'name':n.text,'category':cat.text,'phone':phone.text,'address':address.text,'openingHours':hours.text,'description':desc.text,'latitude':business?['latitude'],'longitude':business?['longitude'],'logoUrl':logo}));if(r.statusCode==200){if(d.mounted)Navigator.pop(d);await _loadAll();}},child:const Text('Kaydet'))]));}
  Future<void> _showCampaign(BuildContext context) async {
   String campaignImage='';final title=TextEditingController(),desc=TextEditingController(),badge=TextEditingController(),code=TextEditingController(),regularPrice=TextEditingController(),offerPrice=TextEditingController(),discountPercent=TextEditingController(),dailyLimit=TextEditingController(),totalLimit=TextEditingController(),terms=TextEditingController(); String offerType='discount'; bool publishing=false; String? publishError;
   final now=DateTime.now(); DateTime start=DateTime(now.year,now.month,now.day),end=DateTime(now.year,now.month,now.day).add(const Duration(days:30));
