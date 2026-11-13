@@ -2,6 +2,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'car_wash_api.dart';
+import 'onboarding_backend.dart';
 
 const _purple = Color(0xFF651FFF),
     _deep = Color(0xFF4912C8),
