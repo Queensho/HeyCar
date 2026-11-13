@@ -221,6 +221,17 @@ test('car wash customer and business journey through the real server and Postgre
   assert.equal((await request(base+'?offset=-1',shop.token)).status,400);assert.equal((await request(base+'?completed=anything',shop.token)).status,400);
   assert.equal((await request(base+'/'+other.id,shop.token)).status,404);
  });
+ await t.test('reports aggregate all own records in Istanbul range and never claim cash received',async()=>{
+  const path=`/api/business/car-wash/reports?from=${day}&to=${day}`;
+  const r=await request(path,shop.token);assert.equal(r.status,200,JSON.stringify(r));
+  const db=(await pool.query("SELECT count(*)::int AS n,COALESCE(sum(price_kurus) FILTER(WHERE status='completed'),0)::text AS amount FROM car_wash_bookings WHERE business_id=$1 AND (starts_at AT TIME ZONE 'Europe/Istanbul')::date=$2::date",[shop.id,day])).rows[0];
+  assert.equal(r.body.summary.total_count,db.n);assert.equal(r.body.summary.completed_amount_kurus,db.amount);
+  assert.equal(r.body.amountDefinition,'completed_booking_value_not_collected_revenue');
+  assert.equal(r.body.daily.reduce((n,d)=>n+d.count,0),db.n);assert.equal(r.body.services.reduce((n,s)=>n+s.count,0),db.n);
+  assert.equal((await request(path,outsider.token)).body.summary.total_count,0);
+  assert.equal((await request('/api/business/car-wash/reports?from=2020-01-01&to=2025-01-01',shop.token)).status,400);
+  assert.equal((await request('/api/business/car-wash/reports?from=invalid',shop.token)).status,400);
+ });
  await t.test('reminders and event inbox deduplicate; existing push transport is called at most once',async()=>{
   const fresh=(await create(payload(7,'11'))).body.booking;
   await pool.query("UPDATE car_wash_bookings SET status='confirmed',starts_at=now()+interval '45 minutes',ends_at=now()+interval '75 minutes' WHERE id=$1",[fresh.id]);
@@ -271,10 +282,18 @@ test('car wash customer and business journey through the real server and Postgre
   await pool.query('UPDATE vehicles SET owner_id=$2 WHERE id=$1',[u.vehicles[1],other.id]);
   assert.equal((await pool.query('SELECT status FROM car_wash_bookings WHERE id=$1',[transferred.body.booking.id])).rows[0].status,'cancelled');
   const deleted=await make(2,'11');assert.equal(deleted.status,200);
-  await pool.query('DELETE FROM users WHERE id=$1',[u.id]);
+  try{await pool.query('DELETE FROM users WHERE id=$1',[u.id]);}catch(e){console.error('LIFECYCLE_SQL_DIAGNOSTIC',JSON.stringify({code:e.code,constraint:e.constraint,detail:e.detail,where:e.where}));throw e;}
   const b=(await pool.query('SELECT * FROM car_wash_bookings WHERE id=$1',[deleted.body.booking.id])).rows[0];
   assert.equal(b.owner_id,null);assert.equal(b.status,'cancelled');assert.equal(b.vehicle_plate,'Silinen araç');
   assert.equal((await pool.query('SELECT * FROM car_wash_requests WHERE actor=$1',['owner:'+u.id])).rowCount,0);
+ });
+ await t.test('repeated account deletion leaves no dangling owner or vehicle reservation references',async()=>{
+  for(let run=0;run<8;run++){
+   const u=await user('delete-repeat-'+run);
+   const b=(await request('/api/car-wash/bookings',u.token,{method:'POST',key:crypto.randomUUID(),body:{...payload(),vehicleId:u.vehicles[0],startsAt:at('14')}})).body.booking;assert.ok(b);
+   try{await pool.query('DELETE FROM users WHERE id=$1',[u.id]);}catch(e){console.error('LIFECYCLE_SQL_DIAGNOSTIC',JSON.stringify({code:e.code,constraint:e.constraint,detail:e.detail,where:e.where}));throw e;}
+   const saved=(await pool.query('SELECT status,owner_id,vehicle_id FROM car_wash_bookings WHERE id=$1',[b.id])).rows[0];assert.deepEqual(saved,{status:'cancelled',owner_id:null,vehicle_id:null});
+  }
  });
  await t.test('actual staging migration probe works without database CREATE privilege and rolls back',async()=>{
   const fs=require('node:fs');

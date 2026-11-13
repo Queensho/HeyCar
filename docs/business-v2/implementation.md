@@ -40,3 +40,19 @@ input; existing category defaults to car_wash. Packages contain leaf services on
 with explicitly configured total price/duration (not payment processing).
 Rollback preserves data: revert code after disabling new metadata edits, retain
 130 tables/columns and tracking; do not DROP/restore. Migrate before backend release.
+
+Stage 4: customer list/detail/search/pagination derives only from this business's
+bookings; no telephone/private contact fields. Still-owned vehicle make/model may
+be shown; booking-time plate/service snapshots remain authoritative. 254 backend,
+30 responsive customer tests passed. Existing management retry callbacks are void.
+
+Stage 5: bounded Istanbul date ranges, repeatable-read reporting snapshot, real
+service volume/daily counts/staff workloads and completed booking value (not cash).
+Overview metrics now use aggregation rather than the first paginated 100 bookings.
+256 backend tests and 16 reporting/calendar tests passed. First report tests found
+an accessibility progress-value bug (>100 count presented as percent); fixed.
+One full-suite run also exposed an intermittent account-deletion vehicle FK23503.
+Five isolated replays and the subsequent full suite passed; added eight-account
+lifecycle regression and PostgreSQL detail/constraint/context capture. Constraint
+was not removed/relaxed. Root cause is not yet established; recurrence is a release
+blocker, not evidence of a repaired database issue.
