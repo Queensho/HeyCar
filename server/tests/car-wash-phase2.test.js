@@ -165,6 +165,19 @@ test('car wash customer and business journey through the real server and Postgre
   assert.equal((await change(live.id,'completed')).status,200);
   assert.equal((await change(live.id,'confirmed')).status,409);
  });
+ await t.test('business reschedule preserves snapshot and deduplicates events, denies other tenant',async()=>{
+  const b=(await create(payload(7,'12'))).body.booking;
+  const path=`/api/business/car-wash/bookings/${b.id}`;
+  assert.equal((await request(path+'/availability?date='+day,outsider.token)).status,404);
+  assert.ok((await request(path+'/availability?date='+day,shop.token)).body.slots.length);
+  const key=crypto.randomUUID(),body={action:'reschedule',startsAt:at('13')};
+  assert.equal((await request(path+'/change',outsider.token,{method:'POST',key,body})).status,404);
+  const responses=await Promise.all([1,2,3].map(()=>request(path+'/change',shop.token,{method:'POST',key,body})));
+  assert.ok(responses.every(r=>r.status===200));
+  const moved=responses[0].body.booking;assert.equal(moved.price_kurus,b.price_kurus);assert.equal(moved.revision,2);
+  assert.equal(new Date(moved.ends_at)-new Date(moved.starts_at),new Date(b.ends_at)-new Date(b.starts_at));
+  assert.equal((await pool.query("SELECT 1 FROM car_wash_history WHERE booking_id=$1 AND event='rescheduled'",[b.id])).rowCount,1);
+ });
  await t.test('reminders and event inbox deduplicate; existing push transport is called at most once',async()=>{
   const fresh=(await create(payload(7,'11'))).body.booking;
   await pool.query("UPDATE car_wash_bookings SET status='confirmed',starts_at=now()+interval '45 minutes',ends_at=now()+interval '75 minutes' WHERE id=$1",[fresh.id]);
