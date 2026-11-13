@@ -439,8 +439,19 @@ String? washBusinessImageUrl(Object? raw) {
   final parsed = Uri.tryParse(value);
   if (parsed == null) return null;
   if (parsed.hasScheme) {
-    return (parsed.scheme == 'https' || parsed.scheme == 'http') &&
-        parsed.host.isNotEmpty ? value : null;
+    if ((parsed.scheme != 'https' && parsed.scheme != 'http') ||
+        parsed.host.isEmpty) return null;
+    // Older uploads were returned using the legacy cepqar.com default
+    // even though the file is served by the API host.
+    if ((parsed.host == 'cepqar.com' || parsed.host == 'www.cepqar.com') &&
+        parsed.path.startsWith('/uploads/business/')) {
+      final api = Uri.tryParse(OnboardingBackend.baseUrl);
+      if (api != null && api.hasAuthority) {
+        return api.resolveUri(Uri(path: parsed.path, query: parsed.query))
+            .toString();
+      }
+    }
+    return value;
   }
   if (value.startsWith('//')) return 'https:$value';
   if (value.startsWith('data:') || value.startsWith('blob:')) return null;
