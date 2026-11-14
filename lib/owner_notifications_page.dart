@@ -119,8 +119,8 @@ Widget _filters(){
     child:Row(children:List.generate(filters.length,(i){
       final selected=tab==i;
       return Padding(padding:const EdgeInsets.only(right:6),child:Semantics(
-        selected:selected,child:CQPressable(
-          onTap:()=>setState(()=>tab=i),semanticLabel:filters[i],borderRadius:12,
+        selected:selected,child:Material(color:Colors.transparent,child:InkWell(
+          onTap:()=>setState(()=>tab=i),borderRadius:BorderRadius.circular(12),
           child:AnimatedContainer(
             duration:CQMotion.duration(context,CQMotion.feedback),curve:CQMotion.standard,
             constraints:CQLayout.touchConstraints,
@@ -128,13 +128,13 @@ Widget _filters(){
             decoration:BoxDecoration(color:selected?_purple:Colors.white,borderRadius:BorderRadius.circular(12)),
             child:Text(filters[i],style:TextStyle(color:selected?Colors.white:_text,fontSize:14,fontWeight:FontWeight.w600)),
           ),
-        ),
+        )),
       ));
     })),
   );
 }
 Widget _section(String name,List<Map<String,dynamic>> xs)=>Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Padding(padding:const EdgeInsets.fromLTRB(2,9,0,7),child:Text(name,style:TextStyle(color:_text,fontSize:CepqarTheme.cardTitle,fontWeight:FontWeight.w900))),for(final n in xs)...[_card(n),const SizedBox(height:7)]]);
-Widget _card(Map<String,dynamic> n){final t='${n['type']??'system'}',fresh=n['status']=='new',color=_vColor(t),light=CepqarTheme.isLight;return Semantics(identifier:'owner-notification-${n['id']}',container:true,child:Material(color:Colors.transparent,child:InkWell(onTap:()=>_details(n),borderRadius:BorderRadius.circular(15),child:Ink(padding:const EdgeInsets.fromLTRB(12,12,10,12),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(15),border:Border.all(color:_line),boxShadow:[BoxShadow(color:Colors.black.withValues(alpha:.025),blurRadius:10,offset:const Offset(0,3))]),child:Row(children:[Container(width:40,height:40,decoration:BoxDecoration(color:color.withValues(alpha:.10),borderRadius:BorderRadius.circular(12)),child:Icon(_vIcon(t),color:color,size:20)),const SizedBox(width:10),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text((isServiceNotification(n)?'${n['title']??'Hizmet randevusu'}':_vTitle(t)),maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:_text,fontSize:CepqarTheme.cardTitle,fontWeight:fresh?FontWeight.w900:FontWeight.w800)),const SizedBox(height:3),Text(_desc(n),maxLines:2,overflow:TextOverflow.ellipsis,style:TextStyle(color:_muted,fontSize:CepqarTheme.bodySmall,height:1.2,fontWeight:FontWeight.w500))])),const SizedBox(width:7),SizedBox(width:MediaQuery.textScalerOf(context).scale(48).clamp(48.0,100.0),child:Column(crossAxisAlignment:CrossAxisAlignment.end,children:[Text(_when(n),maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:_muted,fontSize:CepqarTheme.caption,fontWeight:FontWeight.w600)),const SizedBox(height:8),Row(mainAxisAlignment:MainAxisAlignment.end,children:[if(fresh)const CircleAvatar(radius:3.5,backgroundColor:Color(0xFFB9FF45)),if(fresh)const SizedBox(width:6),Icon(Icons.chevron_right_rounded,color:_muted,size:18)])]))])))));}
+Widget _card(Map<String,dynamic> n){final t='${n['type']??'system'}',fresh=n['status']=='new',color=_vColor(t),light=CepqarTheme.isLight;return Semantics(identifier:'owner-notification-${n['id']}',container:true,child:Material(color:Colors.white,borderRadius:BorderRadius.circular(15),clipBehavior:Clip.antiAlias,child:InkWell(onTap:()=>_details(n),borderRadius:BorderRadius.circular(15),child:Container(padding:const EdgeInsets.fromLTRB(12,12,10,12),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(15),border:Border.all(color:_line)),child:Row(children:[Container(width:40,height:40,decoration:BoxDecoration(color:color.withValues(alpha:.10),borderRadius:BorderRadius.circular(12)),child:Icon(_vIcon(t),color:color,size:20)),const SizedBox(width:10),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text((isServiceNotification(n)?'${n['title']??'Hizmet randevusu'}':_vTitle(t)),maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:_text,fontSize:CepqarTheme.cardTitle,fontWeight:fresh?FontWeight.w900:FontWeight.w800)),const SizedBox(height:3),Text(_desc(n),maxLines:2,overflow:TextOverflow.ellipsis,style:TextStyle(color:_muted,fontSize:CepqarTheme.bodySmall,height:1.2,fontWeight:FontWeight.w500))])),const SizedBox(width:7),SizedBox(width:MediaQuery.textScalerOf(context).scale(48).clamp(48.0,100.0),child:Column(crossAxisAlignment:CrossAxisAlignment.end,children:[Text(_when(n),maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:_muted,fontSize:CepqarTheme.caption,fontWeight:FontWeight.w600)),const SizedBox(height:8),Row(mainAxisAlignment:MainAxisAlignment.end,children:[if(fresh)const CircleAvatar(radius:3.5,backgroundColor:Color(0xFFB9FF45)),if(fresh)const SizedBox(width:6),Icon(Icons.chevron_right_rounded,color:_muted,size:18)])]))])))));}
 Future<void> _details(Map<String,dynamic> n)async{
   if(isServiceNotification(n)){if(n['status']=='new')await _status(n,'read');if(!mounted)return;await openOwnerServiceNotification(context,n);return;}
   final t='${n['type']??'system'}';
