@@ -16,7 +16,7 @@ import 'owner_auth.dart';
 const _purple=Color(0xFF651FFF);
 Color get _bg=>Colors.white;
 Color get _panel=>Colors.white;
-Color get _line=>CepqarTheme.line;
+Color get _line=>const Color(0xFFE6E8F0);
 Color get _muted=>const Color(0xFF778096);
 Color get _text=>const Color(0xFF10152D);
 final ValueNotifier<int> ownerUnreadNotificationCount=ValueNotifier<int>(0);
@@ -97,7 +97,7 @@ Widget _header(int unread){
   return Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
     Row(children:[
       Expanded(child:Align(alignment:Alignment.centerLeft,child:Image.asset(
-        CepqarTheme.isLight?'assets/file_00000000b130820abb8d411e67ab0d25.png':'assets/Logoyeni.png',
+        'assets/file_00000000b130820abb8d411e67ab0d25.png',
         height:31,fit:BoxFit.contain))),
       if(unread>0)Flexible(child:Text('$unread yeni',style:TextStyle(color:_purple))),
     ]),
@@ -125,7 +125,7 @@ Widget _filters(){
             duration:CQMotion.duration(context,CQMotion.feedback),curve:CQMotion.standard,
             constraints:CQLayout.touchConstraints,
             alignment:Alignment.center,padding:const EdgeInsets.symmetric(horizontal:14,vertical:12),
-            decoration:BoxDecoration(color:selected?_purple:_panel,borderRadius:BorderRadius.circular(12)),
+            decoration:BoxDecoration(color:selected?_purple:const Color(0xFFF5F6FA),borderRadius:BorderRadius.circular(12)),
             child:Text(filters[i],style:TextStyle(color:selected?Colors.white:_text,fontSize:14,fontWeight:FontWeight.w600)),
           ),
         ),
@@ -134,7 +134,7 @@ Widget _filters(){
   );
 }
 Widget _section(String name,List<Map<String,dynamic>> xs)=>Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Padding(padding:const EdgeInsets.fromLTRB(2,9,0,7),child:Text(name,style:TextStyle(color:_text,fontSize:CepqarTheme.cardTitle,fontWeight:FontWeight.w900))),for(final n in xs)...[_card(n),const SizedBox(height:7)]]);
-Widget _card(Map<String,dynamic> n){final t='${n['type']??'system'}',fresh=n['status']=='new',color=_vColor(t),light=CepqarTheme.isLight;return Semantics(identifier:'owner-notification-${n['id']}',container:true,child:Material(color:Colors.transparent,child:InkWell(onTap:()=>_details(n),borderRadius:BorderRadius.circular(15),child:Ink(padding:const EdgeInsets.fromLTRB(10,10,8,10),decoration:BoxDecoration(color:fresh?Color.alphaBlend(_purple.withValues(alpha:light ? .035 : .055),_panel):_panel,borderRadius:BorderRadius.circular(15),border:Border.all(color:fresh?_purple.withValues(alpha:light ? .18 : .27):_line),boxShadow:light?[BoxShadow(color:Colors.black.withValues(alpha:.025),blurRadius:10,offset:const Offset(0,3))]:null),child:Row(children:[Container(width:40,height:40,decoration:BoxDecoration(color:color.withValues(alpha:light ? .10 : .16),borderRadius:BorderRadius.circular(12)),child:Icon(_vIcon(t),color:color,size:20)),const SizedBox(width:10),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text((isServiceNotification(n)?'${n['title']??'Hizmet randevusu'}':_vTitle(t)),maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:_text,fontSize:CepqarTheme.cardTitle,fontWeight:fresh?FontWeight.w900:FontWeight.w800)),const SizedBox(height:3),Text(_desc(n),maxLines:2,overflow:TextOverflow.ellipsis,style:TextStyle(color:_muted,fontSize:CepqarTheme.bodySmall,height:1.2,fontWeight:FontWeight.w500))])),const SizedBox(width:7),SizedBox(width:MediaQuery.textScalerOf(context).scale(48).clamp(48.0,100.0),child:Column(crossAxisAlignment:CrossAxisAlignment.end,children:[Text(_when(n),maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:_muted,fontSize:CepqarTheme.caption,fontWeight:FontWeight.w600)),const SizedBox(height:8),Row(mainAxisAlignment:MainAxisAlignment.end,children:[if(fresh)const CircleAvatar(radius:3.5,backgroundColor:Color(0xFFB9FF45)),if(fresh)const SizedBox(width:6),Icon(Icons.chevron_right_rounded,color:_muted,size:18)])]))])))));}
+Widget _card(Map<String,dynamic> n){final t='${n['type']??'system'}',fresh=n['status']=='new',color=_vColor(t),light=CepqarTheme.isLight;return Semantics(identifier:'owner-notification-${n['id']}',container:true,child:Material(color:Colors.transparent,child:InkWell(onTap:()=>_details(n),borderRadius:BorderRadius.circular(15),child:Ink(padding:const EdgeInsets.fromLTRB(10,10,8,10),decoration:BoxDecoration(color:fresh?const Color(0xFFF7F3FF):Colors.white,borderRadius:BorderRadius.circular(15),border:Border.all(color:fresh?_purple.withValues(alpha:light ? .18 : .27):_line),boxShadow:[BoxShadow(color:Colors.black.withValues(alpha:.025),blurRadius:10,offset:const Offset(0,3))]),child:Row(children:[Container(width:40,height:40,decoration:BoxDecoration(color:color.withValues(alpha:.10),borderRadius:BorderRadius.circular(12)),child:Icon(_vIcon(t),color:color,size:20)),const SizedBox(width:10),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text((isServiceNotification(n)?'${n['title']??'Hizmet randevusu'}':_vTitle(t)),maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:_text,fontSize:CepqarTheme.cardTitle,fontWeight:fresh?FontWeight.w900:FontWeight.w800)),const SizedBox(height:3),Text(_desc(n),maxLines:2,overflow:TextOverflow.ellipsis,style:TextStyle(color:_muted,fontSize:CepqarTheme.bodySmall,height:1.2,fontWeight:FontWeight.w500))])),const SizedBox(width:7),SizedBox(width:MediaQuery.textScalerOf(context).scale(48).clamp(48.0,100.0),child:Column(crossAxisAlignment:CrossAxisAlignment.end,children:[Text(_when(n),maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(color:_muted,fontSize:CepqarTheme.caption,fontWeight:FontWeight.w600)),const SizedBox(height:8),Row(mainAxisAlignment:MainAxisAlignment.end,children:[if(fresh)const CircleAvatar(radius:3.5,backgroundColor:Color(0xFFB9FF45)),if(fresh)const SizedBox(width:6),Icon(Icons.chevron_right_rounded,color:_muted,size:18)])]))])))));}
 Future<void> _details(Map<String,dynamic> n)async{
   if(isServiceNotification(n)){if(n['status']=='new')await _status(n,'read');if(!mounted)return;await openOwnerServiceNotification(context,n);return;}
   final t='${n['type']??'system'}';
@@ -178,7 +178,7 @@ Future<void> _details(Map<String,dynamic> n)async{
                 width:double.infinity,
                 padding:const EdgeInsets.all(12),
                 decoration:BoxDecoration(
-                  color:CepqarTheme.isLight?const Color(0xFFF7F7FB):const Color(0xFF0B1426),
+                  color:const Color(0xFFF7F7FB),
                   borderRadius:BorderRadius.circular(14),
                   border:Border.all(color:_line),
                 ),
