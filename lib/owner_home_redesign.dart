@@ -2294,7 +2294,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             _homeStoreCarousel(),
             _howToCarousel(),
           ]),
-          if(VehicleKind.isMotorcycle(QrDraft.vehicleType))_motorcycleHomePanel(),
+          // Motorcycle features remain accessible from Araçlarım.
           for(final component in _appUiConfig.components.where((c)=>
             !{'weather_card','vehicle_security','quick_actions','services_grid','monthly_summary','recent_notifications','promo_banner'}.contains(c.type)))
             RepaintBoundary(key:ValueKey('extra-${component.id}-${_appUiConfig.version}'),
