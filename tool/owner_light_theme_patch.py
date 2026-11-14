@@ -45,9 +45,9 @@ TARGETS = {
 for filename, replacements in TARGETS.items():
     # The redesigned Araçlarım page intentionally uses fixed white surfaces and
     # dark typography even when the global app theme is dark. Do not rewrite it:
-    # the legacy replacement turns const Colors.white into invalid const
+    # the legacy replacement turns white notification surfaces dark and turns const Colors.white into invalid const
     # CepqarTheme.text and breaks the GitHub Pages production web build.
-    if filename in ('lib/owner_vehicles_page.dart', 'lib/maintenance_page.dart', 'lib/owner_settings_page.dart', 'lib/owner_settings_detail.dart', 'lib/premium_page.dart', 'lib/weather_details_page.dart'):
+    if filename in ('lib/owner_notifications_page.dart', 'lib/owner_vehicles_page.dart', 'lib/maintenance_page.dart', 'lib/owner_settings_page.dart', 'lib/owner_settings_detail.dart', 'lib/premium_page.dart', 'lib/weather_details_page.dart'):
         # Profile has its own fixed white surfaces and on-purple white text.
         # Do not rewrite either into the global theme's foreground color.
         continue
