@@ -26,7 +26,7 @@ test('SMS-free guest: real HTTP routes, PostgreSQL, staff handover and token rev
  const session=(await pool.query("INSERT INTO valet_sessions(business_id,plate,status) VALUES($1,'34 ABC 123','parked') RETURNING id",[business])).rows[0].id;
  const app=express();app.use(express.json());require('../valet-routes')(app,pool);
  server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));
- const base='http://127.0.0.1:'+server.address().port;
+ let base='http://127.0.0.1:'+server.address().port;
  async function api(route,{method='GET',token,body}={}){const r=await fetch(base+route,{method,headers:{'content-type':'application/json',...(token?{authorization:'Bearer '+token}:{})},...(body?{body:JSON.stringify(body)}:{})});return{status:r.status,body:await r.json()};}
  const invite=await api('/api/valet/guest-invites',{method:'POST',token:staffToken,body:{sessionId:session}});
  assert.equal(invite.status,201,JSON.stringify(invite.body));
@@ -55,6 +55,12 @@ test('SMS-free guest: real HTTP routes, PostgreSQL, staff handover and token rev
  assert.equal((await api('/api/valet/guest/request',{method:'POST',token:guestToken})).status,401);
  assert.equal((await pool.query('SELECT status FROM valet_sessions WHERE id=$1',[session])).rows[0].status,'delivered');
  assert.equal((await pool.query('SELECT count(*)::int AS n FROM valet_delivery_codes WHERE session_id=$1',[session])).rows[0].n,0);
+ // Reset only the in-memory request limiter between independent scenarios.
+ // The production limiter remains enabled and is exercised by each HTTP request.
+ await new Promise(r=>server.close(r));
+ const expiryApp=express();expiryApp.use(express.json());require('../valet-routes')(expiryApp,pool);
+ server=expiryApp.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));
+ base='http://127.0.0.1:'+server.address().port;
  // Expired invitation must not disclose business data or permit registration.
  const expSession=(await pool.query("INSERT INTO valet_sessions(business_id,plate,status) VALUES($1,'34 EXP 123','parked') RETURNING id",[business])).rows[0].id;
  const expInvite=await api('/api/valet/guest-invites',{method:'POST',token:staffToken,body:{sessionId:expSession}});
