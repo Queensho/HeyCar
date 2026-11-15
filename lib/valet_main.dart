@@ -1,3 +1,5 @@
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:flutter/services.dart';
 import 'dart:math';
 import 'dart:async';
 // Build marker: duplicate-session guard
@@ -20,6 +22,31 @@ Future<void> _syncOffline()async{final ops=await _offlineOps();if(ops.isEmpty)re
 Future<void> load()async{try{await _syncOffline();final r=await http.get(Uri.parse(api+'/api/valet/sessions'),headers:h);if(r.statusCode==401){widget.logout();return;}final j=jsonDecode(r.body);if(mounted)setState((){data=j['sessions']??[];areas=j['areas']??[];business=j['businessName']??'';staff=j['staffName']??'';onShift=j['onShift']==true;loading=false;});}catch(_){if(mounted)setState(()=>loading=false);}}
 Future<void> shift(bool active)async{if(shiftBusy)return;setState(()=>shiftBusy=true);try{final r=await http.post(Uri.parse(api+'/api/valet/shift'),headers:h,body:jsonEncode({'active':active}));if(r.statusCode==409){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Aktif araç görevi bitmeden mesai kapatılamaz.')));}else if(r.statusCode>=200&&r.statusCode<300){if(mounted)setState(()=>onShift=active);await load();}}finally{if(mounted)setState(()=>shiftBusy=false);}}
 Future<void> status(String id,String s)async{String? code;if(s=='delivered'){final ctl=TextEditingController();code=await showDialog<String>(context:context,builder:(d)=>AlertDialog(backgroundColor:panel,title:const Text('Güvenli Teslim',style:TextStyle(fontWeight:FontWeight.w900)),content:TextField(controller:ctl,autofocus:true,maxLength:4,keyboardType:TextInputType.number,obscureText:true,decoration:const InputDecoration(labelText:'Araç sahibinin 4 haneli kodu',border:OutlineInputBorder())),actions:[TextButton(onPressed:()=>Navigator.pop(d),child:const Text('Vazgeç')),FilledButton(onPressed:()=>Navigator.pop(d,ctl.text.trim()),child:const Text('Teslim Et'))]));if(code==null||code.length!=4)return;}http.Response r;try{r=await http.patch(Uri.parse(api+'/api/valet/sessions/'+id+'/status'),headers:h,body:jsonEncode({'status':s,'deliveryCode':code}));}catch(_){if(s!='delivered')await _queueStatus(id,s);return;}if(r.statusCode>=300&&mounted){String msg='İşlem tamamlanamadı.';try{final e=jsonDecode(r.body)['error'];if(e=='INVALID_DELIVERY_CODE')msg='Teslim kodu hatalı.';if(e=='DELIVERY_CODE_LOCKED')msg='Çok fazla hatalı deneme. Kod kilitlendi.';if(e=='DELIVERY_CODE_EXPIRED')msg='Teslim kodunun süresi dolmuş.';}catch(_){}ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(msg)));}await load();}
+ Future<void> guestQr(Map vehicle)async{
+  final id=(vehicle['id']??'').toString();
+  final plate=(vehicle['plate']??'').toString();
+  if(id.isEmpty)return;
+  try{
+   final r=await http.post(Uri.parse(api+'/api/valet/guest-invites'),headers:h,body:jsonEncode({'sessionId':id}));
+   if(r.statusCode!=201){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('Misafir QR oluşturulamadı (HTTP ${r.statusCode}). İşletme ve oturum yetkisini kontrol edin.')));return;}
+   final body=jsonDecode(r.body);
+   final invite=(body['inviteToken']??'').toString();
+   if(invite.isEmpty)throw StateError('Davet kodu alınamadı');
+   final link='https://queensho.github.io/HeyCar/vale-misafir/?invite=${Uri.encodeComponent(invite)}';
+   if(!mounted)return;
+   await showDialog<void>(context:context,builder:(d)=>AlertDialog(
+    backgroundColor:panel,title:Text('$plate • Misafir QR'),
+    content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
+     const Text('Misafirin kendi telefonuyla okutması için bu QR kodunu gösterin.',textAlign:TextAlign.center),
+     const SizedBox(height:16),
+     Container(width:245,height:245,padding:const EdgeInsets.all(12),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(14)),child:QrImageView(data:link,version:QrVersions.auto,backgroundColor:Colors.white)),
+     const SizedBox(height:12),const Text('15 dakika geçerli • Tek kullanımlık',style:TextStyle(color:lime,fontWeight:FontWeight.w700)),
+     const SizedBox(height:8),const Text('Misafir adını, telefonunu ve plakasını girerek SMS olmadan devam eder.',textAlign:TextAlign.center,style:TextStyle(fontSize:12,color:muted))
+    ])),
+    actions:[TextButton(onPressed:(){Clipboard.setData(ClipboardData(text:link));ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Davet bağlantısı kopyalandı.')));},child:const Text('Linki Kopyala')),TextButton(onPressed:()=>Navigator.pop(d),child:const Text('Kapat'))]
+   ));
+  }catch(_){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Bağlantı hatası: Misafir QR oluşturulamadı.')));}
+ }
  String qrToken(String raw){try{final u=Uri.parse(raw);final t=u.queryParameters['tag'];if(t!=null&&t.trim().isNotEmpty)return t.trim().toUpperCase();}catch(_){}final v=raw.trim().toUpperCase();return RegExp(r'^[A-Z0-9-]{4,80}$').hasMatch(v)?v:'';}
  Future<void> scan()async{final raw=await Navigator.push<String>(context,MaterialPageRoute(builder:(_)=>const ValetQrScanner()));if(raw==null)return;final token=qrToken(raw);if(token.isEmpty){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Geçerli CepQontag QR bulunamadı.')));return;}await add(qrCode:token);}
  Future<void> add({String? qrCode})async{
@@ -57,7 +84,7 @@ Future<void> status(String id,String s)async{String? code;if(s=='delivered'){fin
     return Container(margin:const EdgeInsets.only(bottom:9),padding:const EdgeInsets.all(13),decoration:BoxDecoration(color:requested?const Color(0xFF35131A):panel,borderRadius:BorderRadius.circular(18),border:requested?Border.all(color:Colors.redAccent.withValues(alpha:.65)):null),child:Row(crossAxisAlignment:CrossAxisAlignment.center,children:[
      Container(width:58,height:58,decoration:BoxDecoration(color:bg,borderRadius:BorderRadius.circular(14)),child:Icon(Icons.directions_car_filled,size:34,color:requested?Colors.redAccent:purple)),
      const SizedBox(width:12),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(x['plate'].toString(),style:const TextStyle(fontSize:18,fontWeight:FontWeight.w900)),if(model.isNotEmpty)Padding(padding:const EdgeInsets.only(top:3),child:Text(model,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:muted,fontSize:13))),Padding(padding:const EdgeInsets.only(top:5),child:Text('Park: $area  •  $slot',style:const TextStyle(color:muted,fontSize:12)))])),
-     const SizedBox(width:8),Column(crossAxisAlignment:CrossAxisAlignment.end,children:[Container(padding:const EdgeInsets.symmetric(horizontal:10,vertical:7),decoration:BoxDecoration(color:requested?Colors.redAccent:st=='parked'?const Color(0xFF087A50):st=='accepted'?Colors.orange:st=='retrieving'?const Color(0xFF2767D8):purple,borderRadius:BorderRadius.circular(10)),child:Text(label,style:const TextStyle(color:Colors.white,fontSize:12,fontWeight:FontWeight.w900))),if(next!=null)...[const SizedBox(height:7),SizedBox(height:34,child:FilledButton(onPressed:()=>status(x['id'].toString(),next),style:FilledButton.styleFrom(backgroundColor:requested?Colors.redAccent:purple,padding:const EdgeInsets.symmetric(horizontal:12)),child:Text(btn!,style:const TextStyle(fontSize:12,fontWeight:FontWeight.w900))))]])
+     const SizedBox(width:8),Column(crossAxisAlignment:CrossAxisAlignment.end,children:[Container(padding:const EdgeInsets.symmetric(horizontal:10,vertical:7),decoration:BoxDecoration(color:requested?Colors.redAccent:st=='parked'?const Color(0xFF087A50):st=='accepted'?Colors.orange:st=='retrieving'?const Color(0xFF2767D8):purple,borderRadius:BorderRadius.circular(10)),child:Text(label,style:const TextStyle(color:Colors.white,fontSize:12,fontWeight:FontWeight.w900))),if(['accepted','parked'].contains(st))...[const SizedBox(height:7),SizedBox(height:34,child:OutlinedButton.icon(onPressed:()=>guestQr(x),icon:const Icon(Icons.qr_code_2,size:16),label:const Text('Misafir QR',style:TextStyle(fontSize:11,fontWeight:FontWeight.w800)),style:OutlinedButton.styleFrom(foregroundColor:lime,padding:const EdgeInsets.symmetric(horizontal:8))))],if(next!=null)...[const SizedBox(height:7),SizedBox(height:34,child:FilledButton(onPressed:()=>status(x['id'].toString(),next),style:FilledButton.styleFrom(backgroundColor:requested?Colors.redAccent:purple,padding:const EdgeInsets.symmetric(horizontal:12)),child:Text(btn!,style:const TextStyle(fontSize:12,fontWeight:FontWeight.w900))))]])
     ]));
    }))
   ]))
