@@ -2133,45 +2133,38 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                     child:Column(
                       crossAxisAlignment:CrossAxisAlignment.start,
                       children:[
-                        Padding(
-                          padding:const EdgeInsets.fromLTRB(12,10,12,5),
-                          child:Container(
-                            width:36,height:36,
-                            alignment:Alignment.center,
-                            decoration:const BoxDecoration(
-                              shape:BoxShape.circle,
-                              gradient:LinearGradient(colors:[
-                                Color(0xFFAA20FF),Color(0xFF5900D8)])),
-                            child:Text('${i+1}',style:const TextStyle(
-                              color:Colors.white,fontSize:18,
-                              fontWeight:FontWeight.w900)))),
-                        Padding(
-                          padding:const EdgeInsets.symmetric(horizontal:12),
-                          child:Text(guide.title,
-                            maxLines:2,overflow:TextOverflow.ellipsis,
-                            style:const TextStyle(
-                              color:Color(0xFF151326),fontSize:15,
-                              fontWeight:FontWeight.w900))),
-                        const SizedBox(height:5),
-                        Padding(
-                          padding:const EdgeInsets.symmetric(horizontal:12),
-                          child:Text(guide.subtitle,
-                            maxLines:4,overflow:TextOverflow.ellipsis,
-                            style:const TextStyle(
-                              color:Color(0xFF555367),fontSize:12,height:1.25))),
-                        const SizedBox(height:10),
                         Expanded(child:SizedBox(width:double.infinity,
                           child:guide.imageUrl.isEmpty
-                            ?const ColoredBox(
-                              color:Color(0xFFF0E8FF),
+                            ?const ColoredBox(color:Color(0xFFF0E8FF),
                               child:Icon(Icons.qr_code_scanner_rounded,
                                 color:Color(0xFF6D15EA),size:54))
                             :Image.network(guide.imageUrl,fit:BoxFit.cover,
-                              cacheWidth:512,filterQuality:FilterQuality.low,
+                              cacheWidth:720,filterQuality:FilterQuality.low,
                               errorBuilder:(_,__,___)=>const ColoredBox(
                                 color:Color(0xFFF0E8FF),
                                 child:Icon(Icons.qr_code_scanner_rounded,
                                   color:Color(0xFF6D15EA),size:54))))),
+                        Padding(padding:const EdgeInsets.fromLTRB(14,10,14,4),
+                          child:Row(children:[
+                            Container(width:27,height:27,
+                              alignment:Alignment.center,
+                              decoration:const BoxDecoration(shape:BoxShape.circle,
+                                color:Color(0xFF651FFF)),
+                              child:Text('${i+1}',style:const TextStyle(
+                                color:Colors.white,fontWeight:FontWeight.w900))),
+                            const SizedBox(width:9),
+                            Expanded(child:Text(guide.title,maxLines:1,
+                              overflow:TextOverflow.ellipsis,
+                              style:const TextStyle(color:Color(0xFF151326),
+                                fontSize:15,fontWeight:FontWeight.w900))),
+                            const Icon(Icons.arrow_forward_ios_rounded,
+                              size:15,color:Color(0xFF651FFF)),
+                          ])),
+                        Padding(padding:const EdgeInsets.fromLTRB(14,0,14,12),
+                          child:Text(guide.subtitle,maxLines:2,
+                            overflow:TextOverflow.ellipsis,
+                            style:const TextStyle(color:Color(0xFF555367),
+                              fontSize:12,height:1.25))),
                       ],
                     ),
                   ),
