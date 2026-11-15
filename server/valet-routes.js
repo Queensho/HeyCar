@@ -168,9 +168,11 @@ module.exports=function registerValetRoutes(app,pool){
  app.post('/api/valet/guest/claim',guestClaimLimiter,async(req,res)=>{
   const invite=String(req.body?.inviteToken||'').trim();
   const fullName=String(req.body?.fullName||'').trim();
+  const phoneInput=String(req.body?.phone||'').replace(/[\s()\-]/g,'');
+  const phone=phoneInput.startsWith('0')?'+90'+phoneInput.slice(1):phoneInput.startsWith('90')?'+'+phoneInput:phoneInput;
   const plate=String(req.body?.plate||'').toUpperCase().replace(/\s+/g,'');
   if(!/^[A-Za-z0-9_-]{43}$/.test(invite)||fullName.length<2||fullName.length>100||
-   !/^[0-9A-Z]{5,12}$/.test(plate))return res.status(400).json({error:'INVALID_GUEST_DETAILS'});
+   !/^[0-9A-Z]{5,12}$/.test(plate)||!/^[+]90[5][0-9]{9}$/.test(phone))return res.status(400).json({error:'INVALID_GUEST_DETAILS'});
   const client=await pool.connect();
   let session,guestToken;
   try{
@@ -185,8 +187,8 @@ module.exports=function registerValetRoutes(app,pool){
    }
    guestToken=crypto.randomBytes(32).toString('base64url');
    const inserted=await client.query(
-    "INSERT INTO valet_guest_visits(session_id,business_id,full_name,guest_token_hash,guest_token_expires_at) VALUES($1,$2,$3,$4,now()+interval '12 hours') ON CONFLICT(session_id) DO NOTHING RETURNING id",
-    [session.session_id,session.business_id,fullName,hash(guestToken)]);
+    "INSERT INTO valet_guest_visits(session_id,business_id,full_name,phone_e164,guest_token_hash,guest_token_expires_at) VALUES($1,$2,$3,$4,$5,now()+interval '12 hours') ON CONFLICT(session_id) DO NOTHING RETURNING id",
+    [session.session_id,session.business_id,fullName,phone,hash(guestToken)]);
    if(!inserted.rowCount){await client.query('ROLLBACK');return res.status(409).json({error:'GUEST_ALREADY_CLAIMED'});}
    await client.query("UPDATE valet_guest_invites SET consumed_at=now() WHERE id=$1 AND consumed_at IS NULL",[session.id]);
    await client.query("UPDATE valet_guest_invites SET revoked_at=now() WHERE session_id=$1 AND consumed_at IS NULL AND revoked_at IS NULL",[session.session_id]);
