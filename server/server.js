@@ -6,9 +6,6 @@ const cors=require('cors');
 const helmet=require('helmet');
 
 const registerQrRoutes=require('./qr-routes');
-const registerCarWashRoutes=require('./car-wash-routes');
-const registerCarWashBookingRoutes=require('./car-wash-booking-routes');
-const {start:startCarWashNotifications}=require('./car-wash-notifications');
 const registerMaintenanceV2Routes=require('./maintenance-v2-routes');
 const registerTouchpointRoutes=require('./touchpoint-routes');
 const registerStoreRoutes=require('./store-routes');
@@ -146,9 +143,6 @@ const adminAuth=registerAdminAuthRoutes(app,pool);
 // register notifications, conversations, calls, drivers, DND, maintenance,
 // reminders, parking and vehicle-management exactly once.
 registerQrRoutes(app,pool);
-registerCarWashRoutes(app,pool);
-registerCarWashBookingRoutes(app,pool);
-const stopCarWashNotifications=startCarWashNotifications(app,pool);
 registerMaintenanceV2Routes(app,pool);
 registerTouchpointRoutes(app,pool);
 registerStoreRoutes(app,pool,adminAuth);
@@ -180,7 +174,6 @@ const server=app.listen(port,'127.0.0.1',4096,()=>{
 });
 
 async function shutdown(signal){
-  stopCarWashNotifications?.();
   stopSmartRouteScan?.();
   console.log(`${signal} received, shutting down HeyCar API`);
   server.close(async()=>{
