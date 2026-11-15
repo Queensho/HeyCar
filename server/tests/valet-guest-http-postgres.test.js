@@ -55,6 +55,23 @@ test('SMS-free guest: real HTTP routes, PostgreSQL, staff handover and token rev
  assert.equal((await api('/api/valet/guest/request',{method:'POST',token:guestToken})).status,401);
  assert.equal((await pool.query('SELECT status FROM valet_sessions WHERE id=$1',[session])).rows[0].status,'delivered');
  assert.equal((await pool.query('SELECT count(*)::int AS n FROM valet_delivery_codes WHERE session_id=$1',[session])).rows[0].n,0);
+ // Expired invitation must not disclose business data or permit registration.
+ const expSession=(await pool.query("INSERT INTO valet_sessions(business_id,plate,status) VALUES($1,'34 EXP 123','parked') RETURNING id",[business])).rows[0].id;
+ const expInvite=await api('/api/valet/guest-invites',{method:'POST',token:staffToken,body:{sessionId:expSession}});
+ assert.equal(expInvite.status,201);
+ await pool.query("UPDATE valet_guest_invites SET expires_at=now()-interval '1 second' WHERE token_hash=$1",[hash(expInvite.body.inviteToken)]);
+ assert.equal((await api('/api/valet/guest-invites/'+expInvite.body.inviteToken)).status,404);
+ assert.equal((await api('/api/valet/guest/claim',{method:'POST',body:{inviteToken:expInvite.body.inviteToken,fullName:'Expired Guest',plate:'34EXP123'}})).status,404);
+ // Guest bearer expiry must block both status reads and vehicle requests.
+ const expirySession=(await pool.query("INSERT INTO valet_sessions(business_id,plate,status) VALUES($1,'34 TOK 123','parked') RETURNING id",[business])).rows[0].id;
+ const expiryInvite=await api('/api/valet/guest-invites',{method:'POST',token:staffToken,body:{sessionId:expirySession}});
+ assert.equal(expiryInvite.status,201);
+ const expiryClaim=await api('/api/valet/guest/claim',{method:'POST',body:{inviteToken:expiryInvite.body.inviteToken,fullName:'Token Guest',plate:'34TOK123'}});
+ assert.equal(expiryClaim.status,201);
+ await pool.query("UPDATE valet_guest_visits SET guest_token_expires_at=now()-interval '1 second' WHERE guest_token_hash=$1",[hash(expiryClaim.body.guestToken)]);
+ assert.equal((await api('/api/valet/guest/session',{token:expiryClaim.body.guestToken})).status,401);
+ assert.equal((await api('/api/valet/guest/request',{method:'POST',token:expiryClaim.body.guestToken})).status,401);
+ assert.equal((await pool.query('SELECT status FROM valet_sessions WHERE id=$1',[expirySession])).rows[0].status,'parked');
  const otherSession=(await pool.query("INSERT INTO valet_sessions(business_id,plate,status) VALUES($1,'06 XYZ 456','parked') RETURNING id",[other])).rows[0].id;
  assert.equal((await api('/api/valet/guest-invites',{method:'POST',token:staffToken,body:{sessionId:otherSession}})).status,404);
 });
