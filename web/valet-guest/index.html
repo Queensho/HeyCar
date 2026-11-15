@@ -1,20 +1,38 @@
 <!doctype html>
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="referrer" content="no-referrer"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#651FFF"><title>CepQontag | Misafir Vale</title><style>
 :root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#10152d;background:#f8f9fc}*{box-sizing:border-box}body{margin:0}.wrap{max-width:480px;margin:auto;min-height:100dvh;padding:calc(env(safe-area-inset-top) + 28px) 20px calc(env(safe-area-inset-bottom) + 36px);display:flex;flex-direction:column;gap:20px}.logo{font-size:22px;font-weight:900;letter-spacing:-.7px;color:#651fff}.pill{background:#e9ffbb;color:#293c00;border-radius:100px;padding:7px 12px;display:inline-block;font-weight:800;font-size:12px}.hero{padding:24px;border-radius:24px;background:#651fff;color:white;position:relative;overflow:hidden}.hero:after{content:'✦';position:absolute;right:-10px;bottom:-55px;color:#b9ff45;font-size:170px;opacity:.35}h1{font-size:30px;line-height:1.12;letter-spacing:-.7px;margin:14px 0 10px}p{line-height:1.5;margin:0}.card{background:white;border:1px solid #e8e8f0;border-radius:22px;padding:22px;box-shadow:0 10px 30px #10152d08}.card h2{font-size:19px;margin:0 0 10px}.sub{color:#778096;font-size:14px}.status{padding:14px;border-radius:14px;background:#f5f2ff;color:#4912c8;font-size:14px;margin-top:16px}label{display:block;font-weight:700;font-size:13px;margin:14px 0 6px}input{width:100%;padding:13px;border:1px solid #d9dce8;border-radius:12px;background:#f8f9fc;font:inherit}button{border:0;border-radius:14px;background:#651fff;color:white;padding:15px;font:inherit;font-weight:800;width:100%;margin-top:18px}button:disabled{background:#d7d3e6;color:#666176}.footer{font-size:12px;color:#778096;margin-top:auto}a{color:#651fff}#business{font-weight:800;color:#4912c8}
-</style></head><body><main class="wrap"><div class="logo">CepQontag<span style="color:#b9ff45">.</span></div><section class="hero"><span class="pill">VALE MİSAFİR</span><h1>Aracınız güvende.<br>Takibi cebinizde.</h1><p>Uygulama indirmeden vale işleminizi takip edin.</p></section><section class="card"><h2>Hoş geldiniz</h2><p class="sub">İşletme: <span id="business">Davet doğrulanıyor…</span></p><div id="status" class="status" role="status" aria-live="polite">Davet bağlantısı kontrol ediliyor.</div><form id="guest-form"><label for="name">Ad soyad</label><input id="name" autocomplete="name" disabled placeholder="Adınız Soyadınız"><label for="plate">Araç plakası</label><input id="plate" disabled placeholder="34 ABC 123"><label for="phone">Telefon numarası</label><input id="phone" autocomplete="tel" inputmode="tel" disabled placeholder="05XX XXX XX XX"><button type="button" disabled>Devam et</button></form><p class="sub" style="margin-top:14px">Misafir kaydı, SMS doğrulaması ve güvenli araç eşleştirmesi tamamlandıktan sonra açılacaktır.</p></section><p class="footer">CepQontag • Aracınla Hep Bağlantıda Ol. Misafir kaydı şu anda kapalıdır.</p></main><script>
+</style></head><body><main class="wrap"><div class="logo">CepQontag<span style="color:#b9ff45">.</span></div><section class="hero"><span class="pill">VALE MİSAFİR</span><h1>Aracınız güvende.<br>Takibi cebinizde.</h1><p>Uygulama indirmeden vale işleminizi takip edin.</p></section><section class="card"><h2>Hoş geldiniz</h2><p class="sub">İşletme: <span id="business">Davet doğrulanıyor…</span></p><div id="status" class="status" role="status" aria-live="polite">Davet bağlantısı kontrol ediliyor.</div><form id="guest-form"><label for="name">Ad soyad</label><input id="name" autocomplete="name" required maxlength="100" placeholder="Adınız Soyadınız"><label for="plate">Araç plakası</label><input id="plate" required maxlength="14" placeholder="34 ABC 123"><button id="claim" type="submit" disabled>Misafir Olarak Devam Et</button></form><div id="dashboard" hidden><h2 style="margin-top:18px">Vale durumum</h2><p id="vehicle"></p><div id="state" class="status"></div><button id="request" type="button">Aracımı Çağır</button><p id="handover" class="status" hidden></p><button id="refresh" type="button" style="background:#f5f2ff;color:#4912c8">Durumu Yenile</button></div><p class="sub" style="margin-top:14px">SMS doğrulaması gerekmez. Güvenlik için vale görevlisinin size özel verdiği davet ve plaka eşleşmesi gerekir.</p></section><p class="footer">CepQontag • Aracınla Hep Bağlantıda Ol. Misafir erişimi yalnızca size verilen davet bağlantısıyla mümkündür.</p></main><script>
 'use strict';
-// Token is never copied into page content, analytics, storage or logs.
-const params=new URLSearchParams(location.search);const token=params.get('invite')||'';
-const status=document.getElementById('status');const business=document.getElementById('business');
-// Remove secret from visible browser URL and referrers as early as possible.
+const api='https://heycar-api-185-165-46-213.nip.io';
+const token=new URLSearchParams(location.search).get('invite')||'';
+const status=document.getElementById('status'),business=document.getElementById('business');
+const form=document.getElementById('guest-form'),dashboard=document.getElementById('dashboard');
+const claim=document.getElementById('claim'),request=document.getElementById('request');
+let guestToken='',active=false;
 if(token)history.replaceState(null,'',location.pathname);
-if(!/^[A-Za-z0-9_-]{43}$/.test(token)){business.textContent='—';status.textContent='Geçerli bir vale davet bağlantısı bulunamadı.';}
-else{
- const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),8000);
- fetch('https://heycar-api-185-165-46-213.nip.io/api/valet/guest-invites/'+encodeURIComponent(token),{signal:controller.signal,cache:'no-store',referrerPolicy:'no-referrer'})
- .then(r=>{if(!r.ok)throw Error('unavailable');return r.json()})
- .then(data=>{business.textContent=String(data.businessName||'Vale işletmesi');status.textContent='Davet doğrulandı. Misafir kayıt özelliği yakında kullanıma açılacak.'})
- .catch(()=>{business.textContent='—';status.textContent='Davet doğrulanamadı. Lütfen vale görevlisinden yeni bir bağlantı isteyin.'})
- .finally(()=>clearTimeout(timeout));
+async function call(endpoint,options={}){
+ const r=await fetch(api+endpoint,{cache:'no-store',referrerPolicy:'no-referrer',...options});
+ if(!r.ok)throw Error((await r.json().catch(()=>({}))).error||'İşlem başarısız');
+ return r.json();
 }
+function guestHeaders(){return {'authorization':'Bearer '+guestToken,'content-type':'application/json'};}
+function showSession(s){
+ document.getElementById('vehicle').textContent='Plaka: '+s.plate+' • '+(s.businessName||business.textContent);
+ const names={accepted:'Araç valeye teslim edildi',parked:'Aracınız park edildi',requested:'Araç çağrıldı, vale bekleniyor',retrieving:'Vale aracınızı getiriyor',ready:'Aracınız teslim için hazır',delivered:'Aracınız teslim edildi',cancelled:'Vale işlemi iptal edildi'};
+ document.getElementById('state').textContent=names[s.status]||'Durum güncelleniyor';
+ request.hidden=!['accepted','parked'].includes(s.status);
+ if(['delivered','cancelled'].includes(s.status)){document.getElementById('handover').hidden=false;document.getElementById('handover').textContent='Vale işleminiz tamamlandı.';}
+}
+async function refresh(){if(!guestToken)return;try{const d=await call('/api/valet/guest/session',{headers:guestHeaders()});showSession(d.session);}catch(e){status.textContent='Durum alınamadı. '+e.message;}}
+if(!/^[A-Za-z0-9_-]{43}$/.test(token)){business.textContent='—';status.textContent='Geçerli bir vale daveti bulunamadı.';}
+else{call('/api/valet/guest-invites/'+encodeURIComponent(token)).then(d=>{
+ business.textContent=d.businessName||'Vale işletmesi';status.textContent='Davet geçerli. Adınızı ve plakanızı girin.';claim.disabled=false;
+}).catch(()=>{business.textContent='—';status.textContent='Davet geçersiz veya süresi dolmuş. Valeden yeni davet isteyin.';});}
+form.addEventListener('submit',async e=>{e.preventDefault();if(!token||active)return;active=true;claim.disabled=true;
+ try{const d=await call('/api/valet/guest/claim',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({inviteToken:token,fullName:document.getElementById('name').value.trim(),plate:document.getElementById('plate').value.trim()})});
+ guestToken=d.guestToken;form.hidden=true;dashboard.hidden=false;status.textContent='Misafir vale kaydınız açıldı.';showSession(d.session);await refresh();
+ }catch(err){status.textContent='Kayıt yapılamadı: '+err.message;claim.disabled=false;}finally{active=false;}
+});
+request.addEventListener('click',async()=>{request.disabled=true;try{const d=await call('/api/valet/guest/request',{method:'POST',headers:guestHeaders()});document.getElementById('handover').hidden=false;document.getElementById('handover').textContent='Teslim kodunuz: '+d.deliveryCode+' — Aracı alırken vale görevlisine söyleyin.';showSession(d.session);}catch(e){status.textContent='Araç çağrılamadı: '+e.message;}finally{request.disabled=false;}});
+document.getElementById('refresh').addEventListener('click',refresh);
 </script></body></html>
