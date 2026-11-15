@@ -2110,7 +2110,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             ))),child:const Text('Tümü')),
         ])),
         SizedBox(
-          height:300*(MediaQuery.textScalerOf(context).scale(14)/14).clamp(1.0,3.0),
+          height:260*(MediaQuery.textScalerOf(context).scale(14)/14).clamp(1.0,3.0),
           child:ListView.separated(
             key:const ValueKey('home-how-to-carousel'),
             scrollDirection:Axis.horizontal,
@@ -2153,13 +2153,14 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                               color:Color(0xFF151326),fontSize:15,
                               fontWeight:FontWeight.w900))),
                         const SizedBox(height:5),
-                        Expanded(child:Padding(
+                        Padding(
                           padding:const EdgeInsets.symmetric(horizontal:12),
                           child:Text(guide.subtitle,
                             maxLines:4,overflow:TextOverflow.ellipsis,
                             style:const TextStyle(
-                              color:Color(0xFF555367),fontSize:12,height:1.25)))),
-                        SizedBox(height:112,width:double.infinity,
+                              color:Color(0xFF555367),fontSize:12,height:1.25))),
+                        const SizedBox(height:10),
+                        Expanded(child:SizedBox(width:double.infinity,
                           child:guide.imageUrl.isEmpty
                             ?const ColoredBox(
                               color:Color(0xFFF0E8FF),
@@ -2170,7 +2171,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
                               errorBuilder:(_,__,___)=>const ColoredBox(
                                 color:Color(0xFFF0E8FF),
                                 child:Icon(Icons.qr_code_scanner_rounded,
-                                  color:Color(0xFF6D15EA),size:54)))),
+                                  color:Color(0xFF6D15EA),size:54))))),
                       ],
                     ),
                   ),
