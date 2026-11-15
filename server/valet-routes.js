@@ -165,22 +165,42 @@ module.exports=function registerValetRoutes(app,pool){
   if(!q.rowCount){res.status(401).json({error:'GUEST_SESSION_EXPIRED'});return null;}
   return q.rows[0];
  }
+ // A permanent restaurant QR is a public locator, never an authentication credential.
+ app.get('/api/valet/guest/business/:id',guestInviteLimiter,async(req,res)=>{
+  if(!/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(String(req.params.id||'')))return res.status(404).json({error:'BUSINESS_NOT_FOUND'});
+  try{
+   const q=await pool.query('SELECT name FROM businesses WHERE id=$1 AND valet_enabled=TRUE',[req.params.id]);
+   if(!q.rowCount)return res.status(404).json({error:'BUSINESS_NOT_FOUND'});
+   res.set('Cache-Control','no-store');return res.json({ok:true,businessName:q.rows[0].name});
+  }catch(_){return res.status(503).json({error:'BUSINESS_UNAVAILABLE'});}
+ });
+ app.get('/api/business/valet/guest-qr',async(req,res)=>{
+  const a=await businessAuth(req,res);if(!a||!enabled(a,res))return;
+  const q=await pool.query('SELECT name FROM businesses WHERE id=$1',[a.business_id]);
+  return res.json({ok:true,businessId:a.business_id,businessName:q.rows[0]?.name||'İşletme',
+   url:'https://queensho.github.io/HeyCar/vale-misafir/?business='+encodeURIComponent(a.business_id)});
+ });
  app.post('/api/valet/guest/claim',guestClaimLimiter,async(req,res)=>{
   const invite=String(req.body?.inviteToken||'').trim();
+  const businessId=String(req.body?.businessId||'').trim();
+  const fixedQr=/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(businessId);
   const fullName=String(req.body?.fullName||'').trim();
   const phoneInput=String(req.body?.phone||'').replace(/[\s()\-]/g,'');
   const phone=phoneInput.startsWith('0')?'+90'+phoneInput.slice(1):phoneInput.startsWith('90')?'+'+phoneInput:phoneInput;
   const plate=String(req.body?.plate||'').toUpperCase().replace(/\s+/g,'');
-  if(!/^[A-Za-z0-9_-]{43}$/.test(invite)||fullName.length<2||fullName.length>100||
+  if((!fixedQr&&!/^[A-Za-z0-9_-]{43}$/.test(invite))||fullName.length<2||fullName.length>100||
    !/^[0-9A-Z]{5,12}$/.test(plate)||!/^[+]90[5][0-9]{9}$/.test(phone))return res.status(400).json({error:'INVALID_GUEST_DETAILS'});
   const client=await pool.connect();
   let session,guestToken;
   try{
    await client.query('BEGIN');
-   const q=await client.query(
+   const q=fixedQr
+    ?await client.query("SELECT s.id AS session_id,s.business_id,s.plate,s.status,b.name AS business_name FROM valet_sessions s JOIN businesses b ON b.id=s.business_id WHERE s.business_id=$1 AND regexp_replace(upper(s.plate),'[^A-Z0-9]','','g')=$2 AND s.status IN ('accepted','parked') AND b.valet_enabled=TRUE ORDER BY s.created_at DESC LIMIT 2 FOR UPDATE OF s",[businessId,plate])
+    :await client.query(
     "SELECT i.id,i.session_id,i.business_id,s.plate,s.status,b.name AS business_name FROM valet_guest_invites i JOIN valet_sessions s ON s.id=i.session_id AND s.business_id=i.business_id JOIN businesses b ON b.id=i.business_id WHERE i.token_hash=$1 AND i.expires_at>now() AND i.consumed_at IS NULL AND i.revoked_at IS NULL AND b.valet_enabled=TRUE AND s.status IN ('accepted','parked') FOR UPDATE OF i,s",
     [hash(invite)]);
-   if(!q.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'INVITE_EXPIRED'});}
+   if(!q.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:fixedQr?'ACTIVE_VALET_NOT_FOUND':'INVITE_EXPIRED'});}
+   if(fixedQr&&q.rowCount!==1){await client.query('ROLLBACK');return res.status(409).json({error:'AMBIGUOUS_PLATE'});}
    session=q.rows[0];
    if(String(session.plate).toUpperCase().replace(/\s+/g,'')!==plate){
     await client.query('ROLLBACK');return res.status(403).json({error:'PLATE_MISMATCH'});
@@ -190,8 +210,10 @@ module.exports=function registerValetRoutes(app,pool){
     "INSERT INTO valet_guest_visits(session_id,business_id,full_name,phone_e164,guest_token_hash,guest_token_expires_at) VALUES($1,$2,$3,$4,$5,now()+interval '12 hours') ON CONFLICT(session_id) DO NOTHING RETURNING id",
     [session.session_id,session.business_id,fullName,phone,hash(guestToken)]);
    if(!inserted.rowCount){await client.query('ROLLBACK');return res.status(409).json({error:'GUEST_ALREADY_CLAIMED'});}
-   await client.query("UPDATE valet_guest_invites SET consumed_at=now() WHERE id=$1 AND consumed_at IS NULL",[session.id]);
-   await client.query("UPDATE valet_guest_invites SET revoked_at=now() WHERE session_id=$1 AND consumed_at IS NULL AND revoked_at IS NULL",[session.session_id]);
+   if(!fixedQr){
+    await client.query("UPDATE valet_guest_invites SET consumed_at=now() WHERE id=$1 AND consumed_at IS NULL",[session.id]);
+    await client.query("UPDATE valet_guest_invites SET revoked_at=now() WHERE session_id=$1 AND consumed_at IS NULL AND revoked_at IS NULL",[session.session_id]);
+   }
    await client.query('COMMIT');
   }catch(e){await client.query('ROLLBACK').catch(()=>{});
    console.error('guest claim',{code:e.code||'UNAVAILABLE'});
