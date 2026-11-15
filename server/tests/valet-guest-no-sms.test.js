@@ -23,3 +23,14 @@ test('guest bearer stops working after completed or cancelled valet session',()=
  const auth=src.slice(src.indexOf('async function guestAuth('),src.indexOf("app.post('/api/valet/guest/claim'"));
  assert.match(auth,/s\.status NOT IN \('delivered','cancelled'\)/);
 });
+
+test('guest web keeps recovery within a tab and clears it on terminal status',()=>{
+ const web=fs.readFileSync(path.join(__dirname,'../../web/valet-guest/index.html'),'utf8');
+ assert.match(web,/sessionStorage\.setItem\(sessionKey/);
+ assert.match(web,/sessionStorage\.getItem\(sessionKey/);
+ assert.match(web,/sessionStorage\.removeItem\(sessionKey/);
+ assert.match(web,/saved\.expiresAt>Date\.now\(\)/);
+ assert.match(web,/saveGuest\(d\.deliveryCode\)/);
+ assert.match(web,/\['delivered','cancelled'\]\.includes\(s\.status\)\)\{clearGuest\(\)/);
+ assert.doesNotMatch(web,/localStorage\./);
+});
