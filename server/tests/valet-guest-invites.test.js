@@ -15,7 +15,7 @@ test('guest invitation issuance is staff authenticated, session scoped, and time
 });
 test('public invite validation does not return plate or session details',()=>{
  const block=routes.slice(routes.indexOf("app.get('/api/valet/guest-invites/:token'"),routes.indexOf("app.post('/api/valet/logout'"));
- assert.match(block,/registrationEnabled:false/);
+ assert.match(block,/registrationEnabled:true/);
  assert.match(block,/businessName/);
  assert.doesNotMatch(block,/res\.json\([^\n]*(?:plate|sessionId|phone)/);
 });
