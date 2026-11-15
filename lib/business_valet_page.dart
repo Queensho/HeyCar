@@ -1,3 +1,5 @@
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:flutter/services.dart';
 import 'api_environment.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -19,6 +21,27 @@ class _BusinessValetPageState extends State<BusinessValetPage>{
  Map<String,String> get headers=>{'Content-Type':'application/json','Authorization':'Bearer '+widget.token};
  @override void initState(){super.initState();load();}
  Future<void> load()async{setState((){loading=true;error=null;});try{final r=await http.get(Uri.parse(_vApi+'/api/business/valet/overview'),headers:headers);if(r.statusCode==403){setState((){enabled=false;loading=false;});return;}if(r.statusCode!=200)throw Exception();final j=jsonDecode(r.body);setState((){enabled=true;sessions=(j['sessions'] as List? ?? []).whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).toList();staff=(j['staff'] as List? ?? []).whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).toList();areas=(j['areas'] as List? ?? []).whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).toList();performance=(j['performance'] as List? ?? []).whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).toList();summary=Map<String,dynamic>.from(j['summary'] as Map? ?? {});loading=false;});}catch(_){setState((){loading=false;error='Vale verileri alınamadı.';});}}
+ Future<void> showRestaurantQr()async{
+  try{
+   final r=await http.get(Uri.parse(_vApi+'/api/business/valet/guest-qr'),headers:headers);
+   if(r.statusCode!=200)throw StateError('QR alınamadı');
+   final j=jsonDecode(r.body);
+   final url=(j['url']??'').toString();
+   if(!url.startsWith('https://queensho.github.io/HeyCar/vale-misafir/?business='))throw StateError('Geçersiz QR');
+   if(!mounted)return;
+   await showDialog<void>(context:context,builder:(d)=>AlertDialog(
+    backgroundColor:_vPanel,title:const Text('Restoran Misafir Vale QR'),
+    content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
+     Text((j['businessName']??'İşletme').toString(),textAlign:TextAlign.center,style:const TextStyle(fontWeight:FontWeight.w800)),
+     const SizedBox(height:12),
+     Container(width:260,height:260,padding:const EdgeInsets.all(12),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(16)),child:QrImageView(data:url,version:QrVersions.auto,backgroundColor:Colors.white)),
+     const SizedBox(height:10),
+     const Text('Bu QR sabittir. İşletmenin girişine veya vale bankosuna yerleştirebilirsiniz.',textAlign:TextAlign.center,style:TextStyle(color:_vMuted,fontSize:12))
+    ])),
+    actions:[TextButton(onPressed:(){Clipboard.setData(ClipboardData(text:url));ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('QR bağlantısı kopyalandı.')));},child:const Text('Bağlantıyı Kopyala')),TextButton(onPressed:()=>Navigator.pop(d),child:const Text('Kapat'))]
+   ));
+  }catch(_){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Restoran QR kodu alınamadı.')));}
+ }
  Future<bool> post(String path,Map<String,dynamic> body)async{try{final r=await http.post(Uri.parse(_vApi+path),headers:headers,body:jsonEncode(body));if(r.statusCode>=200&&r.statusCode<300){await load();return true;}if(mounted){String msg='İşlem başarısız.';try{final j=jsonDecode(r.body);final e=(j['error']??'').toString();if(e=='INVALID_STAFF')msg='PIN yalnızca 4-8 rakam olmalı.';else if(e=='VALET_NOT_ENABLED')msg='Bu işletmede Vale aktif değil.';else if(e=='AREA_NAME_REQUIRED')msg='Park alanı adı gerekli.';else if(e=='PLATE_REQUIRED')msg='Plaka gerekli.';else if(e.isNotEmpty)msg='İşlem başarısız: '+e;}catch(_){}ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(msg)));}}catch(_){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Sunucuya ulaşılamadı.')));}return false;}
  Future<void> setStatus(String id,String value)async{try{final r=await http.patch(Uri.parse(_vApi+'/api/business/valet/sessions/'+id+'/status'),headers:headers,body:jsonEncode({'status':value}));if(r.statusCode==200)await load();}catch(_){}}
  Widget field(TextEditingController c,String label)=>Padding(padding:const EdgeInsets.only(bottom:10),child:TextField(controller:c,style:const TextStyle(color:Colors.white),decoration:InputDecoration(labelText:label,labelStyle:const TextStyle(color:_vMuted),filled:true,fillColor:_vBg,border:OutlineInputBorder(borderRadius:BorderRadius.circular(14),borderSide:const BorderSide(color:_vLine)))));
@@ -95,7 +118,7 @@ class _BusinessValetPageState extends State<BusinessValetPage>{
      if(section==2) ...[sectionTitle('Vale Personeli','Personel, mesai ve performans yönetimi',()=>addStaff()),const SizedBox(height:14),staffPerformance()],
      if(section==3) ...[sectionTitle('Park Alanları','Vale park alanlarını yönetin',()=>addArea()),const SizedBox(height:14),listBox('Park Alanları',areas,Icons.local_parking_rounded)],
      if(section==4) ...[sectionTitle('Raporlar','Günlük, haftalık ve aylık Vale performansı',null),const SizedBox(height:14),reportsView()],
-     if(section==5) ...[sectionTitle('Ayarlar','Vale modülü işletme ayarları',null),const SizedBox(height:14),box(const ListTile(contentPadding:EdgeInsets.zero,leading:Icon(Icons.check_circle,color:_vLime),title:Text('Vale modülü aktif',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w800)),subtitle:Text('İşletmeniz CepQontag Vale kullanabilir.',style:TextStyle(color:_vMuted))))],
+     if(section==5) ...[sectionTitle('Ayarlar','Vale modülü işletme ayarları',null),const SizedBox(height:14),box(ListTile(contentPadding:EdgeInsets.zero,leading:const Icon(Icons.qr_code_2,color:_vLime),title:const Text('Restoran Misafir Vale QR',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w900)),subtitle:const Text('Tüm misafirler için tek, sabit QR kodu',style:TextStyle(color:_vMuted)),trailing:FilledButton(onPressed:showRestaurantQr,child:const Text('QR Göster')))),const SizedBox(height:14),box(const ListTile(contentPadding:EdgeInsets.zero,leading:Icon(Icons.check_circle,color:_vLime),title:Text('Vale modülü aktif',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w800)),subtitle:Text('İşletmeniz CepQontag Vale kullanabilir.',style:TextStyle(color:_vMuted))))],
      if(section==6) ...[sectionTitle('APK İndir','Vale personeli uygulaması',null),const SizedBox(height:14)],
      if(section==7) ...[sectionTitle('Destek','CepQontag Vale desteği',null),const SizedBox(height:14),box(const ListTile(contentPadding:EdgeInsets.zero,leading:Icon(Icons.support_agent,color:_vPurple,size:34),title:Text('Destek Merkezi',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w900)),subtitle:Text('Vale sistemiyle ilgili destek talepleriniz için CepQontag destek kanalını kullanın.',style:TextStyle(color:_vMuted))))],
      if(section==0||section==6) ...[
