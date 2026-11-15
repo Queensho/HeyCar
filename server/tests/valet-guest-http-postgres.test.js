@@ -33,13 +33,13 @@ test('SMS-free guest: real HTTP routes, PostgreSQL, staff handover and token rev
  const secret=invite.body.inviteToken;
  const publicCheck=await api('/api/valet/guest-invites/'+secret);
  assert.equal(publicCheck.status,200);assert.equal(publicCheck.body.businessName,'Test Vale');assert.equal(publicCheck.body.plate,undefined);
- const wrong=await api('/api/valet/guest/claim',{method:'POST',body:{inviteToken:secret,fullName:'Test Guest',plate:'06XYZ456'}});
+ const wrong=await api('/api/valet/guest/claim',{method:'POST',body:{inviteToken:secret,fullName: 'Test Guest', phone: '05321234567',plate:'06XYZ456'}});
  assert.equal(wrong.status,403);
- const claim=await api('/api/valet/guest/claim',{method:'POST',body:{inviteToken:secret,fullName:'Test Guest',plate:'34abc123'}});
+ const claim=await api('/api/valet/guest/claim',{method:'POST',body:{inviteToken:secret,fullName: 'Test Guest', phone: '05321234567',plate:'34abc123'}});
  assert.equal(claim.status,201,JSON.stringify(claim.body));
  const guestToken=claim.body.guestToken;
  assert.equal((await api('/api/valet/guest-invites/'+secret)).status,404);
- assert.notEqual((await api('/api/valet/guest/claim',{method:'POST',body:{inviteToken:secret,fullName:'Other Guest',plate:'34ABC123'}})).status,201);
+ assert.notEqual((await api('/api/valet/guest/claim',{method:'POST',body:{inviteToken:secret,fullName: 'Other Guest', phone: '05321234567',plate:'34ABC123'}})).status,201);
  const view=await api('/api/valet/guest/session',{token:guestToken});
  assert.equal(view.status,200);assert.equal(view.body.session.plate,'34 ABC 123');
  assert.equal(view.body.session.key_location,undefined);
@@ -67,12 +67,12 @@ test('SMS-free guest: real HTTP routes, PostgreSQL, staff handover and token rev
  assert.equal(expInvite.status,201);
  await pool.query("UPDATE valet_guest_invites SET expires_at=now()-interval '1 second' WHERE token_hash=$1",[hash(expInvite.body.inviteToken)]);
  assert.equal((await api('/api/valet/guest-invites/'+expInvite.body.inviteToken)).status,404);
- assert.equal((await api('/api/valet/guest/claim',{method:'POST',body:{inviteToken:expInvite.body.inviteToken,fullName:'Expired Guest',plate:'34EXP123'}})).status,404);
+ assert.equal((await api('/api/valet/guest/claim',{method:'POST',body:{inviteToken:expInvite.body.inviteToken,fullName: 'Expired Guest', phone: '05321234567',plate:'34EXP123'}})).status,404);
  // Guest bearer expiry must block both status reads and vehicle requests.
  const expirySession=(await pool.query("INSERT INTO valet_sessions(business_id,plate,status) VALUES($1,'34 TOK 123','parked') RETURNING id",[business])).rows[0].id;
  const expiryInvite=await api('/api/valet/guest-invites',{method:'POST',token:staffToken,body:{sessionId:expirySession}});
  assert.equal(expiryInvite.status,201);
- const expiryClaim=await api('/api/valet/guest/claim',{method:'POST',body:{inviteToken:expiryInvite.body.inviteToken,fullName:'Token Guest',plate:'34TOK123'}});
+ const expiryClaim=await api('/api/valet/guest/claim',{method:'POST',body:{inviteToken:expiryInvite.body.inviteToken,fullName: 'Token Guest', phone: '05321234567',plate:'34TOK123'}});
  assert.equal(expiryClaim.status,201);
  await pool.query("UPDATE valet_guest_visits SET guest_token_expires_at=now()-interval '1 second' WHERE guest_token_hash=$1",[hash(expiryClaim.body.guestToken)]);
  assert.equal((await api('/api/valet/guest/session',{token:expiryClaim.body.guestToken})).status,401);
