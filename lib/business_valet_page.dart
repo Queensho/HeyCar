@@ -24,7 +24,11 @@ class _BusinessValetPageState extends State<BusinessValetPage>{
  Future<void> showRestaurantQr()async{
   try{
    final r=await http.get(Uri.parse(_vApi+'/api/business/valet/guest-qr'),headers:headers);
-   if(r.statusCode!=200)throw StateError('QR alınamadı');
+   if(r.statusCode!=200){
+    String code='UNKNOWN_ERROR';
+    try{final data=jsonDecode(r.body);if(data is Map)code=(data['error']??data['message']??code).toString();}catch(_){}
+    throw StateError('HTTP ${r.statusCode} • $code');
+   }
    final j=jsonDecode(r.body);
    final url=(j['url']??'').toString();
    if(!url.startsWith('https://queensho.github.io/HeyCar/vale-misafir/?business='))throw StateError('Geçersiz QR');
@@ -40,7 +44,11 @@ class _BusinessValetPageState extends State<BusinessValetPage>{
     ])),
     actions:[TextButton(onPressed:(){Clipboard.setData(ClipboardData(text:url));ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('QR bağlantısı kopyalandı.')));},child:const Text('Bağlantıyı Kopyala')),TextButton(onPressed:()=>Navigator.pop(d),child:const Text('Kapat'))]
    ));
-  }catch(_){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Restoran QR kodu alınamadı.')));}
+  }catch(e){
+   if(!mounted)return;
+   final detail=e is StateError?e.message.toString():e is http.ClientException?'Bağlantı hatası: ${e.message}':'Sunucuya ulaşılamadı veya yanıt okunamadı.';
+   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('Restoran QR kodu alınamadı: $detail'),duration:const Duration(seconds:8)));
+  }
  }
  Future<bool> post(String path,Map<String,dynamic> body)async{try{final r=await http.post(Uri.parse(_vApi+path),headers:headers,body:jsonEncode(body));if(r.statusCode>=200&&r.statusCode<300){await load();return true;}if(mounted){String msg='İşlem başarısız.';try{final j=jsonDecode(r.body);final e=(j['error']??'').toString();if(e=='INVALID_STAFF')msg='PIN yalnızca 4-8 rakam olmalı.';else if(e=='VALET_NOT_ENABLED')msg='Bu işletmede Vale aktif değil.';else if(e=='AREA_NAME_REQUIRED')msg='Park alanı adı gerekli.';else if(e=='PLATE_REQUIRED')msg='Plaka gerekli.';else if(e.isNotEmpty)msg='İşlem başarısız: '+e;}catch(_){}ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(msg)));}}catch(_){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Sunucuya ulaşılamadı.')));}return false;}
  Future<void> setStatus(String id,String value)async{try{final r=await http.patch(Uri.parse(_vApi+'/api/business/valet/sessions/'+id+'/status'),headers:headers,body:jsonEncode({'status':value}));if(r.statusCode==200)await load();}catch(_){}}
