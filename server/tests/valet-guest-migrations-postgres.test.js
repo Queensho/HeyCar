@@ -31,6 +31,14 @@ test('valet guest migrations enforce scoped, single-use invitations in isolated 
  const invite=await db.query("INSERT INTO valet_guest_invites(session_id,business_id,issued_by_staff_id,token_hash,expires_at) VALUES($1,$2,$3,$4,now()+interval '15 minutes') RETURNING id",[session,business,staff,hash]);
  assert.equal(invite.rowCount,1);
  await assert.rejects(db.query("INSERT INTO valet_guest_invites(session_id,business_id,issued_by_staff_id,token_hash,expires_at) VALUES($1,$2,$3,$4,now()+interval '15 minutes')",[session,business,staff,hash]),e=>e.code==='23505');
+ const concurrentHash=crypto.randomBytes(32).toString('hex');
+ const concurrentInvite=await db.query("INSERT INTO valet_guest_invites(session_id,business_id,issued_by_staff_id,token_hash,expires_at) VALUES($1,$2,$3,$4,now()+interval '15 minutes') RETURNING id",[session,business,staff,concurrentHash]);
+ const contenders=await Promise.all(Array.from({length:8},()=>db.query('UPDATE valet_guest_invites SET consumed_at=now() WHERE id=$1 AND consumed_at IS NULL AND revoked_at IS NULL AND expires_at>now() RETURNING id',[concurrentInvite.rows[0].id])));
+ assert.equal(contenders.reduce((sum,result)=>sum+result.rowCount,0),1,'exactly one concurrent invite consumption succeeds');
+ const expiredHash=crypto.randomBytes(32).toString('hex');
+ const expiredInvite=await db.query("INSERT INTO valet_guest_invites(session_id,business_id,issued_by_staff_id,token_hash,expires_at) VALUES($1,$2,$3,$4,now()-interval '1 second') RETURNING id",[session,business,staff,expiredHash]);
+ const expiredAttempt=await db.query('UPDATE valet_guest_invites SET consumed_at=now() WHERE id=$1 AND consumed_at IS NULL AND revoked_at IS NULL AND expires_at>now() RETURNING id',[expiredInvite.rows[0].id]);
+ assert.equal(expiredAttempt.rowCount,0,'expired invitation is not consumable');
  const first=await db.query('UPDATE valet_guest_invites SET consumed_at=now() WHERE id=$1 AND consumed_at IS NULL AND revoked_at IS NULL RETURNING id',[invite.rows[0].id]);
  const replay=await db.query('UPDATE valet_guest_invites SET consumed_at=now() WHERE id=$1 AND consumed_at IS NULL AND revoked_at IS NULL RETURNING id',[invite.rows[0].id]);
  assert.equal(first.rowCount,1);assert.equal(replay.rowCount,0);
