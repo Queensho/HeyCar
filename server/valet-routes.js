@@ -157,7 +157,7 @@ module.exports=function registerValetRoutes(app,pool){
   requestedAt:row.requested_at,readyAt:row.ready_at,deliveredAt:row.delivered_at
  });
  async function guestAuth(req,res,client=pool){
-  const raw=String(req.headers.authorization||'').replace(/^Bearer\\s+/i,'').trim();
+  const raw=String(req.headers.authorization||'').replace(/^Bearer\s+/i,'').trim();
   if(!/^[A-Za-z0-9_-]{43}$/.test(raw)){res.status(401).json({error:'GUEST_AUTH_REQUIRED'});return null;}
   const q=await client.query(
    "SELECT g.session_id,g.business_id,s.plate,s.status,s.requested_at,s.ready_at,s.delivered_at,b.name AS business_name FROM valet_guest_visits g JOIN valet_sessions s ON s.id=g.session_id AND s.business_id=g.business_id JOIN businesses b ON b.id=g.business_id WHERE g.guest_token_hash=$1 AND g.guest_token_expires_at>now() AND b.valet_enabled=TRUE LIMIT 1",
@@ -168,7 +168,7 @@ module.exports=function registerValetRoutes(app,pool){
  app.post('/api/valet/guest/claim',guestClaimLimiter,async(req,res)=>{
   const invite=String(req.body?.inviteToken||'').trim();
   const fullName=String(req.body?.fullName||'').trim();
-  const plate=String(req.body?.plate||'').toUpperCase().replace(/\\s+/g,'');
+  const plate=String(req.body?.plate||'').toUpperCase().replace(/\s+/g,'');
   if(!/^[A-Za-z0-9_-]{43}$/.test(invite)||fullName.length<2||fullName.length>100||
    !/^[0-9A-Z]{5,12}$/.test(plate))return res.status(400).json({error:'INVALID_GUEST_DETAILS'});
   const client=await pool.connect();
@@ -180,7 +180,7 @@ module.exports=function registerValetRoutes(app,pool){
     [hash(invite)]);
    if(!q.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'INVITE_EXPIRED'});}
    session=q.rows[0];
-   if(String(session.plate).toUpperCase().replace(/\\s+/g,'')!==plate){
+   if(String(session.plate).toUpperCase().replace(/\s+/g,'')!==plate){
     await client.query('ROLLBACK');return res.status(403).json({error:'PLATE_MISMATCH'});
    }
    guestToken=crypto.randomBytes(32).toString('base64url');
