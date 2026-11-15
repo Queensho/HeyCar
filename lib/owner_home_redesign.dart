@@ -2110,7 +2110,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             ))),child:const Text('Tümü')),
         ])),
         SizedBox(
-          height:260*(MediaQuery.textScalerOf(context).scale(14)/14).clamp(1.0,3.0),
+          height:300*(MediaQuery.textScalerOf(context).scale(14)/14).clamp(1.0,3.0),
           child:ListView.separated(
             key:const ValueKey('home-how-to-carousel'),
             scrollDirection:Axis.horizontal,
@@ -2119,7 +2119,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             separatorBuilder:(_,__)=>const SizedBox(width:12),
             itemBuilder:(context,i){
               final guide=guides[i];
-              return SizedBox(width:170,child:Material(
+              return SizedBox(width:MediaQuery.sizeOf(context).width < 600 ? MediaQuery.sizeOf(context).width-32 : 300,child:Material(
                 color:Colors.white,
                 elevation:0,
                 borderRadius:BorderRadius.circular(22),
@@ -2299,7 +2299,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             RepaintBoundary(key:ValueKey('extra-${component.id}-${_appUiConfig.version}'),
               child:_managedComponent(component)),
           // Keep the final guide card scrollable above the docked navigation.
-          SizedBox(height:MediaQuery.paddingOf(context).bottom+112),
+          const SizedBox(height:20),
         ],
       ),
     )),
