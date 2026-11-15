@@ -18,3 +18,8 @@ test('guest cannot deliver vehicle directly and request reuses existing code and
  assert.match(request,/valet_delivery_codes/);assert.match(request,/dispatchNext\(row.business_id\)/);
  assert.match(request,/status='requested'/);assert.doesNotMatch(request,/status='delivered'/);
 });
+
+test('guest bearer stops working after completed or cancelled valet session',()=>{
+ const auth=src.slice(src.indexOf('async function guestAuth('),src.indexOf("app.post('/api/valet/guest/claim'"));
+ assert.match(auth,/s\.status NOT IN \('delivered','cancelled'\)/);
+});
