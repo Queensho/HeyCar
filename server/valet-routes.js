@@ -106,6 +106,47 @@ module.exports=function registerValetRoutes(app,pool){
 
  app.post('/api/valet/login',valetLoginLimiter,async(req,res)=>{try{const phone=normalizeTrMobile(req.body?.phone),pin=String(req.body?.pin||'').trim();if(!phone||!pin)return res.status(400).json({error:'REQUIRED_FIELDS_MISSING'});const q=await pool.query("SELECT s.id,s.name,s.business_id,s.pin_hash,b.name AS business_name,b.valet_enabled FROM valet_staff s JOIN businesses b ON b.id=s.business_id WHERE s.is_active=TRUE AND s.phone=$1 LIMIT 2",[phone]);if(q.rowCount!==1||q.rows[0].valet_enabled!==true)return res.status(401).json({error:'INVALID_VALET_LOGIN'});const verified=verifyPin(q.rows[0].pin_hash,pin);if(!verified.ok)return res.status(401).json({error:'INVALID_VALET_LOGIN'});if(verified.legacy)await pool.query('UPDATE valet_staff SET pin_hash=$2,updated_at=now() WHERE id=$1',[q.rows[0].id,pinHash(pin)]);const token=crypto.randomBytes(32).toString('hex');await pool.query("INSERT INTO valet_staff_sessions(staff_id,token_hash,expires_at) VALUES($1,$2,now()+interval '30 days')",[q.rows[0].id,hash(token)]);res.json({ok:true,token,staff:{id:q.rows[0].id,name:q.rows[0].name,businessId:q.rows[0].business_id,businessName:q.rows[0].business_name}});}catch(e){console.error('valet login',e);res.status(500).json({error:'SERVER_ERROR'});}});
  async function valetAuth(req,res){const raw=String(req.headers.authorization||'').replace(/^Bearer\s+/i,'');if(!raw){res.status(401).json({error:'AUTH_REQUIRED'});return null;}const q=await pool.query("SELECT s.id AS staff_id,s.name,b.id AS business_id,b.name AS business_name FROM valet_staff_sessions vs JOIN valet_staff s ON s.id=vs.staff_id JOIN businesses b ON b.id=s.business_id WHERE vs.token_hash=$1 AND vs.expires_at>now() AND s.is_active=TRUE AND b.valet_enabled=TRUE",[hash(raw)]);if(!q.rowCount){res.status(401).json({error:'INVALID_SESSION'});return null;}return q.rows[0];}
+ // Guest valet invitation: only an authenticated valet staff member may issue a
+ // short-lived, session-scoped secret. No plate or customer data is public.
+ const guestInviteLimiter=rateLimit({windowMs:15*60*1000,limit:20,
+  standardHeaders:'draft-7',legacyHeaders:false,
+  message:{error:'TOO_MANY_ATTEMPTS'}});
+ app.post('/api/valet/guest-invites',guestInviteLimiter,async(req,res)=>{
+  try{
+   const a=await valetAuth(req,res);if(!a)return;
+   const sessionId=String(req.body?.sessionId||'').trim();
+   if(!/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(sessionId))
+    return res.status(400).json({error:'INVALID_SESSION_ID'});
+   const q=await pool.query(
+    "SELECT id FROM valet_sessions WHERE id=$1 AND business_id=$2 AND status NOT IN ('delivered','cancelled') LIMIT 1",
+    [sessionId,a.business_id]);
+   if(!q.rowCount)return res.status(404).json({error:'ACTIVE_VALET_NOT_FOUND'});
+   const secret=crypto.randomBytes(32).toString('base64url');
+   await pool.query(
+    "INSERT INTO valet_guest_invites(session_id,business_id,issued_by_staff_id,token_hash,expires_at) VALUES($1,$2,$3,$4,now()+interval '15 minutes')",
+    [sessionId,a.business_id,a.staff_id,hash(secret)]);
+   res.set('Cache-Control','no-store');
+   return res.status(201).json({ok:true,inviteToken:secret,expiresInSeconds:900});
+  }catch(e){console.error('valet guest invite',{code:e.code||'UNAVAILABLE'});
+   return res.status(503).json({error:'GUEST_INVITE_UNAVAILABLE'});}
+ });
+ // Public check only confirms an invitation and business name; it never reveals
+ // vehicle/session details or grants valet control. OTP and claim flow follow.
+ app.get('/api/valet/guest-invites/:token',guestInviteLimiter,async(req,res)=>{
+  try{
+   const token=String(req.params.token||'');
+   if(!/^[A-Za-z0-9_-]{43}$/.test(token))
+    return res.status(404).json({error:'INVITE_NOT_FOUND'});
+   const q=await pool.query(
+    "SELECT b.name AS business_name FROM valet_guest_invites i JOIN valet_sessions s ON s.id=i.session_id AND s.business_id=i.business_id JOIN businesses b ON b.id=i.business_id WHERE i.token_hash=$1 AND i.expires_at>now() AND i.consumed_at IS NULL AND i.revoked_at IS NULL AND s.status NOT IN ('delivered','cancelled') AND b.valet_enabled=TRUE LIMIT 1",
+    [hash(token)]);
+   res.set('Cache-Control','no-store');
+   if(!q.rowCount)return res.status(404).json({error:'INVITE_NOT_FOUND'});
+   return res.json({ok:true,businessName:q.rows[0].business_name,registrationEnabled:false});
+  }catch(e){console.error('valet guest invite lookup',{code:e.code||'UNAVAILABLE'});
+   return res.status(503).json({error:'GUEST_INVITE_UNAVAILABLE'});}
+ });
+
  app.post('/api/valet/logout',async(req,res)=>{
   const raw=String(req.headers.authorization||'').replace(/^Bearer\s+/i,'').trim();
   if(!raw)return res.json({ok:true});
