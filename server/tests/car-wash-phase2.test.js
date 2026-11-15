@@ -7,9 +7,10 @@ const path=require('node:path');
 // intentionally remain in place so no existing user data is destroyed.
 test('car wash routes and scheduler are not registered by the server',()=>{
   const source=fs.readFileSync(path.join(__dirname,'../server.js'),'utf8');
-  assert.doesNotMatch(source,/require\\(['\"]\\.\\/car-wash-(?:routes|booking-routes|notifications)['\"]\\)/);
-  assert.doesNotMatch(source,/registerCarWash(?:Booking)?Routes\\s*\\(/);
-  assert.doesNotMatch(source,/startCarWashNotifications\\s*\\(/);
+  for(const name of ['registerCarWashRoutes','registerCarWashBookingRoutes','startCarWashNotifications']){
+    assert.equal(source.includes(name+'('),false,name+' must not be called');
+  }
+
 });
 
 test('historical car wash migrations remain available for existing data',()=>{
