@@ -96,8 +96,10 @@ module.exports=function registerValetRoutes(app,pool){
   const sql="UPDATE valet_sessions s SET status='cancelled',updated_at=now(),note=concat_ws(' | ',NULLIF(s.note,''),'Misafir QR eşleşmesi 15 dakika içinde yapılmadı') WHERE s.status IN ('accepted','parked') AND s.created_at<=now()-interval '15 minutes' AND NOT EXISTS (SELECT 1 FROM valet_guest_visits g WHERE g.session_id=s.id) AND ($1::uuid IS NULL OR s.business_id=$1::uuid) RETURNING s.id";
   return pool.query(sql,[businessId]);
  }
- const expiryTimer=setInterval(()=>expireUnmatchedSessions().catch(e=>console.error('valet guest expiry',{code:e.code||'UNAVAILABLE'})),60000);
- expiryTimer.unref?.();
+ if(typeof setInterval==='function'){
+  const expiryTimer=setInterval(()=>expireUnmatchedSessions().catch(e=>console.error('valet guest expiry',{code:e.code||'UNAVAILABLE'})),60000);
+  expiryTimer.unref?.();
+ }
  const publicSession=row=>row?{
   id:row.id,business_id:row.business_id,vehicle_id:row.vehicle_id,plate:row.plate,
   parking_area:row.parking_area,parking_slot:row.parking_slot,key_location:row.key_location,note:row.note,
