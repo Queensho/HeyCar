@@ -2110,7 +2110,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             ))),child:const Text('Tümü')),
         ])),
         SizedBox(
-          height:260*(MediaQuery.textScalerOf(context).scale(14)/14).clamp(1.0,3.0),
+          height:236*(MediaQuery.textScalerOf(context).scale(14)/14).clamp(1.0,3.0),
           child:ListView.separated(
             key:const ValueKey('home-how-to-carousel'),
             scrollDirection:Axis.horizontal,
@@ -2292,8 +2292,9 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             !{'weather_card','vehicle_security','quick_actions','services_grid','monthly_summary','recent_notifications','promo_banner'}.contains(c.type)))
             RepaintBoundary(key:ValueKey('extra-${component.id}-${_appUiConfig.version}'),
               child:_managedComponent(component)),
-          // Keep the final guide card scrollable above the docked navigation.
-          const SizedBox(height:20),
+          // Reserve space for the fixed owner bottom navigation so the final
+          // guide title and subtitle remain visible when fully scrolled.
+          SizedBox(height:MediaQuery.paddingOf(context).bottom+96),
         ],
       ),
     )),
