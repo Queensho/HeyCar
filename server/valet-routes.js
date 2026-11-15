@@ -142,7 +142,7 @@ module.exports=function registerValetRoutes(app,pool){
     [hash(token)]);
    res.set('Cache-Control','no-store');
    if(!q.rowCount)return res.status(404).json({error:'INVITE_NOT_FOUND'});
-   return res.json({ok:true,businessName:q.rows[0].business_name,registrationEnabled:false});
+   return res.json({ok:true,businessName:q.rows[0].business_name,registrationEnabled:true});
   }catch(e){console.error('valet guest invite lookup',{code:e.code||'UNAVAILABLE'});
    return res.status(503).json({error:'GUEST_INVITE_UNAVAILABLE'});}
  });
