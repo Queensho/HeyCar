@@ -160,7 +160,7 @@ module.exports=function registerValetRoutes(app,pool){
   const raw=String(req.headers.authorization||'').replace(/^Bearer\s+/i,'').trim();
   if(!/^[A-Za-z0-9_-]{43}$/.test(raw)){res.status(401).json({error:'GUEST_AUTH_REQUIRED'});return null;}
   const q=await client.query(
-   "SELECT g.session_id,g.business_id,s.plate,s.status,s.requested_at,s.ready_at,s.delivered_at,b.name AS business_name FROM valet_guest_visits g JOIN valet_sessions s ON s.id=g.session_id AND s.business_id=g.business_id JOIN businesses b ON b.id=g.business_id WHERE g.guest_token_hash=$1 AND g.guest_token_expires_at>now() AND b.valet_enabled=TRUE LIMIT 1",
+   "SELECT g.session_id,g.business_id,s.plate,s.status,s.requested_at,s.ready_at,s.delivered_at,b.name AS business_name FROM valet_guest_visits g JOIN valet_sessions s ON s.id=g.session_id AND s.business_id=g.business_id JOIN businesses b ON b.id=g.business_id WHERE g.guest_token_hash=$1 AND g.guest_token_expires_at>now() AND s.status NOT IN ('delivered','cancelled') AND b.valet_enabled=TRUE LIMIT 1",
    [hash(raw)]);
   if(!q.rowCount){res.status(401).json({error:'GUEST_SESSION_EXPIRED'});return null;}
   return q.rows[0];
