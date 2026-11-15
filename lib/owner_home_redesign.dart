@@ -2110,7 +2110,7 @@ class _OwnerHomeRedesignState extends State<OwnerHomeRedesign>{
             ))),child:const Text('Tümü')),
         ])),
         SizedBox(
-          height:300*(MediaQuery.textScalerOf(context).scale(14)/14).clamp(1.0,3.0),
+          height:260*(MediaQuery.textScalerOf(context).scale(14)/14).clamp(1.0,3.0),
           child:ListView.separated(
             key:const ValueKey('home-how-to-carousel'),
             scrollDirection:Axis.horizontal,
