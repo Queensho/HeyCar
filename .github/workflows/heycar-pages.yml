@@ -256,10 +256,10 @@ jobs:
           mkdir -p deploy/admin
           cp -R build/web/. deploy/admin/
 
-      - name: Verify Pages payload
+      - name: Include guest valet landing (registration disabled)\n        run: |\n          mkdir -p deploy/vale-misafir\n          cp web/valet-guest/index.html deploy/vale-misafir/index.html\n\n      - name: Verify Pages payload
         run: |
           set -euo pipefail
-          for path in index.html owner/index.html cekici/index.html vale/index.html admin/index.html isletme/index.html; do
+          for path in index.html owner/index.html cekici/index.html vale/index.html vale-misafir/index.html admin/index.html isletme/index.html; do
             test -f "deploy/$path" || { echo "Missing Pages artifact: $path"; exit 1; }
           done
           echo "PAGES_PAYLOAD_COMPLETE"
