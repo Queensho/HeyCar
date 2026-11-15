@@ -9,6 +9,14 @@ const status=document.getElementById('status'),business=document.getElementById(
 const form=document.getElementById('guest-form'),dashboard=document.getElementById('dashboard');
 const claim=document.getElementById('claim'),request=document.getElementById('request');
 let guestToken='',active=false;
+const sessionKey='cepqontag.valet.guest.v1';
+function clearGuest(){guestToken='';try{sessionStorage.removeItem(sessionKey);}catch(_){}}
+function saveGuest(code){
+ try{const old=JSON.parse(sessionStorage.getItem(sessionKey)||'{}');
+ sessionStorage.setItem(sessionKey,JSON.stringify({token:guestToken,expiresAt:old.token===guestToken?old.expiresAt:Date.now()+43200000,deliveryCode:code===undefined?old.deliveryCode||'':code}));}catch(_){}
+}
+function showCode(code){if(!code)return;const el=document.getElementById('handover');el.hidden=false;el.textContent='Teslim kodunuz: '+code+' — Aracı alırken vale görevlisine söyleyin.';}
+
 if(token)history.replaceState(null,'',location.pathname);
 async function call(endpoint,options={}){
  const r=await fetch(api+endpoint,{cache:'no-store',referrerPolicy:'no-referrer',...options});
@@ -21,18 +29,19 @@ function showSession(s){
  const names={accepted:'Araç valeye teslim edildi',parked:'Aracınız park edildi',requested:'Araç çağrıldı, vale bekleniyor',retrieving:'Vale aracınızı getiriyor',ready:'Aracınız teslim için hazır',delivered:'Aracınız teslim edildi',cancelled:'Vale işlemi iptal edildi'};
  document.getElementById('state').textContent=names[s.status]||'Durum güncelleniyor';
  request.hidden=!['accepted','parked'].includes(s.status);
- if(['delivered','cancelled'].includes(s.status)){document.getElementById('handover').hidden=false;document.getElementById('handover').textContent='Vale işleminiz tamamlandı.';}
+ if(['delivered','cancelled'].includes(s.status)){clearGuest();document.getElementById('handover').hidden=false;document.getElementById('handover').textContent='Vale işleminiz tamamlandı.';}
 }
-async function refresh(){if(!guestToken)return;try{const d=await call('/api/valet/guest/session',{headers:guestHeaders()});showSession(d.session);}catch(e){status.textContent='Durum alınamadı. '+e.message;}}
-if(!/^[A-Za-z0-9_-]{43}$/.test(token)){business.textContent='—';status.textContent='Geçerli bir vale daveti bulunamadı.';}
-else{call('/api/valet/guest-invites/'+encodeURIComponent(token)).then(d=>{
+async function refresh(){if(!guestToken)return;try{const d=await call('/api/valet/guest/session',{headers:guestHeaders()});showSession(d.session);}catch(e){if(e.message==='GUEST_SESSION_EXPIRED'||e.message==='GUEST_AUTH_REQUIRED'){clearGuest();dashboard.hidden=true;status.textContent='Misafir oturumunuz sona erdi. Vale görevlisinden yardım isteyin.';}else status.textContent='Durum alınamadı. '+e.message;}}
+try{const saved=JSON.parse(sessionStorage.getItem(sessionKey)||'{}');if(saved.expiresAt>Date.now()&&/^[A-Za-z0-9_-]{43}$/.test(saved.token||'')){guestToken=saved.token;form.hidden=true;dashboard.hidden=false;status.textContent='Vale oturumunuz yeniden açıldı.';showCode(saved.deliveryCode);refresh();}else clearGuest();}catch(_){clearGuest();}
+if(!guestToken&&!/^[A-Za-z0-9_-]{43}$/.test(token)){business.textContent='—';status.textContent='Geçerli bir vale daveti bulunamadı.';}
+else if(!guestToken){call('/api/valet/guest-invites/'+encodeURIComponent(token)).then(d=>{
  business.textContent=d.businessName||'Vale işletmesi';status.textContent='Davet geçerli. Adınızı ve plakanızı girin.';claim.disabled=false;
 }).catch(()=>{business.textContent='—';status.textContent='Davet geçersiz veya süresi dolmuş. Valeden yeni davet isteyin.';});}
 form.addEventListener('submit',async e=>{e.preventDefault();if(!token||active)return;active=true;claim.disabled=true;
  try{const d=await call('/api/valet/guest/claim',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({inviteToken:token,fullName:document.getElementById('name').value.trim(),plate:document.getElementById('plate').value.trim()})});
- guestToken=d.guestToken;form.hidden=true;dashboard.hidden=false;status.textContent='Misafir vale kaydınız açıldı.';showSession(d.session);await refresh();
+ guestToken=d.guestToken;saveGuest('');form.hidden=true;dashboard.hidden=false;status.textContent='Misafir vale kaydınız açıldı.';showSession(d.session);await refresh();
  }catch(err){status.textContent='Kayıt yapılamadı: '+err.message;claim.disabled=false;}finally{active=false;}
 });
-request.addEventListener('click',async()=>{request.disabled=true;try{const d=await call('/api/valet/guest/request',{method:'POST',headers:guestHeaders()});document.getElementById('handover').hidden=false;document.getElementById('handover').textContent='Teslim kodunuz: '+d.deliveryCode+' — Aracı alırken vale görevlisine söyleyin.';showSession(d.session);}catch(e){status.textContent='Araç çağrılamadı: '+e.message;}finally{request.disabled=false;}});
+request.addEventListener('click',async()=>{request.disabled=true;try{const d=await call('/api/valet/guest/request',{method:'POST',headers:guestHeaders()});saveGuest(d.deliveryCode);showCode(d.deliveryCode);showSession(d.session);}catch(e){status.textContent='Araç çağrılamadı: '+e.message;}finally{request.disabled=false;}});
 document.getElementById('refresh').addEventListener('click',refresh);
 </script></body></html>
