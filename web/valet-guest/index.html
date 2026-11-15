@@ -11,7 +11,7 @@ if(token)history.replaceState(null,'',location.pathname);
 if(!/^[A-Za-z0-9_-]{43}$/.test(token)){business.textContent='—';status.textContent='Geçerli bir vale davet bağlantısı bulunamadı.';}
 else{
  const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),8000);
- fetch('https://api.cepqontag.com/api/valet/guest-invites/'+encodeURIComponent(token),{signal:controller.signal,cache:'no-store',referrerPolicy:'no-referrer'})
+ fetch('https://heycar-api-185-165-46-213.nip.io/api/valet/guest-invites/'+encodeURIComponent(token),{signal:controller.signal,cache:'no-store',referrerPolicy:'no-referrer'})
  .then(r=>{if(!r.ok)throw Error('unavailable');return r.json()})
  .then(data=>{business.textContent=String(data.businessName||'Vale işletmesi');status.textContent='Davet doğrulandı. Misafir kayıt özelliği yakında kullanıma açılacak.'})
  .catch(()=>{business.textContent='—';status.textContent='Davet doğrulanamadı. Lütfen vale görevlisinden yeni bir bağlantı isteyin.'})
