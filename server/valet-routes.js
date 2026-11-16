@@ -419,6 +419,28 @@ module.exports=function registerValetRoutes(app,pool){
   }catch(e){console.error('valet staff pin reset',{code:e.code||'UNKNOWN'});res.status(500).json({error:'SERVER_ERROR'});}
  });
  
+ // Deactivate staff without deleting audit history or assigned vehicle records.
+ app.delete('/api/business/valet/staff/:id',async(req,res)=>{
+  try{
+   const a=await businessAuth(req,res);if(!a||!enabled(a,res))return;
+   const id=String(req.params.id||'');
+   if(!/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(id))return res.status(400).json({error:'INVALID_STAFF_ID'});
+   const client=await pool.connect();
+   try{
+    await client.query('BEGIN');
+    const found=await client.query('SELECT id FROM valet_staff WHERE id=$1 AND business_id=$2 AND is_active=TRUE FOR UPDATE',[id,a.business_id]);
+    if(!found.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'STAFF_NOT_FOUND'});}
+    const pending=await client.query("SELECT id FROM valet_sessions WHERE business_id=$1 AND staff_id=$2 AND status NOT IN ('delivered','cancelled') LIMIT 1",[a.business_id,id]);
+    if(pending.rowCount){await client.query('ROLLBACK');return res.status(409).json({error:'STAFF_HAS_ACTIVE_SESSIONS'});}
+    await client.query('UPDATE valet_staff SET is_active=FALSE,on_shift=FALSE,shift_ended_at=now(),updated_at=now() WHERE id=$1 AND business_id=$2',[id,a.business_id]);
+    await client.query('DELETE FROM valet_staff_sessions WHERE staff_id=$1',[id]);
+    await client.query('UPDATE valet_push_tokens SET active=FALSE,updated_at=now() WHERE staff_id=$1',[id]);
+    await client.query('COMMIT');
+    res.json({ok:true});
+   }catch(e){await client.query('ROLLBACK');throw e;}finally{client.release();}
+  }catch(e){console.error('valet staff deactivate',{code:e.code||'UNKNOWN'});res.status(500).json({error:'SERVER_ERROR'});}
+ });
+
  app.post('/api/business/valet/areas',async(req,res)=>{const a=await businessAuth(req,res);if(!a||!enabled(a,res))return;const {name,slots}=req.body||{};
   if(!name)return res.status(400).json({error:'AREA_NAME_REQUIRED'});
   const q=await pool.query("INSERT INTO valet_parking_areas(business_id,name,slots) VALUES($1,$2,$3) ON CONFLICT(business_id,name) DO UPDATE SET slots=EXCLUDED.slots,is_active=true RETURNING *",[a.business_id,String(name).trim(),Number.isInteger(Number(slots))?Number(slots):null]);
