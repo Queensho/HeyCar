@@ -141,7 +141,11 @@ module.exports=function registerValetRoutes(app,pool){
 
  // SMS-free guest mode: possession of a staff-issued, 15-minute single-use
  // invitation is the only enrollment credential. Never resolve by plate alone.
- const guestClaimLimiter=rateLimit({windowMs:15*60*1000,limit:10,standardHeaders:'draft-7',
+ // Independent limits: polling must not exhaust guest enrollment attempts.
+ // Keep a generous abuse guard for unauthenticated claim and request endpoints.
+ const guestEnrollmentLimiter=rateLimit({windowMs:15*60*1000,limit:120,standardHeaders:'draft-7',
+  legacyHeaders:false,message:{error:'TOO_MANY_ATTEMPTS'}});
+ const guestRequestLimiter=rateLimit({windowMs:15*60*1000,limit:120,standardHeaders:'draft-7',
   legacyHeaders:false,message:{error:'TOO_MANY_ATTEMPTS'}});
  const guestView=row=>({
   plate:row.plate,businessName:row.business_name,status:row.status,
@@ -171,7 +175,7 @@ module.exports=function registerValetRoutes(app,pool){
   return res.json({ok:true,businessId:a.business_id,businessName:q.rows[0]?.name||'İşletme',
    url:'https://queensho.github.io/HeyCar/vale-misafir/?business='+encodeURIComponent(a.business_id)});
  });
- app.post('/api/valet/guest/claim',guestClaimLimiter,async(req,res)=>{
+ app.post('/api/valet/guest/claim',guestEnrollmentLimiter,async(req,res)=>{
   const invite=String(req.body?.inviteToken||'').trim();
   const businessId=String(req.body?.businessId||'').trim();
   const fixedQr=/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(businessId);
@@ -214,13 +218,13 @@ module.exports=function registerValetRoutes(app,pool){
   return res.status(201).json({ok:true,guestToken,expiresInSeconds:43200,
    session:{plate:session.plate,businessName:session.business_name,status:session.status}});
  });
- app.get('/api/valet/guest/session',guestClaimLimiter,async(req,res)=>{
+ app.get('/api/valet/guest/session',async(req,res)=>{
   try{const guest=await guestAuth(req,res);if(!guest)return;
    res.set('Cache-Control','no-store');return res.json({ok:true,session:guestView(guest)});
   }catch(e){console.error('guest status',{code:e.code||'UNAVAILABLE'});
    return res.status(503).json({error:'GUEST_STATUS_UNAVAILABLE'});}
  });
- app.post('/api/valet/guest/request',guestClaimLimiter,async(req,res)=>{
+ app.post('/api/valet/guest/request',guestRequestLimiter,async(req,res)=>{
   const client=await pool.connect();let row,deliveryCode;
   try{
    await client.query('BEGIN');
