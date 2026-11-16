@@ -181,7 +181,7 @@ module.exports=function registerValetRoutes(app,pool){
   const fixedQr=/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(businessId);
   const fullName=String(req.body?.fullName||'').trim();
   const phoneInput=String(req.body?.phone||'').replace(/[\s()\-]/g,'');
-  const phone=phoneInput.startsWith('0')?'+90'+phoneInput.slice(1):phoneInput.startsWith('90')?'+'+phoneInput:phoneInput;
+  const phone=phoneInput.startsWith('0')?'+90'+phoneInput.slice(1):phoneInput.startsWith('90')?'+'+phoneInput:phoneInput.startsWith('5')&&phoneInput.length===10?'+90'+phoneInput:phoneInput;
   const plate=String(req.body?.plate||'').toUpperCase().replace(/\s+/g,'');
   if((!fixedQr&&!/^[A-Za-z0-9_-]{43}$/.test(invite))||fullName.length<2||fullName.length>100||
    !/^[0-9A-Z]{5,12}$/.test(plate)||!/^[+]90[5][0-9]{9}$/.test(phone))return res.status(400).json({error:'INVALID_GUEST_DETAILS'});
