@@ -54,6 +54,34 @@ class _BusinessValetPageState extends State<BusinessValetPage>{
  Future<void> setStatus(String id,String value)async{try{final r=await http.patch(Uri.parse(_vApi+'/api/business/valet/sessions/'+id+'/status'),headers:headers,body:jsonEncode({'status':value}));if(r.statusCode==200)await load();}catch(_){}}
  Widget field(TextEditingController c,String label)=>Padding(padding:const EdgeInsets.only(bottom:10),child:TextField(controller:c,style:const TextStyle(color:Colors.white),decoration:InputDecoration(labelText:label,labelStyle:const TextStyle(color:_vMuted),filled:true,fillColor:_vBg,border:OutlineInputBorder(borderRadius:BorderRadius.circular(14),borderSide:const BorderSide(color:_vLine)))));
  Future<void> addVehicle()async{final plate=TextEditingController(),slot=TextEditingController(),key=TextEditingController(),note=TextEditingController();String? area=areas.isEmpty?null:areas.first['name']?.toString();await showDialog(context:context,builder:(d)=>StatefulBuilder(builder:(d,setD)=>AlertDialog(backgroundColor:_vPanel,title:const Text('Aracı Valeye Al',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w900)),content:SizedBox(width:430,child:Column(mainAxisSize:MainAxisSize.min,children:[field(plate,'Plaka'),if(areas.isNotEmpty)DropdownButtonFormField<String>(initialValue:area,dropdownColor:_vPanel,style:const TextStyle(color:Colors.white),decoration:const InputDecoration(labelText:'Park alanı'),items:areas.map((x)=>DropdownMenuItem(value:x['name'].toString(),child:Text(x['name'].toString()))).toList(),onChanged:(v)=>setD(()=>area=v)),const SizedBox(height:10),field(slot,'Park yeri / slot'),field(key,'Anahtar konumu'),field(note,'Not')])),actions:[TextButton(onPressed:()=>Navigator.pop(d),child:const Text('Vazgeç')),FilledButton(onPressed:()async{if(plate.text.trim().isEmpty)return;final ok=await post('/api/business/valet/accept',{'plate':plate.text,'parkingArea':area,'parkingSlot':slot.text,'keyLocation':key.text,'note':note.text});if(ok&&d.mounted)Navigator.pop(d);},child:const Text('Aracı Al'))])));}
+ Future<void> resetStaffPin(Map<String,dynamic> member)async{
+  final id=(member['id']??'').toString();
+  if(id.isEmpty)return;
+  final pin=TextEditingController(),confirm=TextEditingController();
+  await showDialog<void>(context:context,builder:(d)=>AlertDialog(
+   backgroundColor:_vPanel,
+   title:const Text('Personel PIN Sıfırla',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w900)),
+   content:SizedBox(width:420,child:Column(mainAxisSize:MainAxisSize.min,children:[
+    Text((member['name']??'Personel').toString(),style:const TextStyle(color:_vMuted)),
+    const SizedBox(height:12),field(pin,'Yeni PIN (4-8 rakam)'),field(confirm,'Yeni PIN tekrar'),
+    const Text('PIN değişince personelin mevcut oturumları kapatılır.',style:TextStyle(color:_vMuted,fontSize:12))
+   ])),
+   actions:[TextButton(onPressed:()=>Navigator.pop(d),child:const Text('Vazgeç')),
+    FilledButton(onPressed:()async{
+     final value=pin.text.trim();
+     if(value.length<4||value.length>8||!RegExp(r'^[0-9]+').hasMatch(value)||value.split('').any((c)=>!RegExp(r'^[0-9]').hasMatch(c))||value!=confirm.text.trim()){
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('PIN 4-8 rakam olmalı ve iki alan eşleşmeli.')));return;
+     }
+     try{
+      final url=_vApi+'/api/business/valet/staff/'+id+'/pin';
+      final r=await http.patch(Uri.parse(url),headers:headers,body:jsonEncode({'pin':value}));
+      if(r.statusCode==200){if(d.mounted)Navigator.pop(d);if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('PIN sıfırlandı. Yeniden giriş yapın.')));}
+      else if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('PIN sıfırlanamadı (HTTP '+r.statusCode.toString()+').')));
+     }catch(_){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Bağlantı hatası.')));}
+    },child:const Text('PIN Sıfırla'))],
+  ));
+  pin.dispose();confirm.dispose();
+ }
  Future<void> addStaff()async{
   final name=TextEditingController(),phone=TextEditingController(),pin=TextEditingController();
   await showDialog(context:context,builder:(d)=>AlertDialog(
@@ -169,6 +197,6 @@ class _BusinessValetPageState extends State<BusinessValetPage>{
  Widget staffPerformance()=>box(Column(children:[if(performance.isEmpty)const Padding(padding:EdgeInsets.all(12),child:Text('Henüz performans verisi yok',style:TextStyle(color:_vMuted))) else ...performance.map((x)=>Container(padding:const EdgeInsets.symmetric(vertical:10),decoration:const BoxDecoration(border:Border(bottom:BorderSide(color:_vLine))),child:Row(children:[CircleAvatar(backgroundColor:(x['on_shift']==true)?_vLime:_vLine,child:Icon(Icons.person,color:(x['on_shift']==true)?Colors.black:_vMuted)),const SizedBox(width:12),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text((x['name']??'-').toString(),style:const TextStyle(color:Colors.white,fontWeight:FontWeight.w900)),Text(x['on_shift']==true?'Mesaide':'Mesai dışı',style:TextStyle(color:x['on_shift']==true?_vLime:_vMuted,fontSize:12))])),statMini('Teslim',(x['delivered_30d']??0).toString()),statMini('Ort. süre',(x['avg_retrieval_min']??'-').toString()+' dk'),statMini('Mesai',(x['shift_hours_30d']??0).toString()+' sa')])))]));
  Widget statMini(String t,String v)=>Padding(padding:const EdgeInsets.only(left:16),child:Column(crossAxisAlignment:CrossAxisAlignment.end,children:[Text(v,style:const TextStyle(color:Colors.white,fontWeight:FontWeight.w900)),Text(t,style:const TextStyle(color:_vMuted,fontSize:10))]));
  Widget sessionCard(Map<String,dynamic> x){final s=(x['status']??'parked').toString();final labels={'parked':'Parkta','requested':'Araç İsteniyor','retrieving':'Getiriliyor','ready':'Hazır','delivered':'Teslim Edildi'};final next={'parked':'requested','requested':'retrieving','retrieving':'ready','ready':'delivered'};final nextLabels={'parked':'Araç İstendi','requested':'Getiriliyor','retrieving':'Hazır','ready':'Teslim Et'};final n=next[s];return box(Row(children:[Container(width:48,height:48,decoration:BoxDecoration(color:_vPurple.withValues(alpha:.14),borderRadius:BorderRadius.circular(13)),child:const Icon(Icons.directions_car,color:_vPurple)),const SizedBox(width:12),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text((x['plate']??'-').toString(),style:const TextStyle(color:Colors.white,fontSize:16,fontWeight:FontWeight.w900)),Text((x['parking_area']??'Alan yok').toString()+' • '+(x['parking_slot']??'Slot yok').toString()+' • Anahtar: '+(x['key_location']??'-').toString(),style:const TextStyle(color:_vMuted,fontSize:11)),Text(labels[s]??s,style:TextStyle(color:s=='requested'?Colors.orangeAccent:s=='ready'?_vLime:_vPurple,fontWeight:FontWeight.w800,fontSize:11))])),if(n!=null)FilledButton(onPressed:()=>setStatus(x['id'].toString(),n),child:Text(nextLabels[s]!))]));}
- Widget listBox(String title,List<Map<String,dynamic>> xs,IconData icon)=>box(Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(title,style:const TextStyle(color:Colors.white,fontWeight:FontWeight.w900)),const SizedBox(height:8),if(xs.isEmpty)const Text('Kayıt yok',style:TextStyle(color:_vMuted)) else ...xs.take(6).map((x)=>ListTile(dense:true,contentPadding:EdgeInsets.zero,leading:Icon(icon,color:_vPurple),title:Text((x['name']??'-').toString(),style:const TextStyle(color:Colors.white,fontWeight:FontWeight.w700)),subtitle:x['phone']!=null?Text(x['phone'].toString(),style:const TextStyle(color:_vMuted)):null))]));
+ Widget listBox(String title,List<Map<String,dynamic>> xs,IconData icon)=>box(Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(title,style:const TextStyle(color:Colors.white,fontWeight:FontWeight.w900)),const SizedBox(height:8),if(xs.isEmpty)const Text('Kayıt yok',style:TextStyle(color:_vMuted)) else ...xs.take(6).map((x)=>ListTile(dense:true,contentPadding:EdgeInsets.zero,leading:Icon(icon,color:_vPurple),title:Text((x['name']??'-').toString(),style:const TextStyle(color:Colors.white,fontWeight:FontWeight.w700)),subtitle:x['phone']!=null?Text(x['phone'].toString(),style:const TextStyle(color:_vMuted)):null,trailing:title=='Vale Personeli'?IconButton(tooltip:'PIN Sıfırla',icon:const Icon(Icons.lock_reset,color:_vLime),onPressed:()=>resetStaffPin(x)):null))]));
  Widget box(Widget child)=>Container(padding:const EdgeInsets.all(14),decoration:BoxDecoration(color:_vPanel,borderRadius:BorderRadius.circular(18),border:Border.all(color:_vLine)),child:child);
 }
