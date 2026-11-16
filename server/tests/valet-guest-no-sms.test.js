@@ -13,9 +13,9 @@ test('guest status is scoped to hashed bearer and omits parking/key and staff in
  const view=src.slice(src.indexOf('const guestView='),src.indexOf('async function guestAuth('));
  assert.doesNotMatch(view,/key_location|parking_slot|staff_id|phone_e164/);
 });
-test('guest cannot deliver vehicle directly and request reuses existing code and queue',()=>{
+test('guest cannot deliver vehicle directly and request preserves assigned valet and reuses existing delivery code',()=>{
  const request=guest.slice(guest.indexOf("app.post('/api/valet/guest/request'"));
- assert.match(request,/valet_delivery_codes/);assert.match(request,/dispatchNext\(row.business_id\)/);
+ assert.match(request,/valet_delivery_codes/);assert.match(request,/dispatchNext\(row.business_id,row.id\)/);assert.doesNotMatch(request,/staff_id=NULL/);
  assert.match(request,/status='requested'/);assert.doesNotMatch(request,/status='delivered'/);
 });
 
