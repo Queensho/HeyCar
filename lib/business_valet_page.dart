@@ -69,7 +69,20 @@ class _BusinessValetPageState extends State<BusinessValetPage>{
    actions:[TextButton(onPressed:()=>Navigator.pop(d),child:const Text('Vazgeç')),
     FilledButton(onPressed:()async{
      final value=pin.text.trim();
-     if(!RegExp(r'^\\d{4,8}
+     if(value.length<4||value.length>8||!RegExp(r'^[0-9]+').hasMatch(value)||value.split('').any((c)=>!RegExp(r'^[0-9]').hasMatch(c))||value!=confirm.text.trim()){
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('PIN 4-8 rakam olmalı ve iki alan eşleşmeli.')));return;
+     }
+     try{
+      final url=_vApi+'/api/business/valet/staff/'+id+'/pin';
+      final r=await http.patch(Uri.parse(url),headers:headers,body:jsonEncode({'pin':value}));
+      if(r.statusCode==200){if(d.mounted)Navigator.pop(d);if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('PIN sıfırlandı. Yeniden giriş yapın.')));}
+      else if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('PIN sıfırlanamadı (HTTP '+r.statusCode.toString()+').')));
+     }catch(_){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Bağlantı hatası.')));}
+    },child:const Text('PIN Sıfırla'))],
+  ));
+  pin.dispose();confirm.dispose();
+ }
+ Future<void> addStaff()async{
   final name=TextEditingController(),phone=TextEditingController(),pin=TextEditingController();
   await showDialog(context:context,builder:(d)=>AlertDialog(
    backgroundColor:_vPanel,
