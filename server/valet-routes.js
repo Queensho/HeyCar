@@ -559,6 +559,27 @@ module.exports=function registerValetRoutes(app,pool){
  });
 
 
+ // Only the business owner can transfer an active vehicle between staff.
+ app.post('/api/business/valet/sessions/:id/assign',async(req,res)=>{
+  const a=await businessAuth(req,res);if(!a||!enabled(a,res))return;
+  const staffId=String(req.body?.staffId||'');
+  if(!/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(staffId))return res.status(400).json({error:'INVALID_STAFF_ID'});
+  const client=await pool.connect();let before,row;
+  try{
+   await client.query('BEGIN');
+   const current=await client.query("SELECT * FROM valet_sessions WHERE id=$1 AND business_id=$2 AND status NOT IN ('delivered','cancelled') FOR UPDATE",[req.params.id,a.business_id]);
+   if(!current.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'ACTIVE_SESSION_NOT_FOUND'});}
+   const staff=await client.query('SELECT id FROM valet_staff WHERE id=$1 AND business_id=$2 AND is_active=TRUE',[staffId,a.business_id]);
+   if(!staff.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'ACTIVE_STAFF_NOT_FOUND'});}
+   before=current.rows[0];
+   const updated=await client.query('UPDATE valet_sessions SET staff_id=$3,updated_at=now() WHERE id=$1 AND business_id=$2 RETURNING *',[req.params.id,a.business_id,staffId]);
+   row=updated.rows[0];
+   await client.query('COMMIT');
+  }catch(e){await client.query('ROLLBACK').catch(()=>{});console.error('valet transfer',{code:e.code||'UNKNOWN'});return res.status(500).json({error:'SERVER_ERROR'});}finally{client.release();}
+  await audit(a.business_id,row.id,staffId,'business','staff_reassigned',row.status,row.status,{plate:row.plate,previousStaffId:before.staff_id||null,newStaffId:staffId});
+  return res.json({ok:true,session:row});
+ });
+
  app.patch('/api/business/valet/sessions/:id/status',async(req,res)=>{
   const a=await businessAuth(req,res);if(!a||!enabled(a,res))return;
   const status=String((req.body||{}).status||'');
