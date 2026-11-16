@@ -404,7 +404,7 @@ module.exports=function registerValetRoutes(app,pool){
    const a=await businessAuth(req,res);if(!a||!enabled(a,res))return;
    const id=String(req.params.id||'');
    const pin=String(req.body?.pin||'').trim();
-   if(!/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(id)||!/^\\d{4,8}$/.test(pin))
+   if(!/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(id)||!(/^[0-9]{4,8}$/).test(pin))
     return res.status(400).json({error:'INVALID_PIN_RESET'});
    const client=await pool.connect();
    try{
