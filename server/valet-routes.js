@@ -420,7 +420,7 @@ module.exports=function registerValetRoutes(app,pool){
  });
  
  // Deactivate staff without deleting audit history or assigned vehicle records.
- app.delete('/api/business/valet/staff/:id',async(req,res)=>{
+ app.post('/api/business/valet/staff/:id/deactivate',async(req,res)=>{
   try{
    const a=await businessAuth(req,res);if(!a||!enabled(a,res))return;
    const id=String(req.params.id||'');
