@@ -56,22 +56,44 @@ Future<void> status(String id,String s)async{String? code;if(s=='delivered'){fin
    if(vr.statusCode!=200){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Araç bu CepQontag QR ile eşleştirilemedi.')));return;}
    vehicle=Map<String,dynamic>.from(jsonDecode(vr.body)['vehicle']);
   }
-  final p=TextEditingController(text:vehicle?['plate']?.toString()??'');final tag=TextEditingController();String? selectedArea=areas.isNotEmpty?areas.first['name']?.toString():null;
-  await showModalBottomSheet(context:context,isScrollControlled:true,backgroundColor:panel,builder:(c)=>StatefulBuilder(builder:(c,setSheet)=>Padding(padding:EdgeInsets.fromLTRB(20,20,20,MediaQuery.viewInsetsOf(c).bottom+20),child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.stretch,children:[
-   Text(qrCode==null?'Araç Kabul':'QR ile Araç Kabul',textAlign:TextAlign.center,style:const TextStyle(fontSize:21,fontWeight:FontWeight.w900)),const SizedBox(height:14),
-   if(vehicle!=null)Container(padding:const EdgeInsets.all(14),decoration:BoxDecoration(color:bg,borderRadius:BorderRadius.circular(14)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(vehicle!['plate']?.toString()??'',style:const TextStyle(fontSize:22,fontWeight:FontWeight.w900)),if((vehicle!['owner_name']??'').toString().isNotEmpty)Text('Araç sahibi: '+vehicle!['owner_name'].toString(),style:const TextStyle(color:muted)),if(((vehicle!['brand']??'').toString()+' '+(vehicle!['model']??'').toString()).trim().isNotEmpty)Text(((vehicle!['brand']??'').toString()+' '+(vehicle!['model']??'').toString()).trim(),style:const TextStyle(color:muted))])),
-   if(qrCode==null)...[const SizedBox(height:12),TextField(controller:tag,textCapitalization:TextCapitalization.characters,decoration:const InputDecoration(labelText:'Etiket kodu',hintText:'CP-QAR-001',border:OutlineInputBorder()))],
+  final p=TextEditingController(text:vehicle?['plate']?.toString()??'');
+  final model=TextEditingController();
+  final slot=TextEditingController();
+  String? selectedArea=areas.isNotEmpty?areas.first['name']?.toString():null;
+  bool saving=false;
+  await showModalBottomSheet(context:context,isScrollControlled:true,backgroundColor:panel,builder:(c)=>StatefulBuilder(builder:(c,setSheet)=>Padding(padding:EdgeInsets.fromLTRB(20,20,20,MediaQuery.viewInsetsOf(c).bottom+20),child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+   Text(qrCode==null?'Misafir Aracı Ekle':'QR ile Araç Kabul',textAlign:TextAlign.center,style:const TextStyle(fontSize:21,fontWeight:FontWeight.w900)),
+   const SizedBox(height:8),Text(qrCode==null?'Önce vale plakayı kaydeder. Misafir daha sonra işletmenin sabit QR kodundan aynı plakayla giriş yapar.':'CepQontag QR ile kayıt',textAlign:TextAlign.center,style:const TextStyle(color:muted,fontSize:12)),
+   const SizedBox(height:14),
+   TextField(controller:p,enabled:vehicle==null,textCapitalization:TextCapitalization.characters,decoration:const InputDecoration(labelText:'Araç plakası *',hintText:'34 ABC 667',border:OutlineInputBorder())),
+   const SizedBox(height:12),
+   TextField(controller:model,decoration:const InputDecoration(labelText:'Marka / model (isteğe bağlı)',hintText:'Audi A3',border:OutlineInputBorder())),
    const SizedBox(height:12),
    if(areas.isEmpty)const Text('İşletme panelinden önce bir park alanı eklenmeli.',style:TextStyle(color:Colors.orangeAccent)) else DropdownButtonFormField<String>(initialValue:selectedArea,decoration:const InputDecoration(labelText:'Park alanı',border:OutlineInputBorder()),items:areas.map<DropdownMenuItem<String>>((x)=>DropdownMenuItem(value:x['name'].toString(),child:Text(x['name'].toString()))).toList(),onChanged:(v)=>setSheet(()=>selectedArea=v)),
-   const SizedBox(height:16),FilledButton(onPressed:areas.isEmpty?null:()async{var code=qrCode??tag.text.trim().toUpperCase();if(code.isEmpty)return;Map<String,dynamic>? manualVehicle=vehicle;if(manualVehicle==null){final vr=await http.get(Uri.parse(api+'/api/valet/vehicle-by-qr/'+Uri.encodeComponent(code)),headers:h);if(vr.statusCode!=200){if(c.mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Etiket kodu bulunamadı.')));return;}manualVehicle=Map<String,dynamic>.from(jsonDecode(vr.body)['vehicle']);p.text=manualVehicle['plate']?.toString()??'';}final r=await http.post(Uri.parse(api+'/api/valet/accept'),headers:h,body:jsonEncode({'plate':p.text.trim(),'qrCode':code,'parkingArea':selectedArea}));if(r.statusCode<300&&c.mounted)Navigator.pop(c);await load();},style:FilledButton.styleFrom(backgroundColor:lime,foregroundColor:Colors.black,padding:const EdgeInsets.all(16)),child:const Text('Aracı Valeye Al',style:TextStyle(fontWeight:FontWeight.w900)))
-  ]))));
+   const SizedBox(height:12),TextField(controller:slot,decoration:const InputDecoration(labelText:'Park yeri (isteğe bağlı)',border:OutlineInputBorder())),
+   const SizedBox(height:16),
+   FilledButton(onPressed:saving||areas.isEmpty?null:()async{
+    final plate=p.text.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'),'');
+    if(!RegExp(r'^[0-9A-Z]{5,12}$').hasMatch(plate)){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Geçerli bir plaka girin.')));return;}
+    setSheet(()=>saving=true);
+    try{
+     final r=await http.post(Uri.parse(api+'/api/valet/accept'),headers:h,body:jsonEncode({'plate':p.text.trim().toUpperCase(),'qrCode':qrCode,'parkingArea':selectedArea,'parkingSlot':slot.text.trim(),'note':model.text.trim()}));
+     if(r.statusCode<300){if(c.mounted)Navigator.pop(c);await load();return;}
+     String error='Kayıt yapılamadı';
+     try{final j=jsonDecode(r.body);if(j is Map)error=({'VEHICLE_ALREADY_IN_VALET':'Bu plaka zaten aktif vale kaydında.','PLATE_REQUIRED':'Plaka zorunludur.','QR_NOT_FOUND':'Araç QR kodu bulunamadı.'}[j['error']]??j['error']?.toString()??error);}catch(_){}
+     if(c.mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('$error (HTTP ${r.statusCode})')));
+    }catch(_){if(c.mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Sunucuya bağlanılamadı.')));}
+    finally{if(c.mounted)setSheet(()=>saving=false);}
+   },style:FilledButton.styleFrom(backgroundColor:lime,foregroundColor:Colors.black,padding:const EdgeInsets.all(16)),child:Text(saving?'Kaydediliyor...':'Aracı Valeye Al',style:const TextStyle(fontWeight:FontWeight.w900)))
+  ])))));
  }
+
 @override Widget build(BuildContext c){
  final all=data.length,parked=data.where((x)=>x['status'].toString()=='parked').length,retrieving=data.where((x)=>x['status'].toString()=='retrieving').length,requested=data.where((x)=>x['status'].toString()=='requested').length;
  Widget chip(String t,int n,bool active)=>Container(padding:const EdgeInsets.symmetric(horizontal:14,vertical:11),decoration:BoxDecoration(color:active?lime:panel,borderRadius:BorderRadius.circular(15)),child:Text('$t  $n',style:TextStyle(color:active?Colors.black:Colors.white,fontWeight:FontWeight.w900,fontSize:14)));
  return Scaffold(
   appBar:AppBar(toolbarHeight:72,backgroundColor:bg,title:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(business.isEmpty?'CepQontag VALE':business,style:const TextStyle(fontSize:21,fontWeight:FontWeight.w900)),Text('$staff • ${onShift?'Mesaide':'Mesai dışı'}',style:TextStyle(fontSize:11,color:onShift?lime:muted))]),actions:[TextButton(onPressed:shiftBusy?null:()=>shift(!onShift),child:Text(onShift?'Mesaiyi Bitir':'Mesaiye Başla')),IconButton(onPressed:load,icon:const Icon(Icons.refresh)),IconButton(onPressed:widget.logout,icon:const Icon(Icons.logout))]),
-  floatingActionButton:Row(mainAxisSize:MainAxisSize.min,children:[FloatingActionButton.extended(heroTag:'manual',backgroundColor:panel,foregroundColor:Colors.white,onPressed:()=>add(),icon:const Icon(Icons.edit),label:const Text('Manuel')),const SizedBox(width:8),FloatingActionButton.extended(heroTag:'scan',backgroundColor:lime,foregroundColor:Colors.black,onPressed:scan,icon:const Icon(Icons.qr_code_scanner),label:const Text('QR Okut',style:TextStyle(fontWeight:FontWeight.w900)))]),
+  floatingActionButton:Row(mainAxisSize:MainAxisSize.min,children:[FloatingActionButton.extended(heroTag:'manual',backgroundColor:panel,foregroundColor:Colors.white,onPressed:()=>add(),icon:const Icon(Icons.edit),label:const Text('Araç Ekle')),const SizedBox(width:8),FloatingActionButton.extended(heroTag:'scan',backgroundColor:lime,foregroundColor:Colors.black,onPressed:scan,icon:const Icon(Icons.qr_code_scanner),label:const Text('QR Okut',style:TextStyle(fontWeight:FontWeight.w900)))]),
   body:loading?const Center(child:CircularProgressIndicator()):RefreshIndicator(onRefresh:load,child:CustomScrollView(slivers:[
    SliverToBoxAdapter(child:Padding(padding:const EdgeInsets.fromLTRB(14,10,14,8),child:Column(children:[
     SingleChildScrollView(scrollDirection:Axis.horizontal,child:Row(children:[chip('Tümü',all,true),const SizedBox(width:8),chip('Parkta',parked,false),const SizedBox(width:8),chip('Getiriliyor',retrieving,false),if(requested>0)...[const SizedBox(width:8),chip('İstek',requested,false)]])),
