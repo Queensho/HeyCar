@@ -383,11 +383,11 @@ module.exports=function registerValetRoutes(app,pool){
  app.post('/api/valet/offline/sync',async(req,res)=>{const a=await valetAuth(req,res);if(!a)return;const ops=Array.isArray(req.body?.operations)?req.body.operations:[];if(ops.length>100)return res.status(400).json({error:'TOO_MANY_OPERATIONS'});const results=[];for(const op of ops){const id=String(op?.id||'').trim(),type=String(op?.type||'').trim(),payload=op?.payload&&typeof op.payload==='object'?op.payload:{};if(!id||!['status'].includes(type)){results.push({id,ok:false,error:'INVALID_OPERATION'});continue;}const client=await pool.connect();let result={ok:false,error:'FAILED'};try{await client.query('BEGIN');const claim=await client.query("INSERT INTO valet_offline_ops(id,business_id,staff_id,device_id,op_type,client_created_at,payload,result) VALUES($1,$2,$3,$4,$5,$6,$7::jsonb,'{}'::jsonb) ON CONFLICT(id) DO NOTHING RETURNING id",[id,a.business_id,a.staff_id,String(op?.deviceId||''),type,op?.createdAt?new Date(op.createdAt):null,JSON.stringify(payload)]);if(!claim.rowCount){const existing=await client.query("SELECT staff_id,result FROM valet_offline_ops WHERE id=$1 FOR UPDATE",[id]);result=!existing.rowCount||String(existing.rows[0].staff_id)!==String(a.staff_id)?{ok:false,error:'OPERATION_ID_CONFLICT'}:(existing.rows[0].result||{ok:false,error:'FAILED'});await client.query('COMMIT');}else{if(type==='status'){const sid=String(payload.sessionId||''),to=String(payload.status||'');const cur=await client.query("SELECT status,staff_id,plate FROM valet_sessions WHERE id=$1 AND business_id=$2 FOR UPDATE",[sid,a.business_id]);if(!cur.rowCount)result={ok:false,error:'NOT_FOUND'};else{const from=String(cur.rows[0].status),allowed={accepted:['parked'],requested:['retrieving'],retrieving:['ready']};if(!(allowed[from]||[]).includes(to))result={ok:false,error:'INVALID_STATUS_TRANSITION'};else if(cur.rows[0].staff_id&&String(cur.rows[0].staff_id)!==String(a.staff_id))result={ok:false,error:'SESSION_ASSIGNED_TO_OTHER_STAFF'};else{await client.query("UPDATE valet_sessions SET status=$3,staff_id=$4,ready_at=CASE WHEN $3='ready' THEN now() ELSE ready_at END,updated_at=now() WHERE id=$1 AND business_id=$2",[sid,a.business_id,to,a.staff_id]);result={ok:true};await client.query("INSERT INTO valet_audit_log(business_id,session_id,staff_id,actor_type,action,from_status,to_status,metadata) VALUES($1,$2,$3,'staff','offline_status_synced',$4,$5,$6::jsonb)",[a.business_id,sid,a.staff_id,from,to,JSON.stringify({plate:cur.rows[0].plate})]);}}}await client.query("UPDATE valet_offline_ops SET result=$2::jsonb WHERE id=$1",[id,JSON.stringify(result)]);await client.query('COMMIT');}}catch(e){await client.query('ROLLBACK').catch(()=>{});result={ok:false,error:'SERVER_ERROR'};}finally{client.release();}results.push({id,...result});}res.json({ok:true,results});});
   app.get('/api/business/valet/overview',async(req,res)=>{const a=await businessAuth(req,res);if(!a||!enabled(a,res))return;await expireUnmatchedSessions(a.business_id);
   const [staff,areas,sessions,summary,performance]=await Promise.all([
-   pool.query("SELECT id,name,phone,is_active,on_shift,shift_started_at,shift_ended_at,created_at FROM valet_staff WHERE business_id=$1 ORDER BY name",[a.business_id]),
+   pool.query("SELECT id,name,phone,is_active,on_shift,shift_started_at,shift_ended_at,created_at FROM valet_staff WHERE business_id=$1 AND is_active=TRUE ORDER BY name",[a.business_id]),
    pool.query("SELECT * FROM valet_parking_areas WHERE business_id=$1 ORDER BY name",[a.business_id]),
    pool.query("SELECT s.*,vs.name AS staff_name,v.make,v.model FROM valet_sessions s LEFT JOIN valet_staff vs ON vs.id=s.staff_id LEFT JOIN vehicles v ON v.id=s.vehicle_id WHERE s.business_id=$1 AND s.status NOT IN ('delivered','cancelled') ORDER BY CASE s.status WHEN 'requested' THEN 0 WHEN 'retrieving' THEN 1 WHEN 'ready' THEN 2 ELSE 3 END,s.created_at DESC",[a.business_id]),
    pool.query("SELECT COUNT(*) FILTER(WHERE created_at>=date_trunc('day',now()))::int AS today_total,COUNT(*) FILTER(WHERE delivered_at>=date_trunc('day',now()))::int AS today_delivered,ROUND(AVG(EXTRACT(EPOCH FROM (delivered_at-requested_at))/60) FILTER(WHERE delivered_at IS NOT NULL AND requested_at IS NOT NULL AND created_at>=now()-interval '30 days'))::int AS avg_retrieval_min,COUNT(*) FILTER(WHERE created_at>=now()-interval '7 days')::int AS week_total,COUNT(*) FILTER(WHERE created_at>=now()-interval '30 days')::int AS month_total FROM valet_sessions WHERE business_id=$1",[a.business_id]),
-   pool.query("SELECT st.id,st.name,st.on_shift,(SELECT COUNT(*)::int FROM valet_sessions s WHERE s.staff_id=st.id AND s.delivered_at>=now()-interval '30 days') AS delivered_30d,(SELECT ROUND(AVG(EXTRACT(EPOCH FROM (s.delivered_at-s.requested_at))/60))::int FROM valet_sessions s WHERE s.staff_id=st.id AND s.delivered_at IS NOT NULL AND s.requested_at IS NOT NULL AND s.delivered_at>=now()-interval '30 days') AS avg_retrieval_min,(SELECT COALESCE(ROUND(SUM(EXTRACT(EPOCH FROM (COALESCE(sh.ended_at,now())-sh.started_at)))/3600.0,1),0) FROM valet_shift_history sh WHERE sh.staff_id=st.id AND sh.started_at>=now()-interval '30 days') AS shift_hours_30d FROM valet_staff st WHERE st.business_id=$1 ORDER BY delivered_30d DESC,st.name",[a.business_id])
+   pool.query("SELECT st.id,st.name,st.on_shift,(SELECT COUNT(*)::int FROM valet_sessions s WHERE s.staff_id=st.id AND s.delivered_at>=now()-interval '30 days') AS delivered_30d,(SELECT ROUND(AVG(EXTRACT(EPOCH FROM (s.delivered_at-s.requested_at))/60))::int FROM valet_sessions s WHERE s.staff_id=st.id AND s.delivered_at IS NOT NULL AND s.requested_at IS NOT NULL AND s.delivered_at>=now()-interval '30 days') AS avg_retrieval_min,(SELECT COALESCE(ROUND(SUM(EXTRACT(EPOCH FROM (COALESCE(sh.ended_at,now())-sh.started_at)))/3600.0,1),0) FROM valet_shift_history sh WHERE sh.staff_id=st.id AND sh.started_at>=now()-interval '30 days') AS shift_hours_30d FROM valet_staff st WHERE st.business_id=$1 AND st.is_active=TRUE ORDER BY delivered_30d DESC,st.name",[a.business_id])
   ]);
   res.json({ok:true,staff:staff.rows,areas:areas.rows,sessions:sessions.rows,summary:summary.rows[0]||{},performance:performance.rows});
  });
@@ -439,6 +439,27 @@ module.exports=function registerValetRoutes(app,pool){
     res.json({ok:true});
    }catch(e){await client.query('ROLLBACK');throw e;}finally{client.release();}
   }catch(e){console.error('valet staff deactivate',{code:e.code||'UNKNOWN'});res.status(500).json({error:'SERVER_ERROR'});}
+ });
+
+ // Irreversible identity erasure; operational history keeps anonymous references.
+ app.post('/api/business/valet/staff/:id/permanent-delete',async(req,res)=>{
+  try{
+   const a=await businessAuth(req,res);if(!a||!enabled(a,res))return;
+   const id=String(req.params.id||'');
+   if(!/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(id)||req.body?.confirm!=='PERMANENT_DELETE')
+    return res.status(400).json({error:'DELETE_CONFIRMATION_REQUIRED'});
+   const client=await pool.connect();
+   try{
+    await client.query('BEGIN');
+    const found=await client.query('SELECT id FROM valet_staff WHERE id=$1 AND business_id=$2 FOR UPDATE',[id,a.business_id]);
+    if(!found.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'STAFF_NOT_FOUND'});}
+    const pending=await client.query("SELECT id FROM valet_sessions WHERE business_id=$1 AND staff_id=$2 AND status NOT IN ('delivered','cancelled') LIMIT 1",[a.business_id,id]);
+    if(pending.rowCount){await client.query('ROLLBACK');return res.status(409).json({error:'STAFF_HAS_ACTIVE_SESSIONS'});}
+    await client.query('DELETE FROM valet_staff WHERE id=$1 AND business_id=$2',[id,a.business_id]);
+    await client.query('COMMIT');
+    return res.json({ok:true,deleted:true});
+   }catch(e){await client.query('ROLLBACK');throw e;}finally{client.release();}
+  }catch(e){console.error('valet staff permanent delete',{code:e.code||'UNKNOWN'});return res.status(500).json({error:'SERVER_ERROR'});}
  });
 
  app.post('/api/business/valet/areas',async(req,res)=>{const a=await businessAuth(req,res);if(!a||!enabled(a,res))return;const {name,slots}=req.body||{};

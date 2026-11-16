@@ -86,20 +86,32 @@ class _BusinessValetPageState extends State<BusinessValetPage>{
   final id=(member['id']??'').toString();
   if(id.isEmpty)return;
   final name=(member['name']??'Personel').toString();
-  final confirmed=await showDialog<bool>(context:context,builder:(d)=>AlertDialog(
+  final action=await showDialog<String>(context:context,builder:(d)=>AlertDialog(
    backgroundColor:_vPanel,
-   title:const Text('Personeli Sil',style:TextStyle(color:Colors.white)),
-   content:Text('$name personelinin giriş yetkisi kapatılacak. Geçmiş araç kayıtları korunacak. Devam edilsin mi?',style:const TextStyle(color:_vMuted)),
-   actions:[TextButton(onPressed:()=>Navigator.pop(d,false),child:const Text('Vazgeç')),
-    FilledButton(onPressed:()=>Navigator.pop(d,true),child:const Text('Personeli Sil'))],
+   title:const Text('Personel Yönetimi',style:TextStyle(color:Colors.white)),
+   content:Text('$name için işlem seçin. Pasife alma geri alınabilir; kalıcı silme ad, telefon ve PIN bilgisini veritabanından kaldırır. Geçmiş araç işlemleri korunur.',style:const TextStyle(color:_vMuted)),
+   actions:[TextButton(onPressed:()=>Navigator.pop(d),child:const Text('Vazgeç')),
+    TextButton(onPressed:()=>Navigator.pop(d,'deactivate'),child:const Text('Pasife Al')),
+    TextButton(onPressed:()=>Navigator.pop(d,'delete'),child:const Text('Kalıcı Sil',style:TextStyle(color:Colors.redAccent)))],
   ));
-  if(confirmed!=true||!mounted)return;
+  if(action==null||!mounted)return;
+  if(action=='delete'){
+   final confirmed=await showDialog<bool>(context:context,builder:(d)=>AlertDialog(
+    backgroundColor:_vPanel,
+    title:const Text('Kalıcı Silmeyi Onayla',style:TextStyle(color:Colors.white)),
+    content:Text('$name personelinin kimlik ve giriş bilgileri kalıcı olarak silinecek. Bu işlem geri alınamaz. Emin misiniz?',style:const TextStyle(color:_vMuted)),
+    actions:[TextButton(onPressed:()=>Navigator.pop(d,false),child:const Text('Vazgeç')),
+     TextButton(onPressed:()=>Navigator.pop(d,true),child:const Text('Evet, Kalıcı Sil',style:TextStyle(color:Colors.redAccent)))],
+   ));
+   if(confirmed!=true||!mounted)return;
+  }
   try{
-   final r=await http.post(Uri.parse('$_vApi/api/business/valet/staff/$id/deactivate'),headers:headers);
+   final uri=Uri.parse('$_vApi/api/business/valet/staff/$id/${action=='delete'?'permanent-delete':'deactivate'}');
+   final r=await http.post(uri,headers:headers,body:action=='delete'?jsonEncode({'confirm':'PERMANENT_DELETE'}):null);
    if(!mounted)return;
-   if(r.statusCode==200){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Personel silindi, giriş yetkisi kapatıldı.')));await load();}
+   if(r.statusCode==200){ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(action=='delete'?'Personel kalıcı silindi.':'Personel pasife alındı.')));await load();}
    else if(r.statusCode==409){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Personelin aktif araç görevi var. Önce görevi tamamlayın veya devredin.')));}
-   else{ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('Personel silinemedi (HTTP ${r.statusCode}).')));}
+   else{ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('İşlem başarısız (HTTP ${r.statusCode}).')));}
   }catch(_){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Bağlantı hatası.')));}
  }
  Future<void> addStaff()async{
