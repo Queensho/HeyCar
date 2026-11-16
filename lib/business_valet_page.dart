@@ -95,7 +95,7 @@ class _BusinessValetPageState extends State<BusinessValetPage>{
   ));
   if(confirmed!=true||!mounted)return;
   try{
-   final r=await http.delete(Uri.parse('$_vApi/api/business/valet/staff/$id'),headers:headers);
+   final r=await http.post(Uri.parse('$_vApi/api/business/valet/staff/$id/deactivate'),headers:headers);
    if(!mounted)return;
    if(r.statusCode==200){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Personel silindi, giriş yetkisi kapatıldı.')));await load();}
    else if(r.statusCode==409){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Personelin aktif araç görevi var. Önce görevi tamamlayın veya devredin.')));}
