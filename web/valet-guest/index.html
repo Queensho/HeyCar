@@ -37,6 +37,7 @@ body.in-tracking{background:#09051b}body.in-tracking .wrap{max-width:none;paddin
 .tracking-steps i{font-size:0}
 .tracking-page .tracking-overlay{background:linear-gradient(180deg,#00061cb8 0%,#0a03272b 35%,#09041ce8 100%)}
 .tracking-page .tracking-panel{max-width:540px;width:100%;margin-inline:auto}
+#detail-toggle:disabled,#request:disabled{opacity:.6;cursor:wait}
 </style></head><body><main class="wrap"><div class="logo" id="brand">CepQontag<span style="color:#b9ff45">.</span></div><section class="hero" id="intro-hero"><span class="pill">VALE MİSAFİR</span><h1>Aracınız güvende.<br>Takibi cebinizde.</h1><p>Uygulama indirmeden vale işleminizi takip edin.</p></section><section class="card" id="entry-card"><h2>Hoş geldiniz</h2><p class="sub">İşletme: <span id="business">Davet doğrulanıyor…</span></p><div id="status" class="status" role="status" aria-live="polite">Davet bağlantısı kontrol ediliyor.</div><form id="guest-form"><label for="name">Ad soyad</label><input id="name" autocomplete="name" required maxlength="100" placeholder="Adınız Soyadınız"><label for="phone">Telefon numarası</label><input id="phone" type="tel" inputmode="tel" autocomplete="tel" required maxlength="20" pattern="[+0-9 ()-]{10,20}" placeholder="05XX XXX XX XX"><label for="plate">Araç plakası</label><input id="plate" required maxlength="14" placeholder="34 ABC 123"><button id="claim" type="submit" disabled>Misafir Olarak Devam Et</button></form><p class="sub" style="margin-top:14px">SMS doğrulaması gerekmez. İşletmenizin aktif vale kaydındaki plakanızla eşleşmeniz gerekir.</p></section><div id="dashboard" class="guest-home" hidden>
 <header class="owner-head"><div class="owner-brand">Cep<span>Qontag</span></div><div class="owner-head-actions"><span class="owner-bell" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 8-3 9h18c0-1-3-2-3-9M10 21h4"/></svg></span><span class="owner-avatar" aria-label="Misafir hesabı">M</span></div></header>
 <div class="owner-greeting"><p>Hoş geldiniz,</p><h1 id="guest-greeting">VALE MİSAFİRİ</h1><p>Aracınızla dünya sizinle iletişimde.</p><span class="owner-guest-badge">MİSAFİR</span></div>
@@ -49,7 +50,7 @@ body.in-tracking{background:#09051b}body.in-tracking .wrap{max-width:none;paddin
 </div><section id="valet-details" class="tracking-page" hidden>
 <div class="tracking-overlay"><header class="tracking-header"><button id="detail-back" type="button" aria-label="Ana sayfaya dön">←</button><strong>Vale Takip</strong><span id="tracking-active" class="tracking-active">● Aktif</span></header><p class="tracking-sub">Vale işleminizi buradan takip edin.</p>
 <div class="tracking-spacer"></div><div class="tracking-panel"><div id="tracking-steps" class="tracking-steps" aria-label="Vale işlem aşamaları"><div data-step="accepted"><i><svg viewBox="0 0 24 24"><path d="M5 16 7 7h10l2 9M4 16h16v4H4v-4ZM4 13l-2 2m18-2 2 2M7 20v2m10-2v2"/></svg></i><small>Araç teslim alındı</small></div><div data-step="parked"><i>○</i><small>Araç park edildi</small></div><div data-step="requested"><i>○</i><small>Araç çağrıldı</small></div><div data-step="retrieving"><i>○</i><small>Araç getiriliyor</small></div><div data-step="ready"><i>○</i><small>Teslimata hazır</small></div></div>
-<div class="tracking-meta"><div><small>Vale işletmesi</small><strong id="detail-business">—</strong></div><div><small>Plaka</small><strong id="detail-plate">—</strong></div></div><p id="detail-state" class="tracking-state" role="status" aria-live="polite">Durum güncelleniyor</p><div id="handover" class="tracking-code" hidden></div><div class="tracking-actions"><button id="request" type="button">Aracımı Getir</button><button id="refresh" type="button">↻ &nbsp; Durumu Yenile</button></div><p id="detail-error" role="alert"></p></div></div></section><p class="footer">CepQontag • Aracınla Hep Bağlantıda Ol. Misafir erişimi işletmenin QR kodu veya size özel davet bağlantısıyla mümkündür.</p></main><script>
+<div class="tracking-meta"><div><small>Vale işletmesi</small><strong id="detail-business">—</strong></div><div><small>Plaka</small><strong id="detail-plate">—</strong></div></div><p id="detail-state" class="tracking-state" role="status" aria-live="polite">Durum güncelleniyor</p><div id="handover" class="tracking-code" hidden></div><div class="tracking-actions"><button id="request" type="button">Aracımı Getir</button></div><p id="detail-error" role="alert"></p></div></div></section><p class="footer">CepQontag • Aracınla Hep Bağlantıda Ol. Misafir erişimi işletmenin QR kodu veya size özel davet bağlantısıyla mümkündür.</p></main><script>
 'use strict';
 const api='https://heycar-api-185-165-46-213.nip.io';
 const params=new URLSearchParams(location.search);
@@ -58,9 +59,9 @@ const businessId=params.get('business')||'';
 const status=document.getElementById('status'),business=document.getElementById('business');
 const form=document.getElementById('guest-form'),dashboard=document.getElementById('dashboard');
 const claim=document.getElementById('claim'),request=document.getElementById('request');
-let guestToken='',active=false;
+let guestToken='',active=false,refreshing=false,requesting=false,lastStatus='';
 const sessionKey='cepqontag.valet.guest.v1';
-function clearGuest(){guestToken='';try{sessionStorage.removeItem(sessionKey);}catch(_){}}
+function clearGuest(){guestToken='';lastStatus='';try{sessionStorage.removeItem(sessionKey);}catch(_){}}
 function saveGuest(code){
  try{const old=JSON.parse(sessionStorage.getItem(sessionKey)||'{}');
  sessionStorage.setItem(sessionKey,JSON.stringify({token:guestToken,expiresAt:old.token===guestToken?old.expiresAt:Date.now()+43200000,deliveryCode:code===undefined?old.deliveryCode||'':code}));}catch(_){}
@@ -80,10 +81,39 @@ function showSession(s){
  const names={accepted:'Araç valeye teslim edildi',parked:'Aracınız park edildi',requested:'Araç çağrıldı, vale bekleniyor',retrieving:'Vale aracınızı getiriyor',ready:'Aracınız teslim için hazır',delivered:'Aracınız teslim edildi',cancelled:'Vale işlemi iptal edildi'};
  document.getElementById('state').textContent=names[s.status]||'Durum güncelleniyor';document.getElementById('detail-state').textContent=names[s.status]||'Durum güncelleniyor';document.getElementById('detail-plate').textContent=s.plate||'—';document.getElementById('detail-business').textContent=s.businessName||business.textContent;document.querySelector('.valet-tile-bg').style.backgroundImage=`linear-gradient(180deg,#140c35aa,#21114b55 45%,#160c39e8),url('${['requested','retrieving'].includes(s.status)?'../assets/aracgetiriliyor.jpg':s.status==='ready'?'../assets/teslimat.jpg':'../assets/vale.jpg'}')`;const order=['accepted','parked','requested','retrieving','ready'];const current=order.indexOf(s.status);document.querySelectorAll('#tracking-steps [data-step]').forEach(li=>{const index=order.indexOf(li.dataset.step);li.classList.toggle('done',current>=0&&index<current||s.status==='delivered');li.classList.toggle('current',current>=0&&index===current);});document.getElementById('tracking-active').textContent=['delivered','cancelled'].includes(s.status)?'● Tamamlandı':'● Aktif';document.querySelector('.tracking-page').classList.toggle('tracking-complete',['delivered','cancelled'].includes(s.status));
  request.hidden=!['accepted','parked'].includes(s.status);
+ const homeAction=document.getElementById('detail-toggle');
+ const canCall=s.status==='parked';
+ homeAction.dataset.action=canCall?'request':'detail';
+ homeAction.innerHTML=canCall?'Aracımı Getir <span aria-hidden="true">➜</span>':'Vale Detayı <span aria-hidden="true">➜</span>';
+ homeAction.disabled=requesting;
+ const photo=['requested','retrieving'].includes(s.status)?'../assets/aracgetiriliyor.jpg':s.status==='ready'?'../assets/teslimat.jpg':'../assets/vale.jpg';
+ document.querySelector('.tracking-page').style.backgroundImage="url('"+photo+"')";
+ lastStatus=s.status;
  if(['delivered','cancelled'].includes(s.status)){clearGuest();document.getElementById('handover').hidden=false;document.getElementById('handover').textContent='Vale işleminiz tamamlandı.';}
 }
-async function refresh(){if(!guestToken)return;try{const d=await call('/api/valet/guest/session',{headers:guestHeaders()});showSession(d.session);}catch(e){if(e.message==='GUEST_SESSION_EXPIRED'||e.message==='GUEST_AUTH_REQUIRED'){clearGuest();dashboard.hidden=true;document.getElementById('valet-details').hidden=true;document.body.classList.remove('in-tracking');document.getElementById('brand').hidden=false;form.hidden=false;document.getElementById('entry-card').hidden=false;document.getElementById('intro-hero').hidden=false;status.textContent='Misafir oturumunuz sona erdi. Vale görevlisinden yardım isteyin.';}else {status.textContent='Durum alınamadı. '+e.message;document.getElementById('detail-error').textContent='Durum alınamadı. '+e.message;}}}
-try{const saved=JSON.parse(sessionStorage.getItem(sessionKey)||'{}');if(saved.expiresAt>Date.now()&&/^[A-Za-z0-9_-]{43}$/.test(saved.token||'')){guestToken=saved.token;form.hidden=true;showHome();status.textContent='Vale oturumunuz yeniden açıldı.';showCode(saved.deliveryCode);refresh();}else clearGuest();}catch(_){clearGuest();}
+async function refresh({quiet=false}={}){
+ if(!guestToken||refreshing||requesting||document.hidden)return;
+ refreshing=true;
+ try{
+  const d=await call('/api/valet/guest/session',{headers:guestHeaders()});
+  showSession(d.session);
+  document.getElementById('detail-error').textContent='';
+ }catch(e){
+  if(e.message==='GUEST_SESSION_EXPIRED'||e.message==='GUEST_AUTH_REQUIRED'){
+   clearGuest();dashboard.hidden=true;document.getElementById('valet-details').hidden=true;document.body.classList.remove('in-tracking');
+   document.getElementById('brand').hidden=false;form.hidden=false;document.getElementById('entry-card').hidden=false;
+   document.getElementById('intro-hero').hidden=false;status.textContent='Misafir oturumunuz sona erdi. Vale görevlisinden yardım isteyin.';
+  }else if(!quiet){
+   status.textContent='Durum alınamadı. '+e.message;
+   document.getElementById('detail-error').textContent='Durum alınamadı. '+e.message;
+  }
+ }finally{refreshing=false;}
+}
+// Poll only while this tab is visible; no manual refresh button required.
+setInterval(()=>{if(guestToken&&!document.hidden)refresh({quiet:true});},4000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh({quiet:true});});
+window.addEventListener('focus',()=>refresh({quiet:true}));
+try{const saved=JSON.parse(sessionStorage.getItem(sessionKey)||'{}');if(saved.expiresAt>Date.now()&&/^[A-Za-z0-9_-]{43}$/.test(saved.token||'')){guestToken=saved.token;form.hidden=true;showHome();status.textContent='Vale oturumunuz yeniden açıldı.';showCode(saved.deliveryCode);refresh({quiet:true});}else clearGuest();}catch(_){clearGuest();}
 if(!guestToken&&!/^[A-Za-z0-9_-]{43}$/.test(token)&&!/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(businessId)){business.textContent='—';status.textContent='Geçerli bir vale daveti bulunamadı.';}
 else if(!guestToken){call(businessId?'/api/valet/guest/business/'+encodeURIComponent(businessId):'/api/valet/guest-invites/'+encodeURIComponent(token)).then(d=>{
  business.textContent=d.businessName||'Vale işletmesi';status.textContent='Davet geçerli. Adınızı ve plakanızı girin.';claim.disabled=false;
@@ -111,11 +141,31 @@ async function loadOwnerCampaigns(){
 loadOwnerCampaigns();
 form.addEventListener('submit',async e=>{e.preventDefault();if((!token&&!businessId)||active)return;active=true;claim.disabled=true;
  try{const d=await call('/api/valet/guest/claim',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({inviteToken:token,businessId:businessId,fullName:document.getElementById('name').value.trim(),phone:document.getElementById('phone').value.trim(),plate:document.getElementById('plate').value.trim()})});
- guestToken=d.guestToken;document.getElementById('guest-greeting').textContent=document.getElementById('name').value.trim().toLocaleUpperCase('tr-TR')||'VALE MİSAFİRİ';saveGuest('');form.hidden=true;showHome();status.textContent='Misafir vale kaydınız açıldı.';showSession(d.session);await refresh();
+ guestToken=d.guestToken;document.getElementById('guest-greeting').textContent=document.getElementById('name').value.trim().toLocaleUpperCase('tr-TR')||'VALE MİSAFİRİ';saveGuest('');form.hidden=true;showHome();status.textContent='Misafir vale kaydınız açıldı.';showSession(d.session);await refresh({quiet:true});
  }catch(err){status.textContent='Kayıt yapılamadı: '+err.message;claim.disabled=false;}finally{active=false;}
 });
-request.addEventListener('click',async()=>{request.disabled=true;try{const d=await call('/api/valet/guest/request',{method:'POST',headers:guestHeaders()});saveGuest(d.deliveryCode);showCode(d.deliveryCode);showSession(d.session);}catch(e){status.textContent='Araç çağrılamadı: '+e.message;document.getElementById('detail-error').textContent='Araç çağrılamadı: '+e.message;}finally{request.disabled=false;}});
-document.getElementById('refresh').addEventListener('click',refresh);
-document.getElementById('detail-toggle').addEventListener('click',()=>{dashboard.hidden=true;document.getElementById('valet-details').hidden=false;document.body.classList.add('in-tracking');window.scrollTo(0,0);refresh();});
+async function requestVehicle(){
+ if(requesting||!guestToken||!['parked','accepted'].includes(lastStatus))return;
+ requesting=true;request.disabled=true;document.getElementById('detail-toggle').disabled=true;
+ try{
+  const d=await call('/api/valet/guest/request',{method:'POST',headers:guestHeaders()});
+  saveGuest(d.deliveryCode);showCode(d.deliveryCode);showSession(d.session);
+  // The guest can follow the retrieval in the Owner-style tracking screen.
+  dashboard.hidden=true;document.getElementById('valet-details').hidden=false;
+  document.body.classList.add('in-tracking');window.scrollTo(0,0);
+ }catch(e){
+  status.textContent='Araç çağrılamadı: '+e.message;
+  document.getElementById('detail-error').textContent='Araç çağrılamadı: '+e.message;
+ }finally{
+  requesting=false;request.disabled=false;document.getElementById('detail-toggle').disabled=false;
+  refresh({quiet:true});
+ }
+}
+request.addEventListener('click',requestVehicle);
+document.getElementById('detail-toggle').addEventListener('click',()=>{
+ if(document.getElementById('detail-toggle').dataset.action==='request'){requestVehicle();return;}
+ dashboard.hidden=true;document.getElementById('valet-details').hidden=false;
+ document.body.classList.add('in-tracking');window.scrollTo(0,0);refresh({quiet:true});
+});
 document.getElementById('detail-back').addEventListener('click',()=>{document.getElementById('valet-details').hidden=true;dashboard.hidden=false;document.body.classList.remove('in-tracking');window.scrollTo(0,0);});
 </script></body></html>
