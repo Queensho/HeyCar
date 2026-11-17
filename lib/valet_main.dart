@@ -52,42 +52,144 @@ Future<void> status(String id,String s)async{String? code;if(s=='delivered'){fin
  Future<void> add({String? qrCode,String? initialPlate})async{
   Map<String,dynamic>? vehicle;
   if(qrCode!=null){
-   final vr=await http.get(Uri.parse(api+'/api/valet/vehicle-by-qr/'+Uri.encodeComponent(qrCode)),headers:h);
-   if(vr.statusCode!=200){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Araç bu CepQontag QR ile eşleştirilemedi.')));return;}
-   vehicle=Map<String,dynamic>.from(jsonDecode(vr.body)['vehicle']);
+   try{
+    final vr=await http.get(Uri.parse(api+'/api/valet/vehicle-by-qr/'+Uri.encodeComponent(qrCode)),headers:h);
+    if(vr.statusCode!=200){
+     if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Araç bu CepQontag QR ile eşleştirilemedi.')));
+     return;
+    }
+    vehicle=Map<String,dynamic>.from(jsonDecode(vr.body)['vehicle']);
+   }catch(_){
+    if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Araç bilgileri alınamadı.')));
+    return;
+   }
   }
+  if(!mounted)return;
   final p=TextEditingController(text:vehicle?['plate']?.toString()??initialPlate??'');
-  final model=TextEditingController();
+  final model=TextEditingController(text:[vehicle?['brand'],vehicle?['model']]
+   .where((v)=>v!=null&&v.toString().trim().isNotEmpty).join(' '));
   final slot=TextEditingController();
   String? selectedArea=areas.isNotEmpty?areas.first['name']?.toString():null;
   bool saving=false;
-  await showModalBottomSheet(context:context,isScrollControlled:true,backgroundColor:panel,builder:(c)=>StatefulBuilder(builder:(c,setSheet)=>Padding(padding:EdgeInsets.fromLTRB(20,20,20,MediaQuery.viewInsetsOf(c).bottom+20),child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.stretch,children:[
-   Text(qrCode==null?'Misafir Aracı Ekle':'QR ile Araç Kabul',textAlign:TextAlign.center,style:const TextStyle(fontSize:18,fontWeight:FontWeight.w800)),
-   const SizedBox(height:8),Text(qrCode==null?'Önce vale plakayı kaydeder. Misafir daha sonra işletmenin sabit QR kodundan aynı plakayla giriş yapar.':'CepQontag QR ile kayıt',textAlign:TextAlign.center,style:const TextStyle(color:muted,fontSize:12)),
-   const SizedBox(height:14),
-   TextField(controller:p,enabled:vehicle==null,textCapitalization:TextCapitalization.characters,decoration:const InputDecoration(labelText:'Araç plakası *',hintText:'34 ABC 667',border:OutlineInputBorder())),
-   const SizedBox(height:12),
-   TextField(controller:model,decoration:const InputDecoration(labelText:'Marka / model (isteğe bağlı)',hintText:'Audi A3',border:OutlineInputBorder())),
-   const SizedBox(height:12),
-   if(areas.isEmpty)const Text('İşletme panelinden önce bir park alanı eklenmeli.',style:TextStyle(color:Colors.orangeAccent)) else DropdownButtonFormField<String>(initialValue:selectedArea,decoration:const InputDecoration(labelText:'Park alanı',border:OutlineInputBorder()),items:areas.map<DropdownMenuItem<String>>((x)=>DropdownMenuItem(value:x['name'].toString(),child:Text(x['name'].toString()))).toList(),onChanged:(v)=>setSheet(()=>selectedArea=v)),
-   const SizedBox(height:12),TextField(controller:slot,decoration:const InputDecoration(labelText:'Park yeri (isteğe bağlı)',border:OutlineInputBorder())),
-   const SizedBox(height:16),
-   FilledButton(onPressed:saving||areas.isEmpty?null:()async{
-    final plate=p.text.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'),'');
-    if(!RegExp(r'^[0-9A-Z]{5,12}$').hasMatch(plate)){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Geçerli bir plaka girin.')));return;}
-    setSheet(()=>saving=true);
-    try{
-     final r=await http.post(Uri.parse(api+'/api/valet/accept'),headers:h,body:jsonEncode({'plate':p.text.trim().toUpperCase(),'qrCode':qrCode,'parkingArea':selectedArea,'parkingSlot':slot.text.trim(),'note':model.text.trim()}));
-     if(r.statusCode<300){if(c.mounted)Navigator.pop(c);await load();return;}
-     String error='Kayıt yapılamadı';
-     try{final j=jsonDecode(r.body);if(j is Map)error=({'VEHICLE_ALREADY_IN_VALET':'Bu plaka zaten aktif vale kaydında.','PLATE_REQUIRED':'Plaka zorunludur.','QR_NOT_FOUND':'Araç QR kodu bulunamadı.'}[j['error']]??j['error']?.toString()??error);}catch(_){}
-     if(c.mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('$error (HTTP ${r.statusCode})')));
-    }catch(_){if(c.mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Sunucuya bağlanılamadı.')));}
-    finally{if(c.mounted)setSheet(()=>saving=false);}
-   },style:FilledButton.styleFrom(backgroundColor:lime,foregroundColor:Colors.black,padding:const EdgeInsets.all(16)),child:Text(saving?'Kaydediliyor...':'Aracı Valeye Al',style:const TextStyle(fontWeight:FontWeight.w900)))
-  ])))));
+  final owner=(vehicle?['owner_name']??'').toString().trim();
+  final knownVehicle=vehicle!=null;
+  try{
+   await Navigator.of(context).push(MaterialPageRoute<void>(builder:(pageContext)=>
+    StatefulBuilder(builder:(pageContext,setPage)=>Scaffold(
+     backgroundColor:const Color(0xFFF8F8FD),
+     appBar:AppBar(backgroundColor:const Color(0xFF160B31),
+      foregroundColor:Colors.white,centerTitle:true,title:const Text('Araç Kabul',
+       style:TextStyle(fontWeight:FontWeight.w800,fontSize:19))),
+     body:SafeArea(child:Column(children:[
+      Expanded(child:ListView(padding:const EdgeInsets.fromLTRB(16,0,16,12),children:[
+       Container(
+        padding:const EdgeInsets.fromLTRB(16,22,16,18),
+        decoration:const BoxDecoration(color:Color(0xFFF4F1FF),
+         borderRadius:BorderRadius.vertical(bottom:Radius.circular(26))),
+        child:Column(children:[
+         const SizedBox(height:12),
+         const Icon(Icons.directions_car_filled_rounded,color:Color(0xFF4912C8),size:112),
+         const SizedBox(height:10),
+         Container(padding:const EdgeInsets.symmetric(horizontal:17,vertical:8),
+          decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(14),
+           border:Border.all(color:const Color(0xFFCFC3F8),width:1.5)),
+          child:Text(p.text.isEmpty?'PLAKA GİRİN':p.text.toUpperCase(),
+           style:const TextStyle(fontWeight:FontWeight.w900,fontSize:20,color:Color(0xFF10152D))))
+        ])),
+       const SizedBox(height:14),
+       Container(decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(18),
+        border:Border.all(color:const Color(0xFFE5E2EF))),
+        child:Column(children:[
+         ListTile(leading:const Icon(Icons.person_outline,color:Color(0xFF68618B)),
+          title:Text(owner.isEmpty?'Araç sahibi bilgisi yok':owner,
+           style:const TextStyle(fontWeight:FontWeight.w700,fontSize:14)),
+          trailing:Container(padding:const EdgeInsets.symmetric(horizontal:10,vertical:5),
+           decoration:BoxDecoration(color:const Color(0xFFF0E7FF),borderRadius:BorderRadius.circular(16)),
+           child:const Text('Misafir',style:TextStyle(color:purple,fontSize:12,fontWeight:FontWeight.w800)))),
+         const Divider(height:1,indent:16,endIndent:16),
+         const ListTile(leading:Icon(Icons.phone_outlined,color:Color(0xFF68618B)),
+          title:Text('Telefon bilgisi paylaşılmıyor',style:TextStyle(fontSize:13,color:muted))),
+         const Divider(height:1,indent:16,endIndent:16),
+         if(knownVehicle)
+          ListTile(leading:const Icon(Icons.directions_car_outlined,color:Color(0xFF68618B)),
+           title:Text(model.text.isEmpty?'Araç modeli belirtilmemiş':model.text,
+            style:const TextStyle(fontWeight:FontWeight.w700,fontSize:14)))
+         else Padding(padding:const EdgeInsets.symmetric(horizontal:14,vertical:8),
+          child:TextField(controller:model,decoration:const InputDecoration(
+           labelText:'Marka / model (isteğe bağlı)',prefixIcon:Icon(Icons.directions_car_outlined),
+           border:OutlineInputBorder()))),
+         const Divider(height:1,indent:16,endIndent:16),
+         const ListTile(leading:Icon(Icons.info_outline,color:Color(0xFF68618B)),
+          title:Text('Not',style:TextStyle(fontWeight:FontWeight.w700,fontSize:13)),
+          subtitle:Text('Henüz not eklenmedi',style:TextStyle(fontSize:13)))
+        ])),
+       if(!knownVehicle)...[
+        const SizedBox(height:16),
+        TextField(controller:p,textCapitalization:TextCapitalization.characters,
+         decoration:const InputDecoration(labelText:'Araç plakası *',hintText:'34 ABC 004',
+          border:OutlineInputBorder(),filled:true,fillColor:Colors.white),
+         onChanged:(_)=>setPage((){})),
+       ],
+       const SizedBox(height:16),
+       if(areas.isEmpty)
+        const Padding(padding:EdgeInsets.all(12),child:Text(
+         'Araç kabulü için işletme panelinden park alanı oluşturulmalı.',
+         style:TextStyle(color:Colors.deepOrange)))
+       else DropdownButtonFormField<String>(initialValue:selectedArea,
+        decoration:const InputDecoration(labelText:'Park alanı',filled:true,
+         fillColor:Colors.white,border:OutlineInputBorder()),
+        items:areas.map<DropdownMenuItem<String>>((x)=>DropdownMenuItem(
+         value:x['name'].toString(),child:Text(x['name'].toString()))).toList(),
+        onChanged:(v)=>setPage(()=>selectedArea=v)),
+       const SizedBox(height:12),
+       TextField(controller:slot,decoration:const InputDecoration(
+        labelText:'Park yeri (isteğe bağlı)',border:OutlineInputBorder(),
+        filled:true,fillColor:Colors.white)),
+      ])),
+      Padding(padding:const EdgeInsets.fromLTRB(16,12,16,16),child:Column(children:[
+       SizedBox(width:double.infinity,height:54,child:FilledButton(
+        onPressed:saving||areas.isEmpty?null:()async{
+         final plate=p.text.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'),'');
+         if(!RegExp(r'^[0-9A-Z]{5,12}$').hasMatch(plate)){
+          ScaffoldMessenger.of(pageContext).showSnackBar(
+           const SnackBar(content:Text('Geçerli bir plaka girin.')));return;
+         }
+         setPage(()=>saving=true);
+         try{
+          final r=await http.post(Uri.parse(api+'/api/valet/accept'),headers:h,
+           body:jsonEncode({'plate':p.text.trim().toUpperCase(),'qrCode':qrCode,
+            'parkingArea':selectedArea,'parkingSlot':slot.text.trim(),'note':model.text.trim()}));
+          if(r.statusCode<300){
+           if(pageContext.mounted)Navigator.pop(pageContext);
+           await load();return;
+          }
+          String error='Kayıt yapılamadı';
+          try{final j=jsonDecode(r.body);if(j is Map)error=({
+           'VEHICLE_ALREADY_IN_VALET':'Bu plaka zaten aktif vale kaydında.',
+           'PLATE_REQUIRED':'Plaka zorunludur.',
+           'QR_NOT_FOUND':'Araç QR kodu bulunamadı.'}[j['error']]??j['error']?.toString()??error);}catch(_){}
+          if(pageContext.mounted)ScaffoldMessenger.of(pageContext).showSnackBar(
+           SnackBar(content:Text('$error (HTTP ${r.statusCode})')));
+         }catch(_){
+          if(pageContext.mounted)ScaffoldMessenger.of(pageContext).showSnackBar(
+           const SnackBar(content:Text('Sunucuya bağlanılamadı.')));
+         }finally{if(pageContext.mounted)setPage(()=>saving=false);}
+        },style:FilledButton.styleFrom(backgroundColor:lime,
+         foregroundColor:const Color(0xFF10152D),
+         shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(17))),
+        child:Text(saving?'Kaydediliyor...':'Aracı Teslim Al',
+         style:const TextStyle(fontSize:16,fontWeight:FontWeight.w900)))),
+       const SizedBox(height:10),
+       SizedBox(width:double.infinity,height:52,child:OutlinedButton(
+        onPressed:saving?null:()=>Navigator.pop(pageContext),
+        style:OutlinedButton.styleFrom(side:const BorderSide(color:purple,width:1.5),
+         shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(17))),
+        child:const Text('İptal',style:TextStyle(color:purple,fontWeight:FontWeight.w800))))
+      ]))
+     ]))
+    ))));
+  }finally{p.dispose();model.dispose();slot.dispose();}
  }
-
 
 
  // Eight-screen HIG flow: Dashboard, Scanner, Acceptance, Parking, Vehicles,
