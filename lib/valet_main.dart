@@ -220,6 +220,74 @@ Future<void> status(String id,String s)async{String? code;if(s=='delivered'){fin
    if(st=='parked'||st=='accepted')Align(alignment:Alignment.centerRight,child:TextButton.icon(onPressed:()=>guestQr(x),icon:const Icon(Icons.qr_code_2,size:17),label:const Text('Misafir QR'))),
   ]));
  }
+
+ Widget _heroStat(String value,String label){
+  return Expanded(child:Container(
+   padding:const EdgeInsets.symmetric(horizontal:6,vertical:12),
+   decoration:BoxDecoration(color:const Color(0xFF40138D).withValues(alpha:.65),
+    borderRadius:BorderRadius.circular(15),
+    border:Border.all(color:Colors.white.withValues(alpha:.48))),
+   child:Column(mainAxisSize:MainAxisSize.min,children:[
+    Text(value,style:const TextStyle(color:Colors.white,fontSize:23,fontWeight:FontWeight.w900)),
+    const SizedBox(height:3),
+    Text(label,textAlign:TextAlign.center,maxLines:1,overflow:TextOverflow.ellipsis,
+      style:const TextStyle(color:Colors.white,fontSize:11,fontWeight:FontWeight.w700))
+   ])));
+ }
+ Widget _premiumHomeHero(int parked,int requests,int active){
+  final total=data.length;
+  return ClipRRect(borderRadius:const BorderRadius.vertical(bottom:Radius.circular(30)),
+   child:Stack(children:[
+    Positioned.fill(child:Image.asset('assets/vale.png',fit:BoxFit.cover,
+      alignment:Alignment.centerRight,errorBuilder:(_,__,___)=>const ColoredBox(color:Color(0xFF26045B)))),
+    Positioned.fill(child:DecoratedBox(decoration:BoxDecoration(gradient:LinearGradient(
+      begin:Alignment.centerLeft,end:Alignment.centerRight,colors:[
+       const Color(0xFF170438).withValues(alpha:.97),
+       const Color(0xFF3C0B9B).withValues(alpha:.86),
+       const Color(0xFF170438).withValues(alpha:.36)])))),
+    Padding(padding:const EdgeInsets.fromLTRB(18,18,18,17),child:Column(
+     crossAxisAlignment:CrossAxisAlignment.start,children:[
+      Row(children:[
+       const Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        Text('CepQontag',style:TextStyle(color:Colors.white,fontSize:20,fontWeight:FontWeight.w900,height:1.05)),
+        Text('Vale',style:TextStyle(color:lime,fontSize:21,fontWeight:FontWeight.w900,height:1.1))])),
+       IconButton(tooltip:'Araç çağrıları',onPressed:()=>setState(()=>_filter='requests'),
+        icon:Badge(isLabelVisible:requests>0,label:Text('$requests'),
+          child:const Icon(Icons.notifications_none_rounded,color:Colors.white,size:27))),
+       const SizedBox(width:6),
+       Semantics(label:'Profil',button:true,child:InkWell(onTap:()=>setState(()=>_filter='profile'),
+        child:CircleAvatar(radius:19,backgroundColor:const Color(0xFF7224FF),
+         child:Text(staff.isNotEmpty?staff[0].toUpperCase():'V',
+          style:const TextStyle(color:Colors.white,fontWeight:FontWeight.w900)))))
+      ]),
+      const SizedBox(height:31),
+      const Text('Merhaba,',style:TextStyle(color:Colors.white70,fontSize:13,fontWeight:FontWeight.w600)),
+      const SizedBox(height:4),
+      Text(staff.isEmpty?'Vale Personeli':staff,
+       maxLines:2,overflow:TextOverflow.ellipsis,
+       style:const TextStyle(color:Colors.white,fontSize:25,fontWeight:FontWeight.w900)),
+      const SizedBox(height:9),
+      InkWell(onTap:shiftBusy?null:()=>shift(!onShift),borderRadius:BorderRadius.circular(25),
+       child:Container(padding:const EdgeInsets.symmetric(horizontal:12,vertical:8),
+        decoration:BoxDecoration(color:const Color(0xFF220B56).withValues(alpha:.8),
+         borderRadius:BorderRadius.circular(25),border:Border.all(color:Colors.white24)),
+        child:Row(mainAxisSize:MainAxisSize.min,children:[
+         Icon(Icons.circle,color:onShift?lime:Colors.white54,size:10),
+         const SizedBox(width:7),
+         Text(onShift?'Mesai Aktif':'Mesai Dışı',
+          style:const TextStyle(color:Colors.white,fontWeight:FontWeight.w800,fontSize:12)),
+         const SizedBox(width:8),
+         const Icon(Icons.chevron_right,color:Colors.white70,size:16)
+        ]))),
+      const SizedBox(height:56),
+      Row(children:[
+       _heroStat('$active','Aktif Araç'),const SizedBox(width:9),
+       _heroStat('$requests','Çağrıda'),const SizedBox(width:9),
+       _heroStat('$total','Toplam İşlem')
+      ])
+     ]))
+   ]));
+ }
  Widget _nav(IconData icon,String label,String key){final selected=_filter==key;return Expanded(child:InkWell(onTap:()=>setState(()=>_filter=key),child:Padding(padding:const EdgeInsets.symmetric(vertical:7),child:Column(mainAxisSize:MainAxisSize.min,children:[Icon(icon,color:selected?purple:muted,size:25),const SizedBox(height:4),Text(label,style:TextStyle(color:selected?purple:muted,fontSize:11,fontWeight:selected?FontWeight.w700:FontWeight.w500))]))));}
  @override Widget build(BuildContext c){
   final parked=data.where((x)=>x['status']=='parked').length;
@@ -235,11 +303,14 @@ Future<void> status(String id,String s)async{String? code;if(s=='delivered'){fin
    return true;
   }).toList()..sort((a,b){final ap=a['status']=='requested'?0:1,bp=b['status']=='requested'?0:1;return ap.compareTo(bp);});
   return Scaffold(backgroundColor:bg,body:SafeArea(child:Column(children:[
-   Expanded(child:_filter=='profile'?SingleChildScrollView(child:_profile()):RefreshIndicator(onRefresh:load,child:CustomScrollView(slivers:[SliverToBoxAdapter(child:Padding(padding:const EdgeInsets.fromLTRB(16,12,16,6),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-    Row(children:[Container(width:34,height:34,decoration:const BoxDecoration(color:purple,shape:BoxShape.circle),child:const Center(child:Text('Q',style:TextStyle(color:Colors.white,fontSize:23,fontWeight:FontWeight.w800)))),const SizedBox(width:8),const Expanded(child:Text('CepQontag  |  Vale',style:TextStyle(color:Color(0xFF25105B),fontSize:21,fontWeight:FontWeight.w900))),IconButton(onPressed:load,icon:Badge(isLabelVisible:requests>0,label:Text('$requests'),child:const Icon(Icons.notifications_none_rounded,color:Color(0xFF25105B),size:29)))]),
-    const SizedBox(height:14),Text('Merhaba, ${staff.isEmpty?'Vale':staff.split(' ').first} 👋',style:const TextStyle(fontSize:24,fontWeight:FontWeight.w800,color:Colors.black)),const SizedBox(height:4),Text(business.isEmpty?'Vale operasyon paneli':business,style:const TextStyle(fontSize:14,color:muted,fontWeight:FontWeight.w600)),
-    const SizedBox(height:14),Container(padding:const EdgeInsets.symmetric(horizontal:14,vertical:11),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(16),border:Border.all(color:const Color(0xFFE9E9EF))),child:Row(children:[Icon(Icons.circle,color:onShift?const Color(0xFF48C52B):muted,size:15),const SizedBox(width:12),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('Vardiya Durumu',style:TextStyle(fontWeight:FontWeight.w900,fontSize:15)),Text(onShift?'Mesai Aktif':'Mesai Dışı',style:TextStyle(fontWeight:FontWeight.w800,color:onShift?const Color(0xFF34AE23):muted))])),TextButton(onPressed:shiftBusy?null:()=>shift(!onShift),style:TextButton.styleFrom(backgroundColor:const Color(0xFFF0EAFE),foregroundColor:purple,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(13))),child:Text(onShift?'Mesaiyi Bitir':'Mesaiye Başla',style:const TextStyle(fontWeight:FontWeight.w800)))])),
-    const SizedBox(height:12),Row(children:[_metric(Icons.directions_car_filled,'$parked','Parkta',purple),const SizedBox(width:9),_metric(Icons.notifications_active_outlined,'$requests','Araç İsteği',const Color(0xFFFF8A00)),const SizedBox(width:9),_metric(Icons.car_rental,'$active','Aktif Araç',const Color(0xFF43B52B))]),
+   Expanded(child:_filter=='profile'?SingleChildScrollView(child:_profile()):RefreshIndicator(onRefresh:load,child:CustomScrollView(slivers:[SliverToBoxAdapter(child:Padding(padding:EdgeInsets.fromLTRB(_filter=='home'?0:16,_filter=='home'?0:12,_filter=='home'?0:16,6),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+    if(_filter=='home')_premiumHomeHero(parked,requests,active)
+    else Row(children:[
+      IconButton(onPressed:()=>setState(()=>_filter='home'),icon:const Icon(Icons.arrow_back_ios_new,color:purple)),
+      Expanded(child:Text(_filter=='vehicles'?'Araçlar':_filter=='requests'?'Görevler':'İşlem Geçmişi',
+        style:const TextStyle(fontSize:23,fontWeight:FontWeight.w900,color:Color(0xFF25105B)))),
+      IconButton(onPressed:load,icon:const Icon(Icons.refresh,color:purple))
+    ]),
     if(_filter=='home')...[const SizedBox(height:14),
       Row(children:[Expanded(child:_actionTile(Icons.qr_code_scanner,'Araç Kabul','QR Okut',scan,primary:true)),
        const SizedBox(width:9),Expanded(child:_actionTile(Icons.directions_car_outlined,'Araçlar','Aktif Araçlar',()=>setState(()=>_filter='vehicles')))]),
