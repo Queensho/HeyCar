@@ -210,47 +210,155 @@ Future<void> status(String id,String s)async{String? code;if(s=='delivered'){fin
    child:Column(children:[Icon(icon,color:primary?const Color(0xFF10152D):purple,size:29),
    const SizedBox(height:8),Text(title,textAlign:TextAlign.center,style:const TextStyle(fontSize:13,fontWeight:FontWeight.w800)),
    const SizedBox(height:3),Text(subtitle,textAlign:TextAlign.center,style:const TextStyle(fontSize:11,color:muted))]))));
+ 
  Future<void> _parking(Map x)async{
-   final slot=TextEditingController(text:(x['parking_slot']??'').toString());
-   final key=TextEditingController(text:(x['key_location']??'').toString());
-   final note=TextEditingController();
-   String? selected=(x['parking_area']??'').toString();
-   if(selected.isEmpty&&areas.isNotEmpty)selected=(areas.first['name']??'').toString();
-   if(!mounted)return;
-   await showModalBottomSheet<void>(context:context,isScrollControlled:true,showDragHandle:true,
-   builder:(ctx)=>StatefulBuilder(builder:(ctx,update)=>Padding(
-   padding:EdgeInsets.fromLTRB(20,8,20,MediaQuery.viewInsetsOf(ctx).bottom+24),
-   child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.stretch,children:[
-    const Text('Park Kaydı',style:TextStyle(fontSize:25,fontWeight:FontWeight.w900)),
-    const SizedBox(height:8),_pill((x['plate']??'').toString()),
-    const SizedBox(height:20),
-    DropdownButtonFormField<String>(initialValue:areas.any((a)=>a['name'].toString()==selected)?selected:null,
-     decoration:const InputDecoration(labelText:'Park alanı',border:OutlineInputBorder()),
-     items:areas.map<DropdownMenuItem<String>>((a)=>DropdownMenuItem(value:a['name'].toString(),child:Text(a['name'].toString()))).toList(),
-     onChanged:(v)=>update(()=>selected=v)),
-    const SizedBox(height:12),
-    TextField(controller:slot,decoration:const InputDecoration(labelText:'Park yeri',hintText:'A05',border:OutlineInputBorder())),
-    const SizedBox(height:12),
-    TextField(controller:key,decoration:const InputDecoration(labelText:'Anahtar konumu',hintText:'Dolap 3 – Göz 12',border:OutlineInputBorder())),
-    const SizedBox(height:12),
-    TextField(controller:note,maxLines:2,decoration:const InputDecoration(labelText:'Not (isteğe bağlı)',border:OutlineInputBorder())),
-    const SizedBox(height:20),
-    FilledButton(onPressed:selected==null?null:()async{
-      final id=(x['id']??'').toString();if(id.isEmpty)return;
-      try{
-       final response=await http.patch(Uri.parse(api+'/api/valet/sessions/$id/parking'),headers:h,
-        body:jsonEncode({'parkingArea':selected,'parkingSlot':slot.text.trim(),'keyLocation':key.text.trim(),'note':note.text.trim()}));
-       if(response.statusCode>=200&&response.statusCode<300){
-         if(ctx.mounted)Navigator.pop(ctx);
-         if((x['status']??'')=='accepted')await status(id,'parked');else await load();
-       }else{
-         if(ctx.mounted)ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content:Text('Park kaydı yapılamadı (HTTP ${response.statusCode}).')));
-       }
-      }catch(_){if(ctx.mounted)ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content:Text('Bağlantı hatası.')));}
-    },style:FilledButton.styleFrom(backgroundColor:lime,foregroundColor:Colors.black,minimumSize:const Size.fromHeight(52)),
-    child:const Text('Parkı Kaydet',style:TextStyle(fontWeight:FontWeight.w900)))
-   ])))));
+  if(areas.isEmpty){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Park alanı tanımlanmamış.')));return;}
+  final id=x['id'].toString();
+  final note=TextEditingController(text:(x['note']??'').toString());
+  final key=TextEditingController(text:(x['key_location']??'').toString());
+  String selected=(x['parking_area']??'').toString();
+  if(!areas.any((a)=>a['name'].toString()==selected))selected=areas.first['name'].toString();
+  String chosen=(x['parking_slot']??'').toString();
+  bool saving=false;
+  List<String> slotsFor(String name){
+   final area=areas.firstWhere((a)=>a['name'].toString()==name);
+   final count=int.tryParse(area['slots'].toString())??0;
+   if(count<=0)return [];
+   final prefix=RegExp(r'^[A-Za-z]').firstMatch(name)?.group(0)?.toUpperCase()??'P';
+   return List.generate(count>150?150:count,(i)=>prefix+(i+1).toString().padLeft(2,'0'));
+  }
+  bool occupied(String area,String slot)=>data.any((item)=>
+   item['id'].toString()!=id&&item['parking_area']?.toString()==area&&
+   item['parking_slot']?.toString().toUpperCase()==slot&&
+   !['delivered','cancelled'].contains(item['status']));
+  if(!mounted)return;
+  try{
+   await Navigator.of(context).push(MaterialPageRoute<void>(builder:(pageCtx)=>
+    StatefulBuilder(builder:(pageCtx,update){
+     final slots=slotsFor(selected);
+     final occupiedCount=slots.where((slot)=>occupied(selected,slot)).length;
+     return Scaffold(backgroundColor:const Color(0xFFFCFBFF),
+      appBar:AppBar(backgroundColor:const Color(0xFF180A38),foregroundColor:Colors.white,
+       centerTitle:true,title:const Text('Park Kaydı',style:TextStyle(fontSize:19,fontWeight:FontWeight.w800))),
+      body:SafeArea(child:Column(children:[
+       Expanded(child:ListView(padding:const EdgeInsets.fromLTRB(16,18,16,12),children:[
+        Container(padding:const EdgeInsets.all(14),
+         decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(20),
+          border:Border.all(color:const Color(0xFFE9E4F5))),
+         child:Row(children:[
+          const SizedBox(width:100,height:65,child:Icon(Icons.directions_car_filled_rounded,size:67,color:purple)),
+          const SizedBox(width:14),
+          Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+           Text((x['plate']??'-').toString(),style:const TextStyle(fontSize:19,fontWeight:FontWeight.w900,color:Color(0xFF15112E))),
+           const SizedBox(height:4),
+           Text([x['brand'],x['model']].where((v)=>v!=null&&v.toString().trim().isNotEmpty).join(' ').isEmpty?
+            'Araç bilgisi': [x['brand'],x['model']].where((v)=>v!=null&&v.toString().trim().isNotEmpty).join(' '),
+            style:const TextStyle(fontSize:13,color:muted))
+          ]))
+         ])),
+        const SizedBox(height:20),
+        const Text('Park Alanı Seçin',style:TextStyle(fontWeight:FontWeight.w900,fontSize:15)),
+        const SizedBox(height:10),
+        SizedBox(height:44,child:ListView(scrollDirection:Axis.horizontal,children:[
+         for(final area in areas)Padding(padding:const EdgeInsets.only(right:7),
+          child:ChoiceChip(label:Text(area['name'].toString()),selected:selected==area['name'].toString(),
+           onSelected:(_)=>update((){selected=area['name'].toString();chosen='';}),
+           selectedColor:const Color(0xFFECE4FF),showCheckmark:false,
+           labelStyle:TextStyle(fontSize:12,fontWeight:FontWeight.w800,
+            color:selected==area['name'].toString()?purple:const Color(0xFF302C49))))
+        ])),
+        const SizedBox(height:10),
+        if(slots.isEmpty)Container(padding:const EdgeInsets.all(14),
+         decoration:BoxDecoration(color:const Color(0xFFF5F2FC),borderRadius:BorderRadius.circular(13)),
+         child:const Text('Bu alan için park yeri kapasitesi tanımlanmamış. İşletme yöneticinizden kapasite ayarı isteyin.'))
+        else LayoutBuilder(builder:(context,constraints){
+         final width=(constraints.maxWidth-24)/4;
+         return Wrap(spacing:8,runSpacing:8,children:[
+          for(final slot in slots)
+           Semantics(button:true,selected:chosen==slot,
+            label:slot+(occupied(selected,slot)?' dolu':chosen==slot?' seçili':' boş'),
+            child:SizedBox(width:width,height:48,child:OutlinedButton(
+             onPressed:occupied(selected,slot)?null:()=>update(()=>chosen=slot),
+             style:OutlinedButton.styleFrom(padding:EdgeInsets.zero,
+              backgroundColor:chosen==slot?purple:occupied(selected,slot)?
+               const Color(0xFFFFEEE3):Colors.white,
+              foregroundColor:chosen==slot?Colors.white:const Color(0xFF20173E),
+              side:BorderSide(color:chosen==slot?purple:occupied(selected,slot)?
+               const Color(0xFFF7A56D):const Color(0xFFD7D0EB)),
+              shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(12))),
+             child:Text(slot,style:const TextStyle(fontWeight:FontWeight.w800,fontSize:13)))))
+         ]);
+        }),
+        const SizedBox(height:13),
+        Wrap(spacing:14,runSpacing:7,children:[
+         _parkingLegend(const Color(0xFF7ACB86),'Boş'),
+         _parkingLegend(const Color(0xFFF47B29),'Dolu ('+occupiedCount.toString()+')'),
+         _parkingLegend(purple,'Seçili')
+        ]),
+        const SizedBox(height:20),
+        const Text('Anahtar Konumu',style:TextStyle(fontWeight:FontWeight.w900,fontSize:14)),
+        const SizedBox(height:8),
+        TextField(controller:key,decoration:InputDecoration(
+         hintText:'Dolap 3 – Göz 12',prefixIcon:const Icon(Icons.key_outlined,color:purple),
+         suffixIcon:const Icon(Icons.edit_outlined,size:18),
+         filled:true,fillColor:Colors.white,
+         border:OutlineInputBorder(borderRadius:BorderRadius.circular(13)))),
+        const SizedBox(height:18),
+        const Text('Not (isteğe bağlı)',style:TextStyle(fontWeight:FontWeight.w900,fontSize:14)),
+        const SizedBox(height:8),
+        TextField(controller:note,maxLines:2,decoration:InputDecoration(
+         hintText:'...',filled:true,fillColor:Colors.white,
+         border:OutlineInputBorder(borderRadius:BorderRadius.circular(13)))),
+       ])),
+       Padding(padding:const EdgeInsets.fromLTRB(16,8,16,14),
+        child:SizedBox(width:double.infinity,height:54,child:FilledButton(
+         onPressed:saving||chosen.isEmpty||occupied(selected,chosen)?null:()async{
+          update(()=>saving=true);
+          try{
+           final latest=await http.get(Uri.parse(api+'/api/valet/sessions'),headers:h);
+           if(latest.statusCode!=200)throw StateError('Oturum listesi güncellenemedi.');
+           final rows=(jsonDecode(latest.body)['sessions'] as List? ??[]);
+           if(rows.any((row)=>row['id'].toString()!=id&&
+             row['parking_area']?.toString()==selected&&
+             row['parking_slot']?.toString().toUpperCase()==chosen&&
+             !['delivered','cancelled'].contains(row['status']))){
+            if(pageCtx.mounted)ScaffoldMessenger.of(pageCtx).showSnackBar(
+             const SnackBar(content:Text('Bu park yeri doldu. Başka yer seçin.')));
+            await load();return;
+           }
+           final response=await http.patch(Uri.parse(api+'/api/valet/sessions/'+id+'/parking'),headers:h,
+            body:jsonEncode({'parkingArea':selected,'parkingSlot':chosen,
+             'keyLocation':key.text.trim(),'note':note.text.trim()}));
+           if(response.statusCode==409){
+            if(pageCtx.mounted)ScaffoldMessenger.of(pageCtx).showSnackBar(
+             const SnackBar(content:Text('Park yeri veya araç durumu değişti.')));
+            await load();return;
+           }
+           if(response.statusCode<200||response.statusCode>=300){
+            throw StateError('Park kaydı yapılamadı (HTTP '+response.statusCode.toString()+').');
+           }
+           if(pageCtx.mounted)Navigator.pop(pageCtx);
+           if((x['status']??'')=='accepted')await status(id,'parked');else await load();
+          }catch(e){
+           if(pageCtx.mounted)ScaffoldMessenger.of(pageCtx).showSnackBar(
+            SnackBar(content:Text('Park kaydı tamamlanamadı: '+e.toString())));
+          }finally{if(pageCtx.mounted)update(()=>saving=false);}
+         },
+         style:FilledButton.styleFrom(backgroundColor:lime,foregroundColor:const Color(0xFF15112E),
+          shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(16))),
+         child:Text(saving?'Kaydediliyor...':'Parkı Kaydet',
+          style:const TextStyle(fontWeight:FontWeight.w900,fontSize:16)))))
+      ]))
+     );
+    })));
+  }finally{note.dispose();key.dispose();}
  }
+ Widget _parkingLegend(Color color,String title)=>Row(mainAxisSize:MainAxisSize.min,children:[
+  Container(width:11,height:11,decoration:BoxDecoration(
+   color:color.withValues(alpha:.22),shape:BoxShape.circle,
+   border:Border.all(color:color,width:1.5))),
+  const SizedBox(width:5),Text(title,style:const TextStyle(fontSize:12,color:muted))
+ ]);
  Future<void> _vehicleDetail(Map x)async{
   if(!mounted)return;
   await showModalBottomSheet<void>(context:context,isScrollControlled:true,showDragHandle:true,

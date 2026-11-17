@@ -310,23 +310,41 @@ module.exports=function registerValetRoutes(app,pool){
  app.get('/api/valet/sessions',async(req,res)=>{const a=await valetAuth(req,res);if(!a)return;await expireUnmatchedSessions(a.business_id);const [q,areas]=await Promise.all([pool.query("SELECT s.*,vs.name AS staff_name,v.make,v.model FROM valet_sessions s LEFT JOIN valet_staff vs ON vs.id=s.staff_id LEFT JOIN vehicles v ON v.id=s.vehicle_id WHERE s.business_id=$1 AND s.status NOT IN ('delivered','cancelled') ORDER BY CASE s.status WHEN 'requested' THEN 0 WHEN 'retrieving' THEN 1 WHEN 'ready' THEN 2 ELSE 3 END,s.created_at DESC",[a.business_id]),pool.query("SELECT id,name,slots FROM valet_parking_areas WHERE business_id=$1 AND is_active=TRUE ORDER BY name",[a.business_id])]);const me=await pool.query("SELECT on_shift FROM valet_staff WHERE id=$1",[a.staff_id]);res.json({ok:true,businessName:a.business_name,staffName:a.name,onShift:me.rows[0]?.on_shift===true,sessions:q.rows,areas:areas.rows});});
  app.get('/api/valet/vehicle-by-qr/:qr',async(req,res)=>{const a=await valetAuth(req,res);if(!a)return;const qr=String(req.params.qr||'').trim().toUpperCase();const q=await pool.query("SELECT v.id,v.plate,COALESCE(v.make,'') AS brand,COALESCE(v.model,'') AS model,COALESCE(u.display_name,'') AS owner_name FROM qr_tags t JOIN vehicles v ON v.id=t.vehicle_id LEFT JOIN users u ON u.id=v.owner_id WHERE t.token=$1 AND t.status='active' LIMIT 1",[qr]);if(!q.rowCount)return res.status(404).json({error:'QR_NOT_FOUND'});res.json({ok:true,vehicle:q.rows[0]});});
  app.post('/api/valet/accept',async(req,res)=>{const a=await valetAuth(req,res);if(!a)return;const b=req.body||{},qr=String(b.qrCode||'').trim().toUpperCase();let plate=String(b.plate||'').trim().toUpperCase(),v;if(qr){v=await pool.query("SELECT v.id,v.plate FROM qr_tags q JOIN vehicles v ON v.id=q.vehicle_id WHERE q.token=$1 AND q.status='active' LIMIT 1",[qr]);if(!v.rowCount)return res.status(404).json({error:'QR_NOT_FOUND'});plate=String(v.rows[0].plate||'').trim().toUpperCase();}else{if(!plate)return res.status(400).json({error:'PLATE_REQUIRED'});v=await pool.query("SELECT id,plate FROM vehicles WHERE regexp_replace(UPPER(plate),'[[:space:]]+','','g')=regexp_replace($1,'[[:space:]]+','','g') LIMIT 1",[plate]);}const existing=await pool.query("SELECT id,status,plate FROM valet_sessions WHERE business_id=$1 AND status NOT IN ('delivered','cancelled') AND (($2::uuid IS NOT NULL AND vehicle_id=$2::uuid) OR ($2::uuid IS NULL AND regexp_replace(upper(plate),'[^A-Z0-9]','','g')=regexp_replace(upper($3),'[^A-Z0-9]','','g'))) ORDER BY created_at DESC LIMIT 1",[a.business_id,v.rows[0]?.id||null,plate]);if(existing.rowCount)return res.status(409).json({error:'VEHICLE_ALREADY_IN_VALET',session:existing.rows[0]});const deliveryCode=String(crypto.randomInt(1000,10000));let q;try{q=await pool.query("INSERT INTO valet_sessions(business_id,vehicle_id,staff_id,plate,qr_code,parking_area,parking_slot,key_location,note,status,delivery_code_hash) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'accepted',$10) RETURNING *",[a.business_id,v.rows[0]?.id||null,a.staff_id,plate,qr||null,b.parkingArea||null,b.parkingSlot||null,b.keyLocation||null,b.note||null,hash(deliveryCode)]);}catch(e){if(e?.code==='23505')return res.status(409).json({error:'VEHICLE_ALREADY_IN_VALET'});throw e;}const row=q.rows[0];await audit(a.business_id,row.id,a.staff_id,'staff','vehicle_accepted',null,'accepted',{plate:row.plate,parkingArea:row.parking_area});if(row.vehicle_id){try{await pool.query('INSERT INTO valet_delivery_codes(session_id,code_hash,expires_at) VALUES($1,$2,now()+interval \'12 hours\') ON CONFLICT(session_id) DO UPDATE SET code_hash=EXCLUDED.code_hash,expires_at=EXCLUDED.expires_at,attempts=0',[row.id,hash(deliveryCode)]);const o=await pool.query('SELECT owner_id FROM vehicles WHERE id=$1',[row.vehicle_id]);const owner=o.rows[0]?.owner_id,push=app.locals.heycarPush;if(owner&&push?.sendOwner)await push.sendOwner(owner,{type:'valet_accepted',sourceType:'valet',vehicleId:String(row.vehicle_id),valetSessionId:String(row.id)},'Aracınız valeye teslim edildi',plate+' vale tarafından teslim alındı.');}catch(e){console.error('valet accepted push',e);}}res.status(201).json({ok:true,session:row});});
+
  app.patch('/api/valet/sessions/:id/parking',async(req,res)=>{
   const a=await valetAuth(req,res);if(!a)return;
   const parkingArea=String(req.body?.parkingArea||'').trim().slice(0,100);
-  const parkingSlot=String(req.body?.parkingSlot||'').trim().slice(0,60);
+  const parkingSlot=String(req.body?.parkingSlot||'').trim().toUpperCase().slice(0,60);
   const keyLocation=String(req.body?.keyLocation||'').trim().slice(0,100);
   const note=String(req.body?.note||'').trim().slice(0,500);
-  if(!parkingArea)return res.status(400).json({error:'AREA_NAME_REQUIRED'});
+  if(!parkingArea||!parkingSlot)return res.status(400).json({error:'PARKING_AREA_AND_SLOT_REQUIRED'});
+  const client=await pool.connect();
   try{
-   const valid=await pool.query('SELECT 1 FROM valet_parking_areas WHERE business_id=$1 AND name=$2 LIMIT 1',[a.business_id,parkingArea]);
-   if(!valid.rowCount)return res.status(400).json({error:'INVALID_PARKING_AREA'});
-   const updated=await pool.query(`UPDATE valet_sessions SET parking_area=$3,parking_slot=$4,key_location=$5,note=$6,updated_at=now()
+   await client.query('BEGIN');
+   // Lock the parking-area row so concurrent assignments to its slots serialize.
+   const valid=await client.query('SELECT name,slots FROM valet_parking_areas WHERE business_id=$1 AND name=$2 AND is_active=TRUE FOR UPDATE',[a.business_id,parkingArea]);
+   if(!valid.rowCount){await client.query('ROLLBACK');return res.status(400).json({error:'INVALID_PARKING_AREA'});}
+   const count=Number(valid.rows[0].slots);
+   const prefix=/^[A-Za-z]/.exec(parkingArea)?.[0]?.toUpperCase()||'P';
+   const slotIndex=Number(parkingSlot.slice(prefix.length));
+   if(!Number.isInteger(count)||count<1||!parkingSlot.startsWith(prefix)||
+      !Number.isInteger(slotIndex)||slotIndex<1||slotIndex>count||
+      parkingSlot!==prefix+String(slotIndex).padStart(2,'0')){
+    await client.query('ROLLBACK');return res.status(400).json({error:'INVALID_PARKING_SLOT'});
+   }
+   const occupied=await client.query(
+    "SELECT id FROM valet_sessions WHERE business_id=$1 AND parking_area=$2 AND UPPER(parking_slot)=$3 AND id<>$4 AND status NOT IN ('delivered','cancelled') LIMIT 1",
+    [a.business_id,parkingArea,parkingSlot,req.params.id]);
+   if(occupied.rowCount){await client.query('ROLLBACK');return res.status(409).json({error:'PARKING_SLOT_OCCUPIED'});}
+   const updated=await client.query(`UPDATE valet_sessions SET parking_area=$3,parking_slot=$4,key_location=$5,note=$6,updated_at=now()
      WHERE id=$1 AND business_id=$2 AND status IN ('accepted','parked')
      AND (staff_id IS NULL OR staff_id=$7) RETURNING *`,
      [req.params.id,a.business_id,parkingArea,parkingSlot,keyLocation,note,a.staff_id]);
-   if(!updated.rowCount)return res.status(409).json({error:'SESSION_NOT_EDITABLE'});
+   if(!updated.rowCount){await client.query('ROLLBACK');return res.status(409).json({error:'SESSION_NOT_EDITABLE'});}
+   await client.query('COMMIT');
    return res.json({ok:true,session:updated.rows[0]});
-  }catch(e){console.error('valet parking update',e);return res.status(500).json({error:'SERVER_ERROR'});}
+  }catch(e){await client.query('ROLLBACK').catch(()=>{});console.error('valet parking update',e);return res.status(500).json({error:'SERVER_ERROR'});}
+  finally{client.release();}
  });
 
  app.patch('/api/valet/sessions/:id/status',async(req,res)=>{
