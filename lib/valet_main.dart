@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'dart:math';
 import 'dart:async';
 // Build marker: duplicate-session guard
-import 'dart:convert';import 'package:flutter/material.dart';import 'package:http/http.dart' as http;import 'package:shared_preferences/shared_preferences.dart';import 'package:mobile_scanner/mobile_scanner.dart';import 'package:firebase_core/firebase_core.dart';import 'package:firebase_messaging/firebase_messaging.dart';import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'dart:convert';import 'package:flutter/material.dart';import 'package:http/http.dart' as http;import 'package:shared_preferences/shared_preferences.dart';import 'package:mobile_scanner/mobile_scanner.dart';import 'package:image_picker/image_picker.dart';import 'package:firebase_core/firebase_core.dart';import 'package:firebase_messaging/firebase_messaging.dart';import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 const api='https://heycar-api-185-165-46-213.nip.io',purple=Color(0xFF651FFF),lime=Color(0xFFB9FF45),bg=Color(0xFFF8F9FC),panel=Colors.white,muted=Color(0xFF747B93);
 Future<void> main()async{WidgetsFlutterBinding.ensureInitialized();try{await Firebase.initializeApp();}catch(e){debugPrint('Vale Firebase init failed: $e');}runApp(const ValetApp());}
 class ValetApp extends StatelessWidget{const ValetApp({super.key});@override Widget build(BuildContext c)=>MaterialApp(debugShowCheckedModeBanner:false,theme:ThemeData.light(useMaterial3:true).copyWith(scaffoldBackgroundColor:bg,colorScheme:ColorScheme.fromSeed(seedColor:purple,brightness:Brightness.light)),home:const Gate());}
@@ -48,15 +48,15 @@ Future<void> status(String id,String s)async{String? code;if(s=='delivered'){fin
   }catch(_){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Bağlantı hatası: Misafir QR oluşturulamadı.')));}
  }
  String qrToken(String raw){try{final u=Uri.parse(raw);final t=u.queryParameters['tag'];if(t!=null&&t.trim().isNotEmpty)return t.trim().toUpperCase();}catch(_){}final v=raw.trim().toUpperCase();return RegExp(r'^[A-Z0-9-]{4,80}$').hasMatch(v)?v:'';}
- Future<void> scan()async{final raw=await Navigator.push<String>(context,MaterialPageRoute(builder:(_)=>const ValetQrScanner()));if(raw==null)return;final token=qrToken(raw);if(token.isEmpty){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Geçerli CepQontag QR bulunamadı.')));return;}await add(qrCode:token);}
- Future<void> add({String? qrCode})async{
+ Future<void> scan()async{final raw=await Navigator.push<String>(context,MaterialPageRoute(builder:(_)=>const ValetQrScanner()));if(raw==null)return;if(raw.startsWith('PLATE:')){await add(initialPlate:raw.substring(6));return;}if(raw=='MANUAL'){await add();return;}final token=qrToken(raw);if(token.isEmpty){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Geçerli CepQontag QR bulunamadı.')));return;}await add(qrCode:token);}
+ Future<void> add({String? qrCode,String? initialPlate})async{
   Map<String,dynamic>? vehicle;
   if(qrCode!=null){
    final vr=await http.get(Uri.parse(api+'/api/valet/vehicle-by-qr/'+Uri.encodeComponent(qrCode)),headers:h);
    if(vr.statusCode!=200){if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Araç bu CepQontag QR ile eşleştirilemedi.')));return;}
    vehicle=Map<String,dynamic>.from(jsonDecode(vr.body)['vehicle']);
   }
-  final p=TextEditingController(text:vehicle?['plate']?.toString()??'');
+  final p=TextEditingController(text:vehicle?['plate']?.toString()??initialPlate??'');
   final model=TextEditingController();
   final slot=TextEditingController();
   String? selectedArea=areas.isNotEmpty?areas.first['name']?.toString():null;
@@ -334,5 +334,167 @@ Future<void> status(String id,String s)async{String? code;if(s=='delivered'){fin
  }
 }
 
-class ValetQrScanner extends StatefulWidget{const ValetQrScanner({super.key});@override State<ValetQrScanner> createState()=>_ValetQrScanner();}
-class _ValetQrScanner extends State<ValetQrScanner>{bool done=false;@override Widget build(BuildContext context)=>Scaffold(backgroundColor:Colors.black,appBar:AppBar(backgroundColor:Colors.black,title:const Text('CepQontag QR Okut',style:TextStyle(fontWeight:FontWeight.w900))),body:Stack(children:[MobileScanner(onDetect:(capture){if(done)return;for(final b in capture.barcodes){final raw=b.rawValue;if(raw!=null&&raw.trim().isNotEmpty){done=true;Navigator.pop(context,raw);break;}}}),Center(child:Container(width:260,height:260,decoration:BoxDecoration(border:Border.all(color:lime,width:3),borderRadius:BorderRadius.circular(24)))),const Positioned(left:24,right:24,bottom:55,child:Text('Araç camındaki CepQontag etiketini çerçevenin içine getir.',textAlign:TextAlign.center,style:TextStyle(color:Colors.white,fontWeight:FontWeight.w800,fontSize:15))) ]));}
+class ValetQrScanner extends StatefulWidget{
+ const ValetQrScanner({super.key});
+ @override State<ValetQrScanner> createState()=>_ValetQrScanner();
+}
+class _ValetQrScanner extends State<ValetQrScanner>{
+ final MobileScannerController camera=MobileScannerController(
+   detectionSpeed:DetectionSpeed.noDuplicates,formats:[BarcodeFormat.qrCode]);
+ final TextEditingController plate=TextEditingController();
+ bool done=false,torch=false,busy=false;
+ int tab=0;
+ @override void dispose(){camera.dispose();plate.dispose();super.dispose();}
+ void _finish(String value){
+  if(done||value.trim().isEmpty)return;
+  done=true;Navigator.of(context).pop(value.trim());
+ }
+ void _onDetect(BarcodeCapture capture){
+  if(done||tab!=0)return;
+  for(final b in capture.barcodes){
+   final raw=b.rawValue;
+   if(raw!=null&&raw.trim().isNotEmpty){_finish(raw);return;}
+  }
+ }
+ Future<void> _gallery()async{
+  if(busy)return;
+  setState(()=>busy=true);
+  try{
+   final file=await ImagePicker().pickImage(source:ImageSource.gallery);
+   if(file==null)return;
+   final capture=await camera.analyzeImage(file.path);
+   if(!mounted)return;
+   final barcodes=capture?.barcodes??[];
+   for(final b in barcodes){if(b.rawValue?.trim().isNotEmpty==true){_finish(b.rawValue!);return;}}
+   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Fotoğrafta geçerli QR kodu bulunamadı.')));
+  }catch(_){
+   if(mounted)ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content:Text('Galeri fotoğrafı okunamadı. Kamerayla tekrar deneyin.')));
+  }finally{if(mounted)setState(()=>busy=false);}
+ }
+ Widget _tab(String label,IconData icon,int index){
+  final selected=tab==index;
+  return Expanded(child:Semantics(button:true,selected:selected,label:label,child:InkWell(
+   onTap:()=>setState(()=>tab=index),borderRadius:BorderRadius.circular(13),
+   child:Container(height:49,decoration:BoxDecoration(
+    color:selected?purple:Colors.white,borderRadius:BorderRadius.circular(13)),
+    child:Row(mainAxisAlignment:MainAxisAlignment.center,children:[
+     Icon(icon,size:19,color:selected?Colors.white:const Color(0xFF281C4E)),
+     const SizedBox(width:7),
+     Flexible(child:Text(label,maxLines:1,overflow:TextOverflow.ellipsis,
+      style:TextStyle(color:selected?Colors.white:const Color(0xFF281C4E),
+       fontSize:13,fontWeight:FontWeight.w800)))
+    ])))));
+ }
+ Widget _tool(IconData icon,String title,VoidCallback? action){
+  return Expanded(child:Semantics(button:true,label:title,child:InkWell(onTap:action,
+   borderRadius:BorderRadius.circular(18),child:Column(mainAxisSize:MainAxisSize.min,children:[
+    Container(width:54,height:54,decoration:BoxDecoration(
+     color:const Color(0xFF160B31).withValues(alpha:.8),
+     border:Border.all(color:Colors.white38),shape:BoxShape.circle),
+     child:Icon(icon,color:Colors.white,size:25)),
+    const SizedBox(height:7),Text(title,style:const TextStyle(
+     color:Colors.white,fontWeight:FontWeight.w700,fontSize:12))
+   ]))));
+ }
+ @override Widget build(BuildContext context){
+  final isScan=tab==0;
+  return Scaffold(backgroundColor:const Color(0xFF100923),
+   body:SafeArea(child:Column(children:[
+    Padding(padding:const EdgeInsets.fromLTRB(12,8,12,8),child:SizedBox(height:54,
+     child:Stack(alignment:Alignment.center,children:[
+      const Text('Araç Kabul',style:TextStyle(color:Colors.white,
+       fontSize:21,fontWeight:FontWeight.w900)),
+      Positioned(left:0,child:IconButton(
+       tooltip:'Geri',onPressed:()=>Navigator.of(context).pop(),
+       icon:const Icon(Icons.arrow_back_ios_new,color:Colors.white)))
+     ]))),
+    Padding(padding:const EdgeInsets.fromLTRB(14,8,14,12),
+     child:Container(padding:const EdgeInsets.all(4),
+      decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(16)),
+      child:Row(children:[
+       _tab('QR Okut',Icons.qr_code_scanner,0),
+       _tab('Plaka ile Ara',Icons.directions_car_outlined,1)
+      ]))),
+    Expanded(child:isScan?Stack(fit:StackFit.expand,children:[
+     MobileScanner(controller:camera,onDetect:_onDetect,
+      errorBuilder:(context,error)=>Center(child:Padding(
+       padding:const EdgeInsets.all(24),child:Text(
+        'Kamera açılamadı. Plaka ile Ara sekmesinden devam edebilirsiniz.',
+        textAlign:TextAlign.center,style:const TextStyle(color:Colors.white))))),
+     const IgnorePointer(child:DecoratedBox(decoration:BoxDecoration(
+      gradient:LinearGradient(begin:Alignment.topCenter,end:Alignment.bottomCenter,
+       colors:[Color(0xAA100923),Colors.transparent,Color(0xED100923)],
+       stops:[0,.45,1])))),
+     Center(child:IgnorePointer(child:CustomPaint(size:const Size(256,256),
+      painter:_ValetScanCorners()))),
+     Positioned(left:14,right:14,bottom:34,child:Column(children:[
+      Row(children:[
+       _tool(torch?Icons.flash_on:Icons.flash_off,'Işık',()async{
+        try{await camera.toggleTorch();if(mounted)setState(()=>torch=!torch);}
+        catch(_){if(mounted)ScaffoldMessenger.of(context).showSnackBar(
+         const SnackBar(content:Text('Flaş bu cihazda kullanılamıyor.')));}
+       }),
+       _tool(Icons.photo_library_outlined,'Galeri',busy?null:_gallery),
+       _tool(Icons.keyboard_alt_outlined,'Manuel',()=>_finish('MANUAL'))
+      ]),
+      const SizedBox(height:28),
+      const Text('Araç üzerindeki CepQontag\nQR etiketini okutun.',
+       textAlign:TextAlign.center,style:TextStyle(
+        color:Colors.white,fontSize:15,fontWeight:FontWeight.w700))
+     ]))
+    ]):Container(color:bg,child:SingleChildScrollView(
+     padding:const EdgeInsets.fromLTRB(18,24,18,24),
+     child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+      const Text('Plaka ile Ara',style:TextStyle(
+       fontSize:23,fontWeight:FontWeight.w900,color:Color(0xFF10152D))),
+      const SizedBox(height:8),
+      const Text('Araç kabul etmek için plakayı girin. Araç kaydı mevcut sistemde oluşturulur.',
+       style:TextStyle(color:muted,fontSize:13)),
+      const SizedBox(height:24),
+      TextField(controller:plate,textCapitalization:TextCapitalization.characters,
+       textInputAction:TextInputAction.done,
+       onSubmitted:(_)=>_submitPlate(),
+       decoration:InputDecoration(labelText:'Araç plakası',hintText:'34 ABC 004',
+        prefixIcon:const Icon(Icons.search),
+        filled:true,fillColor:Colors.white,
+        border:OutlineInputBorder(borderRadius:BorderRadius.circular(15)))),
+      const SizedBox(height:18),
+      FilledButton.icon(onPressed:_submitPlate,
+       style:FilledButton.styleFrom(backgroundColor:lime,
+        foregroundColor:const Color(0xFF10152D),
+        minimumSize:const Size.fromHeight(54)),
+       icon:const Icon(Icons.directions_car),label:const Text('Araç Kabulüne Devam Et',
+        style:TextStyle(fontWeight:FontWeight.w900))),
+      const SizedBox(height:20),
+      const Text('Plaka araması işletmenin mevcut araç kabul akışını kullanır.',
+       style:TextStyle(color:muted,fontSize:12))
+     ]))))
+   ])));
+ }
+ void _submitPlate(){
+  final value=plate.text.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'),'');
+  if(!RegExp(r'^([0-7][0-9]|8[01])[A-Z]{1,3}[0-9]{2,5}$').hasMatch(value)){
+   ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content:Text('Geçerli bir Türkiye plakası girin.')));return;
+  }
+  _finish('PLATE:$value');
+ }
+}
+class _ValetScanCorners extends CustomPainter{
+ @override void paint(Canvas canvas,Size size){
+  final paint=Paint()..color=Colors.white..style=PaintingStyle.stroke
+   ..strokeWidth=4..strokeCap=StrokeCap.round;
+  final p=Path();const l=34.0,r=23.0;
+  p.moveTo(0,l);p.lineTo(0,r);p.quadraticBezierTo(0,0,r,0);p.lineTo(l,0);
+  p.moveTo(size.width-l,0);p.lineTo(size.width-r,0);
+  p.quadraticBezierTo(size.width,0,size.width,r);p.lineTo(size.width,l);
+  p.moveTo(0,size.height-l);p.lineTo(0,size.height-r);
+  p.quadraticBezierTo(0,size.height,r,size.height);p.lineTo(l,size.height);
+  p.moveTo(size.width-l,size.height);p.lineTo(size.width-r,size.height);
+  p.quadraticBezierTo(size.width,size.height,size.width,size.height-r);
+  p.lineTo(size.width,size.height-l);
+  canvas.drawPath(p,paint);
+ }
+ @override bool shouldRepaint(covariant CustomPainter oldDelegate)=>false;
+}
