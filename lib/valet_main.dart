@@ -89,20 +89,134 @@ Future<void> status(String id,String s)async{String? code;if(s=='delivered'){fin
  }
 
 
+
+ // Eight-screen HIG flow: Dashboard, Scanner, Acceptance, Parking, Vehicles,
+ // Tasks, Retrieval, and Profile. All mutations use the existing valet API.
+ String _vehicleFilter='all';
+ Widget _panel({required Widget child,EdgeInsetsGeometry padding=const EdgeInsets.all(16)})=>Container(
+   padding:padding,decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(20),
+   border:Border.all(color:const Color(0xFFE8E7EF))),child:child);
+ Widget _pill(String title,{Color color=purple})=>Container(
+   padding:const EdgeInsets.symmetric(horizontal:11,vertical:6),
+   decoration:BoxDecoration(color:color.withValues(alpha:.1),borderRadius:BorderRadius.circular(30)),
+   child:Text(title,style:TextStyle(color:color,fontWeight:FontWeight.w800,fontSize:12)));
+ Widget _actionTile(IconData icon,String title,String subtitle,VoidCallback action,{bool primary=false})=>
+   Semantics(button:true,label:title,child:InkWell(onTap:action,borderRadius:BorderRadius.circular(18),child:
+   Container(padding:const EdgeInsets.symmetric(vertical:17,horizontal:10),
+   decoration:BoxDecoration(color:primary?lime:const Color(0xFFF6F2FF),borderRadius:BorderRadius.circular(18),
+   border:Border.all(color:primary?lime:const Color(0xFFE8DFFF))),
+   child:Column(children:[Icon(icon,color:primary?const Color(0xFF10152D):purple,size:29),
+   const SizedBox(height:8),Text(title,textAlign:TextAlign.center,style:const TextStyle(fontSize:13,fontWeight:FontWeight.w800)),
+   const SizedBox(height:3),Text(subtitle,textAlign:TextAlign.center,style:const TextStyle(fontSize:11,color:muted))]))));
+ Future<void> _parking(Map x)async{
+   final slot=TextEditingController(text:(x['parking_slot']??'').toString());
+   final key=TextEditingController(text:(x['key_location']??'').toString());
+   final note=TextEditingController();
+   String? selected=(x['parking_area']??'').toString();
+   if(selected.isEmpty&&areas.isNotEmpty)selected=(areas.first['name']??'').toString();
+   if(!mounted)return;
+   await showModalBottomSheet<void>(context:context,isScrollControlled:true,showDragHandle:true,
+   builder:(ctx)=>StatefulBuilder(builder:(ctx,update)=>Padding(
+   padding:EdgeInsets.fromLTRB(20,8,20,MediaQuery.viewInsetsOf(ctx).bottom+24),
+   child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+    const Text('Park Kaydı',style:TextStyle(fontSize:25,fontWeight:FontWeight.w900)),
+    const SizedBox(height:8),_pill((x['plate']??'').toString()),
+    const SizedBox(height:20),
+    DropdownButtonFormField<String>(initialValue:areas.any((a)=>a['name'].toString()==selected)?selected:null,
+     decoration:const InputDecoration(labelText:'Park alanı',border:OutlineInputBorder()),
+     items:areas.map<DropdownMenuItem<String>>((a)=>DropdownMenuItem(value:a['name'].toString(),child:Text(a['name'].toString()))).toList(),
+     onChanged:(v)=>update(()=>selected=v)),
+    const SizedBox(height:12),
+    TextField(controller:slot,decoration:const InputDecoration(labelText:'Park yeri',hintText:'A05',border:OutlineInputBorder())),
+    const SizedBox(height:12),
+    TextField(controller:key,decoration:const InputDecoration(labelText:'Anahtar konumu',hintText:'Dolap 3 – Göz 12',border:OutlineInputBorder())),
+    const SizedBox(height:12),
+    TextField(controller:note,maxLines:2,decoration:const InputDecoration(labelText:'Not (isteğe bağlı)',border:OutlineInputBorder())),
+    const SizedBox(height:20),
+    FilledButton(onPressed:selected==null?null:()async{
+      final id=(x['id']??'').toString();if(id.isEmpty)return;
+      try{
+       final response=await http.patch(Uri.parse(api+'/api/valet/sessions/$id/parking'),headers:h,
+        body:jsonEncode({'parkingArea':selected,'parkingSlot':slot.text.trim(),'keyLocation':key.text.trim(),'note':note.text.trim()}));
+       if(response.statusCode>=200&&response.statusCode<300){
+         if(ctx.mounted)Navigator.pop(ctx);
+         if((x['status']??'')=='accepted')await status(id,'parked');else await load();
+       }else{
+         if(ctx.mounted)ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content:Text('Park kaydı yapılamadı (HTTP ${response.statusCode}).')));
+       }
+      }catch(_){if(ctx.mounted)ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content:Text('Bağlantı hatası.')));}
+    },style:FilledButton.styleFrom(backgroundColor:lime,foregroundColor:Colors.black,minimumSize:const Size.fromHeight(52)),
+    child:const Text('Parkı Kaydet',style:TextStyle(fontWeight:FontWeight.w900)))
+   ])))));
+ }
+ Future<void> _vehicleDetail(Map x)async{
+  if(!mounted)return;
+  await showModalBottomSheet<void>(context:context,isScrollControlled:true,showDragHandle:true,
+   builder:(ctx)=>SafeArea(child:Padding(padding:const EdgeInsets.fromLTRB(20,8,20,24),
+    child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+    const Icon(Icons.directions_car_rounded,size:75,color:purple),
+    const SizedBox(height:8),Text((x['plate']??'-').toString(),textAlign:TextAlign.center,style:const TextStyle(fontSize:25,fontWeight:FontWeight.w900)),
+    const SizedBox(height:14),_panel(child:Column(children:[
+      ListTile(leading:const Icon(Icons.location_on_outlined),title:const Text('Park alanı'),subtitle:Text('${x['parking_area']??'-'} · ${x['parking_slot']??'-'}')),
+      ListTile(leading:const Icon(Icons.key_outlined),title:const Text('Anahtar konumu'),subtitle:Text((x['key_location']??'-').toString())),
+      ListTile(leading:const Icon(Icons.info_outline),title:const Text('Durum'),subtitle:Text((x['status']??'-').toString())),
+    ])),const SizedBox(height:14),
+    if((x['status']??'')=='accepted')FilledButton(onPressed:(){Navigator.pop(ctx);_parking(x);},style:FilledButton.styleFrom(backgroundColor:lime,foregroundColor:Colors.black,minimumSize:const Size.fromHeight(52)),child:const Text('Park Kaydı Oluştur')),
+    if((x['status']??'')=='parked')OutlinedButton.icon(onPressed:()=>guestQr(x),icon:const Icon(Icons.qr_code),label:const Text('Misafir QR')),
+    if(['requested','retrieving','ready'].contains(x['status']))FilledButton(onPressed:(){Navigator.pop(ctx);_retrieval(x);},child:const Text('Araç Getirme Takibi')),
+  ]))));
+ }
+ Future<void> _retrieval(Map x)async{
+  final st=(x['status']??'').toString(),id=(x['id']??'').toString();
+  final phases=['accepted','parked','requested','retrieving','ready','delivered'];
+  final names=['Araç teslim alındı','Araç park edildi','Araç çağrıldı','Araç getiriliyor','Teslimata hazır','Teslim edildi'];
+  final current=phases.indexOf(st);
+  if(!mounted)return;
+  await showModalBottomSheet<void>(context:context,isScrollControlled:true,showDragHandle:true,builder:(ctx)=>SafeArea(
+  child:Padding(padding:const EdgeInsets.fromLTRB(22,8,22,26),child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+   const Text('Araç Getirme',style:TextStyle(fontSize:25,fontWeight:FontWeight.w900)),
+   const SizedBox(height:6),Text((x['plate']??'-').toString(),style:const TextStyle(fontSize:19,fontWeight:FontWeight.w700,color:purple)),
+   const SizedBox(height:18),
+   ...List.generate(phases.length,(i)=>ListTile(dense:true,
+    leading:Icon(i<=current?Icons.check_circle:Icons.radio_button_unchecked,color:i<=current?purple:muted),
+    title:Text(names[i],style:TextStyle(fontWeight:i==current?FontWeight.w900:FontWeight.w500)),
+    trailing:i==current?_pill('Güncel'):null)),
+   const SizedBox(height:10),
+   if(['requested','retrieving','ready'].contains(st))FilledButton(
+    onPressed:()async{Navigator.pop(ctx);await status(id,{'requested':'retrieving','retrieving':'ready','ready':'delivered'}[st]!);},
+    style:FilledButton.styleFrom(backgroundColor:lime,foregroundColor:Colors.black,minimumSize:const Size.fromHeight(52)),
+    child:Text({'requested':'Görevi Üstlen','retrieving':'Teslimata Hazır','ready':'Teslim Kodunu Doğrula'}[st]!,style:const TextStyle(fontWeight:FontWeight.w900)))
+  ]))));
+ }
+ Widget _profile()=>Padding(padding:const EdgeInsets.all(16),child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+   _panel(child:Row(children:[const CircleAvatar(radius:32,backgroundColor:purple,child:Icon(Icons.person,color:Colors.white,size:32)),
+    const SizedBox(width:14),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+     Text(staff.isEmpty?'Vale Personeli':staff,style:const TextStyle(fontSize:19,fontWeight:FontWeight.w900)),
+     Text(business,style:const TextStyle(color:muted))])),_pill(onShift?'Çevrimiçi':'Mesai Dışı',color:onShift?const Color(0xFF299442):muted)])),
+   const SizedBox(height:14),_panel(child:Column(children:[
+    ListTile(leading:const Icon(Icons.schedule,color:purple),title:const Text('Mesai Yönetimi'),subtitle:Text(onShift?'Mesai aktif':'Mesai dışı'),trailing:const Icon(Icons.chevron_right),onTap:()=>shift(!onShift)),
+    const Divider(height:1),ListTile(leading:const Icon(Icons.history,color:purple),title:const Text('İşlem Geçmişi'),subtitle:Text('${data.where((x)=>x['status']=='delivered').length} tamamlanan işlem'),onTap:()=>setState(()=>_filter='history')),
+    const Divider(height:1),ListTile(leading:const Icon(Icons.notifications_outlined,color:purple),title:const Text('Bildirimler'),subtitle:Text('${data.where((x)=>x['status']=='requested').length} araç çağrısı'),onTap:()=>setState(()=>_filter='requests')),
+    const Divider(height:1),ListTile(leading:const Icon(Icons.help_outline,color:purple),title:const Text('Yardım'),onTap:()=>ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('İşletme yöneticinizle iletişime geçin.'))))
+   ])),const SizedBox(height:18),
+   OutlinedButton.icon(onPressed:shiftBusy?null:()=>shift(!onShift),icon:Icon(onShift?Icons.power_settings_new:Icons.play_arrow),label:Text(onShift?'Mesaiyi Bitir':'Mesaiye Başla')),
+   const SizedBox(height:10),TextButton(onPressed:widget.logout,child:const Text('Çıkış Yap'))
+  ]));
  String _filter='home',_search='';
  Widget _metric(IconData icon,String count,String label,Color color){
   return Expanded(child:Container(padding:const EdgeInsets.symmetric(vertical:11,horizontal:4),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(16),border:Border.all(color:const Color(0xFFE9E9EF))),child:Column(children:[Stack(clipBehavior:Clip.none,children:[CircleAvatar(radius:18,backgroundColor:color.withValues(alpha:.11),child:Icon(icon,color:color,size:21))]),const SizedBox(height:5),Text(count,style:const TextStyle(fontSize:23,fontWeight:FontWeight.w800,color:Color(0xFF10152D))),Text(label,textAlign:TextAlign.center,style:const TextStyle(fontSize:11,fontWeight:FontWeight.w600,color:muted))])));
  }
  Widget _vehicleCard(Map x){
   final st=(x['status']??'').toString(),requested=st=='requested';
-  final next={'accepted':'parked','requested':'retrieving','retrieving':'ready','ready':'delivered'}[st];
-  final action={'accepted':'Park Edildi','requested':'Aracı Getir','retrieving':'Hazır','ready':'Teslim Et'}[st];
+  final next={'requested':'retrieving','retrieving':'ready','ready':'delivered'}[st];
+  final action={'requested':'Görevi Üstlen','retrieving':'Teslimata Hazır','ready':'Teslim Et'}[st];
   final area=(x['parking_area']??'-').toString(),slot=(x['parking_slot']??'-').toString(),key=(x['key_location']??'').toString();
   final label={'accepted':'Teslim Alındı','parked':'Parkta','requested':'Araç İsteniyor','retrieving':'Getiriliyor','ready':'Hazır'}[st]??st;
   final orange=const Color(0xFFE86116);
   return Container(margin:const EdgeInsets.only(bottom:10),padding:const EdgeInsets.all(13),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(17),border:Border.all(color:const Color(0xFFE9E9EF))),child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
    Row(children:[Container(width:45,height:45,decoration:BoxDecoration(color:const Color(0xFFF0EAFE),borderRadius:BorderRadius.circular(15)),child:const Icon(Icons.directions_car_filled,color:purple,size:25)),const SizedBox(width:10),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text((x['plate']??'-').toString(),style:const TextStyle(fontWeight:FontWeight.w900,fontSize:17,color:Color(0xFF10152D))),const SizedBox(height:3),Text('$area · $slot${key.isEmpty?'':' · $key'}',maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:12,color:muted,fontWeight:FontWeight.w600))])),Container(padding:const EdgeInsets.symmetric(horizontal:9,vertical:7),decoration:BoxDecoration(color:requested?const Color(0xFFFFE9C3):const Color(0xFFE9F8E3),borderRadius:BorderRadius.circular(11)),child:Text(label,style:TextStyle(color:requested?orange:const Color(0xFF318332),fontSize:11,fontWeight:FontWeight.w800)))]),
-   if(next!=null)...[const SizedBox(height:12),SizedBox(height:48,child:FilledButton.icon(onPressed:()=>status((x['id']??'').toString(),next),style:FilledButton.styleFrom(backgroundColor:purple,foregroundColor:Colors.white,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(13))),icon:const Icon(Icons.directions_car_filled,size:19),label:Text(action??'Devam Et',style:const TextStyle(fontWeight:FontWeight.w800,fontSize:14))))],
+   if(st=='accepted')...[const SizedBox(height:12),SizedBox(height:48,child:FilledButton.icon(onPressed:()=>_parking(x),style:FilledButton.styleFrom(backgroundColor:lime,foregroundColor:Colors.black),icon:const Icon(Icons.local_parking),label:const Text('Park Kaydı Oluştur')))],
+   if(next!=null)...[const SizedBox(height:12),SizedBox(height:48,child:FilledButton.icon(onPressed:()=>_retrieval(x),style:FilledButton.styleFrom(backgroundColor:purple,foregroundColor:Colors.white,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(13))),icon:const Icon(Icons.directions_car_filled,size:19),label:Text(action??'Devam Et',style:const TextStyle(fontWeight:FontWeight.w800,fontSize:14))))],
    if(st=='parked'||st=='accepted')Align(alignment:Alignment.centerRight,child:TextButton.icon(onPressed:()=>guestQr(x),icon:const Icon(Icons.qr_code_2,size:17),label:const Text('Misafir QR'))),
   ]));
  }
@@ -113,24 +227,38 @@ Future<void> status(String id,String s)async{String? code;if(s=='delivered'){fin
   final active=data.where((x)=>!['delivered','cancelled'].contains(x['status'])).length;
   final filtered=data.where((x){
    final st=(x['status']??'').toString();
-   if(_filter=='requests'&&st!='requested')return false;
+   if(_filter=='requests'&&!['requested','retrieving','ready'].contains(st))return false;
+   if(_filter=='history'&&st!='delivered')return false;
+   if(_filter=='vehicles'&&(['delivered','cancelled'].contains(st)||(_vehicleFilter!='all'&&st!=_vehicleFilter)))return false;
    if(_filter=='home'&&st!='requested')return false;
    if(_search.isNotEmpty&&!('${x['plate']??''} ${x['parking_area']??''} ${x['parking_slot']??''}').toLowerCase().contains(_search.toLowerCase()))return false;
    return true;
   }).toList()..sort((a,b){final ap=a['status']=='requested'?0:1,bp=b['status']=='requested'?0:1;return ap.compareTo(bp);});
   return Scaffold(backgroundColor:bg,body:SafeArea(child:Column(children:[
-   Expanded(child:RefreshIndicator(onRefresh:load,child:CustomScrollView(slivers:[SliverToBoxAdapter(child:Padding(padding:const EdgeInsets.fromLTRB(16,12,16,6),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+   Expanded(child:_filter=='profile'?SingleChildScrollView(child:_profile()):RefreshIndicator(onRefresh:load,child:CustomScrollView(slivers:[SliverToBoxAdapter(child:Padding(padding:const EdgeInsets.fromLTRB(16,12,16,6),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
     Row(children:[Container(width:34,height:34,decoration:const BoxDecoration(color:purple,shape:BoxShape.circle),child:const Center(child:Text('Q',style:TextStyle(color:Colors.white,fontSize:23,fontWeight:FontWeight.w800)))),const SizedBox(width:8),const Expanded(child:Text('CepQontag  |  Vale',style:TextStyle(color:Color(0xFF25105B),fontSize:21,fontWeight:FontWeight.w900))),IconButton(onPressed:load,icon:Badge(isLabelVisible:requests>0,label:Text('$requests'),child:const Icon(Icons.notifications_none_rounded,color:Color(0xFF25105B),size:29)))]),
     const SizedBox(height:14),Text('Merhaba, ${staff.isEmpty?'Vale':staff.split(' ').first} 👋',style:const TextStyle(fontSize:24,fontWeight:FontWeight.w800,color:Colors.black)),const SizedBox(height:4),Text(business.isEmpty?'Vale operasyon paneli':business,style:const TextStyle(fontSize:14,color:muted,fontWeight:FontWeight.w600)),
     const SizedBox(height:14),Container(padding:const EdgeInsets.symmetric(horizontal:14,vertical:11),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(16),border:Border.all(color:const Color(0xFFE9E9EF))),child:Row(children:[Icon(Icons.circle,color:onShift?const Color(0xFF48C52B):muted,size:15),const SizedBox(width:12),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('Vardiya Durumu',style:TextStyle(fontWeight:FontWeight.w900,fontSize:15)),Text(onShift?'Mesai Aktif':'Mesai Dışı',style:TextStyle(fontWeight:FontWeight.w800,color:onShift?const Color(0xFF34AE23):muted))])),TextButton(onPressed:shiftBusy?null:()=>shift(!onShift),style:TextButton.styleFrom(backgroundColor:const Color(0xFFF0EAFE),foregroundColor:purple,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(13))),child:Text(onShift?'Mesaiyi Bitir':'Mesaiye Başla',style:const TextStyle(fontWeight:FontWeight.w800)))])),
     const SizedBox(height:12),Row(children:[_metric(Icons.directions_car_filled,'$parked','Parkta',purple),const SizedBox(width:9),_metric(Icons.notifications_active_outlined,'$requests','Araç İsteği',const Color(0xFFFF8A00)),const SizedBox(width:9),_metric(Icons.car_rental,'$active','Aktif Araç',const Color(0xFF43B52B))]),
+    if(_filter=='home')...[const SizedBox(height:14),
+      Row(children:[Expanded(child:_actionTile(Icons.qr_code_scanner,'Araç Kabul','QR Okut',scan,primary:true)),
+       const SizedBox(width:9),Expanded(child:_actionTile(Icons.directions_car_outlined,'Araçlar','Aktif Araçlar',()=>setState(()=>_filter='vehicles')))]),
+      const SizedBox(height:9),
+      Row(children:[Expanded(child:_actionTile(Icons.local_parking_outlined,'Park Alanları','Doluluk',()=>setState(()=>_filter='vehicles'))),
+       const SizedBox(width:9),Expanded(child:_actionTile(Icons.assignment_turned_in_outlined,'Görevler','Atanan işler',()=>setState(()=>_filter='requests')))]),
+    ],
     const SizedBox(height:14),SizedBox(width:double.infinity,height:52,child:FilledButton.icon(onPressed:()=>add(),style:FilledButton.styleFrom(backgroundColor:lime,foregroundColor:Colors.black,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(14))),icon:const Icon(Icons.add_circle_outline,size:22),label:const Text('Yeni Araç Kabul Et',style:TextStyle(fontSize:16,fontWeight:FontWeight.w800)))),
-    const SizedBox(height:17),Row(children:[Expanded(child:Text(_filter=='home'?'Araç Getirme İstekleri ($requests)':_filter=='requests'?'Araç Getirme İstekleri ($requests)':'Araçlar ($active)',style:const TextStyle(fontSize:17,fontWeight:FontWeight.w800,color:Colors.black))),TextButton(onPressed:()=>setState(()=>_filter='vehicles'),child:const Text('Tümünü Gör ›',style:TextStyle(color:purple,fontWeight:FontWeight.w800)))]),
+    const SizedBox(height:17),Row(children:[Expanded(child:Text(_filter=='history'?'İşlem Geçmişi':_filter=='home'?'Araç Getirme İstekleri ($requests)':_filter=='requests'?'Araç Getirme İstekleri ($requests)':'Araçlar ($active)',style:const TextStyle(fontSize:17,fontWeight:FontWeight.w800,color:Colors.black))),TextButton(onPressed:()=>setState(()=>_filter='vehicles'),child:const Text('Tümünü Gör ›',style:TextStyle(color:purple,fontWeight:FontWeight.w800)))]),
+    if(_filter=='vehicles')Padding(padding:const EdgeInsets.only(bottom:10),child:SingleChildScrollView(scrollDirection:Axis.horizontal,child:Row(children:[
+     for(final item in const [('all','Tümü'),('parked','Parkta'),('requested','Çağrıldı'),('retrieving','Getiriliyor'),('ready','Hazır')])
+       Padding(padding:const EdgeInsets.only(right:7),child:ChoiceChip(label:Text(item.$2),selected:_vehicleFilter==item.$1,
+        onSelected:(_)=>setState(()=>_vehicleFilter=item.$1))),
+    ]))),
     if(_filter=='vehicles')Padding(padding:const EdgeInsets.only(bottom:13),child:TextField(onChanged:(v)=>setState(()=>_search=v),decoration:InputDecoration(hintText:'Plaka veya park yeri ara',prefixIcon:const Icon(Icons.search),filled:true,fillColor:Colors.white,border:OutlineInputBorder(borderRadius:BorderRadius.circular(15),borderSide:BorderSide.none)))),
    ]))),
    if(loading)const SliverFillRemaining(child:Center(child:CircularProgressIndicator()))else if(filtered.isEmpty)SliverToBoxAdapter(child:Padding(padding:const EdgeInsets.all(32),child:Center(child:Text(_filter=='home'||_filter=='requests'?'Bekleyen araç getirme isteği yok.':'Araç bulunamadı.',style:const TextStyle(color:muted)))))else SliverPadding(padding:const EdgeInsets.fromLTRB(16,0,16,24),sliver:SliverList.builder(itemCount:filtered.length,itemBuilder:(_,i)=>_vehicleCard(filtered[i]))),
    ]))),
-   Container(decoration:BoxDecoration(color:Colors.white,boxShadow:[BoxShadow(color:purple.withValues(alpha:.07),blurRadius:14)]),child:Row(children:[_nav(Icons.home_rounded,'Ana Sayfa','home'),_nav(Icons.directions_car_outlined,'Araçlar','vehicles'),Expanded(child:InkWell(onTap:scan,child:Padding(padding:const EdgeInsets.only(bottom:4),child:CircleAvatar(radius:24,backgroundColor:purple,child:const Icon(Icons.qr_code_scanner,color:Colors.white,size:24))))),_nav(Icons.assignment_outlined,'İşlemler','requests'),Expanded(child:InkWell(onTap:()=>showModalBottomSheet(context:context,builder:(d)=>SafeArea(child:ListTile(title:Text(staff),subtitle:Text(business),trailing:TextButton(onPressed:(){Navigator.pop(d);widget.logout();},child:const Text('Çıkış Yap'))))),child:const Padding(padding:EdgeInsets.symmetric(vertical:9),child:Column(mainAxisSize:MainAxisSize.min,children:[Icon(Icons.person_outline,color:muted,size:25),SizedBox(height:4),Text('Profil',style:TextStyle(color:muted,fontSize:10))]))))])),
+   Container(decoration:BoxDecoration(color:Colors.white,boxShadow:[BoxShadow(color:purple.withValues(alpha:.07),blurRadius:14)]),child:Row(children:[_nav(Icons.home_rounded,'Ana Sayfa','home'),_nav(Icons.directions_car_outlined,'Araçlar','vehicles'),Expanded(child:InkWell(onTap:scan,child:Padding(padding:const EdgeInsets.only(bottom:4),child:CircleAvatar(radius:24,backgroundColor:purple,child:const Icon(Icons.qr_code_scanner,color:Colors.white,size:24))))),_nav(Icons.assignment_outlined,'İşlemler','requests'),Expanded(child:InkWell(onTap:()=>setState(()=>_filter='profile'),child:Padding(padding:const EdgeInsets.symmetric(vertical:9),child:Column(mainAxisSize:MainAxisSize.min,children:[Icon(Icons.person_outline,color:_filter=='profile'?purple:muted,size:25),const SizedBox(height:4),Text('Profil',style:TextStyle(color:_filter=='profile'?purple:muted,fontSize:10))]))))])),
   ])));
  }
 }
