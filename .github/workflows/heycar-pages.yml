@@ -262,6 +262,20 @@ jobs:
           mkdir -p deploy/vale-misafir deploy/valet-guest
           cp web/valet-guest/index.html deploy/vale-misafir/index.html
           cp web/valet-guest/index.html deploy/valet-guest/index.html
+          # These Flutter assets are JPEG-encoded despite their .png source names.
+          # Publish actual JPEG files at stable URLs used by both guest entry points.
+          mkdir -p deploy/assets
+          python3 - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+          for name in ('vale','aracgetiriliyor','teslimat'):
+              source=Path('assets')/(name+'.png')
+              destination=Path('deploy/assets')/(name+'.jpg')
+              with Image.open(source) as im:
+                  im.convert('RGB').save(destination,format='JPEG',quality=90,optimize=True)
+              assert destination.stat().st_size>10000, destination
+              print(f'Published {destination}')
+          PY
           test -s deploy/vale-misafir/index.html
           test -s deploy/valet-guest/index.html
 
@@ -270,6 +284,9 @@ jobs:
           set -euo pipefail
           for path in index.html owner/index.html cekici/index.html vale/index.html vale-misafir/index.html valet-guest/index.html admin/index.html isletme/index.html; do
             test -f "deploy/$path" || { echo "Missing Pages artifact: $path"; exit 1; }
+          done
+          for name in vale aracgetiriliyor teslimat; do
+            test -s "deploy/assets/$name.jpg" || { echo "Missing valet image: $name"; exit 1; }
           done
           echo "PAGES_PAYLOAD_COMPLETE"
 
