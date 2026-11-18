@@ -317,7 +317,7 @@ module.exports=function registerValetRoutes(app,pool){
   const parkingSlot=String(req.body?.parkingSlot||'').trim().toUpperCase().slice(0,60);
   const keyLocation=String(req.body?.keyLocation||'').trim().slice(0,100);
   const note=String(req.body?.note||'').trim().slice(0,500);
-  if(!parkingArea||!parkingSlot)return res.status(400).json({error:'PARKING_AREA_AND_SLOT_REQUIRED'});
+  if(!parkingArea)return res.status(400).json({error:'PARKING_AREA_REQUIRED'});
   const client=await pool.connect();
   try{
    await client.query('BEGIN');
@@ -325,17 +325,12 @@ module.exports=function registerValetRoutes(app,pool){
    const valid=await client.query('SELECT name,slots FROM valet_parking_areas WHERE business_id=$1 AND name=$2 AND is_active=TRUE FOR UPDATE',[a.business_id,parkingArea]);
    if(!valid.rowCount){await client.query('ROLLBACK');return res.status(400).json({error:'INVALID_PARKING_AREA'});}
    const count=Number(valid.rows[0].slots);
-   const prefix=/^[A-Za-z]/.exec(parkingArea)?.[0]?.toUpperCase()||'P';
-   const slotIndex=Number(parkingSlot.slice(prefix.length));
-   if(!Number.isInteger(count)||count<1||!parkingSlot.startsWith(prefix)||
-      !Number.isInteger(slotIndex)||slotIndex<1||slotIndex>count||
-      parkingSlot!==prefix+String(slotIndex).padStart(2,'0')){
-    await client.query('ROLLBACK');return res.status(400).json({error:'INVALID_PARKING_SLOT'});
-   }
    const occupied=await client.query(
-    "SELECT id FROM valet_sessions WHERE business_id=$1 AND parking_area=$2 AND UPPER(parking_slot)=$3 AND id<>$4 AND status NOT IN ('delivered','cancelled') LIMIT 1",
-    [a.business_id,parkingArea,parkingSlot,req.params.id]);
-   if(occupied.rowCount){await client.query('ROLLBACK');return res.status(409).json({error:'PARKING_SLOT_OCCUPIED'});}
+    "SELECT COUNT(*)::int AS total FROM valet_sessions WHERE business_id=$1 AND parking_area=$2 AND id<>$3 AND status NOT IN ('delivered','cancelled')",
+    [a.business_id,parkingArea,req.params.id]);
+   if(Number.isInteger(count)&&count>0&&Number(occupied.rows[0].total)>=count){
+    await client.query('ROLLBACK');return res.status(409).json({error:'PARKING_AREA_FULL'});
+   }
    const updated=await client.query(`UPDATE valet_sessions SET parking_area=$3,parking_slot=$4,key_location=$5,note=$6,updated_at=now()
      WHERE id=$1 AND business_id=$2 AND status IN ('accepted','parked')
      AND (staff_id IS NULL OR staff_id=$7) RETURNING *`,
